@@ -14,6 +14,7 @@ print(up_two_directories)
 # SPDX-License-Identifier: MPL-2.0
 import math
 import numpy as np
+import pickle
 from matplotlib import pyplot as plt
 
 # from VeraGridEngine.Utils.Symbolic.events import Events, Event
@@ -64,10 +65,10 @@ dg = Var("dg")
 tm = Var("tm")
 et = Var("et")
 
-u_sin = Var('u_cos')
-du_sin = DiffVar('du_sin', base_var= u_sin)
+u_sin = Var('u_sin')
+du_sin = DiffVar.get_or_create('du_sin', base_var= u_sin)
 u_cos = Var('u_cos')
-du_cos = DiffVar('du_cos', base_var= u_cos)
+du_cos = DiffVar.get_or_create('du_cos', base_var= u_cos)
 v_sin = Var('v_sin')
 delta_dt = DiffVar.get_or_create('delta_dt', base_var = delta)
 dg_dt = DiffVar.get_or_create('dg_dt', base_var = dg)
@@ -136,6 +137,76 @@ generator_block_ML_0 = DiffBlock(
     diff_vars= [delta_dt, dg_dt, du_cos, du_sin],
 )
 
+
+u_cos_delta = Var('u_cos_delta')
+u_sin_delta = Var('u_sin_delta')
+u_cos_dg = Var('u_cos_dg')
+u_sin_dg = Var('u_sin_dg')
+du_cos_delta = DiffVar.get_or_create('du_cos_delta', base_var= u_cos_delta)
+du_sin_delta = DiffVar.get_or_create('du_sin_delta', base_var= u_sin_delta)
+du_cos_dg = DiffVar.get_or_create('du_cos_dg', base_var= u_cos_dg)
+du_sin_dg = DiffVar.get_or_create('du_sin_dg', base_var= u_sin_dg)
+u_sin_dg_lag = LagVar.get_or_create('u_sin_dg_lag', base_var= u_sin_dg, lag=1)
+
+generator_block_ML_1_expanded = DiffBlock(
+    state_eqs=[
+        (2 * pi * fn) * (omega - omega_ref),  # dδ/dt
+        (tm  - t_e - D * (omega - omega_ref)) / M,  # dω/dt
+        (omega - omega_ref),
+    
+    ],
+    state_vars=[delta, omega, et],
+    algebraic_eqs=[
+        psid - (ra * i_q + v_q),
+        psiq + (ra * i_d + v_d),
+        0 - (psid + xd * i_d - vf),
+        0 - (psiq + xd * i_q),
+        v_d - (Vg * sin(delta - dg)),
+        v_q - (Vg * cos(delta - dg)),
+        t_e - (psid * i_q - psiq * i_d),
+        P_g - (v_d * i_d + v_q * i_q),
+        Q_g - (v_q * i_d - v_d * i_q),
+        (tm - tm0) + (Kp * (omega - omega_ref) + Ki * et),
+        u_cos - (u_cos_delta * u_cos_dg + u_sin_delta * u_sin_dg),
+        u_sin - (u_sin_delta * u_cos_dg - u_cos_delta * u_sin_dg),
+        du_cos_dg + (dg_dt)*(u_sin_dg),
+        du_sin_dg - (dg_dt)*(u_cos_dg),
+        du_cos_delta + (delta_dt)*(u_sin_delta),
+        du_sin_delta - (delta_dt)*(u_cos_delta),
+    ],
+    algebraic_vars=[psid, psiq, i_d, i_q, v_d, v_q, t_e, P_g, Q_g, tm, u_cos, u_sin, u_cos_delta, u_sin_delta, u_cos_dg, u_sin_dg],
+    parameters=[],
+    diff_vars= [delta_dt, dg_dt, du_cos_delta, du_sin_delta, du_cos_dg, du_sin_dg],
+    lag_vars = [u_sin_dg_lag]
+)
+
+generator_block_ML_1_expanded2 = DiffBlock(
+    state_eqs=[
+        (2 * pi * fn) * (omega - omega_ref),  # dδ/dt
+        (tm  - t_e - D * (omega - omega_ref)) / M,  # dω/dt
+        (omega - omega_ref),
+    
+    ],
+    state_vars=[delta, omega, et],
+    algebraic_eqs=[
+        psid - (ra * i_q + v_q),
+        psiq + (ra * i_d + v_d),
+        0 - (psid + xd * i_d - vf),
+        0 - (psiq + xd * i_q),
+        v_d - (Vg * sin(delta - dg)),
+        v_q - (Vg * cos(delta - dg)),
+        t_e - (psid * i_q - psiq * i_d),
+        P_g - (v_d * i_d + v_q * i_q),
+        Q_g - (v_q * i_d - v_d * i_q),
+        (tm - tm0) + (Kp * (omega - omega_ref) + Ki * et),
+        du_cos_dg + (dg_dt)*(u_sin_dg),
+        du_sin_dg - (dg_dt)*(u_cos_dg),
+    ],
+    algebraic_vars=[psid, psiq, i_d, i_q, v_d, v_q, t_e, P_g, Q_g, tm, u_cos_dg, u_sin_dg],
+    parameters=[],
+    diff_vars= [dg_dt, du_cos_dg, du_sin_dg],
+)
+
 generator_block_ML_2 = DiffBlock(
     state_eqs=[
         (2 * pi * fn) * (omega - omega_ref),  # dδ/dt
@@ -186,10 +257,16 @@ grid.add_generator(bus=bus1, api_obj=gen)
 load = gce.Load(name="Load1", P=10, Q=10)        # PQ
 grid.add_load(bus=bus2, api_obj=load)
 
-res = gce.power_flow(grid)
+if run_powerflow := False:
+    res = gce.power_flow(grid)
+    with open("pf_results.pkl", "wb") as f:
+        pickle.dump(res, f)
+else:
+    with open("src/trunk/dynamics_tensor/pf_results.pkl", "rb") as f:
+        res_loaded = pickle.load(f)
+        res = res_loaded
 
 print(f"Converged: {res.converged}")
-
 # System
 v1 = res.voltage[0]
 v2 = res.voltage[1]
@@ -258,7 +335,7 @@ coeff_alfa = Const(1.8)
 Pl0 = Var("Pl0")
 Ql0 = Const(Sb2.imag)
 coeff_beta = Const(8.0)
-print(Sb2.imag)
+
 load_block = Block(
     algebraic_eqs=[
         Pl - Pl0,
@@ -311,7 +388,7 @@ bus2_block = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 
 sys = DiffBlock(
-    children=[line_block, load_block, generator_block_ML_2, bus1_block, bus2_block],
+    children=[line_block, load_block, generator_block_ML_1_expanded, bus1_block, bus2_block],
     in_vars=[]
 )
 
@@ -340,9 +417,9 @@ grid.add_generator(bus=bus1, api_obj=gen)
 load = gce.Load(name="Load1", P=10, Q=10)        # PQ
 grid.add_load(bus=bus2, api_obj=load)
 
-res = gce.power_flow(grid)
+#res = gce.power_flow(grid)
 print(f"Converged: {res.converged}")
-
+print(f'res {type(res)}')
 # System
 v1 = res.voltage[0]
 v2 = res.voltage[1]
@@ -351,6 +428,7 @@ Sb1 = res.Sbus[0] / grid.Sbase
 Sb2 = res.Sbus[1] / grid.Sbase
 Sf = res.Sf / grid.Sbase
 St = res.St / grid.Sbase
+
 
 # Generator
 # Current from power and voltage
@@ -376,8 +454,7 @@ u_sin0 = np.sin(delta0 -dg0)
 print(f"vf = {vf0}")
 
 params_mapping = {
-    Pl0: Sb2.real*0.95
-    #Ql0: 0.1
+    Pl0: Sb2.real*1
 }
 # ----------------------------------------------------------------------------------------------------------------------
 # Intialization
@@ -410,10 +487,14 @@ vars_mapping = {
     #u:0,
     u_sin: u_sin0,
     u_cos: u_cos0,
+    u_sin_delta: np.sin(delta0),
+    u_cos_delta: np.cos(delta0),
+    u_cos_dg: np.cos(dg0),
+    u_sin_dg: np.sin(dg0),
     #v_sin: u_sin0,
     #v_cos: u_cos0,
-    int_sin2: 0.5*((delta0-dg0)-u_sin0*u_cos0),
-    int_sin2cos2: 1/32*(4*(delta0-dg0) - (4*u_cos0**3*u_sin0 - 4*u_sin0**3*u_cos)),
+    #int_sin2: 0.5*((delta0-dg0)-u_sin0*u_cos0),
+    #int_sin2cos2: 1/32*(4*(delta0-dg0) - (4*u_cos0**3*u_sin0 - 4*u_sin0**3*u_cos0)),
 }
 
 # Consistency check 
@@ -446,18 +527,17 @@ for eq, val in residuals.items():
 # Events
 # ---------------------------------------------------------------------------------------
 
-event1 = RmsEvent('Load', Pl0, 2500, 0.15)
+event1 = RmsEvent('Load', Pl0, 100, 0.15)
 
 ramp_events = []
 for i, val in enumerate(np.linspace(Sb2.real, 0.15, 50)):
-    event = RmsEvent('Load', Pl0, 2500 + i, val)
+    event = RmsEvent('Load', Pl0, 100 + i, val)
     ramp_events.append(event)
 
 #event2 = Event(Ql0, 5000, 0.3)
 my_events = RmsEvents(ramp_events)
-#my_events = RmsEvents([event1])
+my_events = RmsEvents([event1])
 #my_events = RmsEvents([])
-
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector(vars_mapping)
 
@@ -485,9 +565,10 @@ x0 = slv.build_init_vars_vector(vars_mapping)
 # )
 
 vars_in_order = slv.sort_vars(vars_mapping)
+dt_value = 0.0001
 try:
     params_mapping = {
-        slv.dt: 0.001,
+        slv.dt: dt_value,
         Pl0: Sb2.real,
     }
 except:
@@ -496,14 +577,18 @@ except:
     }
 
 diff_vars_mapping = {
-    du_cos: 0,
-    du_sin: 0,
+    #du_cos: 0,
+    #du_sin: 0,
     delta_dt: 0,
     #domega_dt:0,
     #det_dt:0,
     dg_dt: 0,
-    dt_int_sin2:0,
-    dt_int_sin2cos2:0,
+    #dt_int_sin2:0,
+    #dt_int_sin2cos2:0,
+    du_sin_delta: 0,
+    du_cos_delta: 0,
+    du_cos_dg: 0,
+    du_sin_dg: 0,
 }
 
 params0 = slv.build_init_params_vector(params_mapping)
@@ -513,14 +598,15 @@ if isinstance(slv, DiffBlockSolver):
 
     t, y = slv.simulate(
         t0=0,
-        t_end=0.002,
-        h=0.001,
+        t_end=0.3,
+        h=dt_value,
         x0=x0,
         dx0 = dx0,
         params0=params0,
         events_list=my_events,
         method="implicit_euler",
-        verbose = True,
+        verbose = False,
+        newton_tol= 1e-8, 
     )
 else:
     t, y = slv.simulate(
@@ -533,50 +619,49 @@ else:
         method="implicit_euler",
     )
 
-
+#print(f"u_cosx idx is {slv.get_var_idx(u_cos)}")
+#print(f"u_sinx idx is {slv.get_var_idx(u_sin)}")
 # save to csv
 slv.save_simulation_to_csv('simulation_results.csv', t, y)
 
 fig = plt.figure(figsize=(14, 10))
-
+N = 10  # number of series
+colors = plt.cm.tab10(np.linspace(0, 1, N))  #
 #Generator state variables
-plt.plot(t, y[:, slv.get_var_idx(omega)], label="ω (pu)", color='red')
+plt.plot(t, y[:, slv.get_var_idx(omega)], label="ω (pu)", color=colors[0])
+plt.plot(t, y[:, slv.get_var_idx(dg)], label="dg (pu)", color=colors[1])
 #plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta", color='grey')
 #plt.plot(t, y[:, slv.get_var_idx(dg)], label="dg", color='red')
 #plt.plot(t, y[:, slv.get_var_idx(u)]/(2*pi.value*fn.value) + 1, label="ω (pu)", color='red')
 
-plt.plot(t, y[:, slv.get_var_idx(u_cos)], label="u cos (pu)", color='blue')
-plt.plot(t, y[:, slv.get_var_idx(u_sin)], label="u sin (pu)", color='yellow')
+#plt.plot(t, y[:, slv.get_var_idx(u_cos)], label="u cos (pu)", color=colors[1])
+#plt.plot(t, y[:, slv.get_var_idx(u_sin)], label="u sin (pu)", color=colors[2])
+#u_cos_vals = y[:, slv.get_var_idx(u_cos)]
+u_cos_vals = y[:, slv.get_var_idx(u_cos)]
+#u_sin_vals = y[:, slv.get_var_idx(u_sin)]
+u_sin_vals = y[:, slv.get_var_idx(u_sin)]
+delta_vals = y[:, slv.get_var_idx(delta)]
+dg_vals = y[:, slv.get_var_idx(dg)]
 
 
-plt.plot(t, y[:, slv.get_var_idx(dg)], label="dg (pu)", color='gray')
-#plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)", color='tail')
+# Plot
+plt.plot(t, u_cos_vals, label="avg u cos delta (pu)", color=colors[4], linestyle="--")
+plt.plot(t, u_sin_vals, label="avg u sin delta (pu)", color=colors[5], linestyle="--")
+
+#plt.plot(t, u_sin_vals**2 + u_cos_vals**2, label="u_cos² + u_sin²", color=colors[3])
+#plt.plot(t, u_cos_dg_vals, label="u cos delta (pu)", color = colors[4])
+#plt.plot(t, u_sin_dg_vals, label="u sin delta (pu)", color = colors[5])
+
+#plt.plot(t, y[:, slv.get_var_idx(dg)] -y[:, slv.get_var_idx(delta)], label="dg (pu)", color='gray')
+#plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)", color='black')
 
 delta_idx = slv.get_var_idx(delta)  
 dg_idx = slv.get_var_idx(dg)  
 cos_delta_real = np.cos(y[:, delta_idx] - y[:, dg_idx]) 
 sin_delta_real = np.sin(y[:, delta_idx] - y[:, dg_idx]) 
 
-plt.plot(t, cos_delta_real, label="cos delta real (pu)", color='gray')
-plt.plot(t, sin_delta_real, label="sin delta real (pu)", color='teal')
-#plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta", color='black')
-#plt.plot(t, y[:, slv.get_var_idx(t_e)], label="Te (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(delta)], label="δ (rad)")
-#plt.plot(t, y[:, slv.get_var_idx(et)], label="et (pu)")
-
-#Generator algebraic variables
-# plt.plot(t, y[:, slv.get_var_idx(tm)], label="Tm (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(psid)], label="Ψd (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(psiq)], label="Ψq (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(i_d)], label="Id (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(i_q)], label="Iq (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(v_d)], label="Vd (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(v_q)], label="Vq (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(t_e)], label="Te (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(p_g)], label="Pg (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(Q_g)], label="Qg (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(Vg)], label="Vg (pu)")
-#plt.plot(t, y[:, slv.get_var_idx(dg)], label="θg (rad)")
+plt.plot(t, cos_delta_real, label="cos delta real (pu)", color=colors[6])
+#plt.plot(t, sin_delta_real, label="sin delta real (pu)", color=colors[7])
 
 #Line variables
 # plt.plot(t, y[:, slv.get_var_idx(Pline_from)], label="Pline_from (pu)")

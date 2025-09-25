@@ -56,17 +56,86 @@ def _var_uid(sym: Var | str) -> str:
 # Function helpers
 # ----------------------------------------------------------------------------
 
-def _stepwise(x: NUMBER) -> NUMBER:
-    return 1 if x >= 0 else 0
+@nb.njit
+def _heaviside(x):
+    return 0.0 if x <= 0 else 1.0
 
 
-def _heaviside(x: NUMBER) -> NUMBER:
-    if x > 0:
-        return 1
-    elif x < 0:
-        return 0
-    else:
-        return 0.5
+def heaviside(x: Any) -> Func:
+    return Func("heaviside", _to_expr(x))
+
+
+def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: NUMBER) -> Expr:
+    """
+    Symbolic piecewise function.
+    Returns default_value before the first event, then switches to
+    corresponding new_values after each t_event.
+
+    Parameters
+    ----------
+    time : Expr
+        Symbolic time expression
+    t_events : np.ndarray
+        1D array of event times (must be sorted ascending)
+    new_values : np.ndarray
+        1D array of values after each event time
+    default_value : NUMBER
+        Value before the first event
+    """
+    t_expr = _to_expr(time)
+    result = _to_expr(default_value)
+
+    for t_event, new_value in zip(t_events, new_values):
+        step = heaviside(t_expr - Const(t_event))
+        # when step = 1, switch from current result to new_value
+        result = step * _to_expr(new_value) + (Const(1) - step) * result
+
+    return result
+
+#
+# def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: NUMBER) -> Expr:
+#     """
+#     Vectorized symbolic piecewise function.
+#
+#     Returns default_value before the first event, then switches to
+#     corresponding new_values after each t_event.
+#
+#     Parameters
+#     ----------
+#     time : Expr
+#         Symbolic time expression
+#     t_events : np.ndarray
+#         1D array of event times (must be sorted ascending)
+#     new_values : np.ndarray
+#         1D array of values after each event time
+#     default_value : NUMBER
+#         Value before the first event
+#     """
+#     t_expr = _to_expr(time)
+#     default_expr = _to_expr(default_value)
+#
+#     # prepend default to align differences
+#     prev_values = np.concatenate(([default_value], new_values[:-1]))
+#     deltas = new_values - prev_values
+#
+#     # build heaviside terms for all events
+#     heavisides = [heaviside(t_expr - Const(t)) for t in t_events]
+#     delta_terms = [d * H for d, H in zip(deltas, heavisides)]
+#
+#     # sum them up
+#     return default_expr + sum(delta_terms, Const(0))
+
+
+#
+# def piecewise(time: Expr, t_event: NUMBER, new_value: NUMBER, default_value: NUMBER) -> Expr:
+#     """
+#     Symbolic piecewise: returns new_value after t_event, default_value before.
+#     """
+#
+#     t_expr = _to_expr(time)
+#     step = heaviside(t_expr - Const(t_event))  # symbolic heaviside
+#     return step * _to_expr(new_value) + (Const(1) - step) * _to_expr(default_value)
+
 
 
 class CmpOp(Enum):
@@ -285,6 +354,46 @@ class Var(Expr):
     def __eq__(self, other: "Expr" | NUMBER) -> Comparison:  # type: ignore[override]
         return Comparison(self, CmpOp.EQ, other)
 
+class UndefinedConst(Expr):
+    name: str = 'name'
+    frozen: bool = False
+    uid: int = field(default_factory=_new_uid)
+
+    def __setattr__(self, key, value):
+        if getattr(self, "_frozen", False):
+            raise AttributeError("Object is frozen, no further changes allowed")
+        object.__setattr__(self, key, value)
+
+    def assign_value(self, value):
+        self.value = value
+        self.frozen = True
+
+    def eval(self, **bindings: NUMBER) -> NUMBER:
+        if not hasattr(self, 'value'):
+            raise('value has not been assigned yet')
+        return self.value
+
+    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+        if not hasattr(self, 'value'):
+            raise('value has not been assigned yet')
+        return self.value
+
+    def _diff1(self, var: Var | str) -> "Expr":
+        return Const(0)
+
+    def subs(self, mapping: Dict[Any, Expr]) -> Expr:
+        if self in mapping:
+            return mapping[self]
+        if self.name in mapping:
+            return mapping[self.name]
+        return self
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return self.__str__()
+    
 
 @dataclass(frozen=True)
 class BinOp(Expr):
@@ -468,9 +577,8 @@ class Func(Expr):
         "conj": np.conj,
         "angle": np.angle,
         "abs": np.abs,
-
-        "stepwise": _stepwise,
         "heaviside": _heaviside
+
     })
 
     # --- evaluation ----------------------------------------------------------
@@ -508,8 +616,6 @@ class Func(Expr):
             return cosh(u) * du
         if self.name == "cosh":
             return sinh(u) * du
-        if self.name == "stepwise":
-            return Const(0)
         if self.name == "heaviside":
             return Const(0)
         raise ValueError(f"Unknown function '{self.name}'")
@@ -566,8 +672,9 @@ imag = _make_unary("imag")
 conj = _make_unary("conj")
 angle = _make_unary("angle")
 abs = _make_unary("abs")
-stepwise = _make_unary("stepwise")
 heaviside = _make_unary("heaviside")
+
+
 
 
 def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
@@ -733,6 +840,38 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
 
     raise TypeError(type(expr))
 
+def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None ) -> str:
+    """
+    Emit a pure-Python (Numba-friendly) expression string
+    :param expr: Expr (expression)
+    :param uid_map:
+    :return:
+    """
+
+    if isinstance(expr, Const):
+        return repr(expr.value)
+    if isinstance(expr, Var):
+        if expr.uid in uid_map_t.keys():
+            return uid_map_t[expr.uid]
+    if isinstance(expr, UnOp):
+        return f"-({_emit_params_eq(expr.operand, uid_map_t)})"
+    if isinstance(expr, BinOp):
+        return f"({_emit_params_eq(expr.left, uid_map_t)} {expr.op} {_emit_params_eq(expr.right, uid_map_t)})"
+    if isinstance(expr, Func):
+        # Use numpy functions for standard numeric functions
+        if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
+                         "exp", "log", "sqrt", "asin", "acos", "atan",
+                         "sinh", "cosh", "abs"):
+            return f"np.{expr.name}({_emit_params_eq(expr.arg, uid_map_t)})"
+        elif expr.name == "heaviside":
+            return f"_heaviside({_emit_params_eq(expr.arg, uid_map_t)})"
+
+    else:
+            raise ValueError(f"Unknown function '{expr.name}' in _emit_params_eq")
+
+    raise TypeError(type(expr))
+
+
 def _emit_one(expr: Expr, uid_map_vars: Dict[int, str]) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
@@ -810,7 +949,12 @@ def _compile(expressions: Sequence[Expr],
     src += f"    out = np.zeros({len(expressions)})\n"
     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym, uid_map_params)}" for i, e in enumerate(expressions)]) + "\n"
     src += f"    return out"
-    ns: Dict[str, Any] = {"math": math, "np": np}
+    ns: Dict[str, Any] = {
+        "math": math,
+        "np": np,
+        "_heaviside": _heaviside,
+    }
+
     exec(src, ns)
     fn = nb.njit(ns["_f"], fastmath=True)
 
@@ -836,6 +980,6 @@ __all__ = [
     "conj",
     "abs",
     "angle",
-    "stepwise",
-    "heaviside"
+    "heaviside",
+    "piecewise"
 ]

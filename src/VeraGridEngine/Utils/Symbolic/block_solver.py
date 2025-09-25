@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import pdb
 import sys
 import os
 
@@ -17,16 +18,20 @@ import numpy as np
 import numba as nb
 import math
 import scipy.sparse as sp
+import scipy.linalg
 from scipy.sparse.linalg import spsolve
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import gmres, spilu, LinearOperator
+from scipy.sparse import csr_matrix, identity
+from scipy.sparse.linalg import gmres, spilu, LinearOperator, inv, spsolve
 from typing import Dict, List, Literal, Any, Callable, Sequence
+
 
 # from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
+
+from matplotlib import pyplot as plt
 
 
 def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) -> Expr:
@@ -64,6 +69,29 @@ def _compile_equations(eqs: Sequence[Expr],
         fn.__doc__ = "def _f(vars)"
     return fn
 
+def _compile_parameters_equations(eqs: Sequence[Expr],
+                       uid2sym_t:Dict[int, str],
+                       add_doc_string: bool = True) -> Callable[[float], np.ndarray]:
+    """
+    Compile the array of expressions to a function that returns an array of values for those expressions
+    :param eqs: Iterable of expressions (Expr)
+    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+    :param uid2sym_params:
+    :param add_doc_string: add the docstring?
+    :return: Function pointer that returns an array
+    """
+    # Build source
+    src = f"def _f(time):\n"
+    src += f"    out = np.zeros({len(eqs)})\n"
+    src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+    src += f"    return out"
+    ns: Dict[str, Any] = {"math": math, "np": np, "_heaviside": _heaviside}
+    exec(src, ns)
+    fn = nb.njit(ns["_f"], fastmath=True)
+    if add_doc_string:
+        fn.__doc__ = "def _f(vars)"
+    return fn
+
 
 def _get_jacobian(eqs: List[Expr],
                   variables: List[Var],
@@ -76,9 +104,10 @@ def _get_jacobian(eqs: List[Expr],
     :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
     :param uid2sym_params:
     :return:
-            jac_fn : callable(values: np.ndarray) -> scipy.sparse.csc_matrix
+            jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
                 Fast evaluator in which *values* is a 1‑D NumPy vector of length
-                ``len(variables)``.
+                ``len(variables)``and *params* is a 1‑D NumPy vector of length
+                ``len(parameters)``
             sparsity_pattern : tuple(np.ndarray, np.ndarray)
                 Row/col indices of structurally non‑zero entries.
     """
@@ -91,8 +120,6 @@ def _get_jacobian(eqs: List[Expr],
         else:
             check_set.add(v)
 
-    # Cache compiled partials by UID so duplicates are reused
-    fn_cache: Dict[str, Callable] = {}
     triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
 
     for row, eq in enumerate(eqs):
@@ -100,31 +127,29 @@ def _get_jacobian(eqs: List[Expr],
             d_expression = eq.diff(var).simplify()
             if isinstance(d_expression, Const) and d_expression.value == 0:
                 continue  # structural zero
+            triplets.append((col, row, d_expression))
 
-            function_ptr = _compile_equations(eqs=[d_expression], uid2sym_vars=uid2sym_vars,
+    triplets.sort(key=lambda t: (t[0], t[1]))
+    cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
+    functions_ptr = _compile_equations(eqs=equations_sorted, uid2sym_vars=uid2sym_vars,
                                               uid2sym_params=uid2sym_params)
 
-            fn = fn_cache.setdefault(d_expression.uid, function_ptr)
-
-            triplets.append((col, row, fn))
-
-    # Sort by column, then row for CSC layout
-    triplets.sort(key=lambda t: (t[0], t[1]))
-    cols_sorted, rows_sorted, fns_sorted = zip(*triplets) if triplets else ([], [], [])
-
-    nnz = len(fns_sorted)
+    nnz = len(cols_sorted)
     indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
-    data = np.empty(nnz, dtype=np.float64)
 
     indptr = np.zeros(len(variables) + 1, dtype=np.int32)
     for c in cols_sorted:
         indptr[c + 1] += 1
     np.cumsum(indptr, out=indptr)
 
-    def jac_fn(values: np.ndarray, params) -> sp.csc_matrix:  # noqa: D401 – simple
+
+
+    def jac_fn(values: np.ndarray, params: np.ndarray) -> sp.csc_matrix:  # noqa: D401 – simple
         assert len(values) >= len(variables)
-        for k, fn_ in enumerate(fns_sorted):
-            data[k] = fn_(values, params)
+
+        jac_values = functions_ptr(values, params)
+        data = np.array(jac_values, dtype=np.float64)
+
         return sp.csc_matrix((data, indices, indptr), shape=(len(eqs), len(variables)))
 
     return jac_fn
@@ -176,7 +201,7 @@ class BlockSolver:
     A network of Blocks that behaves roughly like a Simulink diagram.
     """
 
-    def __init__(self, block_system: Block):
+    def __init__(self, block_system: Block, time: Var):
         """
         Constructor        
         :param block_system: BlockSystem
@@ -189,6 +214,8 @@ class BlockSolver:
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
         self._parameters: List[Const] = list()
+        self._parameters_eqs: List[Expr] = list()
+        self.time = time
 
         for b in self.block_system.get_all_blocks():
             self._algebraic_vars.extend(b.algebraic_vars)
@@ -196,6 +223,8 @@ class BlockSolver:
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
             self._parameters.extend(b.parameters)
+            self._parameters_eqs.extend(b.parameters_eqs)
+
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
@@ -208,9 +237,11 @@ class BlockSolver:
 
         uid2sym_vars: Dict[int, str] = dict()
         uid2sym_params: Dict[int, str] = dict()
+        uid2sym_t: Dict[int, str] = dict()
         self.uid2var: Dict[int, Var] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
         self.uid2idx_params: Dict[int, int] = dict()
+        self.uid2idx_t: Dict[int, int] = dict()
         i = 0
         for v in self._state_vars:
             uid2sym_vars[v.uid] = f"vars[{i}]"
@@ -231,8 +262,13 @@ class BlockSolver:
             self.uid2idx_params[ep.uid] = j
             j += 1
 
+        k = 0
+        uid2sym_t[self.time.uid] = f"time"
+        self.uid2idx_t[self.time.uid] = k
+
         # Compile RHS and Jacobian
         """
+        
                    state Var   algeb var  
         state eq |J11        | J12       |    | ∆ state var|    | ∆ state eq |
                  |           |           |    |            |    |            |
@@ -246,6 +282,8 @@ class BlockSolver:
 
         self._rhs_algeb_fn = _compile_equations(eqs=self._algebraic_eqs, uid2sym_vars=uid2sym_vars,
                                                 uid2sym_params=uid2sym_params)
+
+        self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs, uid2sym_t=uid2sym_t)
 
         self._j11_fn = _get_jacobian(eqs=self._state_eqs, variables=self._state_vars, uid2sym_vars=uid2sym_vars,
                                      uid2sym_params=uid2sym_params)
@@ -789,9 +827,9 @@ class BlockSolver:
             h: float,
             x0: np.ndarray,
             params0: np.ndarray,
-            events_list: RmsEvents,
+            time: Var,
             method: Literal["rk4", "euler", "implicit_euler"] = "rk4",
-            newton_tol: float = 1e-8,
+            newton_tol: float = 1e-10,
             newton_max_iter: int = 1000,
 
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -812,12 +850,12 @@ class BlockSolver:
         if method == "rk4":
             return self._simulate_fixed(t0, t_end, h, x0, params0, stepper="rk4")
         if method == "implicit_euler":
-            params_matrix = self.build_params_matrix(n_steps=int(np.ceil((t_end - t0) / h)),
-                                                     params0=params0,
-                                                     events_list=events_list)
+            # params_matrix = self.build_params_matrix(n_steps=int(np.ceil((t_end - t0) / h)),
+            #                                          params0=params0,
+            #                                          events_list=events_list)
 
             return self._simulate_implicit_euler(
-                t0=t0, t_end=t_end, h=h, x0=x0, params0=params0, diff_params_matrix=params_matrix,
+                t0=t0, t_end=t_end, h=h, x0=x0, params0=params0, time=time,
                 tol=newton_tol, max_iter=newton_max_iter,
             )
         raise ValueError(f"Unknown method '{method}'")
@@ -858,8 +896,8 @@ class BlockSolver:
     def _simulate_implicit_euler(self, t0: float, t_end: float, h: float,
                                  x0: np.ndarray,
                                  params0: np.ndarray,
-                                 diff_params_matrix: csr_matrix,  # TODO: Not sure if a CSR is the best thing here
-                                 tol=1e-6,
+                                 time,
+                                 tol=1e-8,
                                  max_iter=1000):
         """
         :param t0:
@@ -874,15 +912,16 @@ class BlockSolver:
         steps = int(np.ceil((t_end - t0) / h))
         t = np.empty(steps + 1)
         y = np.empty((steps + 1, self._n_vars))
-        params_current = params0
+        params_current = np.zeros(1)
         t[0] = t0
         y[0] = x0.copy()
         for step_idx in range(steps):
-            params_current += diff_params_matrix[step_idx, :].toarray().ravel()  # TODO think of a better way
             xn = y[step_idx]
             x_new = xn.copy()  # initial guess
             converged = False
             n_iter = 0
+            current_time = t[step_idx]
+            params_current = self._params_fn(float(current_time))
             while not converged and n_iter < max_iter:
                 rhs = self.rhs_implicit(x_new, xn, params_current, step_idx, h)
                 residual = np.linalg.norm(rhs, np.inf)
@@ -890,7 +929,7 @@ class BlockSolver:
 
                 if step_idx == 0:
                     if converged:
-                        print("System well initailzed.")
+                        print("System well initialized.")
                     else:
                         print(f"System bad initilaized. DAE resiudal is {residual}.")
 
@@ -912,7 +951,7 @@ class BlockSolver:
 
         return t, y
 
-    def save_simulation_to_csv(self, filename, t, y):
+    def save_simulation_to_csv(self, filename, t, y, csv_saving=False):
         """
         Save the simulation results to a CSV file.
 
@@ -933,10 +972,99 @@ class BlockSolver:
         all_vars = self._state_vars + self._algebraic_vars
         var_names = [str(var) + '_VeraGrid' for var in all_vars]
 
-        # Create DataFrame with time and variable data
-        df = pd.DataFrame(data=y, columns=var_names)
-        df.insert(0, 'Time [s]', t)
 
-        # Save to CSV
-        df.to_csv(filename, index=False)
-        print(f"Simulation results saved to: {filename}")
+        # Create DataFrame with time and variable data
+        df_simulation_results = pd.DataFrame(data=y, columns=var_names)
+        df_simulation_results.insert(0, 'Time [s]', t)
+
+        if csv_saving:
+            df_simulation_results.to_csv(filename, index=False)
+            print(f"Simulation results saved to: {filename}")
+        return df_simulation_results
+
+    def stability_assessment(self, x: np.ndarray, params: np.ndarray, plot = True):
+        """
+
+            Parameters:
+            ----------
+            x: 1D numpy array
+                variables
+            params: 1D numpy array
+                parameters
+            plot: True(default) if S-domain eigenvalues plot wanted. Else: False
+            Returns:
+            ----------
+            stability: str
+                "Unstable", "Marginally stable" or "Asymptotically stable"
+            eigenvalues:  1D row numpy array
+            participation factors: 2D array csc matrix.
+                Participation factors of mode i stored in PF[:,i]
+
+            Small Signal Stability analysis:
+            1. Calculate the state matrix (A) from the state space model. From the DAE model:
+                Tx'=f(x,y)
+                0=g(x,y)
+                the A matrix is computed as:
+                A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+
+            2. Find eigenvalues and right(V) and left(W) eigenvectors
+
+            3. Perform stability assessment
+
+            4. Calculate normalized participation factors PF = W · V
+
+        """
+
+        fx = self._j11_fn(x, params)  # ∂f/∂x
+        fy = self._j12_fn(x, params)  # ∂f/∂y
+        gx = self._j21_fn(x, params)  # ∂g/∂x
+        gy = self._j22_fn(x, params)  # ∂g/∂y
+
+        gyx = spsolve(gy, gx)
+        A = (fx - fy @ gyx)  # sparse state matrix csc matrix
+        An = A.toarray()
+
+        num_states = A.shape[0]
+
+        Eigenvalues, W, V = scipy.linalg.eig(An, left=True, right=True)
+        V = sp.csc_matrix(V) #right
+        W = sp.csc_matrix(W) #left
+
+        PF = sp.lil_matrix(A.shape)
+        for row in range(W.shape[0]):
+            for column in range(W.shape[0]):
+                PF[row, column] = abs(W[row, column]) * abs(V[row, column])  #find participation factors
+
+        PF_abs = sp.csc_matrix(np.ones(num_states)) @ PF
+        for i in range(len(Eigenvalues)):
+            PF[:, i] /= PF_abs[0, i] #normalize participation factors
+
+        # Stability: select positive and zero eigenvalues
+        tol = 1e-6  # numerical tolerance for eigenvalues = 0
+        unstable_eigs = Eigenvalues[np.real(Eigenvalues) > tol]
+        zero_eigs = Eigenvalues[abs(np.real(Eigenvalues)) <= tol]
+        stable_eigs = Eigenvalues[np.real(Eigenvalues) < -tol]
+
+        if unstable_eigs.size == 0:
+            if zero_eigs.size == 0:
+                stability = "Asymptotically stable"
+            else:
+                stability = "Marginally stable"
+        else:
+            stability = "Unstable"
+
+        if plot == True:
+            x = Eigenvalues.real
+            y = Eigenvalues.imag
+
+            plt.scatter(x, y, marker='x', color='blue')
+            plt.xlabel("Re [s -1]")
+            plt.ylabel("Im [s -1]")
+            plt.title("Stability plot")
+            plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
+            plt.axvline(0, color='black', linewidth=1)
+            # plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
+        return stability, Eigenvalues, PF

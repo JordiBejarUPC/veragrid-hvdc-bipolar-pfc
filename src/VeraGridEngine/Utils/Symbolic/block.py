@@ -79,15 +79,18 @@ class Block:
     algebraic_eqs: List[Expr] = field(default_factory=list)
 
     # initialization
-    init_eqs: Dict[Var, Expr] = field(default_factory=dict)
-    init_params_eq: Dict[str, Expr] = field(default_factory=dict)
     init_vars: List[Var] = field(default_factory=list)
+    init_eqs: Dict[Var, Expr] = field(default_factory=dict)
+    fix_vars: List[Any] = field(default_factory=list)
+    fix_vars_eqs: Dict[Any, Expr] = field(default_factory=dict)
+
 
     external_mapping: Dict[DynamicVarType, Var] = field(default_factory=dict)
     var_mapping: Dict[str, Var] = field(default_factory=dict)
 
-    # parameters
+    # parameters (parameters affected by events)
     parameters: List[Var | Const] = field(default_factory=list)
+    parameters_eqs: List[Expr] = field(default_factory=list)
 
     name: str = ""
 

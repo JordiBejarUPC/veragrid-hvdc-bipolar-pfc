@@ -8,6 +8,7 @@ import pandas as pd
 from typing import List, Dict, Tuple, Union, Any, Set, Generator
 import datetime as dateslib
 
+from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.basic_structures import IntVec, StrVec, Vec
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
@@ -109,6 +110,8 @@ class Assets:
         'profile_magnitudes',
         'device_type_name_dict',
         'device_associations',
+        '_rms_events',
+        '_rms_events_groups'
     )
 
     def __init__(self):
@@ -171,6 +174,12 @@ class Assets:
 
         # List of linear shunt devices
         self._controllable_shunts: List[dev.ControllableShunt] = list()
+
+        # List of events
+        self._rms_events: List[dev.RmsEvent] = list()
+
+        # List of events group
+        self._rms_events_groups: List[dev.RmsEventsGroup] = list()
 
         # Lists of measurements
         self._pi_measurements: List[dev.PiMeasurement] = list()
@@ -344,7 +353,12 @@ class Assets:
                 dev.SequenceLineType(),
                 dev.TransformerType(),
                 dev.RmsModelTemplate()
+            ],
+            "Rms": [
+                dev.RmsEvent(),
+                dev.RmsEventsGroup()
             ]
+
         }
 
         # dictionary of profile magnitudes per object
@@ -3927,6 +3941,112 @@ class Assets:
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Investment group
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def investments_groups(self) -> List[dev.InvestmentsGroup]:
+        """
+
+        :return:
+        """
+        return self._investments_groups
+
+    @investments_groups.setter
+    def investments_groups(self, value: List[dev.InvestmentsGroup]):
+        self._investments_groups = value
+
+    def get_investment_groups_names(self) -> StrVec:
+        """
+
+        :return:
+        """
+        return np.array([e.name for e in self._investments_groups])
+
+    def add_investments_group(self, obj: dev.InvestmentsGroup):
+        """
+        Add investments group
+        :param obj: InvestmentsGroup
+        """
+        self._investments_groups.append(obj)
+
+    def delete_investment_groups(self, obj: dev.InvestmentsGroup):
+        """
+        Delete zone
+        :param obj: index
+        """
+        try:
+            self._investments_groups.remove(obj)
+        except ValueError:
+            pass
+
+        to_del = [invst for invst in self._investments if invst.group == obj]
+        for invst in to_del:
+            self.delete_investment(invst)
+
+    def get_investments_by_groups(self) -> List[Tuple[dev.InvestmentsGroup, List[dev.Investment]]]:
+        """
+        Get a dictionary of investments groups and their
+        :return: list of investment groups and their list of associated investments
+        """
+        d = {e: list() for e in self._investments_groups}
+
+        for inv in self._investments:
+            inv_list = d.get(inv.group, None)
+
+            if inv_list is not None:
+                inv_list.append(inv)
+
+        # second pass, sort it
+        res = list()
+        for inv_group in self._investments_groups:
+
+            inv_list = d.get(inv_group, None)
+
+            if inv_list is not None:
+                res.append((inv_group, inv_list))
+            else:
+                res.append((inv_group, list()))
+
+        return res
+
+    def get_investment_by_groups_index_dict(self) -> Dict[int, List[dev.Investment]]:
+        """
+        Get a dictionary of investments groups
+        :return: Dict[investment group index] = list of investments
+        """
+        d = {e: idx for idx, e in enumerate(self._investments_groups)}
+
+        res = dict()
+        for inv in self._investments:
+            inv_group_idx = d.get(inv.group, None)
+            inv_list = res.get(inv_group_idx, None)
+            if inv_list is None:
+                res[inv_group_idx] = [inv]
+            else:
+                inv_list.append(inv)
+
+        return res
+
+    def get_capex_by_investment_group(self) -> Vec:
+        """
+        Get array of CAPEX costs per investment group
+        :return:
+        """
+
+        # we initialize with the capex of the group, then we add the capex of the individual investments
+        capex = np.array([elm.CAPEX for elm in self.investments_groups])
+
+        # pre-compute the capex of each investment group
+        d = self.get_investment_by_groups_index_dict()
+
+        for i, investments in d.items():
+            for investment in investments:
+                capex[i] += investment.CAPEX
+
+        return capex
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Investment
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -3973,6 +4093,142 @@ class Assets:
 
             for grp in to_del:
                 self.delete_investment_groups(grp)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Rms group
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def rms_events_groups(self) -> List[dev.RmsEventsGroup]:
+        """
+
+        :return:
+        """
+        return self._rms_events_groups
+
+    @rms_events_groups.setter
+    def rms_events_groups(self, value: List[dev.RmsEventsGroup]):
+        self._rms_events_groups = value
+
+    def get_rms_events_groups_names(self) -> StrVec:
+        """
+
+        :return:
+        """
+        return np.array([e.name for e in self._rms_events_groups])
+
+    def add_rms_events_group(self, obj: dev.RmsEventsGroup):
+        """
+        Add investments group
+        :param obj: InvestmentsGroup
+        """
+        self._rms_events_groups.append(obj)
+
+    def delete_rms_events_groups(self, obj: dev.RmsEventsGroup):
+        """
+        Delete zone
+        :param obj: index
+        """
+        try:
+            self._rms_events_groups.remove(obj)
+        except ValueError:
+            pass
+
+        to_del = [evt for evt in self._rms_events if evt.group == obj]
+        for evt in to_del:
+            self.delete_rms_event(evt)
+
+    def get_rms_event_by_groups(self) -> List[Tuple[dev.RmsEventsGroup, List[dev.RmsEvent]]]:
+        """
+        Get a dictionary of investments groups and their
+        :return: list of investment groups and their list of associated investments
+        """
+        d = {e: list() for e in self._rms_events_groups}
+
+        for evt in self._rms_events:
+            evt_list = d.get(evt.group, None)
+
+            if evt_list is not None:
+                evt_list.append(evt)
+
+        # second pass, sort it
+        res = list()
+        for evt_group in self._rms_events_groups:
+
+            inv_list = d.get(evt_group, None)
+
+            if inv_list is not None:
+                res.append((evt_group, inv_list))
+            else:
+                res.append((evt_group, list()))
+
+        return res
+
+    def get_rms_event_by_groups_index_dict(self) -> Dict[int, List[dev.RmsEvent]]:
+        """
+        Get a dictionary of investments groups
+        :return: Dict[investment group index] = list of investments
+        """
+        d = {e: idx for idx, e in enumerate(self._rms_events_groups)}
+
+        res = dict()
+        for evt in self._rms_events:
+            inv_group_idx = d.get(evt.group, None)
+            inv_list = res.get(inv_group_idx, None)
+            if inv_list is None:
+                res[inv_group_idx] = [evt]
+            else:
+                inv_list.append(evt)
+
+        return res
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # RmsEvent
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def rms_events(self) -> List[dev.RmsEvent]:
+        """
+
+        :return:
+        """
+        return self._rms_events
+
+    @rms_events.setter
+    def rms_events(self, value: List[dev.RmsEvent]):
+        self._rms_events = value
+
+    def add_rms_event(self, obj: dev.RmsEvent):
+        """
+        Add rms_event
+        :param obj: RmsEvent
+        """
+        self._rms_events.append(obj)
+
+    def delete_rms_event(self, obj: dev.RmsEvent, del_group: bool = False):
+        """
+        Delete zone
+        :param obj: index
+        :param del_group: delete_with_dialogue the group?
+        """
+        try:
+            self._rms_events.remove(obj)
+        except ValueError:
+            pass
+
+        if del_group:
+            to_del = list()
+            for grp in self.rms_events_groups:
+                found = False
+                for elm in self.rms_events:
+                    if elm.group == grp:
+                        found = True
+
+                if not found:
+                    to_del.append(grp)
+
+            for grp in to_del:
+                self.delete_rms_events_groups(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Remedial action
@@ -4184,112 +4440,6 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Investment group
-    # ------------------------------------------------------------------------------------------------------------------
-
-    @property
-    def investments_groups(self) -> List[dev.InvestmentsGroup]:
-        """
-
-        :return:
-        """
-        return self._investments_groups
-
-    @investments_groups.setter
-    def investments_groups(self, value: List[dev.InvestmentsGroup]):
-        self._investments_groups = value
-
-    def get_investment_groups_names(self) -> StrVec:
-        """
-
-        :return:
-        """
-        return np.array([e.name for e in self._investments_groups])
-
-    def add_investments_group(self, obj: dev.InvestmentsGroup):
-        """
-        Add investments group
-        :param obj: InvestmentsGroup
-        """
-        self._investments_groups.append(obj)
-
-    def delete_investment_groups(self, obj: dev.InvestmentsGroup):
-        """
-        Delete zone
-        :param obj: index
-        """
-        try:
-            self._investments_groups.remove(obj)
-        except ValueError:
-            pass
-
-        to_del = [invst for invst in self._investments if invst.group == obj]
-        for invst in to_del:
-            self.delete_investment(invst)
-
-    def get_investments_by_groups(self) -> List[Tuple[dev.InvestmentsGroup, List[dev.Investment]]]:
-        """
-        Get a dictionary of investments groups and their
-        :return: list of investment groups and their list of associated investments
-        """
-        d = {e: list() for e in self._investments_groups}
-
-        for inv in self._investments:
-            inv_list = d.get(inv.group, None)
-
-            if inv_list is not None:
-                inv_list.append(inv)
-
-        # second pass, sort it
-        res = list()
-        for inv_group in self._investments_groups:
-
-            inv_list = d.get(inv_group, None)
-
-            if inv_list is not None:
-                res.append((inv_group, inv_list))
-            else:
-                res.append((inv_group, list()))
-
-        return res
-
-    def get_investment_by_groups_index_dict(self) -> Dict[int, List[dev.Investment]]:
-        """
-        Get a dictionary of investments groups
-        :return: Dict[investment group index] = list of investments
-        """
-        d = {e: idx for idx, e in enumerate(self._investments_groups)}
-
-        res = dict()
-        for inv in self._investments:
-            inv_group_idx = d.get(inv.group, None)
-            inv_list = res.get(inv_group_idx, None)
-            if inv_list is None:
-                res[inv_group_idx] = [inv]
-            else:
-                inv_list.append(inv)
-
-        return res
-
-    def get_capex_by_investment_group(self) -> Vec:
-        """
-        Get array of CAPEX costs per investment group
-        :return:
-        """
-
-        # we initialize with the capex of the group, then we add the capex of the individual investments
-        capex = np.array([elm.CAPEX for elm in self.investments_groups])
-
-        # pre-compute the capex of each investment group
-        d = self.get_investment_by_groups_index_dict()
-
-        for i, investments in d.items():
-            for investment in investments:
-                capex[i] += investment.CAPEX
-
-        return capex
 
     # ------------------------------------------------------------------------------------------------------------------
     # Technology
@@ -5766,6 +5916,13 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
+        elif device_type == DeviceType.RmsEventDevice:
+            return self.rms_events
+
+        elif device_type == DeviceType.RmsEventsGroupDevice:
+            return self.rms_events_groups
+
+
         else:
             raise Exception('Element type not understood ' + str(device_type))
 
@@ -5975,6 +6132,12 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
+        elif device_type == DeviceType.RmsEventDevice:
+            self._rms_events = devices
+
+        elif device_type == DeviceType.RmsEventsGroupDevice:
+            self._rms_events_groups = devices
+
         else:
             raise Exception('Element type not understood ' + str(device_type))
 
@@ -6170,6 +6333,12 @@ class Assets:
 
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
+
+        elif obj.device_type == DeviceType.RmsEventDevice:
+            self.add_rms_event(obj=obj)
+
+        elif obj.device_type == DeviceType.RmsEventsGroupDevice:
+            self.add_rms_events_group(obj=obj)
 
         elif obj.device_type == DeviceType.SwitchDevice:
             self.add_switch(obj=obj)
@@ -6371,6 +6540,12 @@ class Assets:
 
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
+
+        elif obj.device_type == DeviceType.RmsEventDevice:
+            self.delete_rms_event(obj=obj)
+
+        elif obj.device_type == DeviceType.RmsEventsGroupDevice:
+            self.delete_rms_events_group(obj=obj)
 
         else:
             raise Exception('Element type not understood ' + str(obj.device_type))

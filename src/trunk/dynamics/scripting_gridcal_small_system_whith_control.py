@@ -11,10 +11,12 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
+from VeraGridEngine import DynamicVarType
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
+
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver  # compose_system_block
 import VeraGridEngine.api as gce
@@ -75,6 +77,8 @@ Ki_1 = Const(0.0)
 # ----------------------------------------------------------------------------------------------------------------------
 # Build system
 # ----------------------------------------------------------------------------------------------------------------------
+
+t = Var("t")
 
 # Build the system to compute the powerflow
 grid = gce.MultiCircuit(Sbase=100, fbase=60.0)
@@ -277,6 +281,8 @@ tm_1 = Var("tm_1")
 Pl = Var("Pl")
 Ql = Var("Ql")
 
+t = Var("t")
+
 # -----------------------------------------------------
 # Buses
 # -----------------------------------------------------
@@ -399,23 +405,40 @@ generator1_block = Block(
 # -------------------------------------------------------------
 # Load
 # -------------------------------------------------------------
-# Pl0 = Var("Pl0")
-Pl0 = Const(Sb2.real)
+Pl0 = Var("Pl0")
+# Pl0 = Const(Sb2.real)
 Ql0 = Const(Sb2.imag)
-
-print("Pl0")
-print(Pl0)
-
-print("Ql0")
-print(Ql0)
+#
+# print("Pl0")
+# print(Pl0)
+#
+# print("Ql0")
+# print(Ql0)
+#
+# load = Block(
+#     algebraic_eqs=[
+#         Pl - Pl0,
+#         Ql - Ql0
+#     ],
+#     algebraic_vars=[Ql, Pl],
+#     parameters=[] #Pl0
+# )
 
 load = Block(
     algebraic_eqs=[
         Pl - Pl0,
         Ql - Ql0
     ],
-    algebraic_vars=[Ql, Pl],
-    parameters=[] #Pl0
+    algebraic_vars=[Pl, Ql],
+    init_eqs={},
+    init_vars=[],
+    init_params_eq={},
+    parameters=[Pl0],
+    parameters_eqs=[piecewise(t, 2.5, 0.15, -0.075000000001172)],
+    external_mapping={
+        DynamicVarType.P: Pl,
+        DynamicVarType.Q: Ql
+    }
 )
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -489,7 +512,7 @@ print(init_guess)
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys)
+slv = BlockSolver(sys, t)
 
 
 
@@ -539,8 +562,7 @@ print(vars_mapping)
 # ---------------------------------------------------------------------------------------
 # Events
 # ---------------------------------------------------------------------------------------
-event1 = RmsEvent('Load', Pl0, 2500, -5.0 / grid.Sbase)
-my_events = RmsEvents([])
+
 
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector(vars_mapping)
@@ -552,7 +574,7 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     params0=params0,
-    events_list=my_events,
+    time = t,
     method="implicit_euler"
 )
 
