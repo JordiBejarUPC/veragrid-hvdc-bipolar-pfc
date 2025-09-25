@@ -15,7 +15,7 @@ from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
 class Generator(GeneratorParent):
@@ -527,10 +527,11 @@ class Generator(GeneratorParent):
             tm = Var("tm" + self.name)
             P_g = Var("P_g" + self.name)
             Q_g = Var("Q_g" + self.name)
-            # Xad_Ifd = Var("Xad_Ifd") ###
-            # vf = Var("vf") ###
 
-            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm) #takes Vm and Va from the bus variable
+            vf = UndefinedConst()
+            tm0 = UndefinedConst()
+
+            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
             Va = self.bus.rms_model.model.E(DynamicVarType.Va)
 
             self.rms_model.model = Block(
@@ -544,7 +545,7 @@ class Generator(GeneratorParent):
                 algebraic_eqs=[
                     psid - (self.R1 * i_q + v_q),
                     psiq + (self.R1 * i_d + v_d),
-                    0 - (psid + self.X1 * i_d - self.vf),
+                    0 - (psid + self.X1 * i_d - vf),
                     0 - (psiq + self.X1 * i_q),
                     v_d - (Vm * sin(delta - Va)),
                     v_q - (Vm * cos(delta - Va)),
@@ -552,7 +553,7 @@ class Generator(GeneratorParent):
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
                     tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
-                    2 * np.pi * self.freq * et - 0 * delta,
+                    2 * np.pi * self.freq * et -delta, #
                 ],
                 algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
                 init_eqs = {
@@ -567,12 +568,13 @@ class Generator(GeneratorParent):
                     te: psid * i_q - psiq * i_d,
                     tm: te,
                     et: Const(0),
+                    # Xad_Ifd: Const(self.vf0), ###
+                    # vf: Const(self.vf0) ###
                 },
-                init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],  ###
-                fix_vars = ["tm0", "vf"],
-                fix_vars_eqs = {"tm0": tm,
-                                "vf": psid + self.X1 * i_d},
-
+                init_vars = [delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
+                fix_vars = [tm0, vf],
+                fix_vars_eqs = {tm0.uid: tm,
+                                vf.uid: psid + self.X1 * i_d},
 
                 external_mapping={
                     DynamicVarType.P: P_g,

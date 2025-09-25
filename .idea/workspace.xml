@@ -30,6 +30,7 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Events fully implemented">
       <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/merged_data_Andes_init_rms.csv" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="undefined vconstant">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/Andes_vs_VeraGrid_stability.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/Andes_vs_VeraGrid_stability.py" afterDir="false" />
@@ -87,7 +88,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="420_RMS_events_implementation" />
+        <entry key="$PROJECT_DIR$" value="427_start_implementing_rms_in_GUI" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -281,7 +282,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.block_solver">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -801,8 +802,10 @@
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.update_gui_all" />
         <item itemvalue="Python tests.pytest in tests" />
-        <item itemvalue="Python tests.pytest for tests.test_symbolic_lp" />
         <item itemvalue="Python tests.pytest for test_state_estimation.test_3_node_abur_exposito" />
+        <item itemvalue="Python tests.pytest for tests.test_symbolic_lp" />
+        <item itemvalue="Python.update_gui_all" />
+        <item itemvalue="Python.ExecuteVeraGrid" />
       </list>
     </recent_temporary>
   </component>
@@ -1932,7 +1935,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="614" />
+    <option name="localTasksCounter" value="616" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1978,8 +1981,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved rms initialize" />
-    <MESSAGE value="Improved rms generator values" />
     <MESSAGE value="Equivalent events in simulations" />
     <MESSAGE value="Worked on the kundur modelling" />
     <MESSAGE value="Loading the kundur model from a file" />
@@ -2003,7 +2004,9 @@
     <MESSAGE value="events comparision harcoded and init_rms function" />
     <MESSAGE value="comparision with Andes using automated and hardcoded VeraGrid" />
     <MESSAGE value="Events fully implemented" />
-    <option name="LAST_COMMIT_MESSAGE" value="Events fully implemented" />
+    <MESSAGE value="vars and equations editor dialog" />
+    <MESSAGE value="undefined vconstant" />
+    <option name="LAST_COMMIT_MESSAGE" value="undefined vconstant" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2540,6 +2543,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_gridcal_hardcoded_light.py</url>
+          <line>321</line>
+          <option name="timeStamp" value="2984" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
+          <line>169</line>
+          <option name="timeStamp" value="2986" />
           <line>376</line>
           <option name="timeStamp" value="3005" />
         </line-breakpoint>

@@ -184,12 +184,10 @@ def compose_system_block(grid: MultiCircuit,
                 init_guess[key] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
         for var in mdl.fix_vars:
-            eq = mdl.fix_vars_eqs[var]
+            eq = mdl.fix_vars_eqs[var.uid]
             eq_fn = _compile_equation([eq], uid2sym_vars)
             init_val = float(eq_fn(x))
-            setattr(elm, var, init_val)
-
-
+            var.value = init_val
         sys_block.add(mdl)
 
     # del buses P, Q
