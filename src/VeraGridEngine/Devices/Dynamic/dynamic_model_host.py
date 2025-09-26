@@ -173,23 +173,34 @@ class BlockDiagram:
     #         device_uid=node['device_uid']
     #     )
 
-    def parse_branches(self, con_data)-> None:
+    # def parse_branches(self, con_data)-> None:
+    #     """
+    #     Parse file data ito this class
+    #     :param con_data: json dictionary
+    #      """
+    #
+    #     self.con_data = list()
+    #     for idx, node in con_data.items():
+    #         self.con_data.append(BlockDiagramConnection(
+    #             from_uid=con_data['from_uid'],
+    #             to_uid=con_data['to_uid'],
+    #             port_number_from=con_data['port_number_from'],
+    #             port_number_to=con_data['port_number_to'],
+    #             color=con_data['color'],
+    #         ))
+    def parse_branches(self, con_data) -> None:
         """
-        Parse file data ito this class
-        :param con_data: json dictionary
-         """
-
-        self.con_data = list()
+        Parse connection data from dictionary
+        """
+        self.con_data = []
         for idx, node in con_data.items():
             self.con_data.append(BlockDiagramConnection(
-                from_uid=con_data['from_uid'],
-                to_uid=con_data['to_uid'],
-                port_number_from=con_data['port_number_from'],
-                port_number_to=con_data['port_number_to'],
-                color=con_data['color'],
+                from_uid=node['from_uid'],
+                to_uid=node['to_uid'],
+                port_number_from=node['port_number_from'],
+                port_number_to=node['port_number_to'],
+                color=node['color'],
             ))
-
-
 
 
 class DynamicModelHost(EditableDevice):
