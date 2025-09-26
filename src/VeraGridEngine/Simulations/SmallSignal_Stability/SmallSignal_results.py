@@ -41,7 +41,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
         self.stability = stability
         self.eigenvalues = Eigenvalues
         self.participation_factors = PF
-        self.register(name='Stability', tpe=Vec)
+        # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
         self.register(name='participation_factors', tpe=Mat)
 

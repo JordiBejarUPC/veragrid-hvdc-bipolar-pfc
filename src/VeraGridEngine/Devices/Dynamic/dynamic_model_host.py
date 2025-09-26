@@ -18,15 +18,16 @@ from VeraGridEngine.enumerations import DeviceType
 #     y: float
 #     tpe: str
 #     device_uid: int
+#     sub_diagram: BlockDiagram
 #
 #     def get_node_dict(self):
 #         """
 #         get as a dictionary point
 #         :return:
 #         """
-#         return {'x': self.x,
+#         data =  {'x': self.x,
 #                 'y': self.y,
-#                 'type': self.tpe,
+#                 'tpe': self.tpe,
 #                 'device_uid': self.device_uid}
 
 class BlockDiagramNode:
@@ -34,18 +35,26 @@ class BlockDiagramNode:
     y: float
     tpe: str
     device_uid: int
-    subdiagram: "BlockDiagram | None" = None   # 👈 NEW
+    sub_diagram: "BlockDiagram" = None
 
     def get_node_dict(self):
+        """
+        Get as a dictionary
+        """
         data = {
             'x': self.x,
             'y': self.y,
-            'tpe': self.tpe,         # fix: use 'tpe' not 'type'
-            'device_uid': self.device_uid
+            'tpe': self.tpe,
+            'device_uid': self.device_uid,
         }
-        if self.subdiagram:
-            data['subdiagram'] = self.subdiagram.get_node_dict()
+        if self.sub_diagram is not None:
+            data['sub_diagram'] = {
+                "nodes": self.sub_diagram.get_node_data_dict(),
+                "connections": self.sub_diagram.get_con_data_dict()
+            }
         return data
+
+
 
 
 @dataclass
@@ -83,20 +92,22 @@ class BlockDiagram:
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: List[BlockDiagramConnection] = list()
 
-    def add_node(self, x: float, y: float, device_uid: int, tpe: str):
+    def add_node(self, x: float, y: float, tpe: str,  device_uid: int, subdiagram: BlockDiagram = None):
         """
 
         :param x:
         :param y:
         :param device_uid:
         :param tpe:
+        :param subdiagram:
         :return:
         """
         self.node_data[device_uid] = BlockDiagramNode(
             x=x,
             y=y,
             tpe=tpe,
-            device_uid=device_uid
+            device_uid=device_uid,
+            sub_diagram=subdiagram
         )
 
     def add_branch(self, device_uid_from: int, device_uid_to: int,
@@ -129,18 +140,38 @@ class BlockDiagram:
 
     def parse_nodes(self, nodes_data) -> None:
         """
-        Parse file data ito this class
-        :param nodes_data: json dictionary
-         """
-
+        Parse node data from dictionary
+        """
         self.node_data = dict()
         for uid, node in nodes_data.items():
-            self.node_data[uid] = BlockDiagramNode(
-            x=node['x'],
-            y=node['y'],
-            tpe=node['tpe'],
-            device_uid=node['device_uid']
-        )
+            subdiagram = None
+            if "sub_diagram" in node and node["sub_diagram"] is not None:
+                subdiagram = BlockDiagram()
+                subdiagram.parse_nodes(node["sub_diagram"]["nodes"])
+                subdiagram.parse_branches(node["sub_diagram"]["connections"])
+
+            self.node_data[int(uid)] = BlockDiagramNode(
+                x=node['x'],
+                y=node['y'],
+                tpe=node['tpe'],
+                device_uid=node['device_uid'],
+                sub_diagram=subdiagram
+            )
+
+    # def parse_nodes(self, nodes_data) -> None:
+    #     """
+    #     Parse file data ito this class
+    #     :param nodes_data: json dictionary
+    #      """
+    #
+    #     self.node_data = dict()
+    #     for uid, node in nodes_data.items():
+    #         self.node_data[uid] = BlockDiagramNode(
+    #         x=node['x'],
+    #         y=node['y'],
+    #         tpe=node['tpe'],
+    #         device_uid=node['device_uid']
+    #     )
 
     def parse_branches(self, con_data)-> None:
         """

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from dataclasses import dataclass
 import sys
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
@@ -123,7 +123,7 @@ class PortItem(QGraphicsEllipseItem):
     """
 
     def __init__(self,
-                 block: "BlockItem",
+                 subsystem: Union[BlockItem, ModelHostItem],
                  is_input: bool,
                  index: int,  # number of inputs
                  total: int,
@@ -136,20 +136,20 @@ class PortItem(QGraphicsEllipseItem):
         :param total:
         :param radius:
         """
-        super().__init__(-radius, -radius, 2 * radius, 2 * radius, block)
+        super().__init__(-radius, -radius, 2 * radius, 2 * radius, subsystem)
         self.setBrush(QBrush(Qt.GlobalColor.blue if is_input else Qt.GlobalColor.green))
         self.setPen(QPen(Qt.GlobalColor.black))
         self.setZValue(1)
         self.setAcceptHoverEvents(True)
-        self.block = block
+        self.subsystem = subsystem
         self.is_input = is_input
         self.connection = None
         self.index = index
         self.total = total
 
-        spacing = block.rect().height() / (total + 1)
+        spacing = subsystem.rect().height() / (total + 1)
         y = spacing * (index + 1)
-        x = 0 if is_input else block.rect().width()
+        x = 0 if is_input else subsystem.rect().width()
         self.setPos(x, y)
 
     def hoverEnterEvent(self, event):
@@ -473,6 +473,228 @@ class BlockItem(QGraphicsRectItem):
 
         return layout
 
+class ModelHostItem(QGraphicsRectItem):
+    def __init__(self, model_host_sys: DynamicModelHost):
+        """
+
+        :param block_sys: Block
+        """
+        super().__init__(0, 0, 100, 60)
+
+        # ------------------------
+        # API
+        # ------------------------
+        self.model_host = model_host_sys
+        self.subsys = model_host_sys.model
+        self.diagram = model_host_sys.diagram
+
+        # ---------------------------
+        # Graphical stuff
+        # ---------------------------
+        self.setBrush(Qt.GlobalColor.lightGray)
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+        self.setAcceptHoverEvents(True)
+
+        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+
+        self.name_item.setPos(10, 5)
+
+        n_inputs = len(self.subsys.in_vars)
+        n_outputs = len(self.subsys.out_vars)
+
+        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+
+        self.resize_handle = ResizeHandle(self)
+
+        # ✅ Avoid triggering overridden setRect during init
+        super().setRect(0, 0, 100, 60)
+        self.update_ports()
+        self.update_handle_position()
+
+        self._resizing_from_handle = False
+
+
+    def mouseDoubleClickEvent(self, event):
+        # --- Generic block editing ---
+        dlg = QDialog()
+        dlg.setWindowTitle(f"Editing GENERIC Block ({self.subsys.uid})")
+        dlg.resize(800, 600)
+        layout = QVBoxLayout(dlg)
+
+        # The block’s children become the "main_block" in the sub-editor
+        sub_editor = BlockEditor(block=self.subsys, diagram=self.diagram)
+        sub_editor.rebuild_scene_from_diagram()
+
+        layout.addWidget(sub_editor)
+
+        dlg.exec()
+        return
+
+        # fallback to default
+        super().mouseDoubleClickEvent(event)
+
+    def resize_block(self, width, height):
+        # Update geometry safely
+        self.prepareGeometryChange()
+        QGraphicsRectItem.setRect(self, 0, 0, width, height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def update_handle_position(self):
+        rect = self.rect()
+        self._resizing_from_handle = False
+        self.resize_handle.setPos(rect.width(), rect.height())
+        self._resizing_from_handle = True
+
+    def _set_rect_internal(self, w, h):
+        QGraphicsRectItem.setRect(self, 0, 0, w, h)
+        self.update_ports()
+        self.update_handle_position()
+
+    def setRect(self, x, y, w, h):
+        if not getattr(self, '_suppress_resize', False):
+            self._set_rect_internal(w, h)
+
+    def update_ports(self):
+        for i, port in enumerate(self.inputs):
+            spacing = self.rect().height() / (len(self.inputs) + 1)
+            port.setPos(0, spacing * (i + 1))
+        for i, port in enumerate(self.outputs):
+            spacing = self.rect().height() / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), spacing * (i + 1))
+        self.update_handle_position()
+        # Also update connections
+        for port in self.inputs + self.outputs:
+            if port.connection:
+                port.connection.update_path()
+
+    def hoverEnterEvent(self, event):
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        QApplication.restoreOverrideCursor()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            for port in self.inputs + self.outputs:
+                if port.connection:
+                    port.connection.update_path()
+        return super().itemChange(change, value)
+
+    def contextMenuEvent(self, event):
+        menu = QMenu()
+
+        delete_action = QAction("Remove Block", menu)
+        menu.addAction(delete_action)
+
+
+        edit_action = QAction("Edit Block", menu)
+        menu.addAction(edit_action)
+
+        chosen = menu.exec(event.screenPos())
+
+        if chosen == delete_action:
+            for port in self.inputs + self.outputs:
+                if port.connection:
+                    self.scene().removeItem(port.connection)
+                    if port.connection.source_port:
+                        port.connection.source_port.connection = None
+                    if port.connection.target_port:
+                        port.connection.target_port.connection = None
+            self.scene().removeItem(self)
+
+        elif chosen == edit_action:
+            self.open_generic_editor()
+
+    def open_generic_editor(self):
+        dlg = QDialog()
+        dlg.setWindowTitle(f"Edit Generic Block ({self.subsys.uid})")
+        dlg.resize(600, 400)
+        layout = QVBoxLayout(dlg)
+
+        # Section: Algebraic Variables
+        alg_section = self.create_variable_section("Algebraic Variables", self.subsys.model.algebraic_vars)
+        layout.addLayout(alg_section)
+
+        # Section: State Variables
+        state_section = self.create_variable_section("State Variables", self.subsys.model.state_vars)
+        layout.addLayout(state_section)
+
+        # Section: Algebraic Equations
+        alg_eq_section = self.create_equation_section("Algebraic Equations", self.subsys.model.algebraic_eqs)
+        layout.addLayout(alg_eq_section)
+
+        # Section: State Equations
+        state_eq_section = self.create_equation_section("State Equations", self.subsys.model.state_eqs)
+        layout.addLayout(state_eq_section)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn)
+
+        dlg.exec()
+
+    def create_variable_section(self, title, var_list):
+        layout = QVBoxLayout()
+
+        label = QLabel(title)
+        layout.addWidget(label)
+
+        list_widget = QListWidget()
+        for v in var_list:
+
+            list_widget.addItem(v.name)
+        layout.addWidget(list_widget)
+
+        add_btn = QPushButton("+")
+        layout.addWidget(add_btn)
+
+        def add_var():
+            text, ok = QInputDialog.getText(None, f"Add {title}", "Variable name:")
+            if ok and text:
+                var_list.append(Var(text))
+                print(self.subsys.algebraic_vars)
+                list_widget.addItem(text)
+
+        add_btn.clicked.connect(add_var)
+
+        return layout
+
+    def create_equation_section(self, title, eq_list):
+        layout = QVBoxLayout()
+
+        label = QLabel(title)
+        layout.addWidget(label)
+
+        list_widget = QListWidget()
+        for eq in eq_list:
+            text = symbolic_to_string(eq)
+            list_widget.addItem(text)
+        layout.addWidget(list_widget)
+
+        add_btn = QPushButton("+")
+        layout.addWidget(add_btn)
+
+        def add_eq():
+            text, ok = QInputDialog.getText(None, f"Add {title}", "Equation:")
+            if ok and text:
+                print(text)
+                sym_expr = make_symbolic(text)
+                print(type(sym_expr))
+                eq_list.append(sym_expr)
+                print(self.subsys.algebraic_eqs)
+                list_widget.addItem(text)
+
+        add_btn.clicked.connect(add_eq)
+
+        return layout
+
 
 class GraphicsView(QGraphicsView):
     """
@@ -642,40 +864,40 @@ class DiagramScene(QGraphicsScene):
     def get_main_block(self):
         return self._main_block
 
-    def contextMenuEvent(self, event):
-        item = self.itemAt(event.scenePos(), self.views()[0].transform())
-
-        # Let lines, block and ports handle their own context menus
-        if item is not None:
-            if not isinstance(item, DiagramScene):
-                return super().contextMenuEvent(event)
-
-        dialog = BlockTypeDialog()
-        if dialog.exec():
-            block_type = dialog.selected_block_type()
-            ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
-            outs = 1
-            if block_type == BlockType.SOURCE:
-                ins = 0
-            elif block_type == BlockType.DRAIN:
-                outs = 0
-
-            value = dialog.constant_value() if block_type == BlockType.CONSTANT else None
-            self.add_block(event.scenePos(), ins, outs, block_type, value)
-
-        return None
-
-    def add_block(self, pos, ins, outs, block_type, const_value=None):
-        blk = create_block_of_type(block_type, ins, outs, const_value)
-        block_item = BlockItem(blk)
-
-        # add to the model and the scene
-        self._main_block.add(blk)
-        self.addItem(block_item)
-
-        # add to the diagram
-
-        block_item.setPos(pos)
+    # def contextMenuEvent(self, event):
+    #     item = self.itemAt(event.scenePos(), self.views()[0].transform())
+    #
+    #     # Let lines, block and ports handle their own context menus
+    #     if item is not None:
+    #         if not isinstance(item, DiagramScene):
+    #             return super().contextMenuEvent(event)
+    #
+    #     dialog = BlockTypeDialog()
+    #     if dialog.exec():
+    #         block_type = dialog.selected_block_type()
+    #         ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
+    #         outs = 1
+    #         if block_type == BlockType.SOURCE:
+    #             ins = 0
+    #         elif block_type == BlockType.DRAIN:
+    #             outs = 0
+    #
+    #         value = dialog.constant_value() if block_type == BlockType.CONSTANT else None
+    #         self.add_block(event.scenePos(), ins, outs, block_type, value)
+    #
+    #     return None
+    #
+    # def add_block(self, pos, ins, outs, block_type, const_value=None):
+    #     blk = create_block_of_type(block_type, ins, outs, const_value)
+    #     block_item = BlockItem(blk)
+    #
+    #     # add to the model and the scene
+    #     self._main_block.add(blk)
+    #     self.addItem(block_item)
+    #
+    #     # add to the diagram
+    #
+    #     block_item.setPos(pos)
 
     def mousePressEvent(self, event):
         for item in self.items(event.scenePos()):
@@ -717,15 +939,15 @@ class DiagramScene(QGraphicsScene):
                     dst_port: PortItem = item
                     connection = ConnectionItem(self.source_port, dst_port)
 
-                    dst_var = self.source_port.block.subsys.out_vars[self.source_port.index]
+                    dst_var = self.source_port.subsystem.subsys.out_vars[self.source_port.index]
 
-                    dst_port.block.subsys.in_vars[dst_port.index] = dst_var
+                    dst_port.subsystem.subsys.in_vars[dst_port.index] = dst_var
 
                     self.addItem(connection)
 
                     color = connection.pen().color().name()
                     # save branches in diagram
-                    self.editor.diagram.add_branch(self.source_port.block.subsys.uid, dst_port.block.subsys.uid, self.source_port.index, dst_port.index, color)
+                    self.editor.diagram.add_branch(self.source_port.subsystem.subsys.uid, dst_port.subsystem.subsys.uid, self.source_port.index, dst_port.index, color)
                     break
 
             self.removeItem(self.temp_line)
@@ -849,7 +1071,7 @@ class BlockEditor(QSplitter):
         self.addWidget(self.library_view)
         self.addWidget(self.view)
 
-        self.block_system = self.scene.get_main_block()
+        # self.block_system = self.scene.get_main_block()
 
         self.setStretchFactor(0, 1)
         self.setStretchFactor(1, 1000)
@@ -889,6 +1111,24 @@ class BlockEditor(QSplitter):
 
             tpe = self.library_model.get_type(obj_type)
 
+            if tpe == "GENERIC":
+
+                model_host: DynamicModelHost = DynamicModelHost()
+
+                if model_host is not None:
+                    self.main_block.add(model_host.model)
+                    item = ModelHostItem(model_host)
+
+                    self.scene.addItem(item)
+                    item.setPos(QPointF(x0, y0))
+                    # save nodes in diagram
+                    self.diagram.add_node(
+                        x=x0,
+                        y=y0,
+                        device_uid=model_host.model.uid,
+                        tpe=tpe.name,
+                        subdiagram= model_host.diagram
+                    )
 
 
             blk: Block = create_block_of_type(block_type=tpe,
@@ -916,7 +1156,7 @@ class BlockEditor(QSplitter):
 
         uid_to_blockitem = {}
 
-        # 1. Recreate nodes
+        # Recreate nodes
         for uid, node in self.diagram.node_data.items():
             block_type = BlockType[node.tpe]
             ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
@@ -938,7 +1178,7 @@ class BlockEditor(QSplitter):
             # for subnode in node:
             #     rebuild_scene_from_diagram()
 
-        # 2. Recreate connections
+        # Recreate connections
         for con in self.diagram.con_data:
             src_item = uid_to_blockitem.get(con.from_uid)
             dst_item = uid_to_blockitem.get(con.to_uid)
