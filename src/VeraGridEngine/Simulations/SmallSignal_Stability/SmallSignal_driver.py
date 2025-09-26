@@ -79,7 +79,7 @@ class SmallSignal_Stability_Driver(DriverTemplate):
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
-        print("x0:", x0)
+
         if not self.options.ss_assessment_time == 0:
             # Get integration method
             if self.options.integration_method == "trapezoid":

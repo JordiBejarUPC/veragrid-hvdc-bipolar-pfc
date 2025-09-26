@@ -764,8 +764,8 @@ class SimulationsMain(TimeEventsMain):
         ops = sim.RmsOptions(
             time_step=self.ui.h_spinBox.value(),
             simulation_time=self.ui.sim_time_spinBox.value(),
-            tolerance=self.ui.tolerance_ss_spinBox_2.value(),
-            integration_method=self.ui.ss_int_method_comboBox_2.currentText()
+            tolerance=self.ui.tolerance_rms_spinBox.value(),
+            integration_method=self.ui.rms_int_method_comboBox.currentText()
         )
 
         return ops
@@ -778,8 +778,8 @@ class SimulationsMain(TimeEventsMain):
         ops = sim.SmallSignal_Stability_Options(
             time_step=self.ui.ss_h_spinBox_2.value(),
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
-            tolerance=self.ui.tolerance_rms_spinBox.value(),
-            integration_method=self.ui.rms_int_method_comboBox.currentText()
+            tolerance=self.ui.tolerance_ss_spinBox_2.value(),
+        integration_method=self.ui.ss_int_method_comboBox_2.currentText()
         )
 
         return ops
