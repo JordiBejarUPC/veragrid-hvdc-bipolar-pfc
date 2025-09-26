@@ -297,23 +297,6 @@ class BlockItem(QGraphicsRectItem):
                 self.name_item.setPlainText(f"Const({new_val})")
             return
 
-        # --- Generic block editing ---
-        if self.subsys.name == "generic":
-            dlg = QDialog()
-            dlg.setWindowTitle(f"Editing GENERIC Block ({self.subsys.uid})")
-            dlg.resize(800, 600)
-            layout = QVBoxLayout(dlg)
-
-            # The block’s children become the "main_block" in the sub-editor
-            sub_editor = BlockEditor(block=self.subsys, diagram=self.subsys.diagram)
-            sub_editor.rebuild_scene_from_diagram()
-
-            layout.addWidget(sub_editor)
-
-            dlg.exec()
-            return
-
-        # fallback to default
         super().mouseDoubleClickEvent(event)
 
     def resize_block(self, width, height):
@@ -485,8 +468,6 @@ class ModelHostItem(QGraphicsRectItem):
         # API
         # ------------------------
         self.model_host = model_host_sys
-        self.subsys = model_host_sys.model
-        self.diagram = model_host_sys.diagram
 
         # ---------------------------
         # Graphical stuff
@@ -500,19 +481,18 @@ class ModelHostItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setAcceptHoverEvents(True)
 
-        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.name_item = QGraphicsTextItem(self.model_host.model.name, self)
 
         self.name_item.setPos(10, 5)
 
-        n_inputs = len(self.subsys.in_vars)
-        n_outputs = len(self.subsys.out_vars)
+        n_inputs = len(self.model_host.model.in_vars)
+        n_outputs = len(self.model_host.model.out_vars)
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
 
         self.resize_handle = ResizeHandle(self)
 
-        # ✅ Avoid triggering overridden setRect during init
         super().setRect(0, 0, 100, 60)
         self.update_ports()
         self.update_handle_position()
@@ -523,12 +503,12 @@ class ModelHostItem(QGraphicsRectItem):
     def mouseDoubleClickEvent(self, event):
         # --- Generic block editing ---
         dlg = QDialog()
-        dlg.setWindowTitle(f"Editing GENERIC Block ({self.subsys.uid})")
+        dlg.setWindowTitle(f"Editing GENERIC Block ({self.model_host.model.uid})")
         dlg.resize(800, 600)
         layout = QVBoxLayout(dlg)
 
         # The block’s children become the "main_block" in the sub-editor
-        sub_editor = BlockEditor(block=self.subsys, diagram=self.diagram)
+        sub_editor = BlockEditor(block=self.model_host.model, diagram=self.model_host.diagram)
         sub_editor.rebuild_scene_from_diagram()
 
         layout.addWidget(sub_editor)
@@ -614,24 +594,24 @@ class ModelHostItem(QGraphicsRectItem):
 
     def open_generic_editor(self):
         dlg = QDialog()
-        dlg.setWindowTitle(f"Edit Generic Block ({self.subsys.uid})")
+        dlg.setWindowTitle(f"Edit Generic Block ({self.model_host.model.uid})")
         dlg.resize(600, 400)
         layout = QVBoxLayout(dlg)
 
         # Section: Algebraic Variables
-        alg_section = self.create_variable_section("Algebraic Variables", self.subsys.model.algebraic_vars)
+        alg_section = self.create_variable_section("Algebraic Variables", self.model_host.model.algebraic_vars)
         layout.addLayout(alg_section)
 
         # Section: State Variables
-        state_section = self.create_variable_section("State Variables", self.subsys.model.state_vars)
+        state_section = self.create_variable_section("State Variables", self.model_host.model.state_vars)
         layout.addLayout(state_section)
 
         # Section: Algebraic Equations
-        alg_eq_section = self.create_equation_section("Algebraic Equations", self.subsys.model.algebraic_eqs)
+        alg_eq_section = self.create_equation_section("Algebraic Equations", self.model_host.model.algebraic_eqs)
         layout.addLayout(alg_eq_section)
 
         # Section: State Equations
-        state_eq_section = self.create_equation_section("State Equations", self.subsys.model.state_eqs)
+        state_eq_section = self.create_equation_section("State Equations", self.model_host.model.state_eqs)
         layout.addLayout(state_eq_section)
 
         close_btn = QPushButton("Close")
@@ -659,7 +639,7 @@ class ModelHostItem(QGraphicsRectItem):
             text, ok = QInputDialog.getText(None, f"Add {title}", "Variable name:")
             if ok and text:
                 var_list.append(Var(text))
-                print(self.subsys.algebraic_vars)
+                print(self.model_host.model.algebraic_vars)
                 list_widget.addItem(text)
 
         add_btn.clicked.connect(add_var)
@@ -688,7 +668,7 @@ class ModelHostItem(QGraphicsRectItem):
                 sym_expr = make_symbolic(text)
                 print(type(sym_expr))
                 eq_list.append(sym_expr)
-                print(self.subsys.algebraic_eqs)
+                print(self.model_host.model.algebraic_eqs)
                 list_widget.addItem(text)
 
         add_btn.clicked.connect(add_eq)
@@ -1110,8 +1090,10 @@ class BlockEditor(QSplitter):
             y0 = point0.y()
 
             tpe = self.library_model.get_type(obj_type)
+            print(tpe)
 
-            if tpe == "GENERIC":
+            if tpe == BlockType.GENERIC:
+                print("hello")
 
                 model_host: DynamicModelHost = DynamicModelHost()
 
@@ -1130,25 +1112,27 @@ class BlockEditor(QSplitter):
                         subdiagram= model_host.diagram
                     )
 
+            else:
+                print("Hi")
 
-            blk: Block = create_block_of_type(block_type=tpe,
+                blk: Block = create_block_of_type(block_type=tpe,
                                               ins=2,
                                               outs=1,
                                               const_value=3)
 
-            if blk is not None:
-                self.main_block.add(blk)
-                item = BlockItem(blk)
+                if blk is not None:
+                    self.main_block.add(blk)
+                    item = BlockItem(blk)
 
-                self.scene.addItem(item)
-                item.setPos(QPointF(x0, y0))
-                # save nodes in diagram
-                self.diagram.add_node(
-                    x=x0,
-                    y=y0,
-                    device_uid=blk.uid,
-                    tpe=tpe.name
-                )
+                    self.scene.addItem(item)
+                    item.setPos(QPointF(x0, y0))
+                    # save nodes in diagram
+                    self.diagram.add_node(
+                        x=x0,
+                        y=y0,
+                        device_uid=blk.uid,
+                        tpe=tpe.name
+                    )
 
     def rebuild_scene_from_diagram(self):
         """Rebuilds the graphical scene from saved diagram data"""
@@ -1157,26 +1141,34 @@ class BlockEditor(QSplitter):
         uid_to_blockitem = {}
 
         # Recreate nodes
+        print(self.diagram.node_data)
         for uid, node in self.diagram.node_data.items():
             block_type = BlockType[node.tpe]
-            ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
-            outs = 1
-            if block_type == BlockType.SOURCE:
-                ins = 0
-            elif block_type == BlockType.DRAIN:
-                outs = 0
+            if block_type == BlockType.GENERIC:
+                model_host = DynamicModelHost()
+                item = ModelHostItem(model_host)
 
-            blk = create_block_of_type(block_type, ins=ins, outs=outs)
-            blk.uid = uid
+                self.scene.addItem(item)
+                item.setPos(QPointF(node.x, node.y))
 
-            block_item = BlockItem(blk)
-            self.scene.addItem(block_item)
-            block_item.setPos(node.x, node.y)
 
-            uid_to_blockitem[uid] = block_item
-            #
-            # for subnode in node:
-            #     rebuild_scene_from_diagram()
+            else:
+                ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
+                outs = 1
+                if block_type == BlockType.SOURCE:
+                    ins = 0
+                elif block_type == BlockType.DRAIN:
+                    outs = 0
+
+                blk = create_block_of_type(block_type, ins=ins, outs=outs)
+                blk.uid = uid
+
+                block_item = BlockItem(blk)
+                self.scene.addItem(block_item)
+                block_item.setPos(node.x, node.y)
+
+                uid_to_blockitem[uid] = block_item
+
 
         # Recreate connections
         for con in self.diagram.con_data:

@@ -37,11 +37,8 @@ class BlockDiagramNode:
     device_uid: int
     sub_diagram: "BlockDiagram" = None
 
-    def get_node_dict(self):
-        """
-        Get as a dictionary
-        """
-        data = {
+    def get_node_dict(self) -> Dict[str, Any]:
+        data: Dict[str, Any] = {
             'x': self.x,
             'y': self.y,
             'tpe': self.tpe,
@@ -50,7 +47,7 @@ class BlockDiagramNode:
         if self.sub_diagram is not None:
             data['sub_diagram'] = {
                 "nodes": self.sub_diagram.get_node_data_dict(),
-                "connections": self.sub_diagram.get_con_data_dict()
+                "connections": self.sub_diagram.get_con_data_dict(),
             }
         return data
 
@@ -130,11 +127,11 @@ class BlockDiagram:
                 color=color
             )
         )
-    def get_node_data_dict(self) -> Dict[int, Dict[str, int]]:
+    def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
         graph_info ={device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
         return graph_info
 
-    def get_con_data_dict(self) -> Dict[int, Dict[str, int]]:
+    def get_con_data_dict(self) -> Dict[int, Dict[str, Any]]:
         graph_info = {index: connection.get_connection_dict() for index, connection in enumerate(self.con_data)}
         return graph_info
 
