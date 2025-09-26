@@ -1833,6 +1833,7 @@ class ResultTypes(Enum):
     # RMS Small Signal Stability
     ParticipationFactors = "Participation Factors"
     Eigenvalues = "Eigenvalues"
+    SDomainPlot = "S-Domain Plot"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'
