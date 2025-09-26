@@ -490,7 +490,28 @@ class Generator(GeneratorParent):
         """
         self._Snom = val
 
+    def __iadd__(self, other: "Generator"):
+        """
+        Add another generator here
+        :param other: Generator to add
+        """
+
+        self.P += other.P
+        self.P_prof = self.P_prof.toarray() + other.P_prof.toarray()
+
+        self.Pmax += other.Pmax
+        self.Pmin += other.Pmin
+
+        self.Qmax += other.Qmax
+        self.Qmin += other.Qmin
+
+
+
     def initialize_rms(self, rms_event = False):
+        """
+        Initialize the RMS model
+        """
+
         if self.rms_model.empty():
 
             delta = Var("delta" + self.name)
@@ -506,10 +527,7 @@ class Generator(GeneratorParent):
             tm = Var("tm" + self.name)
             P_g = Var("P_g" + self.name)
             Q_g = Var("Q_g" + self.name)
-            # Xad_Ifd = Var("Xad_Ifd") ###
-            # vf = Var("vf") ###
 
-            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm) #takes Vm and Va from the bus variable
             vf = UndefinedConst()
             tm0 = UndefinedConst()
 
@@ -537,7 +555,6 @@ class Generator(GeneratorParent):
                     tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
                     2 * np.pi * self.freq * et -delta, #
                 ],
-                #algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
                 algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
                 init_eqs = {
                     delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))/(abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
@@ -551,6 +568,8 @@ class Generator(GeneratorParent):
                     te: psid * i_q - psiq * i_d,
                     tm: te,
                     et: Const(0),
+                    # Xad_Ifd: Const(self.vf0), ###
+                    # vf: Const(self.vf0) ###
                 },
                 init_vars = [delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
                 fix_vars = [tm0, vf],
