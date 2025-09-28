@@ -527,6 +527,6 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         else:
             # default to VeraGrid mode
-            self.results = self.run_contingency_analysis()
+            self.results = self.run_linear_contingency_analysis()
 
         self.toc()
