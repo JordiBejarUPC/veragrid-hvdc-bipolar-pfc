@@ -822,8 +822,6 @@ def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value
         blk.name = "generic"
         return blk
 
-
-    # GENERIC / fallback: create a block and attach placeholder vars
     in_vars = placeholders(ins, f"{block_type.name.lower()}_in_")
     out_vars = [Var(f"{block_type.name.lower()}_out{i}") for i in range(outs)]
     blk = Block(name=block_type.name)
@@ -844,40 +842,6 @@ class DiagramScene(QGraphicsScene):
     def get_main_block(self):
         return self._main_block
 
-    # def contextMenuEvent(self, event):
-    #     item = self.itemAt(event.scenePos(), self.views()[0].transform())
-    #
-    #     # Let lines, block and ports handle their own context menus
-    #     if item is not None:
-    #         if not isinstance(item, DiagramScene):
-    #             return super().contextMenuEvent(event)
-    #
-    #     dialog = BlockTypeDialog()
-    #     if dialog.exec():
-    #         block_type = dialog.selected_block_type()
-    #         ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
-    #         outs = 1
-    #         if block_type == BlockType.SOURCE:
-    #             ins = 0
-    #         elif block_type == BlockType.DRAIN:
-    #             outs = 0
-    #
-    #         value = dialog.constant_value() if block_type == BlockType.CONSTANT else None
-    #         self.add_block(event.scenePos(), ins, outs, block_type, value)
-    #
-    #     return None
-    #
-    # def add_block(self, pos, ins, outs, block_type, const_value=None):
-    #     blk = create_block_of_type(block_type, ins, outs, const_value)
-    #     block_item = BlockItem(blk)
-    #
-    #     # add to the model and the scene
-    #     self._main_block.add(blk)
-    #     self.addItem(block_item)
-    #
-    #     # add to the diagram
-    #
-    #     block_item.setPos(pos)
 
     def mousePressEvent(self, event):
         for item in self.items(event.scenePos()):
@@ -1090,15 +1054,14 @@ class BlockEditor(QSplitter):
             y0 = point0.y()
 
             tpe = self.library_model.get_type(obj_type)
-            print(tpe)
 
             if tpe == BlockType.GENERIC:
-                print("hello")
 
                 model_host: DynamicModelHost = DynamicModelHost()
 
                 if model_host is not None:
                     self.main_block.add(model_host.model)
+
                     item = ModelHostItem(model_host)
 
                     self.scene.addItem(item)
@@ -1113,7 +1076,6 @@ class BlockEditor(QSplitter):
                     )
 
             else:
-                print("Hi")
 
                 blk: Block = create_block_of_type(block_type=tpe,
                                               ins=2,
@@ -1141,11 +1103,11 @@ class BlockEditor(QSplitter):
         uid_to_blockitem = {}
 
         # Recreate nodes
-        print(self.diagram.node_data)
         for uid, node in self.diagram.node_data.items():
             block_type = BlockType[node.tpe]
             if block_type == BlockType.GENERIC:
                 model_host = DynamicModelHost()
+                model_host.diagram = node.sub_diagram
                 item = ModelHostItem(model_host)
 
                 self.scene.addItem(item)

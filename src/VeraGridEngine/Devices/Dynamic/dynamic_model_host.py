@@ -13,22 +13,6 @@ from VeraGridEngine.enumerations import DeviceType
 
 
 @dataclass
-# class BlockDiagramNode:
-#     x: float
-#     y: float
-#     tpe: str
-#     device_uid: int
-#     sub_diagram: BlockDiagram
-#
-#     def get_node_dict(self):
-#         """
-#         get as a dictionary point
-#         :return:
-#         """
-#         data =  {'x': self.x,
-#                 'y': self.y,
-#                 'tpe': self.tpe,
-#                 'device_uid': self.device_uid}
 
 class BlockDiagramNode:
     x: float
@@ -155,36 +139,6 @@ class BlockDiagram:
                 sub_diagram=subdiagram
             )
 
-    # def parse_nodes(self, nodes_data) -> None:
-    #     """
-    #     Parse file data ito this class
-    #     :param nodes_data: json dictionary
-    #      """
-    #
-    #     self.node_data = dict()
-    #     for uid, node in nodes_data.items():
-    #         self.node_data[uid] = BlockDiagramNode(
-    #         x=node['x'],
-    #         y=node['y'],
-    #         tpe=node['tpe'],
-    #         device_uid=node['device_uid']
-    #     )
-
-    # def parse_branches(self, con_data)-> None:
-    #     """
-    #     Parse file data ito this class
-    #     :param con_data: json dictionary
-    #      """
-    #
-    #     self.con_data = list()
-    #     for idx, node in con_data.items():
-    #         self.con_data.append(BlockDiagramConnection(
-    #             from_uid=con_data['from_uid'],
-    #             to_uid=con_data['to_uid'],
-    #             port_number_from=con_data['port_number_from'],
-    #             port_number_to=con_data['port_number_to'],
-    #             color=con_data['color'],
-    #         ))
     def parse_branches(self, con_data) -> None:
         """
         Parse connection data from dictionary
@@ -265,6 +219,21 @@ class DynamicModelHost(EditableDevice):
     def diagram(self) -> BlockDiagram:
 
         return self._diagram
+
+    @diagram.setter
+    def diagram(self, val: BlockDiagram | Dict[str, Any]):
+
+        if isinstance(val, BlockDiagram):
+            self._diagram = val
+        elif isinstance(val, dict):
+            diagram = BlockDiagram()
+            if "nodes" in val:
+                diagram.parse_nodes(val["nodes"])
+            if "connections" in val:
+                diagram.parse_branches(val["connections"])
+            self._diagram = diagram
+        else:
+            raise ValueError(f"Cannot set diagram with {val}")
 
     def to_dict(self) -> Dict[str, int | Dict[str, List[Dict[str, Any]]]]:
         """
