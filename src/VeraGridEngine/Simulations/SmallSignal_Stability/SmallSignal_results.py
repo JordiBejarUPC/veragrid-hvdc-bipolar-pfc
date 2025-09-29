@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from typing import Union
 import matplotlib.colors as plt_colors
 from typing import List, Tuple, Dict
 
@@ -29,7 +30,9 @@ class SmallSignal_Stability_Results(ResultsTemplate):
         ResultsTemplate.__init__(
             self,
             name='Small Signal Stability',
-            available_results=[ResultTypes.SmallSignalStabilityReport],
+            available_results=[ResultTypes.Eigenvalues,
+                               ResultTypes.ParticipationFactors
+                               ],
             time_array=None,
             clustering_results=None,
             study_results_type=StudyResultsType.SmallSignalStability
@@ -43,21 +46,40 @@ class SmallSignal_Stability_Results(ResultsTemplate):
         self.participation_factors = PF
         # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
-        self.register(name='participation_factors', tpe=Mat)
+        self.register(name='participation_factors', tpe=Vec)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
         Export the results as a ResultsTable for plotting.
         """
-        if result_type == ResultTypes.SmallSignalStabilityReport:
+        if result_type == ResultTypes.ParticipationFactors:
+
             return ResultsTable(
-                data=np.array(self.participation_factors),
+                data=self.participation_factors,
                 index=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                columns=np.array(self.eigenvalues.astype(str), dtype=np.str_),
-                title="Rms Small Signal Stability Results",
+                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_), #
+                title="Participation factors for each eigenvalue",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
             )
+
+        elif result_type == ResultTypes.Eigenvalues:
+            return ResultsTable(
+                data=np.array([np.real(self.eigenvalues), np.imag(self.eigenvalues)]).T,
+                index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                columns= np.array(["Real", "Imaginary"]),
+                title="Eigenvalues",
+                idx_device_type=DeviceType.NoDevice,
+                cols_device_type=DeviceType.NoDevice
+            )
+            # return ResultsTable(
+            #     data=self.eigenvalues,
+            #     index= np.empty(len(self.eigenvalues)),
+            #     columns= np.array(["-"]),
+            #     title="Eigenvalues",
+            #     idx_device_type=DeviceType.NoDevice,
+            #     cols_device_type=DeviceType.NoDevice
+            # )
         else:
             raise Exception(f"Result type not understood: {result_type}")
 
@@ -68,4 +90,14 @@ class SmallSignal_Stability_Results(ResultsTemplate):
         :param ax: Matplotlib Axis. If None, one will be created
         """
         if ax is None:
-            fig = plt.figure
+            fig = plt.figure(figsize=(8, 7))
+            ax = fig.add_subplot(111)
+
+        x = self.eigenvalues.real
+        y = self.eigenvalues.imag
+
+        ax.scatter(x, y, 'k', linewidth=2)
+
+        ax.set_title(r'$S-Domain$ plot')
+        ax.set_xlabel(r'$Imaginary [s^{-1}]$')
+        ax.set_ylabel(r'$Real [s^{-1}]$')

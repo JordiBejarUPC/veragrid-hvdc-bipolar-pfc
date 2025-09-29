@@ -21,10 +21,11 @@ import numpy as np
 import numba as nb
 import math
 import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
+import scipy.linalg
 from scipy.sparse import csr_matrix, csc_matrix
-from scipy.sparse.linalg import gmres, spilu, LinearOperator
+from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve
 from typing import Dict, List, Literal, Any, Callable, Sequence
+from matplotlib import pyplot as plt
 
 # from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 # from VeraGridEngine import RmsResults
@@ -1221,10 +1222,10 @@ class BlockSolver:
 
         """
 
-        fx = self._j11_fn(x, params)  # ∂f/∂x
-        fy = self._j12_fn(x, params)  # ∂f/∂y
-        gx = self._j21_fn(x, params)  # ∂g/∂x
-        gy = self._j22_fn(x, params)  # ∂g/∂y
+        fx, _, _ = self._j11_fn(x, params)  # ∂f/∂x
+        fy, _, _ = self._j12_fn(x, params)  # ∂f/∂y
+        gx, _, _ = self._j21_fn(x, params)  # ∂g/∂x
+        gy, _, _ = self._j22_fn(x, params)  # ∂g/∂y
 
         gyx = spsolve(gy, gx)
         A = (fx - fy @ gyx)  # sparse state matrix csc matrix

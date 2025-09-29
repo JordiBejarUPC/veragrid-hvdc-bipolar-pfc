@@ -1831,7 +1831,8 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
 
     # RMS Small Signal Stability
-    SmallSignalStabilityReport = "SmallSignalStabilityReport"
+    ParticipationFactors = "Participation Factors"
+    Eigenvalues = "Eigenvalues"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'

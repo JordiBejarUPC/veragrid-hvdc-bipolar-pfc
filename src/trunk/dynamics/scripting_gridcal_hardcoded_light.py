@@ -343,6 +343,8 @@ params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 vars_in_order = slv.sort_vars_from_uid(init_guess)
 
+print("x0:", x0)
+
 start_simulation = time.time()
 
 t, y = slv.simulate(
@@ -350,7 +352,6 @@ t, y = slv.simulate(
     t_end=20.0,
     h=0.001,
     x0=x0,
-    time = t,
     params0=params0,
     method="implicit_euler"
 )
