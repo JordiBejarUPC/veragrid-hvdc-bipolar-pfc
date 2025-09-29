@@ -83,17 +83,47 @@ class SmallSignal_Stability_Results(ResultsTemplate):
 
             if self.plotting_allowed():
                 plt.ion()
-                color_norm = plt_colors.LogNorm()
                 fig = plt.figure(figsize=(8, 6))
                 ax = fig.add_subplot(111)
-                ax.scatter(re, im, c=colors)
+                sc = ax.scatter(re, im, c=colors, cmap = 'winter', s = 120, alpha = 0.8)
                 fig.suptitle("S-Domain Stability plot")
-                ax.set_xlabel(r'Imaginary$ [s^{-1}]$')
-                ax.set_ylabel(r'Real$ [s^{-1}]$')
+                ax.set_xlabel(r'Real  $ [s^{-1}]$')
+                ax.set_ylabel(r'Imaginary  $ [s^{-1}]$')
                 ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
                 ax.axvline(0, color='black', linewidth=1)
                 plt.tight_layout()
                 plt.show()
+                annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                                    textcoords="offset points",
+                                    bbox=dict(boxstyle="round", fc="w"),
+                                    arrowprops=dict(arrowstyle="->"),
+                                    fontsize=8)
+                annot.set_visible(False)
+
+                def update_annotation(ind):
+                    """
+                    :param ind:
+                    :return:
+                    """
+                    pos = sc.get_offsets()[ind["ind"][0]]
+                    annot.xy = pos
+                    text = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
+                    annot.set_text(text)
+                    annot.get_bbox_patch().set_alpha(0.8)
+
+                def hover(event):
+                    if event.inaxes == ax:
+                        cont, ind = sc.contains(event)
+                        if cont:
+                            update_annotation(ind)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                        else:
+                            if annot.get_visible():
+                                annot.set_visible(False)
+                                fig.canvas.draw_idle()
+
+                fig.canvas.mpl_connect("motion_notify_event", hover)
 
             return ResultsTable(data=data,
                                 index=np.empty(len(self.eigenvalues),dtype=np.str_),
