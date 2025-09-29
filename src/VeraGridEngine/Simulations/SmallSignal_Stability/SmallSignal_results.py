@@ -58,7 +58,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
             return ResultsTable(
                 data=self.participation_factors,
                 index=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                columns=np.array(self.eigenvalues.astype(str), dtype=np.str_), #
+                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_), #
                 title="Participation factors for each eigenvalue",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
@@ -66,9 +66,9 @@ class SmallSignal_Stability_Results(ResultsTemplate):
 
         elif result_type == ResultTypes.Eigenvalues:
             return ResultsTable(
-                data=self.eigenvalues,
-                index= np.empty(len(self.eigenvalues),dtype=np.str_),
-                columns= np.array(["-"]),
+                data=np.array([np.real(self.eigenvalues), np.imag(self.eigenvalues)]).T,
+                index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                columns= np.array(["Real", "Imaginary"]),
                 title="Eigenvalues",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
