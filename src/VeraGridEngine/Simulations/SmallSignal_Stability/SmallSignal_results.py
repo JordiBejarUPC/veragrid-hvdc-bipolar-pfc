@@ -31,7 +31,8 @@ class SmallSignal_Stability_Results(ResultsTemplate):
             self,
             name='Small Signal Stability',
             available_results=[ResultTypes.Eigenvalues,
-                               ResultTypes.ParticipationFactors
+                               ResultTypes.ParticipationFactors,
+                               ResultTypes.SDomainPlot
                                ],
             time_array=None,
             clustering_results=None,
@@ -72,32 +73,83 @@ class SmallSignal_Stability_Results(ResultsTemplate):
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
             )
-            # return ResultsTable(
-            #     data=self.eigenvalues,
-            #     index= np.empty(len(self.eigenvalues)),
-            #     columns= np.array(["-"]),
-            #     title="Eigenvalues",
-            #     idx_device_type=DeviceType.NoDevice,
-            #     cols_device_type=DeviceType.NoDevice
-            # )
+        elif result_type == ResultTypes.SDomainPlot:
+            re = self.eigenvalues.real
+            im = self.eigenvalues.imag
+            data = np.c_[re, im]
+
+            d = np.abs(np.nan_to_num(re))
+            colors = (d / d.max())
+
+            if self.plotting_allowed():
+                plt.ion()
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111)
+                sc = ax.scatter(re, im, c=colors, cmap = 'winter', s = 120, alpha = 0.8)
+                fig.suptitle("S-Domain Stability plot")
+                ax.set_xlabel(r'Real  $ [s^{-1}]$')
+                ax.set_ylabel(r'Imaginary  $ [s^{-1}]$')
+                ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
+                ax.axvline(0, color='black', linewidth=1)
+                plt.tight_layout()
+                plt.show()
+                annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                                    textcoords="offset points",
+                                    bbox=dict(boxstyle="round", fc="w"),
+                                    arrowprops=dict(arrowstyle="->"),
+                                    fontsize=8)
+                annot.set_visible(False)
+
+                def update_annotation(ind):
+                    """
+                    :param ind:
+                    :return:
+                    """
+                    pos = sc.get_offsets()[ind["ind"][0]]
+                    annot.xy = pos
+                    text = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
+                    annot.set_text(text)
+                    annot.get_bbox_patch().set_alpha(0.8)
+
+                def hover(event):
+                    if event.inaxes == ax:
+                        cont, ind = sc.contains(event)
+                        if cont:
+                            update_annotation(ind)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                        else:
+                            if annot.get_visible():
+                                annot.set_visible(False)
+                                fig.canvas.draw_idle()
+
+                fig.canvas.mpl_connect("motion_notify_event", hover)
+
+            return ResultsTable(data=data,
+                                index=np.empty(len(self.eigenvalues),dtype=np.str_),
+                                idx_device_type=DeviceType.NoDevice,
+                                columns=np.array(['Real', 'Imag']),
+                                cols_device_type=DeviceType.NoDevice,
+                                title="S-Domain Stability plot"
+                                )
         else:
             raise Exception(f"Result type not understood: {result_type}")
 
-    def plot(self, fig, ax):
-        """
-        Plot the S-Domain modes plot
-        :param fig: Matplotlib figure. If None, one will be created
-        :param ax: Matplotlib Axis. If None, one will be created
-        """
-        if ax is None:
-            fig = plt.figure(figsize=(8, 7))
-            ax = fig.add_subplot(111)
-
-        x = self.eigenvalues.real
-        y = self.eigenvalues.imag
-
-        ax.scatter(x, y, 'k', linewidth=2)
-
-        ax.set_title(r'$S-Domain$ plot')
-        ax.set_xlabel(r'$Imaginary [s^{-1}]$')
-        ax.set_ylabel(r'$Real [s^{-1}]$')
+    # def plot(self, fig, ax):
+    #     """
+    #     Plot the S-Domain modes plot
+    #     :param fig: Matplotlib figure. If None, one will be created
+    #     :param ax: Matplotlib Axis. If None, one will be created
+    #     """
+    #     if ax is None:
+    #         fig = plt.figure(figsize=(8, 7))
+    #         ax = fig.add_subplot(111)
+    #
+    #     x = self.eigenvalues.real
+    #     y = self.eigenvalues.imag
+    #
+    #     ax.scatter(x, y, 'k', linewidth=2)
+    #
+    #     ax.set_title(r'$S-Domain$ plot')
+    #     ax.set_xlabel(r'$Imaginary [s^{-1}]$')
+    #     ax.set_ylabel(r'$Real [s^{-1}]$')

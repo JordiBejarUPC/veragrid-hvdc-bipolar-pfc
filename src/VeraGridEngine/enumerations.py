@@ -219,7 +219,7 @@ class SolverType(Enum):
 
     NR = 'Newton Raphson'
     GAUSS = 'Gauss-Seidel'
-    LU = 'Decoupled-LU Decomposition'
+    Decoupled_LU = 'Decoupled-LU Decomposition'
     GN = "Gauss-Newton"
     Linear = 'Linear'
     HELM = 'Holomorphic Embedding'
@@ -1833,6 +1833,7 @@ class ResultTypes(Enum):
     # RMS Small Signal Stability
     ParticipationFactors = "Participation Factors"
     Eigenvalues = "Eigenvalues"
+    SDomainPlot = "S-Domain Plot"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'

@@ -18,7 +18,7 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicInte
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-import VeraGridEngine.api as gce
+
 
 
 class RmsSimulationDriver(DriverTemplate):
