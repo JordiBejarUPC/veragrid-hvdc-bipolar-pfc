@@ -89,6 +89,12 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         for eq in eqs:
             print(str(eq))
 
+    def exec(self):
+        app = QtWidgets.QApplication(sys.argv)
+        self.resize(1.61 * 700.0, 600.0)  # golden ratio
+        self.show()
+        sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
