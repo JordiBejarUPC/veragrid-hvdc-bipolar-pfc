@@ -31,7 +31,7 @@ import VeraGridEngine.api as gce
 # ----------------------------------------------------------------------------------------------------------------------
 # Load system
 # In scriptin_gridcal_hardcoded there are also shunt elements!
-# grid_1 = gce.open_file('Two_Areas_PSS_E/Benchmark_4ger_33_2015_noshunt.raw')
+# grid_1 = gce.open_file('Two_Areas_PSS_E/IEEE39_1W.gridcal')
 # Run power flow
 # res_1 = gce.power_flow(grid_1)
 #
@@ -343,24 +343,22 @@ params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 vars_in_order = slv.sort_vars_from_uid(init_guess)
 
-print("x0:", x0)
-
 start_simulation = time.time()
 
-t, y = slv.simulate(
-    t0=0,
-    t_end=20.0,
-    h=0.001,
-    x0=x0,
-    params0=params0,
-    method="implicit_euler"
-)
+# t, y = slv.simulate(
+#     t0=0,
+#     t_end=20.0,
+#     h=0.001,
+#     x0=x0,
+#     params0=params0,
+#     method="implicit_euler"
+# )
 
 end_simulation = time.time()
 print(f"Automatic simulation time = {end_simulation-start_simulation:.6f} [s]")
 
 # # Save to csv
-slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, csv_saving=True)
+# slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, csv_saving=True)
 
 # # Plot
 # plt.plot(t, y[:, slv.get_var_idx(slv._state_vars[1])], label="ω (pu)")

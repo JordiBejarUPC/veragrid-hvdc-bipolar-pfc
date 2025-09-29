@@ -5267,7 +5267,7 @@ class Ui_mainWindow(object):
         self.tabWidget_5.setCurrentIndex(0)
         self.tabWidget_4.setCurrentIndex(0)
         self.tabWidget_2.setCurrentIndex(0)
-        self.tabWidget_9.setCurrentIndex(7)
+        self.tabWidget_9.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(mainWindow)
@@ -6392,7 +6392,7 @@ class Ui_mainWindow(object):
         self.ss_int_method_comboBox_2.setItemText(0, QCoreApplication.translate("mainWindow", u"trapezoid", None))
         self.ss_int_method_comboBox_2.setItemText(1, QCoreApplication.translate("mainWindow", u"implicit euler", None))
 
-        self.ss_int_method_comboBox_2.setCurrentText(QCoreApplication.translate("mainWindow", u"implicit euler", None))
+        self.ss_int_method_comboBox_2.setCurrentText(QCoreApplication.translate("mainWindow", u"trapezoid", None))
 #if QT_CONFIG(tooltip)
         self.tolerance_ss_spinBox_2.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)

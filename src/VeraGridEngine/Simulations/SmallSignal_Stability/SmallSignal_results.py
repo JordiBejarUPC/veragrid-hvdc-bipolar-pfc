@@ -30,7 +30,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
         ResultsTemplate.__init__(
             self,
             name='Small Signal Stability',
-            available_results=[ResultTypes.Eigenvalues,
+            available_results=[ResultTypes.Modes,
                                ResultTypes.ParticipationFactors,
                                ResultTypes.SDomainPlot
                                ],
@@ -38,7 +38,8 @@ class SmallSignal_Stability_Results(ResultsTemplate):
             clustering_results=None,
             study_results_type=StudyResultsType.SmallSignalStability
         )
-        stat_vars_names = [str(var) + vars2device[var.uid].name for var in stat_vars]
+        # stat_vars_names = [str(var) + vars2device[var.uid].name for var in stat_vars]
+        stat_vars_names =[f"{var}{i // 2 + 1}" for i, var in enumerate(stat_vars)]
 
         self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
 
@@ -64,7 +65,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
                 cols_device_type=DeviceType.NoDevice
             )
 
-        elif result_type == ResultTypes.Eigenvalues:
+        elif result_type == ResultTypes.Modes:
             return ResultsTable(
                 data=np.array([np.real(self.eigenvalues), np.imag(self.eigenvalues)]).T,
                 index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
