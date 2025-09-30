@@ -8031,7 +8031,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval</string>
+                     <string>Time step</string>
                     </property>
                    </widget>
                   </item>
@@ -8266,7 +8266,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval</string>
+                     <string>Time step</string>
                     </property>
                    </widget>
                   </item>
