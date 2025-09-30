@@ -8003,6 +8003,9 @@ QProgressBar::chunk{
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
+                    <property name="suffix">
+                     <string>s</string>
+                    </property>
                     <property name="decimals">
                      <number>4</number>
                     </property>
@@ -8028,7 +8031,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval (h)</string>
+                     <string>Time interval</string>
                     </property>
                    </widget>
                   </item>
@@ -8041,6 +8044,9 @@ QProgressBar::chunk{
                     </property>
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>
@@ -8260,7 +8266,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval (h)</string>
+                     <string>Time interval</string>
                     </property>
                    </widget>
                   </item>
@@ -8273,6 +8279,9 @@ QProgressBar::chunk{
                     </property>
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>
@@ -8324,6 +8333,9 @@ QProgressBar::chunk{
                     </property>
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>

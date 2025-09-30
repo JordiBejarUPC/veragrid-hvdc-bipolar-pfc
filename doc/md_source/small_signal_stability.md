@@ -142,7 +142,7 @@ as its benchmark for small-signal analysis. Of course, VeraGrid successfully rep
 placements from ANDES.
 
 VeraGrid loads ANDES models by opening json files. Naturally, VeraGrid replicates all eigenvalue 
-results from ANDES across standard benchmarks like the Kundur's two area system with consistent accuracy 
+results from ANDES across standard benchmarks like the Kundur two area system with consistent accuracy 
 and sub-second performance.
 
 This is the code to get ANDES results:
@@ -190,7 +190,7 @@ def stability_andes():
 
     return eig.mu, eig.pfactors
 ```
-Comparing the case of Kundur's two-area system VeraGrid gets exactly the same results.
+Comparing the case of Kundur two-area system VeraGrid gets exactly the same results.
 
 ![](figures/andes_vs_veragrid_stability.png)
 
@@ -334,9 +334,9 @@ the DAE system respectively.
 
 
 
-### Benchmark - Kundur's system
-The Kundur's two‑area system is a standard benchmark network used widely for small‑signal and transient stability studies.
-It was introduced in P. Kundur’s power system stability literature as a compact, yet representative, 
+### Benchmark - Kundur system
+The Kundur two‑area system is a standard benchmark network widely used for small‑signal and transient stability studies.
+It was introduced in the P. Kundur power system stability literature as a compact, yet representative, 
 test case that exposes inter‑area oscillatory modes and control interactions without excessive model complexity.
 
 ![](figures/Kundur_system_no_shunt.png)
@@ -345,10 +345,10 @@ The main characteristics of the system, depicted in the figure above, are:
 - Two areas connected by a pair of parallel lines. In each area, 2 synchronous generators are placed so that each area can
 swing against each other and produce inter-area oscillations.
 - All the synchronous generators are connected to the network through a transformer.
-- In this version of the Kundur's two-area system no shunts are connected to buses 7 and 9.
+- In this version of the Kundur two-area system no shunts are connected to buses 7 and 9.
 - The base power is 100 MW and the voltage levels are 20kV for the generators and 230kV for the network.
 
-The following code can be used to model the Kundur's two area system without shunt in VeraGrid and to perform the small-signal
+The following code can be used to model the Kundur two area system without shunt in VeraGrid and to perform the small-signal
 Stability analysis. As seen in the code, an event is created at time instant 2.5s where the active power of load A is increased to 900MW
 ```python
 import numpy as np
