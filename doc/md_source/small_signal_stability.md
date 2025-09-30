@@ -1,16 +1,16 @@
-# 🔍 Small Signal 
+# 🔍 Small-Signal stability analysis
 
 Stability assessment is crucial for any system and of course, VeraGrid has it.
 
 ⚠️ Before performing small-signal stability analysis, a power flow calculation must be completed! 
 ### Settings
-This is the Small Signal settings page:
+This is the Small-Signal settings page:
 
 ![](figures/smallsignal_settings.png)
 
- The main setting in Small Signal Stability assessment is the time instant when the analysis is performed. 
+ The main setting in Small-Signal Stability assessment is the time instant when the analysis is performed. 
  Therefore, if the assessment time is zero, no dynamic simulation is needed and the only parameter to set is the
- assessment time itself. Otherwise, dynamic simulation parameters are considered.
+ assessment time itself. Otherwise, Rms dynamic simulation parameters are considered.
 
 Below, a list of the parameters and integration methods available.
 
@@ -32,7 +32,7 @@ increase accuracy but require more computation. Only needed if the Rms dynamic s
 The available results are the following:
 
 - **Modes**
-- **Participation factors**: The participation factors of mode i are found in the i column. 
+- **Participation factors**: The participation factor of variable *k* in mode *i* is found in row *k*, column *i*. 
 - **S-Domain stability plot**
 
 ![](figures/SDomain_plot_VeraGrid.png)
@@ -81,7 +81,7 @@ t, y = slv.simulate(
     method="implicit_euler"
 )
 ```
-And finally the Small Signal Stability assessment:
+And finally the Small-Signal Stability assessment:
 ```python
 stab, eigenvalues, pfactors = slv.stability_assessment(x=x0, params=params0, plot = True)
 print("Stability assessment:", stab)
@@ -129,20 +129,20 @@ Participation factors: [[0.00357204 0.00357204 0.0926209  0.00074082 0.00074082 
 
 ```
 
-Note that the S-Domain stability plot will be given as a result also when ```plot = True```.
+Note that the S-Domain stability plot will be given as a result when ```plot = True```.
 
 
 ## Benchmark
 
 
 ### Running ANDES
-Thanks to its symbolic precision and reliable numerical performance, ANDES provides the baseline 
+Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline 
 for stability analysis in contemporary power system studies. That’s why VeraGrid uses ANDES 
 as its benchmark for small-signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue 
 placements from ANDES.
 
 VeraGrid loads ANDES models by opening json files. Naturally, VeraGrid replicates all eigenvalue 
-results from ANDES across standard benchmarks like the Kundur system with consistent accuracy 
+results from ANDES across standard benchmarks like the Kundur's two area system with consistent accuracy 
 and sub-second performance.
 
 This is the code to get ANDES results:
@@ -163,7 +163,7 @@ def stability_andes():
    print(f"Andes variables = {n_xy}")
    ss.files.no_output = True
 
-   # fix P & Q load Andes
+   # fix P & Q load ANDES
    ss.PQ.config.p2p = 1.0
    ss.PQ.config.p2i = 0
    ss.PQ.config.p2z = 0
@@ -178,7 +178,7 @@ def stability_andes():
    ss.PFlow.config.tol = 1e-13
    ss.PFlow.run()
 
-   #Run Small Signal Stability analysis
+   #Run Small-Signal Stability analysis
    eig = ss.EIG
    eig.run()
 
@@ -190,11 +190,11 @@ def stability_andes():
 
     return eig.mu, eig.pfactors
 ```
-For the Kundur system:
+Comparing the case of Kundur's two-area system VeraGrid gets exactly the same results.
 
 ![](figures/andes_vs_veragrid_stability.png)
 
-Using the following plot template:
+The following plot template is used to compare results.
 ```python
 import matplotlib.pyplot as plt
 
@@ -206,7 +206,7 @@ y1 = VeraGrid_Eig_ord.imag
 x2= Andes_Eig_ord.real
 y2 = Andes_Eig_ord.imag
 
-plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
+plt.scatter(x2, y2, marker='o', color='orange', label='ANDES')
 plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
 plt.xlabel("Re [s -1]")
 plt.ylabel("Im [s -1]")
@@ -218,29 +218,97 @@ plt.tight_layout()
 plt.show()
 ```
 Where ```VeraGrid_Eig``` and ```Andes_Eig``` are numpy arrays with the eigenvalues results from the VeraGrid and Andes
-stability assessments respectivelly.
+stability assessments respectively.
 
-## Small signal stability analysis
+## Small-signal 
 
-State space :
+Small-signal analysis is a technique used to evaluate the dynamic behavior of nonlinear systems by linearizing 
+their equations around a specific operating point. This approach assumes that perturbations are sufficiently 
+small (typically within 1%) so that the system’s response can be approximated using linear models.
+The resulting linear representation enables the use of standard control engineering tools to assess system 
+stability and dynamic performance.
+
+Although small-signal analysis is inherently limited to small variations around the linearization point, 
+it provides a robust framework for applying state-space models and a wide range of analytical techniques.
+
+
+### State-space representation
+Small-signal stability assessment methods are generally categorized into two main groups: state-space
+techniques and frequency-domain techniques. State-space techniques allow to represent the system using differential equations:
+
 $$
 \dot{x} = A x + Bu
 $$
 $$
 y = Cx + Du
 $$
+Where:
+- *x* : state variables vector
+- *u* : system inputs vector
+- *y* : outputs vector
+- *A* : state matrix
+- *B* : input matrix
+- *C* : output matrix
+- *D* : direct transmission matrix
+
+[//]: # (In Symbolic framework, it is advantageous to work with the discrete-time equivalent of the state-space model,)
+
+[//]: # (which avoids symbolic differentiation and enables algebraic manipulation using matrix powers and recurrence )
+
+[//]: # (relations. The discrete-time form is given by:)
+
+[//]: # ()
+[//]: # ($$)
+
+[//]: # (x[k+1] = Ax[k] + Bu[k])
+
+[//]: # ($$)
+
+[//]: # ($$)
+
+[//]: # (y = Cx[k] + Du[k])
+
+[//]: # ($$)
 
 
+### Stability assessment
+Eigenvalue analysis and participation factors (PFs) are key tools for identifying dominant modes and evaluating system stability.
+These methods are well established in conventional power systems and are increasingly being applied to power-electronics-based systems, 
+where dynamic behavior is often more complex and sensitive to operating conditions. 
+
+The **eigenvalues** of the state matrix A (commonly referred to as the system’s modes) characterize its
+small-signal stability according to the following criteria:
+
+
+- All $Re(\lambda)<0$: asymptotically stable 
+- All $Re(\lambda)≤ 0$: marginally stable
+- At least one mode satisfies $Re(\lambda)<0$ : unstable
+
+When a linearized system has complex conjugate modes, they represent oscillatory modes in the dynamic response.
+
+- The **real part** determines damping:
+  - $Re(\lambda)<0$: exponential decay
+  - $Re(\lambda) = 0$: oscillations persist indefinitely
+  - $Re(\lambda)<0$: exponential growth
+- The **imaginary part** determines oscillation frequency: $f=\frac{Im(\lambda)}{2\pi}$
+
+**Participation factors** determine how much each state variable contributes to each mode and otherwise. In power systems 
+it is crucial to determine which devices are the origin of the oscillations and instabilities. They are computed as:
+
 $$
-\dot{x} = A \Delta x + B\Delta u
-$$
-$$
-y = C\Delta x + D\Delta u
+PF_{i,k}=W_{i,k} \cdot V_{i,k}
 $$
 
+Where PF is the participation factor of the *k*-state variable to the *i*-mode, W  is the left eigenvector of the *k*-state 
+variable to the *i*-mode of matrix A and V is the right eigenvector of the *k*-state variable to the *i*-mode of matrix A.
 
 
 ### DAE system to State Space representation
+
+In  power systems the dynamic behavior is described as a set of differential-algebraic equations (DAEs) due to the different components in the grid:
+
+- Differential equations arise with dynamic components such as synchronous generators, exciters, converters and control loops.
+- Algebraic equations come from network constraints and power balances mainly.
 
 Explicit DAE formulation:
 
@@ -251,15 +319,7 @@ $$
 0 = g(x,y)
 $$
 
-State space :
-$$
-\dot{x} = A x + Bu
-$$
-$$
-y = Cx + Du
-$$
-
-
+Merging the DAE formulation into the linearized state-space representation, the state matrix can be computed:
 $$
 \Delta \dot{x} = T^{-1}(fx-fy \cdot gy^{-1} \cdot gx) \Delta x
 $$
@@ -272,18 +332,24 @@ Where $fx$, $fy$, $gx$ and $gy$ are the $\frac{\delta f}{\delta x}$, $\frac{\del
 $\frac{\delta g}{\delta x}$ and $\frac{\delta g}{\delta y}$ components of the jacobian matrix of
 the DAE system respectively.
 
-### Modes and participation factors computation
 
 
+### Benchmark - Kundur's system
+The Kundur's two‑area system is a standard benchmark network used widely for small‑signal and transient stability studies.
+It was introduced in P. Kundur’s power system stability literature as a compact, yet representative, 
+test case that exposes inter‑area oscillatory modes and control interactions without excessive model complexity.
 
-### Benchmark - Kundur
+![](figures/Kundur_system_no_shunt.png)
 
+The main characteristics of the system, depicted in the figure above, are:
+- Two areas connected by a pair of parallel lines. In each area, 2 synchronous generators are placed so that each area can
+swing against each other and produce inter-area oscillations.
+- All the synchronous generators are connected to the network through a transformer.
+- In this version of the Kundur's two-area system no shunts are connected to buses 7 and 9.
+- The base power is 100 MW and the voltage levels are 20kV for the generators and 230kV for the network.
 
-
-[//]: # (![IEEE 13 Node Test Feeder]&#40;figures/3ph_IEEE_13_Node_Test_Feeder.png "IEEE 13 Node Test Feeder"&#41;)
-
-
-
+The following code can be used to model the Kundur's two area system without shunt in VeraGrid and to perform the small-signal
+Stability analysis. As seen in the code, an event is created at time instant 2.5s where the active power of load A is increased to 900MW
 ```python
 import numpy as np
 import pandas as pd
@@ -393,9 +459,6 @@ line13 = grid.add_line(
              r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
 # Transformers
-
-
-#
 trafo_G1 = grid.add_line(
     Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
              r=0.00000, x=0.15 * (100.0/900.0), b=0.0, rate=900.0))
@@ -416,7 +479,6 @@ trafo_G4 = grid.add_line(
 load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
 
 load1_grid = grid.add_load(bus=bus7, api_obj=load1)
-# load1 = grid.add_load(bus=bus7, api_obj=gce.Load(P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969))
 
 load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
 
@@ -463,8 +525,6 @@ Ki_4 = 0.0
 gen1 = Generator(
     name="Gen1", P=700.0, vset=1.03, Snom=900.0,
     x1=xd_1, r1=ra_1, freq=fn_1,
-    # vf=1.0,
-    # tm0=700.0/900.0,   # ≈ 0.7778
     tm0=6.999999999999923,
     vf=1.141048034212655,
     M=M_1, D=D_1,
@@ -475,8 +535,6 @@ gen1 = Generator(
 gen2 = Generator(
     name="Gen2", P=700.0, vset=1.01, Snom=900.0,
     x1=xd_2, r1=ra_2, freq=fn_2,
-    # vf=1.0,
-    # tm0=700.0/900.0,   # ≈ 0.7778
     tm0=6.999999999999478,
     vf=1.180101792122771,
     M=M_2, D=D_2,
@@ -487,8 +545,6 @@ gen2 = Generator(
 gen3 = Generator(
     name="Gen3", P=719.091, vset=1.03, Snom=900.0,
     x1=xd_3, r1=ra_3, freq=fn_3,
-    # vf=1.0,
-    # tm0=719.091/900.0,  # ≈ 0.7990
     tm0=7.331832804674334,
     vf=1.1551307366822237,
     M=M_3, D=D_3,
@@ -499,15 +555,12 @@ gen3 = Generator(
 gen4 = Generator(
     name="Gen4", P=700.0, vset=1.01, Snom=900.0,
     x1=xd_4, r1=ra_4, freq=fn_4,
-    # vf=1.0,
-    # tm0=700.0/900.0,   # ≈ 0.7778
     tm0=6.99999999999765,
     vf=1.2028205849036708,
     M=M_4, D=D_4,
     omega_ref=omega_ref_4,
     Kp=Kp_4, Ki=Ki_4
 )
-
 
 grid.add_generator(bus=bus1, api_obj=gen1)
 grid.add_generator(bus=bus2, api_obj=gen2)
@@ -518,16 +571,11 @@ grid.add_generator(bus=bus4, api_obj=gen4)
 # Events
 # ---------------------------------------------------------------------------------------
 
-# event1 = RmsEvent(load1, "Pl0", np.array([2.5, 12.5]), np.array([-9.0, -9.01]))
 event1 = RmsEvent(load1, "Pl0", np.array([2.5]), np.array([-9.0]))
 
-# event2 = RmsEvent(load1, "Ql0", np.array([16.5]), np.array([-0.8]))
-
-
 grid.add_rms_event(event1)
-# grid.add_rms_event(event2)
 
-# # Run power flow
+# Run power flow
 
 pf_options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,

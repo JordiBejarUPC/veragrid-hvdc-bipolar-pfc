@@ -8206,7 +8206,7 @@ QProgressBar::chunk{
                   </font>
                  </property>
                  <property name="text">
-                  <string>Small Signal</string>
+                  <string>Small-Signal</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
@@ -11450,7 +11450,7 @@ QProgressBar::chunk{
    <addaction name="actionVoltage_stability"/>
    <addaction name="actionContingency_analysis"/>
    <addaction name="actionRun_Dynamic_RMS_Simulation"/>
-   <addaction name="actionRun_Small_Signal_RMS_Simulation"/>
+   <addaction name="actionRunSmall_Signal_RMS_Simulation"/>
    <addaction name="separator"/>
    <addaction name="actionNodal_capacity"/>
    <addaction name="actionOptimal_Net_Transfer_Capacity"/>
@@ -13145,13 +13145,16 @@ QProgressBar::chunk{
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
    </property>
   </action>
-  <action name="actionRun_Small_Signal_RMS_Simulation">
+  <action name="actionRunSmall_Signal_RMS_Simulation">
    <property name="icon">
     <iconset resource="icons.qrc">
      <normaloff>:/Icons/icons/ss_icon.svg</normaloff>:/Icons/icons/ss_icon.svg</iconset>
    </property>
    <property name="text">
-    <string>Run Small Signal RMS Simulation</string>
+    <string>Run Small-Signal RMS Simulation</string>
+   </property>
+   <property name="iconText">
+    <string>Run Small-Signal RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Small Signal Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

@@ -208,7 +208,6 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     params0=params0,
-    time=t,
     method="implicit_euler"
 )
 
