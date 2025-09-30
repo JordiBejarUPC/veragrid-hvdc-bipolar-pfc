@@ -147,7 +147,8 @@ class SimulationsMain(TimeEventsMain):
         self.contingency_engines_dict = OrderedDict()
         self.contingency_engines_dict[ContingencyMethod.PowerFlow.value] = ContingencyMethod.PowerFlow
         # self.contingency_engines_dict[ContingencyMethod.OptimalPowerFlow.value] = ContingencyMethod.OptimalPowerFlow
-        self.contingency_engines_dict[ContingencyMethod.PTDF.value] = ContingencyMethod.PTDF
+        self.contingency_engines_dict[ContingencyMethod.Linear.value] = ContingencyMethod.Linear
+        self.contingency_engines_dict[ContingencyMethod.PTDF_scan.value] = ContingencyMethod.PTDF_scan
         self.ui.contingencyEngineComboBox.setModel(gf.get_list_model(list(self.contingency_engines_dict.keys())))
 
         # list of stochastic power flow methods
@@ -2035,7 +2036,8 @@ class SimulationsMain(TimeEventsMain):
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
-
+        use_glsk_as_cost = self.ui.useGslkAsCostsOpfCheckBox.isChecked()
+        add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
 
         if self.ui.save_mip_checkBox.isChecked():
@@ -2095,6 +2097,8 @@ class SimulationsMain(TimeEventsMain):
                                               generation_expansion_planning=generation_expansion_planning,
                                               export_model_fname=export_model_fname,
                                               generate_report=generate_report,
+                                              use_glsk_as_cost=use_glsk_as_cost,
+                                              add_losses_approximation=add_losses_approximation,
                                               ips_method=ips_method,
                                               ips_tolerance=ips_tolerance,
                                               ips_iterations=ips_iterations,
