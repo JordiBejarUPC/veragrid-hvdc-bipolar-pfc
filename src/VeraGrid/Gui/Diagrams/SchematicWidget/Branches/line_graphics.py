@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union
+
+from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
@@ -13,8 +15,10 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog, RmsModelEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
+
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -117,6 +121,11 @@ class LineGraphicItem(LineGraphicTemplateItem):
             add_menu_entry(menu=menu,
                            text="Editor",
                            function_ptr=self.edit,
+                           icon_path=":/Icons/icons/edit.svg")
+
+            add_menu_entry(menu=menu,
+                           text="Rms Editor",
+                           function_ptr=self.edit_rms,
                            icon_path=":/Icons/icons/edit.svg")
 
             add_menu_entry(menu=menu,
@@ -229,6 +238,28 @@ class LineGraphicItem(LineGraphicTemplateItem):
                          templates=templates, current_template=current_template)
         if dlg.exec():
             pass
+
+    # def edit_rms(self):
+    #     """
+    #     Open the appropriate editor dialogue
+    #     :return:
+    #     """
+    #     dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
+    #     dlg.show()
+
+    def edit_rms(self):
+        # Collect templates (example: sequence line types)
+        templates = [t.name for t in self.editor.circuit.sequence_line_types]
+
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: find the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+                dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
+                dlg.show()
 
     def add_to_catalogue(self):
         """
