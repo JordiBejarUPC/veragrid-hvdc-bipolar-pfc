@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic
 from VeraGridEngine.enumerations import DynamicVarType
 
 
@@ -196,10 +196,20 @@ def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - Const(value)])
     return y, blk
 
-def variable(name: str = "variable") -> Tuple[Var, Block]:
+def variable(name: str = "variable",  vartype: str = "vartype") -> Tuple[Var, Block]:
     y = Var(name)
-    blk = Block(algebraic_vars=[y])
+    if vartype == 'state':
+        blk = Block(state_vars=[y])
+    else:
+        blk = Block(algebraic_vars=[y])
     return y, blk
+
+def equation(expr: str = 'expression', etype: str = "etype")-> Block:
+    if etype == 'state':
+        blk = Block(state_eqs=[make_symbolic(expr)])
+    else:
+        blk = Block(algebraic_eqs=[make_symbolic(expr)])
+    return blk
 
 
 def gain(k: float, u: Var | Const, name: str = "gain_out") -> Tuple[Var, Block]:

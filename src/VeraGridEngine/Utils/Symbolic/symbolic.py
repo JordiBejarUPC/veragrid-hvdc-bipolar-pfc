@@ -18,7 +18,7 @@ from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence
 
 NUMBER = Union[int, float, complex]
 
-NAME = 'name'
+
 
 
 # -----------------------------------------------------------------------------
@@ -1034,7 +1034,9 @@ __all__ = [
     "abs",
     "angle",
     "heaviside",
-    "piecewise"
+    "piecewise",
+    "symbolic_to_string",
+    "make_symbolic"
 ]
 #
 # x = Var("x")

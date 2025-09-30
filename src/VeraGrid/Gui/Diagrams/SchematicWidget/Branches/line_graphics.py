@@ -249,14 +249,14 @@ class LineGraphicItem(LineGraphicTemplateItem):
 
     def edit_rms(self):
         # Collect templates (example: sequence line types)
-        templates = [t.name for t in self.editor.circuit.sequence_line_types]
+        templates = [t.name for t in self.editor.circuit.sequence_line_types] # TODO: find where to build and save the templates
 
         choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
             if choice_dialog.choice == "template":
                 template_name = choice_dialog.selected_template
                 print(f"User chose template: {template_name}")
-                # TODO: find the template object and apply it to self.api_object
+                # TODO: missing finding the template object and apply it to self.api_object
             elif choice_dialog.choice == "editor":
                 dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
                 dlg.show()

@@ -6,35 +6,79 @@
 import sys
 from PySide6 import QtWidgets
 from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtGui import QColor
 
 from VeraGrid.Gui.gui_functions import get_icon_list_model
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
-from VeraGrid.Gui.RmsModelEditor.block_editor import BlockEditor
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor import Ui_MainWindow
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.block_editor import BlockEditor
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.equations_editor import EditEquations
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 import VeraGridEngine.Devices as dev
 
-def add_vars(model, data_table_model):
+# def add_vars(model, data_table_model):
+#     if model.children:
+#         for submodel in model.children:
+#             for var, eq in zip(submodel.state_vars, submodel.state_eqs):
+#                 data_table_model.appendRow([
+#                     QStandardItem(var.name),
+#                     QStandardItem("state"),
+#                     QStandardItem(str(eq)),
+#                 ])
+#             for var, eq in zip(submodel.algebraic_vars, submodel.algebraic_eqs):
+#                 data_table_model.appendRow([
+#                     QStandardItem(var.name),
+#                     QStandardItem("algebraic"),
+#                     QStandardItem(str(eq)),
+#                 ])
+#             for const in submodel.parameters:
+#                 data_table_model.appendRow([
+#                     QStandardItem(const.name),
+#                     QStandardItem("parameter"),
+#                     QStandardItem(str(const.value)),
+#                 ])
+#             add_vars(submodel, data_table_model)
+#
+
+def add_vars(model, vars_model, eqns_model, color_map):
     if model.children:
         for submodel in model.children:
-            for var, eq in zip(submodel.state_vars, submodel.state_eqs):
-                data_table_model.appendRow([
+            for var in submodel.state_vars:
+                items = [
                     QStandardItem(var.name),
                     QStandardItem("state"),
-                    QStandardItem(str(eq)),
-                ])
-            for var, eq in zip(submodel.algebraic_vars, submodel.algebraic_eqs):
-                data_table_model.appendRow([
+                ]
+                for it in items:
+                    it.setForeground(color_map["State variables"])
+                vars_model.appendRow(items)
+            for eq in submodel.state_eqs:
+                eq_item = QStandardItem(str(eq))
+                eq_item.setForeground(color_map["State equations"])
+                eqns_model.appendRow([eq_item])
+
+            for var in submodel.algebraic_vars:
+                items = [
                     QStandardItem(var.name),
                     QStandardItem("algebraic"),
-                    QStandardItem(str(eq)),
-                ])
-            for const in submodel.parameters:
-                data_table_model.appendRow([
-                    QStandardItem(const.name),
+                ]
+                for it in items:
+                    it.setForeground(color_map["Algebraic variables"])
+                vars_model.appendRow(items)
+            for eq in submodel.algebraic_eqs:
+                eq_item = QStandardItem(str(eq))
+                eq_item.setForeground(color_map["Algebraic equations"])
+                eqns_model.appendRow([eq_item])
+
+            for param in submodel.parameters:
+                items = [
+                    QStandardItem(param.name),
                     QStandardItem("parameter"),
-                    QStandardItem(str(const.value)),
-                ])
-            add_vars(submodel, data_table_model)
+                    QStandardItem(str(param.value)),
+                ]
+                for it in items:
+                    it.setForeground(color_map["Parameters"])
+                vars_model.appendRow(items)
+
+            add_vars(submodel, vars_model, eqns_model, color_map)
 
 
 class RmsChoiceDialog(QtWidgets.QDialog):
@@ -103,8 +147,25 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.color_map = {
+            "State variables": QColor(144, 238, 144),  # green
+            "State equations": QColor(144, 238, 144),  # green
+            "Algebraic variables": QColor(173, 216, 230),  # blue
+            "Algebraic equations": QColor(173, 216, 230),  # blue
+            "Parameters": QColor(255, 200, 120),  # orange
+        }
+
+        for i in range(self.ui.datalistWidget.count()):
+            item = self.ui.datalistWidget.item(i)
+            text = item.text()
+            if text in self.color_map:
+                item.setForeground(self.color_map[text])  # background color
+                item.setBackground(QColor(0, 0, 0))  # text color (black)
+
         self.api_object = api_object
         self.setWindowTitle('RMS Model editor')
+
+        # add block editor
 
         self.model_host: DynamicModelHost = api_object.rms_model
         self.editor = BlockEditor(block=self.model_host.model,
@@ -113,9 +174,20 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.editorLayout.addWidget(self.editor)
 
+        # add equations editor
+
+        self.equations_editor = EditEquations(self.model_host)
+        self.ui.equations_editor_layout.addWidget(self.equations_editor)
+
         # Table model for variables/equations (right side)
-        self._data_table_model = QStandardItemModel()
-        self.ui.datatableView.setModel(self._data_table_model)
+        self._vars_table_model = QStandardItemModel()
+        self._vars_table_model.setHorizontalHeaderLabels(["Name", "Type"])
+        self.ui.tableView_variables_and_params.setModel(self._vars_table_model)
+
+        self._eqns_table_model = QStandardItemModel()
+        self._eqns_table_model.setHorizontalHeaderLabels(["Equations"])
+        self.ui.tableView_equations.setModel(self._eqns_table_model)
+
 
         # Connect category selection to table update
         self.ui.datalistWidget.itemSelectionChanged.connect(self.update_table)
@@ -132,10 +204,15 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             return
 
         category = items[0].text()
-        self._data_table_model.clear()
-        self._data_table_model.setHorizontalHeaderLabels(["Name", "Type", "Equation"])
 
-        add_vars(self.model, self._data_table_model)
+        self._vars_table_model.clear()
+        self._vars_table_model.setHorizontalHeaderLabels(["Name", "Type"])
+
+        self._eqns_table_model.clear()
+        self._eqns_table_model.setHorizontalHeaderLabels(["Equations"])
+
+        # Llenar tablas
+        add_vars(self.model, self._vars_table_model, self._eqns_table_model, self.color_map)
 
     def extract_dae(self):
         eqs = self.editor.run()
