@@ -2,11 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import scipy.linalg
+
 
 #Eigenvalues = [2,3,4,5,6,7,8]
 #df_Eig = pd.DataFrame(Eigenvalues)

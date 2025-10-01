@@ -43,6 +43,7 @@ class InjectionParent(PhysicalDevice):
         'shift_key',
         '_shift_key_prof',
         '_use_kw',
+        'bus_pos',
         '_conn',
         '_rms_model',
         'time'
@@ -117,6 +118,7 @@ class InjectionParent(PhysicalDevice):
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
 
+        self.bus_pos: int = 0
 
         self.register(key='bus', units='', tpe=DeviceType.BusDevice, definition='Connection bus', editable=False)
 
@@ -153,6 +155,9 @@ class InjectionParent(PhysicalDevice):
 
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
+
+        self.register(key='bus_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
+                      display=False)
 
     @property
     def bus(self) -> Bus:
@@ -246,9 +251,9 @@ class InjectionParent(PhysicalDevice):
                 else:
                     # is in MW, replace kW by MW
                     for key, prp in self.registered_properties.items():
-                        prp.units = (prp.units.replace( "kW", "MW")
-                                     .replace( "kVAr", "MVAr")
-                                     .replace( "kVA", "MVA"))
+                        prp.units = (prp.units.replace("kW", "MW")
+                                     .replace("kVAr", "MVAr")
+                                     .replace("kVA", "MVA"))
         else:
             self._use_kw = val
 
@@ -300,3 +305,12 @@ class InjectionParent(PhysicalDevice):
         :return: Bus
         """
         return self.technologies.to_list()
+
+    def get_bus_pos(self, bus: Bus | None = None) -> int:
+        """
+        Get the bus position
+        NOTE: don't remove the void bus argument
+        :param bus: Bus
+        :return: bus_pos
+        """
+        return self.bus_pos

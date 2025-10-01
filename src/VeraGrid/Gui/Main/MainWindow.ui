@@ -4059,7 +4059,7 @@ QProgressBar::chunk{
            <enum>QTabWidget::TabPosition::South</enum>
           </property>
           <property name="currentIndex">
-           <number>7</number>
+           <number>0</number>
           </property>
           <property name="iconSize">
            <size>
@@ -7810,14 +7810,14 @@ QProgressBar::chunk{
                 <widget class="QLabel" name="label_414">
                  <property name="minimumSize">
                   <size>
-                   <width>127</width>
-                   <height>48</height>
+                   <width>24</width>
+                   <height>24</height>
                   </size>
                  </property>
                  <property name="maximumSize">
                   <size>
-                   <width>120</width>
-                   <height>56</height>
+                   <width>24</width>
+                   <height>24</height>
                   </size>
                  </property>
                  <property name="text">
@@ -7827,7 +7827,7 @@ QProgressBar::chunk{
                   <pixmap resource="icons.qrc">:/Icons/icons/dyn.svg</pixmap>
                  </property>
                  <property name="scaledContents">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -8003,6 +8003,9 @@ QProgressBar::chunk{
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
+                    <property name="suffix">
+                     <string>s</string>
+                    </property>
                     <property name="decimals">
                      <number>4</number>
                     </property>
@@ -8028,7 +8031,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval (h)</string>
+                     <string>Time step</string>
                     </property>
                    </widget>
                   </item>
@@ -8041,6 +8044,9 @@ QProgressBar::chunk{
                     </property>
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>
@@ -8161,17 +8167,48 @@ QProgressBar::chunk{
                <enum>QFrame::Shadow::Raised</enum>
               </property>
               <layout class="QGridLayout" name="gridLayout_35">
-               <item row="2" column="1">
-                <widget class="QLabel" name="label_418">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_415">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/ss_icon.svg</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0" colspan="3">
+                <widget class="Line" name="line_63">
                  <property name="palette">
                   <palette>
                    <active>
                     <colorrole role="WindowText">
                      <brush brushstyle="SolidPattern">
                       <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
                       </color>
                      </brush>
                     </colorrole>
@@ -8180,9 +8217,9 @@ QProgressBar::chunk{
                     <colorrole role="WindowText">
                      <brush brushstyle="SolidPattern">
                       <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
                       </color>
                      </brush>
                     </colorrole>
@@ -8200,44 +8237,18 @@ QProgressBar::chunk{
                    </disabled>
                   </palette>
                  </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>16</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Small Signal</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2" rowspan="2">
-                <widget class="QFrame" name="frame_112">
-                 <property name="frameShape">
-                  <enum>QFrame::Shape::NoFrame</enum>
-                 </property>
                  <property name="frameShadow">
-                  <enum>QFrame::Shadow::Raised</enum>
+                  <enum>QFrame::Shadow::Plain</enum>
                  </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_54">
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                 </layout>
+                 <property name="lineWidth">
+                  <number>4</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
                 </widget>
                </item>
-               <item row="5" column="0" colspan="2">
+               <item row="4" column="0" colspan="3">
                 <widget class="QFrame" name="frame_114">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -8260,7 +8271,7 @@ QProgressBar::chunk{
                      </font>
                     </property>
                     <property name="text">
-                     <string>Time interval (h)</string>
+                     <string>Time step</string>
                     </property>
                    </widget>
                   </item>
@@ -8273,6 +8284,9 @@ QProgressBar::chunk{
                     </property>
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="suffix">
+                     <string>s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>
@@ -8325,6 +8339,9 @@ QProgressBar::chunk{
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
+                    <property name="suffix">
+                     <string>s</string>
+                    </property>
                     <property name="decimals">
                      <number>4</number>
                     </property>
@@ -8371,7 +8388,7 @@ QProgressBar::chunk{
                      <bool>false</bool>
                     </property>
                     <property name="currentText">
-                     <string>implicit euler</string>
+                     <string>trapezoid</string>
                     </property>
                     <item>
                      <property name="text">
@@ -8432,48 +8449,17 @@ QProgressBar::chunk{
                  </layout>
                 </widget>
                </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_415">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>120</width>
-                   <height>39</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>120</width>
-                   <height>50</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/ss_icon.svg</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="0" colspan="2">
-                <widget class="Line" name="line_63">
+               <item row="0" column="1" colspan="2">
+                <widget class="QLabel" name="label_418">
                  <property name="palette">
                   <palette>
                    <active>
                     <colorrole role="WindowText">
                      <brush brushstyle="SolidPattern">
                       <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
                       </color>
                      </brush>
                     </colorrole>
@@ -8482,9 +8468,9 @@ QProgressBar::chunk{
                     <colorrole role="WindowText">
                      <brush brushstyle="SolidPattern">
                       <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
                       </color>
                      </brush>
                     </colorrole>
@@ -8502,14 +8488,16 @@ QProgressBar::chunk{
                    </disabled>
                   </palette>
                  </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Shadow::Plain</enum>
+                 <property name="font">
+                  <font>
+                   <pointsize>16</pointsize>
+                  </font>
                  </property>
-                 <property name="lineWidth">
-                  <number>4</number>
+                 <property name="text">
+                  <string>Small-Signal</string>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
                  </property>
                 </widget>
                </item>
@@ -11243,7 +11231,7 @@ QProgressBar::chunk{
      <x>0</x>
      <y>0</y>
      <width>1338</width>
-     <height>33</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="font">
@@ -13151,7 +13139,10 @@ QProgressBar::chunk{
      <normaloff>:/Icons/icons/ss_icon.svg</normaloff>:/Icons/icons/ss_icon.svg</iconset>
    </property>
    <property name="text">
-    <string>Run Small Signal RMS Simulation</string>
+    <string>Run Small-Signal RMS Simulation</string>
+   </property>
+   <property name="iconText">
+    <string>Run Small-Signal RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Small Signal Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

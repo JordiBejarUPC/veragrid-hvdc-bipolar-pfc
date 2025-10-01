@@ -417,7 +417,8 @@ class ContingencyMethod(Enum):
     PowerFlow = 'Power flow'
     OptimalPowerFlow = 'Optimal power flow'
     HELM = 'HELM'
-    PTDF = 'PTDF'
+    Linear = 'Linear'
+    PTDF_scan = "PTDF Scan"
 
     def __str__(self):
         return self.value
@@ -1832,7 +1833,7 @@ class ResultTypes(Enum):
 
     # RMS Small Signal Stability
     ParticipationFactors = "Participation Factors"
-    Eigenvalues = "Eigenvalues"
+    Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
 
     # inputs analysis
