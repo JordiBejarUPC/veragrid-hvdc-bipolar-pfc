@@ -39,7 +39,8 @@ from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, SolverType, MIPSolvers, TimeGrouping,
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
-                                         ContingencyFilteringMethods, InvestmentsEvaluationObjectives)
+                                         ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
+                                         ReliabilityMode)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -90,6 +91,12 @@ class SimulationsMain(TimeEventsMain):
         self.lp_solvers_dict[SolverType.NONLINEAR_OPF.value] = SolverType.NONLINEAR_OPF
         self.lp_solvers_dict[SolverType.GREEDY_DISPATCH_OPF.value] = SolverType.GREEDY_DISPATCH_OPF
         self.ui.lpf_solver_comboBox.setModel(gf.get_list_model(list(self.lp_solvers_dict.keys())))
+
+        # reliabilty modes
+        self.reliability_mode_dict = OrderedDict()
+        self.reliability_mode_dict[ReliabilityMode.GenerationAdequacy.value] = ReliabilityMode.GenerationAdequacy
+        self.reliability_mode_dict[ReliabilityMode.GridMetrics.value] = ReliabilityMode.GridMetrics
+        self.ui.reliability_method_comboBox.setModel(gf.get_list_model(list(self.reliability_mode_dict.keys())))
 
         # ips solvers dictionary
         self.ips_solvers_dict = OrderedDict()
@@ -2989,9 +2996,12 @@ class SimulationsMain(TimeEventsMain):
 
                     pf_options = self.get_selected_power_flow_options()
 
+                    mode = self.reliability_mode_dict[self.ui.reliability_method_comboBox.currentText()]
+
                     drv = sim.ReliabilityStudyDriver(grid=self.circuit,
                                                      pf_options=pf_options,
                                                      time_indices=self.get_time_indices(),
+                                                     reliability_mode=mode,
                                                      n_sim=self.ui.max_iterations_reliability_spinBox.value())
 
                     self.session.run(drv,

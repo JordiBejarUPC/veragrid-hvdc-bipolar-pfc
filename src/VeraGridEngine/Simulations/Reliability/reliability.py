@@ -146,6 +146,31 @@ def find_different_states(mat1: IntMat, mat2: IntMat):
     return states
 
 
+@nb.njit()
+def find_time_blocks(horizon: int, all_actives: IntMat):
+    """
+    Get the contigous time blocks of failure
+    :param horizon: number of time steps (ntime)
+    :param all_actives: matrix of active states (ntime, n_device)
+    :return:
+    """
+    blocks = list()
+    idx_list = list()
+    for tidx in range(horizon):
+
+        val = all_actives[tidx, :].sum()
+
+        if val != all_actives.shape[1]:
+            # there is at least one failure
+            idx_list.append(tidx)
+        else:
+            # there is no failure
+            if len(idx_list) > 0:
+                blocks.append(idx_list.copy())
+                idx_list.clear()
+    return blocks
+
+
 @nb.njit(cache=True)
 def compute_loss_of_load_because_of_lack_of_generation(gen_pmax: Mat, load: Mat, dt: Vec):
     """
