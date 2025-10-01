@@ -132,7 +132,7 @@ class ReliabilityStudyDriver(DriverTemplate):
         self.results.lole_evolution = np.cumsum(lole) / (np.arange(len(lole)) + 1)
         print(f"LOLE: {lole.mean()} MWh/year")
 
-    def run_grid_reliability(self):
+    def run_grid_reliability(self) -> None:
         """
         run the voltage collapse simulation
         @return:
