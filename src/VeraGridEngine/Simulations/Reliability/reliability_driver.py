@@ -5,13 +5,14 @@
 
 import numpy as np
 
-from VeraGridEngine.enumerations import SimulationTypes
+from VeraGridEngine.enumerations import SimulationTypes, ReliabilityMode
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import GreedyDispatchInputs, greedy_dispatch
-from VeraGridEngine.Simulations.Reliability.reliability import reliability_simulation
+from VeraGridEngine.Simulations.Reliability.reliability import reliability_simulation, reliability_grid_simulation
 from VeraGridEngine.Simulations.Reliability.reliability_results import ReliabilityResults
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
 class ReliabilityStudyDriver(DriverTemplate):
@@ -21,6 +22,7 @@ class ReliabilityStudyDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  pf_options: PowerFlowOptions,
+                 reliability_mode: ReliabilityMode = ReliabilityMode.GenerationAdequacy,
                  time_indices=None,
                  n_sim: int = 1000000):
         """
@@ -33,6 +35,8 @@ class ReliabilityStudyDriver(DriverTemplate):
 
         # voltage stability options
         self.pf_options = pf_options
+
+        self.reliability_mode = reliability_mode
 
         self.n_sim = n_sim
 
@@ -53,12 +57,24 @@ class ReliabilityStudyDriver(DriverTemplate):
         self.report_text('Running voltage collapse lambda:' + "{0:.2f}".format(lmbda) + '...')
 
     def run(self):
+        self.report_text("Running reliability study...")
+        self.tic()
+
+        if self.reliability_mode == ReliabilityMode.GenerationAdequacy:
+            self.run_adequacy_reliability()
+
+        elif self.reliability_mode == ReliabilityMode.GridMetrics:
+            self.run_grid_reliability()
+
+        self.toc()
+        self.report_text("Done!")
+        self.done_signal.emit()
+
+    def run_adequacy_reliability(self):
         """
         run the voltage collapse simulation
         @return:
         """
-        self.report_text("Running reliability study...")
-        self.tic()
 
         horizon = self.grid.get_time_number()
 
@@ -116,10 +132,41 @@ class ReliabilityStudyDriver(DriverTemplate):
 
         self.results.lole_evolution = np.cumsum(lole) / (np.arange(len(lole)) + 1)
         print(f"LOLE: {lole.mean()} MWh/year")
-        self.toc()
 
-        self.report_text("Done!")
-        self.done_signal.emit()
+    def run_grid_reliability(self):
+        """
+        run the voltage collapse simulation
+        @return:
+        """
+
+        horizon = self.grid.get_time_number()
+
+        n_gen = self.grid.get_generators_number()
+
+        nc = compile_numerical_circuit_at(self.grid)
+
+        n_branches = self.grid.get_branch_number()
+
+        branch_mttf = np.zeros(n_branches)
+        branch_mttr = np.zeros(n_branches)
+
+        for k, branch in enumerate(nc.passive_branch_data):
+            branch_mttf[k] = branch.mttf
+            branch_mttr[k] = branch.mttr
+
+        dt = 0
+
+        lole, hours_not_supplied = reliability_grid_simulation(nc,
+                                                               grid,
+                                                               self.n_sim,
+                                                               branch_mttf,
+                                                               branch_mttr,
+                                                               dt,
+                                                               1e-6)
+
+        self.results.lole_evolution = np.cumsum(lole) / (np.arange(len(lole)) + 1)
+        print(f"LOLE: {lole.mean()} MWh/year")
+        print(f"Hours not supplied: {hours_not_supplied} h")
 
     def cancel(self):
         self.__cancel__ = True
