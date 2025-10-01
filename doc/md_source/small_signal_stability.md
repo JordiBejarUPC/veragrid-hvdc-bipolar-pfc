@@ -293,7 +293,8 @@ When a linearized system has complex conjugate modes, they represent oscillatory
 - The **imaginary part** determines oscillation frequency: $f=\frac{Im(\lambda)}{2\pi}$
 
 **Participation factors** determine how much each state variable contributes to each mode and otherwise. In power systems 
-it is crucial to determine which devices are the origin of the oscillations and instabilities. They are computed as:
+it is crucial to determine which devices are the origin of the oscillations and instabilities. They are often normalized 
+to to enhance interpretability and facilitate analytical comparison. They are computed as:
 
 $$
 PF_{i,k}=W_{i,k} \cdot V_{i,k}
