@@ -4122,7 +4122,7 @@ class Assets:
         """
         self._rms_events_groups.append(obj)
 
-    def delete_rms_events_groups(self, obj: dev.RmsEventsGroup):
+    def delete_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
         Delete zone
         :param obj: index
@@ -4226,7 +4226,7 @@ class Assets:
                     to_del.append(grp)
 
             for grp in to_del:
-                self.delete_rms_events_groups(grp)
+                self.delete_rms_events_group(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Remedial action

@@ -830,6 +830,18 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.DynamicModelHost(name=name)
                 self.circuit.add_rms_model(obj)
 
+            elif elm_type == DeviceType.RmsEventDevice.value:
+
+                name = f'RMS event {len(self.circuit.rms_events)}'
+                obj = dev.RmsEvent(name=name)
+                self.circuit.add_rms_event(obj)
+
+            elif elm_type == DeviceType.RmsEventsGroupDevice.value:
+
+                name = f'RMS event grou{len(self.circuit.rms_events_groups)}'
+                obj = dev.RmsEventsGroup(name=name)
+                self.circuit.add_rms_events_group(obj)
+
             else:
                 info_msg("This object does not support table-like addition.\nUse the schematic instead.")
                 return
