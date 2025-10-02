@@ -187,6 +187,10 @@ def build_tar_gz_pkg(pkg_name: str,
     """
     pkg_name2 = pkg_name.lower() + '-' + version
     filename = pkg_name2 + '.tar.gz'
+
+    if not os.path.exists(folder_to_save):
+        os.makedirs(folder_to_save)
+
     output_filename = os.path.join(folder_to_save, filename)
 
     files = find_pkg_files(path=pkg_name,
