@@ -30,6 +30,8 @@ from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
 from typing import Dict, List, Literal, Any, Callable, Sequence
 from matplotlib import pyplot as plt
 
+
+# from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -71,7 +73,6 @@ def _compile_equations(eqs: Sequence[Expr],
     if add_doc_string:
         fn.__doc__ = "def _f(vars)"
     return fn
-
 
 def _compile_parameters_equations(eqs: Sequence[Expr],
                                   uid2sym_t: Dict[int, str],
@@ -254,6 +255,47 @@ def _get_jacobian(eqs: List[Expr],
     return jac_fn
 
 
+# def compose_system_block(grid: MultiCircuit, power_flow_results) -> Block:
+#     """
+#     Compose all RMS models
+#     :return: System block
+#     """
+#     # already computed grid power flow
+#     res = power_flow_results
+#
+#     # create the system block
+#     sys_block = Block(children=[], in_vars=[])
+#
+#     # initialize set variables list
+#     already_set: List[Var] = list()
+#
+#     # buses
+#     for i, elm in enumerate(grid.buses):
+#         mdl = elm.rms_model.model
+#         #mdl.compute_init_guess
+#         # set already computed values
+#         Vm0 = res.voltage[i]
+#         already_set.append(Vm0)
+#         init_eqs = mdl.init_eqs
+#         sys_block.children.append(mdl)
+#
+#     # branches
+#     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+#         mdl = elm.rms_model.model
+#         #mdl.compute_init_guess
+#         init_eqs = mdl.init_eqs
+#         sys_block.children.append(mdl)
+#
+#     # initialize injections
+#     for elm in grid.get_injection_devices_iter():
+#         mdl = elm.rms_model.model
+#         #mdl.compute_init_guess
+#         init_eqs = mdl.init_eqs
+#         sys_block.children.append(mdl)
+#
+#     return sys_block
+
+
 class BlockSolver:
     """
     A network of Blocks that behaves roughly like a Simulink diagram.
@@ -283,6 +325,7 @@ class BlockSolver:
             self._state_eqs.extend(b.state_eqs)
             self._parameters.extend(b.parameters)
             self._parameters_eqs.extend(b.parameters_eqs)
+
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
@@ -1190,6 +1233,7 @@ class BlockSolver:
         all_vars = self._state_vars + self._algebraic_vars
         var_names = [str(var) + '_VeraGrid' for var in all_vars]
 
+
         # Create DataFrame with time and variable data
         df_simulation_results = pd.DataFrame(data=y, columns=var_names)
         df_simulation_results.insert(0, 'Time [s]', t)
@@ -1256,11 +1300,38 @@ class BlockSolver:
         for i in range(len(eigen_values)):
             participation_factors[:, i] /= PF_abs[0, i]
 
-            # Stability: select positive and zero eigenvalues
+        # damping ratios
+        Eig_no_conjugates = []
+        seen = set()
+        tol = 1e-12
+        for z in Eigenvalues:
+            # Si és real, el guardem directament
+            if np.isreal(z):
+                continue
+            # Si té part imaginària positiva
+            elif z.imag > tol:
+                if z not in seen and np.conj(z) not in seen:
+                    seen.add(z)
+                    Eig_no_conjugates.append(z)
+            # Si té part imaginària negativa, ignorem (ja es guardarà el conjugat positiu)
+            elif z.imag < tol:
+                continue
+        Eig_no_conjugates = np.array(Eig_no_conjugates)
 
-        unstable_eigs = eigen_values[np.real(eigen_values) > tol]
-        zero_eigs = eigen_values[abs(np.real(eigen_values)) <= tol]
-        stable_eigs = eigen_values[np.real(eigen_values) < -tol]
+        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
+        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
+        for i in range(len(Eig_no_conjugates)):
+            re = Eig_no_conjugates[i].real
+            modz = abs(Eig_no_conjugates[i])
+            if modz < tol:
+                zeta[i] = 0.0
+            else:
+                zeta[i] = -re / modz
+
+        # Stability: select positive and zero eigenvalues
+        tol = 1e-6  # numerical tolerance for eigenvalues = 0
+        unstable_eigs = Eigenvalues[np.real(Eigenvalues) > tol]
+        zero_eigs = Eigenvalues[abs(np.real(Eigenvalues)) <= tol]
 
         if unstable_eigs.size == 0:
             if zero_eigs.size == 0:
