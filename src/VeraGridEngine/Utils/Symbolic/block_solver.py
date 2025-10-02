@@ -88,11 +88,6 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    # ns: Dict[str, Any] = {"math": math, "np": np, "_heaviside": _heaviside}
-    # exec(src, ns)
-    # fn = nb.njit(ns["_f"], fastmath=True)
-    # if add_doc_string:
-    #     fn.__doc__ = "def _f(vars)"
 
     exec(src)
     compiled_func = locals()[fname]
@@ -175,14 +170,13 @@ class SymbolicJacobian:
         src = f"def {fname}(vars, params, out):\n"
         src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
-        src += "    return out"
 
         # compile to python
         exec(src, self.namespace)
 
         if use_jit:
             # compile with numba
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:]),
+            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             # just pick the python pointer from the namespace
@@ -232,14 +226,13 @@ class SymbolicVector:
         # Build source
         src = f"def {fname}(vars, params, out):\n"
         src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
-        src += f"    return out"
 
         # compile in python namespace
         exec(src, self.namespace)
 
         # compile in numba
         if use_jit:
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:]),
+            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             self.func = self.namespace[fname]
@@ -254,6 +247,56 @@ class SymbolicVector:
         :return:
         """
         self.func(values, params, self.data)
+        return self.data
+
+
+class SymbolicParamsVector:
+    """
+    SymbolicFunction
+    """
+
+    def __init__(self, eqs: Sequence[Expr],
+                 uid2sym_t: Dict[int, str],
+                 use_jit: bool = True):
+        """
+        Compile the array of expressions to a function that returns an array of values for those expressions
+        :param eqs: Iterable of expressions (Expr)
+        :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :return: Function pointer that returns an array
+        """
+
+        self.namespace: Dict[str, Any] = {
+            "math": math,
+            "np": np,
+            "nb": nb,
+            "_heaviside": _heaviside,
+        }
+
+        fname = f"func"  # since we compile into a namespace, there won't be repeated names
+
+        # Build source
+        src = f"def {fname}(glob_time, out):\n"
+        src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+
+        # compile in python namespace
+        exec(src, self.namespace)
+
+        # compile in numba
+        if use_jit:
+            self.func = nb.njit(nb.void(nb.float64, nb.float64[:]),
+                                fastmath=True)(self.namespace[fname])
+        else:
+            self.func = self.namespace[fname]
+
+        self.data = np.zeros(len(eqs))
+
+    def __call__(self, glob_time: Vec) -> Vec:
+        """
+        Call the compiled function
+        :param glob_time:
+        :return:
+        """
+        self.func(glob_time, self.data)
         return self.data
 
 
@@ -352,11 +395,6 @@ class BlockSolver:
         start_compiling = time.time()
         print("Compiling...", end="")
 
-        # all_eqs = self._state_eqs + self._algebraic_eqs
-        # all_vars = self._state_vars + self._algebraic_vars
-
-        # self._full_jacobian_fn = _get_full_jacobian(eqs=all_eqs, variables=all_vars, uid2sym_vars=uid2sym_vars, uid2sym_params=uid2sym_params)
-
         self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
                                             uid2sym_vars=uid2sym_vars,
                                             uid2sym_params=uid2sym_params,
@@ -367,8 +405,8 @@ class BlockSolver:
                                             uid2sym_params=uid2sym_params,
                                             use_jit=use_jit)
 
-        self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs,
-                                                        uid2sym_t=uid2sym_t)
+        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs,
+                                               uid2sym_t=uid2sym_t)
 
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._state_vars,
