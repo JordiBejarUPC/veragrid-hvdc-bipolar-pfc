@@ -13,6 +13,10 @@ from VeraGrid.__version__ import about_msg
 
 # NOTE: For some reason I cannot begin to comprehend, the activation fails on windows if called before the GUI...
 import VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation
+from PySide6.QtCore import QResource
+
+__here__ = os.path.abspath(os.path.dirname(__file__))
+QResource.registerResource(os.path.join(__here__, "Gui", "Main",  "icons.rcc"))
 
 from VeraGrid.Gui.Main.VeraGridMain import runVeraGrid
 
