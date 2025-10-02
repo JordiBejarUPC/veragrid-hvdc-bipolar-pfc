@@ -31,6 +31,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
 
@@ -629,12 +630,18 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        """
-        Open the appropriate editor dialogue
-        :return:
-        """
-        dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
-        dlg.show()
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: missing finding the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                dlg.show()
 
 
     def assign_status_to_profile(self):

@@ -15,7 +15,6 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
@@ -49,8 +48,6 @@ pr.disable()
 
 
 # Build system
-
-t = Var("t")
 
 grid = MultiCircuit()
 
@@ -352,14 +349,17 @@ vars_in_order = slv.sort_vars_from_uid(init_guess)
 
 start_simulation = time.time()
 
-# t, y = slv.simulate(
-#     t0=0,
-#     t_end=20.0,
-#     h=0.001,
-#     x0=x0,
-#     params0=params0,
-#     method="implicit_euler"
-# )
+pr.enable()
+
+t, y = slv.simulate(
+    t0=0,
+    t_end=20.0,
+    h=0.001,
+    x0=x0,
+    params0=params0,
+    method="implicit_euler"
+)
+pr.disable()
 
 end_simulation = time.time()
 print(f"Automatic simulation time = {end_simulation-start_simulation:.6f} [s]")
@@ -399,3 +399,4 @@ print("Eigenvalues:", Eigenvalues)
 print("Participation factors:", PFactors.toarray())
 df_Eig = pd.DataFrame(Eigenvalues)
 df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
+pr.dump_stats('profile.pstat')

@@ -261,3 +261,17 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
 def generic() -> Block:
     blk = Block()
     return blk
+
+#
+# def generic(state_inputs: Sequence[Var | Const], state_outputs: Sequence[Var | Const], algebraic_inputs: Sequence[Var | Const], algebraic_outputs: Sequence[Var | Const]) -> Block:
+#     blk = Block()
+#     input_vars = [Var(f"V{i}") for i in range(state_inputs)]
+#         Block.state_vars
+
+
+
+
+
+
+
+    return blk

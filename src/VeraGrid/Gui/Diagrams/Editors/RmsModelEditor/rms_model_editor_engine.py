@@ -1172,7 +1172,7 @@ class EditEquations(QWidget):
         left_panel.addLayout(var_header_layout)
 
         self.list_vars = QListWidget()
-        self.list_vars.itemDoubleClicked.connect(self.edit_variable)
+        # self.list_vars.itemDoubleClicked.connect(self.edit_variable)
         left_panel.addWidget(self.list_vars)
 
         # Parameters
@@ -1199,7 +1199,7 @@ class EditEquations(QWidget):
         right_panel.addLayout(eqn_header_layout)
 
         self.list_eqns = QListWidget()
-        self.list_eqns.itemDoubleClicked.connect(self.edit_equation)
+        # self.list_eqns.itemDoubleClicked.connect(self.edit_equation)
         right_panel.addWidget(self.list_eqns)
 
         # ----------------- Connections -----------------
@@ -1270,42 +1270,44 @@ class EditEquations(QWidget):
         self.model_host.model.add(blk)
         self.refresh_lists()
 
-    def edit_variable(self, item):
-        from PySide6.QtWidgets import QInputDialog
-        full_text = item.text()
-        name, vtype = full_text.split(" (")
-        vtype = vtype[:-1]
+    ##### editing equations needs to access uid of the variables
 
-        new_name, ok = QInputDialog.getText(self, "Edit Variable", "Variable name:", text=name)
-        if not ok or not new_name:
-            return
-
-        new_vtype, ok = QInputDialog.getItem(self, "Variable Type", "Select type:",
-                                             ["state", "algebraic"],
-                                             current=0 if vtype == "state" else 1,
-                                             editable=False)
-        if not ok:
-            return
-
-        for model in self.model_host.model.children:
-            if vtype == "state":
-                for var in model.state_vars:
-                    if var.name == name:
-                        # elimina el bloque viejo
-                        model.state_vars.remove(var)
-                        # crea el nuevo
-                        new_var, blk = variable(new_name, new_vtype)
-                        model.add(blk)
-            if vtype == "algebraic":
-                for var in model.algebraic_vars:
-                    if var.name == name:
-                        # elimina el bloque viejo
-                        model.algebraic_vars.remove(var)
-                        # crea el nuevo
-                        new_var, blk = variable(new_name, new_vtype)
-                        model.add(blk)
-
-        self.refresh_lists()
+    # def edit_variable(self, item):
+    #     from PySide6.QtWidgets import QInputDialog
+    #     full_text = item.text()
+    #     name, vtype = full_text.split(" (")
+    #     vtype = vtype[:-1]
+    #
+    #     new_name, ok = QInputDialog.getText(self, "Edit Variable", "Variable name:", text=name)
+    #     if not ok or not new_name:
+    #         return
+    #
+    #     new_vtype, ok = QInputDialog.getItem(self, "Variable Type", "Select type:",
+    #                                          ["state", "algebraic"],
+    #                                          current=0 if vtype == "state" else 1,
+    #                                          editable=False)
+    #     if not ok:
+    #         return
+    #
+    #     for model in self.model_host.model.children:
+    #         if vtype == "state":
+    #             for var in model.state_vars:
+    #                 if var.name == name:
+    #                     # elimina el bloque viejo
+    #                     model.state_vars.remove(var)
+    #                     # crea el nuevo
+    #                     new_var, blk = variable(new_name, new_vtype)
+    #                     model.add(blk)
+    #         if vtype == "algebraic":
+    #             for var in model.algebraic_vars:
+    #                 if var.name == name:
+    #                     # elimina el bloque viejo
+    #                     model.algebraic_vars.remove(var)
+    #                     # crea el nuevo
+    #                     new_var, blk = variable(new_name, new_vtype)
+    #                     model.add(blk)
+    #
+    #     self.refresh_lists()
 
     # def edit_parameter(self, item):
     #     from PySide6.QtWidgets import QInputDialog
@@ -1323,39 +1325,39 @@ class EditEquations(QWidget):
     #
     #     self.refresh_lists()
 
-    def edit_equation(self, item):
-        from PySide6.QtWidgets import QInputDialog
-        # Texto formato "expr (state/algebraic)"
-        full_text = item.text()
-        expr, etype = full_text.split(" (")
-        etype = etype[:-1]  # quitar ")"
-
-        new_expr, ok = QInputDialog.getText(self, "Edit Equation", "Equation:", text=expr)
-        if not ok or not new_expr:
-            return
-
-        new_etype, ok = QInputDialog.getItem(self, "Equation Type", "Select type:",
-                                             ["state", "algebraic"],
-                                             current=0 if etype == "state" else 1,
-                                             editable=False)
-        if not ok:
-            return
-
-        for model in self.model_host.model.children:
-            if etype == "state":
-                for eq in model.state_eqs:
-                    if symbolic_to_string(eq) == expr:
-                        model.state_eqs.remove(eq)
-                        new_blk = equation(new_expr, new_etype)
-                        model.add(new_blk)
-            if etype == "algebraic":
-                for eq in model.algebraic_eqs:
-                    if symbolic_to_string(eq) == expr:
-                        model.algebraic_eqs.remove(eq)
-                        new_blk = equation(new_expr, new_etype)
-                        model.add(new_blk)
-
-        self.refresh_lists()
+    # def edit_equation(self, item):
+    #     from PySide6.QtWidgets import QInputDialog
+    #     # Texto formato "expr (state/algebraic)"
+    #     full_text = item.text()
+    #     expr, etype = full_text.split(" (")
+    #     etype = etype[:-1]  # quitar ")"
+    #
+    #     new_expr, ok = QInputDialog.getText(self, "Edit Equation", "Equation:", text=expr)
+    #     if not ok or not new_expr:
+    #         return
+    #
+    #     new_etype, ok = QInputDialog.getItem(self, "Equation Type", "Select type:",
+    #                                          ["state", "algebraic"],
+    #                                          current=0 if etype == "state" else 1,
+    #                                          editable=False)
+    #     if not ok:
+    #         return
+    #
+    #     for model in self.model_host.model.children:
+    #         if etype == "state":
+    #             for eq in model.state_eqs:
+    #                 if symbolic_to_string(eq) == expr:
+    #                     model.state_eqs.remove(eq)
+    #                     new_blk = equation(new_expr, new_etype)
+    #                     model.add(new_blk)
+    #         if etype == "algebraic":
+    #             for eq in model.algebraic_eqs:
+    #                 if symbolic_to_string(eq) == expr:
+    #                     model.algebraic_eqs.remove(eq)
+    #                     new_blk = equation(new_expr, new_etype)
+    #                     model.add(new_blk)
+    #
+    #     self.refresh_lists()
 
 
 ####### main editor ########

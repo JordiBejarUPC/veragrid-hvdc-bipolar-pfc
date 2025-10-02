@@ -204,6 +204,7 @@ def _get_jacobian(eqs: List[Expr],
 
     triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
 
+
     for row, eq in enumerate(eqs):
         for col, var in enumerate(variables):
             d_expression = eq.diff(var).simplify()
