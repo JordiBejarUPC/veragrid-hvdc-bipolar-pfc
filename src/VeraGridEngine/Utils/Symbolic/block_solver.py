@@ -6,26 +6,21 @@
 
 from __future__ import annotations
 
-import sys
-import os
 import time
 
-import cProfile as profile
 import uuid
 
-from typing import Tuple, Any
+from typing import Tuple
 import pandas as pd
 import numpy as np
 import numba as nb
 import math
 import scipy.sparse as sp
-import scipy.linalg
-from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
-from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
-from typing import Dict, List, Literal, Any, Callable, Sequence
-from matplotlib import pyplot as plt
 
-# from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse.linalg import gmres, spilu, LinearOperator
+from typing import Dict, List, Any, Callable, Sequence
+
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -213,29 +208,31 @@ class SymbolicVector:
         :param uid2sym_params:
         :return: Function pointer that returns an array
         """
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": _heaviside,
+            }
 
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
-        fname = f"func"  # since we compile into a namespace, there won't be repeated names
+            # Build source
+            src = f"def {fname}(vars, params, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
 
-        # Build source
-        src = f"def {fname}(vars, params, out):\n"
-        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+            # compile in python namespace
+            exec(src, self.namespace)
 
-        # compile in python namespace
-        exec(src, self.namespace)
-
-        # compile in numba
-        if use_jit:
-            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+                                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
         else:
-            self.func = self.namespace[fname]
+            self.func = None
 
         self.data = np.zeros(len(eqs))
 
@@ -246,7 +243,8 @@ class SymbolicVector:
         :param params:
         :return:
         """
-        self.func(values, params, self.data)
+        if self.func is not None:
+            self.func(values, params, self.data)
         return self.data
 
 
@@ -264,29 +262,31 @@ class SymbolicParamsVector:
         :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
         :return: Function pointer that returns an array
         """
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": _heaviside,
+            }
 
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
-        fname = f"func"  # since we compile into a namespace, there won't be repeated names
+            # Build source
+            src = f"def {fname}(glob_time, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
 
-        # Build source
-        src = f"def {fname}(glob_time, out):\n"
-        src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+            # compile in python namespace
+            exec(src, self.namespace)
 
-        # compile in python namespace
-        exec(src, self.namespace)
-
-        # compile in numba
-        if use_jit:
-            self.func = nb.njit(nb.void(nb.float64, nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(nb.void(nb.float64, nb.float64[:]),
+                                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
         else:
-            self.func = self.namespace[fname]
+            self.func = None
 
         self.data = np.zeros(len(eqs))
 
@@ -296,7 +296,8 @@ class SymbolicParamsVector:
         :param glob_time:
         :return:
         """
-        self.func(glob_time, self.data)
+        if self.func is not None:
+            self.func(glob_time, self.data)
         return self.data
 
 
@@ -436,6 +437,38 @@ class BlockSolver:
         end_compiling = time.time()
         compilation_time = end_compiling - start_compiling
         print(f"all compilation time = {compilation_time:.6f} [s]")
+
+    @property
+    def j11(self) -> SymbolicJacobian:
+        """
+        state eq / state var jacobian
+        :return: SymbolicJacobian
+        """
+        return self._j11_fn
+
+    @property
+    def j12(self) -> SymbolicJacobian:
+        """
+        state eq / algeb var
+        :return: SymbolicJacobian
+        """
+        return self._j12_fn
+
+    @property
+    def j21(self) -> SymbolicJacobian:
+        """
+        algeb eq / state Var
+        :return:  SymbolicJacobian
+        """
+        return self._j21_fn
+
+    @property
+    def j22(self) -> SymbolicJacobian:
+        """
+        algeb eq / algeb Var
+        :return: SymbolicJacobian
+        """
+        return self._j22_fn
 
     @property
     def state_vars(self) -> List[Var]:
@@ -1215,128 +1248,3 @@ class BlockSolver:
             df_simulation_results.to_csv(filename, index=False)
             print(f"Simulation results saved to: {filename}")
         return df_simulation_results
-
-    def run_small_signal_stability(self, x: Vec, params: Vec, plot=True, verbose: int = 0):
-        """
-        Small Signal Stability analysis
-        :param x: variables (1D numpy array)
-        :param params: parameters (1D numpy array)
-        :param plot: True(default) if S-domain eigenvalues plot wanted. Else: False
-        :return:
-            stability: str
-                "Unstable", "Marginally stable" or "Asymptotically stable"
-            eigenvalues:  1D row numpy array
-            participation factors: 2D array csc matrix.
-                Participation factors of mode i stored in PF[:,i]
-        """
-
-        """
-        Small Signal Stability analysis:
-        1. Calculate the state matrix (A) from the state space model. From the DAE model:
-            Tx'=f(x,y)
-            0=g(x,y)
-            the A matrix is computed as:
-            A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
-
-        2. Find eigenvalues and right(V) and left(W) eigenvectors
-
-        3. Perform stability assessment
-
-        4. Calculate normalized participation factors PF = W · V
-        """
-
-        fx = self._j11_fn(x, params)  # ∂f/∂x
-        fy = self._j12_fn(x, params)  # ∂f/∂y
-        gx = self._j21_fn(x, params)  # ∂g/∂x
-        gy = self._j22_fn(x, params)  # ∂g/∂y
-
-        gyx = spsolve(gy, gx)
-        A = (fx - fy @ gyx)  # sparse state matrix csc matrix
-        An = A.toarray()  # TODO: always use sparse algebra
-
-        num_states = A.shape[0]
-
-        eigenvalues, w, v = scipy.linalg.eig(An, left=True, right=True)
-        # eigen_values, eigen_vectors = eigs(A)  # TODO: always use sparse algebra
-        v = sp.csc_matrix(v)  # right
-        w = sp.csc_matrix(w)  # left
-
-        # find participation factors
-        participation_factors = sp.lil_matrix(A.shape)
-        for row in range(w.shape[0]):
-            for column in range(w.shape[0]):
-                participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
-
-        # normalize participation factors
-        pfact_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
-        for i in range(len(eigenvalues)):
-            participation_factors[:, i] /= pfact_abs[0, i]
-
-        # damping ratios
-        eig_no_conjugates = []
-        seen = set()
-        tol = 1e-12
-        for z in eigenvalues:
-            if np.isreal(z):
-                seen.add(z)
-                eig_no_conjugates.append(z)
-            elif z.imag > tol:
-                if z not in seen and np.conj(z) not in seen:
-                    seen.add(z)
-                    eig_no_conjugates.append(z)
-            elif z.imag < tol:
-                continue
-        eig_no_conjugates = sp.lil_matrix(eig_no_conjugates)
-
-        if verbose:
-            print("eig no conjugates:", eig_no_conjugates)
-
-        damping_ratios = lil_matrix(eig_no_conjugates.shape, dtype=float)
-        conjugate_frequencies = lil_matrix(eig_no_conjugates.shape, dtype=float)
-        for i in range(eig_no_conjugates.shape[1]):
-            re = eig_no_conjugates[0, i].real
-            im = eig_no_conjugates[0, i].imag
-            conjugate_frequencies[0, i] = im / (2 * math.pi)
-            modz = abs(eig_no_conjugates[0, i])
-            if tol > modz:
-                damping_ratios[0, i] = 0.0
-            else:
-                damping_ratios[0, i] = -re / modz
-
-        # Stability: select positive and zero eigenvalues
-        tol = 1e-6  # numerical tolerance for eigenvalues = 0
-        unstable_eigs = eigenvalues[np.real(eigenvalues) > tol]
-        zero_eigs = eigenvalues[abs(np.real(eigenvalues)) <= tol]
-
-        # real_parts = eigenvalues.data.real
-        # pos = real_parts > tol
-        # unstable_eigs = eigenvalues.data[pos]
-
-        if unstable_eigs.size == 0:
-            if zero_eigs.size == 0:
-                stability = "Asymptotically stable"  # TODO: always use Enums for known states
-            else:
-                stability = "Marginally stable"
-        else:
-            stability = "Unstable"
-
-        if plot:
-            x = eigenvalues.real
-            y = eigenvalues.imag
-
-            plt.scatter(x, y, marker='x', color='blue')
-            plt.xlabel("Re [s -1]")
-            plt.ylabel("Im [s -1]")
-            plt.title("Stability plot")
-            plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
-            plt.axvline(0, color='black', linewidth=1)
-            plt.tight_layout()
-            plt.show()
-
-        if verbose:
-            print("all eigenvalues:", eigenvalues)
-            print("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
-            print("daming ratios:", damping_ratios.toarray())
-            print("conjugate_frequencies:", conjugate_frequencies.toarray())
-
-        return stability, eigenvalues, participation_factors, damping_ratios, conjugate_frequencies
