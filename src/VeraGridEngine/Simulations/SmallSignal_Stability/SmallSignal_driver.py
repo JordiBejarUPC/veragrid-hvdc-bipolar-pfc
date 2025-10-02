@@ -69,15 +69,11 @@ class SmallSignal_Stability_Driver(DriverTemplate):
         params_mapping: Dict = dict()
 
         ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        print(init_guess)
-        print("initguess ok")
-
         slv = BlockSolver(ss, self.grid.time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
-        print("xo:", x0)
-        print("blocksolver ok")
+
         if not self.options.ss_assessment_time == 0:
             # Get integration method
             if self.options.integration_method == "trapezoid":
@@ -95,11 +91,9 @@ class SmallSignal_Stability_Driver(DriverTemplate):
                 method=integrator
             )
             i = int(self.options.ss_assessment_time/self.options.time_step)
-            print("i:", i)
-            print("rms simulation performed")
             stab, Eigenvalues, pfactors = slv.stability_assessment(x=y[i], params=params0, plot=False )
         else:
-            print("rms simulation NOT performed")
+
             stab, Eigenvalues, pfactors = slv.stability_assessment(x=x0, params=params0, plot=False )
 
 
@@ -108,6 +102,7 @@ class SmallSignal_Stability_Driver(DriverTemplate):
                                                     PF = pfactors,
                                                     stat_vars=slv._state_vars,
                                                     vars2device=slv.vars2device)
+
 
         self.toc()
 
