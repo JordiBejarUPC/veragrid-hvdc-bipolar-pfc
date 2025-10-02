@@ -50,83 +50,82 @@ def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) 
     return cur
 
 
-# def _compile_equations(eqs: Sequence[Expr],
-#                        uid2sym_vars: Dict[int, str],
-#                        uid2sym_params: Dict[int, str],
-#                        add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
-#     """
-#     Compile the array of expressions to a function that returns an array of values for those expressions
-#     :param eqs: Iterable of expressions (Expr)
-#     :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-#     :param uid2sym_params:
-#     :param add_doc_string: add the docstring?
-#     :return: Function pointer that returns an array
-#     """
-#     # Build source
-#     src = f"def _f(vars, params):\n"
-#     src += f"    out = np.zeros({len(eqs)})\n"
-#     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
-#     src += f"    return out"
-#     ns: Dict[str, Any] = {"math": math, "np": np}
-#     exec(src, ns)
-#     signature = float64[:](float64[:], float64[:])
-#     fn = nb.njit(signature, fastmath=True, cache=True)
-#
-#     if add_doc_string:
-#         fn.__doc__ = "def _f(vars)"
-#     return fn
-
-from numba import float64
-import re
-
 def _compile_equations(eqs: Sequence[Expr],
                        uid2sym_vars: Dict[int, str],
                        uid2sym_params: Dict[int, str],
                        add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    """
+    Compile the array of expressions to a function that returns an array of values for those expressions
+    :param eqs: Iterable of expressions (Expr)
+    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+    :param uid2sym_params:
+    :param add_doc_string: add the docstring?
+    :return: Function pointer that returns an array
+    """
     # Build source
-    src = "def _f(vars, params):\n"
+    src = f"def _f(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
-    src += "    return out\n"
-
+    src += f"    return out"
     ns: Dict[str, Any] = {"math": math, "np": np}
-    # include any other helpers used by _emit here, e.g. _heaviside if needed:
-    # ns['_heaviside'] = _heaviside
-
     exec(src, ns)
-
-    # 1) define numba signature: 1D float64 array -> (1D float64 array, 1D float64 array)
-    signature = float64[:](float64[:], float64[:])
-
-    # 2) apply decorator to the created function (this returns a compiled dispatcher)
-    compiled_fn = nb.njit(signature, fastmath=True)(ns["_f"])
-
-    # # 3) compute sizes for dummy arrays to force a first compilation now (optional but recommended)
-    # n_vars = len(uid2sym_vars)   # in your BlockSolver this equals total vars
-    # n_params = len(uid2sym_params)
-    #
-    # # ensure these are float64 contiguous arrays
-    # dummy_vars = np.zeros(max(1, n_vars), dtype=np.float64)
-    # dummy_params = np.zeros(max(1, n_params), dtype=np.float64)
-    #
-    # # Force a first compile for the fixed signature (this will raise early if something is unsupported)
-    # try:
-    #     compiled_fn(dummy_vars, dummy_params)
-    # except Exception as e:
-    #     # Raise a clearer error so puedes depurar: typing errors, unsupported globals, etc.
-    #     raise RuntimeError(f"Numba compilation failed for generated _f: {e}\n"
-    #                        f"Check that the emitted code uses only numba-supported operations and that 'ns' contains needed functions.") from e
-
-    # 4) wrapper that forces dtype/contiguity on inputs to avoid numba recompilations
-    def fn(vars, params):
-        vars = np.ascontiguousarray(vars, dtype=np.float64)
-        params = np.ascontiguousarray(params, dtype=np.float64)
-        return compiled_fn(vars, params)
+    fn = nb.njit(signature, fastmath=True, cache=True)
 
     if add_doc_string:
-        fn.__doc__ = "def _f(vars, params) -> np.ndarray   (compiled, expects float64 1D arrays)"
-
+        fn.__doc__ = "def _f(vars)"
     return fn
+
+# from numba import float64
+# import re
+#
+# def _compile_equations(eqs: Sequence[Expr],
+#                        uid2sym_vars: Dict[int, str],
+#                        uid2sym_params: Dict[int, str],
+#                        add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+#     # Build source
+#     src = "def _f(vars, params):\n"
+#     src += f"    out = np.zeros({len(eqs)})\n"
+#     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+#     src += "    return out\n"
+#
+#     ns: Dict[str, Any] = {"math": math, "np": np}
+#     # include any other helpers used by _emit here, e.g. _heaviside if needed:
+#     # ns['_heaviside'] = _heaviside
+#
+#     exec(src, ns)
+#
+#     # 1) define numba signature: 1D float64 array -> (1D float64 array, 1D float64 array)
+#     signature = float64[:](float64[:], float64[:])
+#
+#     # 2) apply decorator to the created function (this returns a compiled dispatcher)
+#     compiled_fn = nb.njit(signature, fastmath=True)(ns["_f"])
+#
+#     # # 3) compute sizes for dummy arrays to force a first compilation now (optional but recommended)
+#     # n_vars = len(uid2sym_vars)   # in your BlockSolver this equals total vars
+#     # n_params = len(uid2sym_params)
+#     #
+#     # # ensure these are float64 contiguous arrays
+#     # dummy_vars = np.zeros(max(1, n_vars), dtype=np.float64)
+#     # dummy_params = np.zeros(max(1, n_params), dtype=np.float64)
+#     #
+#     # # Force a first compile for the fixed signature (this will raise early if something is unsupported)
+#     # try:
+#     #     compiled_fn(dummy_vars, dummy_params)
+#     # except Exception as e:
+#     #     # Raise a clearer error so puedes depurar: typing errors, unsupported globals, etc.
+#     #     raise RuntimeError(f"Numba compilation failed for generated _f: {e}\n"
+#     #                        f"Check that the emitted code uses only numba-supported operations and that 'ns' contains needed functions.") from e
+#
+#     # 4) wrapper that forces dtype/contiguity on inputs to avoid numba recompilations
+#     def fn(vars, params):
+#         vars = np.ascontiguousarray(vars, dtype=np.float64)
+#         params = np.ascontiguousarray(params, dtype=np.float64)
+#         return compiled_fn(vars, params)
+#
+#     if add_doc_string:
+#         fn.__doc__ = "def _f(vars, params) -> np.ndarray   (compiled, expects float64 1D arrays)"
+#
+#     return fn
 
 
 def _compile_parameters_equations(eqs: Sequence[Expr],
