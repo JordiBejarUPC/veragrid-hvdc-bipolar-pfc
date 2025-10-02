@@ -50,14 +50,25 @@ def Andes_vs_Veragrid_stability(eigV, eigA):
     y1 = VeraGrid_Eig_ord.imag
     x2= Andes_Eig_ord.real
     y2 = Andes_Eig_ord.imag
-
+    slope = 1 / 0.05
+    x_z = np.linspace(-200, 0, 400)
+    y_z = slope * x_z
+    # Plot the two lines (positive and negative imaginary axis)
+    plt.plot(x_z, y_z, '--', color='grey', label='ζ = 5%')
+    plt.plot(x_z, -y_z, '--', color='grey')
     plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
     plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
     plt.xlabel("Re [s -1]")
     plt.ylabel("Im [s -1]")
     plt.title("Stability plot")
-    # plt.xlim([-5, 5])
-    # plt.ylim([-5, 5])
+    margin_x = (x1.max() - x1.min()) * 0.1
+    margin_y = (y1.max() - y1.min()) * 0.1
+    x_min = x1.min() - margin_x
+    x_max = x1.max() + margin_x
+    y_min = y1.min() - margin_y
+    y_max = y1.max() + margin_y
+    plt.xlim([x_min, x_max])
+    plt.ylim([y_min, y_max])
     plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
     plt.axvline(0, color='black', linewidth=1)
     # plt.grid(True)

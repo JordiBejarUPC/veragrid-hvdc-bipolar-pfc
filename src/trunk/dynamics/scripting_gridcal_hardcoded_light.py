@@ -386,7 +386,8 @@ start_stability = time.time()
  damping_ratios,
  conjugate_frequencies) = slv.run_small_signal_stability(x=x0,
                                                          params=params0,
-                                                         plot=True)
+                                                         plot=True,
+                                                         verbose = 1)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")

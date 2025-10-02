@@ -1199,13 +1199,28 @@ class BlockSolver:
         if plot:
             x = eigenvalues.real
             y = eigenvalues.imag
-
+            slope = 1/0.05
+            x_z = np.linspace(-200, 0, 400)
+            y_z = slope * x_z
+            # Plot the two lines (positive and negative imaginary axis)
+            plt.plot(x_z, y_z, '--', color='grey', label='ζ = 5%')
+            plt.plot(x_z, -y_z, '--', color='grey')
             plt.scatter(x, y, marker='x', color='blue')
             plt.xlabel("Re [s -1]")
             plt.ylabel("Im [s -1]")
             plt.title("Stability plot")
             plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
             plt.axvline(0, color='black', linewidth=1)
+
+            margin_x = (x.max() - x.min()) * 0.1
+            margin_y = (y.max() - y.min()) * 0.1
+            x_min = x.min() - margin_x
+            x_max = x.max() + margin_x
+            y_min = y.min() - margin_y
+            y_max = y.max() + margin_y
+            plt.xlim([x_min, x_max])
+            plt.ylim([y_min, y_max])
+
             plt.tight_layout()
             plt.show()
 
