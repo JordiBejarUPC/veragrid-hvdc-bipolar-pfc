@@ -285,7 +285,7 @@ def test_participation_factors():
 
     equal = False
     if pfactors_Andes.shape == pfactors_VeraGrid_ord.shape:
-        equal = np.allclose(pfactors_Andes, pfactors_VeraGrid_ord.toarray(), atol=1e-2)
+        equal = np.allclose(pfactors_Andes, pfactors_VeraGrid_ord, atol=1e-2)
 
     assert equal
 
