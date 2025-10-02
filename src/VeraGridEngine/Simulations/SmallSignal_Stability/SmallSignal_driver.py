@@ -4,22 +4,15 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-import pandas as pd
-from typing import Dict
+from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic import Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.SmallSignal_Stability.SmallSignal_options import SmallSignal_Stability_Options
 from VeraGridEngine.Simulations.SmallSignal_Stability.SmallSignal_results import SmallSignal_Stability_Results
-# from VeraGridEngine.Simulations.Rms.problems.rms_problem import RmsProblem
-from VeraGridEngine.Simulations.Rms.numerical.integration_methods import Trapezoid, BackEuler
-from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.enumerations import EngineType, SimulationTypes
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-import VeraGridEngine.api as gce
-
 
 
 class SmallSignal_Stability_Driver(DriverTemplate):
@@ -27,8 +20,8 @@ class SmallSignal_Stability_Driver(DriverTemplate):
     tpe = SimulationTypes.SmallSignal_run
 
     def __init__(self, grid: MultiCircuit,
-                 options: SmallSignal_Stability_Options,
-                 pf_results: PowerFlowResults | None,
+                 options: Union[SmallSignal_Stability_Options, None] = None,
+                 pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
         """
@@ -43,15 +36,17 @@ class SmallSignal_Stability_Driver(DriverTemplate):
 
         self.grid = grid
 
-        self.pf_results: PowerFlowResults | None = pf_results
+        self.pf_results: Union[PowerFlowResults, None] = pf_results
 
-        self.options = options
+        self.options: SmallSignal_Stability_Options = SmallSignal_Stability_Options() if options is None else options
 
-        self.results = SmallSignal_Stability_Results(stability = "",
+        self.results:  SmallSignal_Stability_Results = SmallSignal_Stability_Results(stability = "",
                  Eigenvalues = np.empty(0),
                  PF = np.empty(0),
                  stat_vars =  [],
                  vars2device= {})
+
+        self.__cancel__ = False
 
     def run(self):
         """
@@ -74,7 +69,6 @@ class SmallSignal_Stability_Driver(DriverTemplate):
         params_mapping: Dict = dict()
 
         ss, init_guess = initialize_rms(self.grid, self.pf_results)
-
         slv = BlockSolver(ss, self.grid.time)
 
         params0 = slv.build_init_params_vector(params_mapping)
@@ -96,17 +90,19 @@ class SmallSignal_Stability_Driver(DriverTemplate):
                 params0=params0,
                 method=integrator
             )
-            i = self.options.ss_assessment_time/self.options.time_step
+            i = int(self.options.ss_assessment_time/self.options.time_step)
             stab, Eigenvalues, pfactors = slv.stability_assessment(x=y[i], params=params0, plot=False )
         else:
+
             stab, Eigenvalues, pfactors = slv.stability_assessment(x=x0, params=params0, plot=False )
 
 
-        self.results = SmallSignal_Stability_Results(stability=stab,
+        self.results: SmallSignal_Stability_Results = SmallSignal_Stability_Results(stability=stab,
                                                     Eigenvalues = Eigenvalues,
                                                     PF = pfactors,
                                                     stat_vars=slv._state_vars,
                                                     vars2device=slv.vars2device)
+
 
         self.toc()
 

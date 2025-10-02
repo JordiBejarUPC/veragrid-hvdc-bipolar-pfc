@@ -26,6 +26,13 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
 
+import cProfile as profile
+import pstats
+
+
+pr = profile.Profile()
+pr.disable()
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Power flow
 # ----------------------------------------------------------------------------------------------------------------------
@@ -378,7 +385,12 @@ print(f"Automatic simulation time = {end_simulation-start_simulation:.6f} [s]")
 #stability assessment
 start_stability = time.time()
 # stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
+pr.enable()
 stab, Eigenvalues, PFactors = slv.stability_assessment(x=x0, params=params0, plot = True)
+pr.disable()
+pr.dump_stats('profile.pstat')
+p = pstats.Stats('profile.pstat')
+p.sort_stats('cumulative').print_stats(10)
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
 

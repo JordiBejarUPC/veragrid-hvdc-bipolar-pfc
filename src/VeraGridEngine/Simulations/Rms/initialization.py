@@ -283,6 +283,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         else:
             elm.initialize_rms()
         mdl = elm.rms_model.model
+        # add variable to conservation equations of the bus to which the element is connected
         k = bus_dict[elm.bus]
         setP(P, P_used, k, mdl.E(DynamicVarType.P))
         setQ(Q, Q_used, k, mdl.E(DynamicVarType.Q))
@@ -295,11 +296,12 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
     # add the nodal balance equations
     for i, elm in enumerate(grid.buses):
         mdl = elm.rms_model.model
-        if P_used[i] == 0 and Q_used[i] == 0:
-            logger.add_error("Isolated bus", value=i)
-        else:
-            mdl.algebraic_eqs.append(P[i])
-            mdl.algebraic_eqs.append(Q[i])
+        if len(mdl.algebraic_eqs) == 0:
+            if P_used[i] == 0 and Q_used[i] == 0:
+                logger.add_error("Isolated bus", value=i)
+            else:
+                mdl.algebraic_eqs.append(P[i])
+                mdl.algebraic_eqs.append(Q[i])
 
 
 

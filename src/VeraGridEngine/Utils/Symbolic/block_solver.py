@@ -11,6 +11,11 @@ import sys
 import os
 import time
 
+import cProfile as profile
+
+pr = profile.Profile()
+pr.disable()
+
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../..", "src")))
@@ -232,6 +237,7 @@ def _get_jacobian(eqs: List[Expr],
 
     def jac_fn(values: np.ndarray, params: np.ndarray) -> tuple[csc_matrix, float, float]:  # noqa: D401 – simple
         assert len(values) >= len(variables)
+        pr.enable()
 
         start_jac = time.time()
         jac_values = functions_ptr(values, params)
@@ -247,6 +253,8 @@ def _get_jacobian(eqs: List[Expr],
         end_csc_matrix = time.time()
         csc_matrix_time = end_csc_matrix - start_csc_matrix
 
+        pr.disable()
+        pr.dump_stats('profile.pstat')
 
 
         return csc_matrix, jac_eval_time, csc_matrix_time
