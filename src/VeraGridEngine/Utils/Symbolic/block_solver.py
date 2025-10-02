@@ -1026,10 +1026,12 @@ class BlockSolver:
 
         num_states = A.shape[0]
 
+        # eigenvalues and eigenvectors
         Eigenvalues, W, V = scipy.linalg.eig(An, left=True, right=True)
         V = sp.csc_matrix(V) #right
         W = sp.csc_matrix(W) #left
 
+        # participation factors
         PF = sp.lil_matrix(A.shape)
         for row in range(W.shape[0]):
             for column in range(W.shape[0]):
@@ -1039,11 +1041,38 @@ class BlockSolver:
         for i in range(len(Eigenvalues)):
             PF[:, i] /= PF_abs[0, i] #normalize participation factors
 
+        # damping ratios
+        Eig_no_conjugates = []
+        seen = set()
+        tol = 1e-12
+        for z in Eigenvalues:
+            # Si és real, el guardem directament
+            if np.isreal(z):
+                continue
+            # Si té part imaginària positiva
+            elif z.imag > tol:
+                if z not in seen and np.conj(z) not in seen:
+                    seen.add(z)
+                    Eig_no_conjugates.append(z)
+            # Si té part imaginària negativa, ignorem (ja es guardarà el conjugat positiu)
+            elif z.imag < tol:
+                continue
+        Eig_no_conjugates = np.array(Eig_no_conjugates)
+
+        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
+        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
+        for i in range(len(Eig_no_conjugates)):
+            re = Eig_no_conjugates[i].real
+            modz = abs(Eig_no_conjugates[i])
+            if modz < tol:
+                zeta[i] = 0.0
+            else:
+                zeta[i] = -re / modz
+
         # Stability: select positive and zero eigenvalues
         tol = 1e-6  # numerical tolerance for eigenvalues = 0
         unstable_eigs = Eigenvalues[np.real(Eigenvalues) > tol]
         zero_eigs = Eigenvalues[abs(np.real(Eigenvalues)) <= tol]
-        stable_eigs = Eigenvalues[np.real(Eigenvalues) < -tol]
 
         if unstable_eigs.size == 0:
             if zero_eigs.size == 0:
