@@ -31,8 +31,8 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsModelEditorGUI
 
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType

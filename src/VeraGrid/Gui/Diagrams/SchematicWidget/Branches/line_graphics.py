@@ -15,7 +15,8 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog, RmsModelEditorGUI
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
 
@@ -239,26 +240,18 @@ class LineGraphicItem(LineGraphicTemplateItem):
         if dlg.exec():
             pass
 
-    # def edit_rms(self):
-    #     """
-    #     Open the appropriate editor dialogue
-    #     :return:
-    #     """
-    #     dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
-    #     dlg.show()
-
     def edit_rms(self):
         # Collect templates (example: sequence line types)
-        templates = [t.name for t in self.editor.circuit.sequence_line_types]
+        templates = [t.name for t in self.editor.circuit.sequence_line_types] # TODO: find where to build and save the templates
 
         choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
             if choice_dialog.choice == "template":
                 template_name = choice_dialog.selected_template
                 print(f"User chose template: {template_name}")
-                # TODO: find the template object and apply it to self.api_object
+                # TODO: missing finding the template object and apply it to self.api_object
             elif choice_dialog.choice == "editor":
-                dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
                 dlg.show()
 
     def add_to_catalogue(self):
