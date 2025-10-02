@@ -377,19 +377,22 @@ print(f"Automatic simulation time = {end_simulation - start_simulation:.6f} [s]"
 # plt.show()
 
 # stability assessment
-# start_stability = time.time()
-# # stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
-# pr.enable()
-# stab, Eigenvalues, PFactors, damping_ratios, conjugate_frequencies = slv.run_small_signal_stability(x=x0, params=params0, plot = True)
-# pr.disable()
-# pr.dump_stats('profile.pstat')
-# p = pstats.Stats('profile.pstat')
-# p.sort_stats('cumulative').print_stats(10)
-# end_stability = time.time()
-# print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
-#
-# print("Stability assessment:", stab)
-# print("Eigenvalues:", Eigenvalues)
-# print("Participation factors:", PFactors.toarray())
-# df_Eig = pd.DataFrame(Eigenvalues)
-# df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
+start_stability = time.time()
+# stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
+
+(stab,
+ Eigenvalues,
+ PFactors,
+ damping_ratios,
+ conjugate_frequencies) = slv.run_small_signal_stability(x=x0,
+                                                         params=params0,
+                                                         plot=True)
+
+end_stability = time.time()
+print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
+
+print("Stability assessment:", stab)
+print("Eigenvalues:", Eigenvalues)
+print("Participation factors:", PFactors.toarray())
+df_Eig = pd.DataFrame(Eigenvalues)
+df_Eig.to_csv("Eigenvalues_results.csv", index=False, header=False)

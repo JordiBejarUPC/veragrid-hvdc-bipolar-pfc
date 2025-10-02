@@ -1124,10 +1124,10 @@ class BlockSolver:
         4. Calculate normalized participation factors PF = W · V
         """
 
-        fx, _, _ = self._j11_fn(x, params)  # ∂f/∂x
-        fy, _, _ = self._j12_fn(x, params)  # ∂f/∂y
-        gx, _, _ = self._j21_fn(x, params)  # ∂g/∂x
-        gy, _, _ = self._j22_fn(x, params)  # ∂g/∂y
+        fx = self._j11_fn(x, params)  # ∂f/∂x
+        fy = self._j12_fn(x, params)  # ∂f/∂y
+        gx = self._j21_fn(x, params)  # ∂g/∂x
+        gy = self._j22_fn(x, params)  # ∂g/∂y
 
         gyx = spsolve(gy, gx)
         A = (fx - fy @ gyx)  # sparse state matrix csc matrix
