@@ -375,7 +375,7 @@ bus2_block = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 
 sys = Block(
-    children=[line_block, load_block, generator_block_ML_0, bus1_block, bus2_block],
+    children=[line_block, load_block, generator_block, bus1_block, bus2_block],
     in_vars=[]
 )
 

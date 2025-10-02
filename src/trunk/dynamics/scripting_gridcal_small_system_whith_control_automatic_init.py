@@ -11,9 +11,24 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
+from VeraGridEngine import power_flow
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Branches.line import Line
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
+
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver  # compose_system_block
@@ -63,32 +78,37 @@ Ki_1 = 0.0
 # Build the system
 # ----------------------------------------------------------------------------------------------------------------------
 
-grid = gce.MultiCircuit(Sbase=100, fbase=60.0)
+t = Var("t")
+
+grid = MultiCircuit(Sbase=100, fbase=60.0)
 
 # Buses
-bus0 = gce.Bus(name="Bus0", Vnom=20, is_slack=True)
-bus2 = gce.Bus(name="Bus2", Vnom=20)
-bus1 = gce.Bus(name="Bus1", Vnom=20)
+bus0 = Bus(name="Bus0", Vnom=20, is_slack=True)
+bus2 = Bus(name="Bus2", Vnom=20)
+# bus1 = Bus(name="Bus1", Vnom=20)
 grid.add_bus(bus0)
-grid.add_bus(bus1)
+# grid.add_bus(bus1)
 grid.add_bus(bus2)
 
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus2, r=0.005, x=0.05, b=0.02187, rate=900.0)
-line1 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.005, x=0.05, b=0.02187, rate=900.0)
+line0 = Line(name="line 0-2", bus_from=bus0, bus_to=bus2, r=0.005, x=0.05, b=0.02187, rate=900.0)
+# line1 = Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.005, x=0.05, b=0.02187, rate=900.0)
 grid.add_line(line0)
-grid.add_line(line1)
+# grid.add_line(line1)
 
 # load
-load0 = gce.Load(P= 7.5, Q= 1.0, Pl0= -0.075000000001172, Ql0= -0.009999999862208533)
-# load0 = gce.Load(P= -0.075000000001172, Q= -0.009999999862208533)
-grid.add_load(bus=bus2, api_obj=load0)
+
+Load0 = Load(name="Load0", P= 7.5, Q= 1.0, Pl0= -0.075000000001172, Ql0= -0.009999999862208533)
+
+load_grid = grid.add_load(bus=bus2, api_obj=Load0)
 
 # Generators
-gen0 = gce.Generator(name="Gen0", P=4, vset=1.0, Snom=900,
+gen0 = Generator(name="Gen0", P=4, vset=1.0, Snom=900,
                      x1=xd_0, r1=ra_0, freq=fn_0,
-                     vf=0.9949586567266662,
-                     tm0=0.04001447535676884,
+                     vf = 0.9967798127873505,
+                     tm0 = 0.0750281479189543,
+                     # vf=0.9949586567266662,
+                     # tm0=0.04001447535676884,
                      M=M_0,
                      D=D_0,
                      omega_ref=omega_ref_0,
@@ -96,20 +116,27 @@ gen0 = gce.Generator(name="Gen0", P=4, vset=1.0, Snom=900,
                      Ki=Ki_0,
                      )
 
-gen1 = gce.Generator(name="Gen1", P=3.5, vset=1.0, Snom=900,
-                     x1=xd_1, r1=ra_1, freq=fn_1,
-                     vf=0.9950891766401684,
-                     tm0=0.035000000019606944,
-                     M=M_1,
-                     D=D_1,
-                     omega_ref=omega_ref_1,
-                     Kp=Kp_1,
-                     Ki=Ki_1,
-                     )
+# gen1 = Generator(name="Gen1", P=3.5, vset=1.0, Snom=900,
+#                      x1=xd_1, r1=ra_1, freq=fn_1,
+#                      vf=0.9950891766401684,
+#                      tm0=0.035000000019606944,
+#                      M=M_1,
+#                      D=D_1,
+#                      omega_ref=omega_ref_1,
+#                      Kp=Kp_1,
+#                      Ki=Ki_1,
+#                      )
 grid.add_generator(bus=bus0, api_obj=gen0)
-grid.add_generator(bus=bus1, api_obj=gen1)
+# grid.add_generator(bus=bus1, api_obj=gen1)
 
-options = gce.PowerFlowOptions(
+# ---------------------------------------------------------------------------------------
+# Events
+# ---------------------------------------------------------------------------------------
+#
+# event1 = RmsEvent(Load0, "Pl0", np.array([2.5]), np.array([0.15]))
+# grid.add_rms_event(event1)
+
+options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,
     retry_with_other_methods=False,
     verbose=0,
@@ -132,7 +159,7 @@ options = gce.PowerFlowOptions(
     generate_report=False,
     three_phase_unbalanced=False
 )
-res = gce.power_flow(grid, options=options)
+res = power_flow(grid, options=options)
 
 # print power flow results
 
@@ -147,13 +174,15 @@ logger = gce.Logger()
 # Build init guess and solver
 # ----------------------------------------------------------------------------------------------------------------------
 
-sys_block, init_guess = gce.initialize_rms(grid, res)
+
+
+sys_block, init_guess = initialize_rms(grid, res)
 print(init_guess)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys_block)
+slv = BlockSolver(sys_block, grid.time)
 
 params_mapping = {
     # Pl0: 0.1,
@@ -164,10 +193,6 @@ params_mapping = {
 # Events
 # ---------------------------------------------------------------------------------------
 
-# event1 = RmsEvent(Pl0, 5000, 0.3)
-# event2 = Event(Ql0, 5000, 0.3)
-# my_events = RmsEvents([event1])
-my_events = RmsEvents([])
 params0 = slv.build_init_params_vector(params_mapping)
 
 # x0 = slv.build_init_vars_vector(mapping)
@@ -206,7 +231,6 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     params0=params0,
-    events_list=my_events,
     method="implicit_euler"
 )
 

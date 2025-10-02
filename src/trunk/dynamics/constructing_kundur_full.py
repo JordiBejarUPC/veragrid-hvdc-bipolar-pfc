@@ -5,14 +5,19 @@
 import math
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 import sys
 import os
+import time
+
+from VeraGridEngine import DynamicVarType
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 import VeraGridEngine.api as gce
@@ -396,6 +401,12 @@ vf_3  = Const(vf0_3)
 tm0_4 = Const(t_e0_4)
 vf_4  = Const(vf0_4)
 # ----------------------------------------------------------------------------------------------------------------------
+
+# ----------
+# Variables
+# ----------
+
+t = Var("t")
 
 # Line 0
 Pline_to_0 = Var("Pline_to_0")
@@ -1002,9 +1013,10 @@ generator_block_1 = Block(
     state_eqs=[
         (2 * pi * fn_1) * (omega_1 - omega_ref_1),
         (tm_1 - t_e_1 - D_1 * (omega_1 - omega_ref_1)) / M_1,
-        (omega_1 - omega_ref_1)
+        #(omega_1 - omega_ref_1)
     ],
-    state_vars=[delta_1, omega_1, et_1], # 
+    #state_vars=[delta_1, omega_1, et_1], #
+    state_vars=[delta_1, omega_1], #
     algebraic_eqs=[
         psid_1 - (ra_1 * i_q_1 + v_q_1),
         psiq_1 + (ra_1 * i_d_1 + v_d_1),
@@ -1015,9 +1027,10 @@ generator_block_1 = Block(
         t_e_1 - (psid_1 * i_q_1 - psiq_1 * i_d_1),
         P_g_1 - (v_d_1 * i_d_1 + v_q_1 * i_q_1),
         Q_g_1 - (v_q_1 * i_d_1 - v_d_1 * i_q_1), 
-        (tm_1 - tm0_1) + (Kp_1 * (omega_1 - omega_ref_1) + Ki_1 * et_1)
+        (tm_1 - tm0_1) + (Kp_1 * (omega_1 - omega_ref_1) + Ki_1 * et_1),
+        2 * pi * fn_1 * et_1 -delta_1,
     ],
-    algebraic_vars=[psid_1, psiq_1, i_d_1, i_q_1, v_d_1, v_q_1, t_e_1, P_g_1, Q_g_1, tm_1], #, 
+    algebraic_vars=[psid_1, psiq_1, i_d_1, i_q_1, v_d_1, v_q_1, t_e_1, P_g_1, Q_g_1, tm_1, et_1], #,
     parameters=[]
 )
 
@@ -1027,9 +1040,10 @@ generator_block_2 = Block(
     state_eqs=[
         (2 * pi * fn_2) * (omega_2 - omega_ref_2),
         (tm_2 - t_e_2 - D_2 * (omega_2 - omega_ref_2)) / M_2,
-        (omega_2 - omega_ref_2)
+        #(omega_2 - omega_ref_2)
     ],
-    state_vars=[delta_2, omega_2, et_2], #
+    #state_vars=[delta_2, omega_2, et_2], #
+    state_vars=[delta_2, omega_2], #
     algebraic_eqs=[
         psid_2 - (ra_2 * i_q_2 + v_q_2),
         psiq_2 + (ra_2 * i_d_2 + v_d_2),
@@ -1040,9 +1054,10 @@ generator_block_2 = Block(
         t_e_2 - (psid_2 * i_q_2 - psiq_2 * i_d_2),
         P_g_2 - (v_d_2 * i_d_2 + v_q_2 * i_q_2),
         Q_g_2 - (v_q_2 * i_d_2 - v_d_2 * i_q_2),
-        (tm_2 - tm0_2) + (Kp_2 * (omega_2 - omega_ref_2) + Ki_2 * et_2)
+        (tm_2 - tm0_2) + (Kp_2 * (omega_2 - omega_ref_2) + Ki_2 * et_2),
+        2 * pi * fn_2 * et_2 -delta_2,
     ],
-    algebraic_vars=[psid_2, psiq_2, i_d_2, i_q_2, v_d_2, v_q_2, t_e_2, P_g_2, Q_g_2, tm_2], #
+    algebraic_vars=[psid_2, psiq_2, i_d_2, i_q_2, v_d_2, v_q_2, t_e_2, P_g_2, Q_g_2, tm_2, et_2], #
     parameters=[]
 )
 
@@ -1052,9 +1067,10 @@ generator_block_3 = Block(
     state_eqs=[
         (2 * pi * fn_3) * (omega_3 - omega_ref_3),
         (tm_3 - t_e_3 - D_3 * (omega_3 - omega_ref_3)) / M_3,
-        (omega_3 - omega_ref_3)
+        #(omega_3 - omega_ref_3)
     ],
-    state_vars=[delta_3, omega_3, et_3], #
+    #state_vars=[delta_3, omega_3, et_3], #
+    state_vars=[delta_3, omega_3], #
     algebraic_eqs=[
         psid_3 - (ra_3 * i_q_3 + v_q_3),
         psiq_3 + (ra_3 * i_d_3 + v_d_3),
@@ -1065,9 +1081,10 @@ generator_block_3 = Block(
         t_e_3 - (psid_3 * i_q_3 - psiq_3 * i_d_3),
         P_g_3 - (v_d_3 * i_d_3 + v_q_3 * i_q_3),
         Q_g_3 - (v_q_3 * i_d_3 - v_d_3 * i_q_3),
-        (tm_3 - tm0_3) + (Kp_3 * (omega_3 - omega_ref_3) + Ki_3 * et_3)
+        (tm_3 - tm0_3) + (Kp_3 * (omega_3 - omega_ref_3) + Ki_3 * et_3),
+        2 * pi * fn_3 * et_3 -delta_3,
     ],
-    algebraic_vars=[psid_3, psiq_3, i_d_3, i_q_3, v_d_3, v_q_3, t_e_3, P_g_3, Q_g_3, tm_3], #
+    algebraic_vars=[psid_3, psiq_3, i_d_3, i_q_3, v_d_3, v_q_3, t_e_3, P_g_3, Q_g_3, tm_3, et_3], #
     parameters=[]
 )
 
@@ -1077,9 +1094,10 @@ generator_block_4 = Block(
     state_eqs=[
         (2 * pi * fn_4) * (omega_4 - omega_ref_4),
         (tm_4 - t_e_4 - D_4 * (omega_4 - omega_ref_4)) / M_4,
-        (omega_4 - omega_ref_4)
+        #(omega_4 - omega_ref_4)
     ],
-    state_vars=[delta_4, omega_4, et_4], #
+    #state_vars=[delta_4, omega_4, et_4], #
+    state_vars=[delta_4, omega_4], #
     algebraic_eqs=[
         psid_4 - (ra_4 * i_q_4 + v_q_4),
         psiq_4 + (ra_4 * i_d_4 + v_d_4),
@@ -1090,9 +1108,10 @@ generator_block_4 = Block(
         t_e_4 - (psid_4 * i_q_4 - psiq_4 * i_d_4),
         P_g_4 - (v_d_4 * i_d_4 + v_q_4 * i_q_4),
         Q_g_4 - (v_q_4 * i_d_4 - v_d_4 * i_q_4),
-        (tm_4 - tm0_4) + (Kp_4 * (omega_4 - omega_ref_4) + Ki_4 * et_4)
+        (tm_4 - tm0_4) + (Kp_4 * (omega_4 - omega_ref_4) + Ki_4 * et_4),
+        2 * pi * fn_4 * et_4 - delta_4,
     ],
-    algebraic_vars=[psid_4, psiq_4, i_d_4, i_q_4, v_d_4, v_q_4, t_e_4, P_g_4, Q_g_4, tm_4], #
+    algebraic_vars=[psid_4, psiq_4, i_d_4, i_q_4, v_d_4, v_q_4, t_e_4, P_g_4, Q_g_4, tm_4, et_4], #
     parameters=[]
 )
 
@@ -1102,16 +1121,21 @@ generator_block_4 = Block(
 # -------------------------------------------------------------
 Ql0_7 = Const(Sb7.imag)
 Pl0_7 = Var('Pl0_7')
+Pl0_7_default = Sb7.real
 
 load_7 = Block(
     algebraic_eqs=[
         Pl_7 - Pl0_7,
         Ql_7 - Ql0_7
     ],
-    algebraic_vars=[Ql_7, Pl_7],
-    parameters=[Pl0_7]
+    algebraic_vars=[Pl_7, Ql_7],
+    parameters=[Pl0_7],
+    parameters_eqs=[piecewise(t, np.array([2.5]), np.array([0.1174]), Pl0_7_default)],
+    external_mapping={
+        DynamicVarType.P: Pl_7,
+        DynamicVarType.Q: Ql_7
+    }
 )
-
 Ql0_8 = Const(Sb8.imag)
 Pl0_8 = Const(Sb8.real)
 
@@ -1135,7 +1159,7 @@ sys = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys)
+slv = BlockSolver(sys, t)
 
 params_mapping = {
     Pl0_7: Sb7.real,
@@ -1406,14 +1430,6 @@ for eq, val in residuals.items():
     print(f"{eq:55} = {val:.3e}")
 
 
-# ---------------------------------------------------------------------------------------
-# Events
-# ---------------------------------------------------------------------------------------
-
-
-event1 = RmsEvent('Load', Pl0_7, 2500, 0.1174)
-#event2 = Event(Ql0, 5000, 0.3)
-my_events = RmsEvents([event1])
 
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector(vars_mapping)
@@ -1449,7 +1465,7 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     params0=params0,
-    events_list=my_events,
+    time = t,
     method="implicit_euler"
 )
 
@@ -1523,6 +1539,18 @@ plt.tight_layout()
 plt.show()
 
 
+#stability assessment
+start_stability = time.time()
+stab, Eigenvalues, PF = slv.stability_assessment(x=x0, params=params0, plot = True)
+end_stability = time.time()
+print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
+
+print("Stability assessment:", stab)
+print("Eigenvalues:", Eigenvalues)
+print("Participation factors:", PF.toarray())
+
+df_Eig = pd.DataFrame(Eigenvalues)
+df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
 
 
 

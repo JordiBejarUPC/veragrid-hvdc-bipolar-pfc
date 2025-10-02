@@ -43,7 +43,7 @@ bsh = Const(0.03)
 # Power flow
 # ----------------------------------------------------------------------------------------------------------------------
 
-grid = gce.MultiCircuit()
+grid = gcMultiCircuit()
 
 # Buses
 bus1 = gce.Bus(name="Bus1", Vnom=10, is_slack=True)
