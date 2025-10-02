@@ -173,10 +173,9 @@ class SymbolicJacobian:
 
         # Build source
         src = f"def {fname}(vars, params, out):\n"
-        # src += f"    out = np.zeros({len(equations_sorted)})\n"
         src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
-        src += f"    return out"
+        src += "    return out"
 
         # compile to python
         exec(src, self.namespace)
@@ -231,8 +230,7 @@ class SymbolicVector:
         fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
         # Build source
-        src = f"def {fname}(vars, params):\n"
-        src += f"    out = np.zeros({len(eqs)})\n"
+        src = f"def {fname}(vars, params, out):\n"
         src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
         src += f"    return out"
 
@@ -241,9 +239,12 @@ class SymbolicVector:
 
         # compile in numba
         if use_jit:
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:]), fastmath=True)(self.namespace[fname])
+            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:]),
+                                fastmath=True)(self.namespace[fname])
         else:
             self.func = self.namespace[fname]
+
+        self.data = np.zeros(len(eqs))
 
     def __call__(self, values: Vec, params: Vec) -> Vec:
         """
@@ -252,7 +253,8 @@ class SymbolicVector:
         :param params:
         :return:
         """
-        return self.func(values, params)
+        self.func(values, params, self.data)
+        return self.data
 
 
 class BlockSolver:
