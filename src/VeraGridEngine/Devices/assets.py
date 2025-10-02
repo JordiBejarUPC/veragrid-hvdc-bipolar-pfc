@@ -7001,6 +7001,14 @@ class Assets:
             elm = dev.DynamicModelHost()
             dictionary_of_lists = dict()
 
+        elif elm_type == DeviceType.RmsEventDevice:
+            elm = dev.RmsEvent()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.RmsEventsGroupDevice:
+            elm = dev.RmsEventsGroup()
+            dictionary_of_lists = dict()
+
         else:
             raise Exception(f'elm_type not understood: {elm_type.value}')
 
