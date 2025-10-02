@@ -44,8 +44,10 @@ class SmallSignalStabilityDriver(DriverTemplate):
         self.options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if options is None else options
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(stability="",
-                                                                                Eigenvalues=np.empty(0),
-                                                                                PF=np.empty(0),
+                                                                                eigenvalues=np.empty(0),
+                                                                                participation_factors=np.empty(0),
+                                                                                damping_ratios=np.empty(0),
+                                                                                conjugate_frequencies=np.empty(0),
                                                                                 stat_vars=[],
                                                                                 vars2device={})
 
@@ -111,11 +113,13 @@ class SmallSignalStabilityDriver(DriverTemplate):
              conjugate_frequencies) = slv.run_small_signal_stability(x=x0, params=params0, plot=False)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
-            stability=stability,
-            Eigenvalues=eigenvalues,
-            PF=participation_factors,
-            stat_vars=slv.state_vars,
-            vars2device=slv.vars2device
+            stability = stability,
+            eigenvalues = eigenvalues,
+            participation_factors = participation_factors,
+            damping_ratios =damping_ratios,
+            conjugate_frequencies = conjugate_frequencies,
+            stat_vars = slv.state_vars,
+            vars2device = slv.vars2device
         )
 
         self.toc()

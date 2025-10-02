@@ -4,10 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-import pandas as pd
+import math
 from matplotlib import pyplot as plt
-from typing import Union
-import matplotlib.colors as plt_colors
 from typing import List, Tuple, Dict
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
@@ -23,15 +21,19 @@ class SmallSignalStabilityResults(ResultsTemplate):
 
     def __init__(self,
                  stability: str,
-                 Eigenvalues: np.ndarray,
-                 PF: np.ndarray,
+                 eigenvalues: np.ndarray,
+                 participation_factors: np.ndarray,
+                 damping_ratios: np.ndarray,
+                 conjugate_frequencies: np.ndarray,
                  stat_vars: List[Var],
                  vars2device: Dict[int, PhysicalDevice]):
         """
 
         :param stability:
-        :param Eigenvalues:
-        :param PF:
+        :param eigenvalues:
+        :param participation_factors:
+        :param damping_ratios:
+        :param conjugate_frequencies:
         :param stat_vars:
         :param vars2device:
         """
@@ -53,11 +55,16 @@ class SmallSignalStabilityResults(ResultsTemplate):
         self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
 
         self.stability = stability
-        self.eigenvalues = Eigenvalues
-        self.participation_factors = PF
+        self.eigenvalues = eigenvalues
+        self.participation_factors = participation_factors
+        self.damping_ratios = damping_ratios
+        self.conjugate_frequencies = conjugate_frequencies
+
         # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
         self.register(name='participation_factors', tpe=Vec)
+        self.register(name='damping_ratios', tpe=Vec)
+        self.register(name='conjugate_frequencies', tpe=Vec)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
@@ -91,16 +98,32 @@ class SmallSignalStabilityResults(ResultsTemplate):
             d = np.abs(np.nan_to_num(re))
             colors = (d / d.max())
 
+            slope = 1 / 0.05
+            x_z = np.linspace(-200, 0, 400)
+            y_z = slope * x_z
+
+            margin_x = (re.max() - re.min()) * 0.1
+            margin_y = (im.max() - im.min()) * 0.1
+            x_min = re.min() - margin_x
+            x_max = re.max() + margin_x
+            y_min = im.min() - margin_y
+            y_max = im.max() + margin_y
+
+
             if self.plotting_allowed():
                 plt.ion()
                 fig = plt.figure(figsize=(8, 6))
                 ax = fig.add_subplot(111)
+                ax.plot(x_z, y_z, '--', color='grey',linewidth=0.7, alpha=0.6, label='ζ = 5%')
+                ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
                 sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real  $ [s^{-1}]$')
                 ax.set_ylabel(r'Imaginary  $ [s^{-1}]$')
                 ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
                 ax.axvline(0, color='black', linewidth=1)
+                plt.xlim([x_min, x_max])
+                plt.ylim([y_min, y_max])
                 plt.tight_layout()
                 plt.show()
                 annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
