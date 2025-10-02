@@ -153,6 +153,8 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.svg",
             DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.svg",
             DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.svg",
+            DeviceType.RmsEventsGroupDevice.value: ":/Icons/icons/dyn_gray.svg",
+            DeviceType.RmsEventDevice.value: ":/Icons/icons/dyn_gray.svg",
 
             "Associations": ":/Icons/icons/associations.svg",
             DeviceType.Technology.value: ":/Icons/icons/technology.svg",
@@ -166,6 +168,8 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.SequenceLineDevice.value: ":/Icons/icons/ac_line.svg",
             DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.svg",
             DeviceType.RmsModelTemplateDevice.value: ":/Icons/icons/dyn_gray.svg",
+            DeviceType.DynamicModelHostDevice.value: ":/Icons/icons/dyn_gray.svg",
+
         }
 
         db_tree_model = gf.get_tree_model(d=self.circuit.get_template_objects_str_dict(),

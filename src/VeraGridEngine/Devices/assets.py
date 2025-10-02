@@ -339,7 +339,9 @@ class Assets:
                 dev.Investment(),
                 dev.BranchGroup(),
                 dev.ModellingAuthority(),
-                dev.Facility()
+                dev.Facility(),
+                dev.RmsEvent(),
+                dev.RmsEventsGroup()
             ],
             "Associations": [
                 dev.Technology(),
@@ -353,10 +355,6 @@ class Assets:
                 dev.SequenceLineType(),
                 dev.TransformerType(),
                 dev.DynamicModelHost()
-            ],
-            "Rms": [
-                dev.RmsEvent(),
-                dev.RmsEventsGroup()
             ]
 
         }

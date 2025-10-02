@@ -683,6 +683,8 @@ class SimulationsMain(TimeEventsMain):
             SimulationTypes.OPF_NTC_run.value: ':/Icons/icons/ntc_opf.svg',
             SimulationTypes.OPF_NTC_TS_run.value: ':/Icons/icons/ntc_opf_ts.svg',
             SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.svg',
+            SimulationTypes.SmallSignal_run.value: ':/Icons/icons/ss_icon.svg',
+            SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.svg',
         }
 
         self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))

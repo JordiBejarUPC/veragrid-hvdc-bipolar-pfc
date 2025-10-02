@@ -28,8 +28,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="minimal typing fix">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added lat and lon to the injection">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/gui_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/gui_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -660,8 +669,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -1794,7 +1803,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="608" />
+    <option name="localTasksCounter" value="609" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1840,7 +1849,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Susbtation type configurations updates" />
     <MESSAGE value="Substation type configurations updates v2" />
     <MESSAGE value="Substation type configurations updates v3" />
     <MESSAGE value="implemented the ptdf reduction and integrated with the diagram" />
@@ -1865,7 +1873,8 @@
     <MESSAGE value="5.4.0" />
     <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Improved contingency docs" />
-    <option name="LAST_COMMIT_MESSAGE" value="Improved contingency docs" />
+    <MESSAGE value="added lat and lon to the injection" />
+    <option name="LAST_COMMIT_MESSAGE" value="added lat and lon to the injection" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
