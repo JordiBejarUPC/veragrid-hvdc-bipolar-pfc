@@ -100,7 +100,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     return fn
 
 
-class SymbolicJacobin:
+class SymbolicJacobian:
     """
     Class to store and evaluate a symbolic jacobian
     """
@@ -277,25 +277,25 @@ class BlockSolver:
 
         self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs, uid2sym_t=uid2sym_t)
 
-        self._j11_fn = SymbolicJacobin(eqs=self._state_eqs,
-                                       variables=self._state_vars,
-                                       uid2sym_vars=uid2sym_vars,
-                                       uid2sym_params=uid2sym_params)
+        self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
+                                        variables=self._state_vars,
+                                        uid2sym_vars=uid2sym_vars,
+                                        uid2sym_params=uid2sym_params)
 
-        self._j12_fn = SymbolicJacobin(eqs=self._state_eqs,
-                                       variables=self._algebraic_vars,
-                                       uid2sym_vars=uid2sym_vars,
-                                       uid2sym_params=uid2sym_params)
+        self._j12_fn = SymbolicJacobian(eqs=self._state_eqs,
+                                        variables=self._algebraic_vars,
+                                        uid2sym_vars=uid2sym_vars,
+                                        uid2sym_params=uid2sym_params)
 
-        self._j21_fn = SymbolicJacobin(eqs=self._algebraic_eqs,
-                                       variables=self._state_vars,
-                                       uid2sym_vars=uid2sym_vars,
-                                       uid2sym_params=uid2sym_params)
+        self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
+                                        variables=self._state_vars,
+                                        uid2sym_vars=uid2sym_vars,
+                                        uid2sym_params=uid2sym_params)
 
-        self._j22_fn = SymbolicJacobin(eqs=self._algebraic_eqs,
-                                       variables=self._algebraic_vars,
-                                       uid2sym_vars=uid2sym_vars,
-                                       uid2sym_params=uid2sym_params)
+        self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
+                                        variables=self._algebraic_vars,
+                                        uid2sym_vars=uid2sym_vars,
+                                        uid2sym_params=uid2sym_params)
 
         print("done!")
         end_compiling = time.time()
