@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import numpy as np
 from typing import Union, List, Set, Tuple, Dict
 from PySide6 import QtGui, QtCore, QtWidgets
@@ -519,7 +521,6 @@ class DataBaseTableMain(DiagramsMain):
             # copy to clipboard
             cb = QtWidgets.QApplication.clipboard()
             cb.clear()
-            lst = list()
             cb.setText("\n".join([obj.idtag for obj in selected_objects]))
 
             self.show_info_toast("Copied!")
@@ -673,7 +674,10 @@ class DataBaseTableMain(DiagramsMain):
             self.grid_reduction_dialogue.show()
 
     def grid_reduction_from_schematic_selection(self):
+        """
 
+        :return:
+        """
         selected_buses = self.get_selected_buses()
 
         if len(selected_buses):
