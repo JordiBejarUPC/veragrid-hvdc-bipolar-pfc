@@ -55,7 +55,7 @@ def _compile_equations(eqs: Sequence[Expr],
     :return: Function pointer that returns an array
     """
 
-    fname = f"func{uuid.uuid4().hex}"
+    fname = f"func{uuid.uuid4().hex}"  # random name to avoid collissions
 
     # Build source
     # src = f"@nb.njit()\n"
@@ -63,12 +63,7 @@ def _compile_equations(eqs: Sequence[Expr],
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    # ns: Dict[str, Any] = {"math": math, "np": np}
-    # exec(src, ns)
-    # fn = nb.njit(ns["_f"], fastmath=True)
-
-    # if add_doc_string:
-    #     fn.__doc__ = "def _f(vars)"
+    ns: Dict[str, Any] = {"math": math, "np": np}
 
     exec(src)
     compiled_func = locals()[fname]
@@ -82,8 +77,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
-    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param uid2sym_params:
+    :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
     :param add_doc_string: add the docstring?
     :return: Function pointer that returns an array
     """
@@ -952,8 +946,6 @@ class BlockSolver:
         params_time = 0
         residual_time = 0
         solv_time = 0
-        total_jac_time = 0
-        total_csc_time = 0
 
         for step_idx in range(steps):
             xn = y[step_idx]
@@ -1002,8 +994,7 @@ class BlockSolver:
                 start_solv = time.time()
                 delta = sp.linalg.spsolve(Jf, -rhs)
                 end_solv = time.time()
-                solv_time = end_solv - start_solv
-                solv_time += calc_jac_time
+                solv_time += end_solv - start_solv
 
                 x_new += delta
                 n_iter += 1
@@ -1023,8 +1014,6 @@ class BlockSolver:
         print(f"params_total_time = {params_time:.6f} [s]")
         print(f"residual_total_time = {residual_time:.6f} [s]")
         print(f"solv_time = {solv_time:.6f} [s]")
-        print(f"total_jac_time = {total_jac_time:.6f} [s]")
-        print(f"total_csc_time = {total_csc_time:.6f} [s]")
 
         # pr.disable()
         # pr.dump_stats('implicit_euler.pstat')
