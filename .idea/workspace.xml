@@ -28,9 +28,14 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="several refactors">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed issue with RmsEvent and RmsEventsGroup not being in get_dictionary_of_lists">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/python_console.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/python_console.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MultiLinear/diff_blocksolver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MultiLinear/diff_blocksolver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/scripting_gridcal_hardcoded_light.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_gridcal_hardcoded_light.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -251,7 +256,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python.scripting_gridcal_hardcoded_light">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -521,6 +526,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="scripting_gridcal_hardcoded_light" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/trunk/dynamics" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/trunk/dynamics/scripting_gridcal_hardcoded_light.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -681,6 +708,7 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.scripting_gridcal_hardcoded_light" />
       <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python.ExecuteVeraGrid" />
@@ -688,11 +716,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.scripting_gridcal_hardcoded_light" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
   </component>
@@ -1825,7 +1853,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="612" />
+    <option name="localTasksCounter" value="613" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1871,7 +1899,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved psse parsing" />
     <MESSAGE value="Improved rms initialize" />
     <MESSAGE value="Improved rms generator values" />
     <MESSAGE value="Equivalent events in simulations" />
@@ -1896,7 +1923,8 @@
     <MESSAGE value="improved icons" />
     <MESSAGE value="improved pkg function" />
     <MESSAGE value="several refactors" />
-    <option name="LAST_COMMIT_MESSAGE" value="several refactors" />
+    <MESSAGE value="Fixed issue with RmsEvent and RmsEventsGroup not being in get_dictionary_of_lists" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed issue with RmsEvent and RmsEventsGroup not being in get_dictionary_of_lists" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2334,6 +2362,16 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py</url>
           <line>174</line>
           <option name="timeStamp" value="2977" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
+          <line>241</line>
+          <option name="timeStamp" value="2978" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
+          <line>72</line>
+          <option name="timeStamp" value="2979" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
