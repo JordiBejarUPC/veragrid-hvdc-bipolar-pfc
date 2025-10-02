@@ -43,7 +43,8 @@ class SmallSignalStabilityResults(ResultsTemplate):
             available_results=[
                 ResultTypes.Modes,
                 ResultTypes.ParticipationFactors,
-                ResultTypes.SDomainPlot
+                ResultTypes.SDomainPlot,
+                ResultTypes.SDomainPlotHz
             ],
             time_array=None,
             clustering_results=None,
@@ -118,8 +119,8 @@ class SmallSignalStabilityResults(ResultsTemplate):
                 ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
                 sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
-                ax.set_xlabel(r'Real  $ [s^{-1}]$')
-                ax.set_ylabel(r'Imaginary  $ [s^{-1}]$')
+                ax.set_xlabel(r'Real')
+                ax.set_ylabel(r'Imaginary [rad]')
                 ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
                 ax.axvline(0, color='black', linewidth=1)
                 plt.xlim([x_min, x_max])
@@ -162,6 +163,81 @@ class SmallSignalStabilityResults(ResultsTemplate):
                                 index=np.empty(len(self.eigenvalues), dtype=np.str_),
                                 idx_device_type=DeviceType.NoDevice,
                                 columns=np.array(['Real', 'Imag']),
+                                cols_device_type=DeviceType.NoDevice,
+                                title="S-Domain Stability plot"
+                                )
+        elif result_type == ResultTypes.SDomainPlotHz:
+            re = self.eigenvalues.real
+            im = self.eigenvalues.imag / (2*math.pi)
+            data = np.c_[re, im]
+
+            d = np.abs(np.nan_to_num(re))
+            colors = (d / d.max())
+
+            slope = 1 / 0.05
+            x_z = np.linspace(-200, 0, 400)
+            y_z = slope * x_z / (2*math.pi)
+
+            margin_x = (re.max() - re.min()) * 0.1
+            margin_y = (im.max() - im.min()) * 0.1
+            x_min = re.min() - margin_x
+            x_max = re.max() + margin_x
+            y_min = im.min() - margin_y
+            y_max = im.max() + margin_y
+
+
+            if self.plotting_allowed():
+                plt.ion()
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111)
+                ax.plot(x_z, y_z, '--', color='grey',linewidth=0.7, alpha=0.6, label='ζ = 5%')
+                ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
+                sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
+                fig.suptitle("S-Domain Stability plot")
+                ax.set_xlabel(r'Real')
+                ax.set_ylabel(r'Imaginary [Hz]')
+                ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
+                ax.axvline(0, color='black', linewidth=1)
+                plt.xlim([x_min, x_max])
+                plt.ylim([y_min, y_max])
+                plt.tight_layout()
+                plt.show()
+                annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                                    textcoords="offset points",
+                                    bbox=dict(boxstyle="round", fc="w"),
+                                    arrowprops=dict(arrowstyle="->"),
+                                    fontsize=8)
+                annot.set_visible(False)
+
+                def update_annotation(ind):
+                    """
+                    :param ind:
+                    :return:
+                    """
+                    pos = sc.get_offsets()[ind["ind"][0]]
+                    annot.xy = pos
+                    text = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
+                    annot.set_text(text)
+                    annot.get_bbox_patch().set_alpha(0.8)
+
+                def hover(event):
+                    if event.inaxes == ax:
+                        cont, ind = sc.contains(event)
+                        if cont:
+                            update_annotation(ind)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                        else:
+                            if annot.get_visible():
+                                annot.set_visible(False)
+                                fig.canvas.draw_idle()
+
+                fig.canvas.mpl_connect("motion_notify_event", hover)
+
+            return ResultsTable(data=data,
+                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
+                                idx_device_type=DeviceType.NoDevice,
+                                columns=np.array(['Real', 'Imag [Hz]']),
                                 cols_device_type=DeviceType.NoDevice,
                                 title="S-Domain Stability plot"
                                 )

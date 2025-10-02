@@ -1827,6 +1827,7 @@ class ResultTypes(Enum):
     ParticipationFactors = "Participation Factors"
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
+    SDomainPlotHz = "S-Domain Plot in Hz"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'
