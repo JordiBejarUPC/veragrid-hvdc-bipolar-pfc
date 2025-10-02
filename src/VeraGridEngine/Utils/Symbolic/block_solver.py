@@ -1092,12 +1092,11 @@ class BlockSolver:
             print(f"Simulation results saved to: {filename}")
         return df_simulation_results
 
-    def run_small_signal_stability(self, x: Vec, params: Vec, tol=1e-6, plot=True):
+    def run_small_signal_stability(self, x: Vec, params: Vec, plot=True, verbose: int = 0):
         """
         Small Signal Stability analysis
         :param x: variables (1D numpy array)
         :param params: parameters (1D numpy array)
-        :param tol:  numerical tolerance for eigenvalues = 0
         :param plot: True(default) if S-domain eigenvalues plot wanted. Else: False
         :return:
             stability: str
@@ -1164,7 +1163,10 @@ class BlockSolver:
             elif z.imag < tol:
                 continue
         eig_no_conjugates = sp.lil_matrix(eig_no_conjugates)
-        print("eig no conjugates:", eig_no_conjugates)
+
+        if verbose:
+            print("eig no conjugates:", eig_no_conjugates)
+
         damping_ratios = lil_matrix(eig_no_conjugates.shape, dtype=float)
         conjugate_frequencies = lil_matrix(eig_no_conjugates.shape, dtype=float)
         for i in range(eig_no_conjugates.shape[1]):
@@ -1206,9 +1208,11 @@ class BlockSolver:
             plt.axvline(0, color='black', linewidth=1)
             plt.tight_layout()
             plt.show()
-        print("all eigenvalues:", eigenvalues)
-        print("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
-        print("daming ratios:", damping_ratios.toarray())
-        print("conjugate_frequencies:", conjugate_frequencies.toarray())
+
+        if verbose:
+            print("all eigenvalues:", eigenvalues)
+            print("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
+            print("daming ratios:", damping_ratios.toarray())
+            print("conjugate_frequencies:", conjugate_frequencies.toarray())
 
         return stability, eigenvalues, participation_factors, damping_ratios, conjugate_frequencies
