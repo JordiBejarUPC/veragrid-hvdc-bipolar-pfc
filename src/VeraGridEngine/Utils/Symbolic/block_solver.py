@@ -100,84 +100,6 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     return fn
 
 
-#
-# # full jacobian
-# def _get_full_jacobian(eqs: List[Expr],
-#                        variables: List[Var],
-#                        uid2sym_vars: Dict[int, str],
-#                        uid2sym_params: Dict[int, str], ):
-#     """
-#     JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
-#     :param eqs: Array of equations
-#     :param variables: Array of variables to differentiate against
-#     :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-#     :param uid2sym_params:
-#     :return:
-#             jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
-#                 Fast evaluator in which *values* is a 1‑D NumPy vector of length
-#                 ``len(variables)``and *params* is a 1‑D NumPy vector of length
-#                 ``len(parameters)``
-#             sparsity_pattern : tuple(np.ndarray, np.ndarray)
-#                 Row/col indices of structurally non‑zero entries.
-#     """
-#
-#     # Ensure deterministic variable order
-#     check_set = set()
-#     for v in variables:
-#         if v in check_set:
-#             raise ValueError(f"Repeated var {v.name} in the variables' list :(")
-#         else:
-#             check_set.add(v)
-#
-#     triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
-#
-#     for row, eq in enumerate(eqs):
-#         for col, var in enumerate(variables):
-#             d_expression = eq.diff(var).simplify()
-#             if isinstance(d_expression, Const) and d_expression.value == 0:
-#                 continue  # structural zero
-#             triplets.append((col, row, d_expression))
-#
-#     triplets.sort(key=lambda t: (t[0], t[1]))
-#     cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-#     functions_ptr = _compile_equations(eqs=equations_sorted, uid2sym_vars=uid2sym_vars,
-#                                        uid2sym_params=uid2sym_params)
-#
-#     nnz = len(cols_sorted)
-#     indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
-#
-#     indptr = np.zeros(len(variables) + 1, dtype=np.int32)
-#     for c in cols_sorted:
-#         indptr[c + 1] += 1
-#     np.cumsum(indptr, out=indptr)
-#     # template with zeros but correct structure
-#     template_csc = sp.csc_matrix((np.zeros(nnz, dtype=np.float64),
-#                                   indices.copy(),
-#                                   indptr.copy()),
-#                                  shape=(len(eqs), len(variables)))
-#
-#     def full_jac_fn(values: np.ndarray, params: np.ndarray) -> tuple[csc_matrix, float, float]:  # noqa: D401 – simple
-#         assert len(values) >= len(variables)
-#
-#         start_jac = time.time()
-#         jac_values = functions_ptr(values, params)
-#         end_jac = time.time()
-#         jac_eval_time = end_jac - start_jac
-#
-#         # data = np.array(jac_values, dtype=np.float64)
-#
-#         start_csc_matrix = time.time()
-#         csc_matrix = template_csc.copy()
-#         csc_matrix.data[:] = jac_values
-#         # csc_matrix = sp.csc_matrix((data, indices, indptr), shape=(len(eqs), len(variables)))
-#         end_csc_matrix = time.time()
-#         csc_matrix_time = end_csc_matrix - start_csc_matrix
-#
-#         return csc_matrix, jac_eval_time, csc_matrix_time
-#
-#     return full_jac_fn
-
-
 class SymbolicJacobin:
     """
     Class to store and evaluate a symbolic jacobian
@@ -211,52 +133,53 @@ class SymbolicJacobin:
             else:
                 check_set.add(v)
 
-        triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
+        triplets: List[Tuple[int, int, Callable]] = list()  # (col, row, fn)
 
         for row, eq in enumerate(eqs):
             for col, var in enumerate(variables):
+
                 d_expression = eq.diff(var).simplify()
-                if isinstance(d_expression, Const) and d_expression.value == 0:
-                    continue  # structural zero
-                triplets.append((col, row, d_expression))
+
+                if not (isinstance(d_expression, Const) and d_expression.value == 0):
+                    triplets.append((col, row, d_expression))
+                else:
+                    # structural zero
+                    pass
 
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
+
         self.function_ptr = _compile_equations(eqs=equations_sorted,
                                                uid2sym_vars=uid2sym_vars,
                                                uid2sym_params=uid2sym_params)
 
-        self.nnz = len(cols_sorted)
+        # Assemble the jacobian structure
+        nnz = len(cols_sorted)
 
-        self.indices = np.fromiter(rows_sorted, dtype=np.int32, count=self.nnz)
+        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
 
-        self.indptr = np.zeros(len(variables) + 1, dtype=np.int32)
+        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
         for c in cols_sorted:
-            self.indptr[c + 1] += 1
-
-        np.cumsum(self.indptr, out=self.indptr)
+            indptr[c + 1] += 1
+        np.cumsum(indptr, out=indptr)
 
         self.nvar = len(variables)
-        self.neq = len(eqs)
+        neq = len(eqs)
+
+        self.J = sp.csc_matrix((np.zeros(nnz, dtype=np.float64), indices, indptr), shape=(neq, self.nvar))
 
     def __call__(self, values: Vec, params: Vec) -> csc_matrix:
         """
-
+        Update the jacobian data
         :param values:
         :param params:
-        :return:
+        :return: Updated jacobian structure
         """
         assert len(values) >= self.nvar
 
-        # template with zeros but correct structure
-        J = sp.csc_matrix((np.zeros(self.nnz, dtype=np.float64),
-                           self.indices.copy(),
-                           self.indptr.copy()),
-                          shape=(self.neq, self.nvar))
+        self.J.data[:] = self.function_ptr(values, params)
 
-        J.data[:] = self.function_ptr(values, params)
-
-        return J
+        return self.J
 
 
 class BlockSolver:
