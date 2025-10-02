@@ -128,11 +128,53 @@ class VeraGridMainGUI(ScriptingMain):
             event.accept()
 
 
+import sys
+from PySide6.QtCore import QDirIterator, QDir, QResource
+from PySide6.QtSvg import QSvgRenderer
+
+# 👇 import your compiled resource module (this will auto-register resources)
+import VeraGrid.Gui.Main.icons_rc  # adjust the name if your file is called differently
+
+
+def check_all_svgs():
+    """
+    Iterate through all resources registered by icons_rc and check SVG validity.
+    """
+    it = QDirIterator(":/Icons", QDirIterator.IteratorFlag.Subdirectories)
+    bad_files = []
+
+    while it.hasNext():
+        path = it.next()
+        if path.lower().endswith(".svg"):
+            res = QResource(path)
+            if not res.isValid():
+                print(f"[MISSING] {path}")
+                bad_files.append((path, "missing"))
+                continue
+
+            renderer = QSvgRenderer(path)
+            if not renderer.isValid():
+                print(f"[INVALID] {path}")
+                bad_files.append((path, "invalid"))
+            else:
+                pass
+                # print(f"[OK] {path}")
+
+    print("\nSummary:")
+    for path, status in bad_files:
+        print(f"  {status.upper():<8} {path}")
+
+    if not bad_files:
+        print("✅ All SVG icons are valid!")
+
+
 def runVeraGrid() -> None:
     """
     Main function to run the GUI
     :return:
     """
+    check_all_svgs()
+
     # if hasattr(qdarktheme, 'enable_hi_dpi'):
     qdarktheme.enable_hi_dpi()
 
