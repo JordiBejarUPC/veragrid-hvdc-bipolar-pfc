@@ -711,11 +711,11 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python.scripting_gridcal_hardcoded_light" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python.scripting_gridcal_hardcoded_light" />
       </list>
     </recent_temporary>
   </component>
