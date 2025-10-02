@@ -25,7 +25,7 @@ import numba as nb
 import math
 import scipy.sparse as sp
 import scipy.linalg
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
 from typing import Dict, List, Literal, Any, Callable, Sequence
 from matplotlib import pyplot as plt
@@ -1284,54 +1284,60 @@ class BlockSolver:
 
         num_states = A.shape[0]
 
-        eigen_values, W, V = scipy.linalg.eig(An, left=True, right=True)
+        eigenvalues, w, v = scipy.linalg.eig(An, left=True, right=True)
         # eigen_values, eigen_vectors = eigs(A)  # TODO: always use sparse algebra
-        V = sp.csc_matrix(V)  # right
-        W = sp.csc_matrix(W)  # left
+        v = sp.csc_matrix(v)  # right
+        w = sp.csc_matrix(w)  # left
 
         # find participation factors
         participation_factors = sp.lil_matrix(A.shape)
-        for row in range(W.shape[0]):
-            for column in range(W.shape[0]):
-                participation_factors[row, column] = abs(W[row, column]) * abs(V[row, column])
+        for row in range(w.shape[0]):
+            for column in range(w.shape[0]):
+                participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
 
         # normalize participation factors
-        PF_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
-        for i in range(len(eigen_values)):
-            participation_factors[:, i] /= PF_abs[0, i]
+        pfact_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
+        for i in range(len(eigenvalues)):
+            participation_factors[:, i] /= pfact_abs[0, i]
 
         # damping ratios
-        Eig_no_conjugates = []
+        eig_no_conjugates = []
         seen = set()
         tol = 1e-12
-        for z in Eigenvalues:
-            # Si és real, el guardem directament
+        for z in eigenvalues:
             if np.isreal(z):
-                continue
-            # Si té part imaginària positiva
+                seen.add(z)
+                eig_no_conjugates.append(z)
             elif z.imag > tol:
                 if z not in seen and np.conj(z) not in seen:
                     seen.add(z)
-                    Eig_no_conjugates.append(z)
-            # Si té part imaginària negativa, ignorem (ja es guardarà el conjugat positiu)
+                    eig_no_conjugates.append(z)
             elif z.imag < tol:
                 continue
-        Eig_no_conjugates = np.array(Eig_no_conjugates)
-
-        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
-        zeta = np.zeros(Eig_no_conjugates.shape, dtype=float)
-        for i in range(len(Eig_no_conjugates)):
-            re = Eig_no_conjugates[i].real
-            modz = abs(Eig_no_conjugates[i])
-            if modz < tol:
-                zeta[i] = 0.0
+        eig_no_conjugates = sp.lil_matrix(eig_no_conjugates)
+        print("eig no conjugates:",eig_no_conjugates)
+        damping_ratios = lil_matrix(eig_no_conjugates.shape, dtype=float)
+        conjugate_frequencies = lil_matrix(eig_no_conjugates.shape, dtype=float)
+        for i in range(eig_no_conjugates.shape[1]):
+            re = eig_no_conjugates[0,i].real
+            im = eig_no_conjugates[0,i].imag
+            conjugate_frequencies[0,i] = im / (2 * math.pi)
+            modz = abs(eig_no_conjugates[0,i])
+            if tol > modz:
+                damping_ratios[0,i] = 0.0
             else:
-                zeta[i] = -re / modz
+                damping_ratios[0,i] = -re / modz
+
 
         # Stability: select positive and zero eigenvalues
         tol = 1e-6  # numerical tolerance for eigenvalues = 0
-        unstable_eigs = Eigenvalues[np.real(Eigenvalues) > tol]
-        zero_eigs = Eigenvalues[abs(np.real(Eigenvalues)) <= tol]
+        unstable_eigs = eigenvalues[np.real(eigenvalues) > tol]
+        zero_eigs = eigenvalues[abs(np.real(eigenvalues)) <= tol]
+
+        # real_parts = eigenvalues.data.real
+        # pos = real_parts > tol
+        # unstable_eigs = eigenvalues.data[pos]
+
 
         if unstable_eigs.size == 0:
             if zero_eigs.size == 0:
@@ -1342,8 +1348,8 @@ class BlockSolver:
             stability = "Unstable"
 
         if plot:
-            x = eigen_values.real
-            y = eigen_values.imag
+            x = eigenvalues.real
+            y = eigenvalues.imag
 
             plt.scatter(x, y, marker='x', color='blue')
             plt.xlabel("Re [s -1]")
@@ -1353,5 +1359,9 @@ class BlockSolver:
             plt.axvline(0, color='black', linewidth=1)
             plt.tight_layout()
             plt.show()
+        print("all eigenvalues:", eigenvalues)
+        print ("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
+        print("daming ratios:", damping_ratios.toarray())
+        print("conjugate_frequencies:", conjugate_frequencies.toarray())
 
-        return stability, eigen_values, participation_factors
+        return stability, eigenvalues, participation_factors, damping_ratios, conjugate_frequencies
