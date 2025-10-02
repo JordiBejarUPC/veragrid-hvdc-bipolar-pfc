@@ -9,7 +9,7 @@ from PySide6 import QtWidgets
 from VeraGrid.Gui.SigmaAnalysis.gui import Ui_MainWindow
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGridEngine.enumerations import ResultTypes
-from VeraGridEngine.Simulations.SmallSignal_Stability.SmallSignal_driver import SigmaAnalysisResults
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SigmaAnalysisResults
 
 #TODO: change all!
 # class SigmaAnalysisGUI(QtWidgets.QMainWindow):

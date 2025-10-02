@@ -18,28 +18,37 @@ from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, Converge
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
-class SmallSignal_Stability_Results(ResultsTemplate):
+
+class SmallSignalStabilityResults(ResultsTemplate):
 
     def __init__(self,
                  stability: str,
                  Eigenvalues: np.ndarray,
                  PF: np.ndarray,
                  stat_vars: List[Var],
-                 vars2device: Dict[int, PhysicalDevice],
-                 ):
+                 vars2device: Dict[int, PhysicalDevice]):
+        """
+
+        :param stability:
+        :param Eigenvalues:
+        :param PF:
+        :param stat_vars:
+        :param vars2device:
+        """
         ResultsTemplate.__init__(
             self,
             name='Small Signal Stability',
-            available_results=[ResultTypes.Modes,
-                               ResultTypes.ParticipationFactors,
-                               ResultTypes.SDomainPlot
-                               ],
+            available_results=[
+                ResultTypes.Modes,
+                ResultTypes.ParticipationFactors,
+                ResultTypes.SDomainPlot
+            ],
             time_array=None,
             clustering_results=None,
             study_results_type=StudyResultsType.SmallSignalStability
         )
-        # stat_vars_names = [str(var) + vars2device[var.uid].name for var in stat_vars]
-        stat_vars_names =[f"{var}{i // 2 + 1}" for i, var in enumerate(stat_vars)]
+
+        stat_vars_names = [f"{var}{i // 2 + 1}" for i, var in enumerate(stat_vars)]
 
         self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
 
@@ -59,7 +68,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
             return ResultsTable(
                 data=self.participation_factors,
                 index=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_), #
+                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),  #
                 title="Participation factors for each eigenvalue",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
@@ -69,7 +78,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
             return ResultsTable(
                 data=np.array([np.real(self.eigenvalues), np.imag(self.eigenvalues)]).T,
                 index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
-                columns= np.array(["Real", "Imaginary"]),
+                columns=np.array(["Real", "Imaginary"]),
                 title="Eigenvalues",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
@@ -86,7 +95,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
                 plt.ion()
                 fig = plt.figure(figsize=(8, 6))
                 ax = fig.add_subplot(111)
-                sc = ax.scatter(re, im, c=colors, cmap = 'winter', s = 120, alpha = 0.8)
+                sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real  $ [s^{-1}]$')
                 ax.set_ylabel(r'Imaginary  $ [s^{-1}]$')
@@ -127,7 +136,7 @@ class SmallSignal_Stability_Results(ResultsTemplate):
                 fig.canvas.mpl_connect("motion_notify_event", hover)
 
             return ResultsTable(data=data,
-                                index=np.empty(len(self.eigenvalues),dtype=np.str_),
+                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
                                 idx_device_type=DeviceType.NoDevice,
                                 columns=np.array(['Real', 'Imag']),
                                 cols_device_type=DeviceType.NoDevice,

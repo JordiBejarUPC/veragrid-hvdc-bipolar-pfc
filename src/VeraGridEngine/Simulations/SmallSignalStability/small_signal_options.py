@@ -6,11 +6,11 @@
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 
-class SmallSignal_Stability_Options(OptionsTemplate):
+
+class SmallSignalStabilityOptions(OptionsTemplate):
     """
     Rms simulation options
     """
-
 
     def __init__(self,
                  time_step: float = 0.01,
@@ -22,7 +22,6 @@ class SmallSignal_Stability_Options(OptionsTemplate):
         todo: add EMT vs RMS!
         :param time_step: time step of the simulations (s)
         :param ss_assessment_time: stability assessment time (s)
-        :param max_integrator_iterations: max number of iterations
         :param tolerance: Integration tolerance
         :param integration_method: Integration method (default Trapezoid)
         """
@@ -34,10 +33,7 @@ class SmallSignal_Stability_Options(OptionsTemplate):
         self.ss_assessment_time: float = ss_assessment_time
         self.tolerance: float = tolerance
 
-
-
         self.register(key="integration_method", tpe=DynamicIntegrationMethod)
         self.register(key="time_step", tpe=float)
         self.register(key="ss_assessment_time", tpe=float)
         self.register(key="tolerance", tpe=float)
-
