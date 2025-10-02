@@ -96,16 +96,24 @@ class SmallSignalStabilityDriver(DriverTemplate):
             )
 
             i = int(self.options.ss_assessment_time / self.options.time_step)
-            stab, Eigenvalues, pfactors = slv.run_small_signal_stability(x=y[i], params=params0, plot=False)
+            (stability,
+             eigenvalues,
+             participation_factors,
+             damping_ratios,
+             conjugate_frequencies) = slv.run_small_signal_stability(x=y[i], params=params0, plot=False)
 
         else:
 
-            stab, Eigenvalues, pfactors = slv.run_small_signal_stability(x=x0, params=params0, plot=False)
+            (stability,
+             eigenvalues,
+             participation_factors,
+             damping_ratios,
+             conjugate_frequencies) = slv.run_small_signal_stability(x=x0, params=params0, plot=False)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
-            stability=stab,
-            Eigenvalues=Eigenvalues,
-            PF=pfactors,
+            stability=stability,
+            Eigenvalues=eigenvalues,
+            PF=participation_factors,
             stat_vars=slv.state_vars,
             vars2device=slv.vars2device
         )
