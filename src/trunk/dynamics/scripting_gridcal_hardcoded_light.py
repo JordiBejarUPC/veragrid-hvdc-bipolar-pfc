@@ -387,6 +387,7 @@ start_stability = time.time()
  conjugate_frequencies) = slv.run_small_signal_stability(x=x0,
                                                          params=params0,
                                                          plot=True,
+                                                         plot_Hz = True,
                                                          verbose = 1)
 
 end_stability = time.time()
