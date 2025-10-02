@@ -25,7 +25,6 @@ from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
 from typing import Dict, List, Literal, Any, Callable, Sequence
 from matplotlib import pyplot as plt
 
-
 # from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
@@ -71,6 +70,7 @@ def _compile_equations(eqs: Sequence[Expr],
     compiled_func = locals()[fname]
 
     return compiled_func
+
 
 def _compile_parameters_equations(eqs: Sequence[Expr],
                                   uid2sym_t: Dict[int, str],
@@ -247,7 +247,6 @@ class BlockSolver:
             self._state_eqs.extend(b.state_eqs)
             self._parameters.extend(b.parameters)
             self._parameters_eqs.extend(b.parameters_eqs)
-
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
@@ -1084,7 +1083,6 @@ class BlockSolver:
         all_vars = self._state_vars + self._algebraic_vars
         var_names = [str(var) + '_VeraGrid' for var in all_vars]
 
-
         # Create DataFrame with time and variable data
         df_simulation_results = pd.DataFrame(data=y, columns=var_names)
         df_simulation_results.insert(0, 'Time [s]', t)
@@ -1166,19 +1164,18 @@ class BlockSolver:
             elif z.imag < tol:
                 continue
         eig_no_conjugates = sp.lil_matrix(eig_no_conjugates)
-        print("eig no conjugates:",eig_no_conjugates)
+        print("eig no conjugates:", eig_no_conjugates)
         damping_ratios = lil_matrix(eig_no_conjugates.shape, dtype=float)
         conjugate_frequencies = lil_matrix(eig_no_conjugates.shape, dtype=float)
         for i in range(eig_no_conjugates.shape[1]):
-            re = eig_no_conjugates[0,i].real
-            im = eig_no_conjugates[0,i].imag
-            conjugate_frequencies[0,i] = im / (2 * math.pi)
-            modz = abs(eig_no_conjugates[0,i])
+            re = eig_no_conjugates[0, i].real
+            im = eig_no_conjugates[0, i].imag
+            conjugate_frequencies[0, i] = im / (2 * math.pi)
+            modz = abs(eig_no_conjugates[0, i])
             if tol > modz:
-                damping_ratios[0,i] = 0.0
+                damping_ratios[0, i] = 0.0
             else:
-                damping_ratios[0,i] = -re / modz
-
+                damping_ratios[0, i] = -re / modz
 
         # Stability: select positive and zero eigenvalues
         tol = 1e-6  # numerical tolerance for eigenvalues = 0
@@ -1188,7 +1185,6 @@ class BlockSolver:
         # real_parts = eigenvalues.data.real
         # pos = real_parts > tol
         # unstable_eigs = eigenvalues.data[pos]
-
 
         if unstable_eigs.size == 0:
             if zero_eigs.size == 0:
@@ -1211,7 +1207,7 @@ class BlockSolver:
             plt.tight_layout()
             plt.show()
         print("all eigenvalues:", eigenvalues)
-        print ("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
+        print("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
         print("daming ratios:", damping_ratios.toarray())
         print("conjugate_frequencies:", conjugate_frequencies.toarray())
 
