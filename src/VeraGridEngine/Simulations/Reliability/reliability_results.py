@@ -19,7 +19,7 @@ class ReliabilityResults(ResultsTemplate):
         """
         ResultsTemplate.__init__(
             self,
-            name='Clustering Analysis',
+            name='Reliability Analysis',
             available_results=[
                 ResultTypes.ReliabilityLoleResults,
                 ResultTypes.ReliabilityENSResults,
