@@ -248,7 +248,7 @@ def stability_kundur_no_shunt():
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
-    stab, Eigenvalues, PFactors = slv.stability_assessment(x=x0, params=params0, plot=False)
+    stab, Eigenvalues, PFactors = slv.run_small_signal_stability(x=x0, params=params0, plot=False)
 
     return Eigenvalues, PFactors
 

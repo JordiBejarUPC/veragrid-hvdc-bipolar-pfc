@@ -153,6 +153,8 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.svg",
             DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.svg",
             DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.svg",
+            DeviceType.RmsEventsGroupDevice.value: ":/Icons/icons/dyn_gray.svg",
+            DeviceType.RmsEventDevice.value: ":/Icons/icons/dyn_gray.svg",
 
             "Associations": ":/Icons/icons/associations.svg",
             DeviceType.Technology.value: ":/Icons/icons/technology.svg",
@@ -166,6 +168,8 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.SequenceLineDevice.value: ":/Icons/icons/ac_line.svg",
             DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.svg",
             DeviceType.RmsModelTemplateDevice.value: ":/Icons/icons/dyn_gray.svg",
+            DeviceType.DynamicModelHostDevice.value: ":/Icons/icons/dyn_gray.svg",
+
         }
 
         db_tree_model = gf.get_tree_model(d=self.circuit.get_template_objects_str_dict(),
@@ -825,6 +829,18 @@ class DataBaseTableMain(DiagramsMain):
                 name = f'RMS model {self.circuit.get_rms_models_number()}'
                 obj = dev.DynamicModelHost(name=name)
                 self.circuit.add_rms_model(obj)
+
+            elif elm_type == DeviceType.RmsEventDevice.value:
+
+                name = f'RMS event {len(self.circuit.rms_events)}'
+                obj = dev.RmsEvent(name=name)
+                self.circuit.add_rms_event(obj)
+
+            elif elm_type == DeviceType.RmsEventsGroupDevice.value:
+
+                name = f'RMS event grou{len(self.circuit.rms_events_groups)}'
+                obj = dev.RmsEventsGroup(name=name)
+                self.circuit.add_rms_events_group(obj)
 
             else:
                 info_msg("This object does not support table-like addition.\nUse the schematic instead.")

@@ -339,7 +339,9 @@ class Assets:
                 dev.Investment(),
                 dev.BranchGroup(),
                 dev.ModellingAuthority(),
-                dev.Facility()
+                dev.Facility(),
+                dev.RmsEvent(),
+                dev.RmsEventsGroup()
             ],
             "Associations": [
                 dev.Technology(),
@@ -353,10 +355,6 @@ class Assets:
                 dev.SequenceLineType(),
                 dev.TransformerType(),
                 dev.DynamicModelHost()
-            ],
-            "Rms": [
-                dev.RmsEvent(),
-                dev.RmsEventsGroup()
             ]
 
         }
@@ -4124,7 +4122,7 @@ class Assets:
         """
         self._rms_events_groups.append(obj)
 
-    def delete_rms_events_groups(self, obj: dev.RmsEventsGroup):
+    def delete_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
         Delete zone
         :param obj: index
@@ -4228,7 +4226,7 @@ class Assets:
                     to_del.append(grp)
 
             for grp in to_del:
-                self.delete_rms_events_groups(grp)
+                self.delete_rms_events_group(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Remedial action
@@ -7001,6 +6999,14 @@ class Assets:
 
         elif elm_type == DeviceType.DynamicModelHostDevice:
             elm = dev.DynamicModelHost()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.RmsEventDevice:
+            elm = dev.RmsEvent()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.RmsEventsGroupDevice:
+            elm = dev.RmsEventsGroup()
             dictionary_of_lists = dict()
 
         else:
