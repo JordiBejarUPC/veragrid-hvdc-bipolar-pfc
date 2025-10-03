@@ -21,7 +21,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 
 
-class BaseTerminal(QAbstractGraphicsShapeItem):
+class BaseTerminal:
     """
     Represents a connection point to a subsystem
     """
@@ -38,8 +38,6 @@ class BaseTerminal(QAbstractGraphicsShapeItem):
         :param parent:
         :param terminal_type:
         """
-        super().__init__(self, parent=parent)
-
         self.terminal_type = terminal_type
 
         # terminal parent object

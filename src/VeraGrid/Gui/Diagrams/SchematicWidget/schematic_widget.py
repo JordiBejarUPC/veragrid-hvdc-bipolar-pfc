@@ -4735,7 +4735,6 @@ class SchematicWidget(BaseDiagramWidget):
                                  title='Change bus')
 
             if ok:
-
                 new_bus_graphic_item.get_terminal().reassign_terminal(
                     graphic_obj=line_graphics,
                     another_terminal=old_bus_graphic_item.get_terminal()
@@ -4888,16 +4887,21 @@ class SchematicWidget(BaseDiagramWidget):
         Transform the bus into a grid of buses to be able to compute the bus currents
         :param bus_graphics: BusGraphicItem
         """
+
+        # convert a bus into many small buses connected by impedances
         new_buses, new_lines = transform_busbar_to_connectivity_grid(grid=self.circuit,
                                                                      busbar=bus_graphics.api_object)
 
+        # add the new buses
         self.add_buses(buses=new_buses)
 
         # connected branches
         branch_graphics = bus_graphics.get_associated_branch_graphics()
 
+        # Note: graphical shunts have been added already
+        # the order of the buses matches the order of the branches because the
+        # transformation function already works like that
         for i, branch_graphic in enumerate(branch_graphics):
-
             new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_buses[i])
 
             new_bus_graphic.terminal.reassign_terminal(
@@ -4912,12 +4916,8 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
-        shunt_graphics = bus_graphics.get_associated_shunt_graphics()
-
-
-
+        # Finally delete the old bus
         self.delete_element_utility_function(device=bus_graphics.api_object)
-
 
 
 def generate_schematic_diagram(buses: List[Bus],
