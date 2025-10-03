@@ -33,7 +33,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphic
     ControllableShunt)
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
-
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -242,6 +241,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         conn: List[GenericDiagramWidget | INJECTION_GRAPHICS] = self._terminal.get_hosted_graphics()
 
         return conn
+
+    def get_associated_shunt_graphics(self) -> List[INJECTION_GRAPHICS]:
+        """
+        List of associated shunt graphics
+        :return:
+        """
+        return self._child_graphics
 
     def get_associated_widgets(self) -> List[GenericDiagramWidget | INJECTION_GRAPHICS]:
         """
@@ -576,6 +582,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        icon_path=":/Icons/icons/voltage_level.svg",
                        function_ptr=self.convert_to_voltage_level)
 
+        add_menu_entry(menu, text='Convert to impedances circuit',
+                       icon_path=":/Icons/icons/voltage_level.svg",
+                       function_ptr=self.convert_to_connectivity_grid)
+
         add_menu_entry(menu, text='Expand schematic',
                        icon_path=":/Icons/icons/grid_icon.svg",
                        function_ptr=self.expand_diagram_from_bus)
@@ -636,7 +646,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
         dlg.show()
 
-
     def assign_status_to_profile(self):
         """
         Assign the snapshot rate to the profile
@@ -674,10 +683,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         self.vl_wizard = VoltageLevelConversionWizard()
 
-
-
         # open
         self.vl_wizard.show()
+
+    def convert_to_connectivity_grid(self):
+        """
+        Transform this bus into a grid of buses to be able to compute the bus currents
+        and delete this bus afterwards
+        """
+        self.editor.transform_busbar_to_connectivity_grid(bus_graphics=self)
 
     def expand_diagram_from_bus(self) -> None:
         """

@@ -37,7 +37,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics_3term import VscGraphicItem3Term
 
-NODE_GRAPHIC = BusGraphicItem | FluidNodeGraphicItem
+NODE_GRAPHIC = Union[BusGraphicItem, FluidNodeGraphicItem]
 
 
 class TransformerSymbol(QGraphicsRectItem):
