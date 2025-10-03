@@ -50,6 +50,7 @@ def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) 
     return cur
 
 
+
 def _compile_equations(eqs: Sequence[Expr],
                        uid2sym_vars: Dict[int, str],
                        uid2sym_params: Dict[int, str],
@@ -69,7 +70,12 @@ def _compile_equations(eqs: Sequence[Expr],
     src += f"    return out"
     ns: Dict[str, Any] = {"math": math, "np": np}
     exec(src, ns)
-    fn = nb.njit(signature, fastmath=True, cache=True)
+    fn = nb.jit(ns["_f"],
+              parallel=False,
+              cache=False,
+              nopython=True,
+              )
+    # fn = nb.njit(ns["_f"], fastmath=True)
 
     if add_doc_string:
         fn.__doc__ = "def _f(vars)"
