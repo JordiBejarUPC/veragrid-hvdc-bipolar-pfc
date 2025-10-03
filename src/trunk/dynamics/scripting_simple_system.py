@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 import VeraGridEngine.api as gce
 
 
@@ -223,18 +224,22 @@ slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, c
 start_stability = time.time()
 
 # stab, Eigenvalues,  PFactors = slv.stability_assessment(z=y[1000], params=params0, plot = True)
-stab, Eigenvalues, PFactors, damping_ratios, conjugate_frequencies = slv.run_small_signal_stability(x=x0, params=params0, plot = True, plot_Hz = True, verbose = 1)
+(stab,
+ Eigenvalues,
+ PFactors,
+ damping_ratios,
+ conjugate_frequencies) = run_small_signal_stability(slv=slv,
+                                                     x=x0,
+                                                     params=params0,
+                                                     plot = True,
+                                                     plot_units = "Hz",
+                                                     verbose = 1)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
 
-print("Stability assessment:", stab)
-print("Eigenvalues:", Eigenvalues)
-print("Participation factors:", PFactors.toarray())
-print("damping ratios:", damping_ratios.toarray())
-print("frequencies:", conjugate_frequencies.toarray())
 
 df_Eig = pd.DataFrame(Eigenvalues)
 df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
-df_PFactors = pd.DataFrame(PFactors.toarray())
+df_PFactors = pd.DataFrame(PFactors)
 df_PFactors.to_csv("pfactors_results.csv", index=False , header = False)

@@ -10,6 +10,7 @@ import scipy.linalg
 from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
 import scipy.sparse as sp
+import math
 
 from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -23,15 +24,16 @@ from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.basic_structures import Vec
 
 
+
 @nb.njit(cache=True)
 def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
     """
-
-    :param A:
-    :param v:
-    :param w:
-    :param n_eigenvalues:
-    :param num_states:
+    :param An: number of rows(states) in the state matrix
+    :param Am: number of columns(modes) in the state matrix
+    :param v: right eigenvectors
+    :param w: left eigenvectors
+    :param n_eigenvalues: number of eigenvalues
+    :param num_states: number of states
     :return:
     """
     participation_factors = np.zeros((An, Am))
@@ -47,8 +49,84 @@ def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
 
     return participation_factors
 
+# @nb.njit(cache=True)
+def select_eigs_without_conjugates(eigenvalues):
+    eig_no_conjugates = np.array([])
+    seen = set()
+    tol = 1e-12
+    for z in eigenvalues:
+        if np.isreal(z):
+            seen.add(z)
+        elif z.imag > tol:
+            if z not in seen and np.conj(z) not in seen:
+                seen.add(z)
+                eig_no_conjugates =np.append(eig_no_conjugates,z)
+        elif z.imag < tol:
+            continue
+    return eig_no_conjugates
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True, verbose: int = 0):
+@nb.njit(cache=True)
+def compute_damping_ratios_and_frequencies( eigenvalues, eig_no_conjugates):
+    damping_ratios = []
+    conjugate_frequencies = []
+    tol = 1e-12
+    for i in range(eigenvalues.shape[0]):
+        if eigenvalues[i] in eig_no_conjugates:
+            re = eigenvalues[i].real
+            im = eigenvalues[i].imag
+            conjugate_frequencies.append(im / (2 * np.pi))
+            modz = abs(eigenvalues[i])
+            if tol > modz:
+                damping_ratios.append(0.0)
+            else:
+                damping_ratios.append(-re / modz)
+        else:
+            damping_ratios.append(np.nan)
+            conjugate_frequencies.append(np.nan)
+    return damping_ratios, conjugate_frequencies
+
+def plot_stability(eigenvalues, plot_units = "rad/s" ):
+
+    x = eigenvalues.real
+    y = eigenvalues.imag
+    slope = 1 / 0.05
+    x_z = np.linspace(-200, 0, 400)
+    y_z = slope * x_z
+
+    x_label = "Re"
+    y_label = "Im [rad/s]"
+
+    if plot_units == "Hz":
+        y = y / (2 * math.pi)
+        y_z = y_z / (2 * math.pi)
+        y_label = "Im [Hz]"
+
+    # plot 5% damping ratio lines
+    plt.plot(x_z, y_z, '--', color='grey', label='ζ = 5%')
+    plt.plot(x_z, -y_z, '--', color='grey')
+    # Plot the two lines (positive and negative imaginary axis)
+    plt.axhline(0, color='black', linewidth=1)
+    plt.axvline(0, color='black', linewidth=1)
+    # plot modes
+    plt.scatter(x, y, marker='x', color='blue')
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title("Stability plot")
+
+    margin_x = (x.max() - x.min()) * 0.1
+    margin_y = (y.max() - y.min()) * 0.1
+    x_min = x.min() - margin_x
+    x_max = x.max() + margin_x
+    y_min = y.min() - margin_y
+    y_max = y.max() + margin_y
+    plt.xlim([x_min, x_max])
+    plt.ylim([y_min, y_max])
+
+    plt.tight_layout()
+    plt.show()
+
+
+def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True, plot_units = "rad/s", verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -86,12 +164,10 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     gyx = spsolve(gy, gx)
     A = (fx - fy @ gyx)  # sparse state matrix csc matrix
-    An = A.toarray()  # TODO: always use sparse algebra
-
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
-    eigenvalues, w, v = scipy.linalg.eig(An, left=True, right=True)
+    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True) # TODO: always use sparse algebra
 
     # find participation factors
     participation_factors = compute_participation_factors(An=A.shape[0],
@@ -100,54 +176,17 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
                                                           w=w,
                                                           n_eigenvalues=len(eigenvalues),
                                                           num_states=num_states)
-    # for row in range(w.shape[0]):
-    #     for column in range(w.shape[0]):
-    #         participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
-    #
-    # # normalize participation factors
-    # pfact_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
-    # for i in range(len(eigenvalues)):
-    #     participation_factors[:, i] /= pfact_abs[0, i]
 
-    # damping ratios
-    eig_no_conjugates = []
-    seen = set()
-    tol = 1e-12
-    for z in eigenvalues:
-        if np.isreal(z):
-            seen.add(z)
-            eig_no_conjugates.append(z)
-        elif z.imag > tol:
-            if z not in seen and np.conj(z) not in seen:
-                seen.add(z)
-                eig_no_conjugates.append(z)
-        elif z.imag < tol:
-            continue
-    eig_no_conjugates = sp.lil_matrix(eig_no_conjugates)
+    # find damping ratios and oscillation frequencies only for the complex conjugate modes
+    eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
 
-    if verbose:
-        print("eig no conjugates:", eig_no_conjugates)
-
-    damping_ratios = lil_matrix(eig_no_conjugates.shape, dtype=float)
-    conjugate_frequencies = lil_matrix(eig_no_conjugates.shape, dtype=float)
-    for i in range(eig_no_conjugates.shape[1]):
-        re = eig_no_conjugates[0, i].real
-        im = eig_no_conjugates[0, i].imag
-        conjugate_frequencies[0, i] = im / (2 * np.pi)
-        modz = abs(eig_no_conjugates[0, i])
-        if tol > modz:
-            damping_ratios[0, i] = 0.0
-        else:
-            damping_ratios[0, i] = -re / modz
+    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
+                                                                                   eig_no_conjugates = eig_no_conjugates)
 
     # Stability: select positive and zero eigenvalues
     tol = 1e-6  # numerical tolerance for eigenvalues = 0
     unstable_eigs = eigenvalues[np.real(eigenvalues) > tol]
     zero_eigs = eigenvalues[abs(np.real(eigenvalues)) <= tol]
-
-    # real_parts = eigenvalues.data.real
-    # pos = real_parts > tol
-    # unstable_eigs = eigenvalues.data[pos]
 
     if unstable_eigs.size == 0:
         if zero_eigs.size == 0:
@@ -158,25 +197,16 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
         stability = "Unstable"
 
     if plot:
-        x = eigenvalues.real
-        y = eigenvalues.imag
-
-        plt.scatter(x, y, marker='x', color='blue')
-        plt.xlabel("Re [s -1]")
-        plt.ylabel("Im [s -1]")
-        plt.title("Stability plot")
-        plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
-        plt.axvline(0, color='black', linewidth=1)
-        plt.tight_layout()
-        plt.show()
+        plot_stability(eigenvalues = eigenvalues,
+                       plot_units= plot_units)
 
     if verbose:
         print("all eigenvalues:", eigenvalues)
-        print("complex conjugate eigenvalues:", eig_no_conjugates.toarray())
-        print("daming ratios:", damping_ratios.toarray())
-        print("conjugate_frequencies:", conjugate_frequencies.toarray())
+        print("daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
+        print("conjugate frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
+        print("participation factors:", participation_factors)
 
-    return stability, eigenvalues, participation_factors, damping_ratios, conjugate_frequencies
+    return stability, eigenvalues, participation_factors, damping_ratios, conjugate_freq
 
 
 class SmallSignalStabilityDriver(DriverTemplate):
@@ -280,7 +310,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             stability = stability,
             eigenvalues = eigenvalues,
             participation_factors = participation_factors,
-            damping_ratios =damping_ratios,
+            damping_ratios = damping_ratios,
             conjugate_frequencies = conjugate_frequencies,
             stat_vars = slv.state_vars,
             vars2device = slv.vars2device

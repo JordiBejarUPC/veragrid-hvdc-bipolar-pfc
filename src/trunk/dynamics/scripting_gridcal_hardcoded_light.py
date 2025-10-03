@@ -387,7 +387,9 @@ start_stability = time.time()
  conjugate_frequencies) = run_small_signal_stability(slv=slv,
                                                      x=x0,
                                                      params=params0,
-                                                     plot=True)
+                                                     plot=True,
+                                                     plot_units = "rad/s",
+                                                     verbose = 1)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
