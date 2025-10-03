@@ -11,7 +11,6 @@ from typing import List, Tuple, Dict
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, ConvergenceReport, Logger, DateVec, Mat
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -58,8 +57,8 @@ class SmallSignalStabilityResults(ResultsTemplate):
         self.stability = stability
         self.eigenvalues = eigenvalues
         self.participation_factors = participation_factors
-        self.damping_ratios = damping_ratios
-        self.conjugate_frequencies = conjugate_frequencies
+        self.damping_ratios = [str(r) if not np.isnan(r) else '-' for r in damping_ratios]
+        self.conjugate_frequencies = [str(r) if not np.isnan(r) else '-' for r in conjugate_frequencies]
 
         # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
@@ -83,10 +82,13 @@ class SmallSignalStabilityResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.Modes:
+            re = self.eigenvalues.real
+            im = self.eigenvalues.imag
+            data = np.c_[re, im, self.damping_ratios, self.conjugate_frequencies]
             return ResultsTable(
-                data=np.array([np.real(self.eigenvalues), np.imag(self.eigenvalues)]).T,
+                data=data,
                 index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
-                columns=np.array(["Real", "Imaginary"]),
+                columns=np.array(["Real", "Imaginary", "Damping ratio", "Oscillation frequency"]),
                 title="Eigenvalues",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice

@@ -34,7 +34,7 @@ def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
     :param w: left eigenvectors
     :param n_eigenvalues: number of eigenvalues
     :param num_states: number of states
-    :return:
+    :return: participation factors
     """
     participation_factors = np.zeros((An, Am))
     for row in range(w.shape[0]):
@@ -51,6 +51,10 @@ def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
 
 # @nb.njit(cache=True)
 def select_eigs_without_conjugates(eigenvalues):
+    """
+    :param eigenvalues: row np array with modes
+    :return: row np array with only the positive complex conjugate modes
+    """
     eig_no_conjugates = np.array([])
     seen = set()
     tol = 1e-12
@@ -67,6 +71,12 @@ def select_eigs_without_conjugates(eigenvalues):
 
 @nb.njit(cache=True)
 def compute_damping_ratios_and_frequencies( eigenvalues, eig_no_conjugates):
+    """
+    :param eigenvalues: row np array with modes
+    :param eig_no_conjugates: row np array with only the positive complex conjugate modes
+    :return: damping_ratios: list with damping ratios for the positive complex conjugate modes. Nan for other modes
+    :return: conjugate_frequencies: list with oscillation frequencies for the positive complex conjugate modes. Nan for other modes
+    """
     damping_ratios = []
     conjugate_frequencies = []
     tol = 1e-12
@@ -86,7 +96,11 @@ def compute_damping_ratios_and_frequencies( eigenvalues, eig_no_conjugates):
     return damping_ratios, conjugate_frequencies
 
 def plot_stability(eigenvalues, plot_units = "rad/s" ):
-
+    """
+        :param eigenvalues: row np array with modes
+        :param plot_units: string with the imaginary units "rad/s" or "Hz"
+        :return: plot S-domain modes
+    """
     x = eigenvalues.real
     y = eigenvalues.imag
     slope = 1 / 0.05
