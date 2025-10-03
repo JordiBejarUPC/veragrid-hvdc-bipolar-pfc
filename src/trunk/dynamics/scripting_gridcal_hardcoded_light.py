@@ -22,7 +22,7 @@ from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
@@ -335,7 +335,7 @@ params_mapping = {}
 # # Solver
 start_building_system = time.time()
 
-slv = BlockSolver(ss, grid.time)
+slv = BlockSolver(ss, grid.time, use_jit=False)
 
 end_building_system = time.time()
 print(f"Automatic build system time = {end_building_system - start_building_system:.6f} [s]")
@@ -384,11 +384,10 @@ start_stability = time.time()
  Eigenvalues,
  PFactors,
  damping_ratios,
- conjugate_frequencies) = slv.run_small_signal_stability(x=x0,
-                                                         params=params0,
-                                                         plot=True,
-                                                         plot_Hz = True,
-                                                         verbose = 1)
+ conjugate_frequencies) = run_small_signal_stability(slv=slv,
+                                                     x=x0,
+                                                     params=params0,
+                                                     plot=True)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
