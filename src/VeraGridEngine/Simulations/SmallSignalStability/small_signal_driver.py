@@ -22,6 +22,7 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.enumerations import  ResultTypes
 
 
 
@@ -70,29 +71,38 @@ def select_eigs_without_conjugates(eigenvalues):
     return eig_no_conjugates
 
 @nb.njit(cache=True)
-def compute_damping_ratios_and_frequencies( eigenvalues, eig_no_conjugates):
+def compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates):
     """
     :param eigenvalues: row np array with modes
     :param eig_no_conjugates: row np array with only the positive complex conjugate modes
     :return: damping_ratios: list with damping ratios for the positive complex conjugate modes. Nan for other modes
     :return: conjugate_frequencies: list with oscillation frequencies for the positive complex conjugate modes. Nan for other modes
     """
-    damping_ratios = []
-    conjugate_frequencies = []
+    damping_ratios = np.full(eigenvalues.shape[0], np.nan, dtype=np.float64)
+    conjugate_frequencies = np.full(eigenvalues.shape[0], np.nan, dtype=np.float64)
     tol = 1e-12
+    match_tol = 1e-8
+
     for i in range(eigenvalues.shape[0]):
-        if eigenvalues[i] in eig_no_conjugates:
-            re = eigenvalues[i].real
-            im = eigenvalues[i].imag
-            conjugate_frequencies.append(im / (2 * np.pi))
-            modz = abs(eigenvalues[i])
-            if tol > modz:
-                damping_ratios.append(0.0)
+        mode = eigenvalues[i]
+        found = False
+        for j in range(eig_no_conjugates.shape[0]):
+            if np.abs(mode - eig_no_conjugates[j]) <= match_tol:
+                found = True
+                break
+        if found:
+            re = mode.real
+            im = mode.imag
+            conjugate_frequencies[i] = im / (2.0 * np.pi)
+            modz = np.abs(mode)
+            if modz < tol:
+                damping_ratios[i] = 0.0
             else:
-                damping_ratios.append(-re / modz)
+                damping_ratios[i] = -re / modz
         else:
-            damping_ratios.append(np.nan)
-            conjugate_frequencies.append(np.nan)
+            damping_ratios[i] = np.nan
+            conjugate_frequencies[i] = np.nan
+
     return damping_ratios, conjugate_frequencies
 
 def plot_stability(eigenvalues, plot_units = "rad/s" ):
@@ -204,11 +214,11 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     if unstable_eigs.size == 0:
         if zero_eigs.size == 0:
-            stability = "Asymptotically stable"  # TODO: always use Enums for known states
+            stability = ResultTypes.AsymptoticallyStable
         else:
-            stability = "Marginally stable"
+            stability = ResultTypes.MarginallyStable
     else:
-        stability = "Unstable"
+        stability = ResultTypes.Unstable
 
     if plot:
         plot_stability(eigenvalues = eigenvalues,
@@ -216,6 +226,7 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     if verbose:
         print("Eigenvalues:", eigenvalues)
+        print("eig no conjugates:", eig_no_conjugates)
         print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
         print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
         print("Participation factors:", participation_factors)
