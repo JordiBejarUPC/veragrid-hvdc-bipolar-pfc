@@ -22,7 +22,7 @@ from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
@@ -335,7 +335,7 @@ params_mapping = {}
 # # Solver
 start_building_system = time.time()
 
-slv = BlockSolver(ss, grid.time)
+slv = BlockSolver(ss, grid.time, use_jit=False)
 
 end_building_system = time.time()
 print(f"Automatic build system time = {end_building_system - start_building_system:.6f} [s]")
@@ -358,8 +358,6 @@ t, y = slv.simulate(
 end_simulation = time.time()
 print(f"Automatic simulation time = {end_simulation - start_simulation:.6f} [s]")
 
-
-
 # # Save to csv
 # slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, csv_saving=True)
 
@@ -377,21 +375,25 @@ print(f"Automatic simulation time = {end_simulation - start_simulation:.6f} [s]"
 # plt.grid(True)
 # plt.tight_layout()
 # plt.show()
-#
-# # stability assessment
-# start_stability = time.time()
-# # stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
-# # pr.enable()
-# stab, Eigenvalues, PFactors = slv.run_small_signal_stability(x=x0, params=params0, plot=True)
-# pr.disable()
-# pr.dump_stats('profile.pstat')
-# p = pstats.Stats('profile.pstat')
-# p.sort_stats('cumulative').print_stats(10)
-# end_stability = time.time()
-# print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
-#
-# print("Stability assessment:", stab)
-# print("Eigenvalues:", Eigenvalues)
-# print("Participation factors:", PFactors.toarray())
-# df_Eig = pd.DataFrame(Eigenvalues)
-# df_Eig.to_csv("Eigenvalues_results.csv", index=False, header=False)
+
+# stability assessment
+start_stability = time.time()
+# stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
+
+(stab,
+ Eigenvalues,
+ PFactors,
+ damping_ratios,
+ conjugate_frequencies) = run_small_signal_stability(slv=slv,
+                                                     x=x0,
+                                                     params=params0,
+                                                     plot=True)
+
+end_stability = time.time()
+print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
+
+print("Stability assessment:", stab)
+print("Eigenvalues:", Eigenvalues)
+print("Participation factors:", PFactors.toarray())
+df_Eig = pd.DataFrame(Eigenvalues)
+df_Eig.to_csv("Eigenvalues_results.csv", index=False, header=False)

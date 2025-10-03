@@ -6,24 +6,20 @@
 
 from __future__ import annotations
 
-import sys
-import os
 import time
 
-import cProfile as profile
 import uuid
 
-from typing import Tuple, Any
+from typing import Tuple
 import pandas as pd
 import numpy as np
 import numba as nb
 import math
 import scipy.sparse as sp
-import scipy.linalg
+
 from scipy.sparse import csr_matrix, csc_matrix
-from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
-from typing import Dict, List, Literal, Any, Callable, Sequence
-from matplotlib import pyplot as plt
+from scipy.sparse.linalg import gmres, spilu, LinearOperator
+from typing import Dict, List, Any, Callable, Sequence
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
@@ -55,7 +51,7 @@ def _compile_equations(eqs: Sequence[Expr],
     :return: Function pointer that returns an array
     """
 
-    fname = f"func{uuid.uuid4().hex}"
+    fname = f"func{uuid.uuid4().hex}"  # random name to avoid collissions
 
     # Build source
     # src = f"@nb.njit()\n"
@@ -63,12 +59,6 @@ def _compile_equations(eqs: Sequence[Expr],
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    # ns: Dict[str, Any] = {"math": math, "np": np}
-    # exec(src, ns)
-    # fn = nb.njit(ns["_f"], fastmath=True)
-
-    # if add_doc_string:
-    #     fn.__doc__ = "def _f(vars)"
 
     exec(src)
     compiled_func = locals()[fname]
@@ -82,22 +72,22 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
-    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param uid2sym_params:
+    :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
     :param add_doc_string: add the docstring?
     :return: Function pointer that returns an array
     """
+    fname = f"func{uuid.uuid4().hex}"  # random name to avoid collissions
+
     # Build source
-    src = f"def _f(glob_time):\n"
+    src = f"def {fname}(glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    ns: Dict[str, Any] = {"math": math, "np": np, "_heaviside": _heaviside}
-    exec(src, ns)
-    fn = nb.njit(ns["_f"], fastmath=True)
-    if add_doc_string:
-        fn.__doc__ = "def _f(vars)"
-    return fn
+
+    exec(src)
+    compiled_func = locals()[fname]
+
+    return compiled_func
 
 
 class SymbolicJacobian:
@@ -109,13 +99,15 @@ class SymbolicJacobian:
                  eqs: List[Expr],
                  variables: List[Var],
                  uid2sym_vars: Dict[int, str],
-                 uid2sym_params: Dict[int, str], ):
+                 uid2sym_params: Dict[int, str],
+                 use_jit: bool = True):
         """
         JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
         :param eqs: Array of equations
         :param variables: Array of variables to differentiate against
         :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
         :param uid2sym_params:
+        :param use_jit: if true, the function is compiled by numba
         :return:
                 jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
                     Fast evaluator in which *values* is a 1‑D NumPy vector of length
@@ -125,33 +117,23 @@ class SymbolicJacobian:
                     Row/col indices of structurally non‑zero entries.
         """
 
-        # Ensure deterministic variable order
-        check_set = set()
-        for v in variables:
-            if v in check_set:
-                raise ValueError(f"Repeated var {v.name} in the variables' list :(")
-            else:
-                check_set.add(v)
+        # compute the jacobian structure -------------------------------------------------------------------------------
 
         triplets: List[Tuple[int, int, Callable]] = list()  # (col, row, fn)
 
         for row, eq in enumerate(eqs):
             for col, var in enumerate(variables):
 
-                d_expression = eq.diff(var).simplify()
+                fn = eq.diff(var).simplify()
 
-                if not (isinstance(d_expression, Const) and d_expression.value == 0):
-                    triplets.append((col, row, d_expression))
-                else:
+                if isinstance(fn, Const) and fn.value == 0:
                     # structural zero
                     pass
+                else:
+                    triplets.append((col, row, fn))
 
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-
-        self.function_ptr = _compile_equations(eqs=equations_sorted,
-                                               uid2sym_vars=uid2sym_vars,
-                                               uid2sym_params=uid2sym_params)
 
         # Assemble the jacobian structure
         nnz = len(cols_sorted)
@@ -166,7 +148,34 @@ class SymbolicJacobian:
         self.nvar = len(variables)
         neq = len(eqs)
 
-        self.J = sp.csc_matrix((np.zeros(nnz, dtype=np.float64), indices, indptr), shape=(neq, self.nvar))
+        self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
+
+        # compilation --------------------------------------------------------------------------------------------------
+
+        self.namespace: Dict[str, Any] = {
+            "math": math,
+            "np": np,
+            "nb": nb,
+            "_heaviside": _heaviside,
+        }
+
+        fname = f"jac"  # since we compile into a namespace, there won't be repeated names
+
+        # Build source
+        src = f"def {fname}(vars, params, out):\n"
+        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}"
+                          for i, e in enumerate(equations_sorted)]) + "\n"
+
+        # compile to python
+        exec(src, self.namespace)
+
+        if use_jit:
+            # compile with numba
+            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+                                fastmath=True)(self.namespace[fname])
+        else:
+            # just pick the python pointer from the namespace
+            self.func = self.namespace[fname]
 
     def __call__(self, values: Vec, params: Vec) -> csc_matrix:
         """
@@ -177,9 +186,119 @@ class SymbolicJacobian:
         """
         assert len(values) >= self.nvar
 
-        self.J.data[:] = self.function_ptr(values, params)
+        # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
+        self.func(values, params, self.J.data)
 
         return self.J
+
+
+class SymbolicVector:
+    """
+    SymbolicFunction
+    """
+
+    def __init__(self, eqs: Sequence[Expr],
+                 uid2sym_vars: Dict[int, str],
+                 uid2sym_params: Dict[int, str],
+                 use_jit: bool = True):
+        """
+        Compile the array of expressions to a function that returns an array of values for those expressions
+        :param eqs: Iterable of expressions (Expr)
+        :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :param uid2sym_params:
+        :return: Function pointer that returns an array
+        """
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": _heaviside,
+            }
+
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
+
+            # Build source
+            src = f"def {fname}(vars, params, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+
+            # compile in python namespace
+            exec(src, self.namespace)
+
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+                                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
+        else:
+            self.func = None
+
+        self.data = np.zeros(len(eqs))
+
+    def __call__(self, values: Vec, params: Vec) -> Vec:
+        """
+        Call the compiled function
+        :param values:
+        :param params:
+        :return:
+        """
+        if self.func is not None:
+            self.func(values, params, self.data)
+        return self.data
+
+
+class SymbolicParamsVector:
+    """
+    SymbolicFunction
+    """
+
+    def __init__(self, eqs: Sequence[Expr],
+                 uid2sym_t: Dict[int, str],
+                 use_jit: bool = True):
+        """
+        Compile the array of expressions to a function that returns an array of values for those expressions
+        :param eqs: Iterable of expressions (Expr)
+        :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :return: Function pointer that returns an array
+        """
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": _heaviside,
+            }
+
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
+
+            # Build source
+            src = f"def {fname}(glob_time, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+
+            # compile in python namespace
+            exec(src, self.namespace)
+
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(nb.void(nb.float64, nb.float64[:]),
+                                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
+        else:
+            self.func = None
+
+        self.data = np.zeros(len(eqs))
+
+    def __call__(self, glob_time: Vec) -> Vec:
+        """
+        Call the compiled function
+        :param glob_time:
+        :return:
+        """
+        if self.func is not None:
+            self.func(glob_time, self.data)
+        return self.data
 
 
 class BlockSolver:
@@ -187,10 +306,14 @@ class BlockSolver:
     A network of Blocks that behaves roughly like a Simulink diagram.
     """
 
-    def __init__(self, block_system: Block, glob_time: Var):
+    def __init__(self, block_system: Block,
+                 glob_time: Var,
+                 use_jit: bool = True):
         """
-        Constructor        
-        :param block_system: BlockSystem
+        Constructor
+        :param block_system:  BlockSystem
+        :param glob_time:
+        :param use_jit: if true, the functions are compiled with numba
         """
         self.block_system: Block = block_system
         # TODO: uids, system vars,.. have been already processed in block_system and can be retrived from there.
@@ -252,6 +375,15 @@ class BlockSolver:
         uid2sym_t[self.glob_time.uid] = f"glob_time"
         self.uid2idx_t[self.glob_time.uid] = k
 
+        # Ensure deterministic variable order
+        for variables in (self._state_vars, self._algebraic_vars):
+            check_set = set()
+            for v in variables:
+                if v in check_set:
+                    raise ValueError(f"Repeated var {v.name} in the variables' list :(")
+                else:
+                    check_set.add(v)
+
         # Compile RHS and Jacobian
         """
                    state Var   algeb var  
@@ -264,43 +396,79 @@ class BlockSolver:
         start_compiling = time.time()
         print("Compiling...", end="")
 
-        # all_eqs = self._state_eqs + self._algebraic_eqs
-        # all_vars = self._state_vars + self._algebraic_vars
+        self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
+                                            uid2sym_vars=uid2sym_vars,
+                                            uid2sym_params=uid2sym_params,
+                                            use_jit=use_jit)
 
-        # self._full_jacobian_fn = _get_full_jacobian(eqs=all_eqs, variables=all_vars, uid2sym_vars=uid2sym_vars, uid2sym_params=uid2sym_params)
+        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
+                                            uid2sym_vars=uid2sym_vars,
+                                            uid2sym_params=uid2sym_params,
+                                            use_jit=use_jit)
 
-        self._rhs_state_fn = _compile_equations(eqs=self._state_eqs, uid2sym_vars=uid2sym_vars,
-                                                uid2sym_params=uid2sym_params)
-
-        self._rhs_algeb_fn = _compile_equations(eqs=self._algebraic_eqs, uid2sym_vars=uid2sym_vars,
-                                                uid2sym_params=uid2sym_params)
-
-        self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs, uid2sym_t=uid2sym_t)
+        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs,
+                                               uid2sym_t=uid2sym_t)
 
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params)
+                                        uid2sym_params=uid2sym_params,
+                                        use_jit=use_jit)
 
         self._j12_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params)
+                                        uid2sym_params=uid2sym_params,
+                                        use_jit=use_jit)
 
         self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params)
+                                        uid2sym_params=uid2sym_params,
+                                        use_jit=use_jit)
 
         self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params)
+                                        uid2sym_params=uid2sym_params,
+                                        use_jit=use_jit)
 
         print("done!")
         end_compiling = time.time()
         compilation_time = end_compiling - start_compiling
         print(f"all compilation time = {compilation_time:.6f} [s]")
+
+    @property
+    def j11(self) -> SymbolicJacobian:
+        """
+        state eq / state var jacobian
+        :return: SymbolicJacobian
+        """
+        return self._j11_fn
+
+    @property
+    def j12(self) -> SymbolicJacobian:
+        """
+        state eq / algeb var
+        :return: SymbolicJacobian
+        """
+        return self._j12_fn
+
+    @property
+    def j21(self) -> SymbolicJacobian:
+        """
+        algeb eq / state Var
+        :return:  SymbolicJacobian
+        """
+        return self._j21_fn
+
+    @property
+    def j22(self) -> SymbolicJacobian:
+        """
+        algeb eq / algeb Var
+        :return: SymbolicJacobian
+        """
+        return self._j22_fn
 
     @property
     def state_vars(self) -> List[Var]:
@@ -430,7 +598,7 @@ class BlockSolver:
         :return [f_state_update, f_algeb]
         """
         f_algeb = np.array(self._rhs_algeb_fn(x, params))
-        sim_step = sim_step
+
         if self._n_state > 0:
             f_state = np.array(self._rhs_state_fn(x, params))
             f_state_update = x[:self._n_state] - xn[:self._n_state] - h * f_state
@@ -469,20 +637,27 @@ class BlockSolver:
 
         J = pack_4_by_4_scipy(j11, j12, j21, j22)
 
-        # j11: sp.csc_matrix = (I - h * self._j11_fn(x, params)).tocsc()
-        # j12: sp.csc_matrix = - h * self._j12_fn(x, params)
-        # j21: sp.csc_matrix = self._j21_fn(x, params)
-        # j22: sp.csc_matrix = self._j22_fn(x, params)
-
         return J
 
     def residual_init(self, z: np.ndarray, params: np.ndarray):
+        """
+
+        :param z:
+        :param params:
+        :return:
+        """
         # concatenate state & algebraic residuals
         f_s = np.array(self._rhs_state_fn(z, params))  # f_state(x)        == 0 at t=0
         f_a = np.array(self._rhs_algeb_fn(z, params))  # g_algeb(x, y)     == 0
         return np.r_[f_s, f_a]
 
     def jacobian_init(self, z: np.ndarray, params: np.ndarray):
+        """
+
+        :param z:
+        :param params:
+        :return:
+        """
         J11 = self._j11_fn(z, params)  # ∂f_state/∂x
         J12 = self._j12_fn(z, params)  # ∂f_state/∂y
         J21 = self._j21_fn(z, params)  # ∂g/∂x
@@ -535,14 +710,32 @@ class BlockSolver:
         return x_vec
 
     def resid_gamma(self, z, z_prev, dt, n_s, params0):
-        """Pseudo-transient residual  R(z) = 0  (index-1 semi-explicit DAE)."""
+        """
+        Pseudo-transient residual  R(z) = 0  (index-1 semi-explicit DAE).
+        :param z:
+        :param z_prev:
+        :param dt:
+        :param n_s:
+        :param params0:
+        :return:
+        """
+
         f_s = np.array(self._rhs_state_fn(z, params0))  # f(x,y)
         f_a = np.array(self._rhs_algeb_fn(z, params0))  # g(x,y)
-        return np.r_[(z[:n_s] - z_prev[:n_s]) / dt - f_s,  # BE for states
-        f_a]
+        return np.r_[
+            (z[:n_s] - z_prev[:n_s]) / dt - f_s,  # BE for states
+            f_a
+        ]
 
     def jacob_gamma(self, z, dt, I_s, params0):
-        """Block Jacobian of the Ψtc residual."""
+        """
+        Block Jacobian of the Ψtc residual.
+        :param z:
+        :param dt:
+        :param I_s:
+        :param params0:
+        :return:
+        """
         J11 = self._j11_fn(z, params0)  # ∂f_state/∂x
         J12 = self._j12_fn(z, params0)  # ∂f_state/∂y
         J21 = self._j21_fn(z, params0)  # ∂g/∂x
@@ -619,8 +812,8 @@ class BlockSolver:
 
         return z_vec
 
-    def _apply_lambda(self,
-                      params: np.ndarray,
+    @staticmethod
+    def _apply_lambda(params: np.ndarray,
                       ramps_descr: list[tuple[int, float, float, Const]],
                       lam: float) -> None:
         """
@@ -952,8 +1145,6 @@ class BlockSolver:
         params_time = 0
         residual_time = 0
         solv_time = 0
-        total_jac_time = 0
-        total_csc_time = 0
 
         for step_idx in range(steps):
             xn = y[step_idx]
@@ -1002,8 +1193,7 @@ class BlockSolver:
                 start_solv = time.time()
                 delta = sp.linalg.spsolve(Jf, -rhs)
                 end_solv = time.time()
-                solv_time = end_solv - start_solv
-                solv_time += calc_jac_time
+                solv_time += end_solv - start_solv
 
                 x_new += delta
                 n_iter += 1
@@ -1023,8 +1213,6 @@ class BlockSolver:
         print(f"params_total_time = {params_time:.6f} [s]")
         print(f"residual_total_time = {residual_time:.6f} [s]")
         print(f"solv_time = {solv_time:.6f} [s]")
-        print(f"total_jac_time = {total_jac_time:.6f} [s]")
-        print(f"total_csc_time = {total_csc_time:.6f} [s]")
 
         # pr.disable()
         # pr.dump_stats('implicit_euler.pstat')
@@ -1060,89 +1248,3 @@ class BlockSolver:
             df_simulation_results.to_csv(filename, index=False)
             print(f"Simulation results saved to: {filename}")
         return df_simulation_results
-
-    def run_small_signal_stability(self, x: Vec, params: Vec, tol=1e-6, plot=True):
-        """
-        Small Signal Stability analysis
-        :param x: variables (1D numpy array)
-        :param params: parameters (1D numpy array)
-        :param tol:  numerical tolerance for eigenvalues = 0
-        :param plot: True(default) if S-domain eigenvalues plot wanted. Else: False
-        :return:
-            stability: str
-                "Unstable", "Marginally stable" or "Asymptotically stable"
-            eigenvalues:  1D row numpy array
-            participation factors: 2D array csc matrix.
-                Participation factors of mode i stored in PF[:,i]
-        """
-
-        """
-        Small Signal Stability analysis:
-        1. Calculate the state matrix (A) from the state space model. From the DAE model:
-            Tx'=f(x,y)
-            0=g(x,y)
-            the A matrix is computed as:
-            A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
-
-        2. Find eigenvalues and right(V) and left(W) eigenvectors
-
-        3. Perform stability assessment
-
-        4. Calculate normalized participation factors PF = W · V
-        """
-
-        fx, _, _ = self._j11_fn(x, params)  # ∂f/∂x
-        fy, _, _ = self._j12_fn(x, params)  # ∂f/∂y
-        gx, _, _ = self._j21_fn(x, params)  # ∂g/∂x
-        gy, _, _ = self._j22_fn(x, params)  # ∂g/∂y
-
-        gyx = spsolve(gy, gx)
-        A = (fx - fy @ gyx)  # sparse state matrix csc matrix
-        An = A.toarray()  # TODO: always use sparse algebra
-
-        num_states = A.shape[0]
-
-        eigen_values, W, V = scipy.linalg.eig(An, left=True, right=True)
-        # eigen_values, eigen_vectors = eigs(A)  # TODO: always use sparse algebra
-        V = sp.csc_matrix(V)  # right
-        W = sp.csc_matrix(W)  # left
-
-        # find participation factors
-        participation_factors = sp.lil_matrix(A.shape)
-        for row in range(W.shape[0]):
-            for column in range(W.shape[0]):
-                participation_factors[row, column] = abs(W[row, column]) * abs(V[row, column])
-
-        # normalize participation factors
-        PF_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
-        for i in range(len(eigen_values)):
-            participation_factors[:, i] /= PF_abs[0, i]
-
-            # Stability: select positive and zero eigenvalues
-
-        unstable_eigs = eigen_values[np.real(eigen_values) > tol]
-        zero_eigs = eigen_values[abs(np.real(eigen_values)) <= tol]
-        stable_eigs = eigen_values[np.real(eigen_values) < -tol]
-
-        if unstable_eigs.size == 0:
-            if zero_eigs.size == 0:
-                stability = "Asymptotically stable"  # TODO: always use Enums for known states
-            else:
-                stability = "Marginally stable"
-        else:
-            stability = "Unstable"
-
-        if plot:
-            x = eigen_values.real
-            y = eigen_values.imag
-
-            plt.scatter(x, y, marker='x', color='blue')
-            plt.xlabel("Re [s -1]")
-            plt.ylabel("Im [s -1]")
-            plt.title("Stability plot")
-            plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
-            plt.axvline(0, color='black', linewidth=1)
-            plt.tight_layout()
-            plt.show()
-
-        return stability, eigen_values, participation_factors

@@ -223,7 +223,7 @@ slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, c
 start_stability = time.time()
 
 # stab, Eigenvalues,  PFactors = slv.stability_assessment(z=y[1000], params=params0, plot = True)
-stab, Eigenvalues, PFactors = slv.run_small_signal_stability(x=x0, params=params0, plot = True)
+stab, Eigenvalues, PFactors, damping_ratios, conjugate_frequencies = slv.run_small_signal_stability(x=x0, params=params0, plot = True)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
@@ -231,6 +231,8 @@ print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s
 print("Stability assessment:", stab)
 print("Eigenvalues:", Eigenvalues)
 print("Participation factors:", PFactors.toarray())
+print("damping ratios:", damping_ratios.toarray())
+print("frequencies:", conjugate_frequencies.toarray())
 
 df_Eig = pd.DataFrame(Eigenvalues)
 df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
