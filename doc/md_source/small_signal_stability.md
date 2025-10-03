@@ -35,7 +35,7 @@ The available results are the following:
 - **Participation factors**: The participation factor of variable *k* in mode *i* is found in row *k*, column *i*. 
 - **S-Domain stability plot**: available with different imaginary axis units: "rad/s" or "Hz".
  
-!! CHANGE PLOT !!
+
 
 ![](figures/SDomain_plot_VeraGrid.png)
 
