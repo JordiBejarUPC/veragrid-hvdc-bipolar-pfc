@@ -161,13 +161,13 @@ class SmallSignalStabilityResults(ResultsTemplate):
 
                 fig.canvas.mpl_connect("motion_notify_event", hover)
 
-            return ResultsTable(data=data,
-                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
-                                idx_device_type=DeviceType.NoDevice,
-                                columns=np.array(['Real', 'Imag']),
-                                cols_device_type=DeviceType.NoDevice,
-                                title="S-Domain Stability plot"
-                                )
+            # return ResultsTable(data=data,
+            #                     index=np.empty(len(self.eigenvalues), dtype=np.str_),
+            #                     idx_device_type=DeviceType.NoDevice,
+            #                     columns=np.array(['Real', 'Imag']),
+            #                     cols_device_type=DeviceType.NoDevice,
+            #                     title="S-Domain Stability plot"
+            #                     )
         elif result_type == ResultTypes.SDomainPlotHz:
             re = self.eigenvalues.real
             im = self.eigenvalues.imag / (2*math.pi)
@@ -236,13 +236,13 @@ class SmallSignalStabilityResults(ResultsTemplate):
 
                 fig.canvas.mpl_connect("motion_notify_event", hover)
 
-            return ResultsTable(data=data,
-                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
-                                idx_device_type=DeviceType.NoDevice,
-                                columns=np.array(['Real', 'Imag [Hz]']),
-                                cols_device_type=DeviceType.NoDevice,
-                                title="S-Domain Stability plot"
-                                )
+            # return ResultsTable(data=data,
+            #                     index=np.empty(len(self.eigenvalues), dtype=np.str_),
+            #                     idx_device_type=DeviceType.NoDevice,
+            #                     columns=np.array(['Real', 'Imag [Hz]']),
+            #                     cols_device_type=DeviceType.NoDevice,
+            #                     title="S-Domain Stability plot"
+            #                     )
         else:
             raise Exception(f"Result type not understood: {result_type}")
 
