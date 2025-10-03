@@ -71,7 +71,6 @@ def Andes_vs_Veragrid_stability(eigV, eigA):
     plt.ylim([y_min, y_max])
     plt.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
     plt.axvline(0, color='black', linewidth=1)
-    # plt.grid(True)
     plt.legend(loc='upper left', ncol=2)
     plt.tight_layout()
     plt.show()

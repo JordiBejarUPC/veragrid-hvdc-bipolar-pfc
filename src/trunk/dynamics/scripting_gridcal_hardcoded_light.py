@@ -47,7 +47,6 @@ import pstats
 
 # Build system
 
-t = Var("t")
 
 grid = MultiCircuit()
 
@@ -394,8 +393,5 @@ start_stability = time.time()
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
 
-print("Stability assessment:", stab)
-print("Eigenvalues:", Eigenvalues)
-print("Participation factors:", PFactors.toarray())
 df_Eig = pd.DataFrame(Eigenvalues)
 df_Eig.to_csv("Eigenvalues_results.csv", index=False, header=False)

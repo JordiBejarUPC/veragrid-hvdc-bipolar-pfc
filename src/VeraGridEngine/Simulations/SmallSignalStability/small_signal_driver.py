@@ -215,10 +215,10 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
                        plot_units= plot_units)
 
     if verbose:
-        print("all eigenvalues:", eigenvalues)
-        print("daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
-        print("conjugate frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
-        print("participation factors:", participation_factors)
+        print("Eigenvalues:", eigenvalues)
+        print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
+        print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
+        print("Participation factors:", participation_factors)
 
     return stability, eigenvalues, participation_factors, damping_ratios, conjugate_freq
 
