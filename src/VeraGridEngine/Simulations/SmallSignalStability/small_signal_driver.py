@@ -214,24 +214,25 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     if unstable_eigs.size == 0:
         if zero_eigs.size == 0:
-            stability = ResultTypes.AsymptoticallyStable
+            stability_report = ResultTypes.AsymptoticallyStable
         else:
-            stability = ResultTypes.MarginallyStable
+            stability_report = ResultTypes.MarginallyStable
     else:
-        stability = ResultTypes.Unstable
+        stability_report = ResultTypes.Unstable
 
     if plot:
         plot_stability(eigenvalues = eigenvalues,
                        plot_units= plot_units)
 
     if verbose:
+        print("Stability report:", stability_report)
         print("Eigenvalues:", eigenvalues)
         print("eig no conjugates:", eig_no_conjugates)
         print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
         print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
         print("Participation factors:", participation_factors)
 
-    return stability, eigenvalues, participation_factors, damping_ratios, conjugate_freq
+    return stability_report, eigenvalues, participation_factors, damping_ratios, conjugate_freq
 
 
 class SmallSignalStabilityDriver(DriverTemplate):
