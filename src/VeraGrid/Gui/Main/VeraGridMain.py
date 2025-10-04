@@ -8,6 +8,7 @@ import sys
 
 # import qdarktheme
 from PySide6 import QtWidgets, QtGui
+from PySide6.QtCore import Qt
 
 from VeraGrid.Gui.Main.MainWindow import QApplication
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
@@ -140,6 +141,8 @@ def runVeraGrid() -> None:
 
     app = QApplication(sys.argv)
     # app.setStyle('Fusion')  # ['Breeze', 'Oxygen', 'QtCurve', 'Windows', 'Fusion']
+
+    app.setAttribute(Qt.AA_DontShowIconsInMenus, False)
 
     window_ = VeraGridMainGUI()
 
