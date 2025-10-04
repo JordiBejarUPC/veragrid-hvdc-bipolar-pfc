@@ -17,8 +17,8 @@ def convert_svgs(folder: str, backup: bool = True):
         print(f"❌ Folder not found: {folder}")
         return
 
-    for svg_file in folder_path.rglob("*.svg"):
-        out_file = svg_file.with_suffix(".tmp.svg")
+    for svg_file in folder_path.rglob("*.png"):
+        out_file = svg_file.with_suffix(".tmp.png")
 
         print(f"Converting {svg_file} -> {out_file}")
         try:
@@ -46,6 +46,23 @@ def convert_svgs(folder: str, backup: bool = True):
             print(f"  ⚠️ Error with {svg_file}: {e}")
 
 
+def convert_to_png(folder: str, size: int = 64):
+    """
+
+    """
+    for svg_file in pathlib.Path(folder).rglob("*.png"):
+        png_file = svg_file.with_suffix(".png")
+        print(f"Rasterising {svg_file} -> {png_file}")
+        subprocess.run([
+            "inkscape",
+            str(svg_file),
+            f"--export-filename={png_file}",
+            f"--export-width={size}",
+            f"--export-height={size}",
+        ], check=True)
+
+
 if __name__ == "__main__":
     # Change "." to your target directory
-    convert_svgs("icons")
+    # convert_svgs("icons")
+    convert_to_png(".")

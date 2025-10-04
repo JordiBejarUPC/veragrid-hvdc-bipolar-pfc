@@ -50,19 +50,20 @@ def check_all_svgs():
                 bad_files.append((path, "invalid"))
             else:
                 pass
-                # print(f"[OK] {path}")
-
-    print("\nSVG compatibility summary:")
-    for path, status in bad_files:
-        print(f"  {status.upper():<8} {path}")
 
     if len(bad_files) > 0:
+        print("\nSVG compatibility summary:")
+        for path, status in bad_files:
+            print(f"  {status.upper():<8} {path}")
+
         update_all_icons()
+    else:
+        print("SVG compatibility summary: all ok")
 
 
 if __name__ == "__main__":
     print('Loading VeraGrid...')
-    check_all_svgs()
+    # check_all_svgs()
     print(about_msg)
 
     # Set the application style to the clear theme
