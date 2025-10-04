@@ -128,11 +128,13 @@ class VeraGridMainGUI(ScriptingMain):
             event.accept()
 
 
+
 def runVeraGrid() -> None:
     """
     Main function to run the GUI
     :return:
     """
+
     # if hasattr(qdarktheme, 'enable_hi_dpi'):
     qdarktheme.enable_hi_dpi()
 

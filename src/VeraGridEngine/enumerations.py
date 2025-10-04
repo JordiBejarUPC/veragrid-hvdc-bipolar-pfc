@@ -1959,6 +1959,8 @@ class ResultTypes(Enum):
 
     # reliability
     ReliabilityLoleResults = "LOLE"
+    ReliabilityENSResults = "ENS"
+    ReliabilityLOLFResults = "LOLF"
 
     def __str__(self):
         return self.value

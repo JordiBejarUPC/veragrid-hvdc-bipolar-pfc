@@ -77,46 +77,46 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         add_menu_entry(menu=menu,
                        text="Rms Editor",
                        function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/edit.svg")
+                       icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
                        text="Qcurve edit",
                        function_ptr=self.edit_q_curve,
-                       icon_path=":/Icons/icons/edit.svg")
+                       icon_path=":/Icons/icons/edit.png")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
                        text="Plot profiles",
-                       icon_path=":/Icons/icons/plot.svg",
+                       icon_path=":/Icons/icons/plot.png",
                        function_ptr=self.plot)
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
                        text="Solar photovoltaic wizard",
-                       icon_path=":/Icons/icons/solar_power.svg",
+                       icon_path=":/Icons/icons/solar_power.png",
                        function_ptr=self.solar_pv_wizard)
 
         add_menu_entry(menu=menu,
                        text="Wind farm wizard",
-                       icon_path=":/Icons/icons/wind_power.svg",
+                       icon_path=":/Icons/icons/wind_power.png",
                        function_ptr=self.wind_farm_wizard)
 
         menu.addSeparator()
 
         add_menu_entry(menu, text='Remove',
-                       icon_path=":/Icons/icons/delete_schematic.svg",
+                       icon_path=":/Icons/icons/delete_schematic.png",
                        function_ptr=self.delete)
 
         add_menu_entry(menu=menu,
                        text="Convert to battery",
-                       icon_path=":/Icons/icons/add_batt.svg",
+                       icon_path=":/Icons/icons/add_batt.png",
                        function_ptr=self.to_battery)
 
         add_menu_entry(menu=menu,
                        text="Change bus",
-                       icon_path=":/Icons/icons/move_bus.svg",
+                       icon_path=":/Icons/icons/move_bus.png",
                        function_ptr=self.change_bus)
 
         menu.exec_(event.screenPos())
