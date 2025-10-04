@@ -27,7 +27,7 @@ if platform.system() == 'Windows':
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
-def check_all_svgs() -> bool:
+def check_all_svgs():
     """
     Iterate through all resources registered by icons_rc and check SVG validity.
     :returns: if any icon has errors
@@ -52,12 +52,9 @@ def check_all_svgs() -> bool:
                 pass
                 # print(f"[OK] {path}")
 
-    print("\nSummary:")
+    print("\nSVG compatibility summary:")
     for path, status in bad_files:
         print(f"  {status.upper():<8} {path}")
-
-    if not bad_files:
-        print("✅ All SVG icons are valid!")
 
     if len(bad_files) > 0:
         update_all_icons()
@@ -65,6 +62,7 @@ def check_all_svgs() -> bool:
 
 if __name__ == "__main__":
     print('Loading VeraGrid...')
+    check_all_svgs()
     print(about_msg)
 
     # Set the application style to the clear theme
