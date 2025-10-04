@@ -111,7 +111,7 @@ class MapLibraryModel(QStandardItemModel):
         :return:
         """
         _icon = QIcon()
-        _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.svg"))
+        _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
         _item.setToolTip(f"Drag & drop {name} into the schematic")
         self.appendRow(_item)

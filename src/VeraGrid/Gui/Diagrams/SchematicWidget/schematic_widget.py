@@ -125,7 +125,7 @@ class SchematicLibraryModel(QStandardItemModel):
         :return:
         """
         _icon = QIcon()
-        _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.svg"))
+        _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
         _item = QStandardItem(_icon, name)
         _item.setToolTip(f"Drag & drop {name} into the schematic")
         self.appendRow(_item)
@@ -2018,7 +2018,7 @@ class SchematicWidget(BaseDiagramWidget):
             image = self.get_image(transparent=False)
             image.save(filename)
 
-        elif extension == '.svg':
+        elif extension == '.png':
             w = self.editor_graphics_view.width()
             h = self.editor_graphics_view.height()
             svg_gen = QSvgGenerator()

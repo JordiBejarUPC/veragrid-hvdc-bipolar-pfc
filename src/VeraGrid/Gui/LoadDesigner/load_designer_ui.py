@@ -185,7 +185,7 @@ class Ui_Dialog(object):
         self.draw_by_peak_pushButton = QPushButton(self.frame_7)
         self.draw_by_peak_pushButton.setObjectName(u"draw_by_peak_pushButton")
         icon = QIcon()
-        icon.addFile(u":/Icons/icons/gear.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.draw_by_peak_pushButton.setIcon(icon)
 
         self.horizontalLayout_8.addWidget(self.draw_by_peak_pushButton)
