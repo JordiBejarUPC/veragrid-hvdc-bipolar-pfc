@@ -142,7 +142,11 @@ def runVeraGrid() -> None:
     app = QApplication(sys.argv)
     # app.setStyle('Fusion')  # ['Breeze', 'Oxygen', 'QtCurve', 'Windows', 'Fusion']
 
+    # MacOS: display icons in menus
     app.setAttribute(Qt.AA_DontShowIconsInMenus, False)
+
+    # MacOS: Fix to show the icon on the task bar
+    app.setWindowIcon(QtGui.QIcon(':/Program icon/VeraGrid_icon.png'))
 
     window_ = VeraGridMainGUI()
 
