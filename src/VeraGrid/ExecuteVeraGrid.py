@@ -21,9 +21,9 @@ from PySide6.QtSvg import QSvgRenderer
 from VeraGrid.Gui.Main.VeraGridMain import runVeraGrid
 from VeraGrid.Gui.update_gui_all import update_all_icons
 
-if platform.system() == 'Windows':
+if platform.system() == 'Windows' or os.name == 'nt':
     # this makes the icon display properly under windows
-    myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+    myappid = u'mycompany.myproduct.subproduct.version'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 

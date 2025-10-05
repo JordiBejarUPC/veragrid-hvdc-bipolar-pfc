@@ -6,7 +6,6 @@
 import os.path
 import sys
 
-# import qdarktheme
 from PySide6 import QtWidgets, QtGui
 from PySide6.QtCore import Qt
 
@@ -140,10 +139,9 @@ def runVeraGrid() -> None:
     qdarktheme.enable_hi_dpi()
 
     app = QApplication(sys.argv)
-    # app.setStyle('Fusion')  # ['Breeze', 'Oxygen', 'QtCurve', 'Windows', 'Fusion']
 
     # MacOS: display icons in menus
-    app.setAttribute(Qt.AA_DontShowIconsInMenus, False)
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
 
     # MacOS: Fix to show the icon on the task bar
     app.setWindowIcon(QtGui.QIcon(':/Program icon/VeraGrid_icon.png'))
