@@ -16,15 +16,34 @@ from VeraGrid.__version__ import about_msg
 # NOTE: For some reason I cannot begin to comprehend, the activation fails on windows if called before the GUI...
 import VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation
 
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QDirIterator, QResource
 from PySide6.QtSvg import QSvgRenderer
 from VeraGrid.Gui.Main.VeraGridMain import runVeraGrid
 from VeraGrid.Gui.update_gui_all import update_all_icons
 
+# set the app name
+APP_NAME = "veragrid"
+
+
+
+
 if platform.system() == 'Windows' or os.name == 'nt':
     # this makes the icon display properly under windows
     myappid = u'mycompany.myproduct.subproduct.version'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+elif os.name == "posix" or sys.platform.startswith("linux"):
+
+    os.environ["QT_WAYLAND_CLIENT_IDENTIFIER"] = APP_NAME
+
+    libc_name = ctypes.util.find_library("c")
+    if libc_name:
+        try:
+            libc = ctypes.CDLL(libc_name)
+            libc.prctl(15, APP_NAME.encode(), 0, 0, 0)
+        except Exception as e:
+            print(f"Could not set process name: {e}")
 
 
 def check_all_svgs():

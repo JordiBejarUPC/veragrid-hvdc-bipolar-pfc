@@ -8,7 +8,7 @@ import sys
 
 from PySide6 import QtWidgets, QtGui
 from PySide6.QtCore import Qt
-
+from PySide6.QtGui import QIcon
 from VeraGrid.Gui.Main.MainWindow import QApplication
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
@@ -128,6 +128,63 @@ class VeraGridMainGUI(ScriptingMain):
             event.accept()
 
 
+def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):
+    """
+    Create a .desktop entry for a PySide app using a resource icon (":/path/to/icon.svg").
+
+    Parameters
+    ----------
+    app_name : str
+        Name of the application (also used for StartupWMClass).
+    qrc_icon_path : str
+        Path to the icon inside the .qrc (e.g. ':/icons/app_icon.svg')
+    """
+    if not sys.platform.startswith("linux"):
+        print("[INFO] Not running on Linux, skipping .desktop creation.")
+        return None
+
+    # Extract icon from Qt resource to a real file
+    icon = QIcon(qrc_icon_path)
+    if icon.isNull():
+        print(f"[WARNING] Could not find icon in resource: {qrc_icon_path}")
+        return None
+
+    # Temporary export path (user local cache)
+    cache_dir = os.path.expanduser(f"~/.cache/{app_name}")
+    os.makedirs(cache_dir, exist_ok=True)
+    icon_path = os.path.join(cache_dir, f"{app_name}.png")
+
+    # Save first available icon size
+    pixmap = icon.pixmap(256, 256)
+    pixmap.save(icon_path, "PNG")
+
+    # Create .desktop entry
+    desktop_dir = os.path.expanduser("~/.local/share/applications")
+    os.makedirs(desktop_dir, exist_ok=True)
+    desktop_file = os.path.join(desktop_dir, f"{app_name}.desktop")
+
+    if not os.path.exists(desktop_file):
+        exec_path = f"{sys.executable} {os.path.abspath(sys.argv[0])}"
+        content = f"""[Desktop Entry]
+Version=1.0
+Type=Application
+Name={app_name}
+Exec={exec_path}
+Icon={icon_path}
+Terminal=false
+StartupWMClass={app_name}
+Categories=Utility;
+"""
+        with open(desktop_file, "w") as f:
+            f.write(content)
+        os.chmod(desktop_file, 0o755)
+        print(f"[OK] Created .desktop entry: {desktop_file}")
+    else:
+        pass
+        # print(f"[INFO] .desktop entry already exists: {desktop_file}")
+
+    return desktop_file
+
 
 def runVeraGrid() -> None:
     """
@@ -143,10 +200,17 @@ def runVeraGrid() -> None:
     # MacOS: display icons in menus
     app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
 
+    icon_name = ':/Program icon/VeraGrid_icon.png'
+    icon = QtGui.QIcon(icon_name)
+
+    # will check os internally
+    create_linux_desktop_entry("veragrid", qrc_icon_path=icon_name)
+
     # MacOS: Fix to show the icon on the task bar
-    app.setWindowIcon(QtGui.QIcon(':/Program icon/VeraGrid_icon.png'))
+    app.setWindowIcon(icon)
 
     window_ = VeraGridMainGUI()
+    window_.setWindowIcon(icon)  # also apply directly
 
     # process the argument if provided
     if len(sys.argv) > 1:
