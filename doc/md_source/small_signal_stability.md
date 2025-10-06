@@ -2,7 +2,7 @@
 
 Stability assessment is crucial for any system and of course, VeraGrid has it.
 
-⚠️ Before performing small-signal stability analysis, a power flow calculation must be completed! 
+⚠️Before performing small-signal stability analysis, a power flow calculation must be completed! 
 ### Settings
 This is the Small-Signal settings page:
 
@@ -231,7 +231,7 @@ slope = 1 / 0.05
 x_z = np.linspace(-200, 0, 400)
 y_z = slope * x_z
 # Plot the two lines (positive and negative imaginary axis)
-plt.plot(x_z, y_z, '--', color='grey', label='ζ = 5%')
+plt.plot(x_z, y_z, '--', color='grey', label='$\lambda$ = 5%')
 plt.plot(x_z, -y_z, '--', color='grey')
 plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
 plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
@@ -396,7 +396,9 @@ Merging the DAE formulation into the linearized state-space representation, the 
 $$
 \Delta \dot{x} = T^{-1}(fx-fy \cdot gy^{-1} \cdot gx) \Delta x
 $$
+
  and therefore:
+
 $$
 A= T^{-1}(fx-fy \cdot gy^{-1} \cdot gx)
 $$
