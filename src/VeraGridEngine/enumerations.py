@@ -1822,6 +1822,7 @@ class ResultTypes(Enum):
     # RMS Simulation
 
     RmsSimulationReport = 'Rms time series report'
+    RmsPlotResults = 'Rms plot results'
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"

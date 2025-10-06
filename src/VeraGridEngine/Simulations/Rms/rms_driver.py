@@ -6,6 +6,9 @@
 import numpy as np
 import pandas as pd
 from typing import Dict
+
+from pygments.lexers.textfmts import TodotxtLexer
+
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic import Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
@@ -54,7 +57,8 @@ class RmsSimulationDriver(DriverTemplate):
                  time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
                  stat_vars =  [],
                  algeb_vars=[],
-                 vars2device= {})
+                 vars2device= {},
+                 devices = [])
 
     def run(self):
         """
@@ -81,6 +85,13 @@ class RmsSimulationDriver(DriverTemplate):
         else:
             raise ValueError(f"integrator not implemented :( {self.options.integration_method}")
 
+        # TODO: Check if there is a cleaner way to get all the devices in a list
+
+        buses = [bus for bus in self.grid.get_buses()]
+        branches = [branch for branch in self.grid.get_branches_iter()]
+        injections = [injection for injection in self.grid.get_injection_devices_iter()]
+
+        devices = buses + branches + injections
 
         params_mapping: Dict = dict()
 
@@ -104,7 +115,8 @@ class RmsSimulationDriver(DriverTemplate):
                                   time_array=pd.DatetimeIndex(pd.to_datetime(t)),
                                   stat_vars=slv._state_vars,
                                   algeb_vars=slv._algebraic_vars,
-                                  vars2device=slv.vars2device)
+                                  vars2device=slv.vars2device,
+                                  devices = devices)
 
         self.toc()
 

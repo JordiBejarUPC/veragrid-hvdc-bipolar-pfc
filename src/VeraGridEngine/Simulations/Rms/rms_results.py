@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import matplotlib.colors as plt_colors
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
+
+from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable
@@ -26,12 +31,13 @@ class RmsResults(ResultsTemplate):
                  stat_vars: List[Var],
                  algeb_vars: List[Var],
                  vars2device: Dict[int, PhysicalDevice],
+                 devices: List[Union[Bus, BranchParent, InjectionParent]],
                  units: str = "",
                  ):
         ResultsTemplate.__init__(
             self,
             name='RMS simulation',
-            available_results=[ResultTypes.RmsSimulationReport],
+            available_results=[ResultTypes.RmsSimulationReport, ResultTypes.RmsPlotResults],
             time_array=time_array,
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
@@ -42,6 +48,7 @@ class RmsResults(ResultsTemplate):
         variables = stat_vars + algeb_vars
         variable_names = [str(var) + vars2device[var.uid].name for var in variables]
 
+        self.devices = devices
         self.variable_array = np.array(variable_names, dtype=np.str_)
 
         self.values = values
@@ -62,15 +69,18 @@ class RmsResults(ResultsTemplate):
                 idx_device_type=DeviceType.TimeDevice,
                 cols_device_type=DeviceType.NoDevice
             )
+        elif result_type == ResultTypes.RmsPlotResults:
+
+            devices_options = {
+            }
+
+            for device in self.devices:
+                # devices_options[device.name] = device.rms_model.model.state_vars + device.rms_model.model.algebraic_vars
+                devices_options[device.name] = [v.name for v in device.rms_model.model.state_vars + device.rms_model.model.algebraic_vars]
+
+            dlg = RmsPlotDialog(devices_options)
+            dlg.exec()
+            # launch devices and variables selection
+
         else:
             raise Exception(f"Result type not understood: {result_type}")
-
-    # def add(self, dt: float, y: Vec):
-    #     """
-    #
-    #     :param dt:
-    #     :param y:
-    #     :return:
-    #     """
-    #     self.dt.append(dt)
-    #     self.y.append(y)
