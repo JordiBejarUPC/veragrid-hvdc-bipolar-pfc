@@ -28,8 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="5.5.3">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added linux icon entry thing">
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/VeraGridMain.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/VeraGridMain.py" afterDir="false" />
     </list>
@@ -1854,7 +1853,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="628" />
+    <option name="localTasksCounter" value="629" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1900,7 +1899,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="automatic initialization equations fixed" />
     <MESSAGE value="moved rms initialization out of the MultiCircuit" />
     <MESSAGE value="got some changes from horrendous alex comit" />
     <MESSAGE value="several tweaks before the release" />
@@ -1925,7 +1923,8 @@
     <MESSAGE value="5.5.2" />
     <MESSAGE value="migrated main to png" />
     <MESSAGE value="added png equivalents" />
-    <option name="LAST_COMMIT_MESSAGE" value="added png equivalents" />
+    <MESSAGE value="added linux icon entry thing" />
+    <option name="LAST_COMMIT_MESSAGE" value="added linux icon entry thing" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

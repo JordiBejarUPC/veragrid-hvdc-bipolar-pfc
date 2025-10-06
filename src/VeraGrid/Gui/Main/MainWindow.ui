@@ -11297,6 +11297,8 @@ QProgressBar::chunk{
     <addaction name="actionShort_Circuit"/>
     <addaction name="actionVoltage_stability"/>
     <addaction name="actionContingency_analysis"/>
+    <addaction name="actionRun_Dynamic_RMS_Simulation"/>
+    <addaction name="actionRun_Small_Signal_RMS_Simulation"/>
     <addaction name="separator"/>
     <addaction name="actionOPF"/>
     <addaction name="actionOpf_to_Power_flow"/>
@@ -13124,7 +13126,7 @@ QProgressBar::chunk{
      <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
    </property>
    <property name="text">
-    <string>Run Dynamic RMS Simulation</string>
+    <string>Dynamic RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic RMS simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -13139,10 +13141,10 @@ QProgressBar::chunk{
      <normaloff>:/Icons/icons/ss_icon.png</normaloff>:/Icons/icons/ss_icon.png</iconset>
    </property>
    <property name="text">
-    <string>Run Small-Signal RMS Simulation</string>
+    <string>Small-Signal RMS Simulation</string>
    </property>
    <property name="iconText">
-    <string>Run Small-Signal RMS Simulation</string>
+    <string>Small-Signal RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Small Signal Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

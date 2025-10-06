@@ -10,6 +10,9 @@ from PySide6 import QtWidgets, QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from VeraGrid.Gui.Main.MainWindow import QApplication
+from PySide6.QtCore import QDirIterator, QResource
+from PySide6.QtSvg import QSvgRenderer
+from VeraGrid.Gui.update_gui_all import update_all_icons
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGrid.__version__ import __VeraGrid_VERSION__
@@ -166,7 +169,7 @@ def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):
     if not os.path.exists(desktop_file):
         exec_path = f"{sys.executable} {os.path.abspath(sys.argv[0])}"
         content = f"""[Desktop Entry]
-Version=1.0
+Version={__VeraGrid_VERSION__}
 Type=Application
 Name={app_name}
 Exec={exec_path}
@@ -184,6 +187,40 @@ Categories=Utility;
         # print(f"[INFO] .desktop entry already exists: {desktop_file}")
 
     return desktop_file
+
+
+def check_all_svgs():
+    """
+    Iterate through all resources registered by icons_rc and check SVG validity.
+    :returns: if any icon has errors
+    """
+    it = QDirIterator(":/Icons", QDirIterator.IteratorFlag.Subdirectories)
+    bad_files = []
+
+    while it.hasNext():
+        path = it.next()
+        if path.lower().endswith(".svg"):
+            res = QResource(path)
+            if not res.isValid():
+                print(f"[MISSING] {path}")
+                bad_files.append((path, "missing"))
+                continue
+
+            renderer = QSvgRenderer(path)
+            if not renderer.isValid():
+                print(f"[INVALID] {path}")
+                bad_files.append((path, "invalid"))
+            else:
+                pass
+
+    if len(bad_files) > 0:
+        print("\nSVG compatibility summary:")
+        for path, status in bad_files:
+            print(f"  {status.upper():<8} {path}")
+
+        update_all_icons()
+    else:
+        print("SVG compatibility summary: all ok")
 
 
 def runVeraGrid() -> None:
