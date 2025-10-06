@@ -1311,7 +1311,7 @@ def create_ring(name, grid: MultiCircuit, n_bays: int, v_nom: float,
     return vl, offset_total_x, offset_total_y
 
 
-def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus):
+def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -> Tuple[List[dev.Bus], List[dev.Line]]:
     """
     Transform a BusBar into multiple Connectivity buses connected by branches.
     This is to be able to compute the power that passes through a busbar
@@ -1319,7 +1319,7 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus):
 
     :param grid: MultiCircuit instance
     :param busbar: the Bus object (BusGraphicType.BusBar) to transform
-    :return: list of new Connectivity buses
+    :return: list of new Connectivity buses, list of branches between them
     """
     # Collect all connections (busbar side of each device)
     associated_branches = []
@@ -1343,7 +1343,6 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus):
             voltage_level=busbar.voltage_level,
             xpos=busbar.x + x_offset,  # offset a bit to spread them visually
             ypos=busbar.y,
-            width=busbar.w,
             country=busbar.country,
             graphic_type=BusGraphicType.Connectivity
         )
@@ -1380,6 +1379,7 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus):
         x_offset += 100
 
     # Electrically tie all new buses with line branches
+    new_branches = list()
     for i in range(len(new_buses) - 1):
         ln = dev.Line(
             name=f"{busbar.name}_backbone_{i}",
@@ -1387,11 +1387,12 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus):
             bus_to=new_buses[i + 1],
         )
         grid.add_line(ln)
+        new_branches.append(ln)
 
     # Remove the original busbar
     grid.delete_bus(busbar)
 
-    return new_buses
+    return new_buses, new_branches
 
 
 def create_substation(grid: MultiCircuit,

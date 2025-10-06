@@ -65,7 +65,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             add_menu_entry(menu=menu,
                         text="Rms Editor",
                         function_ptr=self.edit_rms,
-                        icon_path=":/Icons/icons/edit.svg")
+                        icon_path=":/Icons/icons/edit.png")
 
             menu.exec(event.screenPos())
         else:

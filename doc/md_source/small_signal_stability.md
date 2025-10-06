@@ -161,7 +161,7 @@ Note that the S-Domain stability plot will be given as a result when ```plot = T
 
 ### Running ANDES
 Thanks to its symbolic precision and reliable numerical performance, ANDES provides a great baseline 
-for stability analysis in contemporary power system studies. That’s why VeraGrid uses ANDES 
+for stability analysis in contemporary power system studies. That's why VeraGrid uses ANDES 
 as its benchmark for small-signal analysis. Of course, VeraGrid successfully reproduces all eigenvalue 
 placements from ANDES.
 
@@ -259,7 +259,7 @@ stability assessments respectively.
 
 Small-signal analysis is a technique used to evaluate the dynamic behavior of nonlinear systems by linearizing 
 their equations around a specific operating point. This approach assumes that perturbations are sufficiently 
-small (typically within 1%) so that the system’s response can be approximated using linear models.
+small (typically within 1%) so that the system's response can be approximated using linear models.
 The resulting linear representation enables the use of standard control engineering tools to assess system 
 stability and dynamic performance.
 
@@ -331,12 +331,12 @@ Eigenvalue analysis and participation factors (PFs) are key tools for identifyin
 These methods are well established in conventional power systems and are increasingly being applied to power-electronics-based systems, 
 where dynamic behavior is often more complex and sensitive to operating conditions. 
 
-The **eigenvalues** of the state matrix A (commonly referred to as the system’s modes) characterize its
+The **eigenvalues** of the state matrix A (commonly referred to as the system's modes) characterize its
 small-signal stability according to the following criteria:
 
 
 - All $Re(\lambda)<0$: asymptotically stable 
-- All $Re(\lambda)≤ 0$: marginally stable
+- All $Re(\lambda) \leq 0$: marginally stable
 - At least one mode satisfies $Re(\lambda)<0$ : unstable
 
 When a linearized system has complex conjugate modes, they represent oscillatory modes in the dynamic response.
@@ -408,9 +408,9 @@ the DAE system respectively.
 
 
 ### Benchmark - Kundur system
-The Kundur two‑area system is a standard benchmark network widely used for small‑signal and transient stability studies.
+The Kundur two-area system is a standard benchmark network widely used for small-signal and transient stability studies.
 It was introduced in the P. Kundur power system stability literature as a compact, yet representative, 
-test case that exposes inter‑area oscillatory modes and control interactions without excessive model complexity.
+test case that exposes inter-area oscillatory modes and control interactions without excessive model complexity.
 
 ![](figures/Kundur_system_no_shunt.png)
 
