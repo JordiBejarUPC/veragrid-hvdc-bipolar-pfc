@@ -8,25 +8,32 @@ import math
 import VeraGridEngine.Devices as dev
 from VeraGridEngine import Country, BusGraphicType, SwitchGraphicType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import SubstationTypes
+from VeraGridEngine.enumerations import VoltageLevelTypes
 
 
-def create_single_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
-                      substation: dev.Substation, country: Country = None,
+def create_single_bar(name: str,
+                      grid: MultiCircuit,
+                      n_bays: int,
+                      v_nom: float,
+                      substation: dev.Substation,
+                      country: Country = None,
                       include_disconnectors: bool = True,
-                      offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                      bar_by_segments: bool = False,
+                      offset_x: float = 0.0,
+                      offset_y: float = 0.0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
-    :param name:
-    :param grid:
-    :param n_bays:
-    :param v_nom:
-    :param substation:
-    :param country:
-    :param include_disconnectors:
-    :param offset_x:
-    :param offset_y:
-    :return:
+    :param name: Voltage level name
+    :param grid: MultiCircuit to do the mods
+    :param n_bays: number of bays (positions)
+    :param v_nom: Nominal voltage
+    :param substation: Substation where it belongs
+    :param country: Country (Optional)
+    :param include_disconnectors: Include the disconnector switches? (optional)
+    :param bar_by_segments: Split the bar into segments
+    :param offset_x: x ofsset (px)
+    :param offset_y: y ofsset (px)
+    :return: Voltage level object, offset x, offset y
     """
 
     vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
@@ -37,32 +44,88 @@ def create_single_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
     y_dist = bus_width * 1.5
     l_x_pos = []
     l_y_pos = []
+    connection_buses: List[dev.Bus] = list()
+    bar_buses: List[dev.Bus] = list()
 
     if include_disconnectors:
-        width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
-        bar = dev.Bus(name=f"{name} bar", substation=substation, Vnom=v_nom, voltage_level=vl, width=width,
-                      xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
-                      graphic_type=BusGraphicType.BusBar)
-        grid.add_bus(bar)
-        l_x_pos.append(bar.x)
-        l_y_pos.append(bar.y)
+
+        if not bar_by_segments:
+            width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
+            bar = dev.Bus(name=f"{name} bar", substation=substation, Vnom=v_nom, voltage_level=vl, width=width,
+                          xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
+                          graphic_type=BusGraphicType.BusBar)
+            grid.add_bus(bar)
+            l_x_pos.append(bar.x)
+            l_y_pos.append(bar.y)
+            bus_to = bar
+        else:
+            # bus_to will be assigned inside
+            pass
 
         for i in range(n_bays):
-            bus1 = dev.Bus(name=f"{name}_bay_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-                           xpos=offset_x + i * x_dist, ypos=offset_y + 0, width=bus_width, country=country,
+
+            if bar_by_segments:
+                bus_to = dev.Bus(name=f"{name} bar ({i + 1})",
+                                 substation=substation,
+                                 Vnom=v_nom,
+                                 voltage_level=vl,
+                                 width=50,
+                                 xpos=offset_x - bus_width,
+                                 ypos=offset_y + y_dist,
+                                 country=country,
+                                 graphic_type=BusGraphicType.Connectivity)
+                grid.add_bus(bus_to)
+                l_x_pos.append(bus_to.x)
+                l_y_pos.append(bus_to.y)
+                bar_buses.append(bus_to)
+            else:
+                # bus_to was assigned before the loop
+                pass
+
+            bus1 = dev.Bus(name=f"{name}_bay_conn_{i}",
+                           substation=substation,
+                           Vnom=v_nom,
+                           voltage_level=vl,
+                           xpos=offset_x + i * x_dist,
+                           ypos=offset_y + 0,
+                           width=bus_width,
+                           country=country,
                            graphic_type=BusGraphicType.Connectivity)
 
-            bus2 = dev.Bus(name=f"LineBus2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-                           xpos=offset_x + i * x_dist, ypos=offset_y + y_dist, width=bus_width, country=country,
+            bus2 = dev.Bus(name=f"LineBus2_{i}",
+                           substation=substation,
+                           Vnom=v_nom,
+                           voltage_level=vl,
+                           xpos=offset_x + i * x_dist,
+                           ypos=offset_y + y_dist,
+                           width=bus_width,
+                           country=country,
                            graphic_type=BusGraphicType.Connectivity)
 
-            bus3 = dev.Bus(name=f"LineBus3_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-                           xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 2, width=bus_width, country=country,
+            bus3 = dev.Bus(name=f"LineBus3_{i}",
+                           substation=substation,
+                           Vnom=v_nom,
+                           voltage_level=vl,
+                           xpos=offset_x + i * x_dist,
+                           ypos=offset_y + y_dist * 2,
+                           width=bus_width,
+                           country=country,
                            graphic_type=BusGraphicType.Connectivity)
 
-            dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-            cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus2, bus_to=bus3, graphic_type=SwitchGraphicType.CircuitBreaker)
-            dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bar, bus_to=bus3, graphic_type=SwitchGraphicType.Disconnector)
+            dis1 = dev.Switch(name=f"Dis1_{i}",
+                              bus_from=bus1,
+                              bus_to=bus2,
+                              graphic_type=SwitchGraphicType.Disconnector)
+
+            cb1 = dev.Switch(name=f"CB_{i}",
+                             bus_from=bus2,
+                             bus_to=bus3,
+                             graphic_type=SwitchGraphicType.CircuitBreaker)
+
+            dis2 = dev.Switch(name=f"Dis2_{i}",
+                              bus_from=bus_to,
+                              bus_to=bus3,
+                              graphic_type=SwitchGraphicType.Disconnector)
 
             grid.add_bus(bus1)
             l_x_pos.append(bus1.x)
@@ -80,43 +143,63 @@ def create_single_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
             grid.add_switch(cb1)
             grid.add_switch(dis2)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(name=f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 5, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #
-        #     bus2 = dev.Bus(name=f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 4, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bar, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        #
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        #
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(cb1)
+            connection_buses.append(bus1)
 
     else:
-        width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
-        bar = dev.Bus(name=f"{name} bar", substation=substation, Vnom=v_nom, voltage_level=vl, width=width,
-                      xpos=offset_x - bus_width, ypos=offset_y + y_dist, country=country,
-                      graphic_type=BusGraphicType.BusBar)
-        grid.add_bus(bar)
-        l_x_pos.append(bar.x)
-        l_y_pos.append(bar.y)
+
+        if not bar_by_segments:
+            width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
+            bar = dev.Bus(name=f"{name} bar",
+                          substation=substation,
+                          Vnom=v_nom,
+                          voltage_level=vl,
+                          width=width,
+                          xpos=offset_x - bus_width,
+                          ypos=offset_y + y_dist,
+                          country=country,
+                          graphic_type=BusGraphicType.BusBar)
+            grid.add_bus(bar)
+            l_x_pos.append(bar.x)
+            l_y_pos.append(bar.y)
+            bus_to = bar
+        else:
+            # bus_to will be assigned inside
+            pass
 
         for i in range(n_bays):
-            bus1 = dev.Bus(name=f"{name}_bay_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-                           xpos=offset_x + i * x_dist, ypos=offset_y, width=bus_width, country=country,
+
+            if bar_by_segments:
+                bus_to = dev.Bus(name=f"{name} bar ({i + 1})",
+                                 substation=substation,
+                                 Vnom=v_nom,
+                                 voltage_level=vl,
+                                 width=50,
+                                 xpos=offset_x - bus_width,
+                                 ypos=offset_y + y_dist,
+                                 country=country,
+                                 graphic_type=BusGraphicType.Connectivity)
+                grid.add_bus(bus_to)
+                l_x_pos.append(bus_to.x)
+                l_y_pos.append(bus_to.y)
+                bar_buses.append(bus_to)
+            else:
+                # bus_to was assigned before the loop
+                pass
+
+            bus1 = dev.Bus(name=f"{name}_bay_conn_{i}",
+                           substation=substation,
+                           Vnom=v_nom,
+                           voltage_level=vl,
+                           xpos=offset_x + i * x_dist,
+                           ypos=offset_y,
+                           width=bus_width,
+                           country=country,
                            graphic_type=BusGraphicType.Connectivity)
-            cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bar, graphic_type=SwitchGraphicType.CircuitBreaker)
+
+            cb1 = dev.Switch(name=f"CB_{i}",
+                             bus_from=bus1,
+                             bus_to=bus_to,
+                             graphic_type=SwitchGraphicType.CircuitBreaker)
 
             grid.add_bus(bus1)
             l_x_pos.append(bus1.x)
@@ -124,28 +207,27 @@ def create_single_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
 
             grid.add_switch(cb1)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(name=f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 2, width=bus_width, country=country,
-        #                    graphic_type=BusGraphicType.Connectivity)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bar, bus_to=bus1, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        #
-        #     grid.add_switch(cb1)
+            connection_buses.append(bus1)
+
+    if bar_by_segments and len(bar_buses) > 1:
+        for i in range(len(bar_buses) - 1):
+            ln = dev.Line(
+                name=f"{name}_section_{i}",
+                bus_from=bar_buses[i],
+                bus_to=bar_buses[i + 1],
+            )
+            grid.add_line(ln)
 
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, connection_buses, offset_total_x, offset_total_y
 
 
 def create_single_bar_with_bypass(name, grid: MultiCircuit, n_bays: int, v_nom: float,
                                   substation: dev.Substation, country: Country = None,
                                   include_disconnectors: bool = True,
-                                  offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                                  offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -168,6 +250,7 @@ def create_single_bar_with_bypass(name, grid: MultiCircuit, n_bays: int, v_nom: 
     y_dist = bus_width * 1.5
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     if include_disconnectors:
         width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
@@ -212,29 +295,8 @@ def create_single_bar_with_bypass(name, grid: MultiCircuit, n_bays: int, v_nom: 
             grid.add_switch(dis2)
             grid.add_switch(bypass_dis)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 5, width=bus_width, country=country,
-        #                    graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 4, width=bus_width, country=country,
-        #                    graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bar, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus2, bus_to=bus1, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #     bypass_dis = dev.Switch(name=f"Bypass_Dis_{i}", bus_from=bus1, bus_to=bar,
-        #                             graphic_type=SwitchGraphicType.Disconnector)
-        #
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        #
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        #
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(cb1)
-        #     grid.add_switch(bypass_dis)
+            conn_buses.append(bus1)
+
     else:
         width = n_bays * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1)
         bar = dev.Bus(name=f"{name} bar",
@@ -264,31 +326,23 @@ def create_single_bar_with_bypass(name, grid: MultiCircuit, n_bays: int, v_nom: 
             grid.add_switch(cb1)
             grid.add_switch(bypass_dis)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 2, width=bus_width, country=country,
-        #                    graphic_type=BusGraphicType.Connectivity)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bar, bus_to=bus1, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #     bypass_dis = dev.Switch(name=f"Bypass_Dis_{i}", bus_from=bus1, bus_to=bar,
-        #                             graphic_type=SwitchGraphicType.Disconnector)
-        #
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        #
-        #     grid.add_switch(cb1)
-        #     grid.add_switch(bypass_dis)
+            conn_buses.append(bus1)
 
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_splitter(name, grid: MultiCircuit, n_bays: int, v_nom: float,
-                                    substation: dev.Substation, country: Country = None,
+def create_single_bar_with_splitter(name: str,
+                                    grid: MultiCircuit,
+                                    n_bays: int,
+                                    v_nom: float,
+                                    substation: dev.Substation,
+                                    country: Country = None,
                                     include_disconnectors: bool = True,
-                                    offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                                    offset_x=0,
+                                    offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -313,6 +367,7 @@ def create_single_bar_with_splitter(name, grid: MultiCircuit, n_bays: int, v_nom
     bar_2_y_offset = bus_width * 1.2
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     n_bays_bar_1 = n_bays // 2
     n_bays_bar_2 = n_bays - n_bays_bar_1
@@ -382,37 +437,8 @@ def create_single_bar_with_splitter(name, grid: MultiCircuit, n_bays: int, v_nom
             grid.add_switch(cb1)
             grid.add_switch(dis2)
 
-        # for i in range(n_trafos):
-        #     if i < n_trafos_bar_1:
-        #         bar = bar1
-        #         x_offset = 0
-        #         y_offset = 0
-        #     else:
-        #         bar = bar2
-        #         x_offset = bar_2_x_offset + 2 * bus_width
-        #         y_offset = bar_2_y_offset
-        # 
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist + x_offset, ypos=offset_y + y_dist * 5 + y_offset,
-        #                    width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist + x_offset, ypos=offset_y + y_dist * 4 + y_offset,
-        #                    width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bar, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.CircuitBreaker)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        # 
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(cb1)
+            conn_buses.append(bus1)
+
     else:
 
         bar1 = dev.Bus(f"{name} bar 1", substation=substation, Vnom=v_nom, voltage_level=vl,
@@ -455,38 +481,23 @@ def create_single_bar_with_splitter(name, grid: MultiCircuit, n_bays: int, v_nom
 
             grid.add_switch(cb1)
 
-        # for i in range(n_trafos):
-        #     if i < n_trafos_bar_1:
-        #         bar = bar1
-        #         x_offset = 0
-        #         y_offset = 0
-        #     else:
-        #         bar = bar2
-        #         x_offset = bar_2_x_offset + 2 * bus_width
-        #         y_offset = bar_2_y_offset
-        # 
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist + x_offset, ypos=offset_y + y_dist * 2 + y_offset,
-        #                    width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bar, bus_to=bus1, graphic_type=SwitchGraphicType.CircuitBreaker)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_switch(cb1)
+            conn_buses.append(bus1)
 
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
-                      substation: dev.Substation, country: Country = None,
+def create_double_bar(name,
+                      grid: MultiCircuit,
+                      n_bays: int,
+                      v_nom: float,
+                      substation: dev.Substation,
+                      country: Country = None,
                       include_disconnectors: bool = True,
-                      offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                      offset_x=0,
+                      offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -509,6 +520,7 @@ def create_double_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
     y_dist = bus_width * 1.5
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     if include_disconnectors:
         width = (n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * n_bays
@@ -560,28 +572,8 @@ def create_double_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
             grid.add_switch(dis2)
             grid.add_switch(dis3)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 6, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 5, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bar1, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bar2, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.CircuitBreaker)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        # 
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(dis2)
-        #     grid.add_switch(cb1)
+            conn_buses.append(bus1)
+
 
         # coupling
         bus1 = dev.Bus(f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
@@ -658,28 +650,7 @@ def create_double_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
             grid.add_switch(dis1)  # this disconnectors must be included to respect the SE geometry
             grid.add_switch(dis2)  # this disconnectors must be included to respect the SE geometry
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 5, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 4, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bar1, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bar2, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.CircuitBreaker)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        # 
-        #     grid.add_switch(dis1)  # this disconnectors must be included to respect the SE geometry
-        #     grid.add_switch(dis2)  # this disconnectors must be included to respect the SE geometry
-        #     grid.add_switch(cb1)
+            conn_buses.append(bus1)
 
         # coupling
         cb1 = dev.Switch(name="CB_coupling", bus_from=bar1, bus_to=bar2, graphic_type=SwitchGraphicType.CircuitBreaker)
@@ -688,15 +659,18 @@ def create_double_bar(name, grid: MultiCircuit, n_bays: int, v_nom: float,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
 def create_double_bar_with_transference_bar(name: str,
                                             grid: MultiCircuit,
-                                            n_bays: int, v_nom: float,
-                                            substation: dev.Substation, country: Country = None,
+                                            n_bays: int,
+                                            v_nom: float,
+                                            substation: dev.Substation,
+                                            country: Country = None,
                                             include_disconnectors: bool = True,
-                                            offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                                            offset_x=0,
+                                            offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -719,6 +693,7 @@ def create_double_bar_with_transference_bar(name: str,
     y_dist = bus_width * 1.5
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     if include_disconnectors:
 
@@ -792,40 +767,7 @@ def create_double_bar_with_transference_bar(name: str,
             grid.add_switch(dis3)
             grid.add_switch(dis4)
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 8, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 7, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus3 = dev.Bus(f"trafo3_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 6, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus2, bus_to=bus3, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #     dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bus3, bus_to=bar1, graphic_type=SwitchGraphicType.Disconnector)
-        #     dis3 = dev.Switch(name=f"Dis3_{i}", bus_from=bus3, bus_to=bar2, graphic_type=SwitchGraphicType.Disconnector)
-        #     dis4 = dev.Switch(name=f"Dis4_{i}", bus_from=bus1, bus_to=transfer_bar,
-        #                       graphic_type=SwitchGraphicType.Disconnector)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        # 
-        #     grid.add_bus(bus3)
-        #     l_x_pos.append(bus3.x)
-        #     l_y_pos.append(bus3.y)
-        # 
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(dis2)
-        #     grid.add_switch(cb1)
-        #     grid.add_switch(dis3)
-        #     grid.add_switch(dis4)
+            conn_buses.append(bus1)
 
         # coupling
         bus1 = dev.Bus(name=f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
@@ -916,31 +858,7 @@ def create_double_bar_with_transference_bar(name: str,
             grid.add_switch(dis2)  # this disconnector must be included to respect the SE geometry
             grid.add_switch(dis3)  # this disconnector must be included to respect the SE geometry
 
-        # for i in range(n_trafos):
-        #     bus1 = dev.Bus(f"{name}_trafo_conn_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 6, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     bus2 = dev.Bus(f"trafo2_{i}", substation=substation, Vnom=v_nom, voltage_level=vl,
-        #                    xpos=offset_x + i * x_dist, ypos=offset_y + y_dist * 5, width=bus_width,
-        #                    country=country, graphic_type=BusGraphicType.Connectivity)
-        #     dis1 = dev.Switch(name=f"Dis1_{i}", bus_from=bus2, bus_to=bar1, graphic_type=SwitchGraphicType.Disconnector)
-        #     dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bus2, bus_to=bar2, graphic_type=SwitchGraphicType.Disconnector)
-        #     cb1 = dev.Switch(name=f"CB_{i}", bus_from=bus1, bus_to=bus2, graphic_type=SwitchGraphicType.CircuitBreaker)
-        #     dis3 = dev.Switch(name=f"Dis3_{i}", bus_from=bus1, bus_to=transfer_bar,
-        #                       graphic_type=SwitchGraphicType.Disconnector)
-        # 
-        #     grid.add_bus(bus1)
-        #     l_x_pos.append(bus1.x)
-        #     l_y_pos.append(bus1.y)
-        # 
-        #     grid.add_bus(bus2)
-        #     l_x_pos.append(bus2.x)
-        #     l_y_pos.append(bus2.y)
-        # 
-        #     grid.add_switch(dis1)
-        #     grid.add_switch(dis2)  # this disconnector must be included to respect the SE geometry
-        #     grid.add_switch(cb1)  # this disconnector must be included to respect the SE geometry
-        #     grid.add_switch(dis3)  # this disconnector must be included to respect the SE geometry
+            conn_buses.append(bus1)
 
         # coupling
         bus1 = dev.Bus(f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
@@ -965,13 +883,18 @@ def create_double_bar_with_transference_bar(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
-def create_breaker_and_a_half(name, grid: MultiCircuit, n_bays: int, v_nom: float,
-                              substation: dev.Substation, country: Country = None,
+def create_breaker_and_a_half(name: str,
+                              grid: MultiCircuit,
+                              n_bays: int,
+                              v_nom: float,
+                              substation: dev.Substation,
+                              country: Country = None,
                               include_disconnectors: bool = True,
-                              offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                              offset_x=0,
+                              offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -994,6 +917,7 @@ def create_breaker_and_a_half(name, grid: MultiCircuit, n_bays: int, v_nom: floa
     y_dist = bus_width * 1.5
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     if include_disconnectors:
 
@@ -1123,6 +1047,9 @@ def create_breaker_and_a_half(name, grid: MultiCircuit, n_bays: int, v_nom: floa
             grid.add_switch(cb3)
             grid.add_switch(dis8)
 
+            conn_buses.append(bus_line_connection_1)
+            conn_buses.append(bus_line_connection_2)
+
     else:
 
         bar1 = dev.Bus(f"{name} bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
@@ -1171,16 +1098,24 @@ def create_breaker_and_a_half(name, grid: MultiCircuit, n_bays: int, v_nom: floa
             grid.add_switch(cb2)
             grid.add_switch(cb3)
 
+            conn_buses.append(bus_line_connection_1)
+            conn_buses.append(bus_line_connection_2)
+
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
-def create_ring(name, grid: MultiCircuit, n_bays: int, v_nom: float,
-                substation: dev.Substation, country: Country = None,
+def create_ring(name: str,
+                grid: MultiCircuit,
+                n_bays: int,
+                v_nom: float,
+                substation: dev.Substation,
+                country: Country = None,
                 include_disconnectors: bool = True,
-                offset_x=0, offset_y=0) -> Tuple[dev.VoltageLevel, int, int]:
+                offset_x=0,
+                offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
     """
 
     :param name:
@@ -1204,6 +1139,7 @@ def create_ring(name, grid: MultiCircuit, n_bays: int, v_nom: float,
     y_dist = bus_width * 6
     l_x_pos = []
     l_y_pos = []
+    conn_buses: List[dev.Bus] = list()
 
     n_positions = max(n_bays, 3)
 
@@ -1271,6 +1207,8 @@ def create_ring(name, grid: MultiCircuit, n_bays: int, v_nom: float,
             grid.add_switch(cb)
             grid.add_switch(dis1)
 
+            conn_buses.append(bus1)
+
             prev_bus = bus3
 
     else:
@@ -1303,12 +1241,14 @@ def create_ring(name, grid: MultiCircuit, n_bays: int, v_nom: float,
             l_x_pos.append(bus.x)
             l_y_pos.append(bus.y)
 
+            conn_buses.append(bus)
+
             prev_bus = bus
 
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, offset_total_x, offset_total_y
+    return vl, conn_buses, offset_total_x, offset_total_y
 
 
 def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -> Tuple[List[dev.Bus], List[dev.Line]]:
@@ -1322,15 +1262,7 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -
     :return: list of new Connectivity buses, list of branches between them
     """
     # Collect all connections (busbar side of each device)
-    associated_branches = []
-    for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        if elm.bus_from == busbar or elm.bus_to == busbar:
-            associated_branches.append(elm)
-
-    associated_injections = []
-    for elm in grid.get_injection_devices_iter():
-        if elm.bus == busbar:
-            associated_injections.append(elm)
+    associated_branches, associated_injections = grid.get_bus_devices(bus=busbar)
 
     # Create a new Connectivity bus for each connection
     new_buses = []
@@ -1353,7 +1285,7 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -
         if elem.bus_from == busbar:
             elem.bus_from = new_bus
 
-        if elem.bus_to == busbar:
+        elif elem.bus_to == busbar:
             elem.bus_to = new_bus
 
         x_offset += 100
@@ -1366,7 +1298,6 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -
             voltage_level=busbar.voltage_level,
             xpos=busbar.x + x_offset,  # offset a bit to spread them visually
             ypos=busbar.y,
-            width=busbar.w,
             country=busbar.country,
             graphic_type=BusGraphicType.Connectivity
         )
@@ -1393,6 +1324,152 @@ def transform_busbar_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -
     grid.delete_bus(busbar)
 
     return new_buses, new_branches
+
+
+def transform_busbar_into_voltage_level(bus: dev.Bus,
+                                        grid: MultiCircuit,
+                                        vl_type=VoltageLevelTypes.SingleBar,
+                                        add_disconnectors: bool = False,
+                                        bar_by_segments: bool = False):
+    """
+    Transform a bus into a voltage level
+    :param bus: Bus device to transform
+    :param grid: MultiCircuit
+    :param vl_type: VoltageLevelTypes
+    :param add_disconnectors: add voltage level disconnectors?
+    :param bar_by_segments: Have the bar with connectivities and impedances instead of a single bus-bar?
+    :return:
+    """
+
+    # get the associations of the bus
+    associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
+
+    # compute the number of bays (positions)
+    n_bays = len(associated_branches) + len(associated_injections)
+
+    if vl_type == VoltageLevelTypes.SingleBar:
+
+        vl, conn_buses, offset_total_x, offset_total_y = create_single_bar(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            bar_by_segments=bar_by_segments,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.SingleBarWithBypass:
+
+        vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.SingleBarWithSplitter:
+        vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.DoubleBar:
+        vl, conn_buses, offset_total_x, offset_total_y = create_double_bar(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.DoubleBarWithBypass:
+        # TODO: Implement
+        return
+
+    elif vl_type == VoltageLevelTypes.DoubleBarWithTransference:
+        vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.DoubleBarDuplex:
+        # TODO: Implement
+        return
+
+    elif vl_type == VoltageLevelTypes.Ring:
+        vl, conn_buses, offset_total_x, offset_total_y = create_ring(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    elif vl_type == VoltageLevelTypes.BreakerAndAHalf:
+        vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
+            name=bus.name,
+            grid=grid,
+            n_bays=n_bays,
+            v_nom=bus.Vnom,
+            substation=bus.substation,
+            country=bus.country,
+            include_disconnectors=add_disconnectors,
+            offset_x=bus.x,
+            offset_y=bus.y,
+        )
+
+    else:
+        print(f"{vl_type} not implemented :/")
+        return
+
+    # re-connect the branches and injections to the new position-buses
+    j = 0
+    for elem in associated_branches:
+        if elem.bus_from == bus:
+            elem.bus_from = conn_buses[j]
+
+        elif elem.bus_to == bus:
+            elem.bus_to = conn_buses[j]
+
+        j += 1
+
+    for elem in associated_injections:
+        elem.bus = conn_buses[j]
+        j += 1
+
+    # Remove the original bus
+    grid.delete_bus(bus)
 
 
 def create_substation(grid: MultiCircuit,
@@ -1426,8 +1503,8 @@ def create_substation(grid: MultiCircuit,
     offset_y = 0
     for vl_template in vl_templates:
 
-        if vl_template.vl_type == SubstationTypes.SingleBar:
-            vl, offset_total_x, offset_total_y = create_single_bar(
+        if vl_template.vl_type == VoltageLevelTypes.SingleBar:
+            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1442,8 +1519,8 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.SingleBarWithBypass:
-            vl, offset_total_x, offset_total_y = create_single_bar_with_bypass(
+        elif vl_template.vl_type == VoltageLevelTypes.SingleBarWithBypass:
+            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1458,8 +1535,8 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.SingleBarWithSplitter:
-            vl, offset_total_x, offset_total_y = create_single_bar_with_splitter(
+        elif vl_template.vl_type == VoltageLevelTypes.SingleBarWithSplitter:
+            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1474,8 +1551,8 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.DoubleBar:
-            vl, offset_total_x, offset_total_y = create_double_bar(
+        elif vl_template.vl_type == VoltageLevelTypes.DoubleBar:
+            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1490,12 +1567,12 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.DoubleBarWithBypass:
+        elif vl_template.vl_type == VoltageLevelTypes.DoubleBarWithBypass:
             # TODO: Implement
             pass
 
-        elif vl_template.vl_type == SubstationTypes.DoubleBarWithTransference:
-            vl, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
+        elif vl_template.vl_type == VoltageLevelTypes.DoubleBarWithTransference:
+            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1510,12 +1587,12 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.DoubleBarDuplex:
+        elif vl_template.vl_type == VoltageLevelTypes.DoubleBarDuplex:
             # TODO: Implement
             pass
 
-        elif vl_template.vl_type == SubstationTypes.Ring:
-            vl, offset_total_x, offset_total_y = create_ring(
+        elif vl_template.vl_type == VoltageLevelTypes.Ring:
+            vl, conn_buses, offset_total_x, offset_total_y = create_ring(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
@@ -1530,8 +1607,8 @@ def create_substation(grid: MultiCircuit,
             offset_y = offset_total_y
             voltage_levels.append(vl)
 
-        elif vl_template.vl_type == SubstationTypes.BreakerAndAHalf:
-            vl, offset_total_x, offset_total_y = create_breaker_and_a_half(
+        elif vl_template.vl_type == VoltageLevelTypes.BreakerAndAHalf:
+            vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
                 name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                 grid=grid,
                 n_bays=vl_template.n_bays,
