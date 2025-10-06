@@ -393,6 +393,7 @@ $$
 $$
 
 Merging the DAE formulation into the linearized state-space representation, the state matrix can be computed:
+
 $$
 \Delta \dot{x} = T^{-1}(fx-fy \cdot gy^{-1} \cdot gx) \Delta x
 $$
