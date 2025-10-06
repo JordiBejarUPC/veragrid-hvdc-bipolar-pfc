@@ -1827,6 +1827,7 @@ class ResultTypes(Enum):
     ParticipationFactors = "Participation Factors"
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
+    SDomainPlotHz = "S-Domain Plot in Hz"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'
@@ -1959,6 +1960,8 @@ class ResultTypes(Enum):
 
     # reliability
     ReliabilityLoleResults = "LOLE"
+    ReliabilityENSResults = "ENS"
+    ReliabilityLOLFResults = "LOLF"
 
     def __str__(self):
         return self.value

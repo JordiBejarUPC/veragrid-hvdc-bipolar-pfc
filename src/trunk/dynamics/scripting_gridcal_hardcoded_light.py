@@ -16,21 +16,19 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
 
 import cProfile as profile
 import pstats
-
-
-pr = profile.Profile()
-pr.disable()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Power flow
@@ -48,6 +46,7 @@ pr.disable()
 
 
 # Build system
+
 
 grid = MultiCircuit()
 
@@ -79,59 +78,59 @@ grid.add_bus(bus11)
 # Line
 line0 = grid.add_line(
     Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
 line1 = grid.add_line(
     Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
 line2 = grid.add_line(
     Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line3 = grid.add_line(
-   Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line4 = grid.add_line(
     Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line5 = grid.add_line(
-   Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
+         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
 line6 = grid.add_line(
-   Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
+         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
 line7 = grid.add_line(
-   Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
+         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
 line8 = grid.add_line(
     Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+         r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
 line9 = grid.add_line(
     Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line10 = grid.add_line(
     Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line11 = grid.add_line(
     Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+         r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
 line12 = grid.add_line(
     Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
 line13 = grid.add_line(
-   Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+    Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
+         r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
 # Transformers
 
@@ -139,19 +138,19 @@ line13 = grid.add_line(
 #
 trafo_G1 = grid.add_line(
     Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
-             r=0.00000, x=0.15 * (100.0/900.0), b=0.0, rate=900.0))
+         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
 trafo_G2 = grid.add_line(
     Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
-             r=0.00000, x=0.15 * (100.0/900.0), b=0.0, rate=900.0))
+         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
 trafo_G3 = grid.add_line(
     Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
-             r=0.00000, x=0.15 * (100.0/900.0), b=0.0, rate=900.0))
+         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
 trafo_G4 = grid.add_line(
     Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
-             r=0.00000, x=0.15 * (100.0/900.0), b=0.0, rate=900.0))
+         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
 # load
 load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
@@ -270,7 +269,6 @@ gen4 = Generator(
     Kp=Kp_4, Ki=Ki_4
 )
 
-
 grid.add_generator(bus=bus1, api_obj=gen1)
 grid.add_generator(bus=bus2, api_obj=gen2)
 grid.add_generator(bus=bus3, api_obj=gen3)
@@ -331,25 +329,21 @@ ss, init_guess = initialize_rms(grid, res)
 print("init_guess")
 print(init_guess)
 
-
 params_mapping = {}
-
 
 # # Solver
 start_building_system = time.time()
 
-slv = BlockSolver(ss, grid.time)
+slv = BlockSolver(ss, grid.time, use_jit=False)
 
 end_building_system = time.time()
-print(f"Automatic build system time = {end_building_system-start_building_system:.6f} [s]")
+print(f"Automatic build system time = {end_building_system - start_building_system:.6f} [s]")
 
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 vars_in_order = slv.sort_vars_from_uid(init_guess)
 
 start_simulation = time.time()
-
-pr.enable()
 
 t, y = slv.simulate(
     t0=0,
@@ -359,10 +353,9 @@ t, y = slv.simulate(
     params0=params0,
     method="implicit_euler"
 )
-pr.disable()
 
 end_simulation = time.time()
-print(f"Automatic simulation time = {end_simulation-start_simulation:.6f} [s]")
+print(f"Automatic simulation time = {end_simulation - start_simulation:.6f} [s]")
 
 # # Save to csv
 # slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, csv_saving=True)
@@ -382,21 +375,23 @@ print(f"Automatic simulation time = {end_simulation-start_simulation:.6f} [s]")
 # plt.tight_layout()
 # plt.show()
 
-#stability assessment
+# stability assessment
 start_stability = time.time()
 # stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
-pr.enable()
-stab, Eigenvalues, PFactors, damping_ratios, conjugate_frequencies = slv.run_small_signal_stability(x=x0, params=params0, plot = True)
-pr.disable()
-pr.dump_stats('profile.pstat')
-p = pstats.Stats('profile.pstat')
-p.sort_stats('cumulative').print_stats(10)
+
+(stab,
+ Eigenvalues,
+ PFactors,
+ damping_ratios,
+ conjugate_frequencies) = run_small_signal_stability(slv=slv,
+                                                     x=x0,
+                                                     params=params0,
+                                                     plot=True,
+                                                     plot_units = "rad/s",
+                                                     verbose = 1)
+
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
 
-print("Stability assessment:", stab)
-print("Eigenvalues:", Eigenvalues)
-print("Participation factors:", PFactors.toarray())
 df_Eig = pd.DataFrame(Eigenvalues)
-df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
-pr.dump_stats('profile.pstat')
+df_Eig.to_csv("Eigenvalues_results.csv", index=False, header=False)
