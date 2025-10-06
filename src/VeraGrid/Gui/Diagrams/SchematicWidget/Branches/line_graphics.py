@@ -241,7 +241,6 @@ class LineGraphicItem(LineGraphicTemplateItem):
             pass
 
     def edit_rms(self):
-        # Collect templates (example: sequence line types)
         templates = [t.name for t in self.editor.circuit.sequence_line_types] # TODO: find where to build and save the templates
 
         choice_dialog = RmsChoiceDialog(templates, parent=self.editor)

@@ -14,6 +14,7 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 import numba as nb
+from numba import float64
 import math
 import scipy.sparse as sp
 
@@ -37,6 +38,7 @@ def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) 
             break
         cur = nxt
     return cur
+
 
 
 def _compile_equations(eqs: Sequence[Expr],
