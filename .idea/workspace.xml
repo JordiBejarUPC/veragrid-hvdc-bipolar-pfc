@@ -1110,4 +1110,8 @@
       </configuration>
     </watches-manager>
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="rms editor upgrade" />
+    <option name="LAST_COMMIT_MESSAGE" value="rms editor upgrade" />
+  </component>
 </project>
