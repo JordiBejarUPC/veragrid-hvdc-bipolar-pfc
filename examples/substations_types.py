@@ -1,5 +1,5 @@
 from VeraGridEngine.api import *
-from VeraGridEngine.Topology import substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import common_functions
 
 print('Creating grid...')
 

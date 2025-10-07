@@ -8,7 +8,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING, cast
+from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING
 from collections.abc import Callable
 from warnings import warn
 import networkx as nx
@@ -41,8 +41,8 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
-from VeraGridEngine.Topology.substation_wizards import transform_busbar_to_connectivity_grid
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, TerminalType, BusGraphicType
+from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
+from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
@@ -59,7 +59,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics import VscGraph
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.upfc_graphics import UpfcGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.series_reactance_graphics import SeriesReactanceGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.switch_graphics import SwitchGraphicItem
-from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
@@ -4889,8 +4888,8 @@ class SchematicWidget(BaseDiagramWidget):
         """
 
         # convert a bus into many small buses connected by impedances
-        new_buses, new_lines = transform_busbar_to_connectivity_grid(grid=self.circuit,
-                                                                     busbar=bus_graphics.api_object)
+        new_buses, new_lines = transform_bus_to_connectivity_grid(grid=self.circuit,
+                                                                  busbar=bus_graphics.api_object)
 
         # add the new buses
         self.add_buses(buses=new_buses)
