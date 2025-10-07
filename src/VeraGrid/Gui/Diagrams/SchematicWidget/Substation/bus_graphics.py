@@ -688,12 +688,20 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Open the voltage level conversion wizard
         """
-        self.vl_wizard = VoltageLevelConversionWizard()
+        self.vl_wizard = VoltageLevelConversionWizard(
+            bus=self.api_object,
+            grid=self.editor.circuit
+        )
 
         # open
         self.vl_wizard.show()
 
-    def convert_to_connectivity_grid(self):
+        if self.vl_wizard.new_grid is not None:
+            pass
+        else:
+            self.editor.gui.show_warning_toast("No conversion made...")
+
+    def convert_to_connectivity_grid(self) -> None:
         """
         Transform this bus into a grid of buses to be able to compute the bus currents
         and delete this bus afterwards

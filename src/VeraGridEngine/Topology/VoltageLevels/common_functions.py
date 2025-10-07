@@ -107,19 +107,19 @@ def transform_bus_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -> T
 
 
 def transform_bus_into_voltage_level(bus: dev.Bus,
-                                     grid: MultiCircuit,
                                      vl_type=VoltageLevelTypes.SingleBar,
                                      add_disconnectors: bool = False,
-                                     bar_by_segments: bool = False) -> None:
+                                     bar_by_segments: bool = False) -> MultiCircuit:
     """
     Transform a bus into a voltage level
     :param bus: Bus device to transform
-    :param grid: MultiCircuit
     :param vl_type: VoltageLevelTypes
     :param add_disconnectors: add voltage level disconnectors?
     :param bar_by_segments: Have the bar with connectivities and impedances instead of a single bus-bar?
     :return:
     """
+    # make a new grid only to store the new stuff, later will be merged with the actual circuit
+    grid = MultiCircuit()
 
     # get the associations of the bus
     associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
@@ -331,10 +331,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
         elem.bus = conn_buses[j]
         j += 1
 
-    # Remove the original bus
-    grid.delete_bus(bus)
-
-    return None
+    return grid
 
 
 def create_substation(grid: MultiCircuit,

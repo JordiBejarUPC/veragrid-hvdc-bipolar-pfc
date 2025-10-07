@@ -189,6 +189,8 @@ J = AC_jacobian(
     pvpq=sim.no_slack, 
     pq=sim.pq
 )
+
+print(J.toarray())
 ```
 
 
