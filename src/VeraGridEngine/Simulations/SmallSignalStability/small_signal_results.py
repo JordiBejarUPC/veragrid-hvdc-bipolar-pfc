@@ -99,7 +99,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             data = np.c_[re, im]
 
             d = np.abs(np.nan_to_num(re))
-            colors = (d / d.max())
+            colors = (-d / d.max())
 
             slope = 1 / 0.05
             x_z = np.linspace(-200, 0, 400)
@@ -174,7 +174,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             data = np.c_[re, im]
 
             d = np.abs(np.nan_to_num(re))
-            colors = (d / d.max())
+            colors = (-d / d.max())
 
             slope = 1 / 0.05
             x_z = np.linspace(-200, 0, 400)
