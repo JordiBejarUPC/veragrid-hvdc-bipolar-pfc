@@ -58,8 +58,8 @@ def Andes_vs_Veragrid_stability(eigV, eigA):
     plt.plot(x_z, -y_z, '--', color='grey')
     plt.scatter(x2, y2, marker='o', color='orange', label='Andes')
     plt.scatter(x1, y1, marker='x', color='blue', label='VeraGrid')
-    plt.xlabel("Re [s -1]")
-    plt.ylabel("Im [s -1]")
+    plt.xlabel("Re")
+    plt.ylabel("Im [rad/s]")
     plt.title("Stability plot")
     margin_x = (x1.max() - x1.min()) * 0.1
     margin_y = (y1.max() - y1.min()) * 0.1

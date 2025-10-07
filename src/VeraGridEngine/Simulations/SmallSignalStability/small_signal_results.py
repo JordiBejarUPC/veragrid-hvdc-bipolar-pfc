@@ -122,7 +122,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
                 sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real')
-                ax.set_ylabel(r'Imaginary [rad]')
+                ax.set_ylabel(r'Imaginary [rad/s]')
                 ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
                 ax.axvline(0, color='black', linewidth=1)
                 plt.xlim([x_min, x_max])
