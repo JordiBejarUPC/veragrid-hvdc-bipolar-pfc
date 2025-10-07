@@ -74,6 +74,7 @@ class Block:
     """
     uid: int = field(default_factory=_new_uid)
     vars2device:Dict[int, PhysicalDevice] = field(default_factory=dict)
+    vars_glob_name2uid: Dict[str, uid] = field(default_factory=dict)
 
     # internal vars
     state_vars: List[Var] = field(default_factory=list)
