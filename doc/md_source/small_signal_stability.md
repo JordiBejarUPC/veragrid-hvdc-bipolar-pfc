@@ -23,9 +23,9 @@ Settings:
 
 - **Tolerance**: per-unit error tolerance to use in the integration method. Only needed if the Rms dynamic simulation is performed.
 
-- **Assessment time**: The time instant in seconds where the stability assessment is performed.
+- **Assessment time (s)**: The time instant in seconds where the stability assessment is performed.
 
-- **Time interval (h)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
+- **Time step (s)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
 increase accuracy but require more computation. Only needed if the Rms dynamic simulation is performed.
 
 ### Results
@@ -361,7 +361,7 @@ Eigenvalues lie on the imaginary axis.
 - $0<\zeta<1$: Stable but oscillatory response. The system returns to equilibrium with decaying oscillations. 
 A commonly accepted threshold for adequate damping is around $\zeta = 0.05$.
 - $\zeta=1$: Critically damped response. The system returns to equilibrium without oscillations and in the shortest 
-- possible time without overshoot.
+possible time without overshoot.
 
 
 **Participation factors** determine how much each state variable contributes to each mode and otherwise. In power systems 
