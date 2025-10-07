@@ -6,10 +6,12 @@
 
 import os
 import pandas as pd
+import json
 from VeraGridEngine.Devices.Branches.line import SequenceLineType, UndergroundLineType
 from VeraGridEngine.Devices.Branches.transformer import TransformerType
 from VeraGridEngine.Devices.Branches.wire import Wire
-from VeraGridEngine.IO.veragrid.catalogue import parse_transformer_types, parse_cable_types, parse_wire_types, parse_sequence_line_types
+from VeraGridEngine.IO.veragrid.catalogue import parse_transformer_types, parse_cable_types, parse_wire_types, \
+    parse_sequence_line_types
 
 
 def get_transformer_catalogue():
@@ -74,3 +76,19 @@ def get_sequence_lines_catalogue():
         return parse_sequence_line_types(df)
     else:
         return list()
+
+
+# def get_rms_generator_catalogue():
+#     """
+#     :return:
+#     """
+#     here = os.path.dirname(os.path.abspath(__file__))
+#     fname = os.path.join(here, 'data', 'rms_generator.json')
+#
+#     if os.path.exists(fname):
+#         with open(fname, "r") as f:
+#             gen_dict = json.load(f)
+#
+#         return parse_rms_generator_types(gen_dict)
+#     else:
+#         return list()

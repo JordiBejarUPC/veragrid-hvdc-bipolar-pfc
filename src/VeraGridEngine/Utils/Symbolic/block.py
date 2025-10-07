@@ -178,21 +178,6 @@ class Block:
             "active_in_vars": _serialize_var_list(self.active_in_vars),
         }
 
-    # def to_dict(self) -> Dict[str, List[Dict[str, Any]] | int]:
-    #     return {
-    #         "uid": self.uid,
-    #         "state_vars": _serialize_var_list(self.state_vars),
-    #         "state_eqs": _serialize_expr_list(self.state_eqs),
-    #         "algebraic_vars": _serialize_var_list(self.algebraic_vars),
-    #         "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
-    #         "parameters": _serialize_var_list(self.parameters),
-    #         "name": self.name,
-    #         "children": [child.to_dict() for child in self.children],
-    #         "in_vars": _serialize_var_list(self.in_vars),
-    #         "out_vars": _serialize_var_list(self.out_vars),
-    #     }
-
-    @staticmethod
     @staticmethod
     def parse(data: Dict[str, Any]) -> "Block":
         block = Block(
@@ -221,19 +206,33 @@ class Block:
         )
         return block
 
-    # def parse(data: Dict[str, List[Dict[str, Any]] | int]) -> "Block":
-    #     return Block(
-    #         uid=data["uid"],
-    #         state_vars=_deserialize_var_list(data["state_vars"]),
-    #         state_eqs=_deserialize_expr_list(data["state_eqs"]),
-    #         algebraic_vars=_deserialize_var_list(data["algebraic_vars"]),
-    #         algebraic_eqs=_deserialize_expr_list(data["algebraic_eqs"]),
-    #         parameters=_deserialize_var_list(data["parameters"]),
-    #         name=data.get("name", ""),
-    #         children=[Block.parse(child) for child in data.get("children", [])],
-    #         in_vars=_deserialize_var_list(data.get("in_vars", [])),
-    #         out_vars=_deserialize_var_list(data.get("out_vars", [])),
-    #     )
+    @staticmethod
+    def parse_type(data: Dict[str, Any]):
+        block = Block(
+            state_vars=[Var(v) for v in data["state_vars"]],
+            state_eqs=_deserialize_expr_list(data["state_eqs"]),
+            algebraic_vars=_deserialize_var_list(data["algebraic_vars"]),
+            algebraic_eqs=_deserialize_expr_list(data["algebraic_eqs"]),
+            init_vars=_deserialize_var_list(data.get("init_vars", [])),
+            fix_vars=_deserialize_var_list(data.get("fix_vars", [])),
+            fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
+                          for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
+            external_mapping={
+                DynamicVarType(k): Var(name=d["name"], uid=d["uid"])
+                for k, d in data.get("external_mapping", {}).items()
+            },
+            init_eqs={Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
+                      for var_dict, expr_dict in data["init_eqs"]},
+            parameters=_deserialize_var_list(data["parameters"]),
+            parameters_eqs=_deserialize_expr_list(data.get("parameters_eqs", [])),
+            name=data.get("name", ""),
+            children=[Block.parse(child) for child in data.get("children", [])],
+            in_vars=_deserialize_var_list(data.get("in_vars", [])),
+            out_vars=_deserialize_var_list(data.get("out_vars", [])),
+            active_in_vars=_deserialize_var_list(data.get("active_in_vars", [])),
+        )
+        return block
+
 
     def copy(self) -> "Block":
         """

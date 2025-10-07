@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import List, Tuple
 import pandas as pd
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
@@ -188,6 +189,18 @@ def parse_sequence_line_types(df: pd.DataFrame) -> List[SequenceLineType]:
         lst.append(tpe)
 
     return lst
+
+# def parse_rms_generator_types(gen_dict) -> List[Block]:
+#     """
+#     :param gen_dict:
+#     :return:
+#     """
+#     lst = list()
+#     for gen_type_name, gen_type_object in gen_dict.items():
+#         tpe =
+#         lst.append(tpe)
+#
+#     return lst
 
 
 def save_catalogue(fname: str, grid: MultiCircuit):
