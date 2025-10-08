@@ -15,12 +15,11 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
                                          ContingencyOperationTypes)
 from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
-
-
 
 
 def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger(),
@@ -321,6 +320,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES) -> Dict[str, str]:
             data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.DynamicModelHostType:
+            data[name] = obj.to_dict()
+
+        elif prop.tpe == SubObjectType.DaeBlockType:
             data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.Array:
@@ -1065,7 +1067,12 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                         data=property_value,
                                         models_dict=elements_dict_by_type.get(DeviceType.RmsModelTemplateDevice, {})
                                     )
-                                    pass
+
+                                elif gc_prop.tpe == SubObjectType.DaeBlockType:
+
+                                    # get the line locations object and fill it with the json data
+                                    blk: Block = Block()
+                                    blk.parse(data=property_value)
 
                                 elif gc_prop.tpe == SubObjectType.Associations:
 

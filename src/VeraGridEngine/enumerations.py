@@ -1159,6 +1159,7 @@ class SubObjectType(Enum):
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
     DynamicModelHostType = "DynamicModuleHost"
+    DaeBlockType = "DaeBlock"
 
     def __str__(self) -> str:
         return str(self.value)

@@ -280,7 +280,7 @@ class Assets:
         self._p2xs: List[dev.FluidP2x] = list()
 
         # list of wire types
-        self._rms_models: List[dev.DynamicModelHost] = list()
+        self._rms_models: List[dev.RmsModelTemplate] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -354,7 +354,7 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.DynamicModelHost()
+                dev.RmsModelTemplate()
             ]
 
         }
@@ -5136,7 +5136,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def rms_models(self) -> List[dev.DynamicModelHost]:
+    def rms_models(self) -> List[dev.RmsModelTemplate]:
         """
         list of rms models
         :return:
@@ -5144,24 +5144,24 @@ class Assets:
         return self._rms_models
 
     @rms_models.setter
-    def rms_models(self, value: List[dev.DynamicModelHost]):
+    def rms_models(self, value: List[dev.RmsModelTemplate]):
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
         return len(self._rms_models)
 
-    def add_rms_model(self, obj: dev.DynamicModelHost):
+    def add_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Add rms model to the collection
         :param obj: DynamicModel instance
         """
         if obj is not None:
-            if isinstance(obj, dev.DynamicModelHost):
+            if isinstance(obj, dev.RmsModelTemplate):
                 self._rms_models.append(obj)
             else:
-                print('The template is not a DynamicModel!')
+                print('The template is not a RmsModelTemplate!')
 
-    def delete_rms_model(self, obj: dev.DynamicModelHost):
+    def delete_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Delete RMS model from the collection
         :param obj: DynamicModel object
@@ -5911,7 +5911,7 @@ class Assets:
         elif device_type == DeviceType.LambdaDevice:
             return list()
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6127,7 +6127,7 @@ class Assets:
         elif device_type == DeviceType.FacilityDevice:
             self._facilities = devices
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6329,7 +6329,7 @@ class Assets:
         elif obj.device_type == DeviceType.FacilityDevice:
             self.add_facility(obj=obj)
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6539,7 +6539,7 @@ class Assets:
         elif obj.device_type == DeviceType.LineLocation:
             pass
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6997,8 +6997,8 @@ class Assets:
             elm = dev.Facility()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.DynamicModelHostDevice:
-            elm = dev.DynamicModelHost()
+        elif elm_type == DeviceType.RmsModelTemplateDevice:
+            elm = dev.RmsModelTemplate()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
