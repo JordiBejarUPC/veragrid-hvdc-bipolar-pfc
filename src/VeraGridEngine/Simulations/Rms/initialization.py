@@ -256,10 +256,10 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         bus_dict[elm] = i
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name] = state_var.uid
+            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
         for algeb_var in elm.rms_model.model.algebraic_vars:
             vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name] = algeb_var.uid
+            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
@@ -275,10 +275,10 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name] = state_var.uid
+            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
         for algeb_var in elm.rms_model.model.algebraic_vars:
             vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name] = algeb_var.uid
+            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
@@ -297,10 +297,10 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name] = state_var.uid
+            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
         for algeb_var in elm.rms_model.model.algebraic_vars:
             vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name] = algeb_var.uid
+            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
     # add the nodal balance equations
     for i, elm in enumerate(grid.buses):

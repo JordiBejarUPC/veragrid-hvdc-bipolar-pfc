@@ -43,9 +43,9 @@ class RmsResults(ResultsTemplate):
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
         )
-
+        self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         variables = stat_vars + algeb_vars
-        variable_names = [str(var) for var in variables]
+        variable_names = [self.uid2vars_glob_name[var.uid] for var in variables]
         self.devices = devices
         self.uid2idx = uid2idx
         self.vars_glob_name2uid = vars_glob_name2uid
@@ -88,11 +88,8 @@ class RmsResults(ResultsTemplate):
             }
 
             for device in self.devices:
-                vars_list = []
-                for var in device.rms_model.model.state_vars + device.rms_model.model.algebraic_vars:
-                    var_glob_name = next((varname for varname, uid in self.vars_glob_name2uid.items() if uid == var.uid), None)
-                    vars_list.append(var_glob_name)
-                devices_options[device.name] = vars_list
+                devices_options[device.name] = [self.uid2vars_glob_name[var.uid] for var in device.rms_model.model.state_vars + device.rms_model.model.algebraic_vars]
+
 
             dlg = RmsPlotDialog(devices_options, results_table, self.uid2idx, self.vars_glob_name2uid)
             dlg.exec()

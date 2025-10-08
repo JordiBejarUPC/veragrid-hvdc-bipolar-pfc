@@ -4,13 +4,39 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import List
 
-from VeraGridEngine.Utils.Symbolic import Block
+import numpy as np
 
+from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, UndefinedConst, cos, sin, real, imag, conj, exp, log, abs
+from VeraGridEngine.Utils.Symbolic.block import Block, DynamicVarType
 
-class RmsTemplates:
+buses = List[Block]
+generators = List[Block]
+lines = List[Block]
+loads = List[Block]
 
-    generators = List[Block]
-    lines = List[Block]
-    loads
+class RmsTemplate:
+    def __init__(self, api_object: PhysicalDevice):
 
+        self.api_object = api_object
+        self.block= Block()
+
+#
+# class Bus(RmsTemplate):
+#
+#
+#
+#     Vm = Var("Vm")
+#     Va = Var("Va")
+#     P = Var("P")
+#     Q = Var("Q")
+#     bus_block = Block(
+#                 algebraic_vars=[Vm, Va],
+#                 external_mapping={
+#                     DynamicVarType.Vm: Vm,
+#                     DynamicVarType.Va: Va,
+#                     DynamicVarType.P: P,
+#                     DynamicVarType.Q: Q}
+#             )
+#
 

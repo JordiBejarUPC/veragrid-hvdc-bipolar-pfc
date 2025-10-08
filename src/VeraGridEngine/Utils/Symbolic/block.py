@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 import uuid
+import numpy as np
 from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, imag, conj, angle, exp, log, abs, piecewise
 from VeraGridEngine.enumerations import DynamicVarType
 
 
@@ -319,6 +320,172 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  in_vars=[err],
                  out_vars=[u])
 
+    def placeholders(n, base):
+        return [Var(f"{base}{i}") for i in range(n)]
+
+def bus(api_object) -> Block:
+
+    Vm = Var("Vm")
+    Va = Var("Va")
+    P = Var("P")
+    Q = Var("Q")
+    bus_block = Block(
+                algebraic_vars=[Vm, Va],
+                external_mapping={
+                    DynamicVarType.Vm: Vm,
+                    DynamicVarType.Va: Va,
+                    DynamicVarType.P: P,
+                    DynamicVarType.Q: Q}
+            )
+    return bus_block
+
+def generator(api_object) -> Block:
+    gen_object = api_object
+
+    delta = Var("delta")
+    omega = Var("omega")
+    psid = Var("psid")
+    psiq = Var("psiq")
+    i_d = Var("i_d")
+    i_q = Var("i_q")
+    v_d = Var("v_d")
+    v_q = Var("v_q")
+    te = Var("te")
+    et = Var("et")
+    tm = Var("tm")
+    P_g = Var("P_g")
+    Q_g = Var("Q_g")
+
+    vf = UndefinedConst()
+    tm0 = UndefinedConst()
+
+    Vm = gen_object.bus.rms_model.model.E(DynamicVarType.Vm)
+    Va = gen_object.bus.rms_model.model.E(DynamicVarType.Va)
+
+    gen_block = Block(
+        state_eqs=[
+            (2 * np.pi * gen_object.freq) * (omega - gen_object.omega_ref),
+            (tm - te - gen_object.D * (omega - gen_object.omega_ref)) / gen_object.M,
+        ],
+        state_vars=[delta, omega],
+        algebraic_eqs=[
+            psid - (gen_object.R1 * i_q + v_q),
+            psiq + (gen_object.R1 * i_d + v_d),
+            0 - (psid + gen_object.X1 * i_d - vf),
+            0 - (psiq + gen_object.X1 * i_q),
+            v_d - (Vm * sin(delta - Va)),
+            v_q - (Vm * cos(delta - Va)),
+            te - (psid * i_q - psiq * i_d),
+            P_g - (v_d * i_d + v_q * i_q),
+            Q_g - (v_q * i_d - v_d * i_q),
+            tm - (gen_object.tm0 + gen_object.Kp * (omega - gen_object.omega_ref) + gen_object.Ki * et),
+            2 * np.pi * gen_object.freq * et - delta,  #
+        ],
+        algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
+        init_eqs={
+            delta: imag(
+                log((Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                    abs(Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+            omega: Const(gen_object.omega_ref),
+            v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
+            v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
+            i_d: real(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+            i_q: imag(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+            psid: gen_object.R1 * i_q + v_q,
+            psiq: -gen_object.R1 * i_d - v_d,
+            te: psid * i_q - psiq * i_d,
+            tm: te,
+            et: Const(0),
+        },
+        init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
+        fix_vars=[tm0, vf],
+        fix_vars_eqs={tm0.uid: tm,
+                      vf.uid: psid + gen_object.X1 * i_d},
+
+        external_mapping={
+            DynamicVarType.P: P_g,
+            DynamicVarType.Q: Q_g
+        }
+    )
+    return gen_block
+
+def load(api_object) -> Block:
+    load_object = api_object
+    Ql = Var("Ql")
+    Pl = Var("Pl")
+
+    load_block = Block(
+        algebraic_eqs=[
+            Pl - load_object.Pl0,
+            Ql - load_object.Ql0
+        ],
+        algebraic_vars=[Pl, Ql],
+        init_eqs={},
+        init_vars=[],
+        parameters=[],
+        external_mapping={
+            DynamicVarType.P: Pl,
+            DynamicVarType.Q: Ql
+        }
+    )
+    return load_block
+
+def line(api_object) -> Block:
+
+    line_object = api_object
+    Qf = Var("Qf")
+    Qt = Var("Qt")
+    Pf = Var("Pf")
+    Pt = Var("Pt")
+
+    ys = 1.0 / complex(line_object.R, line_object.X)
+    g = Const(ys.real)
+    b = Const(ys.imag)
+    bsh = Const(line_object.B)
+
+    Vmf = line_object.bus_from.rms_model.model.E(DynamicVarType.Vm)
+    Vaf = line_object.bus_from.rms_model.model.E(DynamicVarType.Va)
+    Vmt = line_object.bus_to.rms_model.model.E(DynamicVarType.Vm)
+    Vat = line_object.bus_to.rms_model.model.E(DynamicVarType.Va)
+
+    line_block = Block(
+        algebraic_eqs=[
+            Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
+            Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(
+                Vaf - Vat + np.pi / 2)),
+            Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
+            Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(
+                Vat - Vaf + np.pi / 2)),
+        ],
+        algebraic_vars=[Pf, Pt, Qf, Qt],
+        init_eqs={},
+        init_vars=[],
+        parameters=[],
+        external_mapping={
+            DynamicVarType.Pf: Pf,
+            DynamicVarType.Pt: Pt,
+            DynamicVarType.Qf: Qf,
+            DynamicVarType.Qt: Qt,
+        }
+    )
+
+    # bus_block = Block()
+    # algebraic_inputs: int = 2
+    # algebraic_outputs: Sequence[str] = ["Vm", "Va"]
+    #
+    # bus_block.algebraic_vars = [Var(v) for v in algebraic_outputs]
+    # bus_block.in_vars = [Var(f"InVar{i}") for i in range(algebraic_inputs)]
+    # bus_block.external_mapping = {
+    #     DynamicVarType.Vm: Vm,
+    #     DynamicVarType.Va: Va,
+    #     DynamicVarType.P: P,
+    #     DynamicVarType.Q: Q}
+
+
+
+
+
 
 
 
@@ -337,12 +504,5 @@ def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: i
         var = Var(v)
         blk.algebraic_vars.append(var)
         blk.out_vars.append(var)
-
-
-
-
-
-
-
 
     return blk

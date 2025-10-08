@@ -496,10 +496,10 @@ class Bus(PhysicalDevice):
     def initialize_rms(self):
 
         if self.rms_model.empty():
-            Vm = Var("Vm" + self.name)
-            Va = Var("Va" + self.name)
-            P = Var("P" + self.name)
-            Q = Var("Q" + self.name)
+            Vm = Var("Vm")
+            Va = Var("Va")
+            P = Var("P")
+            Q = Var("Q")
 
             self.rms_model.model = Block(
                 state_eqs=[],

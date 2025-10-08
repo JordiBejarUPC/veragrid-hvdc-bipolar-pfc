@@ -13,7 +13,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, get_objects_dictionary
+from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames
+from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
 
 
 def check_names(names: List[str]) -> None:

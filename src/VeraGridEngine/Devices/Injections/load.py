@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Union, List
 import numpy as np
 import pandas as pd
@@ -582,8 +582,8 @@ class Load(LoadParent):
 
     def initialize_rms_with_event(self, rms_events: List, glob_time):
         if self.rms_model.empty():
-            Ql = Var("Ql" + self.name)
-            Pl = Var("Pl" + self.name)
+            Ql = Var("Ql")
+            Pl = Var("Pl")
             self.rms_model.model = Block(
                 algebraic_eqs=[
                 ],
