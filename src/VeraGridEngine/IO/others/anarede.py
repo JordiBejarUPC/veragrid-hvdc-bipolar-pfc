@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import chardet
-from typing import List, Type
+from typing import List, Type, Dict
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import Logger
@@ -45,6 +45,32 @@ def _parse_fixed(line: str,
 
 
 # -------------------------------------------------------------------------
+#  DBGT — VoltageGroup
+# -------------------------------------------------------------------------
+
+class PwfVoltageGroup:
+    """
+    PwfBus
+    """
+
+    def __init__(self):
+        self.char: str = ""
+        self.voltage: float = 1.0  # Voltage in kV
+
+    def parse(self, line: str) -> None:
+        """
+
+        :param line:
+        :return:
+        """
+        self.char = _parse_fixed(line, 1, 2, int)
+        self.voltage = _parse_fixed(line, 4, 8, float, 2)
+
+    def __repr__(self):
+        return f"<VoltageGroup {self.char}: {self.voltage:.3f} kV>"
+
+
+# -------------------------------------------------------------------------
 #  DBAR — Bus
 # -------------------------------------------------------------------------
 
@@ -52,6 +78,7 @@ class PwfBus:
     """
     PwfBus
     """
+
     def __init__(self):
         self.number: int = 0
         self.operation: str = "A"
@@ -110,12 +137,21 @@ class PwfBus:
         if self.controlled_bus == 0:
             self.controlled_bus = self.number
 
-    def to_veragrid(self) -> dev.Bus:
+    def to_veragrid(self, vg_dict: Dict[str, PwfVoltageGroup]) -> dev.Bus:
+        """
+        Convert this object to veragrid object(s)
+        :param vg_dict: Dictionary of voltage groups
+        :return: Bus
+        """
+        vg = vg_dict.get(self.base_voltage_group, None)
+        if vg is None:
+            Vnom = 1.0
+        else:
+            Vnom = vg.voltage
 
         elm = dev.Bus(
             name=self.name,
-            Vnom=self.voltage,
-
+            Vnom=Vnom,
         )
 
         return elm
@@ -132,6 +168,7 @@ class PwfLine:
     """
     PwfLine
     """
+
     def __init__(self):
         self.from_bus: int = 0
         self.to_bus: int = 0
@@ -199,6 +236,7 @@ class PwfGenerator:
     """
     PwfGenerator
     """
+
     def __init__(self):
         self.number: int = 0
         self.operation: str = "A"
@@ -244,6 +282,7 @@ class PwfLoad:
     """
     PwfLoad
     """
+
     def __init__(self):
         # Attributes
         self.number: int = 0
@@ -278,6 +317,7 @@ class PwfTransformer:
     """
     PwfTransformer
     """
+
     def __init__(self):
         self.number: int = 0
         self.from_bus: int = 0
@@ -313,6 +353,7 @@ class PwfShunt:
     """
     PwfShunt
     """
+
     def __init__(self):
         self.number: int = 0
         self.from_bus: int = 0
@@ -382,6 +423,7 @@ class PwfDCLine:
     """
     PwfDCLine
     """
+
     def __init__(self):
         self.number: int = 0
         self.from_bus: int = 0
@@ -411,6 +453,7 @@ class PwfGeneratorReactance:
     """
     PwfGeneratorReactance
     """
+
     def __init__(self):
         self.number: int = 0
         self.group: int = 0
@@ -433,6 +476,7 @@ class PwfVoltageLimitGroup:
     """
     PwfVoltageLimitGroup
     """
+
     def __init__(self):
         self.group: int = 0
         self.lower_bound: float = 0.0
@@ -459,6 +503,7 @@ class PwfStaticCompensator:
     """
     PwfStaticCompensator
     """
+
     def __init__(self):
         self.number: int = 0
         self.from_bus: int = 0
@@ -487,6 +532,7 @@ class PwfEquipmentConnection:
     """
     PwfEquipmentConnection
     """
+
     def __init__(self):
         self.number: int = 0
         self.equipment_type_1: str = ""
@@ -529,6 +575,7 @@ class PwfTransformerSettings:
     """
     PwfTransformerSettings
     """
+
     def __init__(self):
         self.from_bus: int = 0
         self.to_bus: int = 0
@@ -565,6 +612,7 @@ class PwfGeneratorIdentification:
     """
     PwfGeneratorIdentification
     """
+
     def __init__(self):
         self.number: int = 0
         self.operation: str = "A"
@@ -599,6 +647,7 @@ class PwfMotorConfiguration:
     """
     PwfMotorConfiguration
     """
+
     def __init__(self):
         self.bus: int = 0
         self.operation: str = "A"
@@ -645,6 +694,7 @@ class PwfComment:
     """
     PwfComment
     """
+
     def __init__(self):
         self.comment: str = ""
 
@@ -663,6 +713,7 @@ class PwfInjection:
     """
     PwfInjection
     """
+
     def __init__(self):
         self.number: int = 0
         self.operation: str = "A"
@@ -690,6 +741,7 @@ class PwfNetwork:
     """
     PwfNetwork
     """
+
     def __init__(self):
         # Store devices by type (e.g., buses, lines, generators, etc.)
         self.buses = []
@@ -704,6 +756,7 @@ class PwfNetwork:
         self.injections = []
         self.generator_reactances = []
         self.voltage_limit_groups = []
+        self.voltage_groups = []
 
     def add_device(self, device):
         """
@@ -714,6 +767,8 @@ class PwfNetwork:
 
         if isinstance(device, PwfBus):
             self.buses.append(device)
+        elif isinstance(device, PwfVoltageGroup):
+            self.voltage_groups.append(device)
         elif isinstance(device, PwfLine):
             self.lines.append(device)
         elif isinstance(device, PwfGenerator):
@@ -798,6 +853,8 @@ class PWFParser:
         self.network: PwfNetwork = PwfNetwork()
         self.logger = Logger()
 
+        self.voltage_group_dict: Dict[str, PwfVoltageGroup] = dict()
+
         file_lines, sections = _split_sections(self.filepath)
 
         for section_name, txt_lines in sections.items():
@@ -809,6 +866,13 @@ class PWFParser:
                         bus = PwfBus()
                         bus.parse(txt_line)
                         self.network.add_device(bus)
+
+                if section_name == "DBGT":  # Voltage Group
+                    for txt_line in txt_lines[2:]:
+                        vg = PwfVoltageGroup()
+                        vg.parse(txt_line)
+                        self.network.add_device(vg)
+                        self.voltage_group_dict[vg.char] = vg
 
                 elif section_name == "DLIN":  # Line
                     for txt_line in txt_lines[2:]:
@@ -889,6 +953,8 @@ class PWFParser:
 
         # TODO: Fill the conversion
 
+        for elm in self.network.buses:
+            vg_elm = elm.to_veragrid(vg_dict=self.voltage_group_dict)
+            grid.add_bus(obj=vg_elm)
+
         return grid
-
-

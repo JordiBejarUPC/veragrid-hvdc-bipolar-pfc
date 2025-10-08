@@ -22,7 +22,7 @@ def object_extract(elm: ALL_DEV_TYPES, args: List[str]) -> Any:
         if hasattr(p, arg):
             p = getattr(p, arg)
         else:
-            return None
+            raise ValueError(f"{arg} cannot be found for the objects :(")
     return p
 
 
@@ -69,9 +69,8 @@ def compute_objects_masks(objects: List[ALL_DEV_TYPES], flt: Filter) -> Tuple[Bo
                     if flt.apply_filter_op(obj_val, val):
                         idx_mask[i] = True
                 else:
-                    # the object_val is None
-                    a = ".".join(flt.element_args)
-                    raise ValueError(f"{a} cannot be found for the objects :(")
+                    # the object_val is None, cannot be comapred
+                    idx_mask[i] = False
 
         else:
             raise ValueError("Invalid FilterSubject")
@@ -100,13 +99,21 @@ class FilterObjects:
 
     @property
     def filtered_indices(self):
+        """
+
+        :return:
+        """
         return self._filtered_indices
 
     @property
     def filtered_objects(self):
+        """
+
+        :return:
+        """
         return [self._objects[i] for i in self._filtered_indices]
 
-    def filter(self, expression: str)-> None:
+    def filter(self, expression: str) -> None:
         """
         Parses the query expression
         :param expression:
@@ -155,4 +162,3 @@ class FilterObjects:
                 self._filtered_indices = np.array(ls, dtype=int)
             else:
                 self._filtered_indices = np.zeros(0, dtype=int)
-
