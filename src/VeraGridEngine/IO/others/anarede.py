@@ -3,9 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-
-import re
+import chardet
 from typing import List, Type
+import VeraGridEngine.Devices as dev
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.basic_structures import Logger
 
 
 def _parse_fixed(line: str,
@@ -107,6 +109,16 @@ class PwfBus:
 
         if self.controlled_bus == 0:
             self.controlled_bus = self.number
+
+    def to_veragrid(self) -> dev.Bus:
+
+        elm = dev.Bus(
+            name=self.name,
+            Vnom=self.voltage,
+
+        )
+
+        return elm
 
     def __repr__(self):
         return f"<Bus {self.number} '{self.name}' Vm={self.voltage:.3f} Va={self.angle:.2f}°>"
@@ -738,38 +750,42 @@ class PwfNetwork:
 #  Parser
 # -------------------------------------------------------------------------
 
-def _split_sections(io):
+def _split_sections(file_name: str):
     """
     Splits a PWF file into sections based on the delimiter "99999".
     Each section is stored in a dictionary with the section name as the key
     and the line indices as the value.
     """
+    # make a guess of the file encoding
+    detection = chardet.detect(open(file_name, "rb").read())
 
-    file_lines = io.readlines()
-    file_lines = [line.strip() for line in file_lines]  # Remove extra spaces and newlines
+    # read and split by blocks
+    with open(file_name, 'r', encoding=detection['encoding']) as io:
+        file_lines = io.readlines()
+        file_lines = [line.strip() for line in file_lines]  # Remove extra spaces and newlines
 
-    # Initialize a dictionary to store section titles and their line indices
-    sections = {}
+        # Initialize a dictionary to store section titles and their line indices
+        sections = {}
 
-    # Look for section titles and delimiters
-    section_titles_idx = [i for i, line in enumerate(file_lines) if line == "99999"]
+        # Look for section titles and delimiters
+        section_titles_idx = [i for i, line in enumerate(file_lines) if line == "99999"]
 
-    # If section titles are found, add to sections dictionary
-    if section_titles_idx:
-        sections["title_identifier"] = section_titles_idx
+        # If section titles are found, add to sections dictionary
+        if section_titles_idx:
+            sections["title_identifier"] = section_titles_idx
 
-    # Split the file lines based on section delimiters (99999)
-    section_delim = [0] + section_titles_idx + [len(file_lines)]
+        # Split the file lines based on section delimiters (99999)
+        section_delim = [0] + section_titles_idx + [len(file_lines)]
 
-    # Iterate through the sections and capture their lines
-    for i in range(len(section_delim) - 1):
-        section_name_idx = section_delim[i] + 1
-        section_name = file_lines[section_name_idx]  # Extract section name
-        section_lines = file_lines[section_delim[i] + 1: section_delim[i + 1]]
+        # Iterate through the sections and capture their lines
+        for i in range(len(section_delim) - 1):
+            section_name_idx = section_delim[i] + 1
+            section_name = file_lines[section_name_idx]  # Extract section name
+            section_lines = file_lines[section_delim[i] + 1: section_delim[i + 1]]
 
-        sections[section_name] = section_lines
+            sections[section_name] = section_lines
 
-    return file_lines, sections
+        return file_lines, sections
 
 
 class PWFParser:
@@ -780,150 +796,99 @@ class PWFParser:
     def __init__(self, filepath: str):
         self.filepath: str = filepath
         self.network: PwfNetwork = PwfNetwork()
+        self.logger = Logger()
 
-        section = None
+        file_lines, sections = _split_sections(self.filepath)
 
-        # with open(self.filepath, "r", encoding="latin1") as f:
-        #     for raw in f:
-        #         line = raw.strip()
-        #         if not line:
-        #             continue
-        #
-        #         # Section start
-        #         if re.fullmatch(r"[A-Z0-9]{1,8}", line):
-        #             section = line
-        #             continue
-        #
-        #         # End of block
-        #         if line.startswith("99999"):
-        #             section = None
-        #             continue
-        #
-        #         # Dispatch
-        #         if section == "DBAR":
-        #             obj = PwfBus()
-        #             obj.parse(line)
-        #         elif section == "DGER":
-        #             obj = PwfGenerator()
-        #             obj.parse(line)
-        #         elif section == "DELO":
-        #             obj = PwfLoad()
-        #             obj.parse(line)
-        #         elif section == "DLIN":
-        #             obj = PwfLine()
-        #             obj.parse(line)
-        #         elif section == "DTRA":
-        #             obj = PwfTransformer()
-        #             obj.parse(line)
-        #         elif section == "DSHL":
-        #             obj = PwfShunt()
-        #             obj.parse(line)
-        #         elif section == "DCSC":
-        #             obj = PwfStaticCompensator()
-        #             obj.parse(line)
-        #         elif section == "DCLI":
-        #             obj = PwfDCLine()
-        #             obj.parse(line)
-        #         elif section == "DCTE":
-        #             key, val = line.split()[:2]
-        #             try:
-        #                 val = float(val) if "." in val else int(val)
-        #             except ValueError:
-        #                 pass
-        #             self.network.constants[key] = val
-        #             obj = None
-        #         elif section == "DOPC":
-        #             key, val = line.split()[:2]
-        #             self.network.control[key] = val
-        #             obj = None
-        #         else:
-        #             obj = None
-        #
-        #         if obj:
-        #             self.network.add_device(obj)
+        for section_name, txt_lines in sections.items():
 
-        with open(self.filepath, 'r') as file:
+            if len(txt_lines) > 2:
 
-            # Split the PWF file into sections based on "99999"
-            file_lines, sections = _split_sections(file)
+                if section_name == "DBAR":  # Bus
+                    for txt_line in txt_lines[2:]:
+                        bus = PwfBus()
+                        bus.parse(txt_line)
+                        self.network.add_device(bus)
 
-            for section_name, txt_lines in sections.items():
+                elif section_name == "DLIN":  # Line
+                    for txt_line in txt_lines[2:]:
+                        line = PwfLine()
+                        line.parse(txt_line)
+                        self.network.add_device(line)
 
-                if len(txt_lines) > 2:
+                elif section_name == "DGER":  # Generator
+                    for txt_line in txt_lines[2:]:
+                        generator = PwfGenerator()
+                        generator.parse(txt_line)
+                        self.network.add_device(generator)
 
-                    if section_name == "DBAR":  # Bus
-                        for txt_line in txt_lines[2:]:
-                            bus = PwfBus()
-                            bus.parse(txt_line)
-                            self.network.add_device(bus)
-                    elif section_name == "DLIN":  # Line
-                        for txt_line in txt_lines[2:]:
-                            line = PwfLine()
-                            line.parse(txt_line)
-                            self.network.add_device(line)
-                    elif section_name == "DGER":  # Generator
-                        for txt_line in txt_lines[2:]:
-                            generator = PwfGenerator()
-                            generator.parse(txt_line)
-                            self.network.add_device(generator)
-                    elif section_name == "DTRA":  # Transformer
-                        for txt_line in txt_lines[2:]:
-                            transformer = PwfTransformer()
-                            transformer.parse(txt_line)
-                            self.network.add_device(transformer)
-                    elif section_name == "DSHL":  # Shunt
-                        for txt_line in txt_lines[2:]:
-                            shunt = PwfShunt()
-                            shunt.parse(txt_line)
-                            self.network.add_device(shunt)
-                    elif section_name == "DCSC":  # Static Compensator
-                        for txt_line in txt_lines[2:]:
-                            static_compensator = PwfStaticCompensator()
-                            static_compensator.parse(txt_line)
-                            self.network.add_device(static_compensator)
-                    elif section_name == "DCLI":  # DC Line
-                        for txt_line in txt_lines[2:]:
-                            dc_line = PwfDCLine()
-                            dc_line.parse(txt_line)
-                            self.network.add_device(dc_line)
-                    elif section_name == "DELO":  # Load
-                        for txt_line in txt_lines[2:]:
-                            load = PwfLoad()
-                            load.parse(txt_line)
-                            self.network.add_device(load)
-                    elif section_name == "DBRE":  # Comment
-                        for txt_line in txt_lines[2:]:
-                            comment = PwfComment()
-                            comment.parse(txt_line)
-                            self.network.add_device(comment)
-                    elif section_name == "DINJ":  # Injection
-                        for txt_line in txt_lines[2:]:
-                            injection = PwfInjection()
-                            injection.parse(txt_line)
-                            self.network.add_device(injection)
-                    elif section_name == "DGBR":  # Generator Reactance
-                        for txt_line in txt_lines[2:]:
-                            generator_reactance = PwfGeneratorReactance()
-                            generator_reactance.parse(txt_line)
-                            self.network.add_device(generator_reactance)
-                    elif section_name == "DGLT":  # Voltage Limit Group
-                        for txt_line in txt_lines[2:]:
-                            voltage_limit_group = PwfVoltageLimitGroup()
-                            voltage_limit_group.parse(txt_line)
-                            self.network.add_device(voltage_limit_group)
-                else:
-                    # not enough data values
-                    pass
+                elif section_name == "DTRA":  # Transformer
+                    for txt_line in txt_lines[2:]:
+                        transformer = PwfTransformer()
+                        transformer.parse(txt_line)
+                        self.network.add_device(transformer)
+
+                elif section_name == "DSHL":  # Shunt
+                    for txt_line in txt_lines[2:]:
+                        shunt = PwfShunt()
+                        shunt.parse(txt_line)
+                        self.network.add_device(shunt)
+
+                elif section_name == "DCSC":  # Static Compensator
+                    for txt_line in txt_lines[2:]:
+                        static_compensator = PwfStaticCompensator()
+                        static_compensator.parse(txt_line)
+                        self.network.add_device(static_compensator)
+
+                elif section_name == "DCLI":  # DC Line
+                    for txt_line in txt_lines[2:]:
+                        dc_line = PwfDCLine()
+                        dc_line.parse(txt_line)
+                        self.network.add_device(dc_line)
+
+                elif section_name == "DELO":  # Load
+                    for txt_line in txt_lines[2:]:
+                        load = PwfLoad()
+                        load.parse(txt_line)
+                        self.network.add_device(load)
+
+                elif section_name == "DBRE":  # Comment
+                    for txt_line in txt_lines[2:]:
+                        comment = PwfComment()
+                        comment.parse(txt_line)
+                        self.network.add_device(comment)
+
+                elif section_name == "DINJ":  # Injection
+                    for txt_line in txt_lines[2:]:
+                        injection = PwfInjection()
+                        injection.parse(txt_line)
+                        self.network.add_device(injection)
+
+                elif section_name == "DGBR":  # Generator Reactance
+                    for txt_line in txt_lines[2:]:
+                        generator_reactance = PwfGeneratorReactance()
+                        generator_reactance.parse(txt_line)
+                        self.network.add_device(generator_reactance)
+
+                elif section_name == "DGLT":  # Voltage Limit Group
+                    for txt_line in txt_lines[2:]:
+                        voltage_limit_group = PwfVoltageLimitGroup()
+                        voltage_limit_group.parse(txt_line)
+                        self.network.add_device(voltage_limit_group)
+
+            else:
+                # not enough data values
+                pass
+
+    def to_veragrid(self) -> MultiCircuit:
+        """
+        Convert Anarede grid to VeraGrid
+        :return:
+        """
+        grid = MultiCircuit()
+
+        # TODO: Fill the conversion
+
+        return grid
 
 
-# -------------------------------------------------------------------------
-#  CLI
-# -------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    fname = "/home/santi/Escritorio/Redes/Anarede/ieee14.pwf"
-    parser = PWFParser(fname)
-    net = parser.network
-
-    print(f"Parsed: {len(net.buses)} buses, {len(net.generators)} generators, "
-          f"{len(net.lines)} lines, {len(net.loads)} loads.")

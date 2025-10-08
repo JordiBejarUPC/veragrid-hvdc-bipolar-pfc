@@ -57,7 +57,7 @@ class IoMain(ConfigurationMain):
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
                                     '.dgs', '.m', '.raw', '.RAW', '.json', '.uct',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
-                                    '.xml', '.rawx', '.zip', '.dpx', '.epc', '.EPC',
+                                    '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
                                     '.vgplugin']
 
         self.cgmes_version_dict = {x.value: x for x in [CGMESVersions.v2_4_15,
@@ -262,7 +262,7 @@ class IoMain(ConfigurationMain):
 
         files_types += "*.gch5 *.xlsx *.xls *.sqlite *.dgs "
         files_types += "*.m *.raw *.RAW *.rawx *.uct *.json *.ejson2 *.ejson3 *.xml "
-        files_types += "*.zip *.dpx *.epc *.EPC *.nc *.hdf5 *.p"
+        files_types += "*.zip *.dpx *.pwf *.epc *.EPC *.nc *.hdf5 *.p"
 
         dialogue = QtWidgets.QFileDialog(None,
                                          caption=title,
