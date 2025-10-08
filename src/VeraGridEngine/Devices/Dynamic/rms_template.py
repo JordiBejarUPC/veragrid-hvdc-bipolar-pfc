@@ -15,7 +15,6 @@ class RmsModelTemplate(EditableDevice):
 
     __slots__ = (
         '_block',
-        '_api_object',
         '_device_type')
 
     def __init__(self, name: str = ""):
