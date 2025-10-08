@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 from typing import List, Any, Tuple
+
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import BoolVec, Mat, IntVec
 from VeraGridEngine.Utils.Filtering.filtering import (MasterFilter, Filter, FilterOps, FilterSubject,
                                                       parse_expression)
@@ -42,34 +44,46 @@ def compute_objects_masks(objects: List[ALL_DEV_TYPES], flt: Filter) -> Tuple[Bo
     else:
         final_idx_mask = np.zeros(n, dtype=bool)
 
-    for value in lst:
+    for value_to_compare_to in lst:
         if flt.element in [FilterSubject.IDX_OBJECT, FilterSubject.COL_OBJECT]:
 
-            val = value
             idx_mask = np.zeros(n, dtype=bool)
 
             for i in range(n):
 
                 if len(flt.element_args):
-                    obj_val = object_extract(elm=objects[i], args=flt.element_args)
+                    val_i = object_extract(elm=objects[i], args=flt.element_args)
                 else:
-                    obj_val = str(objects[i])
+                    val_i = str(objects[i])
 
-                if obj_val is not None:
+                if val_i is not None:
 
-                    tpe = type(obj_val)
+                    # NOTE: The logic here is to convert the original search value to whatever the actual type is
+                    #       so that the comparison later can be done among the same data types
 
                     try:
-                        val = tpe(val)
+                        if isinstance(val_i, str):
+                            val = str(value_to_compare_to)
+                        elif isinstance(val_i, int):
+                            val = int(value_to_compare_to)
+                        elif isinstance(val_i, float):
+                            val = float(value_to_compare_to)
+                        elif isinstance(val_i, EditableDevice):
+                            # here we also take the object name if we are filtering by database objects
+                            val_i = val_i.name
+                            val = str(value_to_compare_to)
+                        else:
+                            val = str(val)
+                            val_i = str(val_i)
                     except TypeError:
                         # if the casting failed, try string comparison
-                        val = str(val)
-                        obj_val = str(obj_val)
+                        val = str(value_to_compare_to)
+                        val_i = str(val_i)
 
-                    if flt.apply_filter_op(obj_val, val):
-                        idx_mask[i] = True
+                    # Evaluate the search value with
+                    idx_mask[i] = flt.apply_filter_op(val_i, val)
                 else:
-                    # the object_val is None, cannot be comapred
+                    # the object_val is None, cannot be compared
                     idx_mask[i] = False
 
         else:

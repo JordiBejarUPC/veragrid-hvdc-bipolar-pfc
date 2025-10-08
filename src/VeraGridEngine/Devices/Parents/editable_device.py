@@ -263,7 +263,10 @@ class EditableDevice:
 
         self._idtag = parse_idtag(val=idtag)
 
-        self._name: str = name
+        if isinstance(name, str):
+            self._name: str = name
+        else:
+            self._name: str = ""
 
         self._code: str = code
 
@@ -514,7 +517,10 @@ class EditableDevice:
 
     @name.setter
     def name(self, val: str):
-        self._name = val
+        if isinstance(val, str):
+            self._name = val
+        else:
+            print(f"Trying {self.device_type.value} to set name with {str(val)}")
 
     def get_save_data(self) -> List[Union[str, float, int, bool, object]]:
         """

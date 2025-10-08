@@ -16,7 +16,7 @@ class Country(GenericAreaGroup):
         :param name: name of the area
         :param idtag: UUID code
         :param latitude: latitude (deg)
-        :param longitude: longutide (deg)
+        :param longitude: longitude (deg)
         """
         GenericAreaGroup.__init__(self,
                                   name=name,
