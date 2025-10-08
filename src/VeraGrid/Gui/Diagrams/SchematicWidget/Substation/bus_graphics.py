@@ -34,7 +34,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphic
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
-from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
@@ -202,8 +201,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.setBrush(TRANSPARENT)
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.vl_wizard: VoltageLevelConversionWizard | None = None
 
         # Update size:
         self.change_size(w=self.w)
@@ -688,18 +685,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Open the voltage level conversion wizard
         """
-        self.vl_wizard = VoltageLevelConversionWizard(
-            bus=self.api_object,
-            grid=self.editor.circuit
-        )
-
-        # open
-        self.vl_wizard.show()
-
-        if self.vl_wizard.new_grid is not None:
-            pass
-        else:
-            self.editor.gui.show_warning_toast("No conversion made...")
+        self.editor.convert_busbar_to_voltage_level(bus_graphics=self)
 
     def convert_to_connectivity_grid(self) -> None:
         """

@@ -44,7 +44,11 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlow
 from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
+import VeraGridEngine.Devices.Diagrams.palettes as palettes
+from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.enumerations import TerminalType
 
+from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
@@ -65,11 +69,8 @@ from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
-import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
-
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGridEngine.enumerations import TerminalType
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -4918,6 +4919,33 @@ class SchematicWidget(BaseDiagramWidget):
         # Finally delete the old bus
         self.delete_element_utility_function(device=bus_graphics.api_object)
 
+    def convert_busbar_to_voltage_level(self, bus_graphics: BusGraphicItem):
+        """
+
+        :param bus_graphics:
+        :return:
+        """
+        vl_wizard = VoltageLevelConversionWizard(
+            bus=bus_graphics.api_object,
+            grid=self.circuit
+        )
+        vl_wizard.setModal(True)
+        vl_wizard.exec()  # waits until closed
+
+        if vl_wizard.closed_ok is not None:
+            new_grid = substation_wizards.transform_bus_into_voltage_level(
+                bus=bus_graphics.api_object,
+                vl_type=vl_wizard.get_vl_type(),
+                add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
+                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
+            )
+
+            diagram = generate_grid_diagram(circuit=new_grid)
+            self.draw_additional_diagram(diagram=diagram)
+
+        else:
+            self.gui.show_warning_toast("No conversion made...")
+
 
 def generate_schematic_diagram(buses: List[Bus],
                                lines: List[Line],
@@ -5095,6 +5123,37 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
     # --------------------------------------------------------------------------------------------------------------
 
     return diagram
+
+
+def generate_grid_diagram(circuit: MultiCircuit,
+                          name: str = "",
+                          prog_func: Union[Callable, None] = None,
+                          text_func: Union[Callable, None] = None) -> SchematicDiagram:
+    """
+    Shortcut to generate diagram from a MultiCircuit object
+    :param circuit: MultiCircuit
+    :param name: name of the diagram
+    :param prog_func: progress callback
+    :param text_func: text callback
+    :return: SchematicDiagram
+    """
+    return generate_schematic_diagram(buses=circuit.get_buses(),
+                                      lines=circuit.get_lines(),
+                                      dc_lines=circuit.get_dc_lines(),
+                                      transformers2w=circuit.get_transformers2w(),
+                                      transformers3w=circuit.get_transformers3w(),
+                                      windings=circuit.get_windings(),
+                                      hvdc_lines=circuit.get_hvdc(),
+                                      vsc_devices=circuit.get_vsc(),
+                                      upfc_devices=circuit.get_upfc(),
+                                      series_reactances=circuit.get_series_reactances(),
+                                      switches=circuit.get_switches(),
+                                      fluid_nodes=circuit.get_fluid_nodes(),
+                                      fluid_paths=circuit.get_fluid_paths(),
+                                      explode_factor=1.0,
+                                      prog_func=prog_func,
+                                      text_func=text_func,
+                                      name=name)
 
 
 def get_devices_to_expand(circuit: MultiCircuit, buses: List[Bus], max_level: int = 1) -> Tuple[List[Bus],

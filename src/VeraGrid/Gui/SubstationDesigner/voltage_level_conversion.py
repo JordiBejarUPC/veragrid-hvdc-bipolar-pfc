@@ -7,12 +7,11 @@ from __future__ import annotations
 import sys
 from typing import List
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QDialog, QVBoxLayout, QHBoxLayout,
     QComboBox, QCheckBox, QTableWidget, QTableWidgetItem,
     QPushButton, QHeaderView, QStyledItemDelegate, QSpinBox
 )
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
 from VeraGridEngine.enumerations import VoltageLevelTypes
 
 
@@ -106,7 +105,7 @@ def get_number_of_bars(vl: VoltageLevelTypes, n_bay: int):
     return 0
 
 
-class VoltageLevelConversionWizard(QWidget):
+class VoltageLevelConversionWizard(QDialog):
     """
     Voltage level conversion wizzard
     """
@@ -122,7 +121,6 @@ class VoltageLevelConversionWizard(QWidget):
 
         self.bus = bus
         self.grid = grid
-        self.new_grid: dev.MultiCircuit | None = None  # grid with all the new stuff that will be created
 
         self.bus_branches, self.bus_injections = self.grid.get_bus_devices(self.bus)
         self.all_dev = self.bus_branches + self.bus_injections
@@ -190,6 +188,8 @@ class VoltageLevelConversionWizard(QWidget):
 
         main_layout.addLayout(bottom_layout)
 
+        self.closed_ok: bool = False
+
         self.reset_all()
 
     def reset_all(self):
@@ -198,7 +198,7 @@ class VoltageLevelConversionWizard(QWidget):
         :return:
         """
 
-        vl_type: VoltageLevelTypes = self.vl_dict[self.combo.currentText()]
+        vl_type: VoltageLevelTypes = self.get_vl_type()
         n_bay = len(self.bus_branches) + len(self.bus_injections)
         n_bars = get_number_of_bars(vl=vl_type, n_bay=n_bay)
 
@@ -244,18 +244,19 @@ class VoltageLevelConversionWizard(QWidget):
     #     if row >= 0:
     #         self.table.removeRow(row)
 
+    def get_vl_type(self) -> VoltageLevelTypes:
+        """
+
+        :return:
+        """
+        return self.vl_dict[self.combo.currentText()]
+
     def do_it(self):
         """
         Perform whatever is selected and qut
         :return:
         """
-        vl_type: VoltageLevelTypes = self.vl_dict[self.combo.currentText()]
-        self.new_grid = substation_wizards.transform_bus_into_voltage_level(
-            bus=self.bus,
-            vl_type=vl_type,
-            add_disconnectors=self.add_brakers_checkbox.isChecked(),
-            bar_by_segments=self.bar_by_segments_checkbox.isChecked()
-        )
+        self.closed_ok = True
         self.close()
 
 
