@@ -59,7 +59,9 @@ class Generator(GeneratorParent):
         'Kw',
         'init_params',
         'P_g',
-        'Q_g'
+        'Q_g',
+        'Vm',
+        'Va'
     )
 
     def __init__(self,
@@ -247,6 +249,8 @@ class Generator(GeneratorParent):
         self.init_params = init_params
         self.P_g = Var("P_g")
         self.Q_g = Var("Q_g")
+        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
+        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 

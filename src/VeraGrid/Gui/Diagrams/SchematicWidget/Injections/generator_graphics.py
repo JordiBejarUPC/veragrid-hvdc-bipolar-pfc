@@ -132,17 +132,39 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
             if choice_dialog.choice == "template":
                 template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
+                template = templates_dict[template_name]  # TODO: create templates dict, maby put .copy
+                template.external_mapping = {
+                    DynamicVarType.P: self.api_object.P_g,
+                    DynamicVarType.Q: self.api_object.Q_g}
+                if self.api_object.P_g not in template.algebraic_vars and self.api_object.Q_g not in template.algebraic_vars:
+                    template.algebraic_vars.append(self.api_object.P_g)
+                    template.algebraic_vars.append(self.api_object.Q_g)
+
+                if self.api_object.Vm not in template.in_vars and self.api_object.Va not in template.in_vars:
+                    template.in_vars.append(self.api_object.Vm)
+                    template.in_vars.append(self.api_object.Va)
+
+                # TODO: add also parameters coming from the self.api_object here.
+
+                rms_model = parse_template(template) #TODO: build this function to parse the template. The function should return a block
+
+
                 # TODO: missing finding the template object and apply it to self.api_object
             elif choice_dialog.choice == "editor":
 
                 self.api_object.rms_model.model.external_mapping = {
                     DynamicVarType.P: self.api_object.P_g,
-                    DynamicVarType.Q: self.api_object.Q_g
+                    DynamicVarType.Q: self.api_object.Q_g,
+
                 }
                 if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
                     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
                     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
+
+                if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
+
 
                 # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
                 #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
