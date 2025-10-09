@@ -19,6 +19,10 @@ from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue impo
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_line_catalogue
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
 
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -241,15 +245,62 @@ class LineGraphicItem(LineGraphicTemplateItem):
             pass
 
     def edit_rms(self):
-        templates = [t.name for t in self.editor.circuit.sequence_line_types] # TODO: find where to build and save the templates
+        # connect generator with connection bus by assigning Va and Vm variables
+        self.api_object.assign_input_vars_and_params()
 
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        # load templates
+        templates_list, templates_catalogue = get_line_catalogue()
+
+        # add templates to rms choice dialog
+        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+
             if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
-                # TODO: missing finding the template object and apply it to self.api_object
+
+                # select template
+
+                line_template = templates_catalogue[choice_dialog.selected_template]
+
+                # set parameter values from user input using RmsParameterDialog
+                param_dialog = RmsParameterDialog(line_template, parent=self.editor)
+                if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+                    new_values = param_dialog.get_values()
+                    for param, value in new_values.items():
+                        setattr(line_template, param, Const(value))  # set parameter value
+
+                # relate Vaf, Vat, Vaf and Vmf variables from template to Vaf, Vat, Vaf and Vmf variables from api_object (which are related to connection bus)
+
+                line_template.Vmf = self._api_object.Vmf
+                line_template.Vaf = self._api_object.Vaf
+                line_template.Vmt = self._api_object.Vmt
+                line_template.Vat = self._api_object.Vat
+
+                # build generator block
+                line_template.build_template_block()
+
+                self.api_object.rms_model.template = line_template.block
+
             elif choice_dialog.choice == "editor":
+
+                self.api_object.rms_model.model.external_mapping={
+                    DynamicVarType.Pf: self.api_object.Pf,
+                    DynamicVarType.Pt: self.api_object.Pt,
+                    DynamicVarType.Qf: self.api_object.Qf,
+                    DynamicVarType.Qt: self.api_object.Qt,
+                }
+
+                if self.api_object.Pf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Pt not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qt not in self.api_object.rms_model.model.algebraic_vars:
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pf)
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pt)
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qf)
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qt)
+
+                if self.api_object.Vmf not in self.api_object.rms_model.model.in_vars and self.api_object.Vaf not in self.api_object.rms_model.model.in_vars and self.api_object.Vmt not in self.api_object.rms_model.model.in_vars and self.api_object.Vat not in self.api_object.rms_model.model.in_vars:
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vmf)
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vaf)
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vmt)
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vat)
+
                 dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
                 dlg.show()
 

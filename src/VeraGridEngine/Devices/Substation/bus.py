@@ -283,6 +283,8 @@ class Bus(PhysicalDevice):
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
 
+        self.initialize_rms()
+
     @property
     def rms_model(self) -> DynamicModelHost:
         return self._rms_model

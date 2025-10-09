@@ -5,6 +5,7 @@
 
 
 from PySide6 import QtWidgets
+from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 
 class RmsChoiceDialog(QtWidgets.QDialog):
     """
@@ -57,3 +58,33 @@ class RmsChoiceDialog(QtWidgets.QDialog):
     def choose_editor(self):
         self.choice = "editor"
         self.accept()
+
+
+class RmsParameterDialog(QtWidgets.QDialog):
+    def __init__(self, template: ALL_RMS_TEMPLATES_TYPE, parent=None):
+        super().__init__(parent)
+        self.template = template
+        self.setWindowTitle("Edit RMS Template Parameters")
+
+        layout = QtWidgets.QFormLayout()
+        self.inputs = {}
+
+        # Create input (QLineEdit) for each parámetro
+        for param_name in template.parameters:
+            param_value = getattr(template, param_name).value  # obtener valor actual del Const
+            line_edit = QtWidgets.QLineEdit(str(param_value))
+            self.inputs[param_name] = line_edit
+            layout.addRow(param_name, line_edit)
+
+        # Botones OK/Cancel
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+        self.setLayout(layout)
+
+    def get_values(self):
+        """Devuelve un diccionario con los valores ingresados por el usuario."""
+        return {name: float(edit.text()) for name, edit in self.inputs.items()}

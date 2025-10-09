@@ -340,7 +340,7 @@ class UndefinedConst(Expr):
         return self
 
     def __str__(self) -> str:
-        return str(self.value)
+        return str(self.name)
 
     def __repr__(self) -> str:
         return self.__str__()

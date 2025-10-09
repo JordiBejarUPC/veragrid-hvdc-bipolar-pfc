@@ -247,10 +247,7 @@ class Generator(GeneratorParent):
         self.Kp = Kp
         self.Ki = Ki
         self.init_params = init_params
-        self.P_g = Var("P_g")
-        self.Q_g = Var("Q_g")
-        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
-        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
+
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 
@@ -435,6 +432,11 @@ class Generator(GeneratorParent):
             if show_fig:
                 plt.show()
 
+    def assign_input_vars_and_params(self):
+        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
+        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
+
+
     def fix_inconsistencies(self, logger: Logger, min_vset=0.98, max_vset=1.02):
         """
         Correct the voltage set points
@@ -546,9 +548,7 @@ class Generator(GeneratorParent):
                 state_eqs=[
                     (2 * np.pi * self.freq) * (omega - self.omega_ref),
                     (tm - te - self.D * (omega - self.omega_ref)) / self.M,
-                    #(omega - self.omega_ref),
                 ],
-                #state_vars=[delta, omega, et],
                 state_vars=[delta, omega],
                 algebraic_eqs=[
                     psid - (self.R1 * i_q + v_q),

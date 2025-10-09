@@ -70,6 +70,14 @@ class Line(BranchParent):
         'possible_underground_line_types',
         'possible_sequence_line_types',
         '_locations',
+        'Vmf',
+        'Vmt',
+        'Vaf',
+        'Vat',
+        'Pf',
+        'Pt',
+        'Qf',
+        'Qt'
     )
 
     def __init__(self,
@@ -490,6 +498,13 @@ class Line(BranchParent):
             self._ysh = val
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
+
+    def assign_input_vars_and_params(self):
+        self.Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
+        self.Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
+        self.Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
+        self.Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+
 
     def change_base(self, Sbase_old: float, Sbase_new: float):
         """

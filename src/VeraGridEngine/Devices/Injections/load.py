@@ -60,7 +60,11 @@ class Load(LoadParent):
 
         'Pl0',
         'Ql0',
-        'init_params'
+        'Pl',
+        'Ql',
+        'init_params',
+        'Vm',
+        'Va'
     )
 
     def __init__(self, name='Load', idtag=None, code='',
@@ -525,6 +529,10 @@ class Load(LoadParent):
             self._n_customers_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into n_customers_prof')
+
+    def assign_input_vars_and_params(self):
+        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
+        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
 
     def plot_profiles(self, time=None, show_fig=True):
         """

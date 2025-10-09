@@ -18,7 +18,12 @@ from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+
 from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
+from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_generator_catalogue
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -125,31 +130,41 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        templates = [t.name for t in
-                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+        # connect generator with connection bus by assigning Va and Vm variables
+        self.api_object.assign_input_vars_and_params()
 
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        #load templates
+        templates_list, templates_catalogue = get_generator_catalogue()
+
+        # add templates to rms choice dialog
+        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+
             if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                template = templates_dict[template_name]  # TODO: create templates dict, maby put .copy
-                template.external_mapping = {
-                    DynamicVarType.P: self.api_object.P_g,
-                    DynamicVarType.Q: self.api_object.Q_g}
-                if self.api_object.P_g not in template.algebraic_vars and self.api_object.Q_g not in template.algebraic_vars:
-                    template.algebraic_vars.append(self.api_object.P_g)
-                    template.algebraic_vars.append(self.api_object.Q_g)
 
-                if self.api_object.Vm not in template.in_vars and self.api_object.Va not in template.in_vars:
-                    template.in_vars.append(self.api_object.Vm)
-                    template.in_vars.append(self.api_object.Va)
+                #select template
+                gen_template = templates_catalogue[choice_dialog.selected_template]
 
-                # TODO: add also parameters coming from the self.api_object here.
-
-                rms_model = parse_template(template) #TODO: build this function to parse the template. The function should return a block
+                # set parameter values from user input using RmsParameterDialog
+                param_dialog = RmsParameterDialog(gen_template, parent=self.editor)
+                if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+                    new_values = param_dialog.get_values()
+                    for param, value in new_values.items():
+                        setattr(gen_template, param, Const(value))  # set parameter value
 
 
-                # TODO: missing finding the template object and apply it to self.api_object
+
+                # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
+
+                gen_template.Vm = self._api_object.Vm
+                gen_template.Va = self._api_object.Va
+
+                # build generator block
+                gen_template.build_template_block()
+
+                self.api_object.rms_model.template = gen_template.block
+                print(self.api_object.rms_model.template)
+
             elif choice_dialog.choice == "editor":
 
                 self.api_object.rms_model.model.external_mapping = {
