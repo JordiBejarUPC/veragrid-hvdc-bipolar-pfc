@@ -228,12 +228,13 @@ start_stability = time.time()
  Eigenvalues,
  PFactors,
  damping_ratios,
- conjugate_frequencies) = run_small_signal_stability(slv=slv,
-                                                     x=x0,
-                                                     params=params0,
-                                                     plot = True,
-                                                     plot_units = "Hz",
-                                                     verbose = 1)
+ conjugate_frequencies,
+ state_matrix) = run_small_signal_stability(slv=slv,
+                                            x=x0,
+                                            params=params0,
+                                            plot = True,
+                                            plot_units = "Hz",
+                                            verbose = 1)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")

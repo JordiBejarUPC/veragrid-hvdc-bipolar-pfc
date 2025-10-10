@@ -1826,6 +1826,7 @@ class ResultTypes(Enum):
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
+    StateMatrix = "State Matrix"
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
     SDomainPlotHz = "S-Domain Plot in Hz"

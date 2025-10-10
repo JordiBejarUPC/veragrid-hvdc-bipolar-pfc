@@ -7,9 +7,7 @@ import numpy as np
 import numba as nb
 from matplotlib import pyplot as plt
 import scipy.linalg
-from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
-import scipy.sparse as sp
 import math
 
 from typing import Dict, Union
@@ -43,7 +41,6 @@ def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
             participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
 
     # normalize participation factors
-    # pfact_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
     pfact_abs = np.ones(num_states) @ participation_factors
     for i in range(n_eigenvalues):
         participation_factors[:, i] /= pfact_abs[i]
@@ -226,13 +223,14 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     if verbose:
         print("Stability report:", stability_report)
+        print("State matrix:", A.toarray())
         print("Eigenvalues:", eigenvalues)
-        print("eig no conjugates:", eig_no_conjugates)
+        print("Participation factors:", participation_factors)
         print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
         print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
-        print("Participation factors:", participation_factors)
 
-    return stability_report, eigenvalues, participation_factors, damping_ratios, conjugate_freq
+
+    return stability_report, eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
 
 
 class SmallSignalStabilityDriver(DriverTemplate):
@@ -268,6 +266,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
                                                                                 participation_factors=np.empty(0),
                                                                                 damping_ratios=np.empty(0),
                                                                                 conjugate_frequencies=np.empty(0),
+                                                                                state_matrix =np.empty(0),
                                                                                 stat_vars=[],
                                                                                 vars2device={})
 
@@ -322,7 +321,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
              eigenvalues,
              participation_factors,
              damping_ratios,
-             conjugate_frequencies) = run_small_signal_stability(slv=slv, x=y[i], params=params0, plot=False)
+             conjugate_frequencies,
+             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], params=params0, plot=False)
 
         else:
 
@@ -330,7 +330,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
              eigenvalues,
              participation_factors,
              damping_ratios,
-             conjugate_frequencies) = run_small_signal_stability(slv=slv, x=x0, params=params0, plot=False)
+             conjugate_frequencies,
+             state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0, plot=False)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
             stability = stability,
@@ -338,6 +339,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             participation_factors = participation_factors,
             damping_ratios = damping_ratios,
             conjugate_frequencies = conjugate_frequencies,
+            state_matrix = state_matrix,
             stat_vars = slv.state_vars,
             vars2device = slv.vars2device
         )
