@@ -3999,16 +3999,6 @@ class Ui_mainWindow(object):
         self.frame_114.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_36 = QGridLayout(self.frame_114)
         self.gridLayout_36.setObjectName(u"gridLayout_36")
-        self.label_416 = QLabel(self.frame_114)
-        self.label_416.setObjectName(u"label_416")
-        self.label_416.setFont(font1)
-
-        self.gridLayout_36.addWidget(self.label_416, 0, 0, 1, 1)
-
-        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_36.addItem(self.verticalSpacer_2, 3, 0, 1, 1)
-
         self.ss_assessment_time_spinBox_2 = QDoubleSpinBox(self.frame_114)
         self.ss_assessment_time_spinBox_2.setObjectName(u"ss_assessment_time_spinBox_2")
         self.ss_assessment_time_spinBox_2.setFont(font1)
@@ -4025,14 +4015,15 @@ class Ui_mainWindow(object):
 
         self.gridLayout_36.addWidget(self.label_417, 1, 0, 1, 1)
 
-        self.LoggerBox = QPlainTextEdit(self.frame_114)
-        self.LoggerBox.setObjectName(u"LoggerBox")
-        self.LoggerBox.setStyleSheet(u"color: gray;\n"
-"background: transparent;")
-        self.LoggerBox.setFrameShape(QFrame.Shape.NoFrame)
-        self.LoggerBox.setReadOnly(True)
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_36.addWidget(self.LoggerBox, 2, 0, 1, 2)
+        self.gridLayout_36.addItem(self.verticalSpacer_2, 2, 0, 1, 1)
+
+        self.label_416 = QLabel(self.frame_114)
+        self.label_416.setObjectName(u"label_416")
+        self.label_416.setFont(font1)
+
+        self.gridLayout_36.addWidget(self.label_416, 0, 0, 1, 1)
 
 
         self.gridLayout_35.addWidget(self.frame_114, 4, 0, 1, 3)
@@ -6349,15 +6340,20 @@ class Ui_mainWindow(object):
         self.label_407.setText("")
         self.label_412.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
         self.label_411.setText(QCoreApplication.translate("mainWindow", u"Int. method", None))
+#if QT_CONFIG(tooltip)
+        self.frame_110.setToolTip(QCoreApplication.translate("mainWindow", u"Small-signal performs an RMS simulation when the assessment time is not 0. Please check the RMS settings.", None))
+#endif // QT_CONFIG(tooltip)
         self.label_415.setText("")
         self.label_418.setText(QCoreApplication.translate("mainWindow", u"Small-Signal", None))
-        self.label_416.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
+#if QT_CONFIG(tooltip)
+        self.frame_114.setToolTip("")
+#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ss_assessment_time_spinBox_2.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.ss_assessment_time_spinBox_2.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
         self.label_417.setText("")
-        self.LoggerBox.setPlainText(QCoreApplication.translate("mainWindow", u"Small-signal performs an RMS simulation when the assessment time is not 0. Please check the RMS settings.", None))
+        self.label_416.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
         self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Dyn", None))
 #if QT_CONFIG(tooltip)
         self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Rms simulation settings", None))
