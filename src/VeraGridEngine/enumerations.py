@@ -1962,9 +1962,13 @@ class ResultTypes(Enum):
     InvestmentsWhenToMakePlot = "When to make them plot"
 
     # reliability
-    ReliabilityLoleResults = "LOLE"
+    ReliabilityLOLEResults = "LOLE"
     ReliabilityENSResults = "ENS"
     ReliabilityLOLFResults = "LOLF"
+    ReliabilityLOLETResults = "LOLET"
+    ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value
