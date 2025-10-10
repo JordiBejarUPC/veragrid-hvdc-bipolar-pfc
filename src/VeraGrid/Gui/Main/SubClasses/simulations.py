@@ -3219,10 +3219,12 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.SmallSignal_run)
             self.update_available_results()
 
-            # if results.converged:
-            #     self.show_info_toast("Power flow converged :)")
-            # else:
-            #     self.show_warning_toast("Power flow not converged :/")
+            if results.stability == ResultTypes.AsymptoticallyStable :
+                self.show_info_toast("The system is asymptotically stable :)")
+            elif results.stability == ResultTypes.MarginallyStable:
+                self.show_warning_toast("The system is marginally stable :/")
+            elif results.stability == ResultTypes.Unstable:
+                self.show_error_toast("The system is unstable :(")
 
         else:
             warning_msg('There are no Small Signal Stability analysis results.', 'Small Signal Stability analysis')
