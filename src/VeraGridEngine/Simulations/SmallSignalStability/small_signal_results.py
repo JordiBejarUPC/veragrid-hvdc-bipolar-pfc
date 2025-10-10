@@ -19,7 +19,6 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 class SmallSignalStabilityResults(ResultsTemplate):
 
     def __init__(self,
-                 stability: str,
                  eigenvalues: np.ndarray,
                  participation_factors: np.ndarray,
                  damping_ratios: np.ndarray,
@@ -41,7 +40,6 @@ class SmallSignalStabilityResults(ResultsTemplate):
             self,
             name='Small Signal Stability',
             available_results=[
-                ResultTypes.StateMatrix,
                 ResultTypes.Modes,
                 ResultTypes.ParticipationFactors,
                 ResultTypes.SDomainPlot,
@@ -56,14 +54,12 @@ class SmallSignalStabilityResults(ResultsTemplate):
 
         self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
 
-        self.stability = stability
         self.eigenvalues = eigenvalues
         self.participation_factors = participation_factors
         self.damping_ratios = [str(r) if not np.isnan(r) else '-' for r in damping_ratios]
         self.conjugate_frequencies = [str(r) if not np.isnan(r) else '-' for r in conjugate_frequencies]
         self.state_matrix = state_matrix
 
-        # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
         self.register(name='participation_factors', tpe=Vec)
         self.register(name='damping_ratios', tpe=Vec)
@@ -74,18 +70,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
         """
         Export the results as a ResultsTable for plotting.
         """
-        if result_type == ResultTypes.StateMatrix:
-
-            return ResultsTable(
-                data=self.state_matrix,
-                index=np.array([f"Eq {i}" for i in range(len(self.stat_vars_array))], dtype=np.str_),
-                columns=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                title="Sate matrix",
-                idx_device_type=DeviceType.NoDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-
-        elif result_type == ResultTypes.ParticipationFactors:
+        if result_type == ResultTypes.ParticipationFactors:
 
             return ResultsTable(
                 data=self.participation_factors,

@@ -204,25 +204,7 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
     damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
                                                                                    eig_no_conjugates = eig_no_conjugates)
 
-    # Stability: select positive and zero eigenvalues
-    tol = 1e-6  # numerical tolerance for eigenvalues = 0
-    unstable_eigs = eigenvalues[np.real(eigenvalues) > tol]
-    zero_eigs = eigenvalues[abs(np.real(eigenvalues)) <= tol]
-
-    if unstable_eigs.size == 0:
-        if zero_eigs.size == 0:
-            stability_report = ResultTypes.AsymptoticallyStable
-        else:
-            stability_report = ResultTypes.MarginallyStable
-    else:
-        stability_report = ResultTypes.Unstable
-
-    if plot:
-        plot_stability(eigenvalues = eigenvalues,
-                       plot_units= plot_units)
-
     if verbose:
-        print("Stability report:", stability_report)
         print("State matrix:", A.toarray())
         print("Eigenvalues:", eigenvalues)
         print("Participation factors:", participation_factors)
@@ -230,7 +212,7 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
         print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
 
 
-    return stability_report, eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
+    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
 
 
 class SmallSignalStabilityDriver(DriverTemplate):
@@ -261,8 +243,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         self.options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if options is None else options
 
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(stability="",
-                                                                                eigenvalues=np.empty(0),
+        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(eigenvalues=np.empty(0),
                                                                                 participation_factors=np.empty(0),
                                                                                 damping_ratios=np.empty(0),
                                                                                 conjugate_frequencies=np.empty(0),
@@ -317,8 +298,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             )
 
             i = int(self.options.ss_assessment_time / self.options.time_step)
-            (stability,
-             eigenvalues,
+            (eigenvalues,
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
@@ -326,15 +306,13 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         else:
 
-            (stability,
-             eigenvalues,
+            (eigenvalues,
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
              state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0, plot=False)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
-            stability = stability,
             eigenvalues = eigenvalues,
             participation_factors = participation_factors,
             damping_ratios = damping_ratios,

@@ -1830,9 +1830,6 @@ class ResultTypes(Enum):
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
     SDomainPlotHz = "S-Domain Plot in Hz"
-    AsymptoticallyStable = "Asymptotically stable"
-    MarginallyStable = "Marginally stable"
-    Unstable = "Unstable"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'
