@@ -39,7 +39,8 @@ The VeraGrid project is divided in three packages:
 
 To install everything, you only need to install the VeraGrid package and the others will be installed as dependencies.
 
-<img height="200" src="doc/rst_source/figures/Packages.png"/>
+<img height="300" src="doc/md_source/figures/Packages.png"/>
+
 
 ### Standalone setup
 

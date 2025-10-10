@@ -700,13 +700,13 @@ class ContingencyIndices:
                  branches_dict: Dict[str, int],
                  hvdc_dict: Dict[str, int],
                  vsc_dict: Dict[str, int],
-                 generator_bus_index_dict: Dict[str, int]):
+                 injections_bus_index_dict: Dict[str, int]):
         """
         Contingency indices
         :param contingency_group: ContingencyGroup
         :param contingency_group_dict: dictionary to get the list of contingencies matching a contingency group
         :param branches_dict: dictionary to get the branch index by the branch idtag
-        :param generator_bus_index_dict: dictionary to get the generator bus index by the generator idtag
+        :param injections_bus_index_dict: dictionary to get the injection device bus index by the generator idtag
         """
 
         # get the group's contingencies
@@ -733,16 +733,31 @@ class ContingencyIndices:
                     if vsc_idx is not None:
                         vsc_contingency_indices_list.append(vsc_idx)
 
+                elif cnt.tpe in [DeviceType.GeneratorDevice,
+                                 DeviceType.BatteryDevice,
+                                 DeviceType.LoadDevice,
+                                 DeviceType.StaticGeneratorDevice]:
+
+                    # NOTE: We treat injection active contingencies as full power outages (100% power reduction)
+
+                    bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
+                    if bus_idx is not None:
+                        bus_contingency_indices_list.append(bus_idx)
+                        injections_factors_list.append(1.0)  # 100% power contingency
+                    else:
+                        print(f"contingency generator {cnt.device_idtag} not found")
+
                 else:
                     # search for the contingency in the Branches
                     br_idx = branches_dict.get(cnt.device_idtag, None)
                     if br_idx is not None:
                         branch_contingency_indices_list.append(br_idx)
                     else:
-                        print(f"contingency branch {cnt.device_idtag} not found")
+                        print(f"contingency device {cnt.device_type.value}:{cnt.device_idtag} not found")
 
             elif cnt.prop == ContingencyOperationTypes.PowerPercentage:
-                bus_idx = generator_bus_index_dict.get(cnt.device_idtag, None)
+                # this can only be an injection device
+                bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
                 if bus_idx is not None:
                     bus_contingency_indices_list.append(bus_idx)
                     injections_factors_list.append(cnt.value / 100.0)
@@ -778,7 +793,7 @@ class LinearMultiContingencies:
         self.__branches_dict = grid.get_branches_index_dict2(add_vsc=False, add_hvdc=False, add_switch=True)
         self.__hvdc_dict = grid.get_hvdc_index_dict()
         self.__vsc_dict = grid.get_vsc_index_dict()
-        self.__generator_bus_index_dict = grid.get_generator_bus_index_dict(bus_index_dict=bus_index_dict)
+        self.__injections_bus_index_dict = grid.get_injections_bus_index_dict(bus_index_dict=bus_index_dict)
 
         self.contingency_indices_list = list()
 
@@ -791,7 +806,7 @@ class LinearMultiContingencies:
                     branches_dict=self.__branches_dict,
                     hvdc_dict=self.__hvdc_dict,
                     vsc_dict=self.__vsc_dict,
-                    generator_bus_index_dict=self.__generator_bus_index_dict
+                    injections_bus_index_dict=self.__injections_bus_index_dict
                 )
             )
 

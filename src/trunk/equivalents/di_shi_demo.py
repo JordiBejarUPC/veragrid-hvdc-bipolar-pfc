@@ -8,8 +8,8 @@ from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_r
 fname = os.path.join('..', '..', 'tests', 'data', 'grids', 'Matpower', 'case118.m')
 
 grid = vg.open_file(fname)
-
-pf_res = vg.power_flow(grid=grid)
+pf_opt = vg.PowerFlowOptions(solver_type=vg.SolverType.Linear)
+pf_res = vg.power_flow(grid=grid, options=pf_opt)
 print("pf error:", pf_res.error)
 
 # build a dictionary with the from flows
@@ -30,7 +30,7 @@ grid2, logger = di_shi_reduction(
 )
 
 # run a power flow after
-pf_res2 = vg.power_flow(grid=grid2)
+pf_res2 = vg.power_flow(grid=grid2, options=pf_opt)
 print("pf2 error:", pf_res2.error)
 
 # mount the flows comparison dictionary
@@ -45,6 +45,7 @@ for k, br in enumerate(grid2.get_branches_iter()):
             "Pf pre": Sf_pre.real,
             "Pf post": pf_res2.Sf[k].real,
             "Pf err": abs(Sf_pre.real - pf_res2.Sf[k].real),
+            "Pf err %": abs(Sf_pre.real - pf_res2.Sf[k].real) / Sf_pre.real,
             "Qf pre": Sf_pre.imag,
             "Qf post": pf_res2.Sf[k].imag,
             "Qf err": abs(Sf_pre.imag - pf_res2.Sf[k].imag),
@@ -55,3 +56,4 @@ df_flow_comp = pd.DataFrame(data=flow_d2).transpose()
 print(df_flow_comp)
 
 print("Mean error:", df_flow_comp["Pf err"].mean(), '+-', df_flow_comp["Pf err"].std())
+print("Mean error %:", df_flow_comp["Pf err %"].mean(), '+-', df_flow_comp["Pf err %"].std())

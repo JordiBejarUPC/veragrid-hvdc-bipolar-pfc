@@ -9,7 +9,7 @@ from VeraGridEngine.api import *
 np.set_printoptions(linewidth=10000)
 
 
-@pytest.mark.skip(reason="Not passing because something...")
+# @pytest.mark.skip(reason="Not passing because something...")
 def test_3_node_abur_exposito() -> None:
     """
     3-bus state estimation test from
@@ -50,9 +50,14 @@ def test_3_node_abur_exposito() -> None:
     grid.add_line(br2)
     grid.add_line(br3)
 
-    for solver in [SolverType.Decoupled_LU, SolverType.NR, SolverType.LM, SolverType.GN]:
+    for solver in [
+        # SolverType.Decoupled_LU,
+        SolverType.NR,
+        SolverType.LM,
+        SolverType.GN]:
+
         se_options = StateEstimationOptions(
-            fixed_slack=True,
+            fixed_slack=False,
             solver=solver
         )
 

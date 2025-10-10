@@ -34,7 +34,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphic
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
-from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
@@ -202,8 +201,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.setBrush(TRANSPARENT)
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.vl_wizard: VoltageLevelConversionWizard | None = None
 
         # Update size:
         self.change_size(w=self.w)
@@ -688,12 +685,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Open the voltage level conversion wizard
         """
-        self.vl_wizard = VoltageLevelConversionWizard()
+        self.editor.convert_busbar_to_voltage_level(bus_graphics=self)
 
-        # open
-        self.vl_wizard.show()
-
-    def convert_to_connectivity_grid(self):
+    def convert_to_connectivity_grid(self) -> None:
         """
         Transform this bus into a grid of buses to be able to compute the bus currents
         and delete this bus afterwards

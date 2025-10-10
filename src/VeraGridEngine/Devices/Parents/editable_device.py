@@ -14,7 +14,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
                                          CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
                                          InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
-                                         ZonalGrouping, MIPSolvers, AcOpfMode, SubstationTypes, BranchGroupTypes,
+                                         ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod)
@@ -48,7 +48,7 @@ GCPROP_TYPES = Union[
     Type[BranchImpedanceMode],
     Type[FaultType],
     Type[TapChangerTypes],
-    Type[SubstationTypes],
+    Type[VoltageLevelTypes],
     Type[ContingencyOperationTypes],
     Type[BranchGroupTypes],
     Type[ConverterControlType],
@@ -263,7 +263,10 @@ class EditableDevice:
 
         self._idtag = parse_idtag(val=idtag)
 
-        self._name: str = name
+        if isinstance(name, str):
+            self._name: str = name
+        else:
+            self._name: str = ""
 
         self._code: str = code
 
@@ -514,7 +517,10 @@ class EditableDevice:
 
     @name.setter
     def name(self, val: str):
-        self._name = val
+        if isinstance(val, str):
+            self._name = val
+        else:
+            print(f"Trying {self.device_type.value} to set name with {str(val)}")
 
     def get_save_data(self) -> List[Union[str, float, int, bool, object]]:
         """

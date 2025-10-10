@@ -43,7 +43,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.IO.ucte.devices.ucte_circuit import UcteCircuit
 from VeraGridEngine.IO.ucte.ucte_to_veragrid import convert_ucte_to_veragrid
 from VeraGridEngine.IO.others.rte_parser import rte2veragrid
-
+from VeraGridEngine.IO.others.anarede import PWFParser
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.results_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -336,7 +336,6 @@ class FileOpen:
                     self.circuit = open_h5(self.file_name, text_func=text_func, prog_func=progress_func)
 
                 elif file_extension.lower() == '.m':
-                    # self.circuit, log = parse_matpower_file(self.file_name)
                     m_grid = MatpowerCircuit()
                     m_grid.read_file(file_name=self.file_name)
                     self.circuit = matpower_to_veragrid(m_grid, self.logger)
@@ -344,6 +343,11 @@ class FileOpen:
                 elif file_extension.lower() == '.dpx':
                     self.circuit, log = load_dpx(self.file_name)
                     self.logger += log
+
+                elif file_extension.lower() == '.pwf':
+                    parser = PWFParser(self.file_name)
+                    self.circuit = parser.to_veragrid()
+                    self.logger += parser.logger
 
                 elif file_extension.lower() == '.json':
 
