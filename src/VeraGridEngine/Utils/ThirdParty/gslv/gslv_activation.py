@@ -3,19 +3,21 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+from typing import Tuple
 import os.path
+import shutil
 import warnings
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGridEngine.enumerations import TapModuleControl, TapPhaseControl, BusMode
 from VeraGridEngine.enumerations import (HvdcControlType, SolverType, TimeGrouping,
                                          ZonalGrouping, MIPSolvers, ContingencyMethod, ContingencyOperationTypes,
                                          BuildStatus, BranchGroupTypes, ConverterControlType)
-GSLV_RECOMMENDED_VERSION = "0.4.1"
+GSLV_RECOMMENDED_VERSION = "0.4.6"
 GSLV_VERSION = ''
 GSLV_AVAILABLE = False
 try:
     import pygslv as pg
-    pg.activate(os.path.join(get_create_veragrid_folder(), "license.gslv"), verbose=False)
+    pg.search_license_and_activate(verbose=False)
 
     # activate
     if not pg.isLicensed():
@@ -105,3 +107,20 @@ except ImportError as e:
     contingency_method_dict = dict()
     converter_control_type_dict = dict()
     bus_type_dict = dict()
+
+
+def install_gslv_license(fname: str) -> Tuple[bool, str]:
+    """
+
+    :param fname:
+    :return:
+    """
+
+    if os.path.exists(fname):
+        folder = get_create_veragrid_folder()
+        name = os.path.basename(fname)
+        dst = os.path.join(folder, name)
+        shutil.copyfile(fname, dst)
+        return True, "License installed!"
+    else:
+        return False, "The file does not exists :("
