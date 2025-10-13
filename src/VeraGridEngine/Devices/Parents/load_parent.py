@@ -12,6 +12,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class LoadParent(InjectionParent):
@@ -150,6 +151,14 @@ class LoadParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a pofile')
 
+    def get_P_at(self, t: int | None) -> float:
+        """
+        Get power at time t
+        :param t:
+        :return:
+        """
+        return get_at(self.P, self.P_prof, t)
+
     @property
     def Pa_prof(self) -> Profile:
         """
@@ -166,6 +175,13 @@ class LoadParent(InjectionParent):
             self._Pa_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a pofile')
+
+    def get_Pa_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pa, self.Pa_prof, t)
 
     @property
     def Pb_prof(self) -> Profile:
@@ -184,6 +200,13 @@ class LoadParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a pofile')
 
+    def get_Pb_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pb, self.Pb_prof, t)
+
     @property
     def Pc_prof(self) -> Profile:
         """
@@ -200,6 +223,13 @@ class LoadParent(InjectionParent):
             self._Pc_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a pofile')
+
+    def get_Pc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pc, self.Pc_prof, t)
 
     @property
     def Q_prof(self) -> Profile:
@@ -218,6 +248,13 @@ class LoadParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Q_prof')
 
+    def get_Q_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Q, self.Q_prof, t)
+
     @property
     def Qa_prof(self) -> Profile:
         """
@@ -234,6 +271,13 @@ class LoadParent(InjectionParent):
             self._Qa_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Q1_prof')
+
+    def get_Qa_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qa, self.Qa_prof, t)
 
     @property
     def Qb_prof(self) -> Profile:
@@ -252,6 +296,13 @@ class LoadParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Q2_prof')
 
+    def get_Qb_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qb, self.Qb_prof, t)
+
     @property
     def Qc_prof(self) -> Profile:
         """
@@ -268,6 +319,13 @@ class LoadParent(InjectionParent):
             self._Qc_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Q3_prof')
+
+    def get_Qc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qc, self.Qc_prof, t)
 
     def get_S(self) -> complex:
         """

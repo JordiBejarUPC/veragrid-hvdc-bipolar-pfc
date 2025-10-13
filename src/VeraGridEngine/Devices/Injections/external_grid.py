@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, ExternalGridMode
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class ExternalGrid(LoadParent):
@@ -102,6 +103,13 @@ class ExternalGrid(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vm_prof')
 
+    def get_Vm_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vm, self.Vm_prof, t)
+
     @property
     def Va_prof(self) -> Profile:
         """
@@ -118,6 +126,13 @@ class ExternalGrid(LoadParent):
             self._Va_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Va_prof')
+
+    def get_Va_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Va, self.Va_prof, t)
 
     def plot_profiles(self, time=None, show_fig=True):
         """

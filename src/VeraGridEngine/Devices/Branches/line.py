@@ -161,6 +161,9 @@ class Line(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=cost,
+                              temp_base=temp_base,
+                              temp_oper=temp_oper,
+                              alpha=alpha,
                               device_type=DeviceType.LineDevice)
 
         # line length in km
@@ -189,14 +192,6 @@ class Line(BranchParent):
 
         self._ys = AdmittanceMatrix()
         self._ysh = AdmittanceMatrix()
-
-        # Conductor base and operating temperatures in ºC
-        self.temp_base = float(temp_base)
-        self.temp_oper = float(temp_oper)
-        self._temp_oper_prof = Profile(default_value=temp_oper, data_type=float)
-
-        # Conductor thermal constant (1/ºC)
-        self.alpha = float(alpha)
 
         self._circuit_idx: int = int(circuit_idx)
 
@@ -236,13 +231,7 @@ class Line(BranchParent):
                       editable=False)
 
         self.register(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)')
-        self.register(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.')
-        self.register(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-                      profile_name='temp_oper_prof')
-        self.register(key='alpha', units='1/ºC', tpe=float,
-                      definition='Thermal coefficient to modify R,around a reference temperature using a '
-                                 'linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
-                                 'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330')
+
         self.register(key='r_fault', units='p.u.', tpe=float,
                       definition='Resistance of the mid-line fault.Used in short circuit studies.')
         self.register(key='x_fault', units='p.u.', tpe=float,
@@ -419,23 +408,6 @@ class Line(BranchParent):
             raise Exception('The length must be a float value')
 
     @property
-    def temp_oper_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._temp_oper_prof
-
-    @temp_oper_prof.setter
-    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._temp_oper_prof = val
-        elif isinstance(val, np.ndarray):
-            self._temp_oper_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a temp_oper_prof')
-
-    @property
     def locations(self) -> LineLocations:
         """
         Cost profile
@@ -464,7 +436,10 @@ class Line(BranchParent):
 
     @property
     def ys(self) -> AdmittanceMatrix:
+        """
 
+        :return:
+        """
         if self._ys.size == 0:
             self.fill_3_phase_from_sequence()
 
@@ -479,6 +454,10 @@ class Line(BranchParent):
 
     @property
     def ysh(self) -> AdmittanceMatrix:
+        """
+
+        :return:
+        """
         if self._ysh.size == 0:
             self.fill_3_phase_from_sequence()
 

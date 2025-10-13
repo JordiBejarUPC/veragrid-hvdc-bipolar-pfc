@@ -14,6 +14,7 @@ from VeraGridEngine.Devices.Aggregation.region import Region
 from VeraGridEngine.Devices.Aggregation.municipality import Municipality
 from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuthority
 from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class Substation(GenericAreaGroup):
@@ -298,6 +299,13 @@ class Substation(GenericAreaGroup):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a irradiation_prof')
 
+    def get_irradiation_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.irradiation, self.irradiation_prof, t)
+
     @property
     def temperature_prof(self) -> Profile:
         """
@@ -315,6 +323,13 @@ class Substation(GenericAreaGroup):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a temperature_prof')
 
+    def get_temperature_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.temperature, self.temperature_prof, t)
+
     @property
     def wind_speed_prof(self) -> Profile:
         """
@@ -331,3 +346,10 @@ class Substation(GenericAreaGroup):
             self._wind_speed_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a wind_speed_prof')
+
+    def get_wind_speed_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.wind_speed, self.wind_speed_prof, t)

@@ -11,6 +11,7 @@ from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Branches.transformer_type import get_impedances
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, float]:
@@ -280,6 +281,13 @@ class Transformer3W(PhysicalDevice):
             self._active_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
+
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
 
     def all_connected(self):
         """

@@ -49,7 +49,7 @@ class VSC(BranchParent):
                  idtag: str | None = None,
                  code='',
                  active=True,
-                 rate:float = 100.0,
+                 rate: float = 100.0,
                  kdp=-0.05,
                  alpha1=0.0001,
                  alpha2=0.015,
@@ -123,6 +123,9 @@ class VSC(BranchParent):
                               capex=capex,
                               opex=opex,
                               build_status=build_status,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
                               device_type=DeviceType.VscDevice)
 
         # TODO SANPEN: this is making the ntc test fail
@@ -589,7 +592,6 @@ class VSC(BranchParent):
 
         if show_fig:
             plt.show()
-
 
     def is_3term(self):
 

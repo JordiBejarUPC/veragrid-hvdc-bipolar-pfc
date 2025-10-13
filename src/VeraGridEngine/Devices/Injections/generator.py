@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class Generator(GeneratorParent):
@@ -93,8 +94,8 @@ class Generator(GeneratorParent):
                  x2: float = 1e-20,
                  freq=60.0,
                  tm0=0.0750281479189543,
-                 M=1.0 / 100.0 * 900.0, # from Machine to System base
-                 D=4.0 / 100.0 * 900.0, # from Machine to System base
+                 M=1.0 / 100.0 * 900.0,  # from Machine to System base
+                 D=4.0 / 100.0 * 900.0,  # from Machine to System base
                  omega_ref=1.0,
                  vf=0.9967798127873505,
                  Kp=0.0,
@@ -102,7 +103,7 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
-                 #init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
+                 # init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
                  init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  ###
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
@@ -313,6 +314,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pf_prof')
 
+    def get_Pf_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pf, self.Pf_prof, t)
+
     @property
     def Vset_prof(self) -> Profile:
         """
@@ -329,6 +337,13 @@ class Generator(GeneratorParent):
             self._Vset_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vset_prof')
+
+    def get_Vset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset, self.Vset_prof, t)
 
     @property
     def Qmin_prof(self) -> Profile:
@@ -347,6 +362,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Qmin_prof')
 
+    def get_Qmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmin, self.Qmin_prof, t)
+
     @property
     def Qmax_prof(self) -> Profile:
         """
@@ -363,6 +385,13 @@ class Generator(GeneratorParent):
             self._Qmax_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Qmax_prof')
+
+    def get_Qmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmax, self.Qmax_prof, t)
 
     @property
     def Cost2_prof(self) -> Profile:
@@ -381,6 +410,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost2_prof')
 
+    def get_Cost2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost2, self.Cost2_prof, t)
+
     @property
     def Cost0_prof(self) -> Profile:
         """
@@ -397,6 +433,13 @@ class Generator(GeneratorParent):
             self._Cost0_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
+
+    def get_Cost0_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost0, self.Cost0_prof, t)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -509,15 +552,12 @@ class Generator(GeneratorParent):
         self.Qmax += other.Qmax
         self.Qmin += other.Qmin
 
-
-
-    def initialize_rms(self, rms_event = False):
+    def initialize_rms(self, rms_event=False):
         """
         Initialize the RMS model
         """
 
         if self.rms_model.empty():
-
             delta = Var("delta" + self.name)
             omega = Var("omega" + self.name)
             psid = Var("psid" + self.name)
@@ -542,9 +582,9 @@ class Generator(GeneratorParent):
                 state_eqs=[
                     (2 * np.pi * self.freq) * (omega - self.omega_ref),
                     (tm - te - self.D * (omega - self.omega_ref)) / self.M,
-                    #(omega - self.omega_ref),
+                    # (omega - self.omega_ref),
                 ],
-                #state_vars=[delta, omega, et],
+                # state_vars=[delta, omega, et],
                 state_vars=[delta, omega],
                 algebraic_eqs=[
                     psid - (self.R1 * i_q + v_q),
@@ -557,11 +597,14 @@ class Generator(GeneratorParent):
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
                     tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
-                    2 * np.pi * self.freq * et -delta, #
+                    2 * np.pi * self.freq * et - delta,  #
                 ],
                 algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
-                init_eqs = {
-                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))/(abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+                init_eqs={
+                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                                        abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
                     omega: Const(self.omega_ref),
                     v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
                     v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
@@ -575,10 +618,10 @@ class Generator(GeneratorParent):
                     # Xad_Ifd: Const(self.vf0), ###
                     # vf: Const(self.vf0) ###
                 },
-                init_vars = [delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
-                fix_vars = [tm0, vf],
-                fix_vars_eqs = {tm0.uid: tm,
-                                vf.uid: psid + self.X1 * i_d},
+                init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
+                fix_vars=[tm0, vf],
+                fix_vars_eqs={tm0.uid: tm,
+                              vf.uid: psid + self.X1 * i_d},
 
                 external_mapping={
                     DynamicVarType.P: P_g,

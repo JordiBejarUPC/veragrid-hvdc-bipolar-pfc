@@ -32,12 +32,12 @@ class BusBar(PhysicalDevice):
                                 idtag=idtag,
                                 device_type=DeviceType.BusBarDevice)
 
-        self._voltage_level: VoltageLevel = voltage_level
+        self._voltage_level: VoltageLevel | None = voltage_level
         self.register(key="voltage_level", tpe=DeviceType.BusDevice,
                       definition="Voltage level of this BusBar")
 
     @property
-    def voltage_level(self) -> VoltageLevel:
+    def voltage_level(self) -> VoltageLevel | None:
         """
         Connectivity node getter
         :return: ConnectivityNode
