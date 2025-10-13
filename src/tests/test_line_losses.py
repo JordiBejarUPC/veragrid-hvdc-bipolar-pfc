@@ -73,22 +73,22 @@ def test_line_losses_1():
 
     print("Voltages:")
     for i in range(len(grid.buses)):
-        print(f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu")
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
     print()
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={round(power_flow.results.losses[i], 3)} MVA")
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
     print()
 
     print("Loadings (power):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA")
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
     print()
 
     print("Loadings (current):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.If[i], 3)} pu")
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
     print()
 
     assert np.allclose(approx_losses, solution, atol=1e-3)
@@ -157,22 +157,22 @@ def test_line_losses_2():
 
     print("Voltages:")
     for i in range(len(grid.buses)):
-        print(f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu")
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
     print()
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={round(power_flow.results.losses[i], 3)} MVA")
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
     print()
 
     print("Loadings (power):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA")
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
     print()
 
     print("Loadings (current):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.If[i], 3)} pu")
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
     print()
 
     assert np.allclose(approx_losses, solution, atol=1e-3)
@@ -240,22 +240,22 @@ def test_line_losses_3():
 
     print("Voltages:")
     for i in range(len(grid.buses)):
-        print(f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu")
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
     print()
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={round(power_flow.results.losses[i], 3)} MVA")
+        print(f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA")
     print()
 
     print("Loadings (power):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA")
+        print(f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA")
     print()
 
     print("Loadings (current):")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: loading={round(power_flow.results.If[i], 3)} pu")
+        print(f" - {branches[i]}: loading={power_flow.results.If[i]} pu")
     print()
 
     assert np.allclose(approx_losses, solution, atol=1e-3)
