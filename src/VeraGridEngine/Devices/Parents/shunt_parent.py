@@ -421,6 +421,34 @@ class ShuntParent(InjectionParent):
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
 
+    def get_Y_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G_at(t), self.get_B_at(t))
+
+    def get_Ya_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ga_at(t), self.get_Ba_at(t))
+
+    def get_Yb_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Gb_at(t), self.get_Bb_at(t))
+
+    def get_Yc_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Gc_at(t), self.get_Bc_at(t))
+
     def plot_profiles(self, time=None, show_fig=True):
         """
         Plot the time series results of this object
