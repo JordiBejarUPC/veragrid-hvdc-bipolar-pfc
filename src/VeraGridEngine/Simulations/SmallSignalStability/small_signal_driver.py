@@ -33,7 +33,7 @@ def compute_state_matrix(slv: BlockSolver, x: Vec, params: Vec,):
     :return: np array state matrix(A)
 
     Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the DAE model:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
         Tx'=f(x,y)
         0=g(x,y)
         the A matrix is computed as:
@@ -184,11 +184,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot = Tru
         eigenvalues:  1D row numpy array
         participation factors: 2D array csc matrix.
             Participation factors of mode i stored in PF[:,i]
-    """
 
-    """
     Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the DAE model:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
         Tx'=f(x,y)
         0=g(x,y)
         the A matrix is computed as:
