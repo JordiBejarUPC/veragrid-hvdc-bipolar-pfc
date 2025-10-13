@@ -1046,6 +1046,26 @@ def fill_generator_parent(
             if elm.srap_enabled_prof[t_idx] and data.p[k] > 0.0:
                 bus_data.srap_availbale_power[i] += data.p[k]
 
+            if elm.is_controlled:
+                if elm.control_bus is not None:
+                    remote_control = True
+                    j = bus_dict[elm.control_bus]
+                else:
+                    remote_control = False
+                    j = -1
+
+                data.controllable_bus_idx[k] = j
+
+                set_bus_control_voltage(i=i,
+                                        j=j,
+                                        remote_control=remote_control and control_remote_voltage,
+                                        bus_name=elm.bus.name,
+                                        bus_data=bus_data,
+                                        bus_voltage_used=bus_voltage_used,
+                                        candidate_Vm=elm.Vset_prof[t_idx],
+                                        use_stored_guess=use_stored_guess,
+                                        logger=logger)
+
     else:
 
         data.p[k] = elm.P
@@ -1073,25 +1093,25 @@ def fill_generator_parent(
             if elm.srap_enabled and data.p[k] > 0.0:
                 bus_data.srap_availbale_power[i] += data.p[k]
 
-    if elm.is_controlled:
-        if elm.control_bus is not None:
-            remote_control = True
-            j = bus_dict[elm.control_bus]
-        else:
-            remote_control = False
-            j = -1
+            if elm.is_controlled:
+                if elm.control_bus is not None:
+                    remote_control = True
+                    j = bus_dict[elm.control_bus]
+                else:
+                    remote_control = False
+                    j = -1
 
-        data.controllable_bus_idx[k] = j
+                data.controllable_bus_idx[k] = j
 
-        set_bus_control_voltage(i=i,
-                                j=j,
-                                remote_control=remote_control and control_remote_voltage,
-                                bus_name=elm.bus.name,
-                                bus_data=bus_data,
-                                bus_voltage_used=bus_voltage_used,
-                                candidate_Vm=elm.Vset,
-                                use_stored_guess=use_stored_guess,
-                                logger=logger)
+                set_bus_control_voltage(i=i,
+                                        j=j,
+                                        remote_control=remote_control and control_remote_voltage,
+                                        bus_name=elm.bus.name,
+                                        bus_data=bus_data,
+                                        bus_voltage_used=bus_voltage_used,
+                                        candidate_Vm=elm.Vset,
+                                        use_stored_guess=use_stored_guess,
+                                        logger=logger)
 
     if elm.use_kw:
         # pass kW to MW
