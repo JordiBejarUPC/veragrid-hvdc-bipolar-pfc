@@ -10,10 +10,12 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Templates.Rms.RmsTemplatesFolder import *
 
+
+ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, LineRmsTemplate, GeneratorRmsTemplate]
 
 @dataclass
-
 class BlockDiagramNode:
     x: float
     y: float
@@ -182,7 +184,7 @@ class DynamicModelHost(EditableDevice):
                          code="",
                          device_type=DeviceType.DynamicModelHostDevice)
 
-        self._template: Block | None = None
+        self._template: ALL_RMS_TEMPLATES_TYPE | None = None
 
         # a custom model always exits although it may be empty
         self._custom_model: Block = Block()
@@ -193,14 +195,10 @@ class DynamicModelHost(EditableDevice):
         return self._template
 
     @template.setter
-    def template(self, val: Block | RmsModelTemplate):
+    def template(self, val: ALL_RMS_TEMPLATES_TYPE):
 
-        if isinstance(val, RmsModelTemplate):
-            self._template = val.block
-
-        elif isinstance(val, Block):
+        if isinstance(val,ALL_RMS_TEMPLATES_TYPE):
             self._template = val
-
         else:
             raise ValueError(f"Cannot set template with {val}")
 
@@ -217,12 +215,12 @@ class DynamicModelHost(EditableDevice):
         if self.template is None:
             return self.custom_model
         else:
-            return self.template
+            return self.template.build_template_block()
 
     @model.setter
-    def model(self, val: Block | RmsModelTemplate):
+    def model(self, val: Block | ALL_RMS_TEMPLATES_TYPE):
 
-        if isinstance(val, RmsModelTemplate):
+        if isinstance(val, ALL_RMS_TEMPLATES_TYPE):
             self.template = val.block
 
         elif isinstance(val, Block):
@@ -250,6 +248,7 @@ class DynamicModelHost(EditableDevice):
             self._diagram = diagram
         else:
             raise ValueError(f"Cannot set diagram with {val}")
+
 
     def to_dict(self) -> Dict[str, int | Dict[str, List[Dict[str, Any]]]]:
         """

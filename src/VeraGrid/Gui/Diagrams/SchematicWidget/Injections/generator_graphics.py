@@ -160,10 +160,8 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 gen_template.Va = self._api_object.Va
 
                 # build generator block
-                gen_template.build_template_block()
+                self.api_object.rms_model.template = gen_template
 
-                self.api_object.rms_model.template = gen_template.block
-                print(self.api_object.rms_model.template)
 
             elif choice_dialog.choice == "editor":
 

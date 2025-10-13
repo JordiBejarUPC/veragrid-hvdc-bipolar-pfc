@@ -327,6 +327,8 @@ class BlockSolver:
         self._state_eqs: List[Expr] = list()
         self._parameters: List[Const] = list()
         self._parameters_eqs: List[Expr] = list()
+        self._event_parameters: List[Const] = list()
+        self._event_parameters_eqs: List[Expr] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
         self.v_glob_name2uid = block_system.vars_glob_name2uid
@@ -338,11 +340,14 @@ class BlockSolver:
             self._state_eqs.extend(b.state_eqs)
             self._parameters.extend(b.parameters)
             self._parameters_eqs.extend(b.parameters_eqs)
+            self._event_parameters.extend(b.parameters)
+            self._event_parameters_eqs.extend(b.parameters_eqs)
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
         self._n_params = len(self._parameters)
+        self._n_event_params = len(self._event_parameters)
 
 
         # generate the in-code names for each variable
@@ -350,11 +355,11 @@ class BlockSolver:
         # going to be represented by an array called vars[]
 
         uid2sym_vars: Dict[int, str] = dict()
-        uid2sym_params: Dict[int, str] = dict()
+        uid2sym_event_params: Dict[int, str] = dict()
         uid2sym_t: Dict[int, str] = dict()
         self.uid2var: Dict[int, Var] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
-        self.uid2idx_params: Dict[int, int] = dict()
+        self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
         i = 0
         for v in self._state_vars:
@@ -371,8 +376,8 @@ class BlockSolver:
             i += 1
 
         j = 0
-        for j, ep in enumerate(self._parameters):
-            uid2sym_params[ep.uid] = f"params[{j}]"
+        for j, ep in enumerate(self._event_parameters):
+            uid2sym_event_params[ep.uid] = f"params[{j}]"
             self.uid2idx_params[ep.uid] = j
             j += 1
 
@@ -403,12 +408,12 @@ class BlockSolver:
 
         self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_params,
+                                            uid2sym_params=uid2sym_event_params,
                                             use_jit=use_jit)
 
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_params,
+                                            uid2sym_params=uid2sym_event_params,
                                             use_jit=use_jit)
 
         self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs,
@@ -417,25 +422,25 @@ class BlockSolver:
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j12_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         print("done!")

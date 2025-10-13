@@ -4117,7 +4117,7 @@ class Assets:
 
     def add_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
-        Add investments group
+        Add rms events group
         :param obj: InvestmentsGroup
         """
         self._rms_events_groups.append(obj)

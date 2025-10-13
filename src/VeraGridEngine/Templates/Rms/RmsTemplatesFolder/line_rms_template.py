@@ -8,7 +8,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -20,6 +20,9 @@ class LineRmsTemplate(RmsModelTemplate):
         self.name = name
         self._device_type: DeviceType = DeviceType.LineDevice
         self.parameters: List[str] = ['R', 'X', 'B']
+
+        self.event_parameters: List[Var] = list()
+        self.event_parameters_eqs: List[Expr] = list()
 
         self.Vmf: Var = Var('')
         self.Vaf: Var = Var('')
@@ -59,7 +62,7 @@ class LineRmsTemplate(RmsModelTemplate):
             algebraic_vars=[Pf, Pt, Qf, Qt],
             init_eqs={},
             init_vars=[],
-            parameters=[],
+            parameters=[self.R, self.X, self.B],
             external_mapping={
                 DynamicVarType.Pf: Pf,
                 DynamicVarType.Pt: Pt,

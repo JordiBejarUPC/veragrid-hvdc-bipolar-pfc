@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 import sys
 import numpy as np
 from scipy.sparse import bmat, identity, csc_matrix
@@ -89,8 +89,6 @@ class Integration:
         for iteration in range(max_iter):
             jac = self.calc_jac(dae, dt=1.0)
             residual = np.vstack((dae.f.reshape(-1, 1), dae.g.reshape(-1, 1)))
-
-            pdb.set_trace()
 
             # Solve linear system
             inc = spsolve(jac, -residual)

@@ -9,7 +9,7 @@ from typing import List
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -22,6 +22,9 @@ class LoadRmsTemplate(RmsModelTemplate):
         self._device_type: DeviceType = DeviceType.LoadDevice
         self._block: Block = Block()
         self.parameters: List[str] = ['Pl0', 'Ql0']
+
+        self.event_parameters: List[Var] = list()
+        self.event_parameters_eqs: List[Expr] = list()
 
         self.Vm: Var = Var('')
         self.Va: Var = Var('')
@@ -43,6 +46,8 @@ class LoadRmsTemplate(RmsModelTemplate):
             init_eqs={},
             init_vars=[],
             parameters=[],
+            event_parameters = self.event_parameters,
+            event_parameters_eqs = self.event_parameters_eqs,
             external_mapping={
                 DynamicVarType.P: Pl,
                 DynamicVarType.Q: Ql

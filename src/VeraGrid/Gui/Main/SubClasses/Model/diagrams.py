@@ -44,6 +44,8 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsEventDialogue
+from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -237,6 +239,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_to_contingency.triggered.connect(self.add_selected_to_contingency)
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
+        self.ui.actionAdd_rms_event_To_template.triggered.connect(self.add_rms_event_to_template)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out)
@@ -2543,6 +2546,38 @@ class DiagramsMain(CompiledArraysMain):
                         self.circuit.add_investment(con)
             else:
                 info_msg("Select some elements in the schematic first", "Add selected to investment")
+
+    def add_rms_event_to_template(self) -> None:
+        """
+        Add rms event to a selected device
+        """
+        if self.circuit.valid_for_simulation():
+
+            # get the selected device to apply event to
+            target_devices = self.get_selected_devices()
+
+            if len(target_devices) == 1:
+                target_device = target_devices[0]
+                # launch rms event editor dialogue
+                target_device_name = target_device.type_name + ": " + target_device.name
+                device_params = target_device.rms_model.template.parameters  # list of device parameters
+                rms_events_dialog = RmsEventDialogue(parameters_list=device_params,
+                                       target_device_name=target_device_name)
+
+                if rms_events_dialog.exec() == QtWidgets.QDialog.Accepted:
+                    event_data = rms_events_dialog.get_data()
+
+                    event1 = RmsEvent(target_device, event_data["parameter"], np.array(event_data["target_times"]), np.array(event_data["new_values"]))
+
+                    self.circuit.add_rms_event(event1)
+
+            else:
+                raise ValueError(f"Select one and only one device to add event")
+
+
+
+
+
 
     def select_buses_by_property(self, prop: str):
         """

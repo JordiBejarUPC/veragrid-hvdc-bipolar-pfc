@@ -8,7 +8,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -21,6 +21,9 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         # self._block = Block()
         self._device_type: DeviceType = DeviceType.GeneratorDevice
         self.parameters: List[str] = ['R1', 'X1', 'freq', 'M', 'D', 'omega_ref', 'Kp', 'Ki']
+
+        self.event_parameters: List[Var] = list()
+        self.event_parameters_eqs: List[Expr] = list()
 
         self.Vm: Var = Var('')
         self.Va: Var = Var('')

@@ -102,9 +102,13 @@ class Block:
 
     external_mapping: Dict[DynamicVarType, Var] = field(default_factory=dict)
 
-    # parameters (parameters affected by events)
+
     parameters: List[Var | Const] = field(default_factory=list)
     parameters_eqs: List[Expr] = field(default_factory=list)
+
+    # parameters (parameters affected by events)
+    event_parameters: List[Var] = field(default_factory=list)
+    event_parameters_eqs: List[Expr] = field(default_factory=list)
 
     name: str = ""
 

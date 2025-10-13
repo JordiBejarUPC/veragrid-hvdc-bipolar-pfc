@@ -8,7 +8,7 @@ from typing import List
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr,DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -21,6 +21,9 @@ class BusRmsTemplate(RmsModelTemplate):
         self._device_type: DeviceType = DeviceType.BusDevice
 
         self.parameters: List[str] = []
+
+        self.event_parameters: List[Var] = list()
+        self.event_parameters_eqs: List[Expr] = list()
 
         Vm = Var("Vm")
         Va = Var("Va")

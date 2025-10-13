@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
@@ -18,6 +18,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import DynamicVarType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
+from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 
 
 def _compile_equation(eqs: Sequence[Expr],
@@ -286,9 +287,17 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         # check if there is an event actuating through this element and initialize rms accordingly
         rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
         if len(rms_evts) != 0:
-            elm.initialize_rms_with_event(rms_evts, grid.time)
-        else:
-            elm.initialize_rms()
+            # here the template is changed accordingly to the events applyed
+
+            for rms_event in rms_events:
+
+                default_value = getattr(elm.rms_model.template, rms_event.parameter, None)  # TODO: Find a way of not using getattr and setattr
+                var = Var(rms_event.parameter)
+                setattr(elm.rms_model.template, rms_event.parameter, var)
+                elm.rms_model.template.event_parameters.append(var)
+                elm.rms_model.template.event_parameters_eqs.append(piecewise(grid.time, rms_event.times, rms_event.values, default_value))
+
+        # after applying the events the model has to be "build"
         mdl = elm.rms_model.model
         # add variable to conservation equations of the bus to which the element is connected
         k = bus_dict[elm.bus]
