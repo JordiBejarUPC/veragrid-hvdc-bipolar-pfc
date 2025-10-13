@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import DynamicVarType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 
@@ -103,14 +103,14 @@ def compose_system_block(grid: MultiCircuit,
         # TODO: initialization from power injections of PFlows results needs
         #  to be addressed when multiple devices are connected to the same bus.
         # (Shunt Load, for the benchmark case, two generators,...)
-        init_guess[(mdl.external_mapping[DynamicVarType.Vm].uid,
-                    mdl.external_mapping[DynamicVarType.Vm].name)] = float(np.abs(res.voltage[i]))
-        init_guess[(mdl.external_mapping[DynamicVarType.Va].uid,
-                    mdl.external_mapping[DynamicVarType.Va].name)] = float(np.angle(res.voltage[i]))
-        init_guess[(mdl.external_mapping[DynamicVarType.P].uid,
-                    mdl.external_mapping[DynamicVarType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
-        init_guess[(mdl.external_mapping[DynamicVarType.Q].uid,
-                    mdl.external_mapping[DynamicVarType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(np.angle(res.voltage[i]))
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
 
         sys_block.add(mdl)
 
@@ -133,14 +133,14 @@ def compose_system_block(grid: MultiCircuit,
             array_index += 1
 
         # fill init_guess
-        init_guess[(mdl.external_mapping[DynamicVarType.Pf].uid,
-                    mdl.external_mapping[DynamicVarType.Pf].name)] = Sf[i].real
-        init_guess[(mdl.external_mapping[DynamicVarType.Qf].uid,
-                    mdl.external_mapping[DynamicVarType.Qf].name)] = Sf[i].imag
-        init_guess[(mdl.external_mapping[DynamicVarType.Pt].uid,
-                    mdl.external_mapping[DynamicVarType.Pt].name)] = St[i].real
-        init_guess[(mdl.external_mapping[DynamicVarType.Qt].uid,
-                    mdl.external_mapping[DynamicVarType.Qt].name)] = St[i].imag
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = Sf[i].real
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qf].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Qf].name)] = Sf[i].imag
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St[i].real
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St[i].imag
 
         sys_block.add(mdl)
 
@@ -153,8 +153,8 @@ def compose_system_block(grid: MultiCircuit,
         mdl = elm.rms_model.model
 
 
-        init_guess[(mdl.external_mapping[DynamicVarType.P].uid, mdl.external_mapping[DynamicVarType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[DynamicVarType.P].uid, bus_rms_mdl.external_mapping[DynamicVarType.P].name)]
-        init_guess[(mdl.external_mapping[DynamicVarType.Q].uid, mdl.external_mapping[DynamicVarType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[DynamicVarType.Q].uid, bus_rms_mdl.external_mapping[DynamicVarType.Q].name)]
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
 
@@ -202,10 +202,10 @@ def compose_system_block(grid: MultiCircuit,
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
             mdl = elm.rms_model.model
-            del init_guess[(mdl.external_mapping[DynamicVarType.P].uid,
-                        mdl.external_mapping[DynamicVarType.P].name)]
-            del init_guess[(mdl.external_mapping[DynamicVarType.Q].uid,
-                        mdl.external_mapping[DynamicVarType.Q].name)]
+            del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+            del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
     return sys_block, init_guess
 
@@ -269,10 +269,10 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
         # add variable to conservation equations of the bus to which the element is connected
-        setP(P, P_used, f, -mdl.E(DynamicVarType.Pf))
-        setP(P, P_used, t, -mdl.E(DynamicVarType.Pt))
-        setQ(Q, Q_used, f, -mdl.E(DynamicVarType.Qf))
-        setQ(Q, Q_used, t, -mdl.E(DynamicVarType.Qt))
+        setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
+        setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
+        setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
+        setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
@@ -301,8 +301,8 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         mdl = elm.rms_model.model
         # add variable to conservation equations of the bus to which the element is connected
         k = bus_dict[elm.bus]
-        setP(P, P_used, k, mdl.E(DynamicVarType.P))
-        setQ(Q, Q_used, k, mdl.E(DynamicVarType.Q))
+        setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
+        setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm

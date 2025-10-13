@@ -14,7 +14,7 @@ from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPha
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -806,10 +806,10 @@ class Transformer2W(ControllableBranchParent):
             b = Const(ys.imag)
             bsh = Const(self.B)
 
-            Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
-            Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
-            Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
             self.rms_model.model = Block(
                 algebraic_eqs=[
@@ -823,9 +823,9 @@ class Transformer2W(ControllableBranchParent):
                 init_vars=[],
                 parameters=[],
                 external_mapping={
-                    DynamicVarType.Pf: Pf,
-                    DynamicVarType.Pt: Pt,
-                    DynamicVarType.Qf: Qf,
-                    DynamicVarType.Qt: Qt,
+                    VarPowerFlowRefferenceType.Pf: Pf,
+                    VarPowerFlowRefferenceType.Pt: Pt,
+                    VarPowerFlowRefferenceType.Qf: Qf,
+                    VarPowerFlowRefferenceType.Qt: Qt,
                 }
             )

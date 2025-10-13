@@ -17,7 +17,7 @@ from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue impo
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
 from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_load_catalogue
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
@@ -110,8 +110,8 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             elif choice_dialog.choice == "editor":
 
                 self.api_object.rms_model.model.external_mapping = {
-                    DynamicVarType.P: self.api_object.Pl,
-                    DynamicVarType.Q: self.api_object.Ql,
+                    VarPowerFlowRefferenceType.P: self.api_object.Pl,
+                    VarPowerFlowRefferenceType.Q: self.api_object.Ql,
 
                 }
                 if self.api_object.Pl not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Ql not in self.api_object.rms_model.model.algebraic_vars:

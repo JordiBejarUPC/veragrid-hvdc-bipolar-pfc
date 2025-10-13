@@ -22,7 +22,7 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_line_catalogue
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
-from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
 
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -281,10 +281,10 @@ class LineGraphicItem(LineGraphicTemplateItem):
             elif choice_dialog.choice == "editor":
 
                 self.api_object.rms_model.model.external_mapping={
-                    DynamicVarType.Pf: self.api_object.Pf,
-                    DynamicVarType.Pt: self.api_object.Pt,
-                    DynamicVarType.Qf: self.api_object.Qf,
-                    DynamicVarType.Qt: self.api_object.Qt,
+                    VarPowerFlowRefferenceType.Pf: self.api_object.Pf,
+                    VarPowerFlowRefferenceType.Pt: self.api_object.Pt,
+                    VarPowerFlowRefferenceType.Qf: self.api_object.Qf,
+                    VarPowerFlowRefferenceType.Qt: self.api_object.Qt,
                 }
 
                 if self.api_object.Pf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Pt not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qt not in self.api_object.rms_model.model.algebraic_vars:

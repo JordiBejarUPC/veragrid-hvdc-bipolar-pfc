@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 
-from VeraGridEngine import DynamicVarType, power_flow
+from VeraGridEngine import VarPowerFlowRefferenceType, power_flow
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -443,8 +443,8 @@ load = Block(
     parameters=[],
     # parameters_eqs=[piecewise(t, 2.5, 0.15, -0.075000000001172)],
     external_mapping={
-        DynamicVarType.P: Pl,
-        DynamicVarType.Q: Ql
+        VarPowerFlowRefferenceType.P: Pl,
+        VarPowerFlowRefferenceType.Q: Ql
     }
 )
 

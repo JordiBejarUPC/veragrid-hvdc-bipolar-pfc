@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -95,8 +95,8 @@ class Generator(GeneratorParent):
                  x2: float = 1e-20,
                  freq=60.0,
                  tm0=0.0750281479189543,
-                 M=1.0 / 100.0 * 900.0, # from Machine to System base
-                 D=4.0 / 100.0 * 900.0, # from Machine to System base
+                 M=1.0 / 100.0 * 900.0,  # from Machine to System base
+                 D=4.0 / 100.0 * 900.0,  # from Machine to System base
                  omega_ref=1.0,
                  vf=0.9967798127873505,
                  Kp=0.0,
@@ -104,7 +104,7 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
-                 #init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
+                 # init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
                  init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  ###
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
@@ -247,7 +247,6 @@ class Generator(GeneratorParent):
         self.Kp = Kp
         self.Ki = Ki
         self.init_params = init_params
-
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 
@@ -433,9 +432,8 @@ class Generator(GeneratorParent):
                 plt.show()
 
     def assign_input_vars_and_params(self):
-        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
-        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
-
+        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def fix_inconsistencies(self, logger: Logger, min_vset=0.98, max_vset=1.02):
         """
@@ -515,15 +513,12 @@ class Generator(GeneratorParent):
         self.Qmax += other.Qmax
         self.Qmin += other.Qmin
 
-
-
-    def initialize_rms(self, rms_event = False):
+    def initialize_rms(self, rms_event=False):
         """
         Initialize the RMS model
         """
 
         if self.rms_model.empty():
-
             delta = Var("delta")
             omega = Var("omega")
             psid = Var("psid")
@@ -535,14 +530,14 @@ class Generator(GeneratorParent):
             te = Var("te")
             et = Var("et")
             tm = Var("tm")
-            P_g = Var("P_g")
-            Q_g = Var("Q_g")
+            P_g = Var("P_g", pf_ref=VarPowerFlowRefferenceType.P)
+            Q_g = Var("Q_g", pf_ref=VarPowerFlowRefferenceType.Q)
 
             vf = UndefinedConst()
-            tm0 = UndefinedConst()
+            # tm0 = UndefinedConst()
 
-            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
-            Va = self.bus.rms_model.model.E(DynamicVarType.Va)
+            Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
             self.rms_model.model = Block(
                 state_eqs=[
@@ -561,11 +556,14 @@ class Generator(GeneratorParent):
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
                     tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
-                    2 * np.pi * self.freq * et -delta, #
+                    2 * np.pi * self.freq * et - delta,  #
                 ],
                 algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
-                init_eqs = {
-                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))/(abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+                init_eqs={
+                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                                        abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
                     omega: Const(self.omega_ref),
                     v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
                     v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
@@ -579,13 +577,13 @@ class Generator(GeneratorParent):
                     # Xad_Ifd: Const(self.vf0), ###
                     # vf: Const(self.vf0) ###
                 },
-                init_vars = [delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
-                fix_vars = [tm0, vf],
-                fix_vars_eqs = {tm0.uid: tm,
-                                vf.uid: psid + self.X1 * i_d},
+                # init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
+                # fix_vars=[tm0, vf],
+                # fix_vars_eqs={tm0.uid: tm,
+                #               vf.uid: psid + self.X1 * i_d},
 
-                external_mapping={
-                    DynamicVarType.P: P_g,
-                    DynamicVarType.Q: Q_g
-                }
+                # external_mapping={
+                #     VarPowerFlowRefferenceType.P: P_g,
+                #     VarPowerFlowRefferenceType.Q: Q_g
+                # }
             )

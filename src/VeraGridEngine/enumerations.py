@@ -2343,19 +2343,19 @@ class GridReductionMethod(Enum):
             return s
 
 
-class DynamicVarType(Enum):
+class VarPowerFlowRefferenceType(Enum):
     """
-       GridReductionMethod
-       """
-    T = "T"
-    Vm = "Vm"
-    Va = "Va"
-    P = "P"
-    Q = "Q"
-    Pf = "Pf"
-    Qf = "Qf"
-    Pt = "Pt"
-    Qt = "Qt"
+    GridReductionMethod
+    """
+    NOTHING = "nothing"
+    Vm = "Vm"  # Bus voltage module in p.u.
+    Va = "Va"  # Bus voltage angle in rad
+    P = "P"  # Bus active power in p.u.
+    Q = "Q"  # Bus reactive power in p.u.
+    Pf = "Pf"  # Branch active power from in p.u.
+    Qf = "Qf"  # Branch reactive power from in p.u.
+    Pt = "Pt"  # Branch active power to in p.u.
+    Qt = "Qt"  # Branch reactive power to in p.u.
 
     def __str__(self):
         return self.value
@@ -2371,7 +2371,7 @@ class DynamicVarType(Enum):
         :return:
         """
         try:
-            return DynamicVarType[s]
+            return VarPowerFlowRefferenceType[s]
         except KeyError:
             return s
 

@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -500,10 +500,10 @@ class Line(BranchParent):
             raise ValueError(f'{val} is not a AdmittanceMatrix')
 
     def assign_input_vars_and_params(self):
-        self.Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
-        self.Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
-        self.Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
-        self.Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+        self.Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+        self.Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
 
     def change_base(self, Sbase_old: float, Sbase_new: float):
@@ -739,10 +739,10 @@ class Line(BranchParent):
             b = Const(ys.imag)
             bsh = Const(self.B)
 
-            Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
-            Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
-            Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
             self.rms_model.model = Block(
                 algebraic_eqs=[
@@ -756,9 +756,9 @@ class Line(BranchParent):
                 init_vars=[],
                 parameters=[],
                 external_mapping={
-                    DynamicVarType.Pf: Pf,
-                    DynamicVarType.Pt: Pt,
-                    DynamicVarType.Qf: Qf,
-                    DynamicVarType.Qt: Qt,
+                    VarPowerFlowRefferenceType.Pf: Pf,
+                    VarPowerFlowRefferenceType.Pt: Pt,
+                    VarPowerFlowRefferenceType.Qf: Qf,
+                    VarPowerFlowRefferenceType.Qt: Qt,
                 }
             )

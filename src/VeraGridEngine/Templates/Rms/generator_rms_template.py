@@ -8,7 +8,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -106,7 +106,7 @@ class GeneratorRmsTemplate(RmsModelTemplate):
             fix_vars_eqs={tm0.uid: tm,
                           vf.uid: psid + self.X1 * i_d},
             external_mapping={
-                DynamicVarType.P: self.P_g,
-                DynamicVarType.Q: self.Q_g
+                VarPowerFlowRefferenceType.P: self.P_g,
+                VarPowerFlowRefferenceType.Q: self.Q_g
             }
         )

@@ -8,7 +8,7 @@ from typing import List
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr,DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr,VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
@@ -40,9 +40,9 @@ class BusRmsTemplate(RmsModelTemplate):
             init_eqs={},
             init_vars=[],
             external_mapping={
-                DynamicVarType.Vm: Vm,
-                DynamicVarType.Va: Va,
-                DynamicVarType.P: P,
-                DynamicVarType.Q: Q
+                VarPowerFlowRefferenceType.Vm: Vm,
+                VarPowerFlowRefferenceType.Va: Va,
+                VarPowerFlowRefferenceType.P: P,
+                VarPowerFlowRefferenceType.Q: Q
             }
         )

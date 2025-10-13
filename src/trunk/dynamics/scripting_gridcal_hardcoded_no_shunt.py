@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
-from VeraGridEngine import DynamicVarType
+from VeraGridEngine import VarPowerFlowRefferenceType
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -1404,8 +1404,8 @@ load_7 = Block(
     parameters=[Pl0_7],
     parameters_eqs=[piecewise(t, np.array([2.0]), np.array([-9.0]), Pl0_7_default)],
     external_mapping={
-        DynamicVarType.P: Pload_7,
-        DynamicVarType.Q: Qload_7
+        VarPowerFlowRefferenceType.P: Pload_7,
+        VarPowerFlowRefferenceType.Q: Qload_7
     }
 )
 

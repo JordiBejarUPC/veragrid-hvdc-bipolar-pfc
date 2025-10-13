@@ -10,11 +10,13 @@ import ast
 import uuid
 import numpy as np
 from enum import Enum
-from scipy.sparse import csc_matrix
 import numba as nb
 from dataclasses import dataclass, field
 from types import MappingProxyType
+
 from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set
+
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 NUMBER = Union[int, float, complex]
 
@@ -270,6 +272,10 @@ class Var(Expr):
     """
     name: str
     uid: int = field(default_factory=_new_uid)
+
+    # this reference tell me if this var should be replaced by another variable at the block compilation time
+    # i.e DynamicVarType.P tells me that this var is actually the bus active power var.
+    pf_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.NOTHING
 
     def eval(self, **bindings: NUMBER) -> NUMBER:
         try:

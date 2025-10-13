@@ -13,7 +13,7 @@ from typing import Tuple, Sequence, List, Dict, Any
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, \
     imag, conj, angle, exp, log, abs, piecewise
-from VeraGridEngine.enumerations import DynamicVarType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -79,59 +79,86 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
     return result
 
 
-@dataclass(frozen=False)
 class Block:
     """
-    This represents a group of equations or a group of blocks
+    Class representing a Block
     """
-    uid: int = field(default_factory=_new_uid)
-    vars2device: Dict[int, PhysicalDevice] = field(default_factory=dict)
-    vars_glob_name2uid: Dict[str, uid] = field(default_factory=dict)
 
-    # internal vars
-    state_vars: List[Var] = field(default_factory=list)
-    state_eqs: List[Expr] = field(default_factory=list)
-    algebraic_vars: List[Var] = field(default_factory=list)
-    algebraic_eqs: List[Expr] = field(default_factory=list)
+    def __init__(self,
+                 algebraic_eqs: List[Expr] | None = None,
+                 algebraic_vars: List[Var] | None = None,
+                 state_vars: List[Var] | None = None,
+                 state_eqs: List[Expr] | None = None,
+                 children: List["Block"] | None = None,
+                 in_vars: List[Var] | None = None,
+                 out_vars: List[Var] | None = None,
+                 init_eqs: Dict[Var, Expr] | None = None):
+        """
+        This represents a group of equations or a group of blocks
 
-    # initialization
-    init_vars: List[Var] = field(default_factory=list)
-    init_eqs: Dict[Var, Expr] = field(default_factory=dict)
-    fix_vars: List[UndefinedConst] = field(default_factory=list)
-    fix_vars_eqs: Dict[Any, Expr] = field(default_factory=dict)
+        :param algebraic_vars: List of non differential variables (AKA algebraic)
+        :param algebraic_eqs: List of equations that provide values for the algebraic variables
+        :param state_vars: List of differential variables (AKA state variables)
+        :param state_eqs: List of equations that provide values for the state variables
+        :param children: List of other blocks to be flattened later into this block
+        :param in_vars: List of variables from other blocks that we use here
+        :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
+        :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
+        """
 
-    external_mapping: Dict[DynamicVarType, Var] = field(default_factory=dict)
+        self.name: str = ""
 
-    parameters: List[Var | Const] = field(default_factory=list)
-    parameters_eqs: List[Expr] = field(default_factory=list)
+        uid: int = _new_uid()
+        self.vars2device: Dict[int, PhysicalDevice] = dict()
+        self.vars_glob_name2uid: Dict[str, uid] = dict()
 
-    # parameters (parameters affected by events)
-    event_parameters: List[Var] = field(default_factory=list)
-    event_parameters_eqs: List[Expr] = field(default_factory=list)
+        # TODO: Change to dictionary of Var : Expr
+        self.state_vars: List[Var] = list() if state_vars is None else state_vars
+        self.state_eqs: List[Expr] = list() if state_eqs is None else state_eqs
 
-    name: str = ""
+        # TODO: Change to dictionary of Var : Expr
+        self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
+        self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
-    # vars to make this recursive
-    children: list["Block"] = field(default_factory=list)
-    in_vars: List[Var] = field(default_factory=list)
-    out_vars: List[Var] = field(default_factory=list)
-    active_in_vars: List[Var] = field(default_factory=list)
+        # initialization
+        self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
 
-    def __post_init__(self) -> None:
-        # if len(self.algebraic_vars) != len(self.algebraic_eqs):
-        #     raise ValueError(
-        #         f"algebraic_vars and algebraic_eqs must have the same length: vars is {len(self.algebraic_vars)}, eqs is {len(self.algebraic_eqs)}")
-        # if len(self.state_vars) != len(self.state_eqs):
-        #     raise ValueError("state_vars and state_eqs must have the same length")
+        # vars to make this recursive
+        self.children: List["Block"] = list() if children is None else children
+
+        self.in_vars: List[Var] = list() if in_vars is None else in_vars
+        self.out_vars: List[Var] = list() if out_vars is None else out_vars
+
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
-    def empty(self):
+        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = {elm.pf_ref: elm
+                                                                        for elm in self.algebraic_vars}
+
+        # Dictionary of Variables and their Expressions that appear due to an event
+        # this is the dictionary of "parameters" that may change and their equations
+        self.event_dicts: Dict[Var, Expr] = dict()
+
+    def empty(self) -> bool:
+        """
+
+        :return:
+        """
         return (len(self.state_vars) + len(self.algebraic_vars)) == 0
 
-    def E(self, d: DynamicVarType) -> Var:
+    def E(self, d: VarPowerFlowRefferenceType) -> Var:
+        """
+
+        :param d:
+        :return:
+        """
         return self.external_mapping[d]
 
     def V(self, d: str) -> Var:
+        """
+
+        :param d:
+        :return:
+        """
         return self.var_mapping[d]
 
     def add(self, val: "Block"):
@@ -140,6 +167,15 @@ class Block:
         :param val: Block
         """
         self.children.append(val)
+
+    def apply_events(self, events: List["RmsEvent"]):
+        """
+        Apply events to this block
+        :param events:
+        :return:
+        """
+        # TODO Implement filling self.event_dicts with the RmsEvents info
+        pass
 
     def get_all_blocks(self) -> List[Block]:
         """
@@ -196,7 +232,7 @@ class Block:
             fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
                           for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
             external_mapping={
-                DynamicVarType(k): Var(name=d["name"], uid=d["uid"])
+                VarPowerFlowRefferenceType(k): Var(name=d["name"], uid=d["uid"])
                 for k, d in data.get("external_mapping", {}).items()
             },
             init_eqs={Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
@@ -223,7 +259,7 @@ class Block:
             fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
                           for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
             external_mapping={
-                DynamicVarType(k): Var(name=d["name"], uid=d["uid"])
+                VarPowerFlowRefferenceType(k): Var(name=d["name"], uid=d["uid"])
                 for k, d in data.get("external_mapping", {}).items()
             },
             init_eqs={Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
@@ -335,10 +371,10 @@ def bus(api_object) -> Block:
     bus_block = Block(
         algebraic_vars=[Vm, Va],
         external_mapping={
-            DynamicVarType.Vm: Vm,
-            DynamicVarType.Va: Va,
-            DynamicVarType.P: P,
-            DynamicVarType.Q: Q}
+            VarPowerFlowRefferenceType.Vm: Vm,
+            VarPowerFlowRefferenceType.Va: Va,
+            VarPowerFlowRefferenceType.P: P,
+            VarPowerFlowRefferenceType.Q: Q}
     )
     return bus_block
 
@@ -363,8 +399,8 @@ def generator(api_object) -> Block:
     vf = UndefinedConst()
     tm0 = UndefinedConst()
 
-    Vm = gen_object.bus.rms_model.model.E(DynamicVarType.Vm)
-    Va = gen_object.bus.rms_model.model.E(DynamicVarType.Va)
+    Vm = gen_object.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+    Va = gen_object.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     gen_block = Block(
         state_eqs=[
@@ -409,8 +445,8 @@ def generator(api_object) -> Block:
                       vf.uid: psid + gen_object.X1 * i_d},
 
         external_mapping={
-            DynamicVarType.P: P_g,
-            DynamicVarType.Q: Q_g
+            VarPowerFlowRefferenceType.P: P_g,
+            VarPowerFlowRefferenceType.Q: Q_g
         }
     )
     return gen_block
@@ -431,8 +467,8 @@ def load(api_object) -> Block:
         init_vars=[],
         parameters=[],
         external_mapping={
-            DynamicVarType.P: Pl,
-            DynamicVarType.Q: Ql
+            VarPowerFlowRefferenceType.P: Pl,
+            VarPowerFlowRefferenceType.Q: Ql
         }
     )
     return load_block
@@ -450,10 +486,10 @@ def line(api_object) -> Block:
     b = Const(ys.imag)
     bsh = Const(line_object.B)
 
-    Vmf = line_object.bus_from.rms_model.model.E(DynamicVarType.Vm)
-    Vaf = line_object.bus_from.rms_model.model.E(DynamicVarType.Va)
-    Vmt = line_object.bus_to.rms_model.model.E(DynamicVarType.Vm)
-    Vat = line_object.bus_to.rms_model.model.E(DynamicVarType.Va)
+    Vmf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+    Vaf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+    Vmt = line_object.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+    Vat = line_object.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     line_block = Block(
         algebraic_eqs=[
@@ -469,10 +505,10 @@ def line(api_object) -> Block:
         init_vars=[],
         parameters=[],
         external_mapping={
-            DynamicVarType.Pf: Pf,
-            DynamicVarType.Pt: Pt,
-            DynamicVarType.Qf: Qf,
-            DynamicVarType.Qt: Qt,
+            VarPowerFlowRefferenceType.Pf: Pf,
+            VarPowerFlowRefferenceType.Pt: Pt,
+            VarPowerFlowRefferenceType.Qf: Qf,
+            VarPowerFlowRefferenceType.Qt: Qt,
         }
     )
 

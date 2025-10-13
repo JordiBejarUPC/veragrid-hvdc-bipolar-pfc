@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 
 
 class Bus(PhysicalDevice):
@@ -514,9 +514,9 @@ class Bus(PhysicalDevice):
                 init_eqs={},
                 init_vars=[],
                 external_mapping={
-                    DynamicVarType.Vm: Vm,
-                    DynamicVarType.Va: Va,
-                    DynamicVarType.P: P,
-                    DynamicVarType.Q: Q
+                    VarPowerFlowRefferenceType.Vm: Vm,
+                    VarPowerFlowRefferenceType.Va: Va,
+                    VarPowerFlowRefferenceType.P: P,
+                    VarPowerFlowRefferenceType.Q: Q
                 }
             )

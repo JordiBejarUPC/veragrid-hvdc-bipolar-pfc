@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 
 
@@ -531,8 +531,8 @@ class Load(LoadParent):
             raise Exception(str(type(val)) + 'not supported to be set into n_customers_prof')
 
     def assign_input_vars_and_params(self):
-        self.Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
-        self.Va = self.bus.rms_model.model.E(DynamicVarType.Va)
+        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -583,8 +583,8 @@ class Load(LoadParent):
                 init_vars=[],
                 parameters=[],
                 external_mapping={
-                    DynamicVarType.P: Pl,
-                    DynamicVarType.Q: Ql
+                    VarPowerFlowRefferenceType.P: Pl,
+                    VarPowerFlowRefferenceType.Q: Ql
                 }
             )
 
@@ -609,8 +609,8 @@ class Load(LoadParent):
                 external_mapping={
                 }
             )
-            self.rms_model.model.external_mapping[DynamicVarType.P] = Pl
-            self.rms_model.model.external_mapping[DynamicVarType.Q] = Ql
+            self.rms_model.model.external_mapping[VarPowerFlowRefferenceType.P] = Pl
+            self.rms_model.model.external_mapping[VarPowerFlowRefferenceType.Q] = Ql
             self.rms_model.model.algebraic_vars.append(Pl)
             self.rms_model.model.algebraic_vars.append(Ql)
             for rms_event in rms_events:

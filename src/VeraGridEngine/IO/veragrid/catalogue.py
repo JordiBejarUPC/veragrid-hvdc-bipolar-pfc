@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import List, Tuple
 import pandas as pd
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
