@@ -3,12 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
+from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
 
 
-class RmsModelTemplate(EditableDevice):
+class RmsModelTemplate(PointerDeviceParent):
     """
     This class serves to give flexible access to either a template or a custom model
     """
@@ -21,13 +21,11 @@ class RmsModelTemplate(EditableDevice):
         super().__init__(name=name,
                          idtag=None,
                          code="",
+                         device=None,
+                         comment="",
                          device_type=DeviceType.RmsModelTemplateDevice)
 
-        self._device_type: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
-
-        self.register('device_type', units="p.u.", tpe=DeviceType,
-                      definition='Device type', editable=False, display=True)
 
         self.register('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
                       definition='DAE block', editable=False, display=False)
@@ -43,15 +41,3 @@ class RmsModelTemplate(EditableDevice):
     @block.setter
     def block(self, obj: Block):
         self._block = obj
-
-    @property
-    def device_type(self):
-        """
-
-        :return:
-        """
-        return self._device_type
-
-    @device_type.setter
-    def device_type(self, obj: DeviceType):
-        self._device_type = obj

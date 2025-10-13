@@ -18,8 +18,7 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         super().__init__(name=name)
 
         self.name = name
-        # self._block = Block()
-        self._device_type: DeviceType = DeviceType.GeneratorDevice
+        self.tpe: DeviceType = DeviceType.GeneratorDevice
         self.parameters: List[str] = ['R1', 'X1', 'freq', 'M', 'D', 'omega_ref', 'Kp', 'Ki']
 
         self.event_parameters: List[Var] = list()

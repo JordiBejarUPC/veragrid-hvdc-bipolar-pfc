@@ -17,8 +17,7 @@ class BusRmsTemplate(RmsModelTemplate):
     def __init__(self, name: str = "rms_bus_template"):
         super().__init__(name=name)
 
-        self.name = name
-        self._device_type: DeviceType = DeviceType.BusDevice
+        self.tpe: DeviceType = DeviceType.BusDevice
 
         self.parameters: List[str] = []
 

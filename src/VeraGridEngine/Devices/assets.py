@@ -5148,6 +5148,9 @@ class Assets:
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
+        """
+        Get number of RMS models
+        """
         return len(self._rms_models)
 
     def add_rms_model(self, obj: dev.RmsModelTemplate):

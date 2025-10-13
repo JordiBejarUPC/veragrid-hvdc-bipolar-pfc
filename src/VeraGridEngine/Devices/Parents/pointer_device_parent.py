@@ -20,7 +20,7 @@ class PointerDeviceParent(EditableDevice):
 
     def __init__(self,
                  idtag: Union[str, None],
-                 device: EditableDevice,
+                 device: EditableDevice | None,
                  name: str,
                  code: str,
                  comment: str,

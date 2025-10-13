@@ -18,9 +18,8 @@ class LoadRmsTemplate(RmsModelTemplate):
     def __init__(self, name: str = "rms_load_template"):
         super().__init__(name=name)
 
-        self.name = name
-        self._device_type: DeviceType = DeviceType.LoadDevice
-        self._block: Block = Block()
+        self.tpe: DeviceType = DeviceType.LoadDevice
+
         self.parameters: List[str] = ['Pl0', 'Ql0']
 
         self.event_parameters: List[Var] = list()

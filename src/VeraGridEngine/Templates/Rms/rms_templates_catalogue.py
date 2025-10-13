@@ -8,13 +8,13 @@ from typing import List, Dict
 from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 from VeraGridEngine.enumerations import DeviceType
 
-from VeraGridEngine.Templates.Rms.RmsTemplatesFolder.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.RmsTemplatesFolder.generator_rms_template import GeneratorRmsTemplate
-from VeraGridEngine.Templates.Rms.RmsTemplatesFolder.line_rms_template import LineRmsTemplate
-from VeraGridEngine.Templates.Rms.RmsTemplatesFolder.load_rms_template import LoadRmsTemplate
+from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
+from VeraGridEngine.Templates.Rms.generator_rms_template import GeneratorRmsTemplate
+from VeraGridEngine.Templates.Rms.line_rms_template import LineRmsTemplate
+from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 
-
-Templates:List[ALL_RMS_TEMPLATES_TYPE] = [BusRmsTemplate(), GeneratorRmsTemplate(), LineRmsTemplate(), LoadRmsTemplate()]
+Templates: List[ALL_RMS_TEMPLATES_TYPE] = [BusRmsTemplate(), GeneratorRmsTemplate(), LineRmsTemplate(),
+                                           LoadRmsTemplate()]
 
 
 def get_generator_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
@@ -38,6 +38,7 @@ def get_bus_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
 
     return bus_templ_list, bus_templ_catalogue
 
+
 def get_line_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     line_templ_catalogue = dict()
     line_templ_list = []
@@ -48,6 +49,7 @@ def get_line_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
 
     return line_templ_list, line_templ_catalogue
 
+
 def get_load_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     load_templ_catalogue = dict()
     load_templ_list = []
@@ -57,5 +59,3 @@ def get_load_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
             load_templ_catalogue[templ.name] = templ
 
     return load_templ_list, load_templ_catalogue
-
-

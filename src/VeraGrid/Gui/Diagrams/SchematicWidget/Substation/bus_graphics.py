@@ -515,28 +515,28 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_3p,
                        checkeable=True,
-                       checked_value=self.sc_enabled[0])
+                       checked_value=int(self.sc_enabled[0]))
 
         add_menu_entry(menu=sc,
                        text="Line-Ground (x)" if self.sc_enabled[1] else "Line-Ground",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_lg,
                        checkeable=True,
-                       checked_value=self.sc_enabled[1])
+                       checked_value=int(self.sc_enabled[1]))
 
         add_menu_entry(menu=sc,
                        text="Line-Line (x)" if self.sc_enabled[2] else "Line-Line",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_ll,
                        checkeable=True,
-                       checked_value=self.sc_enabled[2])
+                       checked_value=int(self.sc_enabled[2]))
 
         add_menu_entry(menu=sc,
                        text="Line-Line-Ground (x)" if self.sc_enabled[3] else "Line-Line-Ground",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_llg,
                        checkeable=True,
-                       checked_value=self.sc_enabled[3])
+                       checked_value=int(self.sc_enabled[3]))
 
         add_menu_entry(menu=sc,
                        text="Disable",

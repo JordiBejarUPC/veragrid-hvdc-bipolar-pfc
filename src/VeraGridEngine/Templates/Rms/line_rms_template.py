@@ -17,8 +17,7 @@ class LineRmsTemplate(RmsModelTemplate):
     def __init__(self, name: str = "rms_line_template"):
         super().__init__(name=name)
 
-        self.name = name
-        self._device_type: DeviceType = DeviceType.LineDevice
+        self.tpe: DeviceType = DeviceType.LineDevice
         self.parameters: List[str] = ['R', 'X', 'B']
 
         self.event_parameters: List[Var] = list()
