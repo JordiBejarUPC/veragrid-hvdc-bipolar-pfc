@@ -589,6 +589,12 @@ class Load(LoadParent):
             )
 
     def initialize_rms_with_event(self, rms_events: List, glob_time):
+        """
+
+        :param rms_events:
+        :param glob_time:
+        :return:
+        """
         if self.rms_model.empty():
             Ql = Var("Ql")
             Pl = Var("Pl")

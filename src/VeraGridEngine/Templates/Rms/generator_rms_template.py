@@ -40,7 +40,10 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         self.Ki = Const(0.0)
 
     def build_template_block(self):
+        """
 
+        :return:
+        """
         delta = Var("delta")
         omega = Var("omega")
         psid = Var("psid")
@@ -52,7 +55,6 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         te = Var("te")
         et = Var("et")
         tm = Var("tm")
-
 
         vf = UndefinedConst()
         tm0 = UndefinedConst()
@@ -82,14 +84,17 @@ class GeneratorRmsTemplate(RmsModelTemplate):
             algebraic_vars=[self.P_g, self.Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
             init_eqs={
                 delta: imag(
-                    log((self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))))) / (
-                    abs(self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
-                        conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va)))))))),
+                    log((self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
+                        conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))))) / (
+                            abs(self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
+                                conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va)))))))),
                 omega: self.omega_ref,
                 v_d: real((self.Vm * exp(1j * self.Va)) * exp(-1j * (delta - np.pi / 2))),
                 v_q: imag((self.Vm * exp(1j * self.Va)) * exp(-1j * (delta - np.pi / 2))),
-                i_d: real(conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
-                i_q: imag(conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
+                i_d: real(
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
+                i_q: imag(
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
                 psid: self.R1 * i_q + v_q,
                 psiq: -self.R1 * i_d - v_d,
                 te: psid * i_q - psiq * i_d,
@@ -99,7 +104,7 @@ class GeneratorRmsTemplate(RmsModelTemplate):
             init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
             fix_vars=[tm0, vf],
             fix_vars_eqs={tm0.uid: tm,
-                        vf.uid: psid + self.X1 * i_d},
+                          vf.uid: psid + self.X1 * i_d},
             external_mapping={
                 DynamicVarType.P: self.P_g,
                 DynamicVarType.Q: self.Q_g

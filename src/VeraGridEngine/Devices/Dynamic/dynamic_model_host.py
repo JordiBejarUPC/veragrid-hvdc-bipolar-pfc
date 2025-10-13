@@ -10,7 +10,10 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Templates.Rms.RmsTemplatesFolder import *
+from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
+from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
+from VeraGridEngine.Templates.Rms.line_rms_template import LineRmsTemplate
+from VeraGridEngine.Templates.Rms.generator_rms_template import GeneratorRmsTemplate
 
 
 ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, LineRmsTemplate, GeneratorRmsTemplate]

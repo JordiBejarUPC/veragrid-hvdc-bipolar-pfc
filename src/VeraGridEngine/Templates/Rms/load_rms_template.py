@@ -31,8 +31,6 @@ class LoadRmsTemplate(RmsModelTemplate):
         self.Pl0 = Const(1)
         self.Ql0 = Const(1)
 
-    def build_template_block(self):
-
         Ql = Var("Ql")
         Pl = Var("Pl")
 
@@ -45,8 +43,8 @@ class LoadRmsTemplate(RmsModelTemplate):
             init_eqs={},
             init_vars=[],
             parameters=[],
-            event_parameters = self.event_parameters,
-            event_parameters_eqs = self.event_parameters_eqs,
+            event_parameters=self.event_parameters,
+            event_parameters_eqs=self.event_parameters_eqs,
             external_mapping={
                 DynamicVarType.P: Pl,
                 DynamicVarType.Q: Ql

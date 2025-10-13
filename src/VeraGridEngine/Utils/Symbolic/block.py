@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, imag, conj, angle, exp, log, abs, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, \
+    imag, conj, angle, exp, log, abs, piecewise
 from VeraGridEngine.enumerations import DynamicVarType
-
 
 
 def _new_uid() -> int:
@@ -40,6 +40,7 @@ def _serialize_var_list(vars_: List[Var | Const]) -> List[Dict[str, Any]]:
     :return: List of dictionaries with the serialized data
     """
     return [v.to_dict() for v in vars_]
+
 
 def _serialize_undefinedconst_list(undefconsts_: List[UndefinedConst]) -> List[Dict[str, Any]]:
     """
@@ -84,7 +85,7 @@ class Block:
     This represents a group of equations or a group of blocks
     """
     uid: int = field(default_factory=_new_uid)
-    vars2device:Dict[int, PhysicalDevice] = field(default_factory=dict)
+    vars2device: Dict[int, PhysicalDevice] = field(default_factory=dict)
     vars_glob_name2uid: Dict[str, uid] = field(default_factory=dict)
 
     # internal vars
@@ -99,9 +100,7 @@ class Block:
     fix_vars: List[UndefinedConst] = field(default_factory=list)
     fix_vars_eqs: Dict[Any, Expr] = field(default_factory=dict)
 
-
     external_mapping: Dict[DynamicVarType, Var] = field(default_factory=dict)
-
 
     parameters: List[Var | Const] = field(default_factory=list)
     parameters_eqs: List[Expr] = field(default_factory=list)
@@ -173,7 +172,8 @@ class Block:
             "init_eqs": {var.to_dict(): expr.to_dict() for var, expr in self.init_eqs.items()},
             "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
             "fix_vars_eqs": {undefconst.uid: expr.to_dict() for undefconst, expr in self.fix_vars_eqs.items()},
-            "external_mapping": {dynvartype.__str__(): var.to_dict() for dynvartype, var in self.external_mapping.items()},
+            "external_mapping": {dynvartype.__str__(): var.to_dict() for dynvartype, var in
+                                 self.external_mapping.items()},
             "parameters": _serialize_var_list(self.parameters),
             "parameters_eqs": _serialize_expr_list(self.parameters_eqs),
             "name": self.name,
@@ -194,13 +194,13 @@ class Block:
             init_vars=_deserialize_var_list(data.get("init_vars", [])),
             fix_vars=_deserialize_var_list(data.get("fix_vars", [])),
             fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
-            for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
+                          for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
             external_mapping={
                 DynamicVarType(k): Var(name=d["name"], uid=d["uid"])
                 for k, d in data.get("external_mapping", {}).items()
             },
             init_eqs={Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
-            for var_dict, expr_dict in data["init_eqs"]},
+                      for var_dict, expr_dict in data["init_eqs"]},
             parameters=_deserialize_var_list(data["parameters"]),
             parameters_eqs=_deserialize_expr_list(data.get("parameters_eqs", [])),
             name=data.get("name", ""),
@@ -238,7 +238,6 @@ class Block:
         )
         return block
 
-
     def copy(self) -> "Block":
         """
         Make a deep copy of this
@@ -262,7 +261,8 @@ def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - Const(value)])
     return y, blk
 
-def variable(name: str = "variable",  vartype: str = "vartype") -> Tuple[Var, Block]:
+
+def variable(name: str = "variable", vartype: str = "vartype") -> Tuple[Var, Block]:
     y = Var(name)
     if vartype == 'state':
         blk = Block(state_vars=[y])
@@ -270,7 +270,8 @@ def variable(name: str = "variable",  vartype: str = "vartype") -> Tuple[Var, Bl
         blk = Block(algebraic_vars=[y])
     return y, blk
 
-def equation(expr: str = 'expression', etype: str = "etype")-> Block:
+
+def equation(expr: str = 'expression', etype: str = "etype") -> Block:
     if etype == 'state':
         blk = Block(state_eqs=[make_symbolic(expr)])
     else:
@@ -306,8 +307,6 @@ def substract(inputs: Sequence[Var | Const], name: str = "substract_out") -> Tup
     return y, blk
 
 
-
-
 def integrator(u: Var | Const, name: str = "x") -> Tuple[Var, Block]:
     x = Var(name)
     blk = Block(state_vars=[x], state_eqs=[u])
@@ -327,21 +326,22 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
     def placeholders(n, base):
         return [Var(f"{base}{i}") for i in range(n)]
 
-def bus(api_object) -> Block:
 
+def bus(api_object) -> Block:
     Vm = Var("Vm")
     Va = Var("Va")
     P = Var("P")
     Q = Var("Q")
     bus_block = Block(
-                algebraic_vars=[Vm, Va],
-                external_mapping={
-                    DynamicVarType.Vm: Vm,
-                    DynamicVarType.Va: Va,
-                    DynamicVarType.P: P,
-                    DynamicVarType.Q: Q}
-            )
+        algebraic_vars=[Vm, Va],
+        external_mapping={
+            DynamicVarType.Vm: Vm,
+            DynamicVarType.Va: Va,
+            DynamicVarType.P: P,
+            DynamicVarType.Q: Q}
+    )
     return bus_block
+
 
 def generator(api_object) -> Block:
     gen_object = api_object
@@ -388,9 +388,10 @@ def generator(api_object) -> Block:
         algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
         init_eqs={
             delta: imag(
-                log((Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
-                    abs(Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (
-                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+                log((Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (
+                    conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                        abs(Vm * exp(1j * Va) + (gen_object.R1 + 1j * gen_object.X1) * (
+                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
             omega: Const(gen_object.omega_ref),
             v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
             v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
@@ -414,6 +415,7 @@ def generator(api_object) -> Block:
     )
     return gen_block
 
+
 def load(api_object) -> Block:
     load_object = api_object
     Ql = Var("Ql")
@@ -435,8 +437,8 @@ def load(api_object) -> Block:
     )
     return load_block
 
-def line(api_object) -> Block:
 
+def line(api_object) -> Block:
     line_object = api_object
     Qf = Var("Qf")
     Qt = Var("Qt")
@@ -487,13 +489,8 @@ def line(api_object) -> Block:
     #     DynamicVarType.Q: Q}
 
 
-
-
-
-
-
-
-def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]) -> Block:
+def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
+            algebraic_outputs: Sequence[str]) -> Block:
     blk = Block()
     blk.name = "generic"
     input_vars = [Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
