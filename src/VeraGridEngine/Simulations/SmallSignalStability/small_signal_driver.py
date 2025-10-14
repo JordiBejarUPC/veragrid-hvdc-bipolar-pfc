@@ -170,7 +170,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot = True, plot_units = "rad/s", verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -318,7 +318,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], params=params0, plot=False)
+             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], params=params0)
 
         else:
 
@@ -326,7 +326,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0, plot=False)
+             state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
             eigenvalues = eigenvalues,
