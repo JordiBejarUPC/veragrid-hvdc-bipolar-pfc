@@ -421,9 +421,9 @@ def get_load_data(data: LoadData,
                         data.Y3_delta[3 * ii + 1] = elm.get_Y2_conj_at(t_idx)
                         data.Y3_delta[3 * ii + 2] = elm.get_Y3_conj_at(t_idx)
 
-                    data.I3_star[3 * ii + 0] = elm.get_I1_at(t_idx)
-                    data.I3_star[3 * ii + 1] = elm.get_I2_at(t_idx)
-                    data.I3_star[3 * ii + 2] = elm.get_I3_at(t_idx)
+                    data.I3_delta[3 * ii + 0] = elm.get_I1_at(t_idx)
+                    data.I3_delta[3 * ii + 1] = elm.get_I2_at(t_idx)
+                    data.I3_delta[3 * ii + 2] = elm.get_I3_at(t_idx)
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
