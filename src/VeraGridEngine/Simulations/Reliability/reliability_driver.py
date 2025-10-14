@@ -195,12 +195,6 @@ class ReliabilityStudyDriver(DriverTemplate):
 
                 LOLF_total_arr[sim_idx] = total_number_of_branch_incidences + total_number_of_gens_incidences
 
-                print('-----' * 9)
-                for br in indices_of_branches_with_incidences:
-                    print()
-                    print(nc2.passive_branch_data.names[br], np.sum(simulated_branch_actives[:, br] == False, axis=0))
-                    print()
-
                 for idx_list in blocks:
 
                     batt_e_nom = nc.battery_data.enom.copy()
@@ -266,9 +260,6 @@ class ReliabilityStudyDriver(DriverTemplate):
 
                     if block_fail_to_meet_demand:
                         LOLF_arr[sim_idx] += 1
-                if ENS_arr[sim_idx] > 0:
-                    print('Datacenter down')
-                print('-----' * 9)
             self.report_progress2(current=sim_idx, total=self.n_sim)
 
         self.results.LOLE_evolution = np.cumsum(LOLE_arr) / (np.arange(len(LOLE_arr)) + 1)
