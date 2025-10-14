@@ -48,24 +48,17 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         self.Kp = Var("Kp")
         self.Ki = Var("Ki")
 
-    def build_template_block(self):
-        """
 
-        :return:
-        """
-
-        vf = UndefinedConst()
+        vf = UndefinedConst() # this
         tm0 = UndefinedConst()
 
-        # vf = Var('vf')
-        # tm0 = Var("tm0")
-
         self._block = Block(
+            state_vars=[self.delta, self.omega],
             state_eqs=[
                 (2 * np.pi * self.freq) * (self.omega - self.omega_ref),
                 (self.tm - self.te - self.D * (self.omega - self.omega_ref)) / self.M,
             ],
-            state_vars=[self.delta, self.omega],
+            algebraic_vars=[self.P_g, self.Q_g, self.v_d, self.v_q, self.i_d, self.i_q, self.psid, self.psiq, self.te, self.tm, self.et],
             algebraic_eqs=[
                 self.psid - (self.R1 * self.i_q +self. v_q),
                 self.psiq + (self.R1 * self.i_d + self.v_d),
@@ -79,32 +72,37 @@ class GeneratorRmsTemplate(RmsModelTemplate):
                 self.tm - (tm0 + self.Kp * (self.omega - self.omega_ref) + self.Ki * self.et),
                 2 * np.pi * self.freq * self.et - self.delta,  #
             ],
-            algebraic_vars=[self.P_g, self.Q_g, self.v_d, self.v_q, self.i_d, self.i_q, self.psid, psiq, te, tm, et],
+
             init_eqs={
-                delta: imag(
+                self.delta: imag(
                     log((self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
                         conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))))) / (
                             abs(self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
                                 conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va)))))))),
-                omega: self.omega_ref,
-                v_d: real((self.Vm * exp(1j * self.Va)) * exp(-1j * (delta - np.pi / 2))),
-                v_q: imag((self.Vm * exp(1j * self.Va)) * exp(-1j * (delta - np.pi / 2))),
-                i_d: real(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
-                i_q: imag(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (delta - np.pi / 2))),
-                psid: self.R1 * i_q + v_q,
-                psiq: -self.R1 * i_d - v_d,
-                te: psid * i_q - psiq * i_d,
-                tm: te,
-                et: Const(0),
-            },
-            init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
-            fix_vars=[tm0, vf],
-            fix_vars_eqs={tm0.uid: tm,
-                          vf.uid: psid + self.X1 * i_d},
-            external_mapping={
-                VarPowerFlowRefferenceType.P: self.P_g,
-                VarPowerFlowRefferenceType.Q: self.Q_g
-            }
-        )
+                self.omega: self.omega_ref,
+                self.v_d: real((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
+                self.v_q: imag((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
+                self.i_d: real(
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
+                self.i_q: imag(
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
+                self.psid: self.R1 * self.i_q + self.v_q,
+                self.psiq: -self.R1 * self.i_d - self.v_d,
+                self.te: self.psid * self.i_q - self.psiq * self.i_d,
+                self.tm: self.te,
+                self.et: Const(0),
+            })
+
+        self._block.external_mapping = {
+            VarPowerFlowRefferenceType.P: self.P_g,
+            VarPowerFlowRefferenceType.Q: self.Q_g
+        }
+
+        self._block.event_dict = {self.R1: Const(1),
+                                  self.X1: Const(1),
+                                  self.freq: Const(1),
+                                  self.M: Const(1),
+                                  self.D: Const(1),
+                                  self.omega_ref: Const(1),
+                                  self.Kp: Const(1),
+                                  self.Ki: Const(1)}

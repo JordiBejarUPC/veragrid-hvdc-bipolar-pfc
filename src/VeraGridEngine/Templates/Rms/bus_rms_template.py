@@ -19,30 +19,18 @@ class BusRmsTemplate(RmsModelTemplate):
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-        self.parameters: List[str] = []
 
-        self.event_parameters: List[Var] = list()
-        self.event_parameters_eqs: List[Expr] = list()
-
-        Vm = Var("Vm")
-        Va = Var("Va")
-        P = Var("P")
-        Q = Var("Q")
+        self.Vm = Var("Vm")
+        self.Va = Var("Va")
+        self.P = Var("P")
+        self.Q = Var("Q")
 
         self.block = Block(
-            state_eqs=[],
-            state_vars=[],
-            algebraic_eqs=[
-            ],
-            # algebraic_vars=[],
-            algebraic_vars=[Vm, Va],
+            algebraic_vars=[self.Vm, self.Va])
 
-            init_eqs={},
-            init_vars=[],
-            external_mapping={
-                VarPowerFlowRefferenceType.Vm: Vm,
-                VarPowerFlowRefferenceType.Va: Va,
-                VarPowerFlowRefferenceType.P: P,
-                VarPowerFlowRefferenceType.Q: Q
+        self._block.external_mapping={
+                VarPowerFlowRefferenceType.Vm: self.Vm,
+                VarPowerFlowRefferenceType.Va: self.Va,
+                VarPowerFlowRefferenceType.P: self.P,
+                VarPowerFlowRefferenceType.Q: self.Q
             }
-        )

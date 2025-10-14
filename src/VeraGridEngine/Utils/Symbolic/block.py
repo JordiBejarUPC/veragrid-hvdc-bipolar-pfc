@@ -85,14 +85,14 @@ class Block:
     """
 
     def __init__(self,
-                 algebraic_vars: List[Var] | None = None,
-                 algebraic_eqs: List[Expr] | None = None,
                  state_vars: List[Var] | None = None,
                  state_eqs: List[Expr] | None = None,
+                 algebraic_vars: List[Var] | None = None,
+                 algebraic_eqs: List[Expr] | None = None,
+                 init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
-                 out_vars: List[Var] | None = None,
-                 init_eqs: Dict[Var, Expr] | None = None):
+                 out_vars: List[Var] | None = None):
         """
         This represents a group of equations or a group of blocks
 
@@ -128,6 +128,8 @@ class Block:
 
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
+
+        self.fix_vars: List
 
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 

@@ -10,13 +10,6 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
-from VeraGridEngine.Templates.Rms.line_rms_template import LineRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_rms_template import GeneratorRmsTemplate
-
-
-ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, LineRmsTemplate, GeneratorRmsTemplate]
 
 @dataclass
 class BlockDiagramNode:
@@ -187,7 +180,7 @@ class DynamicModelHost(EditableDevice):
                          code="",
                          device_type=DeviceType.DynamicModelHostDevice)
 
-        self._template: ALL_RMS_TEMPLATES_TYPE | None = None
+        self._template: Block | None = None
 
         # a custom model always exits although it may be empty
         self._custom_model: Block = Block()
@@ -198,9 +191,9 @@ class DynamicModelHost(EditableDevice):
         return self._template
 
     @template.setter
-    def template(self, val: ALL_RMS_TEMPLATES_TYPE):
+    def template(self, val: Block):
 
-        if isinstance(val,ALL_RMS_TEMPLATES_TYPE):
+        if isinstance(val, Block):
             self._template = val
         else:
             raise ValueError(f"Cannot set template with {val}")
@@ -218,13 +211,13 @@ class DynamicModelHost(EditableDevice):
         if self.template is None:
             return self.custom_model
         else:
-            return self.template.build_template_block()
+            return self.template
 
     @model.setter
-    def model(self, val: Block | ALL_RMS_TEMPLATES_TYPE):
+    def model(self, val: Block):
 
-        if isinstance(val, ALL_RMS_TEMPLATES_TYPE):
-            self.template = val.block
+        if isinstance(val, Block):
+            self.template = val
 
         elif isinstance(val, Block):
             self._custom_model = val

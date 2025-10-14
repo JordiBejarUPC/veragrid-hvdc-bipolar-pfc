@@ -38,6 +38,8 @@ from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLeve
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
+from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_bus_catalogue
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -640,16 +642,55 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        templates = [t.name for t in
-                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+        # connect generator with connection bus by assigning Va and Vm variables
+        self.api_object.assign_input_vars_and_params()
 
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        # load templates
+        templates_list, templates_catalogue = get_bus_catalogue()
+
+        # add templates to rms choice dialog
+        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+
             if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
-                # TODO: missing finding the template object and apply it to self.api_object
+
+                # select template
+                load_template = templates_catalogue[choice_dialog.selected_template]
+
+                # TODO: Should we be able to change the value of the parameters when choosing a template?
+                # set parameter values from user input using RmsParameterDialog
+                # param_dialog = RmsParameterDialog(line_template, parent=self.editor)
+                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+                #     new_values = param_dialog.get_values()
+                #     for param, value in new_values.items():
+                #         setattr(line_template, param, Const(value))  # set parameter value
+
+                # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
+                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
+
+                load_template.Vm = self._api_object.Vm
+                load_template.Va = self._api_object.Va
+
+                # assign template to api object
+                self.api_object.rms_model.template = load_template.block
+
             elif choice_dialog.choice == "editor":
+
+                self.api_object.rms_model.model.external_mapping = {
+                    VarPowerFlowRefferenceType.P: self.api_object.P,
+                    VarPowerFlowRefferenceType.Q: self.api_object.Q,
+
+                }
+                if self.api_object.P not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q not in self.api_object.rms_model.model.algebraic_vars:
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P)
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q)
+
+                if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
+                    self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
+
+                # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
+                #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
                 dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
                 dlg.show()
 

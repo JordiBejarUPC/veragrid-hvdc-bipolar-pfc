@@ -261,22 +261,23 @@ class LineGraphicItem(LineGraphicTemplateItem):
 
                 line_template = templates_catalogue[choice_dialog.selected_template]
 
+                # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog
-                param_dialog = RmsParameterDialog(line_template, parent=self.editor)
-                if param_dialog.exec() == QtWidgets.QDialog.Accepted:
-                    new_values = param_dialog.get_values()
-                    for param, value in new_values.items():
-                        setattr(line_template, param, Const(value))  # set parameter value
+                # param_dialog = RmsParameterDialog(line_template, parent=self.editor)
+                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+                #     new_values = param_dialog.get_values()
+                #     for param, value in new_values.items():
+                #         setattr(line_template, param, Const(value))  # set parameter value
 
                 # relate Vaf, Vat, Vaf and Vmf variables from template to Vaf, Vat, Vaf and Vmf variables from api_object (which are related to connection bus)
+                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
 
                 line_template.Vmf = self._api_object.Vmf
                 line_template.Vaf = self._api_object.Vaf
                 line_template.Vmt = self._api_object.Vmt
                 line_template.Vat = self._api_object.Vat
 
-
-                self.api_object.rms_model.template = line_template
+                self.api_object.rms_model.template = line_template.block
 
             elif choice_dialog.choice == "editor":
 

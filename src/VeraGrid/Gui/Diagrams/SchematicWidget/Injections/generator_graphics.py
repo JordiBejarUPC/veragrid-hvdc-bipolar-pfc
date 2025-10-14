@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMenu
+from numba.core.annotations.pretty_annotate import get_ansi_template
+
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
 from VeraGrid.Gui.messages import yes_no_question, info_msg
@@ -145,22 +147,24 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 #select template
                 gen_template = templates_catalogue[choice_dialog.selected_template]
 
+                # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog
-                param_dialog = RmsParameterDialog(gen_template, parent=self.editor)
-                if param_dialog.exec() == QtWidgets.QDialog.Accepted:
-                    new_values = param_dialog.get_values()
-                    for param, value in new_values.items():
-                        setattr(gen_template, param, Const(value))  # set parameter value
+                # param_dialog = RmsParameterDialog(gen_template, parent=self.editor)
+                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+                #     new_values = param_dialog.get_values()
+                #     for param, value in new_values.items():
+                #         setattr(gen_template, param, Const(value))  # set parameter value
 
 
 
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
+                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
 
                 gen_template.Vm = self._api_object.Vm
                 gen_template.Va = self._api_object.Va
 
-                # build generator block
-                self.api_object.rms_model.template = gen_template
+
+                self.api_object.rms_model.template = gen_template.block
 
 
             elif choice_dialog.choice == "editor":

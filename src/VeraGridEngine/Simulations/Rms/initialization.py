@@ -174,7 +174,6 @@ def compose_system_block(grid: MultiCircuit,
         x = np.zeros(len(sys_vars))
 
         # assign initial guesses for known variables
-        # TODO: isn't there a way of not keep iterating over the same variables?
         for uid, name in sys_vars:
             key = (uid, name)
             if key in init_guess:
@@ -182,7 +181,7 @@ def compose_system_block(grid: MultiCircuit,
 
         # compute and assign missing init_vars
 
-        for var in mdl.init_vars:
+        for var in mdl.event_dict.keys():
             key = (var.uid, var.name)
             if key in init_guess:
                 x[uid2idx_vars[var.uid]] = init_guess[key]
@@ -192,6 +191,8 @@ def compose_system_block(grid: MultiCircuit,
                 init_val = float(eq_fn(x))
                 init_guess[key] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
+
+        # TODO: change model to
         for var in mdl.fix_vars:
             eq = mdl.fix_vars_eqs[var.uid]
             eq_fn = _compile_equation([eq], uid2sym_vars)
@@ -253,7 +254,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize buses
     for i, elm in enumerate(grid.buses):
-        elm.initialize_rms()
+        # elm.initialize_rms()
         bus_dict[elm] = i
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
@@ -264,7 +265,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        elm.initialize_rms()
+        # elm.initialize_rms()
         mdl = elm.rms_model.model
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]

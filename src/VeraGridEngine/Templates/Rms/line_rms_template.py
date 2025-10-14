@@ -18,54 +18,46 @@ class LineRmsTemplate(RmsModelTemplate):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.LineDevice
-        self.parameters: List[str] = ['R', 'X', 'B']
-
-        self.event_parameters: List[Var] = list()
-        self.event_parameters_eqs: List[Expr] = list()
 
         self.Vmf: Var = Var('')
         self.Vaf: Var = Var('')
         self.Vmt: Var = Var('')
         self.Vat: Var = Var('')
 
+        self.Qf = Var("Qf")
+        self.Qt = Var("Qt")
+        self.Pf = Var("Pf")
+        self.Pt = Var("Pt")
+
         # taken from VeraGrid model
-        self.R = Const(1)
-        self.X = Const(1)
-        self.B = Const(1)
+        self.R = Var("R")
+        self.X = Var("X")
+        self.B = Var("B")
 
-
-
-
-    def build_template_block(self):
-
-        Qf = Var("Qf")
-        Qt = Var("Qt")
-        Pf = Var("Pf")
-        Pt = Var("Pt")
-
-        ys = 1.0 / complex(self.R.value, self.X.value)
-        g = Const(ys.real)
-        b = Const(ys.imag)
-        bsh = self.B
+        self.ys = 1.0 / complex(self.R.value, self.X.value)
+        self.g = Const(self.ys.real)
+        self.b = Const(self.ys.imag)
+        self.bsh = self.B
 
 
         self._block = Block(
+            algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
             algebraic_eqs=[
-                Pf - ((self.Vmf ** 2 * g) - g * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat) + b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
-                Qf - (self.Vmf ** 2 * (-bsh / 2 - b) - g * self.Vmf * self.Vmt * sin(self.Vaf - self.Vat) + b * self.Vmf * self.Vmt * sin(
+                self.Pf - ((self.Vmf ** 2 * self.g) - self.g * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
+                self.Qf - (self.Vmf ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmf * self.Vmt * sin(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * sin(
                     self.Vaf - self.Vat + np.pi / 2)),
-                Pt - ((self.Vmt ** 2 * g) - g * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf) + b * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf + np.pi / 2)),
-                Qt - (self.Vmt ** 2 * (-bsh / 2 - b) - g * self.Vmt * self.Vmf * sin(self.Vat - self.Vaf) + b * self.Vmt * self.Vmf * sin(
+                self.Pt - ((self.Vmt ** 2 * self.g) - self.g * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf + np.pi / 2)),
+                self.Qt - (self.Vmt ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmt * self.Vmf * sin(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * sin(
                     self.Vat - self.Vaf + np.pi / 2)),
-            ],
-            algebraic_vars=[Pf, Pt, Qf, Qt],
-            init_eqs={},
-            init_vars=[],
-            parameters=[self.R, self.X, self.B],
-            external_mapping={
-                VarPowerFlowRefferenceType.Pf: Pf,
-                VarPowerFlowRefferenceType.Pt: Pt,
-                VarPowerFlowRefferenceType.Qf: Qf,
-                VarPowerFlowRefferenceType.Qt: Qt,
+            ])
+
+        self._block.external_mapping={
+                VarPowerFlowRefferenceType.Pf: self.Pf,
+                VarPowerFlowRefferenceType.Pt: self.Pt,
+                VarPowerFlowRefferenceType.Qf: self.Qf,
+                VarPowerFlowRefferenceType.Qt: self.Qt,
             }
-        )
+
+        self._block.event_dict = {self.R: Const(1),
+                                  self.X: Const(1),
+                                  self.B: Const(1)}
