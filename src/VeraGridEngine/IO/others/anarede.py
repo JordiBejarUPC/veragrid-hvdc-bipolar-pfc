@@ -63,7 +63,7 @@ class PwfVoltageGroup:
         :param line:
         :return:
         """
-        self.char = _parse_fixed(line, 1, 2, int)
+        self.char = _parse_fixed(line, 1, 2, str)  # int --> str
         self.voltage = _parse_fixed(line, 4, 8, float, 2)
 
     def __repr__(self):
@@ -79,7 +79,10 @@ class PwfBus:
     PwfBus
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+        Constructor
+        """
         self.number: int = 0
         self.operation: str = "A"
         self.type: int = 1
@@ -106,7 +109,7 @@ class PwfBus:
         :param line:
         :return:
         """
-        self.number = _parse_fixed(line, 1, 5, int)
+        self.number = _parse_fixed(line, 1, 2, int)
         self.operation = _parse_fixed(line, 6, 7, str)
         self.type = _parse_fixed(line, 8, 8, int)
         self.base_voltage_group = _parse_fixed(line, 9, 10, str)
@@ -137,24 +140,27 @@ class PwfBus:
         if self.controlled_bus == 0:
             self.controlled_bus = self.number
 
-    def to_veragrid(self, vg_dict: Dict[str, PwfVoltageGroup]) -> dev.Bus:
+    def to_veragrid(self, vg_dict: Dict[str, "PwfVoltageGroup"]) -> dev.Bus:
         """
-        Convert this object to veragrid object(s)
-        :param vg_dict: Dictionary of voltage groups
-        :return: Bus
+
+        :param vg_dict:
+        :return:
         """
         vg = vg_dict.get(self.base_voltage_group, None)
-        if vg is None:
-            Vnom = 1.0
-        else:
-            Vnom = vg.voltage
+        Vnom = vg.voltage if vg else 1.0
 
-        elm = dev.Bus(
-            name=self.name,
+        area_obj = dev.Area(name=f"Area_{self.area}") if isinstance(self.area, int) else self.area
+        zone_obj = dev.Zone(name=f"Zone_{self.zone}") if isinstance(self.zone, int) else self.zone
+
+        bus = dev.Bus(
+            name=self.name.strip() or f"Bus_{self.number}",
             Vnom=Vnom,
+            Vm0=self.voltage if self.voltage != 0.0 else 1.0,
+            Va0=self.angle,
+            area=area_obj,
+            zone=zone_obj
         )
-
-        return elm
+        return bus
 
     def __repr__(self):
         return f"<Bus {self.number} '{self.name}' Vm={self.voltage:.3f} Va={self.angle:.2f}°>"
@@ -169,7 +175,7 @@ class PwfLine:
     PwfLine
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.from_bus: int = 0
         self.to_bus: int = 0
         self.circuit: str = "1"
@@ -196,7 +202,7 @@ class PwfLine:
         :return:
         """
         self.from_bus = _parse_fixed(line, 1, 5, int)
-        self.to_bus = _parse_fixed(line, 6, 10, int)
+        self.to_bus = _parse_fixed(line, 5, 12, int)
         self.circuit = _parse_fixed(line, 11, 12, str)
         self.status = _parse_fixed(line, 13, 13, str)
         self.owner = _parse_fixed(line, 14, 15, str)
@@ -224,6 +230,30 @@ class PwfLine:
         if self.controlled_bus == 0:
             self.controlled_bus = self.to_bus
 
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> dev.Line:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        from_bus = bus_dict.get(self.from_bus)
+        to_bus = bus_dict.get(self.to_bus)
+
+        name = f"L{self.from_bus}-{self.to_bus}_{self.circuit}"
+
+        elm = dev.Line(
+            name=name,
+            bus_from=from_bus,
+            bus_to=to_bus,
+            r=self.r,
+            x=self.x,
+            b=self.b,
+            rate=self.normal_capacity,
+            active=self.status == 'A'
+        )
+
+        return elm
+
     def __repr__(self):
         return f"<Line {self.from_bus}-{self.to_bus} R={self.r:.4f} X={self.x:.4f}>"
 
@@ -237,7 +267,7 @@ class PwfGenerator:
     PwfGenerator
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.number: int = 0
         self.operation: str = "A"
         self.min_active_gen: float = 0.0
@@ -257,7 +287,7 @@ class PwfGenerator:
         :param line:
         :return:
         """
-        self.number = _parse_fixed(line, 1, 5, int)
+        self.number = _parse_fixed(line, 1, 2, int)
         self.operation = _parse_fixed(line, 6, 6, str)
         self.min_active_gen = _parse_fixed(line, 9, 14, float, 1)
         self.max_active_gen = _parse_fixed(line, 16, 21, float, 1)
@@ -269,6 +299,23 @@ class PwfGenerator:
         self.charge_angle = _parse_fixed(line, 51, 54, float, 2)
         self.machine_reactance = _parse_fixed(line, 56, 60, float, 2)
         self.nominal_apparent_power = _parse_fixed(line, 62, 66, float, 2)
+
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> dev.Generator:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        gen = dev.Generator()
+        gen.name = f"G{self.number}"
+        gen.Snom = float(self.nominal_apparent_power)
+        gen.Pmin = float(self.min_active_gen)
+        gen.Pmax = float(self.max_active_gen)
+        gen.P = 0.0  #
+        # gen.bus =
+        gen.Pf = float(self.nominal_power_factor)
+        gen.active = (self.operation == 'A')
+        return gen
 
     def __repr__(self):
         return f"<Generator {self.number} Operation={self.operation} Min/Max={self.min_active_gen}/{self.max_active_gen}>"
@@ -304,6 +351,19 @@ class PwfLoad:
         self.active_power = _parse_fixed(line, 11, 16, float, 1)
         self.reactive_power = _parse_fixed(line, 17, 22, float, 1)
         self.status = _parse_fixed(line, 23, 23, str)
+
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> dev.Load:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        load = dev.Load()
+        load.name = f"Load_{self.number}"
+        load.P = float(self.active_power)
+        load.Q = float(self.reactive_power)
+        load.active = (self.operation == 'A')
+        return load
 
     def __repr__(self):
         return f"<Load {self.number} Bus={self.bus} P={self.active_power} Q={self.reactive_power}>"
@@ -341,6 +401,25 @@ class PwfTransformer:
         self.tap = _parse_fixed(line, 26, 30, float, 3)
         self.shift = _parse_fixed(line, 31, 35, float, 3)
 
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> dev.Transformer2W:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        from_bus = bus_dict.get(self.from_bus)
+        to_bus = bus_dict.get(self.to_bus)
+        elm = dev.Transformer2W(
+            name=f"T{self.number}_{self.from_bus}-{self.to_bus}",
+            bus_from=from_bus,
+            bus_to=to_bus,
+            r=self.r,
+            x=self.x,
+            tap_module=self.tap,
+            tap_phase=self.shift
+        )
+        return elm
+
     def __repr__(self):
         return f"<Transformer {self.number} {self.from_bus} -> {self.to_bus} Tap={self.tap:.3f}>"
 
@@ -377,6 +456,27 @@ class PwfShunt:
         self.shunt_from = _parse_fixed(line, 20, 24, float, 2)
         self.shunt_to = _parse_fixed(line, 25, 29, float, 2)
 
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> list[tuple[int, dev.Shunt]]:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        out = []
+        if self.shunt_from != 0:
+            sh = dev.Shunt()
+            sh.name = f"Sh_{self.from_bus}"
+            sh.B = float(self.shunt_from)
+            sh.active = (self.status_from == "L")
+            out.append((self.from_bus, sh))
+        if self.shunt_to != 0:
+            sh = dev.Shunt()
+            sh.name = f"Sh_{self.to_bus}"
+            sh.B = float(self.shunt_to)
+            sh.active = (self.status_to == "L")
+            out.append((self.to_bus, sh))
+        return out
+
     def __repr__(self):
         return f"<Shunt {self.number} {self.from_bus} -> {self.to_bus} Shunt={self.shunt_from}/{self.shunt_to}>"
 
@@ -411,6 +511,20 @@ class PwfStaticCompensator:
         self.initial_value = _parse_fixed(line, 17, 21, float, 2)
         self.specified_value = _parse_fixed(line, 22, 26, float, 2)
 
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> tuple[int, dev.ControllableShunt]:
+        """
+
+        :param bus_dict:
+        :return:
+        """
+        cs = dev.ControllableShunt()
+        cs.name = f"SC{self.number}"
+        cs.Bmax = float(self.specified_value)
+        cs.Bmin = -float(self.specified_value)
+        cs.Vset = 1.0
+        cs.active = (self.status == 'L')
+        return self.from_bus, cs
+
     def __repr__(self):
         return f"<StaticCompensator {self.number} {self.from_bus} -> {self.to_bus} Status={self.status}>"
 
@@ -441,6 +555,24 @@ class PwfDCLine:
         self.to_bus = _parse_fixed(line, 11, 15, int)
         self.vdc = _parse_fixed(line, 16, 20, float, 2)
 
+    def to_veragrid(self, bus_dict: Dict[int, dev.Bus]) -> dev.HvdcLine:
+        """
+        
+        :param bus_dict: 
+        :return: 
+        """
+        from_bus = bus_dict.get(self.from_bus, None)
+        to_bus = bus_dict.get(self.to_bus, None)
+        elm = dev.HvdcLine(
+            name=f"HVDC{self.number}_{self.from_bus}-{self.to_bus}",
+            bus_from=from_bus,
+            bus_to=to_bus,
+            r=0.0,
+            # rate=self.vdc,
+            active=True
+        )
+        return elm
+
     def __repr__(self):
         return f"<DCLine {self.number} {self.from_bus} -> {self.to_bus} Vdc={self.vdc:.2f}>"
 
@@ -460,6 +592,11 @@ class PwfGeneratorReactance:
         self.reactance: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.number = _parse_fixed(line, 1, 4, int)
         self.group = _parse_fixed(line, 5, 6, int)
         self.reactance = _parse_fixed(line, 7, 12, float, 4)
@@ -485,6 +622,11 @@ class PwfVoltageLimitGroup:
         self.upper_emergency_bound: float = 1.2
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.group = _parse_fixed(line, 1, 2, int)
         self.lower_bound = _parse_fixed(line, 4, 8, float, 2)
         self.upper_bound = _parse_fixed(line, 10, 14, float, 2)
@@ -498,11 +640,8 @@ class PwfVoltageLimitGroup:
 # -------------------------------------------------------------------------
 #  DCSC — Static Compensator
 # -------------------------------------------------------------------------
-
+"""
 class PwfStaticCompensator:
-    """
-    PwfStaticCompensator
-    """
 
     def __init__(self):
         self.number: int = 0
@@ -522,6 +661,8 @@ class PwfStaticCompensator:
 
     def __repr__(self):
         return f"<StaticCompensator {self.number} {self.from_bus} -> {self.to_bus} Status={self.status}>"
+
+"""
 
 
 # -------------------------------------------------------------------------
@@ -549,6 +690,11 @@ class PwfEquipmentConnection:
         self.voltage: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.number = _parse_fixed(line, 1, 4, int)
         self.equipment_type_1 = _parse_fixed(line, 5, 8, str)
         self.equipment_id_1 = _parse_fixed(line, 9, 13, int)
@@ -589,6 +735,11 @@ class PwfTransformerSettings:
         self.specified_value: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.from_bus = _parse_fixed(line, 1, 5, int)
         self.to_bus = _parse_fixed(line, 6, 10, int)
         self.circuit = _parse_fixed(line, 11, 12, str)
@@ -625,6 +776,11 @@ class PwfGeneratorIdentification:
         self.reactive_generation: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.number = _parse_fixed(line, 1, 5, int)
         self.operation = _parse_fixed(line, 6, 6, str)
         self.automatic_mode = _parse_fixed(line, 7, 7, str)
@@ -666,6 +822,11 @@ class PwfMotorConfiguration:
         self.active_charge_portion: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.bus = _parse_fixed(line, 1, 5, int)
         self.operation = _parse_fixed(line, 6, 6, str)
         self.status = _parse_fixed(line, 7, 7, str)
@@ -699,6 +860,11 @@ class PwfComment:
         self.comment: str = ""
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.comment = line.strip()
 
     def __repr__(self):
@@ -723,6 +889,11 @@ class PwfInjection:
         self.equivalent_participation_factor: float = 0.0
 
     def parse(self, line: str) -> None:
+        """
+        
+        :param line: 
+        :return: 
+        """
         self.number = _parse_fixed(line, 1, 5, int)
         self.operation = _parse_fixed(line, 6, 6, str)
         self.equivalent_active_injection = _parse_fixed(line, 7, 14, float, 2)
@@ -757,6 +928,7 @@ class PwfNetwork:
         self.generator_reactances = []
         self.voltage_limit_groups = []
         self.voltage_groups = []
+        self.generator_identifications = []
 
     def add_device(self, device):
         """
@@ -791,8 +963,56 @@ class PwfNetwork:
             self.generator_reactances.append(device)
         elif isinstance(device, PwfVoltageLimitGroup):
             self.voltage_limit_groups.append(device)
+        elif isinstance(device, PwfGeneratorIdentification):
+            self.generator_identifications.append(device)
+
         else:
             raise ValueError(f"Unknown device type: {type(device)}")
+
+    def to_veragrid(self) -> MultiCircuit:
+        """
+        
+        :return: 
+        """
+        mc = MultiCircuit(name="Anarede_Network")
+
+        vg_dict = {vg.char: vg for vg in self.voltage_groups}
+        bus_dict = {b.number: b.to_veragrid(vg_dict) for b in self.buses}
+
+        #  BUSES 
+        for bus in bus_dict.values():
+            mc.add_device(bus)
+
+        #  LINES 
+        for line in self.lines:
+            mc.add_device(line.to_veragrid(bus_dict))
+
+        #  GENERATORS 
+        gen_to_bus = {g.group: g.number for g in self.generator_identifications}
+        for g in self.generators:
+            elm = g.to_veragrid(bus_dict)
+            if elm:
+                bus_id = gen_to_bus.get(g.number, g.number)
+                bus = bus_dict.get(bus_id)
+                mc.add_generator(bus=bus, api_obj=elm)
+
+        #  LOADS 
+        for load in self.loads:
+            elm = load.to_veragrid(bus_dict)
+            if elm:
+                bus = bus_dict.get(load.bus)
+                mc.add_load(bus=bus, api_obj=elm)
+
+        #  TRANSFORMERS 
+        for trafo in self.transformers:
+            mc.add_device(trafo.to_veragrid(bus_dict))
+
+        #  SHUNTS 
+        for shunt in self.shunts:
+            for bus_id, s in shunt.to_veragrid(bus_dict):
+                mc.add_shunt(bus=bus_dict.get(bus_id), api_obj=s)
+
+        return mc
 
     def __repr__(self):
         return (f"<PWFNetwork: {len(self.buses)} buses, "
@@ -886,6 +1106,12 @@ class PWFParser:
                         generator.parse(txt_line)
                         self.network.add_device(generator)
 
+                elif section_name == "DGEI":  # Generator Identification
+                    for txt_line in txt_lines[2:]:
+                        genid = PwfGeneratorIdentification()
+                        genid.parse(txt_line)
+                        self.network.add_device(genid)
+
                 elif section_name == "DTRA":  # Transformer
                     for txt_line in txt_lines[2:]:
                         transformer = PwfTransformer()
@@ -949,12 +1175,58 @@ class PWFParser:
         Convert Anarede grid to VeraGrid
         :return:
         """
-        grid = MultiCircuit()
+        grid = MultiCircuit(name="Anarede_Network")
 
-        # TODO: Fill the conversion
+        vg_dict = {vg.char: vg for vg in self.network.voltage_groups}
 
-        for elm in self.network.buses:
-            vg_elm = elm.to_veragrid(vg_dict=self.voltage_group_dict)
-            grid.add_bus(obj=vg_elm)
+        #  BUSES 
+        bus_dict: Dict[int, dev.Bus] = {}
+        for b in self.network.buses:
+            bus = b.to_veragrid(vg_dict)
+            grid.add_bus(bus)
+            bus_dict[b.number] = bus
+
+        #  LINES 
+        for l in self.network.lines:
+            elm = l.to_veragrid(bus_dict)
+            grid.add_line(elm)
+
+        #  TRANSFORMERS 
+        for t in self.network.transformers:
+            elm = t.to_veragrid(bus_dict)
+            grid.add_transformer2w(elm)
+
+        #  GENERATORS 
+        for g in self.network.generators:
+            elm = g.to_veragrid(bus_dict)
+            bus = bus_dict.get(g.number, None)
+            if bus is not None:
+                grid.add_generator(bus=bus, api_obj=elm)
+
+        #  LOADS 
+        for ld in self.network.loads:
+            elm = ld.to_veragrid(bus_dict)
+            bus = bus_dict.get(ld.bus)
+            if bus is not None:
+                grid.add_load(bus=bus, api_obj=elm)
+
+        #  SHUNTS 
+        for sh in self.network.shunts:
+            elm = sh.to_veragrid(bus_dict)
+            bus = bus_dict.get(sh.bus)
+            if bus is not None:
+                grid.add_shunt(bus=bus, api_obj=elm)
+
+        #  STATIC COMPENSATORS 
+        for sc in self.network.static_compensators:
+            elm = sc.to_veragrid(bus_dict)
+            bus = bus_dict.get(sc.bus)
+            if bus is not None:
+                grid.add_controllable_shunt(bus=bus, api_obj=elm)
+
+        #  DC LINES 
+        for d in self.network.dc_lines:
+            elm = d.to_veragrid(bus_dict)
+            grid.add_hvdc(elm)
 
         return grid
