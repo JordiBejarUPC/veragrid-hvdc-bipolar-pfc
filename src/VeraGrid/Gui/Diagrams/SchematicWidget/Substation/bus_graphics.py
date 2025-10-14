@@ -643,9 +643,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def edit_rms(self):
         # connect generator with connection bus by assigning Va and Vm variables
-        self.api_object.assign_input_vars_and_params()
+        # self.api_object.assign_input_vars_and_params()
 
-        # load templates
+        # bus templates
         templates_list, templates_catalogue = get_bus_catalogue()
 
         # add templates to rms choice dialog
@@ -655,7 +655,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             if choice_dialog.choice == "template":
 
                 # select template
-                load_template = templates_catalogue[choice_dialog.selected_template]
+                bus_template = templates_catalogue[choice_dialog.selected_template]
 
                 # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog
@@ -668,11 +668,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
                 # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
 
-                load_template.Vm = self._api_object.Vm
-                load_template.Va = self._api_object.Va
+                bus_template.Vm = self._api_object.Vm
+                bus_template.Va = self._api_object.Va
 
                 # assign template to api object
-                self.api_object.rms_model.template = load_template.block
+                self.api_object.rms_model.template = bus_template.block
 
             elif choice_dialog.choice == "editor":
 

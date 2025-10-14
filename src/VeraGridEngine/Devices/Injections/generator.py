@@ -247,6 +247,8 @@ class Generator(GeneratorParent):
         self.Kp = Kp
         self.Ki = Ki
         self.init_params = init_params
+        self.Vm = Var('Vm_placeholder')
+        self.Va = Var('Va_placeholder')
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 

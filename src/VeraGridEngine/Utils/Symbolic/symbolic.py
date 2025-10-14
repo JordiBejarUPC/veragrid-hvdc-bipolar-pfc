@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import math
 import ast
+import pdb
 import uuid
 import numpy as np
 from enum import Enum
@@ -843,7 +844,7 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     raise TypeError(type(expr))
 
 
-def _emit_one(expr: Expr, uid_map_vars: Dict[int, str]) -> str:
+def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
     :param expr: Expr (expression)
@@ -853,16 +854,19 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str]) -> str:
     if isinstance(expr, Const):
         return repr(expr.value)
     if isinstance(expr, Var):
-        return uid_map_vars[expr.uid]  # positional variable
+        if expr.uid in uid_map_vars.keys():
+            return uid_map_vars[expr.uid]  # positional variable
+        else:
+            return uid_map_params[expr.uid]
     if isinstance(expr, UnOp):
-        return f"-({_emit_one(expr.operand, uid_map_vars)})"
+        return f"-({_emit_one(expr.operand, uid_map_vars, uid_map_params)})"
     if isinstance(expr, BinOp):
-        return f"({_emit_one(expr.left, uid_map_vars)} {expr.op} {_emit_one(expr.right, uid_map_vars)})"
+        return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle"):
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars)})"
+            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
         else:
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars)})"
+            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
 
     raise TypeError(type(expr))
 

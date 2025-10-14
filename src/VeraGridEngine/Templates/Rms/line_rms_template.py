@@ -34,9 +34,12 @@ class LineRmsTemplate(RmsModelTemplate):
         self.X = Var("X")
         self.B = Var("B")
 
-        self.ys = 1.0 / complex(self.R.value, self.X.value)
-        self.g = Const(self.ys.real)
-        self.b = Const(self.ys.imag)
+        self.ys = Const(1.0)
+                   # complex(self.R, self.X))
+        self.g = Const(1)
+        self.b = Const(1)
+        # self.g = Const(self.ys.real)
+        # self.b = Const(self.ys.imag)
         self.bsh = self.B
 
 

@@ -21,7 +21,7 @@ def get_generator_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TY
     generator_templ_catalogue = dict()
     generator_templ_list = []
     for templ in Templates:
-        if templ.device_type == DeviceType.GeneratorDevice:
+        if templ.tpe == DeviceType.GeneratorDevice:
             generator_templ_list.append(templ.name)
             generator_templ_catalogue[templ.name] = templ
 
@@ -32,7 +32,7 @@ def get_bus_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     bus_templ_catalogue = dict()
     bus_templ_list = []
     for templ in Templates:
-        if templ.device_type == DeviceType.BusDevice:
+        if templ.tpe == DeviceType.BusDevice:
             bus_templ_list.append(templ.name)
             bus_templ_catalogue[templ.name] = templ
 
@@ -43,7 +43,7 @@ def get_line_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     line_templ_catalogue = dict()
     line_templ_list = []
     for templ in Templates:
-        if templ.device_type == DeviceType.LineDevice:
+        if templ.tpe == DeviceType.LineDevice:
             line_templ_list.append(templ.name)
             line_templ_catalogue[templ.name] = templ
 
@@ -54,7 +54,7 @@ def get_load_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     load_templ_catalogue = dict()
     load_templ_list = []
     for templ in Templates:
-        if templ.device_type == DeviceType.LoadDevice:
+        if templ.tpe == DeviceType.LoadDevice:
             load_templ_list.append(templ.name)
             load_templ_catalogue[templ.name] = templ
 

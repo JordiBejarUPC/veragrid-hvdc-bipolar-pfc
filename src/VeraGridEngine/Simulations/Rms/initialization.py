@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+import pdb
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
@@ -23,7 +23,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 
 def _compile_equation(eqs: Sequence[Expr],
                       uid2sym_vars: Dict[int, str],
-                      add_doc_string: bool = True) -> Callable[[np.ndarray], np.ndarray]:
+                      uid2sym_params: Dict[int, str],
+                      add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
@@ -34,9 +35,9 @@ def _compile_equation(eqs: Sequence[Expr],
     """
     # TODO: Why is there a second compile equation thing here?
     # Build source
-    src = f"def _f(vars):\n"
+    src = f"def _f(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {"math": math, "np": np}
     exec(src, ns)
@@ -77,6 +78,7 @@ def compose_system_block(grid: MultiCircuit,
 
     uid2sym_vars: Dict[int, str] = {}
     uid2idx_vars: Dict[int, int] = {}
+
     array_index = 0
 
     # buses
@@ -146,6 +148,11 @@ def compose_system_block(grid: MultiCircuit,
 
     # injections
 
+    # initialize uid2sym_params dict
+
+    uid2sym_params: Dict[int, str] = {}
+    uid2idx_params: Dict[int, int] = {}
+
     # already known variables:
 
     for elm in grid.get_injection_devices_iter():
@@ -170,6 +177,15 @@ def compose_system_block(grid: MultiCircuit,
                 uid2idx_vars[v.uid] = array_index
                 array_index += 1
 
+        params_array_index = 0
+
+        for param in mdl.event_dict.keys():
+            if param.uid not in uid2sym_params:
+                uid2sym_params[param.uid] = f"vars[{params_array_index}]"
+                uid2idx_params[param.uid] =params_array_index
+                params_array_index += 1
+
+
         # initialize array for model variables
         x = np.zeros(len(sys_vars))
 
@@ -179,24 +195,34 @@ def compose_system_block(grid: MultiCircuit,
             if key in init_guess:
                 x[uid2idx_vars[uid]] = init_guess[key]
 
+        # initialize array for model params
+        params_array = np.zeros(len(mdl.event_dict.keys()))
+
+        # compute and assign parameters value
+        for param in mdl.event_dict.keys():
+            eq = mdl.event_dict[param]
+            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+            param_val = float(eq_fn(x, params_array))
+            params_array[uid2idx_params[param.uid]] = param_val
+
         # compute and assign missing init_vars
 
-        for var in mdl.event_dict.keys():
+        for var in mdl.init_eqs.keys():
             key = (var.uid, var.name)
             if key in init_guess:
                 x[uid2idx_vars[var.uid]] = init_guess[key]
             else:
                 eq = mdl.init_eqs[var]
-                eq_fn = _compile_equation([eq], uid2sym_vars)
-                init_val = float(eq_fn(x))
+                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                init_val = float(eq_fn(x, params_array))
                 init_guess[key] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
 
-        # TODO: change model to
+        # TODO: change model to generator, exciter and governor separated and remove this
         for var in mdl.fix_vars:
             eq = mdl.fix_vars_eqs[var.uid]
-            eq_fn = _compile_equation([eq], uid2sym_vars)
-            init_val = float(eq_fn(x))
+            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+            init_val = float(eq_fn(x, params_array))
             var.value = init_val
         sys_block.add(mdl)
 

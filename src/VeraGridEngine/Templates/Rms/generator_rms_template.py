@@ -21,8 +21,8 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         self.tpe: DeviceType = DeviceType.GeneratorDevice
 
 
-        self.Vm: Var = Var('')
-        self.Va: Var = Var('')
+        self.Vm: Var = Var('Vm_placeholder')
+        self.Va: Var = Var('Va_placeholder')
 
         self.P_g: Var = Var('P_g')
         self.Q_g: Var = Var('Q_g')
@@ -49,9 +49,11 @@ class GeneratorRmsTemplate(RmsModelTemplate):
         self.Ki = Var("Ki")
 
 
-        vf = UndefinedConst() # this
-        tm0 = UndefinedConst()
+        self.vf = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
+        self.tm0 = UndefinedConst()
 
+
+    def build_block(self):
         self._block = Block(
             state_vars=[self.delta, self.omega],
             state_eqs=[
@@ -62,14 +64,14 @@ class GeneratorRmsTemplate(RmsModelTemplate):
             algebraic_eqs=[
                 self.psid - (self.R1 * self.i_q +self. v_q),
                 self.psiq + (self.R1 * self.i_d + self.v_d),
-                0 - (self.psid + self.X1 * self.i_d - vf),
+                0 - (self.psid + self.X1 * self.i_d - self.vf),
                 0 - (self.psiq + self.X1 * self.i_q),
                 self.v_d - (self.Vm * sin(self.delta - self.Va)),
                 self.v_q - (self.Vm * cos(self.delta - self.Va)),
                 self.te - (self.psid * self.i_q - self.psiq * self.i_d),
                 self.P_g - (self.v_d * self.i_d + self.v_q * self.i_q),
                 self.Q_g - (self.v_q * self.i_d - self.v_d * self.i_q),
-                self.tm - (tm0 + self.Kp * (self.omega - self.omega_ref) + self.Ki * self.et),
+                self.tm - (self.tm0 + self.Kp * (self.omega - self.omega_ref) + self.Ki * self.et),
                 2 * np.pi * self.freq * self.et - self.delta,  #
             ],
 
@@ -92,6 +94,10 @@ class GeneratorRmsTemplate(RmsModelTemplate):
                 self.tm: self.te,
                 self.et: Const(0),
             })
+
+        self.fix_vars = [self.tm0, self.vf],
+        self.fix_vars_eqs = {self.tm0.uid: self.tm,
+                        self.vf.uid: self.psid + self.X1 * self.i_d},
 
         self._block.external_mapping = {
             VarPowerFlowRefferenceType.P: self.P_g,

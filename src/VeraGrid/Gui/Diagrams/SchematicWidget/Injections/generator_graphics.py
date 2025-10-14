@@ -133,7 +133,8 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
     def edit_rms(self):
         # connect generator with connection bus by assigning Va and Vm variables
-        self.api_object.assign_input_vars_and_params()
+        self.api_object.assign_input_vars_and_params() # this is working
+
 
         #load templates
         templates_list, templates_catalogue = get_generator_catalogue()
@@ -159,12 +160,18 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
                 # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
-
-                gen_template.Vm = self._api_object.Vm
+                gen_template.Vm = self._api_object.Vm # this is working
                 gen_template.Va = self._api_object.Va
 
+                print(gen_template.Vm)
+                print(gen_template.Va)
+
+
+                gen_template.build_block()
 
                 self.api_object.rms_model.template = gen_template.block
+
+                print(gen_template.block.init_eqs)
 
 
             elif choice_dialog.choice == "editor":
