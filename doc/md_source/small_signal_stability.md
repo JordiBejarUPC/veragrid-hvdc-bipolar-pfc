@@ -23,9 +23,9 @@ Settings:
 
 - **Tolerance**: per-unit error tolerance to use in the integration method. Only needed if the Rms dynamic simulation is performed.
 
-- **Assessment time**: The time instant in seconds where the stability assessment is performed.
+- **Assessment time (s)**: The time instant in seconds where the stability assessment is performed.
 
-- **Time interval (h)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
+- **Time step (s)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
 increase accuracy but require more computation. Only needed if the Rms dynamic simulation is performed.
 
 ### Results
@@ -65,12 +65,13 @@ res = power_flow.results
 #initialization of variables
 ss, init_guess = initialize_rms(grid, res)
 params_mapping = {}
-```
-The need of performing the power flow and initialization of variables before the Stability assessment is noted.
 
-- If the Stability assessment time is not zero the dynamic simulation is performed before the Stability assessment:
+# The need of performing the power flow and initialization of variables 
+# before the Stability assessment is noted.
+# - If the Stability assessment time is not zero the dynamic simulation 
+#   is performed before the Stability assessment:
 
-```python
+
 t_assess = 20.0
 h = 0.001
 slv = BlockSolver(ss, grid.time)
@@ -86,10 +87,10 @@ t, y = slv.simulate(
     params0=params0,
     method="implicit_euler"
 )
-```
-And finally the Small-Signal Stability assessment:
 
-```python
+# And finally the Small-Signal Stability assessment:
+
+
 (stab,
  Eigenvalues,
  PFactors,
@@ -100,10 +101,9 @@ And finally the Small-Signal Stability assessment:
                                                      plot=True,
                                                      plot_units = "rad/s",
                                                      verbose = 1)
-```
-- If the Stability assessment time is not zero:
 
-```python
+# - If the Stability assessment time is not zero:
+
 i = t_assess / h
 (stab,
  Eigenvalues,
@@ -361,7 +361,7 @@ Eigenvalues lie on the imaginary axis.
 - $0<\zeta<1$: Stable but oscillatory response. The system returns to equilibrium with decaying oscillations. 
 A commonly accepted threshold for adequate damping is around $\zeta = 0.05$.
 - $\zeta=1$: Critically damped response. The system returns to equilibrium without oscillations and in the shortest 
-- possible time without overshoot.
+possible time without overshoot.
 
 
 **Participation factors** determine how much each state variable contributes to each mode and otherwise. In power systems 

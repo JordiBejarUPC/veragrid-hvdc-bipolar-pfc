@@ -786,10 +786,10 @@ class SimulationsMain(TimeEventsMain):
         :return: sim.SmallSignalOptions
         """
         ops = sim.SmallSignalStabilityOptions(
-            time_step=self.ui.ss_h_spinBox_2.value(),
+            time_step=self.ui.h_spinBox.value(),
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
-            tolerance=self.ui.tolerance_ss_spinBox_2.value(),
-        integration_method=self.ui.ss_int_method_comboBox_2.currentText()
+            tolerance=self.ui.tolerance_rms_spinBox.value(),
+            integration_method=self.ui.rms_int_method_comboBox.currentText()
         )
 
         return ops
@@ -3219,10 +3219,8 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.SmallSignal_run)
             self.update_available_results()
 
-            # if results.converged:
-            #     self.show_info_toast("Power flow converged :)")
-            # else:
-            #     self.show_warning_toast("Power flow not converged :/")
+            self.show_info_toast("Small-signal stability analysis has finished correctly!")
+
 
         else:
             warning_msg('There are no Small Signal Stability analysis results.', 'Small Signal Stability analysis')
