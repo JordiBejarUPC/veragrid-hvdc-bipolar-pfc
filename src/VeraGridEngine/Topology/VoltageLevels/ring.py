@@ -10,14 +10,16 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 
 
-def create_ring(name: str,
-                grid: MultiCircuit,
-                n_bays: int,
-                v_nom: float,
-                substation: dev.Substation,
-                country: dev.Country = None,
-                offset_x=0,
-                offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+def create_ring(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        offset_x=0,
+        offset_y=0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a ring voltage level
     :param name: Voltage level name
@@ -26,7 +28,6 @@ def create_ring(name: str,
     :param v_nom: Nominal voltage
     :param substation: Substation where it belongs
     :param country: Country (Optional)
-    :param bar_by_segments: Split the bar into segments
     :param offset_x: x ofsset (px)
     :param offset_y: y ofsset (px)
     :return: Voltage level object, list of busses where connections are allowed, offset x, offset y
@@ -42,7 +43,7 @@ def create_ring(name: str,
     l_x_pos: List[float] = list()
     l_y_pos: List[float] = list()
     conn_buses: List[dev.Bus] = list()
-
+    all_buses: List[dev.Bus] = list()
     n_positions = max(n_bays, 3)
 
     radius = x_dist / (2 * math.sin(math.pi / n_positions))
@@ -98,14 +99,17 @@ def create_ring(name: str,
             grid.add_switch(dis2)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
         grid.add_bus(bus2)
+        all_buses.append(bus2)
         l_x_pos.append(bus2.x)
         l_y_pos.append(bus2.y)
 
         grid.add_bus(bus3)
+        all_buses.append(bus3)
         l_x_pos.append(bus3.x)
         l_y_pos.append(bus3.y)
 
@@ -119,17 +123,19 @@ def create_ring(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_ring_with_disconnectors(name: str,
-                                   grid: MultiCircuit,
-                                   n_bays: int,
-                                   v_nom: float,
-                                   substation: dev.Substation,
-                                   country: dev.Country = None,
-                                   offset_x=0,
-                                   offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+def create_ring_with_disconnectors(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        offset_x=0,
+        offset_y=0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a ring voltage level
     :param name: Voltage level name
@@ -153,6 +159,7 @@ def create_ring_with_disconnectors(name: str,
     l_x_pos = []
     l_y_pos = []
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
 
     n_positions = max(n_bays, 3)
 
@@ -185,6 +192,7 @@ def create_ring_with_disconnectors(name: str,
             grid.add_switch(cb)
 
         grid.add_bus(bus)
+        all_buses.append(bus)
         l_x_pos.append(bus.x)
         l_y_pos.append(bus.y)
 
@@ -195,4 +203,4 @@ def create_ring_with_disconnectors(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y

@@ -4882,19 +4882,15 @@ class SchematicWidget(BaseDiagramWidget):
 
         self.draw_additional_diagram(diagram=diagram)
 
-    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+    def reconnect_bus_graphics(self,
+                               bus_graphics: BusGraphicItem,
+                               new_buses: List[Bus]):
         """
-        Transform the bus into a grid of buses to be able to compute the bus currents
-        :param bus_graphics: BusGraphicItem
+        Reconnect the graphic elements connected in bus_graphics
+        to whatever new graphics associated to new_buses
+        :param bus_graphics: Old graphics bus
+        :param new_buses: list of new API buses
         """
-
-        # convert a bus into many small buses connected by impedances
-        new_buses, new_lines = transform_bus_to_connectivity_grid(grid=self.circuit,
-                                                                  busbar=bus_graphics.api_object)
-
-        # add the new buses
-        self.add_buses(buses=new_buses)
-
         # connected branches
         branch_graphics = bus_graphics.get_associated_branch_graphics()
 
@@ -4916,6 +4912,22 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
+    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+        """
+        Transform the bus into a grid of buses to be able to compute the bus currents
+        :param bus_graphics: BusGraphicItem
+        """
+
+        # convert a bus into many small buses connected by impedances
+        new_buses, new_lines = transform_bus_to_connectivity_grid(grid=self.circuit,
+                                                                  busbar=bus_graphics.api_object)
+
+        # add the new buses
+        self.add_buses(buses=new_buses)
+
+        # connected branches
+        self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+
         # Finally delete the old bus
         self.delete_element_utility_function(device=bus_graphics.api_object)
 
@@ -4933,15 +4945,22 @@ class SchematicWidget(BaseDiagramWidget):
         vl_wizard.exec()  # waits until closed
 
         if vl_wizard.closed_ok is not None:
-            new_grid = substation_wizards.transform_bus_into_voltage_level(
+            new_buses = substation_wizards.transform_bus_into_voltage_level(
+                grid=self.circuit,
                 bus=bus_graphics.api_object,
                 vl_type=vl_wizard.get_vl_type(),
                 add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
                 bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
             )
 
-            diagram = generate_grid_diagram(circuit=new_grid)
-            self.draw_additional_diagram(diagram=diagram)
+            # add the newly created buses to the diagram (with all their stuff that's not there already)
+            self.add_buses(buses=new_buses)
+
+            # reconnect graphics
+            self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+
+            # Finally delete the old bus
+            self.delete_element_utility_function(device=bus_graphics.api_object)
 
         else:
             self.gui.show_warning_toast("No conversion made...")

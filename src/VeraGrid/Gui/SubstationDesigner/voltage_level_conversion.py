@@ -26,12 +26,24 @@ class SpinBoxDelegate(QStyledItemDelegate):
         self.maximum = maximum
 
     def createEditor(self, parent, option, index):
+        """
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
         spinbox = QSpinBox(parent)
         spinbox.setMinimum(self.minimum)
         spinbox.setMaximum(self.maximum)
         return spinbox
 
     def setEditorData(self, editor, index):
+        """
+
+        :param editor:
+        :param index:
+        """
         value = index.model().data(index, 0)
         if value and value.isdigit():
             editor.setValue(int(value))
@@ -39,6 +51,12 @@ class SpinBoxDelegate(QStyledItemDelegate):
             editor.setValue(self.minimum)
 
     def setModelData(self, editor, model, index):
+        """
+
+        :param editor:
+        :param model:
+        :param index:
+        """
         model.setData(index, str(editor.value()))
 
 
@@ -50,11 +68,23 @@ class ComboBoxDelegate(QStyledItemDelegate):
         self.items = items
 
     def createEditor(self, parent, option, index):
+        """
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
         combo = QComboBox(parent)
         combo.addItems(self.items)
         return combo
 
     def setEditorData(self, editor, index):
+        """
+
+        :param editor:
+        :param index:
+        """
         value = index.model().data(index, 0)
         if value in self.items:
             editor.setCurrentText(value)
@@ -62,6 +92,12 @@ class ComboBoxDelegate(QStyledItemDelegate):
             editor.setCurrentIndex(0)
 
     def setModelData(self, editor, model, index):
+        """
+
+        :param editor:
+        :param model:
+        :param index:
+        """
         model.setData(index, editor.currentText())
 
 
@@ -260,14 +296,14 @@ class VoltageLevelConversionWizard(QDialog):
         self.close()
 
 
-if __name__ == "__main__":
-    import VeraGridEngine as vg
-
-    fname = "/home/santi/Documentos/Git/GitHub/VeraGrid_bkup/src/tests/data/grids/lynn5node.gridcal"
-    _grid = vg.open_file(fname)
-
-    app = QApplication(sys.argv)
-    window = VoltageLevelConversionWizard(grid=_grid, bus=_grid.buses[2])
-    window.resize(600, 500)
-    window.show()
-    sys.exit(app.exec())
+# if __name__ == "__main__":
+#     import VeraGridEngine as vg
+#
+#     fname = "/home/santi/Documentos/Git/GitHub/VeraGrid_bkup/src/tests/data/grids/lynn5node.gridcal"
+#     _grid = vg.open_file(fname)
+#
+#     app = QApplication(sys.argv)
+#     window = VoltageLevelConversionWizard(grid=_grid, bus=_grid.buses[2])
+#     window.resize(600, 500)
+#     window.show()
+#     sys.exit(app.exec())

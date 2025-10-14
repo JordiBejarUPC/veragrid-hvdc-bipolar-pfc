@@ -14,13 +14,13 @@ grid.add_country(country)
 sub = Substation()
 grid.add_substation(sub)
 
-subs_centelles, buses, x_off, y_off = common_functions.create_single_bar(name='Centelles',
-                                                                         grid=grid,
-                                                                         n_bays=4,
-                                                                         v_nom=220,
-                                                                         substation=sub,
-                                                                         country=country,
-                                                                         include_disconnectors=True)
+subs_centelles, conn_buses, all_buses, x_off, y_off = common_functions.create_single_bar(name='Centelles',
+                                                                                         grid=grid,
+                                                                                         n_bays=4,
+                                                                                         v_nom=220,
+                                                                                         substation=sub,
+                                                                                         country=country,
+                                                                                         include_disconnectors=True)
 
 print()
 
