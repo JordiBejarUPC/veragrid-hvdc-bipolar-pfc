@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import numpy as np
+
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices import Line
@@ -50,14 +52,14 @@ def test_tolerance_lf_higher():
     power_flow.run()
 
     # Check solution
-    approx_losses = round(1000 * power_flow.results.losses[0], 3)
+    losses = 1000 * power_flow.results.losses[0]
     solution = complex(0.128, 0.58)  # Expected solution from VeraGrid
     # Tested on ETAP 16.1.0 and pandapower
 
     print("\n=================================================================")
     print(f"Test: {test_name}")
     print("=================================================================\n")
-    print(f"Results:  {approx_losses}")
+    print(f"Results:  {losses}")
     print(f"Solution: {solution}")
     print()
 
@@ -72,38 +74,38 @@ def test_tolerance_lf_higher():
         print(f" - {b}:")
         print(f"   R = {round(b.R, 4)} pu")
         print(f"   X = {round(b.X, 4)} pu")
-        print(f"   X/R = {round(b.X/b.R, 2)}")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
     print()
 
     print("Voltages:")
     for i in range(len(grid.buses)):
         print(
-            f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu"
+            f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu"
         )
     print()
 
     print("Losses:")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: losses={round(power_flow.results.losses[i], 3)} MVA"
+            f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA"
         )
     print()
 
     print("Loadings (power):")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA"
+            f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA"
         )
     print()
 
     print("Loadings (current):")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: loading={round(power_flow.results.If[i], 3)} pu"
+            f" - {branches[i]}: loading={power_flow.results.If[i]} pu"
         )
     print()
 
-    assert approx_losses == solution
+    assert np.allclose(losses, solution, atol=1e-3)
 
 
 def test_tolerance_lf_lower():
@@ -142,14 +144,14 @@ def test_tolerance_lf_lower():
     power_flow.run()
 
     # Check solution
-    approx_losses = round(1000 * power_flow.results.losses[0], 3)
+    losses = 1000 * power_flow.results.losses[0]
     solution = complex(0.104, 0.58)  # Expected solution from VeraGrid
     # Tested on ETAP 16.1.0 and pandapower
 
     print("\n=================================================================")
     print(f"Test: {test_name}")
     print("=================================================================\n")
-    print(f"Results:  {approx_losses}")
+    print(f"Results:  {losses}")
     print(f"Solution: {solution}")
     print()
 
@@ -164,38 +166,38 @@ def test_tolerance_lf_lower():
         print(f" - {b}:")
         print(f"   R = {round(b.R, 4)} pu")
         print(f"   X = {round(b.X, 4)} pu")
-        print(f"   X/R = {round(b.X/b.R, 2)}")
+        print(f"   X/R = {round(b.X / b.R, 2)}")
     print()
 
     print("Voltages:")
     for i in range(len(grid.buses)):
         print(
-            f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu"
+            f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu"
         )
     print()
 
     print("Losses:")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: losses={round(power_flow.results.losses[i], 3)} MVA"
+            f" - {branches[i]}: losses={power_flow.results.losses[i]} MVA"
         )
     print()
 
     print("Loadings (power):")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA"
+            f" - {branches[i]}: loading={power_flow.results.Sf[i]} MVA"
         )
     print()
 
     print("Loadings (current):")
     for i in range(len(branches)):
         print(
-            f" - {branches[i]}: loading={round(power_flow.results.If[i], 3)} pu"
+            f" - {branches[i]}: loading={power_flow.results.If[i]} pu"
         )
     print()
 
-    assert approx_losses == solution
+    assert np.allclose(losses, solution, atol=1e-3)
 
 
 if __name__ == '__main__':

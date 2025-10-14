@@ -21,9 +21,11 @@ class ReliabilityResults(ResultsTemplate):
             self,
             name='Reliability Analysis',
             available_results=[
-                ResultTypes.ReliabilityLoleResults,
+                ResultTypes.ReliabilityLOLEResults,
                 ResultTypes.ReliabilityENSResults,
                 ResultTypes.ReliabilityLOLFResults,
+                ResultTypes.ReliabilityLOLETResults,
+                ResultTypes.ReliabilityLOLFTResults,
             ],
             clustering_results=None,
             time_array=None,
@@ -45,16 +47,15 @@ class ReliabilityResults(ResultsTemplate):
         :return: ResultsModel
         """
 
-        if result_type == ResultTypes.ReliabilityLoleResults:
-
+        if result_type == ResultTypes.ReliabilityLOLEResults:
             return ResultsTable(data=self.LOLE_evolution,
                                 index=np.arange(len(self.LOLE_evolution), dtype=int),
                                 columns=np.array(['LOLE']),
                                 title=result_type.value,
-                                units="MWh",
+                                units="hours",
                                 idx_device_type=DeviceType.NoDevice,
                                 cols_device_type=DeviceType.NoDevice,
-                                ylabel='hours/year')
+                                ylabel='incident_hours/year')
 
         elif result_type == ResultTypes.ReliabilityENSResults:
             return ResultsTable(data=self.ENS_evolution,
@@ -75,6 +76,26 @@ class ReliabilityResults(ResultsTemplate):
                                 idx_device_type=DeviceType.NoDevice,
                                 cols_device_type=DeviceType.NoDevice,
                                 ylabel='nº of incidences/year')
+
+        elif result_type == ResultTypes.ReliabilityLOLETResults:
+            return ResultsTable(data=self.LOLET_evolution,
+                                index=np.arange(len(self.LOLET_evolution), dtype=int),
+                                columns=np.array(['LOLET_total']),
+                                title=result_type.value,
+                                units="nº of hours",
+                                idx_device_type=DeviceType.NoDevice,
+                                cols_device_type=DeviceType.NoDevice,
+                                ylabel='failure_hours/year')
+
+        elif result_type == ResultTypes.ReliabilityLOLFTResults:
+            return ResultsTable(data=self.LOLFT_evolution,
+                                index=np.arange(len(self.LOLFT_evolution), dtype=int),
+                                columns=np.array(['LOLFT_total']),
+                                title=result_type.value,
+                                units="nº of failures",
+                                idx_device_type=DeviceType.NoDevice,
+                                cols_device_type=DeviceType.NoDevice,
+                                ylabel='nº of failures/year')
 
         else:
             raise Exception('Result type not understood:' + str(result_type))

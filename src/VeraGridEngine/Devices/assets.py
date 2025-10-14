@@ -1426,6 +1426,24 @@ class Assets:
 
         return data
 
+    def get_bus_devices(self, bus: dev.Bus) -> Tuple[List[BRANCH_TYPES], List[INJECTION_DEVICE_TYPES]]:
+        """
+        Get the list of associated branches and the list of associated injections
+        :param bus: 
+        :return: associated_branches, associated_injections
+        """
+        associated_branches = list()
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.bus_from == bus or elm.bus_to == bus:
+                associated_branches.append(elm)
+
+        associated_injections = list()
+        for elm in self.get_injection_devices_iter():
+            if elm.bus == bus:
+                associated_injections.append(elm)
+
+        return associated_branches, associated_injections
+
     # ------------------------------------------------------------------------------------------------------------------
     # Bus bars
     # ------------------------------------------------------------------------------------------------------------------
@@ -5510,6 +5528,18 @@ class Assets:
         for lst in self.get_injection_devices_lists():
             for elm in lst:
                 yield elm
+
+    def get_injections_bus_index_dict(self, bus_index_dict: Dict[dev.Bus, int] = None):
+        """
+        Get a dictionary of generators related to their bus index
+        :param bus_index_dict: bus object to bus index dictionary (optional)
+        :return: generator object to bus index dictionary
+
+        """
+        if bus_index_dict is None:
+            bus_index_dict = self.get_bus_index_dict()
+
+        return {g.idtag: bus_index_dict[g.bus] for g in self.get_injection_devices_iter() if g.bus is not None}
 
     # ------------------------------------------------------------------------------------------------------------------
     # Load-like devices

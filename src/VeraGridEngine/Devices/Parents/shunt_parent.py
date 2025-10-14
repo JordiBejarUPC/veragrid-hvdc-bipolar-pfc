@@ -12,6 +12,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class ShuntParent(InjectionParent):
@@ -179,6 +180,13 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G_prof')
 
+    def get_G_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G, self.G_prof, t)
+
     @property
     def Ga_prof(self) -> Profile:
         """
@@ -195,6 +203,13 @@ class ShuntParent(InjectionParent):
             self._Ga_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ga_prof')
+
+    def get_Ga_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ga, self.Ga_prof, t)
 
     @property
     def Gb_prof(self) -> Profile:
@@ -213,6 +228,13 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Gb_prof')
 
+    def get_Gb_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Gb, self.Gb_prof, t)
+
     @property
     def Gc_prof(self) -> Profile:
         """
@@ -229,6 +251,13 @@ class ShuntParent(InjectionParent):
             self._Gc_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Gc_prof')
+
+    def get_Gc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Gc, self.Gc_prof, t)
 
     @property
     def B_prof(self) -> Profile:
@@ -247,6 +276,13 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B_prof')
 
+    def get_B_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B, self.B_prof, t)
+
     @property
     def Ba_prof(self) -> Profile:
         """
@@ -263,6 +299,13 @@ class ShuntParent(InjectionParent):
             self._Ba_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ba_prof')
+
+    def get_Ba_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ba, self.Ba_prof, t)
 
     @property
     def Bb_prof(self) -> Profile:
@@ -281,6 +324,13 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Bb_prof')
 
+    def get_Bb_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Bb, self.Bb_prof, t)
+
     @property
     def Bc_prof(self) -> Profile:
         """
@@ -297,6 +347,13 @@ class ShuntParent(InjectionParent):
             self._Bc_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Bc_prof')
+
+    def get_Bc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Bc, self.Bc_prof, t)
 
     @property
     def G0_prof(self) -> Profile:
@@ -315,6 +372,13 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G_prof')
 
+    def get_G0_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G0, self.G0_prof, t)
+
     @property
     def B0_prof(self) -> Profile:
         """
@@ -332,8 +396,19 @@ class ShuntParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B_prof')
 
+    def get_B0_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B0, self.B0_prof, t)
+
     @property
     def ysh(self) -> AdmittanceMatrix:
+        """
+        Shunt admittance matrix (4x4)
+        :return:
+        """
         if self._ysh.size == 0:
             self.fill_3_phase_from_sequence()
 
@@ -345,6 +420,34 @@ class ShuntParent(InjectionParent):
             self._ysh = val
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
+
+    def get_Y_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G_at(t), self.get_B_at(t))
+
+    def get_Ya_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ga_at(t), self.get_Ba_at(t))
+
+    def get_Yb_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Gb_at(t), self.get_Bb_at(t))
+
+    def get_Yc_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Gc_at(t), self.get_Bc_at(t))
 
     def plot_profiles(self, time=None, show_fig=True):
         """

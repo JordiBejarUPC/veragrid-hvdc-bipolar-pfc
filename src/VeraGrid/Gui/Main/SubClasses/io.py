@@ -32,6 +32,7 @@ from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_f
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
+from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
                                 get_sequence_lines_catalogue)
 
@@ -57,8 +58,8 @@ class IoMain(ConfigurationMain):
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
                                     '.dgs', '.m', '.raw', '.RAW', '.json', '.uct',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
-                                    '.xml', '.rawx', '.zip', '.dpx', '.epc', '.EPC',
-                                    '.vgplugin']
+                                    '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
+                                    '.vgplugin', '.gslv']
 
         self.cgmes_version_dict = {x.value: x for x in [CGMESVersions.v2_4_15,
                                                         CGMESVersions.v3_0_0]}
@@ -141,6 +142,13 @@ class IoMain(ConfigurationMain):
                             any_grid_delta = True
                         elif file_name.endswith('.vgplugin'):
                             self.install_plugin_now(file_name)
+                            return
+                        elif file_name.endswith('.license.gslv'):
+                            ok, msg = install_gslv_license(file_name)
+                            if ok:
+                                self.show_info_toast(msg)
+                            else:
+                                self.show_error_toast(msg)
                             return
                         else:
                             any_normal_grid = True
@@ -262,7 +270,7 @@ class IoMain(ConfigurationMain):
 
         files_types += "*.gch5 *.xlsx *.xls *.sqlite *.dgs "
         files_types += "*.m *.raw *.RAW *.rawx *.uct *.json *.ejson2 *.ejson3 *.xml "
-        files_types += "*.zip *.dpx *.epc *.EPC *.nc *.hdf5 *.p"
+        files_types += "*.zip *.dpx *.pwf *.epc *.EPC *.nc *.hdf5 *.p"
 
         dialogue = QtWidgets.QFileDialog(None,
                                          caption=title,

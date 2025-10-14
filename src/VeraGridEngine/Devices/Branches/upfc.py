@@ -99,6 +99,9 @@ class UPFC(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=cost,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
                               device_type=DeviceType.UpfcDevice)
 
         # total impedance and admittance in p.u.

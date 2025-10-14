@@ -8,7 +8,7 @@ from typing import List
 from PySide6 import QtWidgets
 from matplotlib import pyplot as plt
 
-import VeraGrid.Gui.gui_functions as gf
+from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -376,11 +376,13 @@ class TimeEventsMain(DataBaseTableMain):
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
             magnitude = magnitudes[idx]
 
-            dev_type = self.circuit.device_type_name_dict[dev_type_text]
-            objects = self.circuit.get_elements_by_type(dev_type)
-
             # get the selected element
             obj_idx = self.ui.profiles_tableView.selectedIndexes()
+
+            # NOTE: we use the (filtered or not) objects table model
+            #       to get the objects for the (filtered or not) time series
+            proxy_model: ObjectModelFilterProxy = self.ui.dataStructureTableView.model()
+            objects = proxy_model.objects
 
             t = self.circuit.time_profile
 
@@ -389,9 +391,10 @@ class TimeEventsMain(DataBaseTableMain):
                 fig = plt.figure(figsize=(12, 8))
                 ax = fig.add_subplot(111)
 
-                k = obj_idx[0].column()
-                units_dict = {attr: pair.units for attr, pair in objects[k].registered_properties.items()}
 
+                units_dict = {attr: pair.units for attr, pair in objects[0].registered_properties.items()}
+
+                data_tpe = objects[0].get_property_by_name(magnitude).tpe
                 unit = units_dict[magnitude]
                 ax.set_ylabel(unit)
 
@@ -403,11 +406,22 @@ class TimeEventsMain(DataBaseTableMain):
                 # plot every column
                 dta = dict()
                 for k in cols:
-                    dta[objects[k].name] = objects[k].get_profile(magnitude=magnitude).toarray()
-                df = pd.DataFrame(data=dta, index=t)
-                df.plot(ax=ax)
+                    arr = objects[k].get_profile(magnitude=magnitude).toarray()
 
-                plt.show()
+                    if data_tpe == bool:
+                        dta[objects[k].name] = arr.astype(int)
+                    elif data_tpe == float:
+                        dta[objects[k].name] = arr
+                    elif data_tpe == int:
+                        dta[objects[k].name] = arr
+
+                df = pd.DataFrame(data=dta, index=t)
+
+                try:
+                    df.plot(ax=ax)
+                    plt.show()
+                except TypeError as e:
+                    self.show_error_toast(str(e))
 
     def import_profiles_from_models(self):
         """

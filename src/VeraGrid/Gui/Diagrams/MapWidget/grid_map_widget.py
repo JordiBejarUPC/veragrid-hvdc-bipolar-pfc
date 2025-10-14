@@ -34,13 +34,13 @@ from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.Branches.line_locations import LineLocation
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, SubstationTypes
+from VeraGridEngine.enumerations import DeviceType, ResultTypes
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.enumerations import Colormaps
-from VeraGridEngine.Topology import substation_wizards as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_ac_line import MapAcLine

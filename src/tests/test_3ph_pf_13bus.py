@@ -5,6 +5,7 @@
 import VeraGridEngine.api as gce
 from VeraGridEngine import WindingType, ShuntConnectionType
 import numpy as np
+import pandas as pd
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph, expand3ph,
@@ -434,7 +435,7 @@ def test_ieee_13_bus_feeder():
     res_3ph = power_flow_3ph(grid, V0_3ph=V0)
 
     U_obtained = abs(res_3ph.V)
-    angle_obtained = np.degrees(np.angle((res_3ph.V)))
+    angle_obtained = np.degrees(np.angle(res_3ph.V))
 
     U_reference = np.array(
         [1.021, 1.042, 1.0174, 0.0, 1.0328, 1.0154, 0.0, 1.0311, 1.0134, 1.018, 1.0401, 1.0148, 0.994, 1.0218, 0.996,
@@ -444,6 +445,11 @@ def test_ieee_13_bus_feeder():
         [-2.49, -121.72, 117.83, 0.0, -121.9, 117.86, 0.0, -121.98, 117.9, -2.55, -121.77, 117.83, -3.23, -122.22,
          117.35, -5.3, -122.34, 116.03, -5.32, 0.0, 115.93, 0.0, 0.0, 115.78, -5.55, -122.52, 116.04, -5.3, -122.34,
          116.03, -5.25, 0.0, 0.0])
+
+    # df = pd.DataFrame(data={
+    #     'U_reference': U_reference.round(4),
+    #     'U_obtained': U_obtained.round(4),
+    # })
 
     assert np.allclose(U_obtained, U_reference, atol=1e-4)
     assert np.allclose(angle_obtained, angle_reference, atol=1e-2)

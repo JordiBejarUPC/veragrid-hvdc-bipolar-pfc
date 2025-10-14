@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import CONNECTION_TYPE
@@ -32,6 +33,10 @@ class BranchParent(PhysicalDevice):
         '_bus_to',
         'active',
         '_active_prof',
+        'temp_base',
+        'temp_oper',
+        '_temp_oper_prof',
+        'alpha',
         'reducible',
         'contingency_enabled',
         'monitor_loading',
@@ -74,6 +79,9 @@ class BranchParent(PhysicalDevice):
                  capex: float,
                  opex: float,
                  cost: float,
+                 temp_base: float,
+                 temp_oper: float,
+                 alpha: float,
                  device_type: DeviceType,
                  color: str | None = None):
         """
@@ -121,6 +129,14 @@ class BranchParent(PhysicalDevice):
 
         self.active = bool(active)
         self._active_prof = Profile(default_value=self.active, data_type=bool)
+
+        # Conductor base and operating temperatures in ºC
+        self.temp_base = float(temp_base)
+        self.temp_oper = float(temp_oper)
+        self._temp_oper_prof = Profile(default_value=self.temp_oper, data_type=float)
+
+        # Conductor thermal constant (1/ºC)
+        self.alpha = float(alpha)
 
         self.reducible = bool(reducible)
 
@@ -213,8 +229,19 @@ class BranchParent(PhysicalDevice):
         self.register(key='bus_to_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                       display=False)
 
+        self.register(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.')
+        self.register(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
+                      profile_name='temp_oper_prof')
+        self.register(key='alpha', units='1/ºC', tpe=float,
+                      definition='Thermal coefficient to modify R,around a reference temperature using a linear '
+                                 'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
+                                 'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330')
+
     @property
     def rms_model(self) -> DynamicModelHost:
+        """
+        Get the RMS model
+        """
         return self._rms_model
 
     @rms_model.setter
@@ -275,6 +302,13 @@ class BranchParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
 
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
     @property
     def rate_prof(self) -> Profile:
         """
@@ -291,6 +325,13 @@ class BranchParent(PhysicalDevice):
             self._rate_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a rate_prof')
+
+    def get_rate_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.rate, self.rate_prof, t)
 
     @property
     def contingency_factor_prof(self) -> Profile:
@@ -309,6 +350,13 @@ class BranchParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a contingency_factor_prof')
 
+    def get_contingency_factor_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.contingency_factor, self.contingency_factor_prof, t)
+
     @property
     def protection_rating_factor_prof(self) -> Profile:
         """
@@ -326,6 +374,13 @@ class BranchParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a protection_rating_factor_prof')
 
+    def get_protection_rating_factor_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.protection_rating_factor, self.protection_rating_factor_prof, t)
+
     @property
     def Cost_prof(self) -> Profile:
         """
@@ -342,6 +397,37 @@ class BranchParent(PhysicalDevice):
             self._Cost_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost_prof')
+
+    def get_Cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost, self.Cost_prof, t)
+
+    @property
+    def temp_oper_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._temp_oper_prof
+
+    @temp_oper_prof.setter
+    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._temp_oper_prof = val
+        elif isinstance(val, np.ndarray):
+            self._temp_oper_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a temp_oper_prof')
+
+    def get_temp_oper_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.temp_oper, self._temp_oper_prof, t)
 
     @property
     def rate(self):
