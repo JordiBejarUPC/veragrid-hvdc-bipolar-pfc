@@ -9,7 +9,6 @@ from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 
 
-
 class Shunt(ShuntParent):
     __slots__ = (
         "g", "b"
