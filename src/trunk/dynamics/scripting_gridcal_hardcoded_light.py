@@ -19,16 +19,12 @@ from VeraGridEngine.Devices.Branches.line import Line
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability, plot_stability
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
-
-import cProfile as profile
-import pstats
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Power flow
@@ -379,17 +375,16 @@ print(f"Automatic simulation time = {end_simulation - start_simulation:.6f} [s]"
 start_stability = time.time()
 # stab, Eigenvalues, PFactors = slv.stability_assessment(x=y[1000], params=params0, plot = True)
 
-(stab,
- Eigenvalues,
+(Eigenvalues,
  PFactors,
  damping_ratios,
  conjugate_frequencies,
  state_matrix) = run_small_signal_stability(slv=slv,
                                             x=x0,
                                             params=params0,
-                                            plot=True,
-                                            plot_units = "rad/s",
                                             verbose = 1)
+
+plot_stability(Eigenvalues, plot_units = "rad/s" )
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
