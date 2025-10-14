@@ -225,7 +225,9 @@ def get_action_symbol(action: ActionType):
         return ""
 
 
-def get_at(snapshot_val: float | bool | int, profile: Profile, t: int | None) -> float | bool | int:
+def get_at(snapshot_val: float | bool | int,
+           profile: Profile,
+           t: int | None) -> float | bool | int:
     """
     Get a GCPROP_TYPES value from a snapshot or a profile
     :param snapshot_val: snapshot value

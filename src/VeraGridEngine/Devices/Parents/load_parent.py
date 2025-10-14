@@ -327,19 +327,47 @@ class LoadParent(InjectionParent):
         """
         return get_at(self.Qc, self.Qc_prof, t)
 
-    def get_S(self) -> complex:
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(-self.P, -self.Q)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:
         """
         return -self.P_prof.toarray() - 1j * self.Q_prof.toarray()
+
+    def get_S_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_P_at(t), self.get_Q_at(t))
+
+    def get_Sa_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Pa_at(t), self.get_Qa_at(t))
+
+    def get_Sb_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Pb_at(t), self.get_Qb_at(t))
+
+    def get_Sc_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Pc_at(t), self.get_Qc_at(t))
 
     def split_sequence_load_in_3_phase(self, share_a=1.0, share_b=1.0, share_c=1.0):
         """

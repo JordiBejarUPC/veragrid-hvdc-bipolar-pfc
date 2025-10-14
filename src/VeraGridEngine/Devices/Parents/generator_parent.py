@@ -226,14 +226,14 @@ class GeneratorParent(InjectionParent):
         """
         return get_at(self.Pmin, self.Pmin_prof, t)
 
-    def get_S(self) -> complex:
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(self.P, 0.0)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:

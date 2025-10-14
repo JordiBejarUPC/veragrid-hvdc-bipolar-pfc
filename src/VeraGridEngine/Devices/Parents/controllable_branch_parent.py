@@ -433,7 +433,7 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_module_control_mode_prof')
 
-    def get_tap_module_control_mode_at(self, t: int | None) -> float:
+    def get_tap_module_control_mode_at(self, t: int | None) -> TapModuleControl:
         """
         :param t:
         :return:
@@ -457,7 +457,7 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_phase_control_mode_prof')
 
-    def get_tap_phase_control_mode_at(self, t: int | None) -> float:
+    def get_tap_phase_control_mode_at(self, t: int | None) -> TapPhaseControl:
         """
         :param t:
         :return:

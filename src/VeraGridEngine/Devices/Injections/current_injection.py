@@ -312,6 +312,34 @@ class CurrentInjection(InjectionParent):
         """
         return get_at(self.Ii3, self.Ii3_prof, t)
 
+    def get_I_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir_at(t), self.get_Ii_at(t))
+
+    def get_I1_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir1_at(t), self.get_Ii1_at(t))
+
+    def get_I2_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir2_at(t), self.get_Ii2_at(t))
+
+    def get_I3_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir3_at(t), self.get_Ii3_at(t))
+
     def plot_profiles(self, time=None, show_fig=True):
         """
         Plot the time series results of this object

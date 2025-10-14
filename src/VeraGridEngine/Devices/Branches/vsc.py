@@ -13,6 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import BRANCH_TYPES
@@ -373,6 +374,13 @@ class VSC(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
 
+    def get_control1_at(self, t: int | None) -> ConverterControlType:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control1, self.control1_prof, t)
+
     @property
     def control2(self):
         """
@@ -411,6 +419,13 @@ class VSC(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
 
+    def get_control2_at(self, t: int | None) -> ConverterControlType:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control2, self.control2_prof, t)
+
     @property
     def control1_val(self):
         """
@@ -439,6 +454,13 @@ class VSC(BranchParent):
             self._control1_val_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
+
+    def get_control1_val_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control1_val, self.control1_val_prof, t)
 
     @property
     def control2_val(self):
@@ -469,6 +491,13 @@ class VSC(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
 
+    def get_control2_val_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control2_val, self.control2_val_prof, t)
+
     @property
     def control1_dev(self):
         """
@@ -497,6 +526,13 @@ class VSC(BranchParent):
             self._control1_dev_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
+
+    def get_control1_dev_at(self, t: int | None) -> Bus | BranchParent | None:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control1_dev, self.control1_dev_prof, t)
 
     @property
     def control2_dev(self):
@@ -527,35 +563,19 @@ class VSC(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
 
+    def get_control2_dev_at(self, t: int | None) -> Bus | BranchParent | None:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.control2_dev, self.control2_dev_prof, t)
+
     def get_coordinates(self) -> List[Tuple[float, float]]:
         """
         Get the line defining coordinates
         """
         return [self.bus_from.get_coordinates(), self.bus_to.get_coordinates()]
 
-    # def correct_buses_connection(self) -> None:
-    #     """
-    #     Fix the buses connection (from: DC, To: AC)
-    #     """
-    #     # the VSC must only connect from an DC to a AC bus
-    #     # this connectivity sense is done to keep track with the articles that set it
-    #     # from -> DC
-    #     # to   -> AC
-    #     # assert(bus_from.is_dc != bus_to.is_dc)
-    #     if self.bus_to is not None and self.bus_from is not None:
-    #         # connectivity:
-    #         # for the later primitives to make sense, the "bus from" must be AC and the "bus to" must be DC
-    #         if self.bus_from.is_dc and not self.bus_to.is_dc:  # correct sense
-    #             pass
-    #         elif not self.bus_from.is_dc and self.bus_to.is_dc:  # opposite sense, revert
-    #             self.bus_from, self.bus_to = self.bus_to, self.bus_from
-    #             print('Corrected the connection direction of the VSC device:', self.name)
-    #         else:
-    #             raise Exception('Impossible connecting a VSC device here. '
-    #                             'VSC devices must be connected between AC and DC buses')
-    #     else:
-    #         self.bus_from = None
-    #         self.bus_to = None
 
     def plot_profiles(self, time_series=None, my_index=0, show_fig=True):
         """
@@ -594,5 +614,7 @@ class VSC(BranchParent):
             plt.show()
 
     def is_3term(self):
-
+        """
+        Is this a 3-terminal VSC?
+        """
         return self.bus_from is not None and self.bus_to is not None and self._bus_dc_n is not None

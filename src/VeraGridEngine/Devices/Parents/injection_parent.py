@@ -320,14 +320,14 @@ class InjectionParent(PhysicalDevice):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
 
-    def get_S(self) -> complex:
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(0.0, 0.0)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:
