@@ -194,9 +194,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, verbose: i
 
     2. Find eigenvalues and right(V) and left(W) eigenvectors
 
-    3. Perform stability assessment
+    3. Calculate normalized participation factors PF = W · V
 
-    4. Calculate normalized participation factors PF = W · V
+    4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
     """
     A = compute_state_matrix(slv,
                              x,
