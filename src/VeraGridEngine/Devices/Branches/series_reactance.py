@@ -23,11 +23,7 @@ class SeriesReactance(BranchParent):
         'R0',
         'X0',
         'R2',
-        'X2',
-        'temp_base',
-        'temp_oper',
-        '_temp_oper_prof',
-        'alpha',
+        'X2'
     )
 
     def __init__(self,
@@ -100,6 +96,9 @@ class SeriesReactance(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=cost,
+                              temp_base=temp_base,
+                              temp_oper=temp_oper,
+                              alpha=alpha,
                               device_type=DeviceType.SeriesReactanceDevice)
 
         # line impedance tolerance
@@ -120,14 +119,6 @@ class SeriesReactance(BranchParent):
         self.R2 = r2
         self.X2 = x2
 
-        # Conductor base and operating temperatures in ºC
-        self.temp_base = temp_base
-        self.temp_oper = temp_oper
-        self._temp_oper_prof = Profile(default_value=temp_oper, data_type=float)
-
-        # Conductor thermal constant (1/ºC)
-        self.alpha = alpha
-
         self.register(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.')
         self.register(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.')
 
@@ -141,13 +132,6 @@ class SeriesReactance(BranchParent):
                       definition='Tolerance expected for the impedance values % is expected '
                                  'for transformers0% for lines.')
 
-        self.register(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.')
-        self.register(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-                      profile_name='temp_oper_prof')
-        self.register(key='alpha', units='1/ºC', tpe=float,
-                      definition='Thermal coefficient to modify R,around a reference temperatureusing a '
-                                 'linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
-                                 'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330')
         self.register(key='r_fault', units='p.u.', tpe=float,
                       definition='Resistance of the mid-line fault.Used in short circuit studies.')
         self.register(key='x_fault', units='p.u.', tpe=float,
@@ -157,23 +141,6 @@ class SeriesReactance(BranchParent):
                                  '0 would be at the "from" side,'
                                  '1 would be at the "to" side,'
                                  'therefore 0.5 is at the middle.')
-
-    @property
-    def temp_oper_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._temp_oper_prof
-
-    @temp_oper_prof.setter
-    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._temp_oper_prof = val
-        elif isinstance(val, np.ndarray):
-            self._temp_oper_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a temp_oper_prof')
 
     @property
     def R_corrected(self):

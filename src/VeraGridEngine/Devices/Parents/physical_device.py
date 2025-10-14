@@ -18,6 +18,7 @@ class PhysicalDevice(EditableDevice):
         "_commissioned_date",
         "_decommissioned_date"
     )
+
     def __init__(self,
                  name: str,
                  idtag: Union[str, None],

@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (BuildStatus, TapModuleControl, TapPhaseControl, SubObjectType, TapChangerTypes)
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, get_at
 from VeraGridEngine.Devices.profile import Profile
 
 
@@ -21,10 +21,6 @@ class ControllableBranchParent(BranchParent):
         'R', 'X', 'G', 'B',
         'R0', 'X0', 'G0', 'B0',
         'R2', 'X2', 'G2', 'B2',
-        'temp_base',
-        'temp_oper',
-        '_temp_oper_prof',
-        'alpha',
         '_tap_changer',
         'tap_module',
         '_tap_module_prof',
@@ -171,6 +167,9 @@ class ControllableBranchParent(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=cost,
+                              temp_base=temp_base,
+                              temp_oper=temp_oper,
+                              alpha=alpha,
                               device_type=device_type)
 
         # branch impedance tolerance
@@ -191,14 +190,6 @@ class ControllableBranchParent(BranchParent):
         self.X2 = float(x2)
         self.G2 = float(g2)
         self.B2 = float(b2)
-
-        # Conductor base and operating temperatures in ºC
-        self.temp_base = float(temp_base)
-        self.temp_oper = float(temp_oper)
-        self._temp_oper_prof = Profile(default_value=self.temp_oper, data_type=float)
-
-        # Conductor thermal constant (1/ºC)
-        self.alpha = float(alpha)
 
         # tap changer object
         self._tap_changer = TapChanger(total_positions=tc_total_positions,
@@ -305,14 +296,6 @@ class ControllableBranchParent(BranchParent):
                       definition='Objective power at the selected side.',
                       profile_name='Pset_prof', old_names=['Pdc_set'])
 
-        self.register(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.')
-        self.register(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-                      profile_name='temp_oper_prof')
-        self.register(key='alpha', units='1/ºC', tpe=float,
-                      definition='Thermal coefficient to modify R,around a reference temperature using a linear '
-                                 'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
-                                 'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330')
-
     @property
     def tap_module_prof(self) -> Profile:
         """
@@ -329,6 +312,13 @@ class ControllableBranchParent(BranchParent):
             self._tap_module_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_module_prof')
+
+    def get_tap_module_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.tap_module, self.tap_module_prof, t)
 
     @property
     def tap_phase_prof(self) -> Profile:
@@ -347,6 +337,13 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_phase_prof')
 
+    def get_tap_phase_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.tap_phase, self.tap_phase_prof, t)
+
     @property
     def vset_prof(self) -> Profile:
         """
@@ -363,6 +360,13 @@ class ControllableBranchParent(BranchParent):
             self._vset_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a vset_prof')
+
+    def get_vset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.vset, self.vset_prof, t)
 
     @property
     def Pset_prof(self) -> Profile:
@@ -381,6 +385,13 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pset_prof')
 
+    def get_Pset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pset, self.Pset_prof, t)
+
     @property
     def Qset_prof(self) -> Profile:
         """
@@ -397,6 +408,13 @@ class ControllableBranchParent(BranchParent):
             self._Qset_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Qset_prof')
+
+    def get_Qset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qset, self.Qset_prof, t)
 
     @property
     def tap_module_control_mode_prof(self) -> Profile:
@@ -415,6 +433,13 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_module_control_mode_prof')
 
+    def get_tap_module_control_mode_at(self, t: int | None) -> TapModuleControl:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.tap_module_control_mode, self.tap_module_control_mode_prof, t)
+
     @property
     def tap_phase_control_mode_prof(self) -> Profile:
         """
@@ -432,22 +457,12 @@ class ControllableBranchParent(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a tap_phase_control_mode_prof')
 
-    @property
-    def temp_oper_prof(self) -> Profile:
+    def get_tap_phase_control_mode_at(self, t: int | None) -> TapPhaseControl:
         """
-        Cost profile
-        :return: Profile
+        :param t:
+        :return:
         """
-        return self._temp_oper_prof
-
-    @temp_oper_prof.setter
-    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._temp_oper_prof = val
-        elif isinstance(val, np.ndarray):
-            self._temp_oper_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a temp_oper_prof')
+        return get_at(self.tap_phase_control_mode, self.tap_phase_control_mode_prof, t)
 
     @property
     def tap_module_min(self):

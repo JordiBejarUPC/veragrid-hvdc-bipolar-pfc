@@ -225,6 +225,22 @@ def get_action_symbol(action: ActionType):
         return ""
 
 
+def get_at(snapshot_val: float | bool | int,
+           profile: Profile,
+           t: int | None) -> float | bool | int:
+    """
+    Get a GCPROP_TYPES value from a snapshot or a profile
+    :param snapshot_val: snapshot value
+    :param profile: Associated profile
+    :param t: time index (None for snapshot)
+    :return: Value
+    """
+    if t is None:
+        return snapshot_val
+    else:
+        return profile[t]
+
+
 class EditableDevice:
     """
     This is the main device class from which all inherit

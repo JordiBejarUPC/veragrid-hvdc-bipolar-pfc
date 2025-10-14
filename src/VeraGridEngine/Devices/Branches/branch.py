@@ -139,6 +139,9 @@ class Branch(BranchParent):
                               capex=0.0,
                               opex=0.0,
                               cost=cost,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
                               device_type=DeviceType.BranchDevice)
 
         # List of measurements
@@ -211,13 +214,7 @@ class Branch(BranchParent):
                       definition='Tolerance expected for the impedance values % is expected for '
                                  'transformers0% for lines.')
         self.register(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)')
-        self.register(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.')
-        self.register(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-                      profile_name='temp_oper_prof')
-        self.register(key='alpha', units='1/ºC', tpe=float,
-                      definition='Thermal coefficient to modify R,around a reference temperatureusing a linear '
-                                 'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed '
-                                 'copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330')
+
         self.register(key='tap_module', units='', tpe=float, definition='Tap changer module, it a value close to 1.0')
         self.register(key='angle', units='rad', tpe=float, definition='Angle shift of the tap changer.')
         # self.register(key='template', units='', tpe=BranchType, definition='', editable=False)

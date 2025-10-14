@@ -14,7 +14,7 @@ from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Var
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices import Technology
@@ -206,6 +206,13 @@ class InjectionParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
 
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
     @property
     def Cost_prof(self) -> Profile:
         """
@@ -222,6 +229,13 @@ class InjectionParent(PhysicalDevice):
             self._Cost_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost_prof')
+
+    def get_Cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost, self.Cost_prof, t)
 
     @property
     def shift_key_prof(self) -> Profile:
@@ -240,8 +254,19 @@ class InjectionParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a shift_key_prof')
 
+    def get_shift_key_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.shift_key, self.shift_key_prof, t)
+
     @property
     def use_kw(self):
+        """
+
+        :return:
+        """
         return self._use_kw
 
     @use_kw.setter
@@ -271,6 +296,10 @@ class InjectionParent(PhysicalDevice):
 
     @property
     def conn(self) -> ShuntConnectionType:
+        """
+
+        :return:
+        """
         return self._conn
 
     @conn.setter
@@ -280,6 +309,10 @@ class InjectionParent(PhysicalDevice):
 
     @property
     def rms_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
         return self._rms_model
 
     @rms_model.setter
@@ -287,14 +320,14 @@ class InjectionParent(PhysicalDevice):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
 
-    def get_S(self) -> complex:
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(0.0, 0.0)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:

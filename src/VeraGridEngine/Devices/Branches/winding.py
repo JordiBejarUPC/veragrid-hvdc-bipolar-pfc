@@ -50,7 +50,6 @@ class Winding(Transformer2W):
                  alpha: float = 0.00330,
                  tap_module_control_mode: TapModuleControl = TapModuleControl.fixed,
                  tap_phase_control_mode: TapPhaseControl = TapPhaseControl.fixed,
-                 template: TransformerType = None,
                  contingency_factor: float = 1.0,
                  protection_rating_factor: float = 1.4,
                  contingency_enabled: bool = True,
