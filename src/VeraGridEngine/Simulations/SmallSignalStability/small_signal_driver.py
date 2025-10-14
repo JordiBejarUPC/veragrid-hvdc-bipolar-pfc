@@ -23,6 +23,29 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
 
 
+def compute_state_matrix(slv: BlockSolver, x: Vec, params: Vec,):
+    """
+    Small Signal Stability analysis
+    :param slv: BlockSolver
+    :param x: variables (1D numpy array)
+    :param params: parameters (1D numpy array)
+
+    :return: np array state matrix(A)
+
+    Small Signal Stability analysis:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
+        Tx'=f(x,y)
+        0=g(x,y)
+        the A matrix is computed as:
+        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+    """
+    fx = slv.j11(x, params)  # ∂f/∂x
+    fy = slv.j12(x, params)  # ∂f/∂y
+    gx = slv.j21(x, params)  # ∂g/∂x
+    gy = slv.j22(x, params)  # ∂g/∂y
+
+    gyx = spsolve(gy, gx)
+    return fx - fy @ gyx
 
 @nb.njit(cache=True)
 def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
@@ -147,7 +170,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True, plot_units = "rad/s", verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot = True, plot_units = "rad/s", verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -161,11 +184,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
         eigenvalues:  1D row numpy array
         participation factors: 2D array csc matrix.
             Participation factors of mode i stored in PF[:,i]
-    """
 
-    """
     Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the DAE model:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
         Tx'=f(x,y)
         0=g(x,y)
         the A matrix is computed as:
@@ -177,18 +198,13 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     4. Calculate normalized participation factors PF = W · V
     """
-
-    fx = slv.j11(x, params)  # ∂f/∂x
-    fy = slv.j12(x, params)  # ∂f/∂y
-    gx = slv.j21(x, params)  # ∂g/∂x
-    gy = slv.j22(x, params)  # ∂g/∂y
-
-    gyx = spsolve(gy, gx)
-    A = (fx - fy @ gyx)  # sparse state matrix csc matrix
+    A = compute_state_matrix(slv,
+                             x,
+                             params) # sparse state matrix csc matrix
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
-    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True) # TODO: always use sparse algebra
+    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True)
 
     # find participation factors
     participation_factors = compute_participation_factors(An=A.shape[0],

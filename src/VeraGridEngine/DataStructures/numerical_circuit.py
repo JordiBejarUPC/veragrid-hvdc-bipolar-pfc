@@ -244,7 +244,8 @@ class NumericalCircuit:
             'pqv',
             'p',
             'pv',
-            'vd'
+            'vd',
+            # 'pqpv',
         ],
         "Branch arrays": [
             'tap_f',
@@ -282,6 +283,9 @@ class NumericalCircuit:
             'x',
             'f(x)',
             'Jacobian',
+        ],
+        "Small-signal arrays": [
+            'state_matrix',
         ]
     }
 
@@ -912,6 +916,8 @@ class NumericalCircuit:
         )
         return Qmax_bus, Qmin_bus
 
+
+
     def get_structure(self, structure_type: str) -> pd.DataFrame:
         """
         Get a DataFrame with the input.
@@ -926,6 +932,8 @@ class NumericalCircuit:
         from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_advanced_formulation import (
             PfAdvancedFormulation)
         from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
+        from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
+
 
         formulation = PfAdvancedFormulation(V0=self.bus_data.Vbus,
                                             S0=Sbus,
@@ -1078,12 +1086,12 @@ class NumericalCircuit:
 
         elif structure_type == "B'":
             adm = self.get_fast_decoupled_amittances()
-            if adm.B1.shape[0] == len(idx.pqpv):
+            if adm.B1.shape[0] == len(idx.pq):
                 data = adm.B1.toarray()
-                names = self.bus_data.names[idx.pqpv]
+                names = self.bus_data.names[idx.pq]
             else:
-                data = adm.B1[np.ix_(idx.pqpv, idx.pqpv)].toarray()
-                names = self.bus_data.names[idx.pqpv]
+                data = adm.B1[np.ix_(idx.pq, idx.pq)].toarray()
+                names = self.bus_data.names[idx.pq]
 
             df = pd.DataFrame(
                 data=data,
@@ -1206,12 +1214,12 @@ class NumericalCircuit:
                 index=self.bus_data.names[idx.vd],
             )
 
-        elif structure_type == 'pqpv':
-            df = pd.DataFrame(
-                data=idx.pqpv.astype(int).astype(str),
-                columns=['pqpv'],
-                index=self.bus_data.names[idx.pqpv],
-            )
+        # elif structure_type == 'pqpv':
+        #     df = pd.DataFrame(
+        #         data=idx.pqpv.astype(int).astype(str),
+        #         columns=['pqpv'],
+        #         index=self.bus_data.names[idx.pqpv],
+        #     )
 
         elif structure_type == 'tap_f':
             df = pd.DataFrame(
@@ -1311,6 +1319,14 @@ class NumericalCircuit:
                 columns=['Qt_set'],
                 index=self.passive_branch_data.names[formulation.idx_dQt],
             )
+        # elif structure_type == 'state_matrix':
+        #     df = pd.DataFrame(
+        #         data=SmallSignalStabilityDriver.compute_state_matrix(slv = Blocksolver,
+        #                                                              x,
+        #                                                              params),
+        #         columns=np.array([f"State var {i}" for i in range(10)], dtype=np.str_),
+        #         index=np.array([f"Eq {i}" for i in range(10)], dtype=np.str_),
+        #     )
 
         else:
             raise Exception('PF input: structure type not found' + str(structure_type))

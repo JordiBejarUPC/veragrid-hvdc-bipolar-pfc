@@ -40,6 +40,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             self,
             name='Small Signal Stability',
             available_results=[
+                ResultTypes.StateMatrix,
                 ResultTypes.Modes,
                 ResultTypes.ParticipationFactors,
                 ResultTypes.SDomainPlot,
@@ -70,6 +71,17 @@ class SmallSignalStabilityResults(ResultsTemplate):
         """
         Export the results as a ResultsTable for plotting.
         """
+        if result_type == ResultTypes.StateMatrix:
+
+            return ResultsTable(
+                data=self.state_matrix,
+                index=np.array([f"Equation {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                columns=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
+                title="State Matrix",
+                idx_device_type=DeviceType.NoDevice,
+                cols_device_type=DeviceType.NoDevice
+            )
+
         if result_type == ResultTypes.ParticipationFactors:
 
             return ResultsTable(
@@ -245,22 +257,3 @@ class SmallSignalStabilityResults(ResultsTemplate):
                                 )
         else:
             raise Exception(f"Result type not understood: {result_type}")
-
-    # def plot(self, fig, ax):
-    #     """
-    #     Plot the S-Domain modes plot
-    #     :param fig: Matplotlib figure. If None, one will be created
-    #     :param ax: Matplotlib Axis. If None, one will be created
-    #     """
-    #     if ax is None:
-    #         fig = plt.figure(figsize=(8, 7))
-    #         ax = fig.add_subplot(111)
-    #
-    #     x = self.eigenvalues.real
-    #     y = self.eigenvalues.imag
-    #
-    #     ax.scatter(x, y, 'k', linewidth=2)
-    #
-    #     ax.set_title(r'$S-Domain$ plot')
-    #     ax.set_xlabel(r'$Imaginary [s^{-1}]$')
-    #     ax.set_ylabel(r'$Real [s^{-1}]$')
