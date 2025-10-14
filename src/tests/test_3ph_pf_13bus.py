@@ -446,12 +446,10 @@ def test_ieee_13_bus_feeder():
          117.35, -5.3, -122.34, 116.03, -5.32, 0.0, 115.93, 0.0, 0.0, 115.78, -5.55, -122.52, 116.04, -5.3, -122.34,
          116.03, -5.25, 0.0, 0.0])
 
-    df = pd.DataFrame(data={
-        'U_reference': U_reference.round(4),
-        'U_obtained': U_obtained.round(4),
-    })
-    print(df)
-    print()
+    # df = pd.DataFrame(data={
+    #     'U_reference': U_reference.round(4),
+    #     'U_obtained': U_obtained.round(4),
+    # })
 
     assert np.allclose(U_obtained, U_reference, atol=1e-4)
     assert np.allclose(angle_obtained, angle_reference, atol=1e-2)
