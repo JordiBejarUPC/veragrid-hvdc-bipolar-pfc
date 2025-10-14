@@ -434,7 +434,7 @@ def test_ieee_13_bus_feeder():
     res_3ph = power_flow_3ph(grid, V0_3ph=V0)
 
     U_obtained = abs(res_3ph.V)
-    angle_obtained = np.degrees(np.angle((res_3ph.V)))
+    angle_obtained = np.degrees(np.angle(res_3ph.V))
 
     U_reference = np.array(
         [1.021, 1.042, 1.0174, 0.0, 1.0328, 1.0154, 0.0, 1.0311, 1.0134, 1.018, 1.0401, 1.0148, 0.994, 1.0218, 0.996,

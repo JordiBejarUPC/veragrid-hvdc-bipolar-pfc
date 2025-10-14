@@ -401,9 +401,9 @@ def get_load_data(data: LoadData,
                     data.I3_star[3 * ii + 1] = elm.get_I2_at(t_idx)
                     data.I3_star[3 * ii + 2] = elm.get_I3_at(t_idx)
 
-                    data.Y3_star[3 * ii + 0, 0] = elm.get_Y1_at(t_idx)
-                    data.Y3_star[3 * ii + 1, 1] = elm.get_Y2_at(t_idx)
-                    data.Y3_star[3 * ii + 2, 2] = elm.get_Y3_at(t_idx)
+                    data.Y3_star[3 * ii + 0, 0] = elm.get_Y1_conj_at(t_idx)
+                    data.Y3_star[3 * ii + 1, 1] = elm.get_Y2_conj_at(t_idx)
+                    data.Y3_star[3 * ii + 2, 2] = elm.get_Y3_conj_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
                     data.S3_delta[3 * ii + 0] = elm.get_Sa_at(t_idx)
@@ -427,7 +427,6 @@ def get_load_data(data: LoadData,
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
-
 
             data.I[ii] = elm.get_I_at(t_idx)
             data.Y[ii] = elm.get_Y_at(t_idx)
@@ -645,7 +644,6 @@ def get_shunt_data(
     :param bus_data:
     :param logger:
     :param t_idx:
-    :param time_series:
     :param use_stored_guess:
     :param control_remote_voltage:
     :param fill_three_phase:
