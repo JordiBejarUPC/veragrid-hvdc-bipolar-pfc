@@ -85,8 +85,8 @@ class Block:
     """
 
     def __init__(self,
-                 algebraic_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
+                 algebraic_eqs: List[Expr] | None = None,
                  state_vars: List[Var] | None = None,
                  state_eqs: List[Expr] | None = None,
                  children: List["Block"] | None = None,
@@ -136,7 +136,7 @@ class Block:
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
-        self.event_dicts: Dict[Var, Expr] = dict()
+        self.event_dict: Dict[Var, Expr] = dict()
 
     def empty(self) -> bool:
         """

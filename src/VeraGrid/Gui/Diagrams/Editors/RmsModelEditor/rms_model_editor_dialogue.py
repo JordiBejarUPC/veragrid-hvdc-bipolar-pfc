@@ -119,7 +119,7 @@ class RmsEventDialogue(QtWidgets.QDialog):
         self.times_input.setPlaceholderText("e.g., 0.1, 0.2, 0.5")
         layout.addWidget(self.times_input)
 
-        # --- New values ---
+        # --- New value ---
         layout.addWidget(QtWidgets.QLabel("New values (comma-separated floats):"))
         self.values_input = QtWidgets.QLineEdit()
         self.values_input.setPlaceholderText("e.g., 1.0, 0.95, 1.1")
@@ -165,7 +165,7 @@ class RmsEventDialogue(QtWidgets.QDialog):
             )
 
     def get_data(self) -> Dict[str,Union[str,List]]:
-        """Devuelve los datos seleccionados en formato diccionario."""
+        """Return event data in dictionary form."""
         return {
             "parameter": self.selected_param,
             "target_times": self.target_times,

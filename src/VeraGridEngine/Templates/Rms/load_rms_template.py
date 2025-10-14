@@ -20,33 +20,26 @@ class LoadRmsTemplate(RmsModelTemplate):
 
         self.tpe: DeviceType = DeviceType.LoadDevice
 
-        self.parameters: List[str] = ['Pl0', 'Ql0']
-
-        self.event_parameters: List[Var] = list()
-        self.event_parameters_eqs: List[Expr] = list()
-
         self.Vm: Var = Var('')
         self.Va: Var = Var('')
 
-        self.Pl0 = Const(1)
-        self.Ql0 = Const(1)
+        self.Pl0 = Var("Pl0")
+        self.Ql0 = Var("Ql0")
 
-        Ql = Var("Ql")
-        Pl = Var("Pl")
+        self.Ql = Var("Ql")
+        self.Pl = Var("Pl")
 
         self._block = Block(
+            algebraic_vars=[self.Pl, self.Ql],
             algebraic_eqs=[
-                Pl - self.Pl0,
-                Ql - self.Ql0
-            ],
-            algebraic_vars=[Pl, Ql],
-            init_eqs={},
-            init_vars=[],
-            parameters=[],
-            event_parameters=self.event_parameters,
-            event_parameters_eqs=self.event_parameters_eqs,
-            external_mapping={
-                VarPowerFlowRefferenceType.P: Pl,
-                VarPowerFlowRefferenceType.Q: Ql
-            }
+                self.Pl - self.Pl0,
+                self.Ql - self.Ql0
+            ]
         )
+
+        self._block.event_dict = {self.Pl0: Const(1),
+                                  self.Ql0: Const(1)}
+        self._block.external_mapping={
+                VarPowerFlowRefferenceType.P: self.Pl,
+                VarPowerFlowRefferenceType.Q: self.Ql
+            }

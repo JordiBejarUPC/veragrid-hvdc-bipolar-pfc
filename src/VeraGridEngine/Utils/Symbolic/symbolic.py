@@ -63,7 +63,7 @@ def heaviside(x: Any) -> Func:
     return Func("heaviside", _to_expr(x))
 
 
-def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: NUMBER) -> Expr:
+def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
     """
     Symbolic piecewise function.
     Returns default_value before the first event, then switches to
@@ -77,7 +77,7 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
         1D array of event times (must be sorted ascending)
     new_values : np.ndarray
         1D array of values after each event time
-    default_value : NUMBER
+    default_value : Any
         Value before the first event
     """
     t_expr = _to_expr(time)

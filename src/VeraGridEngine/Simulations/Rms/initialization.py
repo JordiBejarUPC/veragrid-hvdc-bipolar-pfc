@@ -287,15 +287,15 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
         # check if there is an event actuating through this element and initialize rms accordingly
         rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
         if len(rms_evts) != 0:
-            # here the template is changed accordingly to the events applyed
+            # here the equations for the parameters are changed according to the event
 
             for rms_event in rms_events:
 
-                default_value = getattr(elm.rms_model.template, rms_event.parameter, None)  # TODO: Find a way of not using getattr and setattr
-                var = Var(rms_event.parameter)
-                setattr(elm.rms_model.template, rms_event.parameter, var)
-                elm.rms_model.template.event_parameters.append(var)
-                elm.rms_model.template.event_parameters_eqs.append(piecewise(grid.time, rms_event.times, rms_event.values, default_value))
+                # default_function = getattr(elm.rms_model.template, rms_event.parameter, None)  # TODO: Find a way of not using getattr and setattr
+                # var = Var(rms_event.parameter)
+                # setattr(elm.rms_model.template, rms_event.parameter, var)
+                # elm.rms_model.template.event_parameters.append(var)
+                elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, rms_event.values[0])
 
         # after applying the events the model has to be "build"
         mdl = elm.rms_model.model

@@ -2559,15 +2559,17 @@ class DiagramsMain(CompiledArraysMain):
             if len(target_devices) == 1:
                 target_device = target_devices[0]
                 # launch rms event editor dialogue
+
                 target_device_name = target_device.type_name + ": " + target_device.name
-                device_params = target_device.rms_model.template.parameters  # list of device parameters
-                rms_events_dialog = RmsEventDialogue(parameters_list=device_params,
+                device_params = [var for var in target_device.rms_model.template.event_dict.keys()] # list of device parameters
+                device_params_str = [var.name for var in device_params]  # list of device parameters
+                rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
                                        target_device_name=target_device_name)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.Accepted:
                     event_data = rms_events_dialog.get_data()
 
-                    event1 = RmsEvent(target_device, event_data["parameter"], np.array(event_data["target_times"]), np.array(event_data["new_values"]))
+                    event1 = RmsEvent(target_device, device_params[device_params_str.index(event_data["parameter"])], np.array(event_data["target_times"]), np.array(event_data["new_values"]))
 
                     self.circuit.add_rms_event(event1)
 

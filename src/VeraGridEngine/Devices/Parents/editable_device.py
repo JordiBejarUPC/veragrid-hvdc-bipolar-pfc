@@ -59,7 +59,7 @@ GCPROP_TYPES = Union[
     Type[ShuntConnectionType],
     Type[BusGraphicType],
     Type[SwitchGraphicType],
-    Type[DynamicIntegrationMethod]
+    Type[DynamicIntegrationMethod],
 ]
 
 

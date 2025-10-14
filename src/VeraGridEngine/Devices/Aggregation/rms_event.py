@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Union
+from typing import Union, Any
 import numpy as np
 
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -25,7 +25,7 @@ class RmsEvent(PointerDeviceParent):
 
     def __init__(self,
                  device: EditableDevice | None = None,
-                 parameter: str = None,
+                 parameter: Any = None,
                  times: np.ndarray = None,
                  values: np.ndarray = None,
                  idtag: Union[str, None] = None,
@@ -55,7 +55,7 @@ class RmsEvent(PointerDeviceParent):
                                      comment=comment)
 
         self._group: RmsEventsGroup = group
-        self.parameter: str = parameter
+        self.parameter: Any = parameter
         self.times: np.ndarray = times
         self.values: np.ndarray = values
 
