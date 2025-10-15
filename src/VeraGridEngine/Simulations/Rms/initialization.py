@@ -7,6 +7,7 @@ from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
 import numpy as np
+import copy
 from pygments.lexers.textfmts import TodotxtLexer
 from scipy.optimize import newton_krylov
 
@@ -18,7 +19,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
-from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise
 
 
 def _compile_equation(eqs: Sequence[Expr],
@@ -38,6 +39,31 @@ def _compile_equation(eqs: Sequence[Expr],
     src = f"def _f(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += f"    return out"
+    ns: Dict[str, Any] = {"math": math, "np": np}
+    exec(src, ns)
+    fn = nb.njit(ns["_f"], fastmath=True)
+
+    if add_doc_string:
+        fn.__doc__ = "def _f(vars)"
+    return fn
+
+def _compile_parameters_equations(eqs: Sequence[Expr],
+                                  uid2sym_t: Dict[int, str],
+                                  add_doc_string: bool = True) -> Callable[[float], np.ndarray]:
+    """
+    Compile the array of expressions to a function that returns an array of values for those expressions
+    :param eqs: Iterable of expressions (Expr)
+    :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
+    :param add_doc_string: add the docstring?
+    :return: Function pointer that returns an array
+    """
+
+    # Build source
+    src = f"def _f(glob_time):\n"
+    src += f"    out = np.zeros({len(eqs)})\n"
+    src += "\n".join(
+        [f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {"math": math, "np": np}
     exec(src, ns)
@@ -78,6 +104,15 @@ def compose_system_block(grid: MultiCircuit,
 
     uid2sym_vars: Dict[int, str] = {}
     uid2idx_vars: Dict[int, int] = {}
+    uid2sym_t: Dict[int, str] = dict()
+    uid2idx_t: Dict[int, int] = dict()
+
+    # fill uid2sym_t and uid2idx_t dicts
+    array_index_t = 0
+    uid2sym_t[grid.time.uid] = f"glob_time"
+    uid2idx_t[grid.time.uid] = array_index_t
+
+
 
     array_index = 0
 
@@ -202,8 +237,8 @@ def compose_system_block(grid: MultiCircuit,
         # compute and assign parameters value
         for param in mdl.event_dict.keys():
             eq = mdl.event_dict[param]
-            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-            param_val = float(eq_fn(x, params_array))
+            eq_fn = _compile_parameters_equations([eq], uid2sym_t)
+            param_val = float(eq_fn(0.0))
             params_array[uid2idx_params[param.uid]] = param_val
 
         # compute and assign missing init_vars
@@ -222,7 +257,7 @@ def compose_system_block(grid: MultiCircuit,
         # TODO: change model to generator, exciter and governor separated and remove this
         for var in mdl.fix_vars:
             eq = mdl.fix_vars_eqs[var.uid]
-            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params, uid2sym_t)
             init_val = float(eq_fn(x, params_array))
             var.value = init_val
         sys_block.add(mdl)
@@ -311,6 +346,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
+        print(elm.rms_model.model.event_dict)
         # resolve events
         # check if there is an event actuating through this element and initialize rms accordingly
         rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
@@ -323,8 +359,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                 # var = Var(rms_event.parameter)
                 # setattr(elm.rms_model.template, rms_event.parameter, var)
                 # elm.rms_model.template.event_parameters.append(var)
-                elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, rms_event.values[0])
-
+                default_value = copy.deepcopy(elm.rms_model.model.event_dict[rms_event.parameter])
+                elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, default_value)
+        print(elm.rms_model.model.event_dict)
         # after applying the events the model has to be "build"
         mdl = elm.rms_model.model
         # add variable to conservation equations of the bus to which the element is connected
