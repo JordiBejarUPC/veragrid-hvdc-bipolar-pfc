@@ -842,9 +842,8 @@ class DataBaseTableMain(DiagramsMain):
 
             elif elm_type == DeviceType.RmsEventsGroupDevice.value:
 
-                name = f'RMS event grou{len(self.circuit.rms_events_groups)}'
-                obj = dev.RmsEventsGroup(name=name)
-                self.circuit.add_rms_events_group(obj)
+                group = dev.RmsEventsGroup(name = f'RMS event grou{len(self.circuit.rms_events_groups) + 1}')
+                self.circuit.add_rms_events_group(group)
 
             else:
                 info_msg("This object does not support table-like addition.\nUse the schematic instead.")

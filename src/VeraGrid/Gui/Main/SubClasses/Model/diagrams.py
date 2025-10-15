@@ -2557,6 +2557,8 @@ class DiagramsMain(CompiledArraysMain):
             target_devices = self.get_selected_devices()
 
             if len(target_devices) == 1:
+
+                group_name = "Rms Event " + str(len(self.circuit.get_rms_events_groups_names()))
                 target_device = target_devices[0]
                 # launch rms event editor dialogue
 
@@ -2567,14 +2569,20 @@ class DiagramsMain(CompiledArraysMain):
                                        target_device_name=target_device_name)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.Accepted:
+                    # create a new events group
+                    group = dev.RmsEventsGroup(idtag=None,
+                                                 name='Rms Events Group 1',
+                                                 category="single" if len(target_devices) == 1 else "multiple")
+                    self.circuit.add_rms_events_group(group)
+
                     event_data = rms_events_dialog.get_data()
 
-                    event1 = RmsEvent(target_device, device_params[device_params_str.index(event_data["parameter"])], np.array(event_data["target_times"]), np.array(event_data["new_values"]))
+                    event1 = dev.RmsEvent(target_device, device_params[device_params_str.index(event_data["parameter"])], np.array(event_data["target_times"]), np.array(event_data["new_values"]), group=group)
 
                     self.circuit.add_rms_event(event1)
 
             else:
-                raise ValueError(f"Select one and only one device to add event")
+                raise ValueError(f"Select one and only one device to add event to")
 
 
 

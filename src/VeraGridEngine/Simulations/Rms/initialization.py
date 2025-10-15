@@ -65,7 +65,12 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     src += "\n".join(
         [f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    ns: Dict[str, Any] = {"math": math, "np": np}
+    ns: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": _heaviside,
+            }
     exec(src, ns)
     fn = nb.njit(ns["_f"], fastmath=True)
 
