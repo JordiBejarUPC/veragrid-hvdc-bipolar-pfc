@@ -507,7 +507,7 @@ class Bus(PhysicalDevice):
 
         if self.rms_model.empty():
             self.rms_model.model = Block(
-                algebraic_vars=[self.Vm, self.Va, self.P, self.Q])
+                algebraic_vars=[self.Vm, self.Va])
 
             self.rms_model.model.external_mapping = {
                 VarPowerFlowRefferenceType.Vm: self.Vm,

@@ -347,9 +347,6 @@ class BlockSolver:
         self._n_vars = self._n_state + self._n_alg
         self._n_event_params = len(self._event_parameters)
 
-        pdb.set_trace()
-
-
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
         # going to be represented by an array called vars[]
