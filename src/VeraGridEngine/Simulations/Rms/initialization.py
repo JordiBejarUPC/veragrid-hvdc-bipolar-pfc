@@ -188,6 +188,7 @@ def compose_system_block(grid: MultiCircuit,
 
         # initialize array for model variables
         x = np.zeros(len(sys_vars))
+        pdb.set_trace()
 
         # assign initial guesses for known variables
         for uid, name in sys_vars:
