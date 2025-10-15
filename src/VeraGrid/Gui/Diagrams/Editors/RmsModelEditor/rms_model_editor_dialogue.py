@@ -92,7 +92,7 @@ class RmsParameterDialog(QtWidgets.QDialog):
 
 
 class RmsEventDialogue(QtWidgets.QDialog):
-    def __init__(self, parameters_list, target_device_name, parent=None):
+    def __init__(self, parameters_list: List[str], target_device_name, parent=None):
         super().__init__(parent)
         self.setWindowTitle("RMS Event Editor")
         self.setMinimumWidth(400)

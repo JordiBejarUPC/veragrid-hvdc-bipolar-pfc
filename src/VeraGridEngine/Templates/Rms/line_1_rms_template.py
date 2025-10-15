@@ -12,9 +12,9 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowe
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
-class LineRmsTemplate(RmsModelTemplate):
+class Line_1_RmsTemplate(RmsModelTemplate):
 
-    def __init__(self, name: str = "rms_line_template"):
+    def __init__(self, name: str = "rms_line_1_template"):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.LineDevice
@@ -61,6 +61,6 @@ class LineRmsTemplate(RmsModelTemplate):
                 VarPowerFlowRefferenceType.Qt: self.Qt,
             }
 
-        self._block.event_dict = {self.g: Const(1),
-                                  self.b: Const(1),
+        self._block.event_dict = {self.g: Const(1.98019801980198),
+                                  self.b: Const(-19.801980198019802),
                                   self.bsh: Const(0.02187)}

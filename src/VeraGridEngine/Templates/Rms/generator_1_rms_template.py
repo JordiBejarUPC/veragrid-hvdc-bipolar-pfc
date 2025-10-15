@@ -12,9 +12,9 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowe
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
-class GeneratorRmsTemplate(RmsModelTemplate):
+class Generator_1_RmsTemplate(RmsModelTemplate):
 
-    def __init__(self, name: str = "rms_generator_template"):
+    def __init__(self, name: str = "rms_generator_1_template"):
         super().__init__(name=name)
 
 
