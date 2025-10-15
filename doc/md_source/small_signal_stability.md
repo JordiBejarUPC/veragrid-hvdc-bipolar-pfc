@@ -10,11 +10,12 @@ This is the Small-Signal settings page:
 
  The main setting in Small-Signal Stability assessment is the time instant when the analysis is performed. 
  Therefore, if the assessment time is zero, no dynamic simulation is needed and the only parameter to set is the
- assessment time itself. Otherwise, Rms dynamic simulation parameters are considered.
+ assessment time itself. Otherwise, Rms dynamic simulation parameters must be considered.
 
-Below, a list of the parameters and integration methods available.
+Settings from Small-signal:
+- **Assessment time (s)**: The time instant in seconds where the stability assessment is performed.
 
-Settings:
+Settings from RMS simulations that must be considered:
 
 - **Integration method**: The integration method to use if the Rms dynamic simulation is performed.
 
@@ -23,19 +24,16 @@ Settings:
 
 - **Tolerance**: per-unit error tolerance to use in the integration method. Only needed if the Rms dynamic simulation is performed.
 
-- **Assessment time (s)**: The time instant in seconds where the stability assessment is performed.
-
 - **Time step (s)**: Step size in seconds between each numerical evaluation in the integration method. Smaller intervals
 increase accuracy but require more computation. Only needed if the Rms dynamic simulation is performed.
 
 ### Results
 The available results are the following:
 
+- **State matrix**: State matrix of the state-space representation of the system.
 - **Modes**: Table with the modes and damping ratios and oscillation frequencies of the complex conjugate modes.
 - **Participation factors**: The participation factor of variable *k* in mode *i* is found in row *k*, column *i*. 
 - **S-Domain stability plot**: available with different imaginary axis units: "rad/s" or "Hz".
- 
-
 
 ![](figures/SDomain_plot_VeraGrid.png)
 
@@ -47,9 +45,9 @@ Using the simplified API:
 import os
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability, plot_stability
 import VeraGridEngine.api as gce
 
 folder = os.path.join('..', 'Grids_and_profiles', 'grids')
@@ -91,33 +89,25 @@ t, y = slv.simulate(
 # And finally the Small-Signal Stability assessment:
 
 
-(stab,
- Eigenvalues,
+(Eigenvalues,
  PFactors,
  damping_ratios,
  conjugate_frequencies) = run_small_signal_stability(slv=slv,
                                                      x=x0,
                                                      params=params0,
-                                                     plot=True,
-                                                     plot_units = "rad/s",
                                                      verbose = 1)
 
 # - If the Stability assessment time is not zero:
 
 i = t_assess / h
-(stab,
- Eigenvalues,
+(Eigenvalues,
  PFactors,
  damping_ratios,
  conjugate_frequencies) = run_small_signal_stability(slv=slv,
                                                      x=y[i],
                                                      params=params0,
-                                                     plot=True,
-                                                     plot_units = "rad/s",
                                                      verbose = 1)
-print("Stability assessment:", stab)
-print("Modes:", Eigenvalues)
-print("Participation factors:", PFactors.toarray())
+
 ```
  
 Output:
@@ -152,8 +142,12 @@ Participation factors: [[0.00357204 0.00357204 0.0926209  0.00074082 0.00074082 
 
 ```
 
-Note that the S-Domain stability plot will be given as a result when ```plot = True``` with the frequency units specified at
-```plot_units``` with "rad/s" and "Hz" as main possibilities.
+The S-Domain stability plot will be given as a result adding the following function_
+
+```python
+plot_stability(Eigenvalues, plot_units = "rad/s" )
+```
+Note that the plot units can be "rad/s" or "Hz" for the imaginary part.
 
 
 ## Benchmark
@@ -442,16 +436,12 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability, plot_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
-
-import cProfile as profile
-import pstats
 
 grid = MultiCircuit()
 
@@ -692,14 +682,13 @@ x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
 
 # stability assessment
-(stab,
- Eigenvalues,
+(Eigenvalues,
  PFactors,
  damping_ratios,
  conjugate_frequencies) = run_small_signal_stability(slv=slv,
                                                      x=x0,
                                                      params=params0,
-                                                     plot=True,
-                                                     plot_units = "rad/s",
                                                      verbose = 1)
+
+plot_stability(Eigenvalues, plot_units = "rad/s" )
 ```
