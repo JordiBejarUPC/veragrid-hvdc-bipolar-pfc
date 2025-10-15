@@ -9,8 +9,8 @@ from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 from VeraGridEngine.enumerations import DeviceType
 
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_rms_template import GeneratorRmsTemplate
-from VeraGridEngine.Templates.Rms.line_rms_template import LineRmsTemplate
+from VeraGridEngine.Templates.Rms.generator_0_rms_template import GeneratorRmsTemplate
+from VeraGridEngine.Templates.Rms.line_0_rms_template import LineRmsTemplate
 from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 
 Templates: List[ALL_RMS_TEMPLATES_TYPE] = [BusRmsTemplate(), GeneratorRmsTemplate(), LineRmsTemplate(),

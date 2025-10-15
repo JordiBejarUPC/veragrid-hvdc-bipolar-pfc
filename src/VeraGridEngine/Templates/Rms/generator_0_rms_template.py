@@ -104,11 +104,11 @@ class GeneratorRmsTemplate(RmsModelTemplate):
             VarPowerFlowRefferenceType.Q: self.Q_g
         }
 
-        self._block.event_dict = {self.R1: Const(1),
-                                  self.X1: Const(1),
-                                  self.freq: Const(1),
-                                  self.M: Const(1),
-                                  self.D: Const(1),
-                                  self.omega_ref: Const(1),
-                                  self.Kp: Const(1),
-                                  self.Ki: Const(1)}
+        self._block.event_dict = {self.R1: Const(0.0),
+                                  self.X1: Const(0.3),
+                                  self.freq: Const(60.0),
+                                  self.M: Const(4.0),
+                                  self.D: Const(1.0),
+                                  self.omega_ref: Const(1.0),
+                                  self.Kp: Const(0.0),
+                                  self.Ki: Const(0.0)}

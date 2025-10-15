@@ -30,17 +30,17 @@ class LineRmsTemplate(RmsModelTemplate):
         self.Pt = Var("Pt")
 
         # taken from VeraGrid model
-        self.R = Var("R")
-        self.X = Var("X")
-        self.B = Var("B")
+        # self.R = Var("R")
+        # self.X = Var("X")
+        # self.B = Var("B")
 
-        self.ys = Const(1.0)
+        # self.ys = Const(1.0)
                    # complex(self.R, self.X))
-        self.g = Const(1)
-        self.b = Const(1)
+        self.g = Var('g')
+        self.b = Var('b')
         # self.g = Const(self.ys.real)
         # self.b = Const(self.ys.imag)
-        self.bsh = self.B
+        self.bsh = Var('bsh')
 
     def build_block(self):
         self._block = Block(
@@ -61,6 +61,6 @@ class LineRmsTemplate(RmsModelTemplate):
                 VarPowerFlowRefferenceType.Qt: self.Qt,
             }
 
-        self._block.event_dict = {self.R: Const(1),
-                                  self.X: Const(1),
-                                  self.B: Const(1)}
+        self._block.event_dict = {self.g: Const(1),
+                                  self.b: Const(1),
+                                  self.bsh: Const(0.02187)}
