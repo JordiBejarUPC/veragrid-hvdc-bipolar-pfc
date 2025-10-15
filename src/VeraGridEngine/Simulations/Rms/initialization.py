@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
@@ -132,6 +132,7 @@ def compose_system_block(grid: MultiCircuit,
         for v in mdl_vars:
             uid2sym_vars[v.uid] = f"vars[{array_index}]"
             uid2idx_vars[v.uid] = array_index
+
             array_index += 1
 
         # fill init_guess
@@ -188,7 +189,6 @@ def compose_system_block(grid: MultiCircuit,
 
         # initialize array for model variables
         x = np.zeros(len(sys_vars))
-        pdb.set_trace()
 
         # assign initial guesses for known variables
         for uid, name in sys_vars:

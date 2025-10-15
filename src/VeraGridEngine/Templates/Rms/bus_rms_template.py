@@ -26,7 +26,7 @@ class BusRmsTemplate(RmsModelTemplate):
         self.Q = Var("Q")
 
         self.block = Block(
-            algebraic_vars=[self.Vm, self.Va])
+            algebraic_vars=[self.Vm, self.Va, self.P, self.Q])
 
         self._block.external_mapping={
                 VarPowerFlowRefferenceType.Vm: self.Vm,

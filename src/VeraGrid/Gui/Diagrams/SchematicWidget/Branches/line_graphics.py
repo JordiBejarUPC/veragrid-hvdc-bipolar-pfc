@@ -277,6 +277,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
                 line_template.Vmt = self._api_object.Vmt
                 line_template.Vat = self._api_object.Vat
 
+                line_template.build_block()
+
                 self.api_object.rms_model.template = line_template.block
 
             elif choice_dialog.choice == "editor":

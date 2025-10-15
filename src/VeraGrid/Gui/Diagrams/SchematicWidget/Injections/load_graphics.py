@@ -105,6 +105,8 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                 load_template.Vm = self._api_object.Vm
                 load_template.Va = self._api_object.Va
 
+                load_template.build_block()
+
                 # assign template to api object
                 self.api_object.rms_model.template = load_template.block
 

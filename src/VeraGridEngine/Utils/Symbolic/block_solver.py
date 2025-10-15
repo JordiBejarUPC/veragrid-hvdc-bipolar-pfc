@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import pdb
 import time
 
 import uuid
@@ -325,9 +326,7 @@ class BlockSolver:
         self._algebraic_eqs: List[Expr] = list()
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
-        self._parameters: List[Const] = list()
-        self._parameters_eqs: List[Expr] = list()
-        self._event_parameters: List[Const] = list()
+        self._event_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Expr] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
@@ -338,16 +337,17 @@ class BlockSolver:
             self._algebraic_eqs.extend(b.algebraic_eqs)
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
-            self._parameters.extend(b.parameters)
-            self._parameters_eqs.extend(b.parameters_eqs)
-            self._event_parameters.extend(b.parameters)
-            self._event_parameters_eqs.extend(b.parameters_eqs)
+            for param, eq in b.event_dict.items():
+                self._event_parameters.append(param)
+                self._event_parameters_eqs.append(eq)
+
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
-        self._n_params = len(self._parameters)
         self._n_event_params = len(self._event_parameters)
+
+        pdb.set_trace()
 
 
         # generate the in-code names for each variable
@@ -378,7 +378,7 @@ class BlockSolver:
         j = 0
         for j, ep in enumerate(self._event_parameters):
             uid2sym_event_params[ep.uid] = f"params[{j}]"
-            self.uid2idx_params[ep.uid] = j
+            self.uid2idx_event_params[ep.uid] = j
             j += 1
 
         k = 0
@@ -416,7 +416,7 @@ class BlockSolver:
                                             uid2sym_params=uid2sym_event_params,
                                             use_jit=use_jit)
 
-        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs,
+        self._params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs,
                                                uid2sym_t=uid2sym_t)
 
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
@@ -574,10 +574,10 @@ class BlockSolver:
         :param mapping: var->initial value mapping
         :return: array matching with the mapping, matching the solver ordering
         """
-        x = np.zeros(self._n_params)
+        x = np.zeros(self._n_event_params)
 
         for key, val in mapping.items():
-            i = self.uid2idx_params[key.uid]
+            i = self.uid2idx_event_params[key.uid]
 
             x[i] = val
 
@@ -980,7 +980,7 @@ class BlockSolver:
 
         ramps_descr = []
         for const_obj, start_val in ramps:
-            idx = self.uid2idx_params[const_obj.uid]
+            idx = self.uid2idx_event_params[const_obj.uid]
             ramps_descr.append((idx, start_val, const_obj.value, const_obj))
 
         lam = 0.0
@@ -1049,7 +1049,7 @@ class BlockSolver:
         for time_step in range(n_steps):
             if time_step in rows:  # TODO: very expensive
                 for position in np.where(rows == time_step):
-                    prop_idx = self.uid2idx_params[cols[position][0].uid]
+                    prop_idx = self.uid2idx_event_params[cols[position][0].uid]
                     value = values[position]
                     diff_val = value - params_matrix_current[prop_idx]
                     diff_params_matrix[time_step, prop_idx] += diff_val

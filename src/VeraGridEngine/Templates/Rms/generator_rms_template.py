@@ -95,9 +95,9 @@ class GeneratorRmsTemplate(RmsModelTemplate):
                 self.et: Const(0),
             })
 
-        self.fix_vars = [self.tm0, self.vf],
-        self.fix_vars_eqs = {self.tm0.uid: self.tm,
-                        self.vf.uid: self.psid + self.X1 * self.i_d},
+        self._block.fix_vars = [self.tm0, self.vf]
+        self._block.fix_vars_eqs = {self.tm0.uid: self.tm,
+                        self.vf.uid: self.psid + self.X1 * self.i_d}
 
         self._block.external_mapping = {
             VarPowerFlowRefferenceType.P: self.P_g,

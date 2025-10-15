@@ -29,6 +29,7 @@ class LoadRmsTemplate(RmsModelTemplate):
         self.Ql = Var("Ql")
         self.Pl = Var("Pl")
 
+    def build_block(self):
         self._block = Block(
             algebraic_vars=[self.Pl, self.Ql],
             algebraic_eqs=[

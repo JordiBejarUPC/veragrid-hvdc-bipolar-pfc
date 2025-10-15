@@ -129,8 +129,8 @@ class Block:
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
-        self.fix_vars: List[UndefinedConst] = field(default_factory=list)
-        self.fix_vars_eqs: Dict[Any, Expr] = field(default_factory=dict)
+        self.fix_vars: List[UndefinedConst] = list()
+        self.fix_vars_eqs: Dict[Any, Expr] = dict()
 
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 

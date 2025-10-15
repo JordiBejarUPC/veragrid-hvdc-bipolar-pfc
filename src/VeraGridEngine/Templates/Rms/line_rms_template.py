@@ -42,7 +42,7 @@ class LineRmsTemplate(RmsModelTemplate):
         # self.b = Const(self.ys.imag)
         self.bsh = self.B
 
-
+    def build_block(self):
         self._block = Block(
             algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
             algebraic_eqs=[

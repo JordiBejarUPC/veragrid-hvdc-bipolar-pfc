@@ -61,7 +61,9 @@ class Bus(PhysicalDevice):
         '_bus_bar',
         '_rms_model',
         'Vm',
-        'Va'
+        'Va',
+        'P',
+        'Q'
     )
 
     def __init__(self, name="Bus",
@@ -232,6 +234,8 @@ class Bus(PhysicalDevice):
         self._rms_model: DynamicModelHost = DynamicModelHost()
         self.Vm = Var('Vm')
         self.Va = Var('Va')
+        self.P = Var('P')
+        self.Q = Var('Q')
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')
@@ -502,24 +506,12 @@ class Bus(PhysicalDevice):
     def initialize_rms(self):
 
         if self.rms_model.empty():
-            Vm = Var("Vm")
-            Va = Var("Va")
-            P = Var("P")
-            Q = Var("Q")
+            self.rms_model.model = Block(
+                algebraic_vars=[self.Vm, self.Va, self.P, self.Q])
 
-            self.rms_model.model = Block()
-            #     state_eqs=[],
-            #     state_vars=[],
-            #     algebraic_eqs=[
-            #     ],
-            #     # algebraic_vars=[],
-            #     algebraic_vars=[Vm, Va],
-            #
-            #     init_eqs={},
-            #     external_mapping={
-            #         VarPowerFlowRefferenceType.Vm: Vm,
-            #         VarPowerFlowRefferenceType.Va: Va,
-            #         VarPowerFlowRefferenceType.P: P,
-            #         VarPowerFlowRefferenceType.Q: Q
-            #     }
-            # )
+            self.rms_model.model.external_mapping = {
+                VarPowerFlowRefferenceType.Vm: self.Vm,
+                VarPowerFlowRefferenceType.Va: self.Va,
+                VarPowerFlowRefferenceType.P: self.P,
+                VarPowerFlowRefferenceType.Q: self.Q
+            }

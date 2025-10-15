@@ -653,46 +653,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
 
             if choice_dialog.choice == "template":
+                self.api_object.initialize_rms()
 
-                # select template
-                bus_template = templates_catalogue[choice_dialog.selected_template]
 
-                # TODO: Should we be able to change the value of the parameters when choosing a template?
-                # set parameter values from user input using RmsParameterDialog
-                # param_dialog = RmsParameterDialog(line_template, parent=self.editor)
-                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
-                #     new_values = param_dialog.get_values()
-                #     for param, value in new_values.items():
-                #         setattr(line_template, param, Const(value))  # set parameter value
-
-                # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
-                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
-
-                bus_template.Vm = self._api_object.Vm
-                bus_template.Va = self._api_object.Va
-
-                # assign template to api object
-                self.api_object.rms_model.template = bus_template.block
-
-            elif choice_dialog.choice == "editor":
-
-                self.api_object.rms_model.model.external_mapping = {
-                    VarPowerFlowRefferenceType.P: self.api_object.P,
-                    VarPowerFlowRefferenceType.Q: self.api_object.Q,
-
-                }
-                if self.api_object.P not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q not in self.api_object.rms_model.model.algebraic_vars:
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q)
-
-                if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
-
-                # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-                #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
 
     def assign_status_to_profile(self):
         """
