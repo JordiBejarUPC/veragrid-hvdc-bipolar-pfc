@@ -256,9 +256,7 @@ for pf_method in [vg.SolverType.NR, vg.SolverType.Linear]:
 
             grid2, logger = ptdf_reduction(
                 grid=grid.copy(),
-                reduction_bus_indices=reduction_bus_indices,
-                PTDF=lin.PTDF,
-                lin_ts=lin_ts
+                reduction_bus_indices=reduction_bus_indices
             )
 
         elif method == vg.GridReductionMethod.Ward:

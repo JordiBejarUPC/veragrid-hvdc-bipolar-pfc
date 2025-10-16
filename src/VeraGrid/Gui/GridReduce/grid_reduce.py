@@ -110,21 +110,11 @@ class GridReduceDialogue(QtWidgets.QDialog):
                     )
 
                 elif method == GridReductionMethod.PTDF:
-                    # get the previous power flow
-                    nc = compile_numerical_circuit_at(circuit=self._grid, t_idx=None)
-                    lin = LinearAnalysis(nc=nc)
-
-                    if self._grid.has_time_series:
-                        lin_ts = LinearAnalysisTs(grid=self._grid)
-                    else:
-                        lin_ts = None
 
                     # NOTE: self._grid gets reduced in-place
                     grid_reduced, logger = ptdf_reduction(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
-                        PTDF=lin.PTDF,
-                        lin_ts=lin_ts
                     )
                 else:
                     raise NotImplementedError("Reduction method not supported")

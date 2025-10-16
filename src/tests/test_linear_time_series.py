@@ -22,7 +22,7 @@ def test_linear_time_series_with_time_simplification():
 
     lin_ts = vg.LinearAnalysisTs(grid=grid, distributed_slack=False, correct_values=False)
     P = grid.get_Pbus_prof()
-    Pf = lin_ts.get_time_flows(P=P)
+    Pf = lin_ts.get_flows_ts(P=P)
 
     assert np.allclose(Pf, Pf_true)
 
@@ -54,7 +54,7 @@ def test_linear_time_series_with_time_simplification_randomized():
 
     lin_ts = vg.LinearAnalysisTs(grid=grid, distributed_slack=False, correct_values=False)
     P = grid.get_Pbus_prof()
-    Pf = lin_ts.get_time_flows(P=P)
+    Pf = lin_ts.get_flows_ts(P=P)
 
     assert np.allclose(Pf, Pf_true)
 

@@ -9,11 +9,11 @@ import cmath
 import copy
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Union, Set, Callable, Sequence, Any, TYPE_CHECKING
+from typing import List, Dict, Tuple, Union, Set, Sequence, TYPE_CHECKING
 from uuid import getnode as get_mac, uuid4
 import networkx as nx
 from matplotlib import pyplot as plt
-from scipy.sparse import csc_matrix, lil_matrix, coo_matrix
+from scipy.sparse import csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -24,7 +24,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, AREA_TYPES, BRANCH_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType
+from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
 
 
 if TYPE_CHECKING:
@@ -1726,6 +1726,52 @@ class MultiCircuit(Assets):
             if elm.bus is not None:
                 k = bus_dict[elm.bus]
                 val[:, k] += elm.get_Sprof_with_sign()
+
+        return val
+
+    def get_Pgen(self) -> Vec:
+        """
+        Get the complex bus power Injections
+        :return: (nbus) [MW + j MVAr]
+        """
+        val = np.zeros(self.get_bus_number(), dtype=float)
+        bus_dict = self.get_bus_index_dict()
+
+        for elm in self.generators:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.batteries:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.static_generators:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.external_grids:
+            if elm.mode != ExternalGridMode.VD:
+                if elm.bus is not None:
+                    k = bus_dict[elm.bus]
+                    val[k] += elm.P
+
+        return val
+
+    def get_Pload(self) -> Vec:
+        """
+        Get the complex bus power Injections
+        :return: (nbus) [MW + j MVAr]
+        """
+        val = np.zeros(self.get_bus_number(), dtype=float)
+        bus_dict = self.get_bus_index_dict()
+
+        for elm in self.loads:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
 
         return val
 
