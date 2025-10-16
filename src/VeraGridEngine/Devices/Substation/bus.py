@@ -236,6 +236,17 @@ class Bus(PhysicalDevice):
         self.Va = Var('Va')
         self.P = Var('P')
         self.Q = Var('Q')
+
+        self._rms_model.model = Block(
+            algebraic_vars=[self.Vm, self.Va])
+
+        self._rms_model.model.external_mapping = {
+            VarPowerFlowRefferenceType.Vm: self.Vm,
+            VarPowerFlowRefferenceType.Va: self.Va,
+            VarPowerFlowRefferenceType.P: self.P,
+            VarPowerFlowRefferenceType.Q: self.Q
+        }
+
         #
         # self._rms_model.model = Block(
         #     algebraic_vars=[self.Vm, self.Va],
@@ -301,7 +312,7 @@ class Bus(PhysicalDevice):
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
 
-        self.initialize_rms()
+        # self.initialize_rms()
 
     @property
     def rms_model(self) -> DynamicModelHost:
