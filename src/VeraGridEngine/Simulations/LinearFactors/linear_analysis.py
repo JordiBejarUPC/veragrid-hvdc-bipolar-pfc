@@ -587,6 +587,9 @@ class LinearMultiContingency:
         self.hvdc_odf = hvdc_odf
         self.vsc_odf = vsc_odf
 
+        # store flag for contingency emptyness
+        self.enabled: bool = self.mlodf_factors.nnz > 0 or self.compensated_ptdf_factors.nnz > 0
+
     def has_injection_contingencies(self) -> bool:
         """
         Check if this multi-contingency has bus injection modifications

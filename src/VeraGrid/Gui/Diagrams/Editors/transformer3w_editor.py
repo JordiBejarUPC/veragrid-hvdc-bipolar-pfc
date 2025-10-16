@@ -193,15 +193,15 @@ class Transformer3WEditor(QDialog):
         self.accept()
 
 
-if __name__ == '__main__':
-    import sys
-    from VeraGridEngine.Devices.Substation.bus import Bus
-
-    app = QApplication(sys.argv)
-
-    b1 = Bus()
-    b2 = Bus()
-    b3 = Bus()
-    tr3 = Transformer3W(bus1=b1, bus2=b2, bus3=b3)
-    editor = Transformer3WEditor(tr3, 100.0)
-    editor.exec()
+# if __name__ == '__main__':
+#     import sys
+#     from VeraGridEngine.Devices.Substation.bus import Bus
+#
+#     app = QApplication(sys.argv)
+#
+#     b1 = Bus()
+#     b2 = Bus()
+#     b3 = Bus()
+#     tr3 = Transformer3W(bus1=b1, bus2=b2, bus3=b3)
+#     editor = Transformer3WEditor(tr3, 100.0)
+#     editor.exec()
