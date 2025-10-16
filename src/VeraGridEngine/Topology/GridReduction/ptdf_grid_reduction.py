@@ -40,7 +40,7 @@ def ptdf_reduction_old(grid: MultiCircuit,
     logger = Logger()
 
     # find the boundary set: buses from the internal set the join to the external set
-    e_buses, b_buses, i_buses, b_branches = grid.get_reduction_sets(reduction_bus_indices=reduction_bus_indices)
+    e_buses, b_buses, i_buses, b_branches, i_branches = grid.get_reduction_sets(reduction_bus_indices=reduction_bus_indices)
 
     if len(e_buses) == 0:
         logger.add_info(msg="Nothing to reduce")

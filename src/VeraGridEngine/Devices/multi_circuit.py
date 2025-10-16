@@ -26,7 +26,6 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
 from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
 
-
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
@@ -2843,8 +2842,13 @@ class MultiCircuit(Assets):
         for i, elm in enumerate(self.get_hvdc()):
             elm.Pset.set(results.hvdc_Pf[i])
 
-    def get_reduction_sets(self, reduction_bus_indices: Sequence[int],
-                           add_vsc=False, add_hvdc=False, add_switch=True) -> Tuple[IntVec, IntVec, IntVec, IntVec]:
+    def get_reduction_sets(
+            self,
+            reduction_bus_indices: Sequence[int],
+            add_vsc=False,
+            add_hvdc=False,
+            add_switch=True
+    ) -> Tuple[IntVec, IntVec, IntVec, IntVec, IntVec]:
         """
         Generate the set of bus indices for grid reduction
         :param reduction_bus_indices: array of bus indices to reduce (external set)
@@ -2858,6 +2862,7 @@ class MultiCircuit(Assets):
         boundary_set = set()
         internal_set = set()
         boundary_branches = list()
+        internal_branches = list()
 
         for k, branch in enumerate(self.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
             f = bus_idx_dict[branch.bus_from]
@@ -2881,6 +2886,7 @@ class MultiCircuit(Assets):
                     # f nor t are in the external set: both belong to the internal set
                     internal_set.add(f)
                     internal_set.add(t)
+                    internal_branches.append(k)
 
         # buses cannot be in both the internal and boundary set
         elms_to_remove = list()
@@ -2896,8 +2902,9 @@ class MultiCircuit(Assets):
         boundary = np.sort(np.array(list(boundary_set)))
         internal = np.sort(np.array(list(internal_set)))
         boundary_branches = np.array(boundary_branches)
+        internal_branches = np.array(internal_branches)
 
-        return external, boundary, internal, boundary_branches
+        return external, boundary, internal, boundary_branches, internal_branches
 
     def get_buses_from_objects(self, elements: List[ALL_DEV_TYPES]) -> Set[dev.Bus]:
         """
