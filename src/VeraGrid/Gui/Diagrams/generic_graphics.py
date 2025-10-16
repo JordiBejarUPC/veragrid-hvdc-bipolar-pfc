@@ -188,7 +188,6 @@ class GenericDiagramWidget:
         """
         return list()
 
-
     def get_associated_devices(self):
 
         """

@@ -28,23 +28,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added intro video">
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/case118.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/case300.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/completo.veragrid" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/ptdf_grid_reduction2.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/equivalents/reduction_ptdf_ree.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Morphed the PTDF based reduction into a di-shi based reduction">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/doc/md_source/grid_reduction.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/grid_reduction.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/generic_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/generic_graphics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridReduce/grid_reduce.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridReduce/grid_reduce.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_linear_time_series.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_linear_time_series.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/di_shi_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/di_shi_grid_reduction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/equivalents/benchmark_all.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/equivalents/benchmark_all.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/equivalents/ptdf_reduction_demo.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/equivalents/ptdf_reduction_demo.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -271,7 +265,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.benchmark_all">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -495,6 +489,28 @@
       <option name="PARENT_ENVS" value="true" />
       <option name="PARAMETERS" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
@@ -749,23 +765,6 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in reduction_ptdf_ree.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/trunk/equivalents" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/trunk/equivalents/reduction_ptdf_ree.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Python.block_solver" />
       <item itemvalue="Python.test_raw_cgmes_cross_roundtrip" />
@@ -773,15 +772,15 @@
       <item itemvalue="Python.ptdf_grid_reduction" />
       <item itemvalue="Python.ptdf_grid_reduction2" />
       <item itemvalue="Python.reduction_ptdf_ree" />
-      <item itemvalue="Python tests.pytest in reduction_ptdf_ree.py" />
+      <item itemvalue="Python.ExecuteVeraGrid" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.benchmark_all" />
         <item itemvalue="Python.ptdf_grid_reduction" />
         <item itemvalue="Python.ptdf_grid_reduction2" />
         <item itemvalue="Python.reduction_ptdf_ree" />
-        <item itemvalue="Python tests.pytest in reduction_ptdf_ree.py" />
       </list>
     </recent_temporary>
   </component>
@@ -1913,7 +1912,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="618" />
+    <option name="localTasksCounter" value="619" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1959,7 +1958,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added compose_system_block" />
     <MESSAGE value="Removed duplicated of the _psi_tc function" />
     <MESSAGE value="Resolved circular import" />
     <MESSAGE value="automatic initialization 1" />
@@ -1984,7 +1982,8 @@
     <MESSAGE value="Incorporated GSLV contingencies snapshot" />
     <MESSAGE value="Added power flow video" />
     <MESSAGE value="Added intro video" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added intro video" />
+    <MESSAGE value="Morphed the PTDF based reduction into a di-shi based reduction" />
+    <option name="LAST_COMMIT_MESSAGE" value="Morphed the PTDF based reduction into a di-shi based reduction" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2038,6 +2037,36 @@
           <url>file://$PROJECT_DIR$/src/trunk/equivalents/ptdf_grid_reduction2.py</url>
           <line>482</line>
           <option name="timeStamp" value="20" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py</url>
+          <line>259</line>
+          <option name="timeStamp" value="25" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py</url>
+          <line>293</line>
+          <option name="timeStamp" value="27" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py</url>
+          <line>310</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py</url>
+          <line>316</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py</url>
+          <line>328</line>
+          <option name="timeStamp" value="30" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py</url>
+          <line>333</line>
+          <option name="timeStamp" value="31" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

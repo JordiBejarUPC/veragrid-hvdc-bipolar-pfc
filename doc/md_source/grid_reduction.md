@@ -110,26 +110,6 @@ $$
 at the boundary or between the boundary buses.
 - Finally, remove all buses in $E$ from the grid.
 
-### PTDF reduction
-
-Performs a simple PTDF-based projection of the 
-injections in the external grid into the boundary buses.
-This does not respect the pre-existing devices integrity.
-
-Along with the bus sets $E$ (external buses to remove), 
-$I$ (internal buses that are not boundary) and 
-$B$ (boundary buses), we add a set of branches that 
-join an external bus to a boundary bus and call if $BE$.
-
-- For every injection device connected to a bus $e$ of $E$:
-
-  - For every bus $b$ of $B$:
-  
-    - get the branch from $BE$ associated to the bus $b$
-    - get the PTDF value of the branch and boundary bus $PTDF[BE_b, b]$
-    - Create a new injection device connected to $b$ with the projected power $P_{proj} = P \cdot PTDF[BE_b, b]$
-
-- Finally, remove all buses in $E$ from the grid.
 
 ### Di-Shi grid equivalent
 
@@ -189,18 +169,45 @@ Analysis by Di Shi,
 [2]: [Optimal Generation Investment Planning: Pt 1: Network Equivalents](https://ieeexplore.ieee.org/document/6336375)
 
 
+### PTDF reduction
+
+Performs a analogous method as the Di-Shi reduction but using the PTDF
+
+Along with the bus sets $E$ (external buses to remove), 
+$I$ (internal buses that are not boundary) and 
+$B$ (boundary buses), we add a set of branches that 
+join an external bus to a boundary bus and call if $BE$.
+
+The theory behind is as follows:
+
+1) Compute the PTDF ($PTDF_0$)
+2) Compute the Flows $Pf_0 = PTDF_0 \times Pbus_0$
+3) Move the injections to the boundary (all of them, load and generation)
+4) Delete the buses from the External set.
+5) Compute the PTDF again ($PTDF_2$)
+6) Compute the current injections vector ($Pbus_2$)
+7) Compute the ideal injections that fullfill the base flows using least-squares: $Pbus_3 = LSQ(PTDF_2, Pbus_2)$
+8) Compute the difference between the ideal and the actual injections $dPbus = Pbus_2 - Pbus_3$
+9) For every entry in $dPbus$ greater than a threshold, add a load compensating the difference
+
+The PTDF flows are guaranteed to be the same, as much as the least-squares problem is able to find a solution.
+
 ## Benchmarks
 
 On the IEEE 118, we obtain the following reduction results:
 
-|                             | Di-Shi           | PTDF           | Ward          |
-|-----------------------------|------------------|----------------|---------------|
-| With non-linear power flows | 0.24 +/- 0.45 MW | 7.28 +/- 14.82 | 5.06 +/- 8.99 |
-| With linear power flows     | 6.79 +/- 6.61 MW | 6.99 +/- 14.38 | 5.45 +/- 9.34 |
+| Comparison                  | Di-Shi           | PTDF          | Ward          |
+|-----------------------------|------------------|---------------|---------------|
+| With non-linear power flows | 0.24 +/- 0.45 MW | 3.23 +/- 5.23 | 5.06 +/- 8.99 |
+| With linear power flows     | 6.79 +/- 6.61 MW | 4.10 +/- 7.21 | 5.45 +/- 9.34 |
 
 These are the mean +/- standard deviation statistics of the 
 active flow diference at the bus "from" between a power flow 
 before and after the reduction. These measure the "error" of the reduction.
+
+Observe that the PTDF-reduction flows are not exact even for the linear power flow. 
+This is because the  PTDF is a simplification with regard the linear power flow
+and does not account for transformer taps, shunts and other modifications.
 
 Code to reproduce the benchmarks:
 

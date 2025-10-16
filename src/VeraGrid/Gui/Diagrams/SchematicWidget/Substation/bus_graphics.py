@@ -8,8 +8,8 @@ from typing import Union, TYPE_CHECKING, List, Dict
 import webbrowser
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QRectF, QRect, QPointF
-from PySide6.QtGui import QPen, QCursor, QIcon, QPixmap, QBrush, QColor
-from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent
+from PySide6.QtGui import QPen, QCursor, QBrush, QColor
+from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent, QGraphicsItem
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
@@ -256,8 +256,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         for graphics in self._child_graphics:
             conn.append(graphics)
+            conn.append(graphics.nexus)
 
         return conn
+
+    def get_extra_graphics(self) -> List[QGraphicsItem]:
+        return self.get_associated_widgets()
 
     def get_nexus_point(self) -> QPointF:
         """

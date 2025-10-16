@@ -39,19 +39,22 @@ class GridReduceDialogue(QtWidgets.QDialog):
         self.ui = Ui_ReduceDialog()
         self.ui.setupUi(self)
         self.setWindowTitle('Grid reduction')
+        self.setModal(True)
 
         self.logger = Logger()
         self.logs_dialogue: LogsDialogue | None = None
 
         self.ui.listView.setModel(get_list_model(list(selected_buses_set)))
 
-        methods = [GridReductionMethod.DiShi, GridReductionMethod.PTDF, GridReductionMethod.Ward]
+        methods = [GridReductionMethod.PTDF, GridReductionMethod.DiShi, GridReductionMethod.Ward]
         self.methods_dict = {m.value: m for m in methods}
         self.ui.methodComboBox.setModel(get_list_model([m.value for m in methods]))
 
         self._grid: MultiCircuit = grid
         self._session: SimulationSession = session
         self._selected_buses_set: Set[Bus] = selected_buses_set
+
+        self.did_reduce = False
 
         self.ui.reduceButton.clicked.connect(self.reduce_grid)
 
@@ -122,6 +125,8 @@ class GridReduceDialogue(QtWidgets.QDialog):
                 if logger.has_logs():
                     self.logs_dialogue = LogsDialogue(name="Import profiles", logger=logger)
                     self.logs_dialogue.exec()
+
+                self.did_reduce = True
             else:
                 pass  # not ok
         else:
