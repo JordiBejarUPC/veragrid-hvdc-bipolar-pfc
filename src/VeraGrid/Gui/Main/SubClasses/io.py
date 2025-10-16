@@ -33,7 +33,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue)
+                                get_sequence_lines_catalogue, get_rms_model_catalogue)
 
 
 class IoMain(ConfigurationMain):
@@ -1015,6 +1015,7 @@ class IoMain(ConfigurationMain):
         self.circuit.underground_cable_types += get_cables_catalogue()
         self.circuit.wire_types += get_wires_catalogue()
         self.circuit.sequence_line_types += get_sequence_lines_catalogue()
+        self.circuit.rms_models += get_rms_model_catalogue()
 
     def load_custom_catalogue(self):
         """

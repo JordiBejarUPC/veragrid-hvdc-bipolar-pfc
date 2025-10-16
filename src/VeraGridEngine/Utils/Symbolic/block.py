@@ -93,6 +93,9 @@ class Block:
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None):
+
+        # ,
+        # external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None
         """
         This represents a group of equations or a group of blocks
 
@@ -108,9 +111,9 @@ class Block:
 
         self.name: str = ""
 
-        uid: int = _new_uid()
+        self.uid: int = _new_uid()
         self.vars2device: Dict[int, PhysicalDevice] = dict()
-        self.vars_glob_name2uid: Dict[str, uid] = dict()
+        self.vars_glob_name2uid: Dict[str, int] = dict()
 
         # TODO: Change to dictionary of Var : Expr
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
@@ -129,13 +132,15 @@ class Block:
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
+        # self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict if external_mapping is None else {elm.pf_ref: elm
+        #                                                                 for elm in self.algebraic_vars}
+        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
 
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = {elm.pf_ref: elm
-                                                                        for elm in self.algebraic_vars}
+
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
@@ -207,19 +212,16 @@ class Block:
             "state_eqs": _serialize_expr_list(self.state_eqs),
             "algebraic_vars": _serialize_var_list(self.algebraic_vars),
             "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
-            "init_vars": _serialize_var_list(self.init_vars),
             "init_eqs": {var.to_dict(): expr.to_dict() for var, expr in self.init_eqs.items()},
             "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
             "fix_vars_eqs": {undefconst.uid: expr.to_dict() for undefconst, expr in self.fix_vars_eqs.items()},
             "external_mapping": {dynvartype.__str__(): var.to_dict() for dynvartype, var in
                                  self.external_mapping.items()},
-            "parameters": _serialize_var_list(self.parameters),
-            "parameters_eqs": _serialize_expr_list(self.parameters_eqs),
+            "event_dict": {var.to_dict(): expr.to_dict() for var, expr in self.event_dict.items()},
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
             "in_vars": _serialize_var_list(self.in_vars),
             "out_vars": _serialize_var_list(self.out_vars),
-            "active_in_vars": _serialize_var_list(self.active_in_vars),
         }
 
     @staticmethod
@@ -230,23 +232,21 @@ class Block:
             state_eqs=_deserialize_expr_list(data["state_eqs"]),
             algebraic_vars=_deserialize_var_list(data["algebraic_vars"]),
             algebraic_eqs=_deserialize_expr_list(data["algebraic_eqs"]),
-            init_vars=_deserialize_var_list(data.get("init_vars", [])),
-            fix_vars=_deserialize_var_list(data.get("fix_vars", [])),
-            fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
-                          for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
+            # fix_vars=_deserialize_var_list(data.get("fix_vars", [])),
+            # fix_vars_eqs={UndefinedConst(): Expr.from_dict(expr_dict)
+            #               for undefconst_dict, expr_dict in data["fix_vars_eqs"]},
             external_mapping={
                 VarPowerFlowRefferenceType(k): Var(name=d["name"], uid=d["uid"])
                 for k, d in data.get("external_mapping", {}).items()
             },
             init_eqs={Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
                       for var_dict, expr_dict in data["init_eqs"]},
-            parameters=_deserialize_var_list(data["parameters"]),
-            parameters_eqs=_deserialize_expr_list(data.get("parameters_eqs", [])),
-            name=data.get("name", ""),
+            event_dict = {Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
+                      for var_dict, expr_dict in data["event_dict"]},
+            # name=data.get("name", ""),
             children=[Block.parse(child) for child in data.get("children", [])],
             in_vars=_deserialize_var_list(data.get("in_vars", [])),
             out_vars=_deserialize_var_list(data.get("out_vars", [])),
-            active_in_vars=_deserialize_var_list(data.get("active_in_vars", [])),
         )
         return block
 

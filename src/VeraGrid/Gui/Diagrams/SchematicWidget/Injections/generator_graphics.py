@@ -20,6 +20,7 @@ from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGridEngine.enumerations import DeviceType
 
 from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
@@ -132,21 +133,28 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        # connect generator with connection bus by assigning Va and Vm variables
-        self.api_object.assign_input_vars_and_params() # this is working
+        # connect generator with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
+        self.api_object.assign_input_vars_and_params()
 
+        # load templates
+        templates = self.editor.circuit.rms_models
 
-        #load templates
-        templates_list, templates_catalogue = get_generator_catalogue()
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.GeneratorDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
 
         # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
+        choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
 
             if choice_dialog.choice == "template":
 
                 #select template
-                gen_template = templates_catalogue[choice_dialog.selected_template]
+                gen_template = templ_catalogue[choice_dialog.selected_template]
 
                 # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog
@@ -159,7 +167,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
 
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
-                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
                 gen_template.Vm = self._api_object.Vm # this is working
                 gen_template.Va = self._api_object.Va
 

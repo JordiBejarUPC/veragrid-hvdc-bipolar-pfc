@@ -249,17 +249,26 @@ class LineGraphicItem(LineGraphicTemplateItem):
         self.api_object.assign_input_vars_and_params()
 
         # load templates
-        templates_list, templates_catalogue = get_line_catalogue()
+        templates = self.editor.circuit.rms_models
+
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.LineDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
+
 
         # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
+        choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
 
             if choice_dialog.choice == "template":
 
                 # select template
 
-                line_template = templates_catalogue[choice_dialog.selected_template]
+                line_template = templ_catalogue[choice_dialog.selected_template]
 
                 # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog

@@ -321,7 +321,6 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize buses
     for i, elm in enumerate(grid.buses):
-        # elm.initialize_rms()
         bus_dict[elm] = i
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
@@ -360,10 +359,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
             for rms_event in rms_events:
 
-                # default_function = getattr(elm.rms_model.template, rms_event.parameter, None)  # TODO: Find a way of not using getattr and setattr
-                # var = Var(rms_event.parameter)
-                # setattr(elm.rms_model.template, rms_event.parameter, var)
-                # elm.rms_model.template.event_parameters.append(var)
+                # TODO: implement the function in block: apply_event
                 default_value = copy.deepcopy(elm.rms_model.model.event_dict[rms_event.parameter])
                 elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, default_value)
         print(elm.rms_model.model.event_dict)

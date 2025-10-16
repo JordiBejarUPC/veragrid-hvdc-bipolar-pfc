@@ -11389,23 +11389,11 @@ QProgressBar::chunk{
     <property name="title">
      <string>Events</string>
     </property>
-    <widget class="QMenu" name="menuAdd_rms_event_to_selected">
-     <property name="font">
-      <font>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="title">
-      <string>Add rms event to selected</string>
-     </property>
-     <addaction name="actionAdd_rms_event_To_template"/>
-     <addaction name="actionAdd_rms_event_To_custom_model"/>
-    </widget>
     <addaction name="actionInitialize_contingencies"/>
     <addaction name="actionAdd_selected_to_contingency"/>
     <addaction name="actionAdd_selected_as_new_investment"/>
     <addaction name="actionAdd_selected_as_remedial_action"/>
-    <addaction name="menuAdd_rms_event_to_selected"/>
+    <addaction name="actionAdd_rms_event_to_selected"/>
    </widget>
    <addaction name="menuProject"/>
    <addaction name="menuActions"/>
@@ -13176,19 +13164,14 @@ QProgressBar::chunk{
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
    </property>
   </action>
-  <action name="actionAdd_rms_event_to_selected_device">
+  <action name="actionAdd_rms_event_to_selected">
    <property name="text">
-    <string>Add rms event to selected device</string>
+    <string>Add rms event to selected</string>
    </property>
-  </action>
-  <action name="actionAdd_rms_event_To_template">
-   <property name="text">
-    <string>To template</string>
-   </property>
-  </action>
-  <action name="actionAdd_rms_event_To_custom_model">
-   <property name="text">
-    <string>To custom model</string>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
    </property>
   </action>
  </widget>

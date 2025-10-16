@@ -239,7 +239,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_to_contingency.triggered.connect(self.add_selected_to_contingency)
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
-        self.ui.actionAdd_rms_event_To_template.triggered.connect(self.add_rms_event_to_template)
+        self.ui.actionAdd_rms_event_to_selected.triggered.connect(self.add_rms_event_to_selected)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out)
@@ -2547,7 +2547,7 @@ class DiagramsMain(CompiledArraysMain):
             else:
                 info_msg("Select some elements in the schematic first", "Add selected to investment")
 
-    def add_rms_event_to_template(self) -> None:
+    def add_rms_event_to_selected(self) -> None:
         """
         Add rms event to a selected device
         """

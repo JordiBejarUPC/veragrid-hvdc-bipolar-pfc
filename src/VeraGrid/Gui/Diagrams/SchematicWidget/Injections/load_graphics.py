@@ -17,6 +17,7 @@ from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue impo
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
 from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_load_catalogue
@@ -80,16 +81,24 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         self.api_object.assign_input_vars_and_params()
 
         # load templates
-        templates_list, templates_catalogue = get_load_catalogue()
+        templates = self.editor.circuit.rms_models
+
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.LoadDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
 
         # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
+        choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
         if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
 
             if choice_dialog.choice == "template":
 
                 # select template
-                load_template = templates_catalogue[choice_dialog.selected_template]
+                load_template = templ_catalogue[choice_dialog.selected_template]
 
                 # TODO: Should we be able to change the value of the parameters when choosing a template?
                 # set parameter values from user input using RmsParameterDialog

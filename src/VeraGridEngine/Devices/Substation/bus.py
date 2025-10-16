@@ -236,6 +236,16 @@ class Bus(PhysicalDevice):
         self.Va = Var('Va')
         self.P = Var('P')
         self.Q = Var('Q')
+        #
+        # self._rms_model.model = Block(
+        #     algebraic_vars=[self.Vm, self.Va],
+        #     external_mapping={
+        #         VarPowerFlowRefferenceType.Vm: self.Vm,
+        #         VarPowerFlowRefferenceType.Va: self.Va,
+        #         VarPowerFlowRefferenceType.P: self.P,
+        #         VarPowerFlowRefferenceType.Q: self.Q
+        #     }
+        # )
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')

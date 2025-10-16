@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import pandas as pd
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
@@ -13,6 +13,20 @@ from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Logger
+
+
+
+from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
+from VeraGridEngine.enumerations import DeviceType
+
+from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
+from VeraGridEngine.Templates.Rms.generator_0_rms_template import Generator_0_RmsTemplate
+from VeraGridEngine.Templates.Rms.generator_1_rms_template import Generator_1_RmsTemplate
+from VeraGridEngine.Templates.Rms.line_0_rms_template import Line_0_RmsTemplate
+from VeraGridEngine.Templates.Rms.line_1_rms_template import Line_1_RmsTemplate
+from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
+
+
 
 
 def get_transformers_catalogue_df(grid: MultiCircuit):
@@ -190,17 +204,18 @@ def parse_sequence_line_types(df: pd.DataFrame) -> List[SequenceLineType]:
 
     return lst
 
-# def parse_rms_generator_types(gen_dict) -> List[Block]:
-#     """
-#     :param gen_dict:
-#     :return:
-#     """
-#     lst = list()
-#     for gen_type_name, gen_type_object in gen_dict.items():
-#         tpe =
-#         lst.append(tpe)
-#
-#     return lst
+def parse_rms_model_catalogue() -> List[ALL_RMS_TEMPLATES_TYPE]:
+
+    templ_bus = BusRmsTemplate()
+    templ_gen_0 = Generator_0_RmsTemplate()
+    templ_gen_1 = Generator_1_RmsTemplate()
+    templ_line_0 = Line_0_RmsTemplate()
+    templ_line_1 = Line_1_RmsTemplate()
+    templ_load = LoadRmsTemplate()
+    templates: List[ALL_RMS_TEMPLATES_TYPE] = [templ_bus, templ_gen_0, templ_gen_1, templ_line_0, templ_line_1,
+                                               templ_load]
+
+    return templates
 
 
 def save_catalogue(fname: str, grid: MultiCircuit):
