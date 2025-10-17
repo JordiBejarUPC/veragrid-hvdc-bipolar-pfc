@@ -7,6 +7,8 @@ from typing import List, Dict, Union
 
 from PySide6 import QtWidgets
 from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
+from VeraGridEngine.Utils.Symbolic import Var, Expr, Const
+
 
 class RmsChoiceDialog(QtWidgets.QDialog):
     """
@@ -62,20 +64,20 @@ class RmsChoiceDialog(QtWidgets.QDialog):
 
 
 class RmsParameterDialog(QtWidgets.QDialog):
-    def __init__(self, template: ALL_RMS_TEMPLATES_TYPE, parent=None):
+    def __init__(self, event_dict: Dict[Var, Const], parent=None):
         super().__init__(parent)
-        self.template = template
+        # self.event_dict = event_dict
         self.setWindowTitle("Edit RMS Template Parameters")
 
         layout = QtWidgets.QFormLayout()
         self.inputs = {}
 
-        # Create input (QLineEdit) for each parámetro
-        for param_name in template.parameters:
-            param_value = getattr(template, param_name).value  # obtener valor actual del Const
-            line_edit = QtWidgets.QLineEdit(str(param_value))
-            self.inputs[param_name] = line_edit
-            layout.addRow(param_name, line_edit)
+        # Create input (QLineEdit) for each parameter
+        for param, equ in event_dict.items():
+            # param_value = getattr(template, param_name).value
+            line_edit = QtWidgets.QLineEdit(str(equ.value))
+            self.inputs[param] = line_edit
+            layout.addRow(param.name, line_edit)
 
         # Botones OK/Cancel
         buttons = QtWidgets.QDialogButtonBox(
@@ -86,9 +88,9 @@ class RmsParameterDialog(QtWidgets.QDialog):
         layout.addRow(buttons)
         self.setLayout(layout)
 
-    def get_values(self):
+    def get_new_event_dict(self):
         """Devuelve un diccionario con los valores ingresados por el usuario."""
-        return {name: float(edit.text()) for name, edit in self.inputs.items()}
+        return {param: Const(float(edit.text())) for param, edit in self.inputs.items()}
 
 
 class RmsEventDialogue(QtWidgets.QDialog):

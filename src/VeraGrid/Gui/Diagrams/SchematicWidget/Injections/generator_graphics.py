@@ -133,7 +133,7 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        # connect generator with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
+        # connect generator(api_object) with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
         self.api_object.assign_input_vars_and_params()
 
         # load templates
@@ -156,23 +156,23 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 #select template
                 gen_template = templ_catalogue[choice_dialog.selected_template]
 
-                # TODO: Should we be able to change the value of the parameters when choosing a template?
-                # set parameter values from user input using RmsParameterDialog
-                # param_dialog = RmsParameterDialog(gen_template, parent=self.editor)
-                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
-                #     new_values = param_dialog.get_values()
-                #     for param, value in new_values.items():
-                #         setattr(gen_template, param, Const(value))  # set parameter value
-
-
-
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
                 gen_template.Vm = self._api_object.Vm # this is working
                 gen_template.Va = self._api_object.Va
 
+                # I didn't find a way of connecting Vm and Va of the generator with Vm and Va of the bus without having the build_block function.
+                # The only way would be to define and add variables and equations later.
                 gen_template.build_block()
 
                 self.api_object.rms_model.template = gen_template.block
+
+                # TODO: Should we be able to change the value of the parameters when choosing a template? yes
+                # set parameter values from user input using RmsParameterDialog (here we change the equation for the parameters in event_dict)
+                param_dialog = RmsParameterDialog(self.api_object.rms_model.template.event_dict, parent=self.editor)
+                if param_dialog.exec() == QtWidgets.QDialog.Accepted:
+
+                    self.api_object.rms_model.template.event_dict = param_dialog.get_new_event_dict()
+
 
             elif choice_dialog.choice == "editor":
 

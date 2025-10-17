@@ -231,6 +231,7 @@ class Bus(PhysicalDevice):
         self.ph_n: bool = True
         self.is_grounded: bool = True
 
+        # The model of the bus is fixed, then it can already be defined here
         self._rms_model: DynamicModelHost = DynamicModelHost()
         self.Vm = Var('Vm')
         self.Va = Var('Va')
@@ -246,17 +247,6 @@ class Bus(PhysicalDevice):
             VarPowerFlowRefferenceType.P: self.P,
             VarPowerFlowRefferenceType.Q: self.Q
         }
-
-        #
-        # self._rms_model.model = Block(
-        #     algebraic_vars=[self.Vm, self.Va],
-        #     external_mapping={
-        #         VarPowerFlowRefferenceType.Vm: self.Vm,
-        #         VarPowerFlowRefferenceType.Va: self.Va,
-        #         VarPowerFlowRefferenceType.P: self.P,
-        #         VarPowerFlowRefferenceType.Q: self.Q
-        #     }
-        # )
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')
@@ -311,8 +301,6 @@ class Bus(PhysicalDevice):
         self.register(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.')
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
-
-        # self.initialize_rms()
 
     @property
     def rms_model(self) -> DynamicModelHost:
