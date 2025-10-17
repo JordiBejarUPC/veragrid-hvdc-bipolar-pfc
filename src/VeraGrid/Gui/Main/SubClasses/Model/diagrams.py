@@ -2568,7 +2568,7 @@ class DiagramsMain(CompiledArraysMain):
                 rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
                                        target_device_name=target_device_name)
 
-                if rms_events_dialog.exec() == QtWidgets.QDialog.Accepted:
+                if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                     # create a new events group
                     group = dev.RmsEventsGroup(idtag=None,
                                                  name='Rms Events Group 1',

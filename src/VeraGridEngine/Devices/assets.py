@@ -7036,7 +7036,7 @@ class Assets:
 
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
-            dictionary_of_lists = dict()
+            dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
 
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
