@@ -535,6 +535,34 @@ class LinearAnalysis:
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
 
+    def get_injections(self, flows: Vec) -> Vec:
+        """
+        Get injections that satisfy the flows
+        :param flows: Array of flows (nbranch)
+        :return: Array of injections (nbus)
+        """
+        if flows.ndim == 1:
+
+            Pbus, _, _, _ = np.linalg.lstsq(self.PTDF, flows)
+
+            return Pbus
+        else:
+            raise Exception(f'flows has unsupported dimensions: {flows.shape}')
+
+    def get_injections_2d(self, flows: Mat) -> Mat:
+        """
+        Get injections that satisfy the flows
+        :param flows: Matrix of flows (time, nbranch)
+        :return: Matrix of injections (time, nbus)
+        """
+        if flows.ndim == 2:
+
+            Pbus, _, _, _ = np.linalg.lstsq(self.PTDF, flows)
+
+            return Pbus
+        else:
+            raise Exception(f'flows has unsupported dimensions: {flows.shape}')
+
 
 class LinearMultiContingency:
     """
@@ -586,6 +614,12 @@ class LinearMultiContingency:
 
         self.hvdc_odf = hvdc_odf
         self.vsc_odf = vsc_odf
+
+        # store flag for contingency emptyness
+        # self.enabled: bool = (self.mlodf_factors.nnz > 0
+        #                       or self.compensated_ptdf_factors.nnz > 0
+        #                       or injections_factor.sum() > 1)
+        self.enabled: bool = True
 
     def has_injection_contingencies(self) -> bool:
         """
@@ -1035,7 +1069,7 @@ class LinearAnalysisTs:
 
         return lin.get_flows(Sbus=P)
 
-    def get_time_flow(self, branch_idx: int, bus_idx: int, P: CxVec | Vec) -> CxVec | Vec:
+    def get_branch_flow_ts(self, branch_idx: int, bus_idx: int, P: CxVec | Vec) -> CxVec | Vec:
         """
         Get the flow time series of a single branch given the injection time series of a single bus
         :param branch_idx: Branch index
@@ -1056,7 +1090,7 @@ class LinearAnalysisTs:
 
         return flow_ts
 
-    def get_time_flows(self, P: CxVec | Vec) -> CxVec | Vec:
+    def get_flows_ts(self, P: CxMat | Mat) -> CxMat | Mat:
         """
         Get the flow time series of all branches given the injection time series all buses
         :param P: Bus injection time series
@@ -1075,3 +1109,25 @@ class LinearAnalysisTs:
             flow_ts[list_of_represented_time_steps, :] = lin.get_flows2d(Sbus=P[list_of_represented_time_steps, :])
 
         return flow_ts
+
+    def get_injections_ts(self, flows_ts: CxMat | Mat) -> CxMat | Mat:
+        """
+        Get the flow time series of all branches given the injection time series all buses
+        :param flows_ts: Branches flow time series
+        :return: Bus injection time series
+        """
+        # must have the same size
+        assert flows_ts.shape[0] == self.nt
+        assert flows_ts.shape[1] == self.nbr
+
+        Pbus = np.zeros((self.nt, self.nbus))
+
+        for t_idx, list_of_represented_time_steps in self.groups.items():
+            # get the linear analysis
+            lin: LinearAnalysis = self._linear_analysis[t_idx]
+
+            Pbus[list_of_represented_time_steps, :] = lin.get_injections_2d(
+                flows=flows_ts[list_of_represented_time_steps, :]
+            )
+
+        return Pbus

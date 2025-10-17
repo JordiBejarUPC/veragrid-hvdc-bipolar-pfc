@@ -26,6 +26,10 @@ insights, or a student diving into practical algorithms, VeraGrid’s got
 your back. It’s a high quality product made for all of us now and for
 the future generations.
 
+🎥 `Watch the introduction video on YouTube <https://www.youtube.com/watch?v=4ZDyWIX8_VE>`_
+
+
+
 Contact
 =======
 

@@ -26,7 +26,7 @@ from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.Compilers.circuit_to_newton_pa import newton_pa_contingencies, translate_contingency_report, \
     NEWTON_PA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_gslv import (gslv_contingencies, GSLV_AVAILABLE)
+from VeraGridEngine.Compilers.circuit_to_gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
 from VeraGridEngine.Utils.NumericalMethods.weldorf_online_stddev import WeldorfOnlineStdDevMat
 
 
@@ -465,10 +465,10 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         Run with Newton Power Analytics
         :return:
         """
-        res = gslv_contingencies(circuit=self.grid,
-                                 con_opt=self.options,
-                                 time_series=True,
-                                 time_indices=self.time_indices)
+        res = gslv_contingencies_ts(circuit=self.grid,
+                                    con_opt=self.options,
+                                    time_series=True,
+                                    time_indices=self.time_indices)
 
         time_array = self.grid.time_profile[self.time_indices]
 

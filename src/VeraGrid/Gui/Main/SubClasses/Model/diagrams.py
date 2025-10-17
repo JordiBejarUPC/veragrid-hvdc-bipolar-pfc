@@ -2811,6 +2811,8 @@ class DiagramsMain(CompiledArraysMain):
             if isinstance(diagram_widget, SchematicWidget):
                 diagram_widget.delete_diagram_elements(elements)
 
+
+
             elif isinstance(diagram_widget, GridMapWidget):
                 pass
 

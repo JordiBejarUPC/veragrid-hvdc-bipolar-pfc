@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMenu
-from numba.core.annotations.pretty_annotate import get_ansi_template
-
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
 from VeraGrid.Gui.messages import yes_no_question, info_msg

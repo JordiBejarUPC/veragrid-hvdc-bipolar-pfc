@@ -33,17 +33,11 @@ class FluidPumpGraphicItem(InjectionTemplateGraphicItem):
                                               editor=editor,
                                               device_type_name='fluid_pump',
                                               w=40,
-                                              h=40,
-                                              glyph=Circle(self, 40, 40, "P")
-                                              )
+                                              h=40)
 
-    @property
-    def api_object(self) -> FluidPump:
-        return self._api_object
-
-    @property
-    def editor(self) -> SchematicWidget:
-        return self._editor
+        self.set_glyph(
+            glyph=Circle(self, 40, 40, "P", self.update_nexus)
+        )
 
     def recolour_mode(self):
         """

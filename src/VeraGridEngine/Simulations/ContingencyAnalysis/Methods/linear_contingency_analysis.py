@@ -88,45 +88,47 @@ def linear_contingency_analysis(nc: NumericalCircuit,
     # for each contingency group
     for ic, multi_contingency in enumerate(linear_multiple_contingencies.multi_contingencies):
 
-        if multi_contingency.has_injection_contingencies():
-            contingency_group = linear_multiple_contingencies.contingency_groups_used[ic]
-            contingencies = linear_multiple_contingencies.contingency_group_dict[contingency_group.idtag]
-            # injections = nc.set_linear_con_or_ra_status(event_list=contingencies)
-            injections = nc.set_con_or_ra_status(event_list=contingencies)
-        else:
-            injections = None
+        if multi_contingency.enabled:
 
-        c_flow = multi_contingency.get_contingency_flows(base_branches_flow=flows_n, injections=injections)
-        c_loading = c_flow / (nc.passive_branch_data.rates + 1e-9)
+            if multi_contingency.has_injection_contingencies():
+                contingency_group = linear_multiple_contingencies.contingency_groups_used[ic]
+                contingencies = linear_multiple_contingencies.contingency_group_dict[contingency_group.idtag]
+                # injections = nc.set_linear_con_or_ra_status(event_list=contingencies)
+                injections = nc.set_con_or_ra_status(event_list=contingencies)
+            else:
+                injections = None
 
-        results.Sf[ic, :] = c_flow  # already in MW
-        results.Sbus[ic, :] = Pbus
-        results.loading[ic, :] = c_loading
-        results.report.analyze(t=t,
-                               t_prob=t_prob,
-                               mon_idx=mon_idx,
-                               nc=nc,
-                               base_flow=flows_n,
-                               base_loading=loadings_n,
-                               contingency_flows=c_flow,
-                               contingency_loadings=c_loading,
-                               contingency_idx=ic,
-                               contingency_group=linear_multiple_contingencies.contingency_groups_used[ic],
-                               using_srap=options.use_srap,
-                               srap_ratings=nc.passive_branch_data.protection_rates,
-                               srap_max_power=options.srap_max_power,
-                               srap_deadband=options.srap_deadband,
-                               contingency_deadband=options.contingency_deadband,
-                               srap_rever_to_nominal_rating=options.srap_rever_to_nominal_rating,
-                               multi_contingency=multi_contingency,
-                               PTDF=linear_analysis.PTDF,
-                               available_power=nc.bus_data.srap_availbale_power,
-                               srap_used_power=results.srap_used_power,
-                               F=F,
-                               T=T,
-                               bus_area_indices=bus_area_indices,
-                               area_names=area_names,
-                               top_n=options.srap_top_n)
+            c_flow = multi_contingency.get_contingency_flows(base_branches_flow=flows_n, injections=injections)
+            c_loading = c_flow / (nc.passive_branch_data.rates + 1e-9)
+
+            results.Sf[ic, :] = c_flow  # already in MW
+            results.Sbus[ic, :] = Pbus
+            results.loading[ic, :] = c_loading
+            results.report.analyze(t=t,
+                                   t_prob=t_prob,
+                                   mon_idx=mon_idx,
+                                   nc=nc,
+                                   base_flow=flows_n,
+                                   base_loading=loadings_n,
+                                   contingency_flows=c_flow,
+                                   contingency_loadings=c_loading,
+                                   contingency_idx=ic,
+                                   contingency_group=linear_multiple_contingencies.contingency_groups_used[ic],
+                                   using_srap=options.use_srap,
+                                   srap_ratings=nc.passive_branch_data.protection_rates,
+                                   srap_max_power=options.srap_max_power,
+                                   srap_deadband=options.srap_deadband,
+                                   contingency_deadband=options.contingency_deadband,
+                                   srap_rever_to_nominal_rating=options.srap_rever_to_nominal_rating,
+                                   multi_contingency=multi_contingency,
+                                   PTDF=linear_analysis.PTDF,
+                                   available_power=nc.bus_data.srap_availbale_power,
+                                   srap_used_power=results.srap_used_power,
+                                   F=F,
+                                   T=T,
+                                   bus_area_indices=bus_area_indices,
+                                   area_names=area_names,
+                                   top_n=options.srap_top_n)
 
         # report progress
         if t is None:

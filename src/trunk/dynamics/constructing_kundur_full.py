@@ -16,10 +16,17 @@ from VeraGridEngine import VarPowerFlowRefferenceType
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Branches.line import Line
+
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 import VeraGridEngine.api as gce
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -137,16 +144,16 @@ Kw_4 = Const(10.0)
 # Build the system to compute the powerflow
 grid = gce.MultiCircuit()
 # Buses
-bus1 = gce.Bus(name="Bus1", Vnom=10)
-bus2 = gce.Bus(name="Bus2", Vnom=10)
-bus3 = gce.Bus(name="Bus3", Vnom=10)
-bus4 = gce.Bus(name="Bus4", Vnom=10)
-bus5 = gce.Bus(name="Bus5", Vnom=10)
-bus6 = gce.Bus(name="Bus6", Vnom=10)
-bus7 = gce.Bus(name="Bus7", Vnom=10)
-bus8 = gce.Bus(name="Bus8", Vnom=10)
-bus9 = gce.Bus(name="Bus9", Vnom=10)
-bus10 = gce.Bus(name="Bus10", Vnom=10)
+bus1 = Bus(name="Bus1", Vnom=10)
+bus2 = Bus(name="Bus2", Vnom=10)
+bus3 = Bus(name="Bus3", Vnom=10)
+bus4 = Bus(name="Bus4", Vnom=10)
+bus5 = Bus(name="Bus5", Vnom=10)
+bus6 = Bus(name="Bus6", Vnom=10)
+bus7 = Bus(name="Bus7", Vnom=10)
+bus8 = Bus(name="Bus8", Vnom=10)
+bus9 = Bus(name="Bus9", Vnom=10)
+bus10 = Bus(name="Bus10", Vnom=10)
 
 grid.add_bus(bus1)
 grid.add_bus(bus2)
@@ -160,35 +167,35 @@ grid.add_bus(bus9)
 grid.add_bus(bus10)
 
 # Lines
-line0 = gce.Line(name="line 5-6", bus_from=bus5, bus_to=bus6,
+line0 = Line(name="line 5-6", bus_from=bus5, bus_to=bus6,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line1 = gce.Line(name="line 5-6", bus_from=bus5, bus_to=bus6,
+line1 = Line(name="line 5-6", bus_from=bus5, bus_to=bus6,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line2 = gce.Line(name="line 6-7", bus_from=bus6, bus_to=bus7,
+line2 = Line(name="line 6-7", bus_from=bus6, bus_to=bus7,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line3 = gce.Line(name="line 6-7", bus_from=bus6, bus_to=bus7,
+line3 = Line(name="line 6-7", bus_from=bus6, bus_to=bus7,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line4 = gce.Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
+line4 = Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line5 = gce.Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
+line5 = Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line6 = gce.Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
+line6 = Line(name="line 7-8", bus_from=bus7, bus_to=bus8,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line7 = gce.Line(name="line 8-9", bus_from=bus8, bus_to=bus9,
+line7 = Line(name="line 8-9", bus_from=bus8, bus_to=bus9,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line8 = gce.Line(name="line 8-9", bus_from=bus8, bus_to=bus9,
+line8 = Line(name="line 8-9", bus_from=bus8, bus_to=bus9,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line9 = gce.Line(name="line 9-10", bus_from=bus9, bus_to=bus10,
+line9 = Line(name="line 9-10", bus_from=bus9, bus_to=bus10,
                 r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=100.0)
-line10 = gce.Line(name="line 9-10", bus_from=bus9, bus_to=bus10,
+line10 = Line(name="line 9-10", bus_from=bus9, bus_to=bus10,
                 r= 0.00501, x=0.05001, b=0.075, rate=100.0)
-line11 = gce.Line(name="line 1-5", bus_from=bus1, bus_to=bus5,
+line11 = Line(name="line 1-5", bus_from=bus1, bus_to=bus5,
                 r=0.001, x=0.012, b=0.0, rate=100.0)
-line12 = gce.Line(name="line 2-6", bus_from=bus2, bus_to=bus6,
+line12 = Line(name="line 2-6", bus_from=bus2, bus_to=bus6,
                 r=0.001, x=0.012, b=0.0, rate=100.0)
-line13 = gce.Line(name="line 3-9", bus_from=bus3, bus_to=bus9,
+line13 = Line(name="line 3-9", bus_from=bus3, bus_to=bus9,
                 r=0.001, x= 0.012, b=0.0, rate=100.0)
-line14 = gce.Line(name="line 4-10", bus_from=bus4, bus_to=bus10,
+line14 = Line(name="line 4-10", bus_from=bus4, bus_to=bus10,
                 r=0.001, x= 0.012, b=0.0, rate=100.0)
 grid.add_line(line0)
 grid.add_line(line1)
@@ -207,23 +214,23 @@ grid.add_line(line13)
 grid.add_line(line14)
 
 # Generators
-gen1 = gce.Generator(name="Gen1", P=5, vset=1.0)
+gen1 = Generator(name="Gen1", P=5, vset=1.0)
 grid.add_generator(bus=bus1, api_obj=gen1)
 
-gen2 = gce.Generator(name="Gen2", P=5, vset=1.0)
+gen2 = Generator(name="Gen2", P=5, vset=1.0)
 grid.add_generator(bus=bus2, api_obj=gen2)
 
-gen3 = gce.Generator(name="Gen3", P=5, vset=1.0)
+gen3 = Generator(name="Gen3", P=5, vset=1.0)
 grid.add_generator(bus=bus3, api_obj=gen3)
 
-gen4 = gce.Generator(name="Gen4", P=5, vset=1.0)
+gen4 = Generator(name="Gen4", P=5, vset=1.0)
 grid.add_generator(bus=bus4, api_obj=gen4)
 
 # Loads
-load7 = gce.Load(name="Load7", P=10, Q=10)
+load7 = Load(name="Load7", P=10, Q=10)
 grid.add_load(bus=bus7, api_obj=load7)
 
-load8 = gce.Load(name="Load8", P=10, Q=10)
+load8 = Load(name="Load8", P=10, Q=10)
 grid.add_load(bus=bus8, api_obj=load8)
 
 res = gce.power_flow(grid)
@@ -1465,7 +1472,6 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     params0=params0,
-    time = t,
     method="implicit_euler"
 )
 
@@ -1541,16 +1547,20 @@ plt.show()
 
 #stability assessment
 start_stability = time.time()
-stab, Eigenvalues, PF = slv.run_small_signal_stability(x=x0, params=params0, plot = True)
+(stab,
+ Eigenvalues,
+ PFactors,
+ damping_ratios,
+ conjugate_frequencies,
+ state_matrix) = run_small_signal_stability(slv=slv,
+                                            x=x0,
+                                            params=params0,
+                                            plot=True,
+                                            plot_units = "rad/s",
+                                            verbose = 1)
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
 
-print("Stability assessment:", stab)
-print("Eigenvalues:", Eigenvalues)
-print("Participation factors:", PF.toarray())
-
-df_Eig = pd.DataFrame(Eigenvalues)
-df_Eig.to_csv("Eigenvalues_results.csv", index=False , header = False)
 
 
 

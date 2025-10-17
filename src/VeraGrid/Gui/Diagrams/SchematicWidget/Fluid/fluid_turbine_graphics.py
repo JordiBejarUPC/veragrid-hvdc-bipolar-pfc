@@ -33,16 +33,11 @@ class FluidTurbineGraphicItem(InjectionTemplateGraphicItem):
                                               editor=editor,
                                               device_type_name='fluid_turbine',
                                               w=40,
-                                              h=40,
-                                              glyph=Circle(self, 40, 40, "T"))
+                                              h=40)
 
-    @property
-    def api_object(self) -> FluidTurbine:
-        return self._api_object
-
-    @property
-    def editor(self) -> SchematicWidget:
-        return self._editor
+        self.set_glyph(
+            glyph=Circle(self, 40, 40, "T", self.update_nexus)
+        )
 
     def recolour_mode(self) -> None:
         """

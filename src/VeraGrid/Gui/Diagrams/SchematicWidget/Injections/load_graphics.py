@@ -45,12 +45,13 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                                               h=20)
 
         # triangle
-        self.set_glyph(glyph=Polygon(self,
-                                     polygon=QPolygonF([QPointF(0, 0),
-                                                        QPointF(self.w, 0),
-                                                        QPointF(self.w / 2, self.h)]),
-                                     update_nexus_fcn=self.update_nexus)
-                       )
+        self.set_glyph(glyph=Polygon(
+            self,
+            polygon=QPolygonF([QPointF(0, 0),
+                               QPointF(self.w, 0),
+                               QPointF(self.w / 2, self.h)]),
+            update_nexus_fcn=self.update_nexus)
+        )
 
     @property
     def api_object(self) -> Load:
@@ -63,18 +64,17 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         @return:
         """
         if self.api_object is not None:
-            menu = QMenu()
+            menu = self.get_base_context_menu()
             menu.addSection("Load")
 
-
             add_menu_entry(menu=menu,
-                        text="Rms Editor",
-                        function_ptr=self.edit_rms,
-                        icon_path=":/Icons/icons/edit.png")
+                           text="Rms Editor",
+                           function_ptr=self.edit_rms,
+                           icon_path=":/Icons/icons/edit.png")
 
             menu.exec(event.screenPos())
         else:
-            pass
+            self.editor.gui.show_error_toast("The graphic has no API object!")
 
     def edit_rms(self):
         # connect generator with connection bus by assigning Va and Vm variables
