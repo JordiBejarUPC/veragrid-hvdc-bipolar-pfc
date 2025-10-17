@@ -12,11 +12,20 @@ import time
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Branches.line import Line
+
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability, plot_stability
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 import VeraGridEngine.api as gce
+
 
 
 
@@ -31,16 +40,15 @@ import VeraGridEngine.api as gce
 
 # Build system
 
-t = Var("t")
 
-grid = gce.MultiCircuit(fbase=60.0)
+grid = MultiCircuit(fbase=60.0)
 
 # SIMPLE SYSTEM 3: 2 GEN(1 at bus 1, 1 at bus 3 that connects to bus2 by line 3), 1 TRAFO, 1 LINE, 1 LOAD
 # Buses
-bus1 = gce.Bus(name="Bus1", Vnom=20, is_slack=True)
-bus2 = gce.Bus(name="Bus2", Vnom=230)
-bus3 = gce.Bus(name="Bus3", Vnom=230)
-bus4 = gce.Bus(name="Bus4", Vnom=230)
+bus1 = Bus(name="Bus1", Vnom=20, is_slack=True)
+bus2 = Bus(name="Bus2", Vnom=230)
+bus3 = Bus(name="Bus3", Vnom=230)
+bus4 = Bus(name="Bus4", Vnom=230)
 
 grid.add_bus(bus1)
 grid.add_bus(bus2)
@@ -49,18 +57,17 @@ grid.add_bus(bus4)
 
 
 trafo_G1 = grid.add_line(
-    gce.Line(name="branch1", bus_from=bus1, bus_to=bus2,
+    Line(name="branch1", bus_from=bus1, bus_to=bus2,
              r=0.00000, x=0.015 * (100.0/900.0), b=0.0, rate=900.0))
 line1 = grid.add_line(
-    gce.Line(name="branch2", bus_from=bus2, bus_to=bus3,
+    Line(name="branch2", bus_from=bus2, bus_to=bus3,
              r=0.00, x=0.03 * (100.0/900.0), b=0.0, rate=900.0))
 line2 = grid.add_line(
-    gce.Line(name="branch3", bus_from=bus2, bus_to=bus4,
+    Line(name="branch3", bus_from=bus2, bus_to=bus4,
              r=0.00, x=0.03 * (100.0/900.0), b=0.0, rate=900.0))
 
 # load
-load1 = gce.Load(name="load1", P=900.0, Q=100.0, Pl0=-9.0, Ql0=-1.0)
-load1.time = t
+load1 = Load(name="load1", P=900.0, Q=100.0, Pl0=-9.0, Ql0=-1.0)
 load1_grid = grid.add_load(bus=bus4, api_obj=load1)
 # load1 = grid.add_load(bus=bus7, api_obj=gce.Load(P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969))
 
@@ -86,7 +93,7 @@ Ki_2 = 0.0
 
 
 # Generators
-gen1 = gce.Generator(
+gen1 = Generator(
     name="Gen1", P=700.0, vset=1.03, Snom=900.0,
     x1=xd_1, r1=ra_1, freq=fn_1,
     # vf=1.0,
@@ -100,7 +107,7 @@ gen1 = gce.Generator(
     Kp=Kp_1, Ki=Ki_1
 )
 
-gen2 = gce.Generator(
+gen2 = Generator(
     name="Gen2", P=700.0, vset=1.03, Snom=900.0,
     x1=xd_2, r1=ra_2, freq=fn_2,
     # vf=1.0,
@@ -130,7 +137,7 @@ grid.add_generator(bus=bus3, api_obj=gen2)
 # grid.add_rms_event(event2)
 
 # Run power flow
-options = gce.PowerFlowOptions(
+pf_options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,
     retry_with_other_methods=False,
     verbose=0,
@@ -153,7 +160,9 @@ options = gce.PowerFlowOptions(
     generate_report=False,
     three_phase_unbalanced=False
 )
-res = gce.power_flow(grid, options=options)
+power_flow = PowerFlowDriver(grid, pf_options)
+power_flow.run()
+res = power_flow.results
 
 # # Print results
 print(res.get_bus_df())
@@ -182,7 +191,7 @@ print(f"Converged: {res.converged}")
 # Time Domain Simulation
 # ----------------------------------------------------------------------------------------------------------------------
 # TDS initialization
-ss, init_guess = gce.initialize_rms(grid, res)
+ss, init_guess = initialize_rms(grid, res)
 print("init_guess")
 print(init_guess)
 
@@ -192,7 +201,7 @@ params_mapping = {}
 # # Solver
 start_building_system = time.time()
 
-slv = BlockSolver(ss, t)
+slv = BlockSolver(ss, grid.time, use_jit=False)
 
 end_building_system = time.time()
 print(f"Automatic build system time = {end_building_system-start_building_system:.6f} [s]")
@@ -224,19 +233,19 @@ slv.save_simulation_to_csv('simulation_results_Ieee_automatic_init.csv', t, y, c
 start_stability = time.time()
 
 # stab, Eigenvalues,  PFactors = slv.stability_assessment(z=y[1000], params=params0, plot = True)
-(stab,
- Eigenvalues,
+(Eigenvalues,
  PFactors,
  damping_ratios,
- conjugate_frequencies) = run_small_signal_stability(slv=slv,
-                                                     x=x0,
-                                                     params=params0,
-                                                     plot = True,
-                                                     plot_units = "Hz",
-                                                     verbose = 1)
+ conjugate_frequencies,
+ state_matrix) = run_small_signal_stability(slv=slv,
+                                            x=x0,
+                                            params=params0,
+                                            verbose = 1)
 
 end_stability = time.time()
 print(f"Time for stability assessment = {end_stability - start_stability:.6f} [s]")
+
+plot_stability(Eigenvalues, plot_units = "rad/s" )
 
 
 df_Eig = pd.DataFrame(Eigenvalues)

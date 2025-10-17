@@ -647,6 +647,9 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
     if isinstance(expr, Var):
         return {"type": "Var", "name": expr.name, "uid": expr.uid}
 
+    if isinstance(expr, UndefinedConst):
+        return {"type": "UndefinedConst"}
+
     # ------------------------------------------------------------------
     # Composite nodes
     # ------------------------------------------------------------------

@@ -329,6 +329,7 @@ class BlockSolver:
         self._parameters_eqs: List[Expr] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
+        self.v_glob_name2uid = block_system.vars_glob_name2uid
 
         for b in self.block_system.get_all_blocks():
             self._algebraic_vars.extend(b.algebraic_vars)
@@ -342,6 +343,7 @@ class BlockSolver:
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
         self._n_params = len(self._parameters)
+
 
         # generate the in-code names for each variable
         # inside the compiled functions the variables are

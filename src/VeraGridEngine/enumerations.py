@@ -1822,15 +1822,14 @@ class ResultTypes(Enum):
     # RMS Simulation
 
     RmsSimulationReport = 'Rms time series report'
+    RmsPlotResults = 'Rms plot results'
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
+    StateMatrix = "State Matrix"
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
     SDomainPlotHz = "S-Domain Plot in Hz"
-    AsymptoticallyStable = "Asymptotically stable"
-    MarginallyStable = "Marginally stable"
-    Unstable = "Unstable"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'

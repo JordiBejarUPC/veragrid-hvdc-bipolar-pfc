@@ -19,11 +19,11 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 class SmallSignalStabilityResults(ResultsTemplate):
 
     def __init__(self,
-                 stability: str,
                  eigenvalues: np.ndarray,
                  participation_factors: np.ndarray,
                  damping_ratios: np.ndarray,
                  conjugate_frequencies: np.ndarray,
+                 state_matrix: np.array,
                  stat_vars: List[Var],
                  vars2device: Dict[int, PhysicalDevice]):
         """
@@ -40,6 +40,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             self,
             name='Small Signal Stability',
             available_results=[
+                ResultTypes.StateMatrix,
                 ResultTypes.Modes,
                 ResultTypes.ParticipationFactors,
                 ResultTypes.SDomainPlot,
@@ -54,28 +55,39 @@ class SmallSignalStabilityResults(ResultsTemplate):
 
         self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
 
-        self.stability = stability
         self.eigenvalues = eigenvalues
         self.participation_factors = participation_factors
         self.damping_ratios = [str(r) if not np.isnan(r) else '-' for r in damping_ratios]
         self.conjugate_frequencies = [str(r) if not np.isnan(r) else '-' for r in conjugate_frequencies]
+        self.state_matrix = state_matrix
 
-        # self.register(name='Stability', tpe=Vec)
         self.register(name='eigenvalues', tpe=Vec)
         self.register(name='participation_factors', tpe=Vec)
         self.register(name='damping_ratios', tpe=Vec)
         self.register(name='conjugate_frequencies', tpe=Vec)
+        self.register(name='state_matrix', tpe=Vec)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
         Export the results as a ResultsTable for plotting.
         """
+        if result_type == ResultTypes.StateMatrix:
+
+            return ResultsTable(
+                data=self.state_matrix,
+                index=np.array([f"Equation {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                columns=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
+                title="State Matrix",
+                idx_device_type=DeviceType.NoDevice,
+                cols_device_type=DeviceType.NoDevice
+            )
+
         if result_type == ResultTypes.ParticipationFactors:
 
             return ResultsTable(
                 data=self.participation_factors,
                 index=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),  #
+                columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
                 title="Participation factors for each eigenvalue",
                 idx_device_type=DeviceType.NoDevice,
                 cols_device_type=DeviceType.NoDevice
@@ -99,7 +111,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             data = np.c_[re, im]
 
             d = np.abs(np.nan_to_num(re))
-            colors = (d / d.max())
+            colors = (-d / d.max())
 
             slope = 1 / 0.05
             x_z = np.linspace(-200, 0, 400)
@@ -122,7 +134,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
                 sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real')
-                ax.set_ylabel(r'Imaginary [rad]')
+                ax.set_ylabel(r'Imaginary [rad/s]')
                 ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
                 ax.axvline(0, color='black', linewidth=1)
                 plt.xlim([x_min, x_max])
@@ -174,7 +186,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
             data = np.c_[re, im]
 
             d = np.abs(np.nan_to_num(re))
-            colors = (d / d.max())
+            colors = (-d / d.max())
 
             slope = 1 / 0.05
             x_z = np.linspace(-200, 0, 400)
@@ -245,22 +257,3 @@ class SmallSignalStabilityResults(ResultsTemplate):
                                 )
         else:
             raise Exception(f"Result type not understood: {result_type}")
-
-    # def plot(self, fig, ax):
-    #     """
-    #     Plot the S-Domain modes plot
-    #     :param fig: Matplotlib figure. If None, one will be created
-    #     :param ax: Matplotlib Axis. If None, one will be created
-    #     """
-    #     if ax is None:
-    #         fig = plt.figure(figsize=(8, 7))
-    #         ax = fig.add_subplot(111)
-    #
-    #     x = self.eigenvalues.real
-    #     y = self.eigenvalues.imag
-    #
-    #     ax.scatter(x, y, 'k', linewidth=2)
-    #
-    #     ax.set_title(r'$S-Domain$ plot')
-    #     ax.set_xlabel(r'$Imaginary [s^{-1}]$')
-    #     ax.set_ylabel(r'$Real [s^{-1}]$')

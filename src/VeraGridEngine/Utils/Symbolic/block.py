@@ -10,9 +10,8 @@ from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst
 from VeraGridEngine.enumerations import DynamicVarType
-
 
 
 def _new_uid() -> int:
@@ -41,6 +40,15 @@ def _serialize_var_list(vars_: List[Var | Const]) -> List[Dict[str, Any]]:
     return [v.to_dict() for v in vars_]
 
 
+def _serialize_undefinedconst_list(undefconsts_: List[UndefinedConst]) -> List[Dict[str, Any]]:
+    """
+    Serialize list of variables or constants
+    :param vars_: list of Var or Const
+    :return: List of dictionaries with the serialized data
+    """
+    return [undefconst.to_dict() for undefconst in undefconsts_]
+
+
 def _deserialize_expr_list(expr_dicts: List[Dict[str, Any]]) -> List[Expr]:
     """
 
@@ -50,7 +58,7 @@ def _deserialize_expr_list(expr_dicts: List[Dict[str, Any]]) -> List[Expr]:
     return [Expr.from_dict(d) for d in expr_dicts]
 
 
-def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
+def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const | UndefinedConst]:
     """
     De-serialize previously serialized data into List of Vars or Const
     :param var_dicts: List of serialized data
@@ -62,6 +70,8 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
             result.append(Var(name=d["name"], uid=d["uid"]))
         elif d["type"] == "Const":
             result.append(Const(value=d["value"], uid=d["uid"]))
+        elif d['type'] == "UndefinedConst":
+            result.append(UndefinedConst())
         else:
             raise ValueError(f"Unknown variable type {d['type']}")
     return result
@@ -73,7 +83,8 @@ class Block:
     This represents a group of equations or a group of blocks
     """
     uid: int = field(default_factory=_new_uid)
-    vars2device:Dict[int, PhysicalDevice] = field(default_factory=dict)
+    vars2device: Dict[int, PhysicalDevice] = field(default_factory=dict)
+    vars_glob_name2uid: Dict[str, uid] = field(default_factory=dict)
 
     # internal vars
     state_vars: List[Var] = field(default_factory=list)
@@ -84,12 +95,10 @@ class Block:
     # initialization
     init_vars: List[Var] = field(default_factory=list)
     init_eqs: Dict[Var, Expr] = field(default_factory=dict)
-    fix_vars: List[Any] = field(default_factory=list)
+    fix_vars: List[UndefinedConst] = field(default_factory=list)
     fix_vars_eqs: Dict[Any, Expr] = field(default_factory=dict)
 
-
     external_mapping: Dict[DynamicVarType, Var] = field(default_factory=dict)
-    var_mapping: Dict[str, Var] = field(default_factory=dict)
 
     # parameters (parameters affected by events)
     parameters: List[Var | Const] = field(default_factory=list)
@@ -145,34 +154,89 @@ class Block:
         """
         return self.algebraic_vars + self.state_vars
 
-    def to_dict(self) -> Dict[str, List[Dict[str, Any]] | int]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "uid": self.uid,
+            "vars2device": {var_uid: dev.uid for var_uid, dev in self.vars2device.items()},
+            "vars_glob_name2uid": self.vars_glob_name2uid,
             "state_vars": _serialize_var_list(self.state_vars),
             "state_eqs": _serialize_expr_list(self.state_eqs),
             "algebraic_vars": _serialize_var_list(self.algebraic_vars),
             "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
+            "init_vars": _serialize_var_list(self.init_vars),
+            "init_eqs": {var.to_dict(): expr.to_dict() for var, expr in self.init_eqs.items()},
+            "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
+            "fix_vars_eqs": {undefconst.uid: expr.to_dict() for undefconst, expr in self.fix_vars_eqs.items()},
+            "external_mapping": {dynvartype.__str__(): var.to_dict() for dynvartype, var in
+                                 self.external_mapping.items()},
             "parameters": _serialize_var_list(self.parameters),
+            "parameters_eqs": _serialize_expr_list(self.parameters_eqs),
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
             "in_vars": _serialize_var_list(self.in_vars),
             "out_vars": _serialize_var_list(self.out_vars),
+            "active_in_vars": _serialize_var_list(self.active_in_vars),
         }
 
+    # def to_dict(self) -> Dict[str, List[Dict[str, Any]] | int]:
+    #     return {
+    #         "uid": self.uid,
+    #         "state_vars": _serialize_var_list(self.state_vars),
+    #         "state_eqs": _serialize_expr_list(self.state_eqs),
+    #         "algebraic_vars": _serialize_var_list(self.algebraic_vars),
+    #         "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
+    #         "parameters": _serialize_var_list(self.parameters),
+    #         "name": self.name,
+    #         "children": [child.to_dict() for child in self.children],
+    #         "in_vars": _serialize_var_list(self.in_vars),
+    #         "out_vars": _serialize_var_list(self.out_vars),
+    #     }
+
     @staticmethod
-    def parse(data: Dict[str, List[Dict[str, Any]] | int]) -> "Block":
-        return Block(
+    def parse(data: Dict[str, Any]) -> "Block":
+        block = Block(
             uid=data["uid"],
             state_vars=_deserialize_var_list(data["state_vars"]),
             state_eqs=_deserialize_expr_list(data["state_eqs"]),
             algebraic_vars=_deserialize_var_list(data["algebraic_vars"]),
             algebraic_eqs=_deserialize_expr_list(data["algebraic_eqs"]),
+            init_vars=_deserialize_var_list(data.get("init_vars", [])),
+            fix_vars=_deserialize_var_list(data.get("fix_vars", [])),
+            fix_vars_eqs={
+                UndefinedConst(): Expr.from_dict(expr_dict)
+                for undefconst_dict, expr_dict in data.get("fix_vars_eqs", dict()).items()
+            },
+            external_mapping={
+                DynamicVarType(k): Var(name=d["name"], uid=d["uid"])
+                for k, d in data.get("external_mapping", dict()).items()
+            },
+            init_eqs={
+                Var(name=var_dict["name"], uid=var_dict["uid"]): Expr.from_dict(expr_dict)
+                for var_dict, expr_dict in data.get("init_eqs", dict())
+            },
             parameters=_deserialize_var_list(data["parameters"]),
+            parameters_eqs=_deserialize_expr_list(data.get("parameters_eqs", [])),
             name=data.get("name", ""),
             children=[Block.parse(child) for child in data.get("children", [])],
             in_vars=_deserialize_var_list(data.get("in_vars", [])),
             out_vars=_deserialize_var_list(data.get("out_vars", [])),
+            active_in_vars=_deserialize_var_list(data.get("active_in_vars", [])),
         )
+        return block
+
+    # def parse(data: Dict[str, List[Dict[str, Any]] | int]) -> "Block":
+    #     return Block(
+    #         uid=data["uid"],
+    #         state_vars=_deserialize_var_list(data["state_vars"]),
+    #         state_eqs=_deserialize_expr_list(data["state_eqs"]),
+    #         algebraic_vars=_deserialize_var_list(data["algebraic_vars"]),
+    #         algebraic_eqs=_deserialize_expr_list(data["algebraic_eqs"]),
+    #         parameters=_deserialize_var_list(data["parameters"]),
+    #         name=data.get("name", ""),
+    #         children=[Block.parse(child) for child in data.get("children", [])],
+    #         in_vars=_deserialize_var_list(data.get("in_vars", [])),
+    #         out_vars=_deserialize_var_list(data.get("out_vars", [])),
+    #     )
 
     def copy(self) -> "Block":
         """
@@ -197,7 +261,8 @@ def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - Const(value)])
     return y, blk
 
-def variable(name: str = "variable",  vartype: str = "vartype") -> Tuple[Var, Block]:
+
+def variable(name: str = "variable", vartype: str = "vartype") -> Tuple[Var, Block]:
     y = Var(name)
     if vartype == 'state':
         blk = Block(state_vars=[y])
@@ -205,7 +270,8 @@ def variable(name: str = "variable",  vartype: str = "vartype") -> Tuple[Var, Bl
         blk = Block(algebraic_vars=[y])
     return y, blk
 
-def equation(expr: str = 'expression', etype: str = "etype")-> Block:
+
+def equation(expr: str = 'expression', etype: str = "etype") -> Block:
     if etype == 'state':
         blk = Block(state_eqs=[make_symbolic(expr)])
     else:
@@ -241,8 +307,6 @@ def substract(inputs: Sequence[Var | Const], name: str = "substract_out") -> Tup
     return y, blk
 
 
-
-
 def integrator(u: Var | Const, name: str = "x") -> Tuple[Var, Block]:
     x = Var(name)
     blk = Block(state_vars=[x], state_eqs=[u])
@@ -258,13 +322,10 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  children=[blk_kp, blk_int, blk_ki, blk_sum],
                  in_vars=[err],
                  out_vars=[u])
-#
-# def generic() -> Block:
-#     blk = Block()
-#     return blk
 
 
-def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]) -> Block:
+def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
+            algebraic_outputs: Sequence[str]) -> Block:
     blk = Block()
     blk.name = "generic"
     input_vars = [Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
@@ -279,12 +340,5 @@ def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: i
         var = Var(v)
         blk.algebraic_vars.append(var)
         blk.out_vars.append(var)
-
-
-
-
-
-
-
 
     return blk

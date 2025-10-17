@@ -7,9 +7,7 @@ import numpy as np
 import numba as nb
 from matplotlib import pyplot as plt
 import scipy.linalg
-from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 from scipy.sparse.linalg import spsolve
-import scipy.sparse as sp
 import math
 
 from typing import Dict, Union
@@ -25,6 +23,29 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
 
 
+def compute_state_matrix(slv: BlockSolver, x: Vec, params: Vec,):
+    """
+    Small Signal Stability analysis
+    :param slv: BlockSolver
+    :param x: variables (1D numpy array)
+    :param params: parameters (1D numpy array)
+
+    :return: np array state matrix(A)
+
+    Small Signal Stability analysis:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
+        Tx'=f(x,y)
+        0=g(x,y)
+        the A matrix is computed as:
+        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+    """
+    fx = slv.j11(x, params)  # ∂f/∂x
+    fy = slv.j12(x, params)  # ∂f/∂y
+    gx = slv.j21(x, params)  # ∂g/∂x
+    gy = slv.j22(x, params)  # ∂g/∂y
+
+    gyx = spsolve(gy, gx)
+    return fx - fy @ gyx
 
 @nb.njit(cache=True)
 def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
@@ -43,7 +64,6 @@ def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
             participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
 
     # normalize participation factors
-    # pfact_abs = sp.csc_matrix(np.ones(num_states)) @ participation_factors
     pfact_abs = np.ones(num_states) @ participation_factors
     for i in range(n_eigenvalues):
         participation_factors[:, i] /= pfact_abs[i]
@@ -150,7 +170,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True, plot_units = "rad/s", verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -164,11 +184,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
         eigenvalues:  1D row numpy array
         participation factors: 2D array csc matrix.
             Participation factors of mode i stored in PF[:,i]
-    """
 
-    """
     Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the DAE model:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
         Tx'=f(x,y)
         0=g(x,y)
         the A matrix is computed as:
@@ -176,22 +194,17 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
 
     2. Find eigenvalues and right(V) and left(W) eigenvectors
 
-    3. Perform stability assessment
+    3. Calculate normalized participation factors PF = W · V
 
-    4. Calculate normalized participation factors PF = W · V
+    4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
     """
-
-    fx = slv.j11(x, params)  # ∂f/∂x
-    fy = slv.j12(x, params)  # ∂f/∂y
-    gx = slv.j21(x, params)  # ∂g/∂x
-    gy = slv.j22(x, params)  # ∂g/∂y
-
-    gyx = spsolve(gy, gx)
-    A = (fx - fy @ gyx)  # sparse state matrix csc matrix
+    A = compute_state_matrix(slv,
+                             x,
+                             params) # sparse state matrix csc matrix
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
-    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True) # TODO: always use sparse algebra
+    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True)
 
     # find participation factors
     participation_factors = compute_participation_factors(An=A.shape[0],
@@ -207,32 +220,15 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, plot=True,
     damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
                                                                                    eig_no_conjugates = eig_no_conjugates)
 
-    # Stability: select positive and zero eigenvalues
-    tol = 1e-6  # numerical tolerance for eigenvalues = 0
-    unstable_eigs = eigenvalues[np.real(eigenvalues) > tol]
-    zero_eigs = eigenvalues[abs(np.real(eigenvalues)) <= tol]
-
-    if unstable_eigs.size == 0:
-        if zero_eigs.size == 0:
-            stability_report = ResultTypes.AsymptoticallyStable
-        else:
-            stability_report = ResultTypes.MarginallyStable
-    else:
-        stability_report = ResultTypes.Unstable
-
-    if plot:
-        plot_stability(eigenvalues = eigenvalues,
-                       plot_units= plot_units)
-
     if verbose:
-        print("Stability report:", stability_report)
+        print("State matrix:", A.toarray())
         print("Eigenvalues:", eigenvalues)
-        print("eig no conjugates:", eig_no_conjugates)
+        print("Participation factors:", participation_factors)
         print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
         print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
-        print("Participation factors:", participation_factors)
 
-    return stability_report, eigenvalues, participation_factors, damping_ratios, conjugate_freq
+
+    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
 
 
 class SmallSignalStabilityDriver(DriverTemplate):
@@ -263,11 +259,11 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         self.options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if options is None else options
 
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(stability="",
-                                                                                eigenvalues=np.empty(0),
+        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(eigenvalues=np.empty(0),
                                                                                 participation_factors=np.empty(0),
                                                                                 damping_ratios=np.empty(0),
                                                                                 conjugate_frequencies=np.empty(0),
+                                                                                state_matrix =np.empty(0),
                                                                                 stat_vars=[],
                                                                                 vars2device={})
 
@@ -318,26 +314,26 @@ class SmallSignalStabilityDriver(DriverTemplate):
             )
 
             i = int(self.options.ss_assessment_time / self.options.time_step)
-            (stability,
-             eigenvalues,
+            (eigenvalues,
              participation_factors,
              damping_ratios,
-             conjugate_frequencies) = run_small_signal_stability(slv=slv, x=y[i], params=params0, plot=False)
+             conjugate_frequencies,
+             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], params=params0)
 
         else:
 
-            (stability,
-             eigenvalues,
+            (eigenvalues,
              participation_factors,
              damping_ratios,
-             conjugate_frequencies) = run_small_signal_stability(slv=slv, x=x0, params=params0, plot=False)
+             conjugate_frequencies,
+             state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
-            stability = stability,
             eigenvalues = eigenvalues,
             participation_factors = participation_factors,
             damping_ratios = damping_ratios,
             conjugate_frequencies = conjugate_frequencies,
+            state_matrix = state_matrix,
             stat_vars = slv.state_vars,
             vars2device = slv.vars2device
         )

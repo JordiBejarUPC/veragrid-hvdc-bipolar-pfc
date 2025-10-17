@@ -244,7 +244,8 @@ class NumericalCircuit:
             'pqv',
             'p',
             'pv',
-            'vd'
+            'vd',
+            # 'pqpv',
         ],
         "Branch arrays": [
             'tap_f',
@@ -912,6 +913,8 @@ class NumericalCircuit:
         )
         return Qmax_bus, Qmin_bus
 
+
+
     def get_structure(self, structure_type: str) -> pd.DataFrame:
         """
         Get a DataFrame with the input.
@@ -926,6 +929,7 @@ class NumericalCircuit:
         from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_advanced_formulation import (
             PfAdvancedFormulation)
         from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
+
 
         formulation = PfAdvancedFormulation(V0=self.bus_data.Vbus,
                                             S0=Sbus,
@@ -1078,12 +1082,13 @@ class NumericalCircuit:
 
         elif structure_type == "B'":
             adm = self.get_fast_decoupled_amittances()
-            if adm.B1.shape[0] == len(idx.pqpv):
+            print("B':",adm.B1.toarray())
+            if adm.B1.shape[0] == len(idx.pq):
                 data = adm.B1.toarray()
-                names = self.bus_data.names[idx.pqpv]
+                names = self.bus_data.names[idx.pq]
             else:
-                data = adm.B1[np.ix_(idx.pqpv, idx.pqpv)].toarray()
-                names = self.bus_data.names[idx.pqpv]
+                data = adm.B1[np.ix_(idx.pq, idx.pq)].toarray()
+                names = self.bus_data.names[idx.pq]
 
             df = pd.DataFrame(
                 data=data,
@@ -1093,6 +1098,7 @@ class NumericalCircuit:
 
         elif structure_type == "B''":
             adm = self.get_fast_decoupled_amittances()
+            print("B'':", adm.B2.toarray())
             if adm.B2.shape[0] == len(idx.pq):
                 data = adm.B2.toarray()
                 names = self.bus_data.names[idx.pq]
@@ -1206,12 +1212,12 @@ class NumericalCircuit:
                 index=self.bus_data.names[idx.vd],
             )
 
-        elif structure_type == 'pqpv':
-            df = pd.DataFrame(
-                data=idx.pqpv.astype(int).astype(str),
-                columns=['pqpv'],
-                index=self.bus_data.names[idx.pqpv],
-            )
+        # elif structure_type == 'pqpv':
+        #     df = pd.DataFrame(
+        #         data=idx.pqpv.astype(int).astype(str),
+        #         columns=['pqpv'],
+        #         index=self.bus_data.names[idx.pqpv],
+        #     )
 
         elif structure_type == 'tap_f':
             df = pd.DataFrame(
