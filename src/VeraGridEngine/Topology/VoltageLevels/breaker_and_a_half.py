@@ -10,15 +10,17 @@ from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 from VeraGridEngine.Topology.VoltageLevels.single_bar import connect_bar_segments
 
 
-def create_breaker_and_a_half(name: str,
-                              grid: MultiCircuit,
-                              n_bays: int,
-                              v_nom: float,
-                              substation: dev.Substation,
-                              country: dev.Country = None,
-                              bar_by_segments: bool = False,
-                              offset_x=0,
-                              offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
+def create_breaker_and_a_half(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        bar_by_segments: bool = False,
+        offset_x=0,
+        offset_y=0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a breaker-and-a-half voltage level
     :param name: Voltage level name
@@ -42,6 +44,7 @@ def create_breaker_and_a_half(name: str,
     l_x_pos = []
     l_y_pos = []
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar1_buses: List[dev.Bus] = list()
     bar2_buses: List[dev.Bus] = list()
 
@@ -50,6 +53,7 @@ def create_breaker_and_a_half(name: str,
                        width=(n_bays + n_bays % 2) * x_dist, xpos=offset_x - x_dist, ypos=offset_y, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar1)
+        all_buses.append(bar1)
         l_x_pos.append(bar1.x)
         l_y_pos.append(bar1.y)
 
@@ -58,6 +62,7 @@ def create_breaker_and_a_half(name: str,
                        country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
+        all_buses.append(bar2)
         l_x_pos.append(bar2.x)
         l_y_pos.append(bar2.y)
     else:
@@ -78,6 +83,7 @@ def create_breaker_and_a_half(name: str,
                            country=country,
                            graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar1)
+            all_buses.append(bar1)
             l_x_pos.append(bar1.x)
             l_y_pos.append(bar1.y)
             bar1_buses.append(bar1)
@@ -92,6 +98,7 @@ def create_breaker_and_a_half(name: str,
                            country=country,
                            graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar2)
+            all_buses.append(bar2)
             l_x_pos.append(bar2.x)
             l_y_pos.append(bar2.y)
             bar2_buses.append(bar2)
@@ -158,42 +165,52 @@ def create_breaker_and_a_half(name: str,
         dis8 = dev.Switch(name=f"Dis6_{i}", bus_from=bus8, bus_to=bar2, graphic_type=SwitchGraphicType.Disconnector)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
         grid.add_bus(bus2)
+        all_buses.append(bus2)
         l_x_pos.append(bus2.x)
         l_y_pos.append(bus2.y)
 
         grid.add_bus(bus3)
+        all_buses.append(bus3)
         l_x_pos.append(bus3.x)
         l_y_pos.append(bus3.y)
 
         grid.add_bus(bus4)
+        all_buses.append(bus4)
         l_x_pos.append(bus4.x)
         l_y_pos.append(bus4.y)
 
         grid.add_bus(bus5)
+        all_buses.append(bus5)
         l_x_pos.append(bus5.x)
         l_y_pos.append(bus5.y)
 
         grid.add_bus(bus6)
+        all_buses.append(bus6)
         l_x_pos.append(bus6.x)
         l_y_pos.append(bus6.y)
 
         grid.add_bus(bus7)
+        all_buses.append(bus7)
         l_x_pos.append(bus7.x)
         l_y_pos.append(bus7.y)
 
         grid.add_bus(bus8)
+        all_buses.append(bus8)
         l_x_pos.append(bus8.x)
         l_y_pos.append(bus8.y)
 
         grid.add_bus(bus_line_connection_1)
+        all_buses.append(bus_line_connection_1)
         l_x_pos.append(bus_line_connection_1.x)
         l_y_pos.append(bus_line_connection_1.y)
 
         grid.add_bus(bus_line_connection_2)
+        all_buses.append(bus_line_connection_2)
         l_x_pos.append(bus_line_connection_2.x)
         l_y_pos.append(bus_line_connection_2.y)
 
@@ -223,18 +240,20 @@ def create_breaker_and_a_half(name: str,
         if len(bar2_buses) > 1:
             connect_bar_segments(grid=grid, bar_buses=bar2_buses, name=name)
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_breaker_and_a_half_with_disconnectors(name: str,
-                                                 grid: MultiCircuit,
-                                                 n_bays: int,
-                                                 v_nom: float,
-                                                 substation: dev.Substation,
-                                                 country: dev.Country = None,
-                                                 bar_by_segments: bool = False,
-                                                 offset_x=0,
-                                                 offset_y=0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
+def create_breaker_and_a_half_with_disconnectors(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        bar_by_segments: bool = False,
+        offset_x=0,
+        offset_y=0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a breaker-and-a-half with disconnectors voltage level
     :param name: Voltage level name
@@ -258,6 +277,7 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
     l_x_pos = []
     l_y_pos = []
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar1_buses: List[dev.Bus] = list()
     bar2_buses: List[dev.Bus] = list()
 
@@ -266,6 +286,7 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
                        width=(n_bays + n_bays % 2) * x_dist, xpos=offset_x - x_dist, ypos=offset_y, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar1)
+        all_buses.append(bar1)
         l_x_pos.append(bar1.x)
         l_y_pos.append(bar1.y)
 
@@ -274,6 +295,7 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
                        country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
+        all_buses.append(bar1)
         l_x_pos.append(bar2.x)
         l_y_pos.append(bar2.y)
     else:
@@ -294,6 +316,7 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
                            country=country,
                            graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar1)
+            all_buses.append(bar1)
             l_x_pos.append(bar1.x)
             l_y_pos.append(bar1.y)
             bar1_buses.append(bar1)
@@ -308,6 +331,7 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
                            country=country,
                            graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar2)
+            all_buses.append(bar2)
             l_x_pos.append(bar2.x)
             l_y_pos.append(bar2.y)
             bar2_buses.append(bar2)
@@ -334,10 +358,12 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
                          graphic_type=SwitchGraphicType.CircuitBreaker)
 
         grid.add_bus(bus_line_connection_1)
+        all_buses.append(bus_line_connection_1)
         l_x_pos.append(bus_line_connection_1.x)
         l_y_pos.append(bus_line_connection_1.y)
 
         grid.add_bus(bus_line_connection_2)
+        all_buses.append(bus_line_connection_2)
         l_x_pos.append(bus_line_connection_2.x)
         l_y_pos.append(bus_line_connection_2.y)
 
@@ -359,4 +385,4 @@ def create_breaker_and_a_half_with_disconnectors(name: str,
         if len(bar2_buses) > 1:
             connect_bar_segments(grid=grid, bar_buses=bar2_buses, name=name)
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y

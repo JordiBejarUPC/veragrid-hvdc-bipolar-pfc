@@ -659,7 +659,6 @@ class DataBaseTableMain(DiagramsMain):
     def grid_reduction_from_table_selection(self):
         """
         Crop model to buses selection
-        :return:
         """
         selected_buses, selected_objects = self.get_selected_table_buses()
 
@@ -671,12 +670,14 @@ class DataBaseTableMain(DiagramsMain):
                                                               session=self.session,
                                                               selected_buses_set=selected_buses)
 
-            self.grid_reduction_dialogue.show()
+            self.grid_reduction_dialogue.exec()
+
+            if self.grid_reduction_dialogue.did_reduce:
+                self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
 
     def grid_reduction_from_schematic_selection(self):
         """
-
-        :return:
+        Call the grid reduction dialogue on the schematic selection
         """
         selected_buses = self.get_selected_buses()
 
@@ -684,13 +685,16 @@ class DataBaseTableMain(DiagramsMain):
             # get the previous power flow
             _, pf_res = self.session.power_flow
 
-            selected_buses_set = {bus for i, bus, graphic in selected_buses}
+            selected_buses_set: Set[dev.Bus] = {bus for i, bus, graphic in selected_buses}
 
             self.grid_reduction_dialogue = GridReduceDialogue(grid=self.circuit,
                                                               session=self.session,
                                                               selected_buses_set=selected_buses_set)
 
-            self.grid_reduction_dialogue.show()
+            self.grid_reduction_dialogue.exec()
+
+            if self.grid_reduction_dialogue.did_reduce:
+                self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
 
     def add_objects(self):
         """

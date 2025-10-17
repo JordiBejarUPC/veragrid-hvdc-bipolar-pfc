@@ -18,8 +18,14 @@ class ContingencyAnalysisResults(ResultsTemplate):
     Contingency analysis results
     """
 
-    def __init__(self, ncon: int, nbus: int, nbr: int,
-                 bus_names: StrVec, branch_names: StrVec, bus_types: IntVec, con_names: StrVec):
+    def __init__(self,
+                 ncon: int,
+                 nbus: int,
+                 nbr: int,
+                 bus_names: StrVec,
+                 branch_names: StrVec,
+                 bus_types: IntVec,
+                 con_names: StrVec):
         """
         ContingencyAnalysisResults
         :param ncon: number of contingencies

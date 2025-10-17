@@ -300,7 +300,6 @@ class Assets:
                 dev.VoltageLevel(),
                 dev.BusBar(),
                 dev.Bus(),
-                dev.Switch()
             ],
             "Injections": [
                 dev.Generator(),
@@ -322,6 +321,7 @@ class Assets:
                 dev.HvdcLine(),
                 dev.VSC(),
                 dev.UPFC(),
+                dev.Switch()
             ],
             "Fluid": [
                 dev.FluidNode(),

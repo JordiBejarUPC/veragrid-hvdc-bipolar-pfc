@@ -9,11 +9,11 @@ import cmath
 import copy
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Union, Set, Callable, Sequence, Any, TYPE_CHECKING
+from typing import List, Dict, Tuple, Union, Set, Sequence, TYPE_CHECKING
 from uuid import getnode as get_mac, uuid4
 import networkx as nx
 from matplotlib import pyplot as plt
-from scipy.sparse import csc_matrix, lil_matrix, coo_matrix
+from scipy.sparse import csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -24,8 +24,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, AREA_TYPES, BRANCH_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType
-
+from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
@@ -1729,6 +1728,52 @@ class MultiCircuit(Assets):
 
         return val
 
+    def get_Pgen(self) -> Vec:
+        """
+        Get the complex bus power Injections
+        :return: (nbus) [MW + j MVAr]
+        """
+        val = np.zeros(self.get_bus_number(), dtype=float)
+        bus_dict = self.get_bus_index_dict()
+
+        for elm in self.generators:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.batteries:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.static_generators:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        for elm in self.external_grids:
+            if elm.mode != ExternalGridMode.VD:
+                if elm.bus is not None:
+                    k = bus_dict[elm.bus]
+                    val[k] += elm.P
+
+        return val
+
+    def get_Pload(self) -> Vec:
+        """
+        Get the complex bus power Injections
+        :return: (nbus) [MW + j MVAr]
+        """
+        val = np.zeros(self.get_bus_number(), dtype=float)
+        bus_dict = self.get_bus_index_dict()
+
+        for elm in self.loads:
+            if elm.bus is not None:
+                k = bus_dict[elm.bus]
+                val[k] += elm.P
+
+        return val
+
     def get_Sbus_prof_fixed(self) -> CxMat:
         """
         Get the complex bus power Injections considering those devices that cannot be dispatched
@@ -2241,15 +2286,17 @@ class MultiCircuit(Assets):
         # if any error in the logger, bad
         return logger.error_count() == 0, logger, dgrid
 
-    def add_circuit(self, new_grid: "MultiCircuit") -> Logger:
+    def add_circuit(self, new_grid: "MultiCircuit", re_id_new_grid: bool = True) -> Logger:
         """
         Add a circuit to this circuit, keeping all elements (this is not equal to a circuit merge)
         :param new_grid: Circuit to insert
+        :param re_id_new_grid: Create new idtags for the new grid
         :return: Logger
         """
 
         # re-id all elements
-        new_grid.new_idtags()
+        if re_id_new_grid:
+            new_grid.new_idtags()
 
         # add is the same as merge but the idtags are renewed so that there are no conflicts
         logger = self.merge_circuit(new_grid)
@@ -2795,8 +2842,13 @@ class MultiCircuit(Assets):
         for i, elm in enumerate(self.get_hvdc()):
             elm.Pset.set(results.hvdc_Pf[i])
 
-    def get_reduction_sets(self, reduction_bus_indices: Sequence[int],
-                           add_vsc=False, add_hvdc=False, add_switch=True) -> Tuple[IntVec, IntVec, IntVec, IntVec]:
+    def get_reduction_sets(
+            self,
+            reduction_bus_indices: Sequence[int],
+            add_vsc=False,
+            add_hvdc=False,
+            add_switch=True
+    ) -> Tuple[IntVec, IntVec, IntVec, IntVec, IntVec]:
         """
         Generate the set of bus indices for grid reduction
         :param reduction_bus_indices: array of bus indices to reduce (external set)
@@ -2810,6 +2862,7 @@ class MultiCircuit(Assets):
         boundary_set = set()
         internal_set = set()
         boundary_branches = list()
+        internal_branches = list()
 
         for k, branch in enumerate(self.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
             f = bus_idx_dict[branch.bus_from]
@@ -2833,6 +2886,7 @@ class MultiCircuit(Assets):
                     # f nor t are in the external set: both belong to the internal set
                     internal_set.add(f)
                     internal_set.add(t)
+                    internal_branches.append(k)
 
         # buses cannot be in both the internal and boundary set
         elms_to_remove = list()
@@ -2848,8 +2902,9 @@ class MultiCircuit(Assets):
         boundary = np.sort(np.array(list(boundary_set)))
         internal = np.sort(np.array(list(internal_set)))
         boundary_branches = np.array(boundary_branches)
+        internal_branches = np.array(internal_branches)
 
-        return external, boundary, internal, boundary_branches
+        return external, boundary, internal, boundary_branches, internal_branches
 
     def get_buses_from_objects(self, elements: List[ALL_DEV_TYPES]) -> Set[dev.Bus]:
         """

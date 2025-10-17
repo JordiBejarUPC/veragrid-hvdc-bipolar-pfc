@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, List
 
-from VeraGridEngine.Compilers.circuit_to_gslv import gslv_contingencies
+from VeraGridEngine.Compilers.circuit_to_gslv import gslv_contingencies_snapshot
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import EngineType, ContingencyMethod, SimulationTypes
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
@@ -192,10 +192,7 @@ class ContingencyAnalysisDriver(DriverTemplate):
         elif self.engine == EngineType.GSLV:
 
             self.report_text("Running contingencies in gslv...")
-            con_res = gslv_contingencies(circuit=self.grid,
-                                         con_opt=self.options,
-                                         time_series=False,
-                                         time_indices=None)
+            con_res = gslv_contingencies_snapshot(circuit=self.grid, con_opt=self.options)
 
             self.results = ContingencyAnalysisResults(
                 ncon=self.grid.get_contingency_groups_number(),
@@ -207,9 +204,12 @@ class ContingencyAnalysisDriver(DriverTemplate):
                 con_names=np.array(self.grid.get_contingency_group_names())
             )
 
-            # results.S[t, :] = res_t.S.real.max(axis=0)
-            self.results.max_flows = con_res.max_values.Sf[0, :]
-            self.results.max_loading = con_res.max_values.loading[0, :]
+            self.results.Sf = con_res.Sf
+            self.results.loading = con_res.loading
+            self.results.Sbus = con_res.Sbus
+            self.results.voltage = con_res.voltage
+            # self.results.max_flows = con_res.Sf[0, :]
+            # self.results.max_loading = con_res.loading[0, :]
 
         return self.results
 

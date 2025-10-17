@@ -7,13 +7,20 @@ from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduc
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
 
 fname = os.path.join('..', '..', 'tests', 'data', 'grids', 'Matpower', 'case118.m')
-
-grid = vg.open_file(fname)
-
 reduction_bus_indices = np.array([
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
     20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 113, 114, 115, 117
 ]) - 1  # minus 1 for zero based indexing
+
+# fname = "case300.raw"
+# reduction_bus_indices = np.array(list(range(50, 65)))
+
+grid = vg.open_file(fname)
+sbus0 = grid.get_Sbus()
+total_sbus0 = sbus0.sum()
+total_pbus0 = total_sbus0.real
+pgen0 = grid.get_Pgen().sum()
+pload0 = grid.get_Pload().sum()
 
 for pf_method in [vg.SolverType.NR, vg.SolverType.Linear]:
     pf_opt = vg.PowerFlowOptions(solver_type=pf_method)
@@ -39,19 +46,9 @@ for pf_method in [vg.SolverType.NR, vg.SolverType.Linear]:
 
         elif method == vg.GridReductionMethod.PTDF:
 
-            nc = vg.compile_numerical_circuit_at(circuit=grid, t_idx=None)
-            lin = vg.LinearAnalysis(nc=nc)
-
-            if grid.has_time_series:
-                lin_ts = vg.LinearAnalysisTs(grid=grid)
-            else:
-                lin_ts = None
-
             grid2, logger = ptdf_reduction(
                 grid=grid.copy(),
                 reduction_bus_indices=reduction_bus_indices,
-                PTDF=lin.PTDF,
-                lin_ts=lin_ts
             )
 
         elif method == vg.GridReductionMethod.Ward:
@@ -64,6 +61,11 @@ for pf_method in [vg.SolverType.NR, vg.SolverType.Linear]:
             )
         else:
             raise Exception("Method not found :(")
+
+        sbus2 = grid2.get_Sbus()
+        total_pbus2 = sbus2.sum().real
+        pgen2 = grid2.get_Pgen().sum()
+        pload2 = grid2.get_Pload().sum()
 
         # run a power flow after
         pf_res2 = vg.power_flow(grid=grid2, options=pf_opt)
@@ -91,6 +93,8 @@ for pf_method in [vg.SolverType.NR, vg.SolverType.Linear]:
         # print(df_flow_comp)
 
         print()
-        print(pf_method.value, method.value)
+        print(method.value, "reduction with", pf_method.value, "comparison")
         print("Mean error:", df_flow_comp["Pf err"].mean(), '+-', df_flow_comp["Pf err"].std())
         print("Mean error %:", df_flow_comp["Pf err %"].mean(), '+-', df_flow_comp["Pf err %"].std())
+        print("Base load power", pload0, "MW Reduced power", pload2, "MW")
+        print("Base gen power", pgen0, "MW Reduced gen power", pgen2, "MW")

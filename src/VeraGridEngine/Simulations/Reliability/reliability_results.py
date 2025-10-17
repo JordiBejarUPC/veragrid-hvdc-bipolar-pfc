@@ -35,10 +35,14 @@ class ReliabilityResults(ResultsTemplate):
         self.LOLE_evolution = np.zeros(nsim)
         self.ENS_evolution = np.zeros(nsim)
         self.LOLF_evolution = np.zeros(nsim)
+        self.LOLET_evolution = np.zeros(nsim)
+        self.LOLFT_evolution = np.zeros(nsim)
 
         self.register(name='LOLE_evolution', tpe=Vec)
         self.register(name='ENS_evolution', tpe=Vec)
         self.register(name='LOLF_evolution', tpe=Vec)
+        self.register(name='LOLET_evolution', tpe=Vec)
+        self.register(name='LOLFT_evolution', tpe=Vec)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """

@@ -106,31 +106,34 @@ def transform_bus_to_connectivity_grid(grid: MultiCircuit, busbar: dev.Bus) -> T
     return new_buses, new_branches
 
 
-def transform_bus_into_voltage_level(bus: dev.Bus,
-                                     vl_type=VoltageLevelTypes.SingleBar,
-                                     add_disconnectors: bool = False,
-                                     bar_by_segments: bool = False) -> MultiCircuit:
+def transform_bus_into_voltage_level(
+        grid: MultiCircuit,
+        bus: dev.Bus,
+        vl_type=VoltageLevelTypes.SingleBar,
+        add_disconnectors: bool = False,
+        bar_by_segments: bool = False
+) -> List[dev.Bus]:
     """
     Transform a bus into a voltage level
+    :param grid: MultiCircuit to add devices to
     :param bus: Bus device to transform
     :param vl_type: VoltageLevelTypes
     :param add_disconnectors: add voltage level disconnectors?
     :param bar_by_segments: Have the bar with connectivities and impedances instead of a single bus-bar?
-    :return:
+    :return: List of all voltage level buses
     """
-    # make a new grid only to store the new stuff, later will be merged with the actual circuit
-    grid = MultiCircuit()
 
     # get the associations of the bus
     associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
 
     # compute the number of bays (positions)
     n_bays = len(associated_branches) + len(associated_injections)
+    all_buses: List[dev.Bus] = list()
 
     if vl_type == VoltageLevelTypes.SingleBar:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -142,7 +145,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -157,7 +160,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
     elif vl_type == VoltageLevelTypes.SingleBarWithBypass:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -168,7 +171,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -182,7 +185,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
     elif vl_type == VoltageLevelTypes.SingleBarWithSplitter:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -193,7 +196,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -207,7 +210,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
     elif vl_type == VoltageLevelTypes.DoubleBar:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -218,7 +221,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -231,12 +234,13 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
 
     elif vl_type == VoltageLevelTypes.DoubleBarWithBypass:
         # TODO: Implement
-        return
+        return all_buses
 
     elif vl_type == VoltageLevelTypes.DoubleBarWithTransference:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar_with_disconnectors(
+            (vl, conn_buses, all_buses,
+             offset_total_x, offset_total_y) = create_double_bar_with_transference_bar_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -247,7 +251,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -260,12 +264,12 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
 
     elif vl_type == VoltageLevelTypes.DoubleBarDuplex:
         # TODO: Implement
-        return
+        return all_buses
 
     elif vl_type == VoltageLevelTypes.Ring:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_ring_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_ring_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -276,7 +280,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_ring(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_ring(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -290,7 +294,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
     elif vl_type == VoltageLevelTypes.BreakerAndAHalf:
 
         if add_disconnectors:
-            vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half_with_disconnectors(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_breaker_and_a_half_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -301,7 +305,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
                 offset_y=bus.y,
             )
         else:
-            vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
+            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
@@ -314,7 +318,7 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
 
     else:
         print(f"{vl_type} not implemented :/")
-        return
+        return all_buses
 
     # re-connect the branches and injections to the new position-buses
     j = 0
@@ -331,15 +335,17 @@ def transform_bus_into_voltage_level(bus: dev.Bus,
         elem.bus = conn_buses[j]
         j += 1
 
-    return grid
+    return all_buses
 
 
-def create_substation(grid: MultiCircuit,
-                      se_name: str,
-                      se_code: str,
-                      lat: float,
-                      lon: float,
-                      vl_templates: List[dev.VoltageLevelTemplate]) -> Tuple[dev.Substation, List[dev.VoltageLevel]]:
+def create_substation(
+        grid: MultiCircuit,
+        se_name: str,
+        se_code: str,
+        lat: float,
+        lon: float,
+        vl_templates: List[dev.VoltageLevelTemplate]
+) -> Tuple[dev.Substation, List[dev.VoltageLevel]]:
     """
     Create a complete substation
     :param grid: MultiCircuit instance
@@ -368,7 +374,7 @@ def create_substation(grid: MultiCircuit,
         if vl_template.vl_type == VoltageLevelTypes.SingleBar:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -378,7 +384,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -395,7 +401,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.SingleBarWithBypass:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -405,7 +411,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -422,7 +428,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.SingleBarWithSplitter:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -432,7 +438,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -449,7 +455,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.DoubleBar:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -459,7 +465,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_double_bar(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -480,7 +486,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.DoubleBarWithTransference:
 
             if vl_template.add_disconnectors:
-                (vl, conn_buses,
+                (vl, conn_buses, all_buses,
                  offset_total_x, offset_total_y) = create_double_bar_with_transference_bar_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
@@ -491,7 +497,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -512,7 +518,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.Ring:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_ring_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_ring_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -522,7 +528,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_ring(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_ring(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -539,7 +545,7 @@ def create_substation(grid: MultiCircuit,
         elif vl_template.vl_type == VoltageLevelTypes.BreakerAndAHalf:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half_with_disconnectors(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_breaker_and_a_half_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -549,7 +555,7 @@ def create_substation(grid: MultiCircuit,
                     offset_y=offset_y,
                 )
             else:
-                vl, conn_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
+                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,

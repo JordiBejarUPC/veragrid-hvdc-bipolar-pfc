@@ -63,7 +63,6 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.nexus = QGraphicsLineItem()
         self.nexus.setPen(QPen(self.color, self.width, self.style))
 
-
     def set_glyph(self, glyph: Square | Circle | Polygon | Condenser):
         """
 

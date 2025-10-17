@@ -4,5 +4,5 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Topology.detect_substations import detect_substations
-from VeraGridEngine.Topology.GridReduction import *
+# from VeraGridEngine.Topology.GridReduction import *
 from VeraGridEngine.Topology.topology import find_different_states, find_islands

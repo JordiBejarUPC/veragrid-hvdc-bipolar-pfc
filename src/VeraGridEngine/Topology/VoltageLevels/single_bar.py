@@ -35,7 +35,7 @@ def create_single_bar(name: str,
                       country: dev.Country = None,
                       bar_by_segments: bool = False,
                       offset_x: float = 0.0,
-                      offset_y: float = 0.0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+                      offset_y: float = 0.0) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar voltage level without disconnectors
     :param name: Voltage level name
@@ -59,6 +59,7 @@ def create_single_bar(name: str,
     l_x_pos: List[float] = list()
     l_y_pos: List[float] = list()
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar_buses: List[dev.Bus] = list()
 
     if not bar_by_segments:
@@ -67,6 +68,7 @@ def create_single_bar(name: str,
                       xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
                       graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar)
+        all_buses.append(bar)
         l_x_pos.append(bar.x)
         l_y_pos.append(bar.y)
     else:
@@ -86,6 +88,7 @@ def create_single_bar(name: str,
                           country=country,
                           graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar)
+            all_buses.append(bar)
             l_x_pos.append(bar.x)
             l_y_pos.append(bar.y)
             bar_buses.append(bar)
@@ -139,14 +142,17 @@ def create_single_bar(name: str,
                           graphic_type=SwitchGraphicType.Disconnector)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
         grid.add_bus(bus2)
+        all_buses.append(bus2)
         l_x_pos.append(bus2.x)
         l_y_pos.append(bus2.y)
 
         grid.add_bus(bus3)
+        all_buses.append(bus3)
         l_x_pos.append(bus3.x)
         l_y_pos.append(bus3.y)
 
@@ -163,18 +169,20 @@ def create_single_bar(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_disconnectors(name: str,
-                                         grid: MultiCircuit,
-                                         n_bays: int,
-                                         v_nom: float,
-                                         substation: dev.Substation,
-                                         country: dev.Country = None,
-                                         bar_by_segments: bool = False,
-                                         offset_x: float = 0.0,
-                                         offset_y: float = 0.0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+def create_single_bar_with_disconnectors(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        bar_by_segments: bool = False,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar voltage level with disconnectors
     :param name: Voltage level name
@@ -198,6 +206,7 @@ def create_single_bar_with_disconnectors(name: str,
     l_x_pos: List[int] = list()
     l_y_pos: List[int] = list()
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar_buses: List[dev.Bus] = list()
 
     if not bar_by_segments:
@@ -212,6 +221,7 @@ def create_single_bar_with_disconnectors(name: str,
                       country=country,
                       graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar)
+        all_buses.append(bar)
         l_x_pos.append(bar.x)
         l_y_pos.append(bar.y)
     else:
@@ -231,6 +241,7 @@ def create_single_bar_with_disconnectors(name: str,
                           country=country,
                           graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar)
+            all_buses.append(bar)
             l_x_pos.append(bar.x)
             l_y_pos.append(bar.y)
             bar_buses.append(bar)
@@ -254,6 +265,7 @@ def create_single_bar_with_disconnectors(name: str,
                          graphic_type=SwitchGraphicType.CircuitBreaker)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
@@ -268,18 +280,20 @@ def create_single_bar_with_disconnectors(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_bypass(name: str,
-                                  grid: MultiCircuit,
-                                  n_bays: int,
-                                  v_nom: float,
-                                  substation: dev.Substation,
-                                  country: dev.Country = None,
-                                  bar_by_segments: bool = False,
-                                  offset_x: int = 0,
-                                  offset_y: int = 0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+def create_single_bar_with_bypass(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        bar_by_segments: bool = False,
+        offset_x: int = 0,
+        offset_y: int = 0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar with by-pass voltage level
     :param name: Voltage level name
@@ -303,6 +317,7 @@ def create_single_bar_with_bypass(name: str,
     l_x_pos = []
     l_y_pos = []
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar_buses: List[dev.Bus] = list()
 
     if not bar_by_segments:
@@ -312,6 +327,7 @@ def create_single_bar_with_bypass(name: str,
                       xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
                       graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar)
+        all_buses.append(bar)
         l_x_pos.append(bar.x)
         l_y_pos.append(bar.y)
     else:
@@ -332,6 +348,7 @@ def create_single_bar_with_bypass(name: str,
                           country=country,
                           graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar)
+            all_buses.append(bar)
             l_x_pos.append(bar.x)
             l_y_pos.append(bar.y)
             bar_buses.append(bar)
@@ -390,14 +407,17 @@ def create_single_bar_with_bypass(name: str,
                                 graphic_type=SwitchGraphicType.Disconnector)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
         grid.add_bus(bus2)
+        all_buses.append(bus2)
         l_x_pos.append(bus2.x)
         l_y_pos.append(bus2.y)
 
         grid.add_bus(bus3)
+        all_buses.append(bus3)
         l_x_pos.append(bus3.x)
         l_y_pos.append(bus3.y)
 
@@ -415,7 +435,7 @@ def create_single_bar_with_bypass(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
 def create_single_bar_with_bypass_with_disconnectors(
@@ -427,7 +447,8 @@ def create_single_bar_with_bypass_with_disconnectors(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x: int = 0,
-        offset_y: int = 0) -> Tuple[dev.VoltageLevel, List[dev.Bus], int, int]:
+        offset_y: int = 0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a single-bar with by-pass voltage level
     :param name: Voltage level name
@@ -451,6 +472,7 @@ def create_single_bar_with_bypass_with_disconnectors(
     l_x_pos = []
     l_y_pos = []
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar_buses: List[dev.Bus] = list()
 
     if not bar_by_segments:
@@ -482,6 +504,7 @@ def create_single_bar_with_bypass_with_disconnectors(
                           country=country,
                           graphic_type=BusGraphicType.Connectivity)
             grid.add_bus(bar)
+            all_buses.append(bar)
             l_x_pos.append(bar.x)
             l_y_pos.append(bar.y)
             bar_buses.append(bar)
@@ -510,6 +533,7 @@ def create_single_bar_with_bypass_with_disconnectors(
                                 graphic_type=SwitchGraphicType.Disconnector)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
@@ -525,18 +549,20 @@ def create_single_bar_with_bypass_with_disconnectors(
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_splitter(name: str,
-                                    grid: MultiCircuit,
-                                    n_bays: int,
-                                    v_nom: float,
-                                    substation: dev.Substation,
-                                    country: dev.Country = None,
-                                    bar_by_segments: bool = False,
-                                    offset_x: float = 0,
-                                    offset_y: float = 0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+def create_single_bar_with_splitter(
+        name: str,
+        grid: MultiCircuit,
+        n_bays: int,
+        v_nom: float,
+        substation: dev.Substation,
+        country: dev.Country = None,
+        bar_by_segments: bool = False,
+        offset_x: float = 0,
+        offset_y: float = 0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar with splitter breaker voltage level
     :param name: Voltage level name
@@ -562,6 +588,7 @@ def create_single_bar_with_splitter(name: str,
     l_x_pos: List[float] = list()
     l_y_pos: List[float] = list()
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar1_buses: List[dev.Bus] = list()
     bar2_buses: List[dev.Bus] = list()
 
@@ -576,6 +603,7 @@ def create_single_bar_with_splitter(name: str,
                        width=width_bar_1, xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar1)
+        all_buses.append(bar1)
         l_x_pos.append(bar1.x)
         l_y_pos.append(bar1.y)
         bar1_buses.append(bar1)
@@ -585,6 +613,7 @@ def create_single_bar_with_splitter(name: str,
                        ypos=offset_y + y_dist * 3 + bar_2_y_offset,
                        country=country, graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
+        all_buses.append(bar1)
         l_x_pos.append(bar2.x)
         l_y_pos.append(bar2.y)
         bar2_buses.append(bar2)
@@ -609,6 +638,7 @@ def create_single_bar_with_splitter(name: str,
                               country=country,
                               graphic_type=BusGraphicType.Connectivity)
                 grid.add_bus(bar)
+                all_buses.append(bar)
                 l_x_pos.append(bar.x)
                 l_y_pos.append(bar.y)
                 bar1_buses.append(bar)
@@ -629,6 +659,7 @@ def create_single_bar_with_splitter(name: str,
                               country=country,
                               graphic_type=BusGraphicType.Connectivity)
                 grid.add_bus(bar)
+                all_buses.append(bar)
                 l_x_pos.append(bar.x)
                 l_y_pos.append(bar.y)
                 bar2_buses.append(bar)
@@ -654,14 +685,17 @@ def create_single_bar_with_splitter(name: str,
         dis2 = dev.Switch(name=f"Dis2_{i}", bus_from=bar, bus_to=bus3, graphic_type=SwitchGraphicType.Disconnector)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
         grid.add_bus(bus2)
+        all_buses.append(bus2)
         l_x_pos.append(bus2.x)
         l_y_pos.append(bus2.y)
 
         grid.add_bus(bus3)
+        all_buses.append(bus3)
         l_x_pos.append(bus3.x)
         l_y_pos.append(bus3.y)
 
@@ -687,7 +721,7 @@ def create_single_bar_with_splitter(name: str,
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
 def create_single_bar_with_splitter_with_disconnectors(
@@ -699,7 +733,8 @@ def create_single_bar_with_splitter_with_disconnectors(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x: float = 0,
-        offset_y: float = 0) -> Tuple[dev.VoltageLevel, List[dev.Bus], float, float]:
+        offset_y: float = 0
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar with splitter breaker voltage level
     :param name: Voltage level name
@@ -725,6 +760,7 @@ def create_single_bar_with_splitter_with_disconnectors(
     l_x_pos: List[float] = list()
     l_y_pos: List[float] = list()
     conn_buses: List[dev.Bus] = list()
+    all_buses: List[dev.Bus] = list()
     bar1_buses: List[dev.Bus] = list()
     bar2_buses: List[dev.Bus] = list()
 
@@ -738,6 +774,7 @@ def create_single_bar_with_splitter_with_disconnectors(
                    width=width_bar_1, xpos=offset_x - bus_width, ypos=offset_y + y_dist * 1, country=country,
                    graphic_type=BusGraphicType.BusBar)
     grid.add_bus(bar1)
+    all_buses.append(bar1)
     l_x_pos.append(bar1.x)
     l_y_pos.append(bar1.y)
 
@@ -769,6 +806,7 @@ def create_single_bar_with_splitter_with_disconnectors(
         cb1 = dev.Switch(name=f"CB_{i}", bus_from=bar, bus_to=bus1, graphic_type=SwitchGraphicType.CircuitBreaker)
 
         grid.add_bus(bus1)
+        all_buses.append(bus1)
         l_x_pos.append(bus1.x)
         l_y_pos.append(bus1.y)
 
@@ -792,4 +830,4 @@ def create_single_bar_with_splitter_with_disconnectors(
     offset_total_x = max(l_x_pos, default=0) + x_dist
     offset_total_y = max(l_y_pos, default=0) + y_dist
 
-    return vl, conn_buses, offset_total_x, offset_total_y
+    return vl, conn_buses, all_buses, offset_total_x, offset_total_y
