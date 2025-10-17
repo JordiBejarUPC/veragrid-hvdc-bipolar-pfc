@@ -219,8 +219,10 @@ def check_end_of_impedance_table(row: List[int | float | str]) -> bool:
     else:
         return False
 
+
 def is_valid(value: float | int | str):
     return value is not None and isinstance(value, (int, float, str))
+
 
 def format_lines(data1: List[List[float | int | str]], logger: Logger) -> List[List[float | int | str]]:
     """
@@ -241,6 +243,7 @@ def format_lines(data1: List[List[float | int | str]], logger: Logger) -> List[L
         data.append(sublist)
 
     return data
+
 
 def read_raw(filename, text_func=None, progress_func=None, logger=Logger()) -> PsseCircuit:
     """
@@ -456,8 +459,8 @@ def write_raw(file_name: str, psse_model: PsseCircuit, version=33) -> Logger:
         if version == 35:
             w.write("@!IC,SBASE,REV,XFRRAT,NXFRAT,BASFRQ\n")
         w.write("{},{},{},{},{},{}     / Created with VeraGrid\n".format(psse_model.IC, psse_model.SBASE, version,
-                                                                        psse_model.XFRRAT, psse_model.NXFRAT,
-                                                                        psse_model.BASFRQ))
+                                                                         psse_model.XFRRAT, psse_model.NXFRAT,
+                                                                         psse_model.BASFRQ))
 
         # comment 1
         now = datetime.datetime.now()

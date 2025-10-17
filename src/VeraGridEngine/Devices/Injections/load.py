@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from typing import Union, List
 import numpy as np
@@ -12,6 +13,7 @@ from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class Load(LoadParent):
@@ -236,6 +238,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir_prof')
 
+    def get_Ir_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir, self.Ir_prof, t)
+
     @property
     def Ir1_prof(self) -> Profile:
         """
@@ -252,6 +261,13 @@ class Load(LoadParent):
             self._Ir1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir1_prof')
+
+    def get_Ir1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir1, self.Ir1_prof, t)
 
     @property
     def Ir2_prof(self) -> Profile:
@@ -270,6 +286,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir2_prof')
 
+    def get_Ir2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir2, self.Ir2_prof, t)
+
     @property
     def Ir3_prof(self) -> Profile:
         """
@@ -286,6 +309,13 @@ class Load(LoadParent):
             self._Ir3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir3_prof')
+
+    def get_Ir3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir3, self.Ir3_prof, t)
 
     @property
     def Ii_prof(self) -> Profile:
@@ -304,6 +334,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii_prof')
 
+    def get_Ii_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii, self.Ii_prof, t)
+
     @property
     def Ii1_prof(self) -> Profile:
         """
@@ -320,6 +357,13 @@ class Load(LoadParent):
             self._Ii1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii1_prof')
+
+    def get_Ii1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii1, self.Ii1_prof, t)
 
     @property
     def Ii2_prof(self) -> Profile:
@@ -338,6 +382,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii2_prof')
 
+    def get_Ii2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii2, self.Ii2_prof, t)
+
     @property
     def Ii3_prof(self) -> Profile:
         """
@@ -354,6 +405,13 @@ class Load(LoadParent):
             self._Ii3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii3_prof')
+
+    def get_Ii3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii3, self.Ii3_prof, t)
 
     @property
     def G_prof(self) -> Profile:
@@ -372,6 +430,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G_prof')
 
+    def get_G_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G, self.G_prof, t)
+
     @property
     def G1_prof(self) -> Profile:
         """
@@ -388,6 +453,13 @@ class Load(LoadParent):
             self._G1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G1_prof')
+
+    def get_G1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G1, self.G1_prof, t)
 
     @property
     def G2_prof(self) -> Profile:
@@ -406,6 +478,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G2_prof')
 
+    def get_G2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G2, self.G2_prof, t)
+
     @property
     def G3_prof(self) -> Profile:
         """
@@ -422,6 +501,13 @@ class Load(LoadParent):
             self._G3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a G3_prof')
+
+    def get_G3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.G3, self.G3_prof, t)
 
     @property
     def B_prof(self) -> Profile:
@@ -440,6 +526,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B_prof')
 
+    def get_B_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B, self.B_prof, t)
+
     @property
     def B1_prof(self) -> Profile:
         """
@@ -456,6 +549,13 @@ class Load(LoadParent):
             self._B1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B1_prof')
+
+    def get_B1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B1, self.B1_prof, t)
 
     @property
     def B2_prof(self) -> Profile:
@@ -474,6 +574,13 @@ class Load(LoadParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B2_prof')
 
+    def get_B2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B2, self.B2_prof, t)
+
     @property
     def B3_prof(self) -> Profile:
         """
@@ -490,6 +597,90 @@ class Load(LoadParent):
             self._B3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a B3_prof')
+
+    def get_B3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.B3, self.B3_prof, t)
+
+    def get_I_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir_at(t), self.get_Ii_at(t))
+
+    def get_I1_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir1_at(t), self.get_Ii1_at(t))
+
+    def get_I2_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir2_at(t), self.get_Ii2_at(t))
+
+    def get_I3_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir3_at(t), self.get_Ii3_at(t))
+
+    def get_Y_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G_at(t), self.get_B_at(t))
+
+    def get_Y1_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G1_at(t), self.get_B1_at(t))
+
+    def get_Y2_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G2_at(t), self.get_B2_at(t))
+
+    def get_Y3_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G3_at(t), self.get_B3_at(t))
+
+    def get_Y1_conj_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G1_at(t), -self.get_B1_at(t))
+
+    def get_Y2_conj_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G2_at(t), -self.get_B2_at(t))
+
+    def get_Y3_conj_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_G3_at(t), -self.get_B3_at(t))
 
     @property
     def n_customers(self) -> int:
@@ -567,7 +758,12 @@ class Load(LoadParent):
             if show_fig:
                 plt.show()
 
-    def initialize_rms(self, rms_event = False):
+    def initialize_rms(self, rms_event=False):
+        """
+
+        :param rms_event:
+        :return:
+        """
         if self.rms_model.empty():
 
             Ql = Var("Ql")
@@ -579,49 +775,9 @@ class Load(LoadParent):
                     Ql - self.Ql0
                 ],
                 algebraic_vars=[Pl, Ql],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                external_mapping={
+                init_eqs={})
+            self.rms_model.model.external_mapping={
                     VarPowerFlowRefferenceType.P: Pl,
                     VarPowerFlowRefferenceType.Q: Ql
                 }
-            )
-
-    def initialize_rms_with_event(self, rms_events: List, glob_time):
-        """
-
-        :param rms_events:
-        :param glob_time:
-        :return:
-        """
-        if self.rms_model.empty():
-            Ql = Var("Ql")
-            Pl = Var("Pl")
-            self.rms_model.model = Block(
-                algebraic_eqs=[
-                ],
-                algebraic_vars=[],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                parameters_eqs=[],
-                external_mapping={
-                }
-            )
-            self.rms_model.model.external_mapping[VarPowerFlowRefferenceType.P] = Pl
-            self.rms_model.model.external_mapping[VarPowerFlowRefferenceType.Q] = Ql
-            self.rms_model.model.algebraic_vars.append(Pl)
-            self.rms_model.model.algebraic_vars.append(Ql)
-            for rms_event in rms_events:
-
-                default_value = getattr(self, rms_event.parameter, None)  # TODO: Find a way of not using getattr and setattr
-                var = Var(rms_event.parameter)
-                setattr(self, rms_event.parameter, var)
-                self.rms_model.model.parameters.append(var)
-                self.rms_model.model.parameters_eqs.append(piecewise(glob_time, rms_event.times, rms_event.values, default_value))
-
-            self.rms_model.model.algebraic_eqs.append(Pl - self.Pl0)
-            self.rms_model.model.algebraic_eqs.append(Ql - self.Ql0)
-
 

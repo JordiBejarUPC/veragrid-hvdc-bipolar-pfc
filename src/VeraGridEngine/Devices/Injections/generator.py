@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class Generator(GeneratorParent):
@@ -315,6 +316,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pf_prof')
 
+    def get_Pf_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pf, self.Pf_prof, t)
+
     @property
     def Vset_prof(self) -> Profile:
         """
@@ -331,6 +339,13 @@ class Generator(GeneratorParent):
             self._Vset_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vset_prof')
+
+    def get_Vset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset, self.Vset_prof, t)
 
     @property
     def Qmin_prof(self) -> Profile:
@@ -349,6 +364,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Qmin_prof')
 
+    def get_Qmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmin, self.Qmin_prof, t)
+
     @property
     def Qmax_prof(self) -> Profile:
         """
@@ -365,6 +387,13 @@ class Generator(GeneratorParent):
             self._Qmax_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Qmax_prof')
+
+    def get_Qmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmax, self.Qmax_prof, t)
 
     @property
     def Cost2_prof(self) -> Profile:
@@ -383,6 +412,13 @@ class Generator(GeneratorParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost2_prof')
 
+    def get_Cost2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost2, self.Cost2_prof, t)
+
     @property
     def Cost0_prof(self) -> Profile:
         """
@@ -399,6 +435,13 @@ class Generator(GeneratorParent):
             self._Cost0_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
+
+    def get_Cost0_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost0, self.Cost0_prof, t)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -536,7 +579,7 @@ class Generator(GeneratorParent):
             Q_g = Var("Q_g", pf_ref=VarPowerFlowRefferenceType.Q)
 
             vf = UndefinedConst()
-            # tm0 = UndefinedConst()
+            tm0 = UndefinedConst()
 
             Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)

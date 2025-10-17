@@ -65,12 +65,13 @@ res = power_flow.results
 #initialization of variables
 ss, init_guess = initialize_rms(grid, res)
 params_mapping = {}
-```
-The need of performing the power flow and initialization of variables before the Stability assessment is noted.
 
-- If the Stability assessment time is not zero the dynamic simulation is performed before the Stability assessment:
+# The need of performing the power flow and initialization of variables 
+# before the Stability assessment is noted.
+# - If the Stability assessment time is not zero the dynamic simulation 
+#   is performed before the Stability assessment:
 
-```python
+
 t_assess = 20.0
 h = 0.001
 slv = BlockSolver(ss, grid.time)
@@ -86,10 +87,10 @@ t, y = slv.simulate(
     params0=params0,
     method="implicit_euler"
 )
-```
-And finally the Small-Signal Stability assessment:
 
-```python
+# And finally the Small-Signal Stability assessment:
+
+
 (stab,
  Eigenvalues,
  PFactors,
@@ -100,10 +101,9 @@ And finally the Small-Signal Stability assessment:
                                                      plot=True,
                                                      plot_units = "rad/s",
                                                      verbose = 1)
-```
-- If the Stability assessment time is not zero:
 
-```python
+# - If the Stability assessment time is not zero:
+
 i = t_assess / h
 (stab,
  Eigenvalues,

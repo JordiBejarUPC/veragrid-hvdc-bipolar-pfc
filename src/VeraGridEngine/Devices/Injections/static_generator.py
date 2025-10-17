@@ -9,6 +9,7 @@ from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 
 
 class StaticGenerator(LoadParent):
+    __slots__ = ()
 
     def __init__(self, name='StaticGen', idtag=None, code='', P=0.0, Q=0.0, active=True,
                  P1=0.0, P2=0.0, P3=0.0, Q1=0.0, Q2=0.0, Q3=0.0,

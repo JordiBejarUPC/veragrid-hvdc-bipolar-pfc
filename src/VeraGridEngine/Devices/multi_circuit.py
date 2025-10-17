@@ -1713,7 +1713,7 @@ class MultiCircuit(Assets):
         for elm in self.get_injection_devices_iter():
             if elm.bus is not None:
                 k = bus_dict[elm.bus]
-                val[k] += elm.get_S()
+                val[k] += elm.get_S_with_sign()
 
         return val
 
@@ -1729,7 +1729,7 @@ class MultiCircuit(Assets):
         for elm in self.get_injection_devices_iter():
             if elm.bus is not None:
                 k = bus_dict[elm.bus]
-                val[:, k] += elm.get_Sprof()
+                val[:, k] += elm.get_Sprof_with_sign()
 
         return val
 
@@ -1745,13 +1745,13 @@ class MultiCircuit(Assets):
         for elm in self.get_load_like_devices():
             if elm.bus is not None:
                 k = bus_dict[elm.bus]
-                val[:, k] += elm.get_Sprof()
+                val[:, k] += elm.get_Sprof_with_sign()
 
         for elm in self.get_generation_like_devices():
             if elm.bus is not None:
                 if not elm.enabled_dispatch:
                     k = bus_dict[elm.bus]
-                    val[:, k] += elm.get_Sprof()
+                    val[:, k] += elm.get_Sprof_with_sign()
 
         return val
 
@@ -1768,7 +1768,7 @@ class MultiCircuit(Assets):
             if elm.bus is not None:
                 if elm.enabled_dispatch:
                     k = bus_dict[elm.bus]
-                    val[:, k] += elm.get_Sprof()
+                    val[:, k] += elm.get_Sprof_with_sign()
 
         return val
 
@@ -2245,15 +2245,17 @@ class MultiCircuit(Assets):
         # if any error in the logger, bad
         return logger.error_count() == 0, logger, dgrid
 
-    def add_circuit(self, new_grid: "MultiCircuit") -> Logger:
+    def add_circuit(self, new_grid: "MultiCircuit", re_id_new_grid: bool = True) -> Logger:
         """
         Add a circuit to this circuit, keeping all elements (this is not equal to a circuit merge)
         :param new_grid: Circuit to insert
+        :param re_id_new_grid: Create new idtags for the new grid
         :return: Logger
         """
 
         # re-id all elements
-        new_grid.new_idtags()
+        if re_id_new_grid:
+            new_grid.new_idtags()
 
         # add is the same as merge but the idtags are renewed so that there are no conflicts
         logger = self.merge_circuit(new_grid)

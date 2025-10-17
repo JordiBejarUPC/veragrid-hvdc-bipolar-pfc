@@ -145,9 +145,11 @@ class ReliabilityStudyDriver(DriverTemplate):
         nc2 = nc.copy()
 
         ENS_arr = np.zeros(self.n_sim)
-        LOLE_arr = np.zeros(self.n_sim)
-        LOLF_arr = np.zeros(self.n_sim)
-
+        LOLE_arr = np.zeros(self.n_sim)  # nº of hours with incidences (not able to supply all demand)
+        LOLF_arr = np.zeros(self.n_sim)  # nº of incidences (not able to suppy all demand)
+        LOLE_total_arr = np.zeros(
+            self.n_sim)  # nº of hours with failures (independently of if it is possible to supply demand)
+        LOLF_total_arr = np.zeros(self.n_sim)  # nº of failures (independently of if it is possible to supply demand)
 
         for sim_idx in range(self.n_sim):
 
@@ -177,6 +179,22 @@ class ReliabilityStudyDriver(DriverTemplate):
 
                 blocks = find_time_blocks(horizon, all_actives)
 
+                indices_of_branches_with_incidences = np.where(np.any(simulated_branch_actives == False, axis=0))[0]
+                indices_of_gens_with_incidences = np.where(np.any(gen_actives == False, axis=0))[0]
+
+                branches_with_incidences = simulated_branch_actives[:, indices_of_branches_with_incidences]
+                gens_with_indices = gen_actives[:, indices_of_gens_with_incidences]
+
+                total_number_of_branch_incidences = np.sum((~branches_with_incidences) & np.concatenate(
+                    [np.ones((1, branches_with_incidences.shape[1]), dtype=bool), branches_with_incidences[:-1, :]],
+                            axis=0))
+
+                total_number_of_gens_incidences = np.sum((~gens_with_indices) & np.concatenate(
+                    [np.ones((1, gens_with_indices.shape[1]), dtype=bool), gens_with_indices[:-1, :]],
+                    axis=0))
+
+                LOLF_total_arr[sim_idx] = total_number_of_branch_incidences + total_number_of_gens_incidences
+
                 for idx_list in blocks:
 
                     batt_e_nom = nc.battery_data.enom.copy()
@@ -191,6 +209,8 @@ class ReliabilityStudyDriver(DriverTemplate):
                         total_failure_time += dt
 
                         fail_to_meet_demand = False
+
+                        LOLE_total_arr[sim_idx] += 1 * dt
 
                         # modify active states
                         nc2.passive_branch_data.active = simulated_branch_actives[t, :]
@@ -240,12 +260,13 @@ class ReliabilityStudyDriver(DriverTemplate):
 
                     if block_fail_to_meet_demand:
                         LOLF_arr[sim_idx] += 1
-
             self.report_progress2(current=sim_idx, total=self.n_sim)
 
         self.results.LOLE_evolution = np.cumsum(LOLE_arr) / (np.arange(len(LOLE_arr)) + 1)
         self.results.ENS_evolution = np.cumsum(ENS_arr) / (np.arange(len(ENS_arr)) + 1)
         self.results.LOLF_evolution = np.cumsum(LOLF_arr) / (np.arange(len(LOLF_arr)) + 1)
+        self.results.LOLET_evolution = np.cumsum(LOLE_total_arr) / (np.arange(len(LOLE_total_arr)) + 1)
+        self.results.LOLFT_evolution = np.cumsum(LOLF_total_arr) / (np.arange(len(LOLF_total_arr)) + 1)
 
     def cancel(self):
         self.__cancel__ = True

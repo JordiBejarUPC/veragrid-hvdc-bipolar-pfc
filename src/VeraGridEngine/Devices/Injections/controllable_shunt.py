@@ -9,6 +9,7 @@ from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -313,6 +314,13 @@ class ControllableShunt(ShuntParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vset_prof')
 
+    def get_Vset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset, self.Vset_prof, t)
+
     @property
     def step_prof(self) -> Profile:
         """
@@ -320,6 +328,22 @@ class ControllableShunt(ShuntParent):
         :return: Profile
         """
         return self._step_prof
+
+    @step_prof.setter
+    def step_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._step_prof = val
+        elif isinstance(val, np.ndarray):
+            self._step_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a step_prof')
+
+    def get_step_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.step, self.step_prof, t)
 
     def get_linear_g_steps(self):
         """
@@ -340,13 +364,3 @@ class ControllableShunt(ShuntParent):
             return self._b_steps
         else:
             return np.diff(self._b_steps)
-
-    @step_prof.setter
-    def step_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._step_prof = val
-        elif isinstance(val, np.ndarray):
-            self._step_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a step_prof')
-

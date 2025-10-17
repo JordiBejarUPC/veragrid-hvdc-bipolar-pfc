@@ -300,7 +300,7 @@ class NumericalCircuit:
                  nfluidp2x: int,
                  nfluidpath: int,
                  sbase: float,
-                 t_idx: int = 0):
+                 t_idx: int | None = None):
         """
         Numerical circuit
         :param nbus: Number of calculation buses

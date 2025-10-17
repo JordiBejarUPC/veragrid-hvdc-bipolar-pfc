@@ -177,15 +177,16 @@ def set_bus_control_voltage_vsc(i: int,
                              value=candidate_Vm,
                              expected_value=bus_data.Vbus[i])
 
+
 def set_bus_control_angle_vsc(i: int,
-                                j: int,
-                                remote_control: bool,
-                                bus_name: str,
-                                bus_angle_used: BoolVec,
-                                bus_data: BusData,
-                                candidate_Va: float,
-                                use_stored_guess: bool,
-                                logger: Logger) -> None:
+                              j: int,
+                              remote_control: bool,
+                              bus_name: str,
+                              bus_angle_used: BoolVec,
+                              bus_data: BusData,
+                              candidate_Va: float,
+                              use_stored_guess: bool,
+                              logger: Logger) -> None:
     """
     Set the bus control angle
     :param i: Bus index
@@ -239,6 +240,7 @@ def set_bus_control_angle_vsc(i: int,
                                  value=candidate_Va,
                                  expected_value=existing_angle)
 
+
 def set_bus_control_voltage_hvdc(i: int,
                                  j: int,
                                  remote_control: bool,
@@ -289,17 +291,14 @@ def set_bus_control_voltage_hvdc(i: int,
 def get_bus_data(bus_data: BusData,
                  circuit: MultiCircuit,
                  areas_dict: Dict[Area, int],
-                 t_idx: int = -1,
-                 time_series=False,
-                 use_stored_guess=False,
-                 fill_three_phase: bool = False) -> None:
+                 t_idx: int | None,
+                 use_stored_guess=False, ) -> None:
     """
 
     :param bus_data: BusData
     :param circuit:
     :param areas_dict:
     :param t_idx:
-    :param time_series:
     :param use_stored_guess:
     :return:
     """
@@ -334,14 +333,9 @@ def get_bus_data(bus_data: BusData,
 
         bus_data.areas[i] = areas_dict.get(bus.area, 0)
 
-        if time_series:
-            bus_data.active[i] = bus.active_prof[t_idx]
-            bus_data.Vmin[i] = bus.Vmin_prof[t_idx]
-            bus_data.Vmax[i] = bus.Vmax_prof[t_idx]
-        else:
-            bus_data.active[i] = bus.active
-            bus_data.Vmin[i] = bus.Vmin
-            bus_data.Vmax[i] = bus.Vmax
+        bus_data.active[i] = bus.get_active_at(t_idx)
+        bus_data.Vmin[i] = bus.get_Vmin_at(t_idx)
+        bus_data.Vmax[i] = bus.get_Vmax_at(t_idx)
 
     return None
 
@@ -351,10 +345,9 @@ def get_load_data(data: LoadData,
                   bus_dict: Dict[Bus, int],
                   bus_voltage_used: BoolVec,
                   bus_data: BusData,
+                  t_idx: int | None,
                   logger: Logger,
-                  t_idx=-1,
                   opf_results: Union[OptimalPowerFlowResults, None] = None,
-                  time_series=False,
                   use_stored_guess=False,
                   fill_three_phase: bool = False) -> LoadData:
     """
@@ -367,12 +360,10 @@ def get_load_data(data: LoadData,
     :param logger:
     :param t_idx:
     :param opf_results:
-    :param time_series:
     :param use_stored_guess:
     :param fill_three_phase: Fill the tree phase info?
     :return:
     """
-    idx3 = np.array([0, 1, 2])
     ii = 0
     for elm in circuit.get_loads():
 
@@ -390,105 +381,58 @@ def get_load_data(data: LoadData,
             data.mttr[ii] = elm.mttr
             data.scalable[ii] = elm.scalable
 
-            if time_series:
-                if opf_results is not None:
-                    data.S[ii] = complex(elm.P_prof[t_idx], elm.Q_prof[t_idx]) - opf_results.load_shedding[t_idx, ii]
+            if opf_results is not None:
+                if opf_results.load_shedding.ndim == 1:
+                    data.S[ii] = elm.get_S_at(t_idx) - opf_results.load_shedding[ii]
+                elif opf_results.load_shedding.ndim == 2:
+                    data.S[ii] = elm.get_S_at(t_idx) - opf_results.load_shedding[t_idx, ii]
                 else:
-                    data.S[ii] = complex(elm.P_prof[t_idx], elm.Q_prof[t_idx])
-
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                        data.S3_star[3 * ii + 0] = complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_star[3 * ii + 1] = complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_star[3 * ii + 2] = complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
-
-                        data.I3_star[3 * ii + 0] = complex(elm.Ir1_prof[t_idx], elm.Ii1_prof[t_idx])
-                        data.I3_star[3 * ii + 1] = complex(elm.Ir2_prof[t_idx], elm.Ii2_prof[t_idx])
-                        data.I3_star[3 * ii + 2] = complex(elm.Ir3_prof[t_idx], elm.Ii3_prof[t_idx])
-
-                        data.Y3_star[3 * ii + 0, 0] = complex(elm.G1_prof[t_idx], elm.B1_prof[t_idx])
-                        data.Y3_star[3 * ii + 1, 1] = complex(elm.G2_prof[t_idx], elm.B2_prof[t_idx])
-                        data.Y3_star[3 * ii + 2, 2] = complex(elm.G3_prof[t_idx], elm.B3_prof[t_idx])
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-                        data.S3_delta[3 * ii + 0] = complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_delta[3 * ii + 1] = complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_delta[3 * ii + 2] = complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
-
-                        if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
-                            data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                                Yab=complex(elm.G1_prof[t_idx], -elm.B1_prof[t_idx]),
-                                Ybc=complex(elm.G2_prof[t_idx], -elm.B2_prof[t_idx]),
-                                Yca=complex(elm.G3_prof[t_idx], -elm.B3_prof[t_idx])
-                            )
-                        else:
-                            data.Y3_delta[3 * ii + 0] = complex(elm.G1_prof[t_idx], -elm.B1_prof[t_idx])
-                            data.Y3_delta[3 * ii + 1] = complex(elm.G2_prof[t_idx], -elm.B2_prof[t_idx])
-                            data.Y3_delta[3 * ii + 2] = complex(elm.G3_prof[t_idx], -elm.B3_prof[t_idx])
-
-                        data.I3_delta[3 * ii + 0] = complex(elm.Ir1_prof[t_idx], elm.Ii1_prof[t_idx])
-                        data.I3_delta[3 * ii + 1] = complex(elm.Ir2_prof[t_idx], elm.Ii2_prof[t_idx])
-                        data.I3_delta[3 * ii + 2] = complex(elm.Ir3_prof[t_idx], elm.Ii3_prof[t_idx])
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.I[ii] = complex(elm.Ir_prof[t_idx], elm.Ii_prof[t_idx])
-                data.Y[ii] = complex(elm.G_prof[t_idx], elm.B_prof[t_idx])
-
-                data.active[ii] = elm.active_prof[t_idx]
-                data.cost[ii] = elm.Cost_prof[t_idx]
-                data.shift_key[ii] = elm.shift_key_prof[t_idx]
-
+                    data.S[ii] = elm.get_S_at(t_idx)  # ???
             else:
-                if opf_results is not None:
-                    data.S[ii] = complex(elm.P, elm.Q) - opf_results.load_shedding[ii]
+                data.S[ii] = elm.get_S_at(t_idx)
+
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+                    data.S3_star[3 * ii + 0] = elm.get_Sa_at(t_idx)
+                    data.S3_star[3 * ii + 1] = elm.get_Sb_at(t_idx)
+                    data.S3_star[3 * ii + 2] = elm.get_Sc_at(t_idx)
+
+                    data.I3_star[3 * ii + 0] = elm.get_I1_at(t_idx)
+                    data.I3_star[3 * ii + 1] = elm.get_I2_at(t_idx)
+                    data.I3_star[3 * ii + 2] = elm.get_I3_at(t_idx)
+
+                    data.Y3_star[3 * ii + 0, 0] = elm.get_Y1_conj_at(t_idx)
+                    data.Y3_star[3 * ii + 1, 1] = elm.get_Y2_conj_at(t_idx)
+                    data.Y3_star[3 * ii + 2, 2] = elm.get_Y3_conj_at(t_idx)
+
+                elif elm.conn == ShuntConnectionType.Delta:
+                    data.S3_delta[3 * ii + 0] = elm.get_Sa_at(t_idx)
+                    data.S3_delta[3 * ii + 1] = elm.get_Sb_at(t_idx)
+                    data.S3_delta[3 * ii + 2] = elm.get_Sc_at(t_idx)
+
+                    if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
+                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
+                            Yab=elm.get_Y1_conj_at(t_idx),
+                            Ybc=elm.get_Y2_conj_at(t_idx),
+                            Yca=elm.get_Y3_conj_at(t_idx)
+                        )
+                    else:
+                        data.Y3_delta[3 * ii + 0] = elm.get_Y1_conj_at(t_idx)
+                        data.Y3_delta[3 * ii + 1] = elm.get_Y2_conj_at(t_idx)
+                        data.Y3_delta[3 * ii + 2] = elm.get_Y3_conj_at(t_idx)
+
+                    data.I3_delta[3 * ii + 0] = elm.get_I1_at(t_idx)
+                    data.I3_delta[3 * ii + 1] = elm.get_I2_at(t_idx)
+                    data.I3_delta[3 * ii + 2] = elm.get_I3_at(t_idx)
+
                 else:
-                    data.S[ii] = complex(elm.P, elm.Q)
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
-                    if fill_three_phase:
-
-                        if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                            data.S3_star[3 * ii + 0] = complex(elm.Pa, elm.Qa)
-                            data.S3_star[3 * ii + 1] = complex(elm.Pb, elm.Qb)
-                            data.S3_star[3 * ii + 2] = complex(elm.Pc, elm.Qc)
-
-                            data.I3_star[3 * ii + 0] = complex(elm.Ir1, elm.Ii1)
-                            data.I3_star[3 * ii + 1] = complex(elm.Ir2, elm.Ii2)
-                            data.I3_star[3 * ii + 2] = complex(elm.Ir3, elm.Ii3)
-
-                            data.Y3_star[3 * ii + 0, 0] = complex(elm.G1, -elm.B1)
-                            data.Y3_star[3 * ii + 1, 1] = complex(elm.G2, -elm.B2)
-                            data.Y3_star[3 * ii + 2, 2] = complex(elm.G3, -elm.B3)
-
-                        elif elm.conn == ShuntConnectionType.Delta:
-                            data.S3_delta[3 * ii + 0] = complex(elm.Pa, elm.Qa)
-                            data.S3_delta[3 * ii + 1] = complex(elm.Pb, elm.Qb)
-                            data.S3_delta[3 * ii + 2] = complex(elm.Pc, elm.Qc)
-
-                            if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
-                                data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                                    Yab=complex(elm.G1, -elm.B1),
-                                    Ybc=complex(elm.G2, -elm.B2),
-                                    Yca=complex(elm.G3, -elm.B3)
-                                )
-                            else:
-                                data.Y3_delta[3 * ii + 0] = complex(elm.G1, -elm.B1)
-                                data.Y3_delta[3 * ii + 1] = complex(elm.G2, -elm.B2)
-                                data.Y3_delta[3 * ii + 2] = complex(elm.G3, -elm.B3)
-
-                            data.I3_delta[3 * ii + 0] = complex(elm.Ir1, elm.Ii1)
-                            data.I3_delta[3 * ii + 1] = complex(elm.Ir2, elm.Ii2)
-                            data.I3_delta[3 * ii + 2] = complex(elm.Ir3, elm.Ii3)
-
-                        else:
-                            raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.I[ii] = complex(elm.Ir, elm.Ii)
-                data.Y[ii] = complex(elm.G, elm.B)
-                data.active[ii] = elm.active
-                data.cost[ii] = elm.Cost
-                data.shift_key[ii] = elm.shift_key
+            data.I[ii] = elm.get_I_at(t_idx)
+            data.Y[ii] = elm.get_Y_at(t_idx)
+            data.active[ii] = elm.get_active_at(t_idx)
+            data.cost[ii] = elm.get_Cost_at(t_idx)
+            data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
             if elm.use_kw:
                 # pass kW to MW
@@ -519,47 +463,24 @@ def get_load_data(data: LoadData,
             data.original_idx[ii] = ii
             data.scalable[ii] = elm.scalable
 
-            if time_series:
-                data.S[ii] -= complex(elm.P_prof[t_idx], elm.Q_prof[t_idx])
-                data.active[ii] = elm.active_prof[t_idx]
-                data.cost[ii] = elm.Cost_prof[t_idx]
-                data.shift_key[ii] = elm.shift_key_prof[t_idx]
+            data.S[ii] -= elm.get_S_at(t_idx)
+            data.active[ii] = elm.get_active_at(t_idx)
+            data.cost[ii] = elm.get_Cost_at(t_idx)
+            data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                        data.S3_star[3 * ii + 0] -= complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_star[3 * ii + 1] -= complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_star[3 * ii + 2] -= complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+                    data.S3_star[3 * ii + 0] -= elm.get_Sa_at(t_idx)
+                    data.S3_star[3 * ii + 1] -= elm.get_Sb_at(t_idx)
+                    data.S3_star[3 * ii + 2] -= elm.get_Sc_at(t_idx)
 
+                elif elm.conn == ShuntConnectionType.Delta:
+                    data.S3_delta[3 * ii + 0] -= elm.get_Sa_at(t_idx)
+                    data.S3_delta[3 * ii + 1] -= elm.get_Sb_at(t_idx)
+                    data.S3_delta[3 * ii + 2] -= elm.get_Sc_at(t_idx)
 
-                    elif elm.conn == ShuntConnectionType.Delta:
-                        data.S3_delta[3 * ii + 0] -= complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_delta[3 * ii + 1] -= complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_delta[3 * ii + 2] -= complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-            else:
-                data.S[ii] -= complex(elm.P, elm.Q)
-
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                        data.S3_star[3 * ii + 0] -= complex(elm.Pa, elm.Qa)
-                        data.S3_star[3 * ii + 1] -= complex(elm.Pb, elm.Qb)
-                        data.S3_star[3 * ii + 2] -= complex(elm.Pc, elm.Qc)
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-                        data.S3_delta[3 * ii + 0] -= complex(elm.Pa, elm.Qa)
-                        data.S3_delta[3 * ii + 1] -= complex(elm.Pb, elm.Qb)
-                        data.S3_delta[3 * ii + 2] -= complex(elm.Pc, elm.Qc)
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.active[ii] = elm.active
-                data.cost[ii] = elm.Cost
-                data.shift_key[ii] = elm.shift_key
+                else:
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
             if elm.use_kw:
                 # pass kW to MW
@@ -599,7 +520,7 @@ def get_load_data(data: LoadData,
                                         bus_name=elm.bus.name,
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
-                                        candidate_Vm=elm.Vm_prof[t_idx] if time_series else elm.Vm,
+                                        candidate_Vm=elm.get_Vm_at(t_idx),
                                         use_stored_guess=use_stored_guess,
                                         logger=logger)
 
@@ -611,50 +532,28 @@ def get_load_data(data: LoadData,
                                         bus_name=elm.bus.name,
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
-                                        candidate_Vm=elm.Vm_prof[t_idx] if time_series else elm.Vm,
+                                        candidate_Vm=elm.get_Vm_at(t_idx),
                                         use_stored_guess=use_stored_guess,
                                         logger=logger)
 
-            if time_series:
-                data.S[ii] += complex(elm.P_prof[t_idx], elm.Q_prof[t_idx])
+            data.S[ii] += elm.get_S_at(t_idx)
 
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                        data.S3_star[3 * ii + 0] += complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_star[3 * ii + 1] += complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_star[3 * ii + 2] += complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+                    data.S3_star[3 * ii + 0] += elm.get_Sa_at(t_idx)
+                    data.S3_star[3 * ii + 1] += elm.get_Sb_at(t_idx)
+                    data.S3_star[3 * ii + 2] += elm.get_Sc_at(t_idx)
 
+                elif elm.conn == ShuntConnectionType.Delta:
+                    data.S3_delta[3 * ii + 0] += elm.get_Sa_at(t_idx)
+                    data.S3_delta[3 * ii + 1] += elm.get_Sb_at(t_idx)
+                    data.S3_delta[3 * ii + 2] += elm.get_Sc_at(t_idx)
 
-                    elif elm.conn == ShuntConnectionType.Delta:
-                        data.S3_delta[3 * ii + 0] += complex(elm.Pa_prof[t_idx], elm.Qa_prof[t_idx])
-                        data.S3_delta[3 * ii + 1] += complex(elm.Pb_prof[t_idx], elm.Qb_prof[t_idx])
-                        data.S3_delta[3 * ii + 2] += complex(elm.Pc_prof[t_idx], elm.Qc_prof[t_idx])
+                else:
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.active[ii] = elm.active_prof[t_idx]
-                data.shift_key[ii] = elm.shift_key_prof[t_idx]
-
-            else:
-                data.S[ii] += complex(elm.P, elm.Q)
-
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                        data.S3_star[3 * ii + 0] += complex(elm.Pa, elm.Qa)
-                        data.S3_star[3 * ii + 1] += complex(elm.Pb, elm.Qb)
-                        data.S3_star[3 * ii + 2] += complex(elm.Pc, elm.Qc)
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-                        data.S3_delta[3 * ii + 0] += complex(elm.Pa, elm.Qa)
-                        data.S3_delta[3 * ii + 1] += complex(elm.Pb, elm.Qb)
-                        data.S3_delta[3 * ii + 2] += complex(elm.Pc, elm.Qc)
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.active[ii] = elm.active
-                data.shift_key[ii] = elm.shift_key
+            data.active[ii] = elm.get_active_at(t_idx)
+            data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
             if elm.use_kw:
                 # pass kW to MW
@@ -685,53 +584,27 @@ def get_load_data(data: LoadData,
             data.mttr[ii] = elm.mttr
             data.scalable[ii] = elm.scalable
 
-            if time_series:
-                data.I[ii] += complex(elm.Ir_prof[t_idx], elm.Ii_prof[t_idx])
+            data.I[ii] += elm.get_I_at(t_idx)
 
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
 
-                        data.I3_star[3 * ii + 0] += complex(elm.Ir1_prof[t_idx], elm.Ii1_prof[t_idx])
-                        data.I3_star[3 * ii + 1] += complex(elm.Ir2_prof[t_idx], elm.Ii2_prof[t_idx])
-                        data.I3_star[3 * ii + 2] += complex(elm.Ir3_prof[t_idx], elm.Ii3_prof[t_idx])
+                    data.I3_star[3 * ii + 0] += elm.get_I1_at(t_idx)
+                    data.I3_star[3 * ii + 1] += elm.get_I2_at(t_idx)
+                    data.I3_star[3 * ii + 2] += elm.get_I3_at(t_idx)
 
+                elif elm.conn == ShuntConnectionType.Delta:
 
-                    elif elm.conn == ShuntConnectionType.Delta:
+                    data.I3_delta[3 * ii + 0] += elm.get_I1_at(t_idx)
+                    data.I3_delta[3 * ii + 1] += elm.get_I2_at(t_idx)
+                    data.I3_delta[3 * ii + 2] += elm.get_I3_at(t_idx)
 
-                        data.I3_delta[3 * ii + 0] += complex(elm.Ir1_prof[t_idx], elm.Ii1_prof[t_idx])
-                        data.I3_delta[3 * ii + 1] += complex(elm.Ir2_prof[t_idx], elm.Ii2_prof[t_idx])
-                        data.I3_delta[3 * ii + 2] += complex(elm.Ir3_prof[t_idx], elm.Ii3_prof[t_idx])
+                else:
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.active[ii] = elm.active_prof[t_idx]
-                data.cost[ii] = elm.Cost_prof[t_idx]
-                data.shift_key[ii] = elm.shift_key_prof[t_idx]
-
-            else:
-                data.I[ii] += complex(elm.Ir, elm.Ii)
-
-                if fill_three_phase:
-
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-
-                        data.I3_star[3 * ii + 0] += complex(elm.Ir1, elm.Ii1)
-                        data.I3_star[3 * ii + 1] += complex(elm.Ir2, elm.Ii2)
-                        data.I3_star[3 * ii + 2] += complex(elm.Ir3, elm.Ii3)
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-
-                        data.I3_delta[3 * ii + 0] += complex(elm.Ir1, elm.Ii1)
-                        data.I3_delta[3 * ii + 1] += complex(elm.Ir2, elm.Ii2)
-                        data.I3_delta[3 * ii + 2] += complex(elm.Ir3, elm.Ii3)
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-                data.active[ii] = elm.active
-                data.cost[ii] = elm.Cost
-                data.shift_key[ii] = elm.shift_key
+            data.active[ii] = elm.get_active_at(t_idx)
+            data.cost[ii] = elm.get_Cost_at(t_idx)
+            data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
             if elm.use_kw:
                 # pass kW to MW
@@ -756,9 +629,8 @@ def get_shunt_data(
         bus_dict,
         bus_voltage_used: BoolVec,
         bus_data: BusData,
+        t_idx: int | None,
         logger: Logger,
-        t_idx=-1,
-        time_series=False,
         use_stored_guess=False,
         control_remote_voltage: bool = True,
         fill_three_phase: bool = False
@@ -772,13 +644,11 @@ def get_shunt_data(
     :param bus_data:
     :param logger:
     :param t_idx:
-    :param time_series:
     :param use_stored_guess:
     :param control_remote_voltage:
     :param fill_three_phase:
     :return:
     """
-    idx3 = np.array([0, 1, 2])
 
     ii = 0
     for k, elm in enumerate(circuit.get_shunts()):
@@ -796,50 +666,26 @@ def get_shunt_data(
             data.mttf[k] = elm.mttf
             data.mttr[k] = elm.mttr
 
-            if time_series:
-                data.active[k] = elm.active_prof[t_idx]
-                data.Y[k] = complex(elm.G_prof[t_idx], elm.B_prof[t_idx])
+            data.active[k] = elm.get_active_at(t_idx)
+            data.Y[k] = elm.get_Y_at(t_idx)
 
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
 
-                        data.Y3_star[3 * ii + 0, 0] = complex(elm.Ga_prof[t_idx], elm.Ba_prof[t_idx])
-                        data.Y3_star[3 * ii + 1, 1] = complex(elm.Gb_prof[t_idx], elm.Bb_prof[t_idx])
-                        data.Y3_star[3 * ii + 2, 2] = complex(elm.Gc_prof[t_idx], elm.Bc_prof[t_idx])
+                    data.Y3_star[3 * ii + 0, 0] = elm.get_Ya_at(t_idx)
+                    data.Y3_star[3 * ii + 1, 1] = elm.get_Yb_at(t_idx)
+                    data.Y3_star[3 * ii + 2, 2] = elm.get_Yc_at(t_idx)
 
-                    elif elm.conn == ShuntConnectionType.Delta:
+                elif elm.conn == ShuntConnectionType.Delta:
 
-                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                            Yab=complex(elm.Ga_prof[t_idx], elm.Ba_prof[t_idx]),
-                            Ybc=complex(elm.Gb_prof[t_idx], elm.Bb_prof[t_idx]),
-                            Yca=complex(elm.Gc_prof[t_idx], elm.Bc_prof[t_idx])
-                        )
+                    data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
+                        Yab=elm.get_Ya_at(t_idx),
+                        Ybc=elm.get_Yb_at(t_idx),
+                        Yca=elm.get_Yc_at(t_idx)
+                    )
 
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-            else:
-                data.active[k] = elm.active
-                data.Y[k] = complex(elm.G, elm.B)
-
-                if fill_three_phase:
-
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-
-                        data.Y3_star[3 * ii + 0, 0] = complex(elm.Ga, elm.Ba)
-                        data.Y3_star[3 * ii + 1, 1] = complex(elm.Gb, elm.Bb)
-                        data.Y3_star[3 * ii + 2, 2] = complex(elm.Gc, elm.Bc)
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-
-                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                            Yab=complex(elm.Ga, elm.Ba),
-                            Ybc=complex(elm.Gb, elm.Bb),
-                            Yca=complex(elm.Gc, elm.Bc)
-                        )
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
+                else:
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
             if elm.use_kw:
                 # pass kW to MW
@@ -871,52 +717,27 @@ def get_shunt_data(
             data.qmin[ii] = elm.Bmin
             data.qmax[ii] = elm.Bmax
 
-            if time_series:
-                data.Y[ii] += complex(elm.G_prof[t_idx], elm.B_prof[t_idx])
-                data.active[ii] = elm.active_prof[t_idx]
-                data.cost[ii] = elm.Cost_prof[t_idx]
+            data.Y[ii] += elm.get_Y_at(t_idx)
+            data.active[ii] = elm.get_active_at(t_idx)
+            data.cost[ii] = elm.get_Cost_at(t_idx)
 
-                if fill_three_phase:
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+            if fill_three_phase:
+                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
 
-                        data.Y3_star[3 * ii + 0, 0] = complex(elm.Ga_prof[t_idx], elm.Ba_prof[t_idx])
-                        data.Y3_star[3 * ii + 1, 1] = complex(elm.Gb_prof[t_idx], elm.Bb_prof[t_idx])
-                        data.Y3_star[3 * ii + 2, 2] = complex(elm.Gc_prof[t_idx], elm.Bc_prof[t_idx])
+                    data.Y3_star[3 * ii + 0, 0] = elm.get_Ya_at(t_idx)
+                    data.Y3_star[3 * ii + 1, 1] = elm.get_Yb_at(t_idx)
+                    data.Y3_star[3 * ii + 2, 2] = elm.get_Yc_at(t_idx)
 
-                    elif elm.conn == ShuntConnectionType.Delta:
+                elif elm.conn == ShuntConnectionType.Delta:
 
-                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                            Yab=complex(elm.Ga_prof[t_idx], elm.Ba_prof[t_idx]),
-                            Ybc=complex(elm.Gb_prof[t_idx], elm.Bb_prof[t_idx]),
-                            Yca=complex(elm.Gc_prof[t_idx], elm.Bc_prof[t_idx])
-                        )
+                    data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
+                        Yab=elm.get_Ya_at(t_idx),
+                        Ybc=elm.get_Yb_at(t_idx),
+                        Yca=elm.get_Yc_at(t_idx)
+                    )
 
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
-
-            else:
-                data.Y[ii] += complex(elm.G, elm.B)
-                data.active[ii] = elm.active
-                data.cost[ii] = elm.Cost
-
-                if fill_three_phase:
-
-                    if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-
-                        data.Y3_star[3 * ii + 0, 0] = complex(elm.Ga, elm.Ba)
-                        data.Y3_star[3 * ii + 1, 1] = complex(elm.Gb, elm.Bb)
-                        data.Y3_star[3 * ii + 2, 2] = complex(elm.Gc, elm.Bc)
-
-                    elif elm.conn == ShuntConnectionType.Delta:
-
-                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                            Yab=complex(elm.Ga, elm.Ba),
-                            Ybc=complex(elm.Gb, elm.Bb),
-                            Yca=complex(elm.Gc, elm.Bc)
-                        )
-
-                    else:
-                        raise Exception(f"Unhandled connection type {elm.conn}")
+                else:
+                    raise Exception(f"Unhandled connection type {elm.conn}")
 
             if elm.is_controlled and elm.active:
                 if elm.control_bus is not None:
@@ -962,8 +783,7 @@ def fill_generator_parent(
         bus_voltage_used: BoolVec,
         logger: Logger,
         bus_data: BusData,
-        t_idx=-1,
-        time_series=False,
+        t_idx: int | None = None,
         use_stored_guess=False,
         control_remote_voltage: bool = True,
         fill_three_phase: bool = False
@@ -978,7 +798,6 @@ def fill_generator_parent(
     :param logger:
     :param bus_data:
     :param t_idx:
-    :param time_series:
     :param use_stored_guess:
     :param control_remote_voltage:
     :param fill_three_phase:
@@ -1021,97 +840,48 @@ def fill_generator_parent(
     data.snom[k] = elm.Snom
     data.scalable[k] = elm.scalable
 
-    if time_series:
-        data.p[k] = elm.P_prof[t_idx]
-        data.active[k] = elm.active_prof[t_idx]
-        data.pf[k] = elm.Pf_prof[t_idx]
-        data.v[k] = elm.Vset_prof[t_idx]
-        data.pmax[k] = elm.Pmax_prof[t_idx]
-        data.pmin[k] = elm.Pmin_prof[t_idx]
+    data.p[k] = elm.get_P_at(t_idx)
+    data.active[k] = elm.get_active_at(t_idx)
+    data.pf[k] = elm.get_Pf_at(t_idx)
+    data.v[k] = elm.get_Vset_at(t_idx)
+    data.pmax[k] = elm.get_Pmax_at(t_idx)
+    data.pmin[k] = elm.get_Pmin_at(t_idx)
 
-        if elm.use_reactive_power_curve:
-            data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
-            data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
-        else:
-            data.qmin[k] = elm.Qmin_prof[t_idx]
-            data.qmax[k] = elm.Qmax_prof[t_idx]
-
-        data.cost_0[k] = elm.Cost0_prof[t_idx]
-        data.cost_1[k] = elm.Cost_prof[t_idx]
-        data.cost_2[k] = elm.Cost2_prof[t_idx]
-        data.shift_key[k] = elm.shift_key_prof[t_idx]
-
-        if elm.active_prof[t_idx]:
-
-            if elm.srap_enabled_prof[t_idx] and data.p[k] > 0.0:
-                bus_data.srap_availbale_power[i] += data.p[k]
-
-            if elm.is_controlled:
-                if elm.control_bus_prof[t_idx] is not None:
-                    remote_control = True
-                    j = bus_dict[elm.control_bus_prof[t_idx]]
-                else:
-                    remote_control = False
-                    j = -1
-
-                data.controllable_bus_idx[k] = j
-
-                set_bus_control_voltage(i=i,
-                                        j=j,
-                                        remote_control=remote_control and control_remote_voltage,
-                                        bus_name=elm.bus.name,
-                                        bus_data=bus_data,
-                                        bus_voltage_used=bus_voltage_used,
-                                        candidate_Vm=elm.Vset_prof[t_idx],
-                                        use_stored_guess=use_stored_guess,
-                                        logger=logger)
-
+    if elm.use_reactive_power_curve:
+        data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
+        data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
     else:
+        data.qmin[k] = elm.get_Qmin_at(t_idx)
+        data.qmax[k] = elm.get_Qmax_at(t_idx)
 
-        data.p[k] = elm.P
-        data.active[k] = elm.active
-        data.pf[k] = elm.Pf
-        data.v[k] = elm.Vset
-        data.pmax[k] = elm.Pmax
-        data.pmin[k] = elm.Pmin
+    data.cost_0[k] = elm.get_Cost0_at(t_idx)
+    data.cost_1[k] = elm.get_Cost_at(t_idx)
+    data.cost_2[k] = elm.get_Cost2_at(t_idx)
+    data.shift_key[k] = elm.get_shift_key_at(t_idx)
 
-        # reactive power limits, for the given power value
-        if elm.use_reactive_power_curve:
-            data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
-            data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
-        else:
-            data.qmin[k] = elm.Qmin
-            data.qmax[k] = elm.Qmax
+    if data.active[k]:
+        if elm.get_srap_enabled_at(t_idx) and data.p[k] > 0.0:
+            bus_data.srap_availbale_power[i] += data.p[k]
 
-        data.cost_0[k] = elm.Cost0
-        data.cost_1[k] = elm.Cost
-        data.cost_2[k] = elm.Cost2
-        data.shift_key[k] = elm.shift_key
+        if elm.is_controlled:
+            if elm.control_bus is not None:
+                remote_control = True
+                j = bus_dict[elm.control_bus]
+            else:
+                remote_control = False
+                j = -1
 
-        if elm.active:
+            data.controllable_bus_idx[k] = j
 
-            if elm.srap_enabled and data.p[k] > 0.0:
-                bus_data.srap_availbale_power[i] += data.p[k]
-
-            if elm.is_controlled:
-                if elm.control_bus is not None:
-                    remote_control = True
-                    j = bus_dict[elm.control_bus]
-                else:
-                    remote_control = False
-                    j = -1
-
-                data.controllable_bus_idx[k] = j
-
-                set_bus_control_voltage(i=i,
-                                        j=j,
-                                        remote_control=remote_control and control_remote_voltage,
-                                        bus_name=elm.bus.name,
-                                        bus_data=bus_data,
-                                        bus_voltage_used=bus_voltage_used,
-                                        candidate_Vm=elm.Vset,
-                                        use_stored_guess=use_stored_guess,
-                                        logger=logger)
+            set_bus_control_voltage(i=i,
+                                    j=j,
+                                    remote_control=remote_control and control_remote_voltage,
+                                    bus_name=elm.bus.name,
+                                    bus_data=bus_data,
+                                    bus_voltage_used=bus_voltage_used,
+                                    candidate_Vm=elm.Vset,
+                                    use_stored_guess=use_stored_guess,
+                                    logger=logger)
 
     if elm.use_kw:
         # pass kW to MW
@@ -1153,8 +923,8 @@ def get_generator_data(
         bus_voltage_used: BoolVec,
         logger: Logger,
         bus_data: BusData,
+        t_idx: int | None,
         opf_results: VALID_OPF_RESULTS | None = None,
-        t_idx=-1,
         time_series=False,
         use_stored_guess=False,
         control_remote_voltage: bool = True,
@@ -1173,6 +943,7 @@ def get_generator_data(
     :param time_series:
     :param use_stored_guess:
     :param control_remote_voltage:
+    :param fill_three_phase:
     :return:
     """
 
@@ -1189,7 +960,6 @@ def get_generator_data(
                               bus_voltage_used=bus_voltage_used,
                               logger=logger,
                               t_idx=t_idx,
-                              time_series=time_series,
                               use_stored_guess=use_stored_guess,
                               control_remote_voltage=control_remote_voltage,
                               fill_three_phase=fill_three_phase)
@@ -1211,8 +981,8 @@ def get_battery_data(
         bus_voltage_used: BoolVec,
         logger: Logger,
         bus_data: BusData,
+        t_idx: int | None,
         opf_results: VALID_OPF_RESULTS | None = None,
-        t_idx=-1,
         time_series=False,
         use_stored_guess=False,
         control_remote_voltage: bool = True,
@@ -1231,6 +1001,7 @@ def get_battery_data(
     :param time_series:
     :param use_stored_guess:
     :param control_remote_voltage:
+    :param fill_three_phase:
     :return:
     """
 
@@ -1244,7 +1015,6 @@ def get_battery_data(
                               bus_voltage_used=bus_voltage_used,
                               logger=logger,
                               t_idx=t_idx,
-                              time_series=time_series,
                               use_stored_guess=use_stored_guess,
                               control_remote_voltage=control_remote_voltage,
                               fill_three_phase=fill_three_phase)
@@ -1270,7 +1040,7 @@ def fill_parent_branch(i: int,
                        elm: BRANCH_TYPES,
                        data: PassiveBranchData,
                        bus_dict: Dict[Bus, int],
-                       t_idx: int = -1,
+                       t_idx: int | None = None,
                        time_series: bool = False):
     """
 
@@ -1288,21 +1058,11 @@ def fill_parent_branch(i: int,
     data.mttf[i] = elm.mttf
     data.mttr[i] = elm.mttr
 
-    if time_series:
-        data.active[i] = elm.active_prof[t_idx]
-        data.rates[i] = elm.rate_prof[t_idx]
-        data.contingency_rates[i] = elm.rate_prof[t_idx] * elm.contingency_factor_prof[t_idx]
-        data.protection_rates[i] = elm.rate_prof[t_idx] * elm.protection_rating_factor_prof[t_idx]
-
-        data.overload_cost[i] = elm.Cost_prof[t_idx]
-
-    else:
-        data.active[i] = elm.active
-        data.rates[i] = elm.rate
-        data.contingency_rates[i] = elm.rate * elm.contingency_factor
-        data.protection_rates[i] = elm.rate * elm.protection_rating_factor
-
-        data.overload_cost[i] = elm.Cost
+    data.active[i] = elm.get_active_at(t_idx)
+    data.rates[i] = elm.get_rate_at(t_idx)
+    data.contingency_rates[i] = data.rates[i] * elm.get_contingency_factor_at(t_idx)
+    data.protection_rates[i] = data.rates[i] * elm.get_protection_rating_factor_at(t_idx)
+    data.overload_cost[i] = elm.get_Cost_at(t_idx)
 
     f = bus_dict[elm.bus_from]
     t = bus_dict[elm.bus_to]
@@ -1326,7 +1086,7 @@ def fill_controllable_branch(
         ctrl_data: ActiveBranchData,
         bus_data: BusData,
         bus_dict: Dict[Bus, int],
-        t_idx: int,
+        t_idx: int | None,
         time_series: bool,
         opf_results: VALID_OPF_RESULTS | None,
         use_stored_guess: bool,
@@ -1361,72 +1121,39 @@ def fill_controllable_branch(
                        t_idx=t_idx,
                        time_series=time_series)
 
-    if time_series:
+    if control_taps_phase:
+        ctrl_data.tap_phase_control_mode[ii] = elm.get_tap_phase_control_mode_at(t_idx)
 
-        if control_taps_phase:
-            ctrl_data.tap_phase_control_mode[ii] = elm.tap_phase_control_mode_prof[t_idx]
+    if control_taps_modules:
+        ctrl_data.tap_module_control_mode[ii] = elm.get_tap_module_control_mode_at(t_idx)
 
-        if control_taps_modules:
-            ctrl_data.tap_module_control_mode[ii] = elm.tap_module_control_mode_prof[t_idx]
-            if elm.regulation_bus is None:
-                reg_bus = elm.bus_from
-                if ctrl_data.tap_module_control_mode[ii] == TapModuleControl.Vm:
-                    logger.add_warning("Unspecified regulation bus",
-                                       device_class=elm.device_type.value,
-                                       device=elm.name)
-            else:
-                reg_bus = elm.regulation_bus
-
-            ctrl_data.tap_controlled_buses[ii] = bus_dict[reg_bus]
-
-        ctrl_data.Pset[ii] = elm.Pset_prof[t_idx] / Sbase
-        ctrl_data.Qset[ii] = elm.Qset_prof[t_idx] / Sbase
-        ctrl_data.vset[ii] = elm.vset_prof[t_idx]
-
-        if opf_results is not None:
-            ctrl_data.tap_module[ii] = elm.tap_module
-            ctrl_data.tap_angle[ii] = opf_results.phase_shift[t_idx, ii]
+        if elm.regulation_bus is None:
+            reg_bus = elm.bus_from
+            if ctrl_data.tap_module_control_mode[ii] == TapModuleControl.Vm:
+                logger.add_warning("Unspecified regulation bus",
+                                   device_class=elm.device_type.value,
+                                   device=elm.name)
         else:
-            ctrl_data.tap_module[ii] = elm.tap_module_prof[t_idx]
-            ctrl_data.tap_angle[ii] = elm.tap_phase_prof[t_idx]
+            reg_bus = elm.regulation_bus
+
+        ctrl_data.tap_controlled_buses[ii] = bus_dict[reg_bus]
+
+    ctrl_data.Pset[ii] = elm.get_Pset_at(t_idx) / Sbase
+    ctrl_data.Qset[ii] = elm.get_Qset_at(t_idx) / Sbase
+    ctrl_data.vset[ii] = elm.get_vset_at(t_idx)
+
+    if opf_results is not None:
+        ctrl_data.tap_angle[ii] = opf_results.phase_shift[t_idx, ii]
+        ctrl_data.tap_module[ii] = elm.get_tap_module_at(t_idx)
     else:
-
-        if control_taps_phase:
-            ctrl_data.tap_phase_control_mode[ii] = elm.tap_phase_control_mode
-
-        if control_taps_modules:
-            ctrl_data.tap_module_control_mode[ii] = elm.tap_module_control_mode
-
-            if elm.regulation_bus is None:
-                reg_bus = elm.bus_from
-                if ctrl_data.tap_module_control_mode[ii] == TapModuleControl.Vm:
-                    logger.add_warning("Unspecified regulation bus",
-                                       device_class=elm.device_type.value,
-                                       device=elm.name)
-            else:
-                reg_bus = elm.regulation_bus
-            ctrl_data.tap_controlled_buses[ii] = bus_dict[reg_bus]
-
-        ctrl_data.Pset[ii] = elm.Pset / Sbase
-        ctrl_data.Qset[ii] = elm.Qset / Sbase
-        ctrl_data.vset[ii] = elm.vset
-
-        if opf_results is not None:
-            ctrl_data.tap_module[ii] = elm.tap_module
-            ctrl_data.tap_angle[ii] = opf_results.phase_shift[ii]
-        else:
-            ctrl_data.tap_module[ii] = elm.tap_module
-            ctrl_data.tap_angle[ii] = elm.tap_phase
+        ctrl_data.tap_angle[ii] = elm.get_tap_phase_at(t_idx)
+        ctrl_data.tap_module[ii] = elm.get_tap_module_at(t_idx)
 
     ctrl_data.is_controlled[ii] = 1
     ctrl_data.tap_module_min[ii] = elm.tap_module_min
     ctrl_data.tap_module_max[ii] = elm.tap_module_max
     ctrl_data.tap_angle_min[ii] = elm.tap_phase_min
     ctrl_data.tap_angle_max[ii] = elm.tap_phase_max
-
-    # if (ctrl_data.tap_module_control_mode[ii] not in (TapModuleControl.fixed, 0)
-    #         or ctrl_data.tap_phase_control_mode[ii] not in (TapPhaseControl.fixed, 0)):
-    #     ctrl_data.any_pf_control = True
 
     if ctrl_data.tap_module_control_mode[ii] != 0:
         if ctrl_data.tap_module_control_mode[ii] != TapModuleControl.fixed:
@@ -1473,7 +1200,7 @@ def get_branch_data(
         bus_voltage_used: BoolVec,
         apply_temperature: bool,
         branch_tolerance_mode: BranchImpedanceMode,
-        t_idx: int = -1,
+        t_idx: int | None,
         time_series: bool = False,
         opf_results: VALID_OPF_RESULTS | None = None,
         use_stored_guess: bool = False,
@@ -1883,14 +1610,14 @@ def set_control_dev(k: int,
 
             elif control == ConverterControlType.Va_ac:
                 set_bus_control_angle_vsc(i=bus_idx,
-                                            j=-1,
-                                            remote_control=False,
-                                            bus_name=str(bus_data.names[bus_idx]),
-                                            bus_angle_used=bus_angle_used,
-                                            bus_data=bus_data,
-                                            candidate_Va=control_val,
-                                            use_stored_guess=use_stored_guess,
-                                            logger=logger)
+                                          j=-1,
+                                          remote_control=False,
+                                          bus_name=str(bus_data.names[bus_idx]),
+                                          bus_angle_used=bus_angle_used,
+                                          bus_data=bus_data,
+                                          candidate_Va=control_val,
+                                          use_stored_guess=use_stored_guess,
+                                          logger=logger)
 
         else:
             # TODO: the formulation does not allow for VSC remote control yet
@@ -1948,8 +1675,7 @@ def get_vsc_data(
         branch_dict: Dict[BRANCH_TYPES, int],
         bus_data: BusData,
         bus_voltage_used: BoolVec,
-        t_idx: int = -1,
-        time_series: bool = False,
+        t_idx: int | None,
         opf_results: VALID_OPF_RESULTS | None = None,
         use_stored_guess: bool = False,
         control_remote_voltage: bool = True,
@@ -1964,7 +1690,6 @@ def get_vsc_data(
     :param bus_data: BusData
     :param bus_voltage_used:
     :param t_idx: time index (-1 is useless)
-    :param time_series: compile time series? else the sanpshot is compiled
     :param opf_results: OptimalPowerFlowResults
     :param use_stored_guess: use the stored voltage ?
     :param control_remote_voltage: Control RemoteVoltage
@@ -1987,84 +1712,49 @@ def get_vsc_data(
         data.original_idx[i] = i
 
         data.F[i] = f
-        data.F_dcn[i] = -1 if elm.bus_dc_n is None else bus_dict[elm.bus_dc_n]  # TODO SANPEN: Handle the -1 everywhere for this
+
+        # TODO SANPEN: Handle the -1 everywhere for this
+        data.F_dcn[i] = -1 if elm.bus_dc_n is None else bus_dict[elm.bus_dc_n]
         data.T[i] = t
 
-        if time_series:
-            data.active[i] = elm.active_prof[t_idx]
-            data.rates[i] = elm.rate_prof[t_idx]
-            data.contingency_rates[i] = elm.rate_prof[t_idx] * elm.contingency_factor_prof[t_idx]
-            data.protection_rates[i] = elm.rate_prof[t_idx] * elm.protection_rating_factor_prof[t_idx]
+        data.active[i] = elm.get_active_at(t_idx)
+        data.rates[i] = elm.get_rate_at(t_idx)
+        data.contingency_rates[i] = data.rates[i] * elm.get_contingency_factor_at(t_idx)
+        data.protection_rates[i] = data.rates[i] * elm.get_protection_rating_factor_at(t_idx)
 
-            data.overload_cost[i] = elm.Cost_prof[t_idx]
+        data.overload_cost[i] = elm.get_Cost_at(t_idx)
 
-            data.control1[ii] = elm.control1_prof[t_idx]
-            data.control2[ii] = elm.control2_prof[t_idx]
-            data.control1_val[ii] = elm.control1_val_prof[t_idx]
-            data.control2_val[ii] = elm.control2_val_prof[t_idx]
-            # Using DC_positive to set the controls, may need to also pass DC_negative
-            set_control_dev(k=ii, f=f, t=t,
-                            control=data.control1[ii],
-                            control_dev=elm.control1_dev_prof[t_idx],
-                            control_val=data.control1_val[ii],
-                            control_bus_idx=data.control1_bus_idx,
-                            control_branch_idx=data.control1_branch_idx,
-                            bus_dict=bus_dict,
-                            bus_data=bus_data,
-                            bus_voltage_used=bus_voltage_used,
-                            bus_angle_used=bus_angle_used,
-                            use_stored_guess=use_stored_guess,
-                            logger=logger)
-            set_control_dev(k=ii, f=f, t=t,
-                            control=data.control2[ii],
-                            control_dev=elm.control2_dev_prof[t_idx],
-                            control_val=data.control2_val[ii],
-                            control_bus_idx=data.control2_bus_idx,
-                            control_branch_idx=data.control2_branch_idx,
-                            bus_dict=bus_dict,
-                            bus_data=bus_data,
-                            bus_voltage_used=bus_voltage_used,
-                            bus_angle_used=bus_angle_used,
-                            use_stored_guess=use_stored_guess,
-                            logger=logger)
+        data.control1[ii] = elm.get_control1_at(t_idx)
+        data.control2[ii] = elm.get_control2_at(t_idx)
+        data.control1_val[ii] = elm.get_control1_val_at(t_idx)
+        data.control2_val[ii] = elm.get_control2_val_at(t_idx)
 
-        else:
-            data.active[i] = elm.active
-            data.rates[i] = elm.rate
-            data.contingency_rates[i] = elm.rate * elm.contingency_factor
-            data.protection_rates[i] = elm.rate * elm.protection_rating_factor
+        # Using DC_positive to set the controls, may need to also pass DC_negative
+        set_control_dev(k=ii, f=f, t=t,
+                        control=data.control1[ii],
+                        control_dev=elm.get_control1_dev_at(t_idx),
+                        control_val=data.control1_val[ii],
+                        control_bus_idx=data.control1_bus_idx,
+                        control_branch_idx=data.control1_branch_idx,
+                        bus_dict=bus_dict,
+                        bus_data=bus_data,
+                        bus_voltage_used=bus_voltage_used,
+                        bus_angle_used=bus_angle_used,
+                        use_stored_guess=use_stored_guess,
+                        logger=logger)
 
-            data.overload_cost[i] = elm.Cost
-
-            data.control1[ii] = elm.control1
-            data.control2[ii] = elm.control2
-            data.control1_val[ii] = elm.control1_val
-            data.control2_val[ii] = elm.control2_val
-            set_control_dev(k=ii, f=f, t=t,
-                            control=data.control1[ii],
-                            control_dev=elm.control1_dev,
-                            control_val=data.control1_val[ii],
-                            control_bus_idx=data.control1_bus_idx,
-                            control_branch_idx=data.control1_branch_idx,
-                            bus_dict=bus_dict,
-                            bus_data=bus_data,
-                            bus_voltage_used=bus_voltage_used,
-                            bus_angle_used=bus_angle_used,
-                            use_stored_guess=use_stored_guess,
-                            logger=logger)
-
-            set_control_dev(k=ii, f=f, t=t,
-                            control=data.control2[ii],
-                            control_dev=elm.control2_dev,
-                            control_val=data.control2_val[ii],
-                            control_bus_idx=data.control2_bus_idx,
-                            control_branch_idx=data.control2_branch_idx,
-                            bus_dict=bus_dict,
-                            bus_data=bus_data,
-                            bus_voltage_used=bus_voltage_used,
-                            bus_angle_used=bus_angle_used,
-                            use_stored_guess=use_stored_guess,
-                            logger=logger)
+        set_control_dev(k=ii, f=f, t=t,
+                        control=data.control2[ii],
+                        control_dev=elm.get_control2_dev_at(t_idx),
+                        control_val=data.control2_val[ii],
+                        control_bus_idx=data.control2_bus_idx,
+                        control_branch_idx=data.control2_branch_idx,
+                        bus_dict=bus_dict,
+                        bus_data=bus_data,
+                        bus_voltage_used=bus_voltage_used,
+                        bus_angle_used=bus_angle_used,
+                        use_stored_guess=use_stored_guess,
+                        logger=logger)
 
         data.contingency_enabled[i] = int(elm.contingency_enabled)
         data.monitor_loading[i] = int(elm.monitor_loading)
@@ -2080,11 +1770,9 @@ def get_vsc_data(
 def get_hvdc_data(data: HvdcData,
                   circuit: MultiCircuit,
                   bus_dict,
-                  bus_types,
                   bus_data: BusData,
                   bus_voltage_used: BoolVec,
-                  t_idx=-1,
-                  time_series=False,
+                  t_idx: int | None,
                   opf_results: Union[OptimalPowerFlowResults, OptimalNetTransferCapacityResults, None] = None,
                   use_stored_guess: bool = False,
                   logger: Logger = Logger()):
@@ -2093,11 +1781,9 @@ def get_hvdc_data(data: HvdcData,
     :param data:
     :param circuit:
     :param bus_dict:
-    :param bus_types:
     :param bus_data:
     :param bus_voltage_used:
     :param t_idx:
-    :param time_series:
     :param opf_results:
     :param use_stored_guess:
     :param logger:
@@ -2119,103 +1805,59 @@ def get_hvdc_data(data: HvdcData,
         data.names[i] = elm.name
         data.idtag[i] = elm.idtag
 
-        if time_series:
-            data.active[i] = elm.active_prof[t_idx]
-            data.rates[i] = elm.rate_prof[t_idx]
-            data.contingency_rates[i] = elm.rate_prof[t_idx] * elm.contingency_factor_prof[t_idx]
-            data.protection_rates[i] = elm.rate_prof[t_idx] * elm.protection_rating_factor_prof[t_idx]
-            data.angle_droop[i] = elm.angle_droop_prof[t_idx]
+        data.active[i] = elm.get_active_at(t_idx)
+        data.rates[i] = elm.get_rate_at(t_idx)
+        data.contingency_rates[i] = data.rates[i] * elm.get_contingency_factor_at(t_idx)
+        data.protection_rates[i] = data.rates[i] * elm.get_protection_rating_factor_at(t_idx)
+        data.angle_droop[i] = elm.get_angle_droop_at(t_idx)
+        data.r[i] = elm.r
 
-            if opf_results is not None:
-                # if we are taking the values from the OPF, do not allow the free mode
-                data.control_mode[i] = HvdcControlType.type_1_Pset
-                data.Pset[i] = opf_results.hvdc_Pf[t_idx, i]
-            else:
-                data.control_mode[i] = elm.control_mode
-                data.Pset[i] = elm.Pset_prof[t_idx]
-
-            data.Vset_f[i] = elm.Vset_f_prof[t_idx]
-            data.Vset_t[i] = elm.Vset_t_prof[t_idx]
-
-            # hack the bus types to believe they are PV
-            if elm.active_prof[t_idx]:
-                set_bus_control_voltage_hvdc(i=f,
-                                             j=-1,
-                                             remote_control=False,
-                                             bus_name=elm.bus_from.name,
-                                             bus_data=bus_data,
-                                             bus_voltage_used=bus_voltage_used,
-                                             candidate_Vm=elm.Vset_f_prof[t_idx],
-                                             use_stored_guess=use_stored_guess,
-                                             logger=logger)
-
-                set_bus_control_voltage_hvdc(i=t,
-                                             j=-1,
-                                             remote_control=False,
-                                             bus_name=elm.bus_to.name,
-                                             bus_data=bus_data,
-                                             bus_voltage_used=bus_voltage_used,
-                                             candidate_Vm=elm.Vset_t_prof[t_idx],
-                                             use_stored_guess=use_stored_guess,
-                                             logger=logger)
-
+        if opf_results is not None:
+            # if we are taking the values from the OPF, do not allow the free mode
+            data.control_mode[i] = HvdcControlType.type_1_Pset
+            data.Pset[i] = opf_results.hvdc_Pf[t_idx, i]
         else:
-            data.active[i] = elm.active
-            data.rates[i] = elm.rate
-            data.contingency_rates[i] = elm.rate * elm.contingency_factor
-            data.protection_rates[i] = elm.rate * elm.protection_rating_factor
-            data.angle_droop[i] = elm.angle_droop
-            data.r[i] = elm.r
+            data.control_mode[i] = elm.control_mode
+            data.Pset[i] = elm.get_Pset_at(t_idx)
 
-            if opf_results is not None:
-                # if we are taking the values from the OPF, do not allow the free mode
-                data.control_mode[i] = HvdcControlType.type_1_Pset
-                data.Pset[i] = opf_results.hvdc_Pf[i]
-            else:
-                data.control_mode[i] = elm.control_mode
-                data.Pset[i] = elm.Pset
+        data.Vset_f[i] = elm.get_Vset_f_at(t_idx)
+        data.Vset_t[i] = elm.get_Vset_t_at(t_idx)
 
-            data.Vset_f[i] = elm.Vset_f
-            data.Vset_t[i] = elm.Vset_t
+        # hack the bus types to believe they are PV
+        if data.active[i] != 0:
+            set_bus_control_voltage_hvdc(i=f,
+                                         j=-1,
+                                         remote_control=False,
+                                         bus_name=elm.bus_from.name,
+                                         bus_data=bus_data,
+                                         bus_voltage_used=bus_voltage_used,
+                                         candidate_Vm=data.Vset_f[i],
+                                         use_stored_guess=use_stored_guess,
+                                         logger=logger)
 
-            # hack the bus types to believe they are PV
-            if elm.active:
-                set_bus_control_voltage_hvdc(i=f,
-                                             j=-1,
-                                             remote_control=False,
-                                             bus_name=elm.bus_from.name,
-                                             bus_data=bus_data,
-                                             bus_voltage_used=bus_voltage_used,
-                                             candidate_Vm=elm.Vset_f,
-                                             use_stored_guess=use_stored_guess,
-                                             logger=logger)
-
-                set_bus_control_voltage_hvdc(i=t,
-                                             j=-1,
-                                             remote_control=False,
-                                             bus_name=elm.bus_to.name,
-                                             bus_data=bus_data,
-                                             bus_voltage_used=bus_voltage_used,
-                                             candidate_Vm=elm.Vset_t,
-                                             use_stored_guess=use_stored_guess,
-                                             logger=logger)
+            set_bus_control_voltage_hvdc(i=t,
+                                         j=-1,
+                                         remote_control=False,
+                                         bus_name=elm.bus_to.name,
+                                         bus_data=bus_data,
+                                         bus_voltage_used=bus_voltage_used,
+                                         candidate_Vm=data.Vset_t[i],
+                                         use_stored_guess=use_stored_guess,
+                                         logger=logger)
 
         data.Vnf[i] = elm.bus_from.Vnom
         data.Vnt[i] = elm.bus_to.Vnom
 
-        (data.Qmin_f[i], data.Qmax_f[i],
-         data.Qmin_t[i], data.Qmax_t[i]) = elm.get_q_limits(P=data.Pset[i])
+        data.Qmin_f[i], data.Qmax_f[i], data.Qmin_t[i], data.Qmax_t[i] = elm.get_q_limits(P=data.Pset[i])
 
 
 def get_fluid_node_data(data: FluidNodeData,
                         circuit: MultiCircuit,
-                        t_idx=-1,
-                        time_series=False) -> Dict[str, int]:
+                        t_idx: int | None = None) -> Dict[str, int]:
     """
 
     :param data:
     :param circuit:
-    :param time_series:
     :param t_idx:
     :return:
     """
@@ -2232,16 +1874,10 @@ def get_fluid_node_data(data: FluidNodeData,
         data.max_level[k] = 1e6 * elm.max_level
         data.initial_level[k] = 1e6 * elm.initial_level
 
-        if time_series:
-            data.inflow[k] = elm.inflow_prof[t_idx]
-            data.spillage_cost[k] = elm.spillage_cost_prof[t_idx]
-            data.max_soc[k] = elm.max_soc_prof[t_idx]
-            data.min_soc[k] = elm.min_soc_prof[t_idx]
-        else:
-            data.inflow[k] = elm.inflow
-            data.spillage_cost[k] = elm.spillage_cost
-            data.max_soc[k] = elm.max_soc
-            data.min_soc[k] = elm.min_soc
+        data.inflow[k] = elm.get_inflow_at(t_idx)
+        data.spillage_cost[k] = elm.get_spillage_cost_at(t_idx)
+        data.max_soc[k] = elm.get_max_soc_at(t_idx)
+        data.min_soc[k] = elm.get_min_soc_at(t_idx)
 
     return plant_dict
 
@@ -2249,15 +1885,13 @@ def get_fluid_node_data(data: FluidNodeData,
 def get_fluid_turbine_data(data: FluidTurbineData,
                            circuit: MultiCircuit,
                            plant_dict: Dict[str, int],
-                           gen_dict: Dict[str, int],
-                           t_idx=-1) -> FluidTurbineData:
+                           gen_dict: Dict[str, int]) -> FluidTurbineData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
-    :param t_idx:
     :return:
     """
     for k, elm in enumerate(circuit.get_fluid_turbines()):
@@ -2276,15 +1910,13 @@ def get_fluid_turbine_data(data: FluidTurbineData,
 def get_fluid_pump_data(data: FluidPumpData,
                         circuit: MultiCircuit,
                         plant_dict: Dict[str, int],
-                        gen_dict: Dict[str, int],
-                        t_idx=-1) -> FluidPumpData:
+                        gen_dict: Dict[str, int]) -> FluidPumpData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
-    :param t_idx:
     :return:
     """
 
@@ -2304,15 +1936,13 @@ def get_fluid_pump_data(data: FluidPumpData,
 def get_fluid_p2x_data(data: FluidP2XData,
                        circuit: MultiCircuit,
                        plant_dict: Dict[str, int],
-                       gen_dict: Dict[str, int],
-                       t_idx=-1) -> FluidP2XData:
+                       gen_dict: Dict[str, int]) -> FluidP2XData:
     """
 
     :param data:
     :param circuit:
     :param plant_dict:
     :param gen_dict:
-    :param t_idx:
     :return:
     """
 
@@ -2331,14 +1961,12 @@ def get_fluid_p2x_data(data: FluidP2XData,
 
 def get_fluid_path_data(data: FluidPathData,
                         circuit: MultiCircuit,
-                        plant_dict: Dict[str, int],
-                        t_idx=-1) -> FluidPathData:
+                        plant_dict: Dict[str, int]) -> FluidPathData:
     """
 
     :param data: FluidPathData
     :param circuit:
     :param plant_dict:
-    :param t_idx:
     :return:
     """
 
@@ -2426,10 +2054,8 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         bus_data=nc.bus_data,  # filled here
         circuit=circuit,
         t_idx=t_idx,
-        time_series=time_series,
         areas_dict=areas_dict,
         use_stored_guess=use_stored_guess,
-        fill_three_phase=fill_three_phase
     )
 
     gen_dict = get_generator_data(
@@ -2469,7 +2095,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         bus_voltage_used=bus_voltage_used,
         bus_data=nc.bus_data,
         t_idx=t_idx,
-        time_series=time_series,
         logger=logger,
         use_stored_guess=use_stored_guess,
         control_remote_voltage=control_remote_voltage,
@@ -2482,9 +2107,8 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         bus_dict=bus_dict,
         bus_voltage_used=bus_voltage_used,
         bus_data=nc.bus_data,
-        logger=logger,
         t_idx=t_idx,
-        time_series=time_series,
+        logger=logger,
         opf_results=opf_results,
         use_stored_guess=use_stored_guess,
         fill_three_phase=fill_three_phase
@@ -2513,7 +2137,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         data=nc.vsc_data,
         circuit=circuit,
         t_idx=t_idx,
-        time_series=time_series,
         bus_dict=bus_dict,
         branch_dict=branch_dict,
         bus_data=nc.bus_data,
@@ -2527,9 +2150,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         data=nc.hvdc_data,
         circuit=circuit,
         t_idx=t_idx,
-        time_series=time_series,
         bus_dict=bus_dict,
-        bus_types=nc.bus_data.bus_types,
         bus_data=nc.bus_data,
         bus_voltage_used=bus_voltage_used,
         opf_results=opf_results,
@@ -2541,8 +2162,7 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         plant_dict = get_fluid_node_data(
             data=nc.fluid_node_data,
             circuit=circuit,
-            t_idx=t_idx,
-            time_series=time_series
+            t_idx=t_idx
         )
 
         get_fluid_turbine_data(
@@ -2550,15 +2170,13 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
             circuit=circuit,
             plant_dict=plant_dict,
             gen_dict=gen_dict,
-            t_idx=t_idx
         )
 
         get_fluid_pump_data(
             data=nc.fluid_pump_data,
             circuit=circuit,
             plant_dict=plant_dict,
-            gen_dict=gen_dict,
-            t_idx=t_idx
+            gen_dict=gen_dict
         )
 
         get_fluid_p2x_data(
@@ -2566,14 +2184,12 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
             circuit=circuit,
             plant_dict=plant_dict,
             gen_dict=gen_dict,
-            t_idx=t_idx
         )
 
         get_fluid_path_data(
             data=nc.fluid_path_data,
             circuit=circuit,
-            plant_dict=plant_dict,
-            t_idx=t_idx
+            plant_dict=plant_dict
         )
 
     if fill_gep:

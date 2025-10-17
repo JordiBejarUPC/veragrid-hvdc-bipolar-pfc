@@ -22,10 +22,6 @@ class DcLine(BranchParent):
         'r_fault',
         'fault_pos',
         'R',
-        'temp_base',
-        'temp_oper',
-        '_temp_oper_prof',
-        'alpha',
         'template',
         '_locations',
     )
@@ -105,6 +101,9 @@ class DcLine(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=cost,
+                              temp_base=temp_base,
+                              temp_oper=temp_oper,
+                              alpha=alpha,
                               device_type=DeviceType.DCLineDevice)
 
         # List of measurements
@@ -122,14 +121,6 @@ class DcLine(BranchParent):
 
         # total impedance and admittance in p.u.
         self.R = float(r)
-
-        # Conductor base and operating temperatures in ºC
-        self.temp_base = float(temp_base)
-        self.temp_oper = float(temp_oper)
-        self._temp_oper_prof = Profile(default_value=temp_oper, data_type=float)
-
-        # Conductor thermal constant (1/ºC)
-        self.alpha = float(alpha)
 
         # type template
         self.template = template

@@ -1964,9 +1964,13 @@ class ResultTypes(Enum):
     InvestmentsWhenToMakePlot = "When to make them plot"
 
     # reliability
-    ReliabilityLoleResults = "LOLE"
+    ReliabilityLOLEResults = "LOLE"
     ReliabilityENSResults = "ENS"
     ReliabilityLOLFResults = "LOLF"
+    ReliabilityLOLETResults = "LOLET"
+    ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value
@@ -2140,7 +2144,7 @@ class Colormaps(Enum):
             return s
 
 
-class SubstationTypes(Enum):
+class VoltageLevelTypes(Enum):
     """
     Types of substation types
     """
@@ -2168,7 +2172,7 @@ class SubstationTypes(Enum):
         :return:
         """
         try:
-            return SubstationTypes[s]
+            return VoltageLevelTypes[s]
         except KeyError:
             return s
 

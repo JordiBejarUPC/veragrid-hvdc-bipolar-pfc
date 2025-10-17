@@ -8,6 +8,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import InjectionParent
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 from VeraGridEngine.Devices.profile import Profile
 
 
@@ -136,6 +137,13 @@ class CurrentInjection(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir_prof')
 
+    def get_Ir_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir, self.Ir_prof, t)
+
     @property
     def Ir1_prof(self) -> Profile:
         """
@@ -152,6 +160,13 @@ class CurrentInjection(InjectionParent):
             self._Ir1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir1_prof')
+
+    def get_Ir1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir1, self.Ir1_prof, t)
 
     @property
     def Ir2_prof(self) -> Profile:
@@ -170,6 +185,13 @@ class CurrentInjection(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir2_prof')
 
+    def get_Ir2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir2, self.Ir2_prof, t)
+
     @property
     def Ir3_prof(self) -> Profile:
         """
@@ -186,6 +208,13 @@ class CurrentInjection(InjectionParent):
             self._Ir3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ir3_prof')
+
+    def get_Ir3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ir3, self.Ir3_prof, t)
 
     @property
     def Ii_prof(self) -> Profile:
@@ -204,6 +233,13 @@ class CurrentInjection(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii_prof')
 
+    def get_Ii_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii, self.Ii_prof, t)
+
     @property
     def Ii1_prof(self) -> Profile:
         """
@@ -220,6 +256,13 @@ class CurrentInjection(InjectionParent):
             self._Ii1_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii1_prof')
+
+    def get_Ii1_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii1, self.Ii1_prof, t)
 
     @property
     def Ii2_prof(self) -> Profile:
@@ -238,6 +281,13 @@ class CurrentInjection(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii2_prof')
 
+    def get_Ii2_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii2, self.Ii2_prof, t)
+
     @property
     def Ii3_prof(self) -> Profile:
         """
@@ -254,6 +304,41 @@ class CurrentInjection(InjectionParent):
             self._Ii3_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Ii3_prof')
+
+    def get_Ii3_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Ii3, self.Ii3_prof, t)
+
+    def get_I_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir_at(t), self.get_Ii_at(t))
+
+    def get_I1_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir1_at(t), self.get_Ii1_at(t))
+
+    def get_I2_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir2_at(t), self.get_Ii2_at(t))
+
+    def get_I3_at(self, t: int | None) -> complex:
+        """
+        :param t:
+        :return:
+        """
+        return complex(self.get_Ir3_at(t), self.get_Ii3_at(t))
 
     def plot_profiles(self, time=None, show_fig=True):
         """
