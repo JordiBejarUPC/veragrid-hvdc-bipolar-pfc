@@ -15,207 +15,12 @@ from VeraGridEngine.Devices.Injections.battery import Battery
 from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysisTs, LinearAnalysis
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc, PowerFlowOptions
+from VeraGridEngine.enumerations import SolverType
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
     from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysisTs
-
-
-def ptdf_reduction_old(grid: MultiCircuit,
-                       reduction_bus_indices: IntVec,
-                       PTDF: Mat,
-                       lin_ts: LinearAnalysisTs,
-                       tol=1e-8,
-                       aggregate_devices: bool = False) -> Tuple[MultiCircuit, Logger]:
-    """
-    In-place Grid reduction using the PTDF injection mirroring
-    No theory available
-    :param grid: MultiCircuit
-    :param reduction_bus_indices: Bus indices of the buses to delete
-    :param PTDF: PTDF matrix
-    :param lin_ts: LinearAnalysisTs
-    :param tol: Tolerance, any equivalent power value under this is omitted
-    :param aggregate_devices: Aggregate boundary devices (optional)
-    """
-    logger = Logger()
-
-    # find the boundary set: buses from the internal set the join to the external set
-    e_buses, b_buses, i_buses, b_branches, i_branches = grid.get_reduction_sets(reduction_bus_indices=reduction_bus_indices)
-
-    if len(e_buses) == 0:
-        logger.add_info(msg="Nothing to reduce")
-        return grid, logger
-
-    if len(i_buses) == 0:
-        logger.add_info(msg="Nothing to keep (null grid as a result)")
-        return grid, logger
-
-    if len(b_buses) == 0:
-        logger.add_info(msg="The reducible and non reducible sets are disjoint and cannot be reduced")
-        return grid, logger
-
-    # Start moving objects
-    e_buses_set = set(e_buses)
-    bus_dict = grid.get_bus_index_dict()
-    has_ts = grid.has_time_series
-
-    if has_ts and lin_ts is None:
-        logger.add_error("You must provide the lin_ts parameter")
-        return grid, logger
-
-    nb = len(b_buses)
-    boundary_generators_with_srap = np.zeros(nb, dtype=int)
-    boundary_generators_count = np.zeros(nb, dtype=int)
-    boundary_generators = Vector(nb, value=list())
-    boundary_batteries = Vector(nb, value=list())
-    boundary_loads = Vector(nb, value=list())
-    boundary_stagen = Vector(nb, value=list())
-
-    for elm in grid.get_injection_devices():
-        if elm.bus is not None:
-            i = bus_dict[elm.bus]  # bus index where it is currently connected
-
-            if i in e_buses_set:
-                # this injection is to be reduced
-
-                for b in range(len(b_buses)):
-                    bus_idx = b_buses[b]
-                    branch_idx = b_branches[b]
-                    bus = grid.buses[bus_idx]
-                    ptdf_val = PTDF[branch_idx, bus_idx]
-
-                    if abs(ptdf_val) > tol:
-
-                        # create new device at the boundary bus
-                        if elm.device_type == DeviceType.GeneratorDevice:
-                            new_elm = elm.copy()
-                            elm.bus = bus
-                            new_elm.comment = "PTDF reduced equivalent generator"
-                            new_elm.P = ptdf_val * elm.P
-                            if has_ts:
-                                new_elm.P_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.P_prof.toarray())
-
-                            new_elm.comment = "PTDF reduced equivalent generator"
-                            if aggregate_devices:
-                                boundary_generators[b].append(new_elm)
-                                boundary_generators_count[b] += 1
-                                if elm.srap_enabled:
-                                    boundary_generators_with_srap[b] += 1
-                            else:
-                                grid.add_generator(bus=bus, api_obj=new_elm)
-
-                        elif elm.device_type == DeviceType.BatteryDevice:
-                            new_elm = elm.copy()
-                            elm.bus = bus
-                            new_elm.P = ptdf_val * elm.P
-                            if has_ts:
-                                new_elm.P_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.P_prof.toarray())
-
-                            new_elm.comment = "PTDF reduced equivalent battery"
-
-                            if aggregate_devices:
-                                boundary_batteries[b].append(new_elm)
-                            else:
-                                grid.add_battery(bus=bus, api_obj=new_elm)
-
-                        elif elm.device_type == DeviceType.StaticGeneratorDevice:
-                            new_elm = elm.copy()
-                            elm.bus = bus
-                            new_elm.P = ptdf_val * elm.P
-                            new_elm.Q = ptdf_val * elm.Q
-                            if has_ts:
-                                new_elm.P_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.P_prof.toarray())
-                                new_elm.Q_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.Q_prof.toarray())
-
-                            new_elm.comment = "PTDF reduced equivalent static generator"
-
-                            if aggregate_devices:
-                                boundary_stagen[b].append(new_elm)
-                            else:
-                                grid.add_static_generator(bus=bus, api_obj=new_elm)
-
-                        elif elm.device_type == DeviceType.LoadDevice:
-                            new_elm = elm.copy()
-                            elm.bus = bus
-                            new_elm.P = ptdf_val * elm.P
-                            new_elm.Q = ptdf_val * elm.Q
-                            if has_ts:
-                                new_elm.P_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.P_prof.toarray())
-                                new_elm.Q_prof = lin_ts.get_branch_flow_ts(branch_idx, bus_idx, elm.Q_prof.toarray())
-
-                            new_elm.comment = "PTDF reduced equivalent load"
-
-                            if aggregate_devices:
-                                boundary_loads[b].append(new_elm)
-                            else:
-                                grid.add_load(bus=bus, api_obj=new_elm)
-
-                        else:
-                            # device I don't care about
-                            logger.add_warning(msg="Ignored device",
-                                               device=str(elm),
-                                               device_class=elm.device_type.value)
-
-    if aggregate_devices:
-
-        for b in range(nb):  # for every boundary bus ...
-
-            bus_idx = b_buses[b]
-            bus = grid.buses[bus_idx]
-
-            # Generators -----------------------------------------------------------------------------------------------
-            gen_list = boundary_generators[b]
-            srap_gen_count = boundary_generators_with_srap[b]
-            total_gen_count = boundary_generators_count[b]
-
-            if total_gen_count > 0:
-
-                if srap_gen_count > 0:
-                    # we make 2 generator because of things
-                    gen_no_srap = Generator(name=f"Gen no Srap")
-                    gen_srap = Generator(name=f"Gen with Srap", srap_enabled=True)
-
-                    for gen in gen_list:
-                        if gen.srap_enabled:
-                            gen_srap += gen
-                        else:
-                            gen_no_srap += gen
-
-                    grid.add_generator(bus=bus, api_obj=gen_srap)
-                    grid.add_generator(bus=bus, api_obj=gen_no_srap)
-
-                else:
-                    gen_no_srap = Generator(name=f"Equivalent boundary gen")
-                    for gen in gen_list:
-                        gen_no_srap += gen
-                    grid.add_generator(bus=bus, api_obj=gen_no_srap)
-            else:
-                pass
-
-            # Loads ----------------------------------------------------------------------------------------------------
-            load = Load(name=f"Equivalent boundary load")
-            for elm in boundary_loads[b]:
-                load += elm
-            grid.add_load(bus=bus, api_obj=load)
-
-            # StaticGenerator ------------------------------------------------------------------------------------------
-            stagen = StaticGenerator(name=f"Equivalent boundary load")
-            for elm in boundary_stagen[b]:
-                stagen += elm
-            grid.add_static_generator(bus=bus, api_obj=stagen)
-
-            # Batteries ------------------------------------------------------------------------------------------------
-            batt = Battery(name=f"Equivalent boundary battery")
-            for elm in boundary_batteries[b]:
-                batt += elm
-            grid.add_battery(bus=bus, api_obj=batt)
-
-    # Delete the external buses
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
-
-    return grid, logger
 
 
 def relocate_injections(grid: MultiCircuit,
@@ -398,7 +203,8 @@ def ptdf_reduction(grid: MultiCircuit,
     for i in range(n2):
         bus = grid.buses[i]
         if abs(dPbus[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=dPbus[i])
+            elm = Load(name=f"compensation load {i}", P=dPbus[i])
+            elm.comment = "complensation load"
 
             if dPbus_ts is not None:
                 elm.P_prof = dPbus_ts[:, i]
@@ -412,8 +218,7 @@ def ptdf_reduction(grid: MultiCircuit,
 
     return grid, logger
 
-
-# if __name__ == "__main__":
+    # if __name__ == "__main__":
     import VeraGridEngine as vg
 
     # circuit = vg.open_file("/home/santi/Documentos/Git/eRoots/VeraGrid/src/trunk/equivalents/completo.veragrid")
@@ -423,3 +228,88 @@ def ptdf_reduction(grid: MultiCircuit,
     #     reduction_bus_indices=[4],
     #     tol=1e-8
     # )
+
+
+def linear_reduction(grid: MultiCircuit,
+                     reduction_bus_indices: IntVec,
+                     tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+    """
+    In-place Grid reduction using the PTDF injection mirroring
+    This is the same concept as the Di-Shi reduction but using the PTDF matrix instead.
+    :param grid: MultiCircuit
+    :param reduction_bus_indices: Bus indices of the buses to delete
+    :param tol: Tolerance, any equivalent power value under this is omitted
+    """
+    logger = Logger()
+
+    # find the boundary set: buses from the internal set the join to the external set
+    e_buses, i_buses, i_branches = get_reduction_sets(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
+    if len(e_buses) == 0:
+        logger.add_info(msg="Nothing to reduce")
+        return grid, logger
+
+    if len(i_buses) == 0:
+        logger.add_info(msg="Nothing to keep (null grid as a result)")
+        return grid, logger
+
+    nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    opt = PowerFlowOptions(solver_type=SolverType.Linear)
+    pf_res0 = multi_island_pf_nc(nc, options=opt)
+    Pbus0 = grid.get_Pbus()
+
+    # flows
+    Flows0 = pf_res0.Sf.real
+    theta0 = np.angle(pf_res0.voltage, False)
+
+    # move the external injection to the boundary like in the Di-Shi method
+    relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
+    # Eliminate the external buses
+    to_be_deleted = [grid.buses[e] for e in e_buses]
+    for bus in to_be_deleted:
+        grid.delete_bus(obj=bus, delete_associated=True)
+
+    # Injections that remain
+    # Pbus2 = grid.get_Pbus()
+    nc2 = compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    opt = PowerFlowOptions(solver_type=SolverType.Linear)
+    pf_res2 = multi_island_pf_nc(nc2, options=opt)
+    Pbus2 = grid.get_Pbus()
+
+    # re-make the linear analysis
+    lin_mat2 = nc2.get_linear_admittance_matrices()
+
+    # reconstruct injections that should be to keep the flows the same
+    Pbus3 = (lin_mat2.Bbus @ theta0[i_buses]) * nc2.Sbase
+
+    dPbus = Pbus2 - Pbus3
+
+    n2 = grid.get_bus_number()
+    for i in range(n2):
+        bus = grid.buses[i]
+        if abs(dPbus[i]) > tol:
+            elm = Load(name=f"compensation load {i}", P=dPbus[i])
+            elm.comment = "complensation load"
+
+            grid.add_load(bus=bus, api_obj=elm)
+
+    # proof that the flows are actually the same
+    lin2 = LinearAnalysis(nc2)
+    Pbus4 = grid.get_Pbus()
+    Flows4 = lin2.PTDF @ Pbus4
+    diff = Flows0[i_branches] - Flows4
+
+    return grid, logger
+
+
+if __name__ == "__main__":
+    import VeraGridEngine as vg
+
+    circuit = vg.open_file("/home/santi/Documentos/Git/eRoots/VeraGrid/src/trunk/equivalents/completo.veragrid")
+
+    linear_reduction(
+        grid=circuit,
+        reduction_bus_indices=[4],
+        tol=1e-8
+    )

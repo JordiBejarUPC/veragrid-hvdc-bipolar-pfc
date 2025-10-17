@@ -181,16 +181,17 @@ join an external bus to a boundary bus and call if $BE$.
 The theory behind is as follows:
 
 1) Compute the PTDF ($PTDF_0$)
-2) Compute the Flows $Pf_0 = PTDF_0 \times Pbus_0$
+2) Compute the Flows $P_{f_0} = PTDF_0 \times Pbus_0$
 3) Move the injections to the boundary (all of them, load and generation)
 4) Delete the buses from the External set.
 5) Compute the PTDF again ($PTDF_2$)
 6) Compute the current injections vector ($Pbus_2$)
-7) Compute the ideal injections that fullfill the base flows using least-squares: $Pbus_3 = LSQ(PTDF_2, Pbus_2)$
+7) Compute the ideal injections that fullfill the base flows using least-squares: $Pbus_3 = LSQ(PTDF_2, P_{f_0}[I])$
 8) Compute the difference between the ideal and the actual injections $dPbus = Pbus_2 - Pbus_3$
 9) For every entry in $dPbus$ greater than a threshold, add a load compensating the difference
 
-The PTDF flows are guaranteed to be the same, as much as the least-squares problem is able to find a solution.
+The PTDF flows pre and post reduction are guaranteed to be the same, 
+as much as the least-squares problem is able to find a solution.
 
 ## Benchmarks
 

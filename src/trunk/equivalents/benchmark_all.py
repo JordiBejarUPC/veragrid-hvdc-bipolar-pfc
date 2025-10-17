@@ -6,14 +6,14 @@ from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_r
 from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
 
-# fname = os.path.join('..', '..', 'tests', 'data', 'grids', 'Matpower', 'case118.m')
-# reduction_bus_indices = np.array([
-#     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-#     20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 113, 114, 115, 117
-# ]) - 1  # minus 1 for zero based indexing
+fname = os.path.join('..', '..', 'tests', 'data', 'grids', 'Matpower', 'case118.m')
+reduction_bus_indices = np.array([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 113, 114, 115, 117
+]) - 1  # minus 1 for zero based indexing
 
-fname = "case300.raw"
-reduction_bus_indices = np.array(list(range(50, 65)))
+# fname = "case300.raw"
+# reduction_bus_indices = np.array(list(range(50, 65)))
 
 grid = vg.open_file(fname)
 sbus0 = grid.get_Sbus()
