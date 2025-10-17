@@ -54,7 +54,11 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
 
 
     def build_block(self):
-        self._block = Block(
+        """
+
+        :return:
+        """
+        block = Block(
             state_vars=[self.delta, self.omega],
             state_eqs=[
                 (2 * np.pi * self.freq) * (self.omega - self.omega_ref),
@@ -95,16 +99,16 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
                 self.et: Const(0),
             })
 
-        self._block.fix_vars = [self.tm0, self.vf]
-        self._block.fix_vars_eqs = {self.tm0.uid: self.tm,
+        block.fix_vars = [self.tm0, self.vf]
+        block.fix_vars_eqs = {self.tm0.uid: self.tm,
                         self.vf.uid: self.psid + self.X1 * self.i_d}
 
-        self._block.external_mapping = {
+        block.external_mapping = {
             VarPowerFlowRefferenceType.P: self.P_g,
             VarPowerFlowRefferenceType.Q: self.Q_g
         }
 
-        self._block.event_dict = {self.R1: Const(0.0),
+        block.event_dict = {self.R1: Const(0.0),
                                   self.X1: Const(0.3),
                                   self.freq: Const(60.0),
                                   self.M: Const(4.0),

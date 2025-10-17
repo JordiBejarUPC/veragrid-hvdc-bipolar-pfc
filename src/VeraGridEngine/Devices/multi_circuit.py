@@ -363,10 +363,6 @@ class MultiCircuit(Assets):
                 'qf_measurements',
                 'if_measurements',
                 'modelling_authorities',
-                'rms_bus_models',
-                'rms_line_models',
-                'rms_load_models',
-                'rms_generator_models'
                 ]
 
         for pr in ppts:

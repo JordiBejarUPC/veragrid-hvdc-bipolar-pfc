@@ -61,10 +61,6 @@ class Bus(PhysicalDevice):
         'graphic_type',
         '_bus_bar',
         '_rms_model',
-        'Vm',
-        'Va',
-        'P',
-        'Q'
     )
 
     def __init__(self, name="Bus",
@@ -234,20 +230,7 @@ class Bus(PhysicalDevice):
 
         # The model of the bus is fixed, then it can already be defined here
         self._rms_model: DynamicModelHost = DynamicModelHost()
-        self.Vm = Var('Vm')
-        self.Va = Var('Va')
-        self.P = Var('P')
-        self.Q = Var('Q')
 
-        self._rms_model.model = Block(
-            algebraic_vars=[self.Vm, self.Va])
-
-        self._rms_model.model.external_mapping = {
-            VarPowerFlowRefferenceType.Vm: self.Vm,
-            VarPowerFlowRefferenceType.Va: self.Va,
-            VarPowerFlowRefferenceType.P: self.P,
-            VarPowerFlowRefferenceType.Q: self.Q
-        }
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')
@@ -544,17 +527,33 @@ class Bus(PhysicalDevice):
         else:
             raise ValueError("The value must be a BusBar")
 
+    def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
+        """
+        Initializes rms model if not initialized
+        :return: Vm, Va rms vars
+        """
+        if self.rms_model.model.empty():
+            self.initialize_rms()
+        assert len(self.rms_model.model.algebraic_vars) == 2
+        return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
+
+
     def initialize_rms(self):
         """
         Initialize the RMS model
         """
         if self.rms_model.empty():
+            Vm = Var("Vm")
+            Va = Var("Va")
+            P = Var("P")
+            Q = Var("Q")
             self.rms_model.model = Block(
-                algebraic_vars=[self.Vm, self.Va])
+                algebraic_vars=[Vm, Va])
 
             self.rms_model.model.external_mapping = {
-                VarPowerFlowRefferenceType.Vm: self.Vm,
-                VarPowerFlowRefferenceType.Va: self.Va,
-                VarPowerFlowRefferenceType.P: self.P,
-                VarPowerFlowRefferenceType.Q: self.Q
+                VarPowerFlowRefferenceType.Vm: Vm,
+                VarPowerFlowRefferenceType.Va: Va,
+                VarPowerFlowRefferenceType.P: P,
+                VarPowerFlowRefferenceType.Q: Q
             }
+
