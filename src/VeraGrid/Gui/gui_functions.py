@@ -1035,7 +1035,7 @@ def add_menu_entry(menu: QtWidgets.QMenu,
 
     if checkeable:
         entry.setCheckable(checkeable)
-        entry.setChecked(checked_value)
+        entry.setChecked(bool(checked_value))
 
     if icon_pixmap is None:
         if len(icon_path) > 0:
