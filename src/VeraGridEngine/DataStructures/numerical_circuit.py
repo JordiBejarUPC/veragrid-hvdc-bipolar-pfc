@@ -283,9 +283,6 @@ class NumericalCircuit:
             'x',
             'f(x)',
             'Jacobian',
-        ],
-        "Small-signal arrays": [
-            'state_matrix',
         ]
     }
 
@@ -932,7 +929,6 @@ class NumericalCircuit:
         from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_advanced_formulation import (
             PfAdvancedFormulation)
         from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
-        from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
 
 
         formulation = PfAdvancedFormulation(V0=self.bus_data.Vbus,
@@ -1086,6 +1082,7 @@ class NumericalCircuit:
 
         elif structure_type == "B'":
             adm = self.get_fast_decoupled_amittances()
+            print("B':",adm.B1.toarray())
             if adm.B1.shape[0] == len(idx.pq):
                 data = adm.B1.toarray()
                 names = self.bus_data.names[idx.pq]
@@ -1101,6 +1098,7 @@ class NumericalCircuit:
 
         elif structure_type == "B''":
             adm = self.get_fast_decoupled_amittances()
+            print("B'':", adm.B2.toarray())
             if adm.B2.shape[0] == len(idx.pq):
                 data = adm.B2.toarray()
                 names = self.bus_data.names[idx.pq]
@@ -1319,14 +1317,6 @@ class NumericalCircuit:
                 columns=['Qt_set'],
                 index=self.passive_branch_data.names[formulation.idx_dQt],
             )
-        # elif structure_type == 'state_matrix':
-        #     df = pd.DataFrame(
-        #         data=SmallSignalStabilityDriver.compute_state_matrix(slv = Blocksolver,
-        #                                                              x,
-        #                                                              params),
-        #         columns=np.array([f"State var {i}" for i in range(10)], dtype=np.str_),
-        #         index=np.array([f"Eq {i}" for i in range(10)], dtype=np.str_),
-        #     )
 
         else:
             raise Exception('PF input: structure type not found' + str(structure_type))
