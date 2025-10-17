@@ -246,7 +246,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.scale = scale
 
     def get_base_context_menu(self) -> QMenu:
-
+        """
+        Generate the base menu for injections
+        :return:
+        """
         menu = QMenu()
 
         add_menu_entry(menu=menu,

@@ -125,6 +125,10 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
+        """
+
+        :return:
+        """
         templates = [t.name for t in
                      self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
 
