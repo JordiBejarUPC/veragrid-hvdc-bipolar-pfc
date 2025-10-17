@@ -8,7 +8,7 @@ import VeraGrid.ThirdParty.darkdetect as darkdetect
 from PySide6.QtCore import Qt, QPointF, QLineF
 from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsItem, QGraphicsPolygonItem, QGraphicsItemGroup,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem)
-from PySide6.QtGui import QColor, QPen, QPolygon
+from PySide6.QtGui import QColor, QPen, QPolygon, QPolygonF
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -207,7 +207,7 @@ class Polygon(QGraphicsPolygonItem):
     PolygonItem
     """
 
-    def __init__(self, parent, polygon: QPolygon, update_nexus_fcn: Callable[[QPointF], None]):
+    def __init__(self, parent, polygon: QPolygon | QPolygonF, update_nexus_fcn: Callable[[QPointF], None]):
         """
         Constructor
         :param parent:

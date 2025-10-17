@@ -40,12 +40,13 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                                               h=20)
 
         # triangle
-        self.set_glyph(glyph=Polygon(self,
-                                     polygon=QPolygonF([QPointF(0, 0),
-                                                        QPointF(self.w, 0),
-                                                        QPointF(self.w / 2, self.h)]),
-                                     update_nexus_fcn=self.update_nexus)
-                       )
+        self.set_glyph(glyph=Polygon(
+            self,
+            polygon=QPolygonF([QPointF(0, 0),
+                               QPointF(self.w, 0),
+                               QPointF(self.w / 2, self.h)]),
+            update_nexus_fcn=self.update_nexus)
+        )
 
     @property
     def api_object(self) -> Load:
