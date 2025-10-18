@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import matplotlib.colors as plt_colors
 from typing import List, Tuple, Dict, Union
 
-from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
+# from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
@@ -94,8 +94,8 @@ class RmsResults(ResultsTemplate):
                     vars_list.append(var_glob_name)
                 devices_options[device.name] = vars_list
 
-            dlg = RmsPlotDialog(devices_options, results_table, self.uid2idx, self.vars_glob_name2uid)
-            dlg.exec()
+            # dlg = RmsPlotDialog(devices_options, results_table, self.uid2idx, self.vars_glob_name2uid)
+            # dlg.exec()
 
         else:
             raise Exception(f"Result type not understood: {result_type}")

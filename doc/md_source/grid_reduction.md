@@ -93,18 +93,18 @@ $B$ (boundary buses)
 - Run a power flow of the base grid and slice $V_b = V[B]$ and $V_e = V[E]$
 - Slice $Y_{BE} = Y[B, E]$, $Y_{EB} = Y[E, B]$ and $Y_{EE} = Y[E, E]$
 - Compute the equivalent boundary admittances as:
-$$
+$
 Y_{eq} = Y_{BE} \times Y_{EE}^{-1} \times Y_{EB}
-$$
+$
 - Compute the equivalent boundary injection currents as: 
-$$
+$
 I_{eq} = - Y_{BE} \times Y_{EE}^{-1} \times (Y_{EB} \times V_b + Y_{EE} \times V_e)
-$$
+$
 
 - Compute the boundary power injections as:
-$$
+$
 S_{eq} = V_b \cdot (I_{eq})^*
-$$
+$
 - Create a new load with the value of $S_{eq}[b]$ for every bus $b$ of $B$.
 - For every entry in the lower triangle of $Y_{eq}$, create a shunt or series reactance 
 at the boundary or between the boundary buses.

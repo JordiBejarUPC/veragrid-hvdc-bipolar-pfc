@@ -30,7 +30,7 @@ def test_contingency() -> None:
     cont_analysis_driver.run()
     print("")
 
-    for i, lne in enumerate(main_circuit.get_lines()):
+    for i, lne in enumerate(main_circuit.get_branches(False, False, True)):
         lne.active = False
         pf_driver = PowerFlowDriver(grid=main_circuit, options=pf_options)
         pf_driver.run()
