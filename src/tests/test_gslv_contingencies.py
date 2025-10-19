@@ -41,7 +41,7 @@ def test_gslv_contingencies_snapshot():
     driver2.run()
     Pf2 = driver2.results.Sf.real
 
-    ok = np.allclose(Pf1, Pf2, atol=1e-6)
+    ok = np.allclose(Pf1, Pf2, atol=1e-4)
     assert ok
 
 

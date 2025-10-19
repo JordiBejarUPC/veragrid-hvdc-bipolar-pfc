@@ -925,7 +925,9 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             V_guess=V_guess,
             Sbus_input=Sbus_input,
         )
-        V_guess = results_0.voltage
+        V0 = results_0.voltage
+    else:
+        V0 = nc.bus_data.Vbus if V_guess is None else V_guess[nc.bus_data.original_idx]
 
     if nc.active_branch_data.any_pf_control:
 
@@ -933,7 +935,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             nc=nc,
             options=options,
             logger=logger,
-            V_guess=V_guess,
+            V_guess=V0,
             Sbus_input=Sbus_input,
         )
 
@@ -942,7 +944,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
                 nc=nc,
                 options=options,
                 logger=logger,
-                V_guess=V_guess,
+                V_guess=V0,
                 Sbus_input=Sbus_input,
             )
 
@@ -961,7 +963,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             nc=nc,
             options=options,
             logger=logger,
-            V_guess=V_guess,
+            V_guess=V0,
             Sbus_input=Sbus_input,
         )
 
