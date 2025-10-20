@@ -15,14 +15,11 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor import RmsChoiceDialog
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_line_catalogue
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
-from VeraGridEngine.Utils.Symbolic.symbolic import Const
-from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
 
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking

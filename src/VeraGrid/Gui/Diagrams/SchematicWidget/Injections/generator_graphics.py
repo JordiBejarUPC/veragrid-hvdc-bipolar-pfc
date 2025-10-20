@@ -16,15 +16,12 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor import RmsChoiceDialog
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.enumerations import DeviceType
 
-from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
-from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_generator_catalogue
-from VeraGridEngine.Utils.Symbolic.symbolic import Const
-
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
+from VeraGrid.Gui.RmsModelEditor import RmsParameterDialog
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget

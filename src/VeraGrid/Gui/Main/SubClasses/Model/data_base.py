@@ -28,7 +28,7 @@ from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, make_diagram_from_substations
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses

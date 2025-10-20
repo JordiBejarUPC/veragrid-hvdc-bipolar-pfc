@@ -31,13 +31,11 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor import RmsChoiceDialog
 
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
-from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_bus_catalogue
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking

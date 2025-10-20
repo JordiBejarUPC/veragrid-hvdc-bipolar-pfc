@@ -8,20 +8,15 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
-from PySide6.QtGui import QPen, QIcon, QPixmap, QPolygonF
-from PySide6.QtWidgets import QMenu
+from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, Polygon, Square
+from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
-from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.RmsModelEditor import RmsChoiceDialog
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Var, VarPowerFlowRefferenceType
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
-from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_load_catalogue
-from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
