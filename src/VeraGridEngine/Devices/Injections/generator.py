@@ -615,7 +615,7 @@ class Generator(GeneratorParent):
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
                     tm - (tm0 + Kp * (omega - omega_ref) + Ki * et),
-                    2 * np.pi * freq * et - delta,  #
+                    2 * np.pi * freq * et - delta,
                 ],
 
                 init_eqs={

@@ -774,8 +774,8 @@ class Load(LoadParent):
             block = Block(
                 algebraic_vars=[Pl, Ql],
                 algebraic_eqs=[
-                    Pl - self.Pl0,
-                    Ql - self.Ql0
+                    Pl - Pl0,
+                    Ql - Ql0
                 ]
             )
 

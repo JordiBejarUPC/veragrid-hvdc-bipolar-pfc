@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pdb
+
 import numpy as np
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -246,6 +248,7 @@ def stability_kundur_no_shunt():
     slv = BlockSolver(ss, grid.time, use_jit=False)
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
+
 
     (Eigenvalues,
      PFactors,
