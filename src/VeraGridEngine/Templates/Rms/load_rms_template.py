@@ -29,8 +29,12 @@ class LoadRmsTemplate(RmsModelTemplate):
         self.Ql = Var("Ql")
         self.Pl = Var("Pl")
 
-    def build_block(self):
-        self._block = Block(
+    def get_block(self):
+        """
+
+        :return:
+        """
+        block = Block(
             algebraic_vars=[self.Pl, self.Ql],
             algebraic_eqs=[
                 self.Pl - self.Pl0,
@@ -38,9 +42,11 @@ class LoadRmsTemplate(RmsModelTemplate):
             ]
         )
 
-        self._block.event_dict = {self.Pl0: Const(-0.075000000001172),
+        block.event_dict = {self.Pl0: Const(-0.075000000001172),
                                   self.Ql0: Const(-0.009999999862208533)}
-        self._block.external_mapping={
+        block.external_mapping={
                 VarPowerFlowRefferenceType.P: self.Pl,
                 VarPowerFlowRefferenceType.Q: self.Ql
             }
+
+        return block

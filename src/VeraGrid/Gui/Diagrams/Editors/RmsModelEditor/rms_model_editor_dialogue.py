@@ -10,7 +10,7 @@ from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 from VeraGridEngine.Utils.Symbolic import Var, Expr, Const
 
 
-class RmsChoiceDialog(QtWidgets.QDialog):
+class RmsChoiceDialog(QtWidgets.QDialog): #TODO: This dialog has to be deleted and the general editor will contain the add template option
     """
     In-between dialog to choose between using an existing template
     or opening the RMS Model Editor.
@@ -25,7 +25,8 @@ class RmsChoiceDialog(QtWidgets.QDialog):
         label = QtWidgets.QLabel("Choose how to proceed with RMS editing:")
         layout.addWidget(label)
 
-        # ---- Template Section ----
+
+        # ---- Template Section ---- # TODO: Move this section to the template page in the general editor
         self.template_label = QtWidgets.QLabel("Select an existing template:")
         layout.addWidget(self.template_label)
 
@@ -63,7 +64,7 @@ class RmsChoiceDialog(QtWidgets.QDialog):
         self.accept()
 
 
-class RmsParameterDialog(QtWidgets.QDialog):
+class RmsParameterDialog(QtWidgets.QDialog): #TODO: Move this section to the template page in the general editor
     def __init__(self, event_dict: Dict[Var, Const], parent=None):
         super().__init__(parent)
         # self.event_dict = event_dict
@@ -93,7 +94,7 @@ class RmsParameterDialog(QtWidgets.QDialog):
         return {param: Const(float(edit.text())) for param, edit in self.inputs.items()}
 
 
-class RmsEventDialogue(QtWidgets.QDialog):
+class RmsEventDialogue(QtWidgets.QDialog): #TODO: Move this section to the events page in the general editor
     def __init__(self, parameters_list: List[str], target_device_name, parent=None):
         super().__init__(parent)
         self.setWindowTitle("RMS Event Editor")

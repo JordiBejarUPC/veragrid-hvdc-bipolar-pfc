@@ -246,7 +246,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
 
     def edit_rms(self):
         # connect generator with connection bus by assigning Va and Vm variables
-        self.api_object.assign_input_vars_and_params()
+        Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
+        Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
 
         # load templates
         templates = self.editor.circuit.rms_models
@@ -281,14 +282,15 @@ class LineGraphicItem(LineGraphicTemplateItem):
                 # relate Vaf, Vat, Vaf and Vmf variables from template to Vaf, Vat, Vaf and Vmf variables from api_object (which are related to connection bus)
                 # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
 
-                line_template.Vmf = self._api_object.Vmf
-                line_template.Vaf = self._api_object.Vaf
-                line_template.Vmt = self._api_object.Vmt
-                line_template.Vat = self._api_object.Vat
+                line_template.Vmf = Vmf
+                line_template.Vaf = Vaf
+                line_template.Vmt = Vmt
+                line_template.Vat = Vat
 
-                line_template.build_block()
+                # I didn't find a way of connecting Vm and Va of the generator with Vm and Va of the bus without having the build_block function.
 
-                self.api_object.rms_model.template = line_template.block
+
+                self.api_object.rms_model.template = line_template.get_block()
 
             elif choice_dialog.choice == "editor":
 

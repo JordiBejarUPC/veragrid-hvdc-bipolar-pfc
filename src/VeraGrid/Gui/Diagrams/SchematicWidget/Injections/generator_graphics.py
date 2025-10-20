@@ -136,7 +136,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         :return:
         """
         # connect generator(api_object) with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
-        # self.api_object.assign_input_vars_and_params()
         Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
 
         # load templates
@@ -164,11 +163,9 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 gen_template.Va = Va
 
                 # I didn't find a way of connecting Vm and Va of the generator with Vm and Va of the bus without having the build_block function.
-                gen_template.get_block()
 
-                self.api_object.rms_model.template = gen_template.block
+                self.api_object.rms_model.template = gen_template.get_block()
 
-                # TODO: Should we be able to change the value of the parameters when choosing a template? yes
                 # set parameter values from user input using RmsParameterDialog (here we change the equation for the parameters in event_dict)
                 param_dialog = RmsParameterDialog(self.api_object.rms_model.template.event_dict, parent=self.editor)
                 if param_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:

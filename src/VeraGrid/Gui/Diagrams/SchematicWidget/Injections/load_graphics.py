@@ -78,7 +78,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
 
     def edit_rms(self):
         # connect generator with connection bus by assigning Va and Vm variables
-        self.api_object.assign_input_vars_and_params()
+        Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
 
         # load templates
         templates = self.editor.circuit.rms_models
@@ -93,7 +93,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
 
         # add templates to rms choice dialog
         choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+        if choice_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
             if choice_dialog.choice == "template":
 
@@ -111,13 +111,11 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                 # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
                 # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
 
-                load_template.Vm = self._api_object.Vm
-                load_template.Va = self._api_object.Va
-
-                load_template.build_block()
+                load_template.Vm = Vm
+                load_template.Va = Va
 
                 # assign template to api object
-                self.api_object.rms_model.template = load_template.block
+                self.api_object.rms_model.template =load_template.get_block()
 
             elif choice_dialog.choice == "editor":
 

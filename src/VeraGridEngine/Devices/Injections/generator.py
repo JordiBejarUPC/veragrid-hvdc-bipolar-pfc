@@ -250,6 +250,8 @@ class Generator(GeneratorParent):
         self.init_params = init_params
         self.Vm = Var('Vm_placeholder')
         self.Va = Var('Va_placeholder')
+        self.P_g = Var('P_g')
+        self.Q_g = Var('Q_g')
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 

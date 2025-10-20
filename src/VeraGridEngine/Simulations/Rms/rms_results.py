@@ -5,20 +5,16 @@
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-import matplotlib.colors as plt_colors
-from typing import List, Tuple, Dict, Union
+from typing import List, Dict, Union
 
-from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
+from VeraGridEngine.Simulations.Rms.rms_plot_variables_dialog import RmsPlotDialog
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
-from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, ConvergenceReport, Logger, DateVec
+from VeraGridEngine.basic_structures import Vec, DateVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 

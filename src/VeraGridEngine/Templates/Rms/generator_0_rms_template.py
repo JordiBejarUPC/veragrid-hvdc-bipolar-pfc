@@ -53,7 +53,7 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
         self.tm0 = UndefinedConst()
 
 
-    def build_block(self):
+    def get_block(self):
         """
 
         :return:
@@ -116,3 +116,5 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
                                   self.omega_ref: Const(1.0),
                                   self.Kp: Const(0.0),
                                   self.Ki: Const(0.0)}
+
+        return block

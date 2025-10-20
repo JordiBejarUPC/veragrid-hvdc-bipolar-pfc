@@ -42,8 +42,8 @@ class Line_0_RmsTemplate(RmsModelTemplate):
         # self.b = Const(self.ys.imag)
         self.bsh = Var('bsh')
 
-    def build_block(self):
-        self._block = Block(
+    def get_block(self):
+        block = Block(
             algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
             algebraic_eqs=[
                 self.Pf - ((self.Vmf ** 2 * self.g) - self.g * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
@@ -54,13 +54,15 @@ class Line_0_RmsTemplate(RmsModelTemplate):
                     self.Vat - self.Vaf + np.pi / 2)),
             ])
 
-        self._block.external_mapping={
+        block.external_mapping={
                 VarPowerFlowRefferenceType.Pf: self.Pf,
                 VarPowerFlowRefferenceType.Pt: self.Pt,
                 VarPowerFlowRefferenceType.Qf: self.Qf,
                 VarPowerFlowRefferenceType.Qt: self.Qt,
             }
 
-        self._block.event_dict = {self.g: Const(1.98019801980198),
+        block.event_dict = {self.g: Const(1.98019801980198),
                                   self.b: Const(-19.801980198019802),
                                   self.bsh: Const(0.02187)}
+
+        return block
