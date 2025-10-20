@@ -768,16 +768,23 @@ class Load(LoadParent):
 
             Ql = Var("Ql")
             Pl = Var("Pl")
+            Pl0 = Var("Pl0")
+            Ql0 = Var("Ql0")
 
-            self.rms_model.model = Block(
+            block = Block(
+                algebraic_vars=[Pl, Ql],
                 algebraic_eqs=[
                     Pl - self.Pl0,
                     Ql - self.Ql0
-                ],
-                algebraic_vars=[Pl, Ql],
-                init_eqs={})
-            self.rms_model.model.external_mapping={
-                    VarPowerFlowRefferenceType.P: Pl,
-                    VarPowerFlowRefferenceType.Q: Ql
-                }
+                ]
+            )
+
+            block.event_dict = {Pl0: Const(self.Pl0),
+                                Ql0: Const(self.Ql0)}
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.P: Pl,
+                VarPowerFlowRefferenceType.Q: Ql
+            }
+
+            self.rms_model.model = block
 

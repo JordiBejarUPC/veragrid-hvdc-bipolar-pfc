@@ -547,13 +547,15 @@ class Bus(PhysicalDevice):
             Va = Var("Va")
             P = Var("P")
             Q = Var("Q")
-            self.rms_model.model = Block(
+
+            block = Block(
                 algebraic_vars=[Vm, Va])
 
-            self.rms_model.model.external_mapping = {
+            block.external_mapping = {
                 VarPowerFlowRefferenceType.Vm: Vm,
                 VarPowerFlowRefferenceType.Va: Va,
                 VarPowerFlowRefferenceType.P: P,
                 VarPowerFlowRefferenceType.Q: Q
             }
 
+            self.rms_model.model = block

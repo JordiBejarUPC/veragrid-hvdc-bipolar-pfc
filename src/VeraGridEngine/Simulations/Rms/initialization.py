@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+import pdb
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
@@ -321,6 +321,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize buses
     for i, elm in enumerate(grid.buses):
+        elm.initialize_rms()
         bus_dict[elm] = i
         for state_var in elm.rms_model.model.state_vars:
             vars2device[state_var.uid] = elm
@@ -331,7 +332,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        # elm.initialize_rms()
+        elm.initialize_rms()
         mdl = elm.rms_model.model
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
@@ -350,7 +351,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
-        print(elm.rms_model.model.event_dict)
+        elm.initialize_rms()
         # resolve events
         # check if there is an event actuating through this element and initialize rms accordingly
         rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
@@ -362,7 +363,6 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                 # TODO: implement the function in block: apply_event
                 default_value = copy.deepcopy(elm.rms_model.model.event_dict[rms_event.parameter])
                 elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, default_value)
-        print(elm.rms_model.model.event_dict)
         # after applying the events the model has to be "build"
         mdl = elm.rms_model.model
         # add variable to conservation equations of the bus to which the element is connected

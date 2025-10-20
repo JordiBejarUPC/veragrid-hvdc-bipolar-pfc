@@ -580,57 +580,83 @@ class Generator(GeneratorParent):
             P_g = Var("P_g", pf_ref=VarPowerFlowRefferenceType.P)
             Q_g = Var("Q_g", pf_ref=VarPowerFlowRefferenceType.Q)
 
+            R1 = Var("R1")
+            X1 = Var("X1")
+            freq = Var("frequ")
+            M = Var("M")
+            D = Var("D")
+            omega_ref = Var("omega_ref")
+            Kp = Var("Kp")
+            Ki = Var("Ki")
+
             vf = UndefinedConst()
             tm0 = UndefinedConst()
 
             Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
-            self.rms_model.model = Block(
-                state_eqs=[
-                    (2 * np.pi * self.freq) * (omega - self.omega_ref),
-                    (tm - te - self.D * (omega - self.omega_ref)) / self.M,
-                ],
+
+            block = Block(
                 state_vars=[delta, omega],
+                state_eqs=[
+                    (2 * np.pi * freq) * (omega - omega_ref),
+                    (tm - te - D * (omega - omega_ref)) / M,
+                ],
+                algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq,
+                                te, tm, et],
                 algebraic_eqs=[
-                    psid - (self.R1 * i_q + v_q),
-                    psiq + (self.R1 * i_d + v_d),
-                    0 - (psid + self.X1 * i_d - vf),
-                    0 - (psiq + self.X1 * i_q),
+                    psid - (R1 * i_q + v_q),
+                    psiq + (R1 * i_d + v_d),
+                    0 - (psid + X1 * i_d - vf),
+                    0 - (psiq + X1 * i_q),
                     v_d - (Vm * sin(delta - Va)),
                     v_q - (Vm * cos(delta - Va)),
                     te - (psid * i_q - psiq * i_d),
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
-                    tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
-                    2 * np.pi * self.freq * et - delta,  #
+                    tm - (tm0 + Kp * (omega - omega_ref) + Ki * et),
+                    2 * np.pi * freq * et - delta,  #
                 ],
-                algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
+
                 init_eqs={
-                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
-                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
-                                        abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
-                                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
-                    omega: Const(self.omega_ref),
+                    delta: imag(
+                        log((Vm * exp(1j * Va) + (R1 + 1j * X1) * (
+                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                                abs(Vm * exp(1j * Va) + (R1 + 1j * X1) * (
+                                    conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+                    omega: omega_ref,
                     v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
                     v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
-                    i_d: real(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
-                    i_q: imag(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
-                    psid: self.R1 * i_q + v_q,
-                    psiq: -self.R1 * i_d - v_d,
+                    i_d: real(
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(
+                            -1j * (delta - np.pi / 2))),
+                    i_q: imag(
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(
+                            -1j * (delta - np.pi / 2))),
+                    psid: R1 * i_q + v_q,
+                    psiq: -R1 * i_d - v_d,
                     te: psid * i_q - psiq * i_d,
                     tm: te,
                     et: Const(0),
-                    # Xad_Ifd: Const(self.vf0), ###
-                    # vf: Const(self.vf0) ###
-                },
-                # init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
-                # fix_vars=[tm0, vf],
-                # fix_vars_eqs={tm0.uid: tm,
-                #               vf.uid: psid + self.X1 * i_d},
+                })
 
-                # external_mapping={
-                #     VarPowerFlowRefferenceType.P: P_g,
-                #     VarPowerFlowRefferenceType.Q: Q_g
-                # }
-            )
+            block.fix_vars = [tm0, vf]
+            block.fix_vars_eqs = {tm0.uid: tm,
+                                  vf.uid: psid + X1 * i_d}
+
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.P: P_g,
+                VarPowerFlowRefferenceType.Q: Q_g
+            }
+
+            block.event_dict = {R1: Const(self.R1),
+                                X1: Const(self.X1),
+                                freq: Const(self.freq),
+                                M: Const(self.M),
+                                D: Const(self.D),
+                                omega_ref: Const(self.omega_ref),
+                                Kp: Const(self.Kp),
+                                Ki: Const(self.Ki)}
+
+            self.rms_model.model =block
+

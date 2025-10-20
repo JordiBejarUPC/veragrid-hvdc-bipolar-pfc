@@ -714,30 +714,39 @@ class Line(BranchParent):
             Pt = Var("Pt")
 
             ys = 1.0 / complex(self.R, self.X)
-            g = Const(ys.real)
-            b = Const(ys.imag)
-            bsh = Const(self.B)
+            g = Var("g")
+            b = Var("b")
+            bsh = Var("bsh")
 
             Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
             Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
-            self.rms_model.model = Block(
-                algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + np.pi / 2)),
-                ],
+            block = Block(
                 algebraic_vars=[Pf, Pt, Qf, Qt],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                external_mapping={
-                    VarPowerFlowRefferenceType.Pf: Pf,
-                    VarPowerFlowRefferenceType.Pt: Pt,
-                    VarPowerFlowRefferenceType.Qf: Qf,
-                    VarPowerFlowRefferenceType.Qt: Qt,
-                }
-            )
+                algebraic_eqs=[
+                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
+                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
+                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
+                        Vaf - Vat) + b * Vmf * Vmt * sin(
+                        Vaf - Vat + np.pi / 2)),
+                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
+                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
+                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
+                        Vat - Vaf) + b * Vmt * Vmf * sin(
+                        Vat - Vaf + np.pi / 2)),
+                ])
+
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.Pf: Pf,
+                VarPowerFlowRefferenceType.Pt: Pt,
+                VarPowerFlowRefferenceType.Qf: Qf,
+                VarPowerFlowRefferenceType.Qt: Qt,
+            }
+
+            block.event_dict = {g: Const(ys.real),
+                                b: Const(ys.imag),
+                                bsh:  Const(self.B)}
+
+            self.rms_model.model = block
