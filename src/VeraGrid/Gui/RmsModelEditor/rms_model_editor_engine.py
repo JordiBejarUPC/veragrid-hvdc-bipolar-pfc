@@ -1573,7 +1573,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
     """
     RmsModelEditorGUI
     """
-    def __init__(self, api_object_model_host, parent=None, ):
+    def __init__(self, templates: list[str], api_object_model_host: DynamicModelHost, parent=None, ):
         """
 
         :param parent:
@@ -1589,17 +1589,30 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             "Parameters": QColor(255, 200, 120),  # orange
         }
 
-        for i in range(self.ui.datalistWidget.count()):
-            item = self.ui.datalistWidget.item(i)
-            text = item.text()
-            if text in self.color_map:
-                item.setForeground(self.color_map[text])
-                item.setBackground(QColor(0, 0, 0))
+        # for i in range(self.ui.datalistWidget.count()):
+        #     item = self.ui.datalistWidget.item(i)
+        #     text = item.text()
+        #     if text in self.color_map:
+        #         item.setForeground(self.color_map[text])
+        #         item.setBackground(QColor(0, 0, 0))
 
         self.setWindowTitle('RMS Model editor')
 
-        # add block editor
+        # add templates editor
+        self.template_label = QtWidgets.QLabel("Select an existing template:")
+        self.ui.templatesLayout.addWidget(self.template_label)
 
+        self.template_combo = QtWidgets.QComboBox()
+        self.template_combo.addItems(templates if templates else ["<No templates available>"])
+        self.ui.templatesLayout.addWidget(self.template_combo)
+
+        self.btn_template = QtWidgets.QPushButton("Use selected template")
+        self.ui.templatesLayout.addWidget(self.btn_template)
+
+        # Connections
+        self.btn_template.clicked.connect(self.choose_template)
+
+        # add block editor
         self.model_host: DynamicModelHost = api_object_model_host
         self.editor = BlockEditor(block=self.model_host.model,
                                   diagram=self.model_host.diagram)
@@ -1608,7 +1621,6 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.ui.editorLayout.addWidget(self.editor)
 
         # add equations editor
-
         self.equations_editor = EditEquations(self.model_host)
         self.ui.equations_editor_layout.addWidget(self.equations_editor)
 
@@ -1624,6 +1636,12 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # Connect category selection to table update
         self.ui.datalistWidget.itemSelectionChanged.connect(self.update_table)
+
+    def choose_template(self):
+        self.choice = "template"
+        self.selected_template = self.template_combo.currentText()
+        self.accept()
+
 
 
     @property

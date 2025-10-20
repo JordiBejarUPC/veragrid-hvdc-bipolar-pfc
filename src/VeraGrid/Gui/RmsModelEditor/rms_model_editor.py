@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'rms_model_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -57,6 +57,13 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabPosition(QTabWidget.TabPosition.South)
         self.tab_3 = QWidget()
         self.tab_3.setObjectName(u"tab_3")
+        self.verticalLayout_2 = QVBoxLayout(self.tab_3)
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.templatesLayout = QVBoxLayout()
+        self.templatesLayout.setObjectName(u"templatesLayout")
+
+        self.verticalLayout_2.addLayout(self.templatesLayout)
+
         self.tabWidget.addTab(self.tab_3, "")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
@@ -85,7 +92,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
