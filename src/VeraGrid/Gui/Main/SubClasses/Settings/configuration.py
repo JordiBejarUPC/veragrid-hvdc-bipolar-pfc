@@ -327,6 +327,14 @@ class ConfigurationMain(ResultsMain):
                 "map_regions_like_raw": self.ui.cgmes_map_regions_like_raw_checkBox,
                 "raw_selected_version": self.ui.raw_export_version_comboBox,
                 "cgmes_dc_as_hvdclines": self.ui.cgmes_dc_as_hvdclines_checkBox,
+            },
+            "dyn": {
+                "rms_int_method_comboBox": self.ui.rms_int_method_comboBox,
+                "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
+                "sim_time_spinBox": self.ui.sim_time_spinBox,
+                "h_spinBox": self.ui.h_spinBox,
+
+                "ss_assessment_time_spinBox_2": self.ui.ss_assessment_time_spinBox_2
             }
         }
 

@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Union
 
-from VeraGridEngine.Simulations.Rms.rms_plot_variables_dialog import RmsPlotDialog
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
@@ -29,12 +28,25 @@ class RmsResults(ResultsTemplate):
                  uid2idx: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
                  devices: List[Union[Bus, BranchParent, InjectionParent]],
-                 units: str = "",
-                 ):
+                 units: str = ""):
+        """
+
+        :param values:
+        :param time_array:
+        :param stat_vars:
+        :param algeb_vars:
+        :param uid2idx:
+        :param vars_glob_name2uid:
+        :param devices:
+        :param units:
+        """
         ResultsTemplate.__init__(
             self,
             name='RMS simulation',
-            available_results=[ResultTypes.RmsSimulationReport, ResultTypes.RmsPlotResults],
+            available_results=[
+                ResultTypes.RmsSimulationReport,
+                # ResultTypes.RmsPlotResults
+            ],
             time_array=time_array,
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
@@ -51,7 +63,6 @@ class RmsResults(ResultsTemplate):
         self.units = units
         self.register(name='values', tpe=Vec)
 
-
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
         Export the results as a ResultsTable for plotting.
@@ -66,29 +77,19 @@ class RmsResults(ResultsTemplate):
                 idx_device_type=DeviceType.TimeDevice,
                 cols_device_type=DeviceType.NoDevice
             )
-        elif result_type == ResultTypes.RmsPlotResults:
-
-            results_table = ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice,
-                xlabel=" time (s)",
-                ylabel="",
-            )
-
-            devices_options = {
-            }
-
-            for device in self.devices:
-                devices_options[device.name] = [self.uid2vars_glob_name[var.uid] for var in device.rms_model.model.state_vars + device.rms_model.model.algebraic_vars]
-
-
-            dlg = RmsPlotDialog(devices_options, results_table, self.uid2idx, self.vars_glob_name2uid)
-            dlg.exec()
+        # elif result_type == ResultTypes.RmsPlotResults:
+        #
+        #     results_table = ResultsTable(
+        #         data=np.array(self.values),
+        #         index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
+        #         columns=self.variable_array,
+        #         title="Rms Simulation Results",
+        #         units=self.units,
+        #         idx_device_type=DeviceType.TimeDevice,
+        #         cols_device_type=DeviceType.NoDevice,
+        #         xlabel=" time (s)",
+        #         ylabel="",
+        #     )
 
         else:
             raise Exception(f"Result type not understood: {result_type}")

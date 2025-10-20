@@ -11,6 +11,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import DeviceType
 
+
 @dataclass
 class BlockDiagramNode:
     x: float
@@ -42,8 +43,6 @@ class BlockDiagramNode:
         return data
 
 
-
-
 @dataclass
 class BlockDiagramConnection:
     from_uid: int
@@ -64,8 +63,6 @@ class BlockDiagramConnection:
                 'color': self.color}
 
 
-
-
 class BlockDiagram:
     """
     Diagram
@@ -79,7 +76,9 @@ class BlockDiagram:
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: List[BlockDiagramConnection] = list()
 
-    def add_node(self, x: float, y: float, tpe: str,  device_uid: int, state_ins: int = 0, state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [], subdiagram: BlockDiagram = None):
+    def add_node(self, x: float, y: float, tpe: str, device_uid: int, state_ins: int = 0,
+                 state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [],
+                 subdiagram: BlockDiagram = None):
         """
 
         :param x:
@@ -94,10 +93,10 @@ class BlockDiagram:
             y=y,
             tpe=tpe,
             device_uid=device_uid,
-            state_ins = state_ins,
-            state_outs = state_outs,
-            algeb_ins = algeb_ins,
-            algeb_outs = algeb_outs,
+            state_ins=state_ins,
+            state_outs=state_outs,
+            algeb_ins=algeb_ins,
+            algeb_outs=algeb_outs,
             sub_diagram=subdiagram
         )
 
@@ -121,8 +120,9 @@ class BlockDiagram:
                 color=color
             )
         )
+
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
-        graph_info ={device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
+        graph_info = {device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
         return graph_info
 
     def get_con_data_dict(self) -> Dict[int, Dict[str, Any]]:
@@ -174,7 +174,10 @@ class DynamicModelHost(EditableDevice):
     """
 
     def __init__(self, name=""):
+        """
 
+        :param name:
+        """
         super().__init__(name=name,
                          idtag=None,
                          code="",
@@ -188,18 +191,32 @@ class DynamicModelHost(EditableDevice):
 
     @property
     def template(self):
+        """
+
+        :return:
+        """
         return self._template
 
     @template.setter
     def template(self, val: Block):
+        """
 
+        :param val:
+        :return:
+        """
         if isinstance(val, Block):
             self._template = val
+        elif val is None:
+            self._template = None
         else:
             raise ValueError(f"Cannot set template with {val}")
 
     @property
     def custom_model(self):
+        """
+        Return custom
+        :return:
+        """
         return self._custom_model
 
     @property
@@ -244,7 +261,6 @@ class DynamicModelHost(EditableDevice):
             self._diagram = diagram
         else:
             raise ValueError(f"Cannot set diagram with {val}")
-
 
     def to_dict(self) -> Dict[str, int | Dict[str, List[Dict[str, Any]]]]:
         """

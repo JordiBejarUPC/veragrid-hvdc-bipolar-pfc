@@ -17,9 +17,9 @@ class RmsModelTemplate(PointerDeviceParent):
         '_block',
         '_device_type')
 
-    def __init__(self, name: str = ""):
+    def __init__(self, idtag="", name: str = ""):
         super().__init__(name=name,
-                         idtag=None,
+                         idtag=idtag,
                          code="",
                          device=None,
                          comment="",

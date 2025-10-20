@@ -21,7 +21,6 @@ from VeraGridEngine.Devices.Dynamic import *
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
-
 def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
     """
     creates a dictionary with the types and the circuit objects
@@ -52,6 +51,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'emission': EmissionGas(),
 
         'facility': Facility(),
+
+        'rms_model_template': RmsModelTemplate(),
 
         'bus': Bus(),
 
