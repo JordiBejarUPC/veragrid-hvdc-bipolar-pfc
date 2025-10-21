@@ -6,10 +6,9 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, TYPE_CHECKING, Tuple
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.enumerations import DeviceType, SubObjectType
+from VeraGridEngine.enumerations import DeviceType, SubObjectType, BuildStatus
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
-from VeraGridEngine.basic_structures import Logger
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import CONNECTION_TYPE
@@ -33,7 +32,8 @@ class FluidPath(PhysicalDevice):
                  target: FluidNode = None,
                  min_flow: float = 0.0,
                  max_flow: float = 0.0,
-                 color: str | None = None):
+                 color: str | None = None,
+                 build_status: BuildStatus = BuildStatus.Commissioned ):
         """
         Fluid path
         :param name:Name of the fluid transporter
@@ -49,7 +49,8 @@ class FluidPath(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.FluidPathDevice)
+                                device_type=DeviceType.FluidPathDevice,
+                                build_status=build_status)
 
         self.source = source
         self.target = target

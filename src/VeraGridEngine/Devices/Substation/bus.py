@@ -8,7 +8,7 @@ from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, SubObjectType
+from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, SubObjectType, BuildStatus
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Aggregation import Area, Zone, Country
 from VeraGridEngine.Devices.Substation.substation import Substation
@@ -92,7 +92,8 @@ class Bus(PhysicalDevice):
                  Vm0=1,
                  Va0=0,
                  graphic_type: BusGraphicType = BusGraphicType.BusBar,
-                 bus_bar: BusBar | None = None):
+                 bus_bar: BusBar | None = None,
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The Bus object is the container of all the possible devices that can be attached to
         a bus bar or Substation. Such objects can be loads, voltage controlled generators,
@@ -132,7 +133,8 @@ class Bus(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.BusDevice)
+                                device_type=DeviceType.BusDevice,
+                                build_status=build_status)
 
         self.active = bool(active)
         self._active_prof = Profile(default_value=self.active, data_type=bool)

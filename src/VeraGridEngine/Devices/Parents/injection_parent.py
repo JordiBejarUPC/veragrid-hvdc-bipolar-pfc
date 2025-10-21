@@ -36,7 +36,6 @@ class InjectionParent(PhysicalDevice):
         '_Cost_prof',
         'capex',
         'opex',
-        'build_status',
         'facility',
         'technologies',
         'scalable',
@@ -86,7 +85,8 @@ class InjectionParent(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=device_type)
+                                device_type=device_type,
+                                build_status=build_status)
 
         self._bus = bus
 
@@ -104,8 +104,6 @@ class InjectionParent(PhysicalDevice):
         self.capex = capex
 
         self.opex = opex
-
-        self.build_status = build_status
 
         self.facility: Facility | None = None
 
@@ -137,9 +135,6 @@ class InjectionParent(PhysicalDevice):
         self.register(key='capex', units='e/MW', tpe=float,
                       definition='Cost of investment. Used in expansion planning.')
         self.register(key='opex', units='e/MWh', tpe=float, definition='Cost of operation. Used in expansion planning.')
-
-        self.register(key='build_status', units='', tpe=BuildStatus,
-                      definition='Branch build status. Used in expansion planning.')
 
         self.register(key='Cost', units='e/MWh', tpe=float, definition='Cost of not served energy. Used in OPF.',
                       profile_name='Cost_prof')

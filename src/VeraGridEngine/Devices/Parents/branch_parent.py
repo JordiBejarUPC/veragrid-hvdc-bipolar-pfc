@@ -110,7 +110,8 @@ class BranchParent(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=device_type)
+                                device_type=device_type,
+                                build_status=build_status)
 
         # connectivity
         if bus_from is None:
@@ -155,8 +156,6 @@ class BranchParent(PhysicalDevice):
         self.capex = capex
 
         self.opex = opex
-
-        self.build_status = build_status
 
         # line rating in MVA
         if not isinstance(rate, Union[float, int]):
@@ -211,8 +210,6 @@ class BranchParent(PhysicalDevice):
         self.register('Cost', units="e/MWh", tpe=float,
                       definition="Cost of overloads. Used in OPF", profile_name="Cost_prof")
 
-        self.register('build_status', units="", tpe=BuildStatus,
-                      definition="Branch build status. Used in expansion planning.")
         self.register('capex', units="e/MW", tpe=float, definition="Cost of investment. Used in expansion planning.")
         self.register('opex', units="e/MWh", tpe=float, definition="Cost of operation. Used in expansion planning.")
         self.register('group', units="", tpe=DeviceType.BranchGroupDevice,
