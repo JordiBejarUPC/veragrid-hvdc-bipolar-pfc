@@ -146,50 +146,31 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 templ_list.append(templ.name)
                 templ_catalogue[templ.name] = templ
 
-        # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-
-            if choice_dialog.choice == "template":
-
-                #select template
-                gen_template = templ_catalogue[choice_dialog.selected_template]
-
-                # relate Va and Vm variables from template to Va and Vm variables from api_object (which are related to connection bus)
-                gen_template.Vm = Vm # this is working
-                gen_template.Va = Va
-
-                # I didn't find a way of connecting Vm and Va of the generator with Vm and Va of the bus without having the build_block function.
-
-                self.api_object.rms_model.template = gen_template.get_block()
-
-                # set parameter values from user input using RmsParameterDialog (here we change the equation for the parameters in event_dict)
-                param_dialog = RmsParameterDialog(self.api_object.rms_model.template.event_dict, parent=self.editor)
-                if param_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-
-                    self.api_object.rms_model.template.event_dict = param_dialog.get_new_event_dict()
+        # prompt RmsModelEditorGUI
+        rms_model_editor = RmsModelEditorGUI(api_object=self.api_object, templates_list=templ_list, templates_catalogue= templ_catalogue, parent=self.editor)
+        rms_model_editor.show()
 
 
-            elif choice_dialog.choice == "editor":
-
-                self.api_object.rms_model.model.external_mapping = {
-                    VarPowerFlowRefferenceType.P: self.api_object.P_g,
-                    VarPowerFlowRefferenceType.Q: self.api_object.Q_g,
-
-                }
-                if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-
-                if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
+            # elif choice_dialog.choice == "editor":
+            #
+            #     self.api_object.rms_model.model.external_mapping = {
+            #         VarPowerFlowRefferenceType.P: self.api_object.P_g,
+            #         VarPowerFlowRefferenceType.Q: self.api_object.Q_g,
+            #
+            #     }
+            #     if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
+            #         self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
+            #         self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
+            #
+            #     if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
+            #         self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
+            #         self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
 
 
                 # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
                 #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
+                # dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                # dlg.show()
 
     def to_battery(self):
         """

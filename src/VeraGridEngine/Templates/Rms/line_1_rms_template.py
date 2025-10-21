@@ -29,38 +29,38 @@ class Line_1_RmsTemplate(RmsModelTemplate):
         self.Pf = Var("Pf")
         self.Pt = Var("Pt")
 
-        # taken from VeraGrid model
-        # self.R = Var("R")
-        # self.X = Var("X")
-        # self.B = Var("B")
-
-        # self.ys = Const(1.0)
-                   # complex(self.R, self.X))
         self.g = Var('g')
         self.b = Var('b')
-        # self.g = Const(self.ys.real)
-        # self.b = Const(self.ys.imag)
+
         self.bsh = Var('bsh')
 
-    def build_block(self):
-        self._block = Block(
+        self.event_dict = {self.g: Const(1.98019801980198),
+                      self.b: Const(-19.801980198019802),
+                      self.bsh: Const(0.02187)}
+
+    def get_block(self):
+        block = Block(
             algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
             algebraic_eqs=[
-                self.Pf - ((self.Vmf ** 2 * self.g) - self.g * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
-                self.Qf - (self.Vmf ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmf * self.Vmt * sin(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * sin(
+                self.Pf - ((self.Vmf ** 2 * self.g) - self.g * self.Vmf * self.Vmt * cos(
+                    self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
+                self.Qf - (self.Vmf ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmf * self.Vmt * sin(
+                    self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * sin(
                     self.Vaf - self.Vat + np.pi / 2)),
-                self.Pt - ((self.Vmt ** 2 * self.g) - self.g * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf + np.pi / 2)),
-                self.Qt - (self.Vmt ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmt * self.Vmf * sin(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * sin(
+                self.Pt - ((self.Vmt ** 2 * self.g) - self.g * self.Vmt * self.Vmf * cos(
+                    self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf + np.pi / 2)),
+                self.Qt - (self.Vmt ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmt * self.Vmf * sin(
+                    self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * sin(
                     self.Vat - self.Vaf + np.pi / 2)),
             ])
 
-        self._block.external_mapping={
-                VarPowerFlowRefferenceType.Pf: self.Pf,
-                VarPowerFlowRefferenceType.Pt: self.Pt,
-                VarPowerFlowRefferenceType.Qf: self.Qf,
-                VarPowerFlowRefferenceType.Qt: self.Qt,
-            }
+        block.external_mapping = {
+            VarPowerFlowRefferenceType.Pf: self.Pf,
+            VarPowerFlowRefferenceType.Pt: self.Pt,
+            VarPowerFlowRefferenceType.Qf: self.Qf,
+            VarPowerFlowRefferenceType.Qt: self.Qt,
+        }
 
-        self._block.event_dict = {self.g: Const(1.98019801980198),
-                                  self.b: Const(-19.801980198019802),
-                                  self.bsh: Const(0.02187)}
+        block.event_dict = self.event_dict
+
+        return block

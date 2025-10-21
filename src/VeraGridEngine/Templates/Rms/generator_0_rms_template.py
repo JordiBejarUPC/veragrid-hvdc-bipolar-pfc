@@ -48,6 +48,15 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
         self.Kp = Var("Kp")
         self.Ki = Var("Ki")
 
+        self.event_dict = {self.R1: Const(0.0),
+                      self.X1: Const(0.3),
+                      self.freq: Const(60.0),
+                      self.M: Const(4.0),
+                      self.D: Const(1.0),
+                      self.omega_ref: Const(1.0),
+                      self.Kp: Const(0.0),
+                      self.Ki: Const(0.0)}
+
 
         self.vf = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
         self.tm0 = UndefinedConst()
@@ -108,13 +117,6 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
             VarPowerFlowRefferenceType.Q: self.Q_g
         }
 
-        block.event_dict = {self.R1: Const(0.0),
-                                  self.X1: Const(0.3),
-                                  self.freq: Const(60.0),
-                                  self.M: Const(4.0),
-                                  self.D: Const(1.0),
-                                  self.omega_ref: Const(1.0),
-                                  self.Kp: Const(0.0),
-                                  self.Ki: Const(0.0)}
+        block.event_dict = self.event_dict
 
         return block

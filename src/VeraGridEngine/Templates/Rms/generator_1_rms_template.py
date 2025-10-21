@@ -48,21 +48,34 @@ class Generator_1_RmsTemplate(RmsModelTemplate):
         self.Kp = Var("Kp")
         self.Ki = Var("Ki")
 
+        self.event_dict = {self.R1: Const(0.0),
+                      self.X1: Const(0.3),
+                      self.freq: Const(60.0),
+                      self.M: Const(4.0),
+                      self.D: Const(1.0),
+                      self.omega_ref: Const(1.0),
+                      self.Kp: Const(0.0),
+                      self.Ki: Const(0.0)}
+
 
         self.vf = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
         self.tm0 = UndefinedConst()
 
+    def get_block(self):
+        """
 
-    def build_block(self):
-        self._block = Block(
+        :return:
+        """
+        block = Block(
             state_vars=[self.delta, self.omega],
             state_eqs=[
                 (2 * np.pi * self.freq) * (self.omega - self.omega_ref),
                 (self.tm - self.te - self.D * (self.omega - self.omega_ref)) / self.M,
             ],
-            algebraic_vars=[self.P_g, self.Q_g, self.v_d, self.v_q, self.i_d, self.i_q, self.psid, self.psiq, self.te, self.tm, self.et],
+            algebraic_vars=[self.P_g, self.Q_g, self.v_d, self.v_q, self.i_d, self.i_q, self.psid, self.psiq, self.te,
+                            self.tm, self.et],
             algebraic_eqs=[
-                self.psid - (self.R1 * self.i_q +self. v_q),
+                self.psid - (self.R1 * self.i_q + self.v_q),
                 self.psiq + (self.R1 * self.i_d + self.v_d),
                 0 - (self.psid + self.X1 * self.i_d - self.vf),
                 0 - (self.psiq + self.X1 * self.i_q),
@@ -85,9 +98,11 @@ class Generator_1_RmsTemplate(RmsModelTemplate):
                 self.v_d: real((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
                 self.v_q: imag((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
                 self.i_d: real(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(
+                        -1j * (self.delta - np.pi / 2))),
                 self.i_q: imag(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
+                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(
+                        -1j * (self.delta - np.pi / 2))),
                 self.psid: self.R1 * self.i_q + self.v_q,
                 self.psiq: -self.R1 * self.i_d - self.v_d,
                 self.te: self.psid * self.i_q - self.psiq * self.i_d,
@@ -95,20 +110,15 @@ class Generator_1_RmsTemplate(RmsModelTemplate):
                 self.et: Const(0),
             })
 
-        self._block.fix_vars = [self.tm0, self.vf]
-        self._block.fix_vars_eqs = {self.tm0.uid: self.tm,
-                        self.vf.uid: self.psid + self.X1 * self.i_d}
+        block.fix_vars = [self.tm0, self.vf]
+        block.fix_vars_eqs = {self.tm0.uid: self.tm,
+                              self.vf.uid: self.psid + self.X1 * self.i_d}
 
-        self._block.external_mapping = {
+        block.external_mapping = {
             VarPowerFlowRefferenceType.P: self.P_g,
             VarPowerFlowRefferenceType.Q: self.Q_g
         }
 
-        self._block.event_dict = {self.R1: Const(0.0),
-                                  self.X1: Const(0.3),
-                                  self.freq: Const(60.0),
-                                  self.M: Const(4.0),
-                                  self.D: Const(1.0),
-                                  self.omega_ref: Const(1.0),
-                                  self.Kp: Const(0.0),
-                                  self.Ki: Const(0.0)}
+        block.event_dict = self.event_dict
+
+        return block
