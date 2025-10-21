@@ -7,20 +7,19 @@ from __future__ import annotations
 from typing import Union
 import datetime
 import numpy as np
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Devices.Aggregation.area import GenericAreaGroup, Area
+from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.Devices.Aggregation.zone import Zone
 from VeraGridEngine.Devices.Aggregation.country import Country
 from VeraGridEngine.Devices.Aggregation.community import Community
 from VeraGridEngine.Devices.Aggregation.region import Region
 from VeraGridEngine.Devices.Aggregation.municipality import Municipality
-from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuthority
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import get_at
-from VeraGridEngine.enumerations import BuildStatus
+from VeraGridEngine.enumerations import BuildStatus, DeviceType
 
 
-class Substation(GenericAreaGroup):
+class Substation(PhysicalDevice):
     __slots__ = (
         '_area',
         '_zone',
@@ -37,9 +36,9 @@ class Substation(GenericAreaGroup):
         '_wind_speed_prof',
         'terrain_roughness',
         'modelling_authority',
-        "_commissioned_date",
-        "_decommissioned_date",
-        "build_status"
+        'latitude',
+        'longitude',
+        'color',
     )
 
     def __init__(self,
@@ -81,14 +80,12 @@ class Substation(GenericAreaGroup):
         :param terrain_roughness:
         :param color: hexadecimal color string (i.e. #AA00FF)
         """
-        GenericAreaGroup.__init__(self,
-                                  name=name,
-                                  idtag=idtag,
-                                  code=code,
-                                  device_type=DeviceType.SubstationDevice,
-                                  latitude=latitude,
-                                  longitude=longitude,
-                                  color=color, )
+        PhysicalDevice.__init__(self,
+                                name=name,
+                                code=code,
+                                idtag=idtag,
+                                device_type=DeviceType.SubstationDevice,
+                                build_status=build_status)
 
         self._area: Union[Area, None] = area
         self._zone: Union[Zone, None] = zone
@@ -109,18 +106,15 @@ class Substation(GenericAreaGroup):
 
         self.terrain_roughness: float = float(terrain_roughness)
 
-        self.modelling_authority: Union[ModellingAuthority, None] = None
+        self.latitude = float(latitude)
+        self.longitude = float(longitude)
 
-        self._commissioned_date: int = 0
-        self._decommissioned_date: int = 0
-        self.build_status = build_status
+        self.color = color if color is not None else self.rnd_color()
 
-        self.register(key='commissioned_date', units='', tpe=int, definition='Commissioned date of the asset',
-                      is_date=True)
-        self.register(key='decommissioned_date', units='', tpe=int, definition='Decommissioned date of the asset',
-                      is_date=True)
-        self.register('build_status', units="", tpe=BuildStatus,
-                      definition="Device build status. Used in expansion planning.")
+        self.register(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name='')
+        self.register(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name='')
+        self.register(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
+                      is_color=True)
 
         self.register(key="area", units="", tpe=DeviceType.AreaDevice,
                       definition="Substation area, altenativelly this can be obtained from the zone")
@@ -139,9 +133,6 @@ class Substation(GenericAreaGroup):
 
         self.register(key="municipality", units="", tpe=DeviceType.MunicipalityDevice,
                       definition="Substation municipality")
-
-        self.register(key='modelling_authority', units='', tpe=DeviceType.ModellingAuthority,
-                      definition='Modelling authority of this asset')
 
         self.register(key="address", units="", tpe=str,
                       definition="Substation address")
