@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QPushButton, QVBoxLayout, QDialog, QLabel, QComboB
 from VeraGrid.Gui.gui_functions import get_list_model, create_spinbox
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
 class TransformerEditor(QDialog):
@@ -16,24 +17,24 @@ class TransformerEditor(QDialog):
     TransformerEditor
     """
 
-    def __init__(self, branch: Transformer2W, Sbase=100, modify_on_accept=True, templates=None, current_template=None):
+    def __init__(self, branch: Transformer2W, grid: MultiCircuit, modify_on_accept=True):
         """
         Transformer
         :param branch:
-        :param Sbase:
+        :param grid: MultiCircuit
         """
         super(TransformerEditor, self).__init__()
 
         # keep pointer to the line object
         self.transformer_obj = branch
 
-        self.Sbase = Sbase
+        self.Sbase = grid.Sbase
 
         self.modify_on_accept = modify_on_accept
 
-        self.templates = self.filter_valid_templates(templates)
+        self.templates = self.filter_valid_templates(grid.transformer_types)
 
-        self.current_template = current_template
+        self.current_template = branch.template
 
         self.selected_template = None
 
@@ -54,28 +55,28 @@ class TransformerEditor(QDialog):
                                                                         G=self.transformer_obj.G,
                                                                         B=self.transformer_obj.B,
                                                                         rate=self.transformer_obj.rate,
-                                                                        Sbase=Sbase)
+                                                                        Sbase=self.Sbase)
 
         # ------------------------------------------------------------------------------------------
 
         # catalogue
         self.catalogue_combo = QComboBox()
-        if templates is not None:
-            if len(self.templates) > 0:
 
-                self.catalogue_combo.setModel(get_list_model(self.templates))
+        if len(self.templates) > 0:
 
-                if self.current_template is not None:
-                    idx = self.templates.index(self.current_template)
-                    if idx > -1:
-                        self.catalogue_combo.setCurrentIndex(idx)
+            self.catalogue_combo.setModel(get_list_model(self.templates))
 
-                        # set the template parameters
-                        Sn = self.current_template.Sn  # MVA
-                        Pcu = self.current_template.Pcu  # kW
-                        Pfe = self.current_template.Pfe  # kW
-                        I0 = self.current_template.I0  # %
-                        Vsc = self.current_template.Vsc  # %
+            if self.current_template is not None:
+                idx = self.templates.index(self.current_template)
+                if idx > -1:
+                    self.catalogue_combo.setCurrentIndex(idx)
+
+                    # set the template parameters
+                    Sn = self.current_template.Sn  # MVA
+                    Pcu = self.current_template.Pcu  # kW
+                    Pfe = self.current_template.Pfe  # kW
+                    I0 = self.current_template.I0  # %
+                    Vsc = self.current_template.Vsc  # %
 
         # load template
         self.load_template_btn = QPushButton()
@@ -107,11 +108,10 @@ class TransformerEditor(QDialog):
         # add all to the GUI
 
         # add all to the GUI
-        if templates is not None:
-            self.layout.addWidget(QLabel("Suitable templates"))
-            self.layout.addWidget(self.catalogue_combo)
-            self.layout.addWidget(self.load_template_btn)
-            self.layout.addWidget(QLabel(""))
+        self.layout.addWidget(QLabel("Suitable templates"))
+        self.layout.addWidget(self.catalogue_combo)
+        self.layout.addWidget(self.load_template_btn)
+        self.layout.addWidget(QLabel(""))
 
         self.layout.addWidget(QLabel("Sn: Nominal power [MVA]"))
         self.layout.addWidget(self.sn_spinner)

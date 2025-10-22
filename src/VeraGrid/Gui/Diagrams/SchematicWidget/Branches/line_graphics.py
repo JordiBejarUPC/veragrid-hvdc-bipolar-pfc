@@ -20,7 +20,6 @@ from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
 
-
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 
@@ -223,28 +222,19 @@ class LineGraphicItem(LineGraphicTemplateItem):
         Open the appropriate editor dialogue
         :return:
         """
-        Sbase = self.editor.circuit.Sbase
-        Vnom = self.api_object.get_max_bus_nominal_voltage()
-        templates = list()
-
-        for lst in [self.editor.circuit.sequence_line_types,
-                    self.editor.circuit.underground_cable_types,
-                    self.editor.circuit.overhead_line_types]:
-            for temp in lst:
-                if Vnom == temp.Vnom:
-                    templates.append(temp)
-
-        current_template = self.api_object.template
-        dlg = LineEditor(line=self.api_object, Sbase=Sbase, frequency=self.editor.circuit.fBase,
-                         templates=templates, current_template=current_template)
+        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
         if dlg.exec():
             pass
 
     def edit_rms(self):
-        templates = [t.name for t in self.editor.circuit.sequence_line_types] # TODO: find where to build and save the templates
+        """
+
+        """
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
 
         choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+        if choice_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             if choice_dialog.choice == "template":
                 template_name = choice_dialog.selected_template
                 print(f"User chose template: {template_name}")
