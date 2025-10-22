@@ -324,8 +324,12 @@ class Block:
 # ----------------------------------------------------------------------------------------------------------------------
 
 def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
+
     y = Var(name)
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - Const(value)])
+    param = Var("param")
+
+    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - param])
+    blk.event_dict[param] = Const(value)
     return y, blk
 
 
@@ -389,10 +393,6 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  children=[blk_kp, blk_int, blk_ki, blk_sum],
                  in_vars=[err],
                  out_vars=[u])
-
-    def placeholders(n, base):
-        return [Var(f"{base}{i}") for i in range(n)]
-
 
 def bus(api_object) -> Block:
     Vm = Var("Vm")
