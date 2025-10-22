@@ -36,9 +36,9 @@ def get_Pgen(grid: MultiCircuit) -> Tuple[Vec, Vec]:
         if elm.bus is not None:
             k = bus_dict[elm.bus]
             if elm.srap_enabled:
-                val_srap[k] += elm.P
+                val_srap[k] += elm.P * elm.active
             else:
-                val[k] += elm.P
+                val[k] += elm.P * elm.active
 
     return val, val_srap
 
@@ -58,9 +58,9 @@ def get_Pgen_ts(grid: MultiCircuit) -> Tuple[Mat, Mat]:
         if elm.bus is not None:
             k = bus_dict[elm.bus]
             if elm.srap_enabled:
-                val_srap[:, k] += elm.Pf_prof.toarray()
+                val_srap[:, k] += elm.Pf_prof.toarray() * elm.active_prof.toarray()
             else:
-                val[:, k] += elm.Pf_prof.toarray()
+                val[:, k] += elm.Pf_prof.toarray() * elm.active_prof.toarray()
 
     return val, val_srap
 
@@ -76,7 +76,7 @@ def get_Pload(grid: MultiCircuit) -> Vec:
     for elm in grid.loads:
         if elm.bus is not None:
             k = bus_dict[elm.bus]
-            val[k] -= elm.P
+            val[k] -= elm.P * elm.active
 
     return val
 
@@ -94,7 +94,7 @@ def get_Pload_ts(grid: MultiCircuit) -> Mat:
     for elm in grid.loads:
         if elm.bus is not None:
             k = bus_dict[elm.bus]
-            val[:, k] -= elm.P_prof.toarray()
+            val[:, k] -= elm.P_prof.toarray() * elm.active_prof.toarray()
 
     return val
 
@@ -236,14 +236,14 @@ def ptdf_reduction(grid: MultiCircuit,
     lin = LinearAnalysis(nc=nc)
 
     # base flows
-    Pbus0 = grid.get_Pbus()
+    Pbus0 = grid.get_Pbus(apply_active=True)
 
     # flows
     Flows0 = lin.PTDF @ Pbus0
 
     if grid.has_time_series:
         lin_ts = LinearAnalysisTs(grid=grid)
-        Pbus0_ts = grid.get_Pbus_prof()
+        Pbus0_ts = grid.get_Pbus_prof(apply_active=True)
         Flows0_ts = lin_ts.get_flows_ts(P=Pbus0_ts)
     else:
         Flows0_ts = None
@@ -255,7 +255,7 @@ def ptdf_reduction(grid: MultiCircuit,
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     # Injections that remain
-    Pbus2 = grid.get_Pbus()
+    Pbus2 = grid.get_Pbus(apply_active=True)
 
     # re-make the linear analysis
     nc2 = compile_numerical_circuit_at(grid)
@@ -268,7 +268,7 @@ def ptdf_reduction(grid: MultiCircuit,
     if grid.has_time_series:
         lin_ts2 = LinearAnalysisTs(grid=grid)
         Pbus3_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_ts[:, i_branches])
-        Pbus2_ts = grid.get_Pbus_prof()
+        Pbus2_ts = grid.get_Pbus_prof(apply_active=True)
         dPbus_ts = Pbus2_ts - Pbus3_ts
     else:
         dPbus_ts = None
@@ -286,7 +286,7 @@ def ptdf_reduction(grid: MultiCircuit,
             grid.add_load(bus=bus, api_obj=elm)
 
     # proof that the flows are actually the same
-    # Pbus4 = grid.get_Pbus()
+    # Pbus4 = grid.get_Pbus(apply_active=True)
     # Flows4 = lin2.PTDF @ Pbus4
     # diff = Flows0[i_branches] - Flows4
 
@@ -320,7 +320,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     lin = LinearAnalysis(nc=nc)
 
     # base flows
-    # Pbus0 = grid.get_Pbus()
+    # Pbus0 = grid.get_Pbus(apply_active=True)
     Pload = get_Pload(grid)
     Pgen, Pgen_srap = get_Pgen(grid)
 
@@ -412,7 +412,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_generator(bus=bus, api_obj=elm)
 
     # proof that the flows are actually the same
-    # Pbus4 = grid.get_Pbus()
+    # Pbus4 = grid.get_Pbus(apply_active=True)
     # Flows0 = lin.PTDF @ Pbus0
     # Flows4 = lin2.PTDF @ Pbus4
     # diff = Flows0[i_branches] - Flows4
