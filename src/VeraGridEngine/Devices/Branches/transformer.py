@@ -590,25 +590,55 @@ class Transformer2W(ControllableBranchParent):
 
         if conn_y_from and conn_y_to:  # Yy
             Yff = np.array([
-                [yff, 0, 0],
-                [0, yff, 0],
-                [0, 0, yff]
+                [0, -yff, -yff, -yff],
+                [0, yff, 0, 0],
+                [0, 0, yff, 0],
+                [0, 0, 0, yff]
             ])
             Yft = np.array([
-                [yft, 0, 0],
-                [0, yft, 0],
-                [0, 0, yft]
+                [0, -yft, -yft, -yft],
+                [0, yft, 0, 0],
+                [0, 0, yft, 0],
+                [0, 0, 0, yft]
             ])
             Ytf = np.array([
-                [ytf, 0, 0],
-                [0, ytf, 0],
-                [0, 0, ytf]
+                [0, -ytf, -ytf, -ytf],
+                [0, ytf, 0, 0],
+                [0, 0, ytf, 0],
+                [0, 0, 0, ytf]
             ])
             Ytt = np.array([
-                [ytt, 0, 0],
-                [0, ytt, 0],
-                [0, 0, ytt]
+                [0, -ytt, -ytt, -ytt],
+                [0, ytt, 0, 0],
+                [0, 0, ytt, 0],
+                [0, 0, 0, ytt]
             ])
+
+        # if conn_y_from and conn_y_to:  # Yy
+        #     Yff = np.array([
+        #         [3*yff, -yff, -yff, -yff],
+        #         [-yff, yff, 0, 0],
+        #         [-yff, 0, yff, 0],
+        #         [-yff, 0, 0, yff]
+        #     ])
+        #     Yft = np.array([
+        #         [3*yft, -yft, -yft, -yft],
+        #         [-yft, yft, 0, 0],
+        #         [-yft, 0, yft, 0],
+        #         [-yft, 0, 0, yft]
+        #     ])
+        #     Ytf = np.array([
+        #         [3*ytf, -ytf, -ytf, -ytf],
+        #         [-ytf, ytf, 0, 0],
+        #         [-ytf, 0, ytf, 0],
+        #         [-ytf, 0, 0, ytf]
+        #     ])
+        #     Ytt = np.array([
+        #         [3*ytt, -ytt, -ytt, -ytt],
+        #         [-ytt, ytt, 0, 0],
+        #         [-ytt, 0, ytt, 0],
+        #         [-ytt, 0, 0, ytt]
+        #     ])
 
         elif conn_y_from and self.conn_t == WindingType.Delta:  # 'Yd'
             Yff = np.array([
@@ -678,24 +708,28 @@ class Transformer2W(ControllableBranchParent):
 
         elif self.conn_f == WindingType.Delta and self.conn_t == WindingType.Delta:  # 'Dd'
             Yff = np.array([
-                [2 * yff / 3, -yff / 3, -yff / 3],
-                [-yff / 3, 2 * yff / 3, -yff / 3],
-                [-yff / 3, -yff / 3, 2 * yff / 3]
+                [0, 0, 0, 0],
+                [0, 2 * yff / 3, -yff / 3, -yff / 3],
+                [0, -yff / 3, 2 * yff / 3, -yff / 3],
+                [0, -yff / 3, -yff / 3, 2 * yff / 3]
             ])
             Yft = np.array([
-                [2 * yft / 3, -yft / 3, -yft / 3],
-                [-yft / 3, 2 * yft / 3, -yft / 3],
-                [-yft / 3, -yft / 3, 2 * yft / 3]
+                [0, 0, 0, 0],
+                [0, 2 * yft / 3, -yft / 3, -yft / 3],
+                [0, -yft / 3, 2 * yft / 3, -yft / 3],
+                [0, -yft / 3, -yft / 3, 2 * yft / 3]
             ])
             Ytf = np.array([
-                [2 * ytf / 3, -ytf / 3, -ytf / 3],
-                [-ytf / 3, 2 * ytf / 3, -ytf / 3],
-                [-ytf / 3, -ytf / 3, 2 * ytf / 3]
+                [0, 0, 0, 0],
+                [0, 2 * ytf / 3, -ytf / 3, -ytf / 3],
+                [0, -ytf / 3, 2 * ytf / 3, -ytf / 3],
+                [0, -ytf / 3, -ytf / 3, 2 * ytf / 3]
             ])
             Ytt = np.array([
-                [2 * ytt / 3, -ytt / 3, -ytt / 3],
-                [-ytt / 3, 2 * ytt / 3, -ytt / 3],
-                [-ytt / 3, -ytt / 3, 2 * ytt / 3]
+                [0, 0, 0, 0],
+                [0, 2 * ytt / 3, -ytt / 3, -ytt / 3],
+                [0, -ytt / 3, 2 * ytt / 3, -ytt / 3],
+                [0, -ytt / 3, -ytt / 3, 2 * ytt / 3]
             ])
 
         elif self.conn_f == WindingType.Delta and self.conn_t == WindingType.ZigZag:  # 'Dz':

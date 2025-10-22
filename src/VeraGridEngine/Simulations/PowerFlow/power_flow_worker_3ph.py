@@ -270,6 +270,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
         n_gen=nc.ngen,
         n_batt=nc.nbatt,
         n_sh=nc.nshunt,
+        n_load=nc.nload,
         bus_names=nc.bus_data.get_3ph_names(),
         branch_names=nc.passive_branch_data.get_3ph_names(),
         hvdc_names=nc.hvdc_data.names,
@@ -277,6 +278,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
         gen_names=nc.generator_data.names,
         batt_names=nc.battery_data.names,
         sh_names=nc.shunt_data.names,
+        load_names=nc.load_data.names,
         bus_types=nc.bus_data.bus_types,
     )
 
@@ -334,6 +336,15 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
     results.Pt_hvdc = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
     results.loading_hvdc = loading_hvdc
     results.losses_hvdc = Losses_hvdc * nc.Sbase
+
+    load_bus_idx = nc.load_data.bus_idx
+    load_idx = nc.load_data.original_idx
+    if nc.load_data.A_floatingstar[load_idx] > 0:
+        results.load_Vn = nc.load_data.A_floatingstar[load_idx] * results.voltage_A[load_bus_idx] + \
+                          nc.load_data.B_floatingstar[load_idx] * results.voltage_B[load_bus_idx] + \
+                          nc.load_data.C_floatingstar[load_idx] * results.voltage_C[load_bus_idx]
+    else:
+        results.load_Vn = results.voltage_N[load_bus_idx]
 
     return results
 

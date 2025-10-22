@@ -47,6 +47,17 @@ def compute_zip_power(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
     """
     return S0 + np.conj(I0 + Y0 * Vm) * Vm
 
+def compute_zip_current(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
+    """
+    Compute the equivalent current injection
+    :param S0: Base power (P + jQ)
+    :param I0: Base current (Ir + jIi)
+    :param Y0: Base admittance (G + jB)
+    :param Vm: voltage module, for the 3ph power flow the complete voltage phasor is used (Vm + Va)
+    :return: complex current injection
+    """
+    return I0 + np.conj(S0 / Vm) + Y0 * Vm
+
 
 def compute_power(Ybus: csc_matrix, V: CxVec) -> CxVec:
     """
@@ -56,6 +67,15 @@ def compute_power(Ybus: csc_matrix, V: CxVec) -> CxVec:
     :return: Calculated power injections
     """
     return V * np.conj(Ybus @ V)
+
+def compute_current(Ybus: csc_matrix, V: CxVec) -> CxVec:
+    """
+    Compute the current from the admittance matrix and the voltage
+    :param Ybus: Admittance matrix
+    :param V: Voltage vector
+    :return: Calculated current injections
+    """
+    return Ybus @ V
 
 
 def fortescue_012_to_abc(z0: complex, z1: complex, z2: complex) -> CxMat:

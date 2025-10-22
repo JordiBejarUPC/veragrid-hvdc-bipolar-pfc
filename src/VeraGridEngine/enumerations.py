@@ -894,8 +894,9 @@ class ShuntConnectionType(Enum):
     """
     Loads, shunts, etc.. connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
 
     def __str__(self) -> str:
@@ -1658,6 +1659,7 @@ class ResultTypes(Enum):
     LoadPower = 'Load power'
     LoadShedding = 'Load shedding'
     LoadSheddingCost = "Load shedding cost"
+    LoadNeutralVoltage = 'Load neutral voltage'
 
     GeneratorShedding = 'Generator shedding'
     GeneratorPower = 'Generator power'
@@ -1686,6 +1688,7 @@ class ResultTypes(Enum):
     ShuntReactivePowerA = 'Shunt reactive power A'
     ShuntReactivePowerB = 'Shunt reactive power B'
     ShuntReactivePowerC = 'Shunt reactive power C'
+    ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
     BusNodalCapacity = "Nodal capacity"
@@ -1966,8 +1969,6 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
-
-
 
     def __str__(self):
         return self.value

@@ -48,11 +48,12 @@ class PassiveBranchData(BranchParentData):
         self.virtual_tap_t: Vec = np.ones(self.nelm, dtype=float)
         self.virtual_tap_f: Vec = np.ones(self.nelm, dtype=float)
 
-        self.Yff3 = np.zeros((self.nelm * 3, 3), dtype=complex)
-        self.Yft3 = np.zeros((self.nelm * 3, 3), dtype=complex)
-        self.Ytf3 = np.zeros((self.nelm * 3, 3), dtype=complex)
-        self.Ytt3 = np.zeros((self.nelm * 3, 3), dtype=complex)
+        self.Yff3 = np.zeros((self.nelm * 4, 4), dtype=complex)
+        self.Yft3 = np.zeros((self.nelm * 4, 4), dtype=complex)
+        self.Ytf3 = np.zeros((self.nelm * 4, 4), dtype=complex)
+        self.Ytt3 = np.zeros((self.nelm * 4, 4), dtype=complex)
 
+        self.phN: IntVec = np.zeros(self.nelm, dtype=int)
         self.phA: IntVec = np.zeros(self.nelm, dtype=int)
         self.phB: IntVec = np.zeros(self.nelm, dtype=int)
         self.phC: IntVec = np.zeros(self.nelm, dtype=int)
@@ -102,13 +103,14 @@ class PassiveBranchData(BranchParentData):
         data.virtual_tap_f = self.virtual_tap_f[elm_idx]
         data.virtual_tap_t = self.virtual_tap_t[elm_idx]
 
-        elm_idx_3 = ((elm_idx * 3)[:, np.newaxis] + np.arange(3)).flatten()
+        elm_idx_4 = ((elm_idx * 4)[:, np.newaxis] + np.arange(4)).flatten()
         
-        data.Yff3 = self.Yff3[elm_idx_3, :]
-        data.Yft3 = self.Yft3[elm_idx_3, :]
-        data.Ytt3 = self.Ytt3[elm_idx_3, :]
-        data.Ytf3 = self.Ytf3[elm_idx_3, :]
+        data.Yff3 = self.Yff3[elm_idx_4, :]
+        data.Yft3 = self.Yft3[elm_idx_4, :]
+        data.Ytt3 = self.Ytt3[elm_idx_4, :]
+        data.Ytf3 = self.Ytf3[elm_idx_4, :]
 
+        data.phN = self.phN[elm_idx]
         data.phA = self.phA[elm_idx]
         data.phB = self.phB[elm_idx]
         data.phC = self.phC[elm_idx]
@@ -145,11 +147,9 @@ class PassiveBranchData(BranchParentData):
         data.virtual_tap_f = self.virtual_tap_f.copy()
         data.virtual_tap_t = self.virtual_tap_t.copy()
 
-        data.Yff3 = self.Yff3.copy()
-        data.Yft3 = self.Yft3.copy()
-        data.Ytt3 = self.Ytt3.copy()
-        data.Ytf3 = self.Ytf3.copy()
+        # TODO: Review that we are copying everything
 
+        data.phN = self.phN.copy()
         data.phA = self.phA.copy()
         data.phB = self.phB.copy()
         data.phC = self.phC.copy()

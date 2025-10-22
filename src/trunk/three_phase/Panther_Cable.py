@@ -34,8 +34,8 @@ R0, X0, B0 = tower.get_sequence_values(circuit_idx=0, seq=0)
 print(f"R0: {R0}, X0: {X0}")
 print(f"R1: {R1}, X1: {X1}")
 
-Z = tower.z_abcn
+Z = tower.z_nabc
 print("Z =\n", Z)
 
-Y = tower.y_abcn
+Y = tower.y_nabc
 print("Y =\n", Y*1e6)
