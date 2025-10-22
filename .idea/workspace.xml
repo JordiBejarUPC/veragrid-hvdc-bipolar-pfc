@@ -28,19 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added WMOD recognition in raw parsing">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="changed the parent of the substation to physical device">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer3w.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer3w.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_injection_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_injection_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_path.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Fluid/fluid_path.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/branch_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/branch_parent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/injection_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/injection_parent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/physical_device.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/physical_device.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/busbar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/busbar.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/substation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/substation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/voltage_level.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/voltage_level.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -774,10 +763,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.ptdf_grid_reduction2" />
         <item itemvalue="Python.update_gui_file (1)" />
         <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -1909,7 +1898,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="631" />
+    <option name="localTasksCounter" value="633" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1955,8 +1944,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.4.0" />
-    <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Fixed gslv comparison regression" />
     <MESSAGE value="Added Qgen results to the test files" />
     <MESSAGE value="Simplified circuit_to_data process by using getter functions implemented in the objects&#10;Three-phase broken...WIP" />
@@ -1980,7 +1967,9 @@
     <MESSAGE value="Worked on the RmsEditor" />
     <MESSAGE value="Fixed error with PTDF split correction in trunk" />
     <MESSAGE value="added WMOD recognition in raw parsing" />
-    <option name="LAST_COMMIT_MESSAGE" value="added WMOD recognition in raw parsing" />
+    <MESSAGE value="added build status to physical device and substation" />
+    <MESSAGE value="changed the parent of the substation to physical device" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed the parent of the substation to physical device" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
