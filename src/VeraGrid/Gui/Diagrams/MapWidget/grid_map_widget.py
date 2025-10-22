@@ -19,6 +19,7 @@ from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, Q
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent)
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
+from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
@@ -272,15 +273,19 @@ class GridMapWidget(BaseDiagramWidget):
         """
         self.diagram = diagram
 
-    def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True):
+    def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True,
+                                        graphic_object: QGraphicsItem | None = None):
         """
 
         :param device:
         :param propagate: Propagate the action to other diagrams?
+        :param graphic_object: graphic_object
         :return:
         """
         self.diagram.delete_device(device=device)
-        graphic_object: ALL_MAP_GRAPHICS = self.graphics_manager.delete_device(device=device)
+
+        if graphic_object is None:
+            graphic_object: ALL_MAP_GRAPHICS = self.graphics_manager.delete_device(device=device)
 
         if graphic_object is not None:
             self._remove_from_scene(graphic_object)
@@ -521,6 +526,25 @@ class GridMapWidget(BaseDiagramWidget):
         :return: List[SubstationGraphicItem]
         """
         return [s for s in self.map.view.selected_items() if isinstance(s, SubstationGraphicItem)]
+
+    def get_selected_buses(self) -> List[Tuple[int, Bus, BusGraphicItem | None]]:
+        """
+        Get a list of buses from the selected substations
+        :return:
+        """
+        buses: List[Tuple[int, Bus, BusGraphicItem | None]] = list()
+        se_graphics = self.get_selected_substations()
+
+        se_api_set = set()
+        for se_graphic in se_graphics:
+            if se_graphic.api_object is not None:
+                se_api_set.add(se_graphic.api_object)
+
+        for i, bus in enumerate(self.circuit.buses):
+            if bus.substation in se_api_set:
+                buses.append((i, bus, None))
+
+        return buses
 
     def get_substations(self) -> List[Tuple[int, Substation, SubstationGraphicItem]]:
         """

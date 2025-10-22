@@ -557,9 +557,9 @@ class LinearAnalysis:
         """
         if flows.ndim == 2:
 
-            Pbus, _, _, _ = np.linalg.lstsq(self.PTDF, flows)
+            Pbus_t, _, _, _ = np.linalg.lstsq(self.PTDF, flows.T)
 
-            return Pbus
+            return Pbus_t.T
         else:
             raise Exception(f'flows has unsupported dimensions: {flows.shape}')
 

@@ -409,13 +409,15 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(widget, GridMapWidget):
                 widget.center()
 
-    def get_selected_buses(self) -> List[Tuple[int, dev.Bus, BusGraphicItem]]:
+    def get_selected_buses(self) -> List[Tuple[int, dev.Bus, BusGraphicItem | None]]:
         """
         Get the selected buses
         :return: list of (bus position, bus object, bus_graphics object)
         """
         diagram_widget = self.get_selected_diagram_widget()
         if isinstance(diagram_widget, SchematicWidget):
+            return diagram_widget.get_selected_buses()
+        elif isinstance(diagram_widget, GridMapWidget):
             return diagram_widget.get_selected_buses()
         else:
             return list()

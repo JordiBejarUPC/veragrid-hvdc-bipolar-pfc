@@ -679,7 +679,17 @@ class DataBaseTableMain(DiagramsMain):
         """
         Call the grid reduction dialogue on the schematic selection
         """
-        selected_buses = self.get_selected_buses()
+
+        diagram_widget = self.get_selected_diagram_widget()
+        if isinstance(diagram_widget, SchematicWidget):
+            selected_buses = diagram_widget.get_selected_buses()
+            selected_se = list()
+
+        elif isinstance(diagram_widget, GridMapWidget):
+            selected_se = diagram_widget.get_selected_substations()
+            selected_buses = diagram_widget.get_selected_buses()
+        else:
+            return None
 
         if len(selected_buses):
             # get the previous power flow
@@ -695,6 +705,19 @@ class DataBaseTableMain(DiagramsMain):
 
             if self.grid_reduction_dialogue.did_reduce:
                 self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+
+            if isinstance(diagram_widget, GridMapWidget):
+                # if this is a map, delete the elements from there
+                for se_graphics in selected_se:
+                    if se_graphics.api_object is not None:
+                        diagram_widget.delete_element_utility_function(
+                            device=se_graphics.api_object,
+                            propagate=True
+                        )
+
+            self.show_info_toast("Done!")
+        else:
+            self.show_warning_toast("No selected buses :/")
 
     def add_objects(self):
         """
