@@ -138,7 +138,7 @@ class LineEditor(QDialog):
         self.i_spinner = QDoubleSpinBox()
         self.i_spinner.setMinimum(0)
         self.i_spinner.setMaximum(9999999)
-        self.i_spinner.setDecimals(2)
+        self.i_spinner.setDecimals(6)
         self.i_spinner.setValue(I_KA)
         self.i_spinner.setSuffix(' KA')
 
