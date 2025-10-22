@@ -147,7 +147,7 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 templ_catalogue[templ.name] = templ
 
         # prompt RmsModelEditorGUI
-        rms_model_editor = RmsModelEditorGUI(api_object=self.api_object, templates_list=templ_list, templates_catalogue= templ_catalogue, parent=self.editor)
+        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list, templates_catalogue= templ_catalogue, parent=self.editor)
         rms_model_editor.show()
 
 
