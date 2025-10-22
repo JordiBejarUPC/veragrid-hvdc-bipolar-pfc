@@ -15,10 +15,8 @@ from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction
+from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
-from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearAnalysisTs
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import GridReductionMethod
 
@@ -46,7 +44,10 @@ class GridReduceDialogue(QtWidgets.QDialog):
 
         self.ui.listView.setModel(get_list_model(list(selected_buses_set)))
 
-        methods = [GridReductionMethod.PTDF, GridReductionMethod.DiShi, GridReductionMethod.Ward]
+        methods = [GridReductionMethod.PTDF,
+                   GridReductionMethod.PTDFProjected,
+                   GridReductionMethod.DiShi,
+                   GridReductionMethod.Ward]
         self.methods_dict = {m.value: m for m in methods}
         self.ui.methodComboBox.setModel(get_list_model([m.value for m in methods]))
 
@@ -119,6 +120,15 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
                     )
+
+                elif method == GridReductionMethod.PTDFProjected:
+
+                    # NOTE: self._grid gets reduced in-place
+                    grid_reduced, logger = ptdf_reduction_projected(
+                        grid=self._grid,
+                        reduction_bus_indices=reduction_bus_indices,
+                    )
+
                 else:
                     raise NotImplementedError("Reduction method not supported")
 

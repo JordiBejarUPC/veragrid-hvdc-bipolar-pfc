@@ -719,7 +719,7 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in test_3ph_pf_neutral.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -759,7 +759,7 @@
       <item itemvalue="Python.ptdf_grid_reduction" />
       <item itemvalue="Python.ptdf_grid_reduction2" />
       <item itemvalue="Python.Current_GroundedStar_3ph" />
-      <item itemvalue="Python tests.pytest in test_3ph_pf_neutral.py" />
+      <item itemvalue="Python tests.pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
@@ -767,7 +767,7 @@
         <item itemvalue="Python.ptdf_grid_reduction" />
         <item itemvalue="Python.ptdf_grid_reduction2" />
         <item itemvalue="Python tests.pytest in tests" />
-        <item itemvalue="Python tests.pytest in test_3ph_pf_neutral.py" />
+        <item itemvalue="Python tests.pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" />
         <item itemvalue="Python.Current_GroundedStar_3ph" />
       </list>
     </recent_temporary>

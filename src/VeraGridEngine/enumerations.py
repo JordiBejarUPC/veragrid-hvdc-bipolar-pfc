@@ -2324,6 +2324,7 @@ class GridReductionMethod(Enum):
     DiShi = "DiShi"
     WardLinear = "Ward linear"
     PTDF = "PTDF"
+    PTDFProjected = "PTDF projected"
 
     def __str__(self):
         return self.value
