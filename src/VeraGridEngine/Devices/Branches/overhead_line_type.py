@@ -1353,10 +1353,13 @@ def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
     return y_nabc, phases_nabc, y_abc, phases_abc, y_seq
 
 
-def create_known_abc_overhead_template(name: str, z_nabc: CxMat, ysh_nabc: CxMat, phases: IntVec,
+def create_known_abc_overhead_template(name: str,
+                                       z_nabc: CxMat,
+                                       ysh_nabc: CxMat,
+                                       phases: IntVec,
                                        Vnom: float = 1.0,
                                        earth_resistivity: float = 100,
-                                       frequency: float = 50):
+                                       frequency: float = 50) -> OverheadLineType:
     """
 
     :param name:
