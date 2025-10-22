@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import networkx as nx
 from typing import Tuple, Sequence, TYPE_CHECKING
-from VeraGridEngine.basic_structures import IntVec, Mat, Logger, Vector
+from VeraGridEngine.basic_structures import IntVec, Mat, Logger, Vector, Vec
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Devices.Injections.generator import Generator
@@ -21,6 +21,82 @@ from VeraGridEngine.enumerations import SolverType
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
     from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysisTs
+
+
+def get_Pgen(grid: MultiCircuit) -> Tuple[Vec, Vec]:
+    """
+    Get the complex bus power Injections due to the generation with and without srap
+    :return: (nbus) [MW] no-srap generation, srap-generation
+    """
+    val = np.zeros(grid.get_bus_number(), dtype=float)
+    val_srap = np.zeros(grid.get_bus_number(), dtype=float)
+    bus_dict = grid.get_bus_index_dict()
+
+    for elm in grid.generators:
+        if elm.bus is not None:
+            k = bus_dict[elm.bus]
+            if elm.srap_enabled:
+                val_srap[k] += elm.P
+            else:
+                val[k] += elm.P
+
+    return val, val_srap
+
+
+def get_Pgen_ts(grid: MultiCircuit) -> Tuple[Mat, Mat]:
+    """
+    Get the complex bus power Injections due to the generation with and without srap
+    :return: (nbus) [MW] no-srap generation, srap-generation
+    """
+    n = grid.get_bus_number()
+    nt = grid.get_time_number()
+    val = np.zeros((nt, n), dtype=float)
+    val_srap = np.zeros((nt, n), dtype=float)
+    bus_dict = grid.get_bus_index_dict()
+
+    for elm in grid.generators:
+        if elm.bus is not None:
+            k = bus_dict[elm.bus]
+            if elm.srap_enabled:
+                val_srap[:, k] += elm.Pf_prof.toarray()
+            else:
+                val[:, k] += elm.Pf_prof.toarray()
+
+    return val, val_srap
+
+
+def get_Pload(grid: MultiCircuit) -> Vec:
+    """
+    Get the complex bus power Injections due to the load with sign
+    :return: (nbus) [MW ]
+    """
+    val = np.zeros(grid.get_bus_number(), dtype=float)
+    bus_dict = grid.get_bus_index_dict()
+
+    for elm in grid.loads:
+        if elm.bus is not None:
+            k = bus_dict[elm.bus]
+            val[k] -= elm.P
+
+    return val
+
+
+def get_Pload_ts(grid: MultiCircuit) -> Mat:
+    """
+    Get the complex bus power Injections due to the load with sign
+    :return: (nbus) [MW ]
+    """
+    n = grid.get_bus_number()
+    nt = grid.get_time_number()
+    val = np.zeros((nt, n), dtype=float)
+    bus_dict = grid.get_bus_index_dict()
+
+    for elm in grid.loads:
+        if elm.bus is not None:
+            k = bus_dict[elm.bus]
+            val[:, k] -= elm.P_prof.toarray()
+
+    return val
 
 
 def relocate_injections(grid: MultiCircuit,
@@ -176,9 +252,7 @@ def ptdf_reduction(grid: MultiCircuit,
     relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
 
     # Eliminate the external buses
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
+    grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     # Injections that remain
     Pbus2 = grid.get_Pbus()
@@ -218,24 +292,13 @@ def ptdf_reduction(grid: MultiCircuit,
 
     return grid, logger
 
-    # if __name__ == "__main__":
-    import VeraGridEngine as vg
 
-    # circuit = vg.open_file("/home/santi/Documentos/Git/eRoots/VeraGrid/src/trunk/equivalents/completo.veragrid")
-    #
-    # ptdf_reduction(
-    #     grid=circuit,
-    #     reduction_bus_indices=[4],
-    #     tol=1e-8
-    # )
-
-
-def linear_reduction(grid: MultiCircuit,
-                     reduction_bus_indices: IntVec,
-                     tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+def ptdf_reduction_projected(grid: MultiCircuit,
+                             reduction_bus_indices: IntVec,
+                             tol=1e-8) -> Tuple[MultiCircuit, Logger]:
     """
-    In-place Grid reduction using the PTDF injection mirroring
-    This is the same concept as the Di-Shi reduction but using the PTDF matrix instead.
+    In-place Grid reduction using the PTDF injection by projecting
+    the generation and loads from the removed buses into the PTDF-sensitive buses
     :param grid: MultiCircuit
     :param reduction_bus_indices: Bus indices of the buses to delete
     :param tol: Tolerance, any equivalent power value under this is omitted
@@ -254,51 +317,105 @@ def linear_reduction(grid: MultiCircuit,
         return grid, logger
 
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
-    opt = PowerFlowOptions(solver_type=SolverType.Linear)
-    pf_res0 = multi_island_pf_nc(nc, options=opt)
-    Pbus0 = grid.get_Pbus()
+    lin = LinearAnalysis(nc=nc)
+
+    # base flows
+    # Pbus0 = grid.get_Pbus()
+    Pload = get_Pload(grid)
+    Pgen, Pgen_srap = get_Pgen(grid)
 
     # flows
-    Flows0 = pf_res0.Sf.real
-    theta0 = np.angle(pf_res0.voltage, False)
+    Flow0_load = lin.get_flows(Pload)
+    Flow0_gen = lin.get_flows(Pgen)
+    Flow0_gen_srap = lin.get_flows(Pgen_srap)
 
-    # move the external injection to the boundary like in the Di-Shi method
-    relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
+    if grid.has_time_series:
+        Pload_ts = get_Pload_ts(grid)
+        Pgen_ts, Pgen_srap_ts = get_Pgen_ts(grid)
+
+        lin_ts = LinearAnalysisTs(grid=grid)
+
+        Flows0_load_ts = lin_ts.get_flows_ts(P=Pload_ts)
+        Flows0_gen_ts = lin_ts.get_flows_ts(P=Pgen_ts)
+        Flows0_gen_srap_ts = lin_ts.get_flows_ts(P=Pgen_srap_ts)
+    else:
+        Flows0_load_ts = None
+        Flows0_gen_ts = None
+        Flows0_gen_srap_ts = None
 
     # Eliminate the external buses
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
+    grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     # Injections that remain
-    # Pbus2 = grid.get_Pbus()
-    nc2 = compile_numerical_circuit_at(circuit=grid, t_idx=None)
-    opt = PowerFlowOptions(solver_type=SolverType.Linear)
-    pf_res2 = multi_island_pf_nc(nc2, options=opt)
-    Pbus2 = grid.get_Pbus()
+    Pbus_load2 = Pload[i_buses]
+    Pbus_gen2 = Pgen[i_buses]
+    Pbus_gen_srap2 = Pgen_srap[i_buses]
 
     # re-make the linear analysis
-    lin_mat2 = nc2.get_linear_admittance_matrices()
+    nc2 = compile_numerical_circuit_at(grid)
+    lin2 = LinearAnalysis(nc2)
 
     # reconstruct injections that should be to keep the flows the same
-    Pbus3 = (lin_mat2.Bbus @ theta0[i_buses]) * nc2.Sbase
+    b = np.c_[Flow0_load[i_branches], Flow0_gen[i_branches], Flow0_gen_srap[i_branches]]
+    X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
+    Pbus3_load, Pbus3_gen, Pbus3_gen_srap = X[:, 0], X[:, 1], X[:, 2]
 
-    dPbus = Pbus2 - Pbus3
+    dPload = Pbus_load2 - Pbus3_load
+    dPgen = Pbus_gen2 - Pbus3_gen
+    dPgen_srap = Pbus_gen_srap2 - Pbus3_gen_srap
+
+    if grid.has_time_series:
+
+        Pload2_ts = get_Pload_ts(grid)
+        Pgen2_ts, Pgen2_srap_ts = get_Pgen_ts(grid)
+
+        lin_ts2 = LinearAnalysisTs(grid=grid)
+
+        Pbus3_load_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_load_ts[:, i_branches])
+        Pbus3_gen_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_ts[:, i_branches])
+        Pbus3_gen_srap_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_srap_ts[:, i_branches])
+
+        dPbus_load_ts = Pload2_ts - Pbus3_load_ts
+        dPbus_gen_ts = Pgen2_ts - Pbus3_gen_ts
+        dPbus_gen_srap_ts = Pgen2_srap_ts - Pbus3_gen_srap_ts
+    else:
+        dPbus_load_ts = None
+        dPbus_gen_ts = None
+        dPbus_gen_srap_ts = None
 
     n2 = grid.get_bus_number()
     for i in range(n2):
+
         bus = grid.buses[i]
-        if abs(dPbus[i]) > tol:
-            elm = Load(name=f"compensation load {i}", P=dPbus[i])
-            elm.comment = "complensation load"
+        if abs(dPload[i]) > tol:
+            elm = Load(name=f"compensated load {i}", P=dPload[i])
+
+            if dPbus_load_ts is not None:
+                elm.P_prof = dPbus_load_ts[:, i]
 
             grid.add_load(bus=bus, api_obj=elm)
 
+        if abs(dPgen[i]) > tol:
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
+
+            if dPbus_gen_ts is not None:
+                elm.P_prof = -dPbus_gen_ts[:, i]
+
+            grid.add_generator(bus=bus, api_obj=elm)
+
+        if abs(dPgen_srap[i]) > tol:
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
+
+            if dPbus_gen_srap_ts is not None:
+                elm.P_prof = -dPbus_gen_srap_ts[:, i]
+
+            grid.add_generator(bus=bus, api_obj=elm)
+
     # proof that the flows are actually the same
-    lin2 = LinearAnalysis(nc2)
-    Pbus4 = grid.get_Pbus()
-    Flows4 = lin2.PTDF @ Pbus4
-    diff = Flows0[i_branches] - Flows4
+    # Pbus4 = grid.get_Pbus()
+    # Flows0 = lin.PTDF @ Pbus0
+    # Flows4 = lin2.PTDF @ Pbus4
+    # diff = Flows0[i_branches] - Flows4
 
     return grid, logger
 
@@ -308,7 +425,7 @@ if __name__ == "__main__":
 
     circuit = vg.open_file("/home/santi/Documentos/Git/eRoots/VeraGrid/src/trunk/equivalents/completo.veragrid")
 
-    linear_reduction(
+    ptdf_reduction_projected(
         grid=circuit,
         reduction_bus_indices=[4],
         tol=1e-8

@@ -5,7 +5,7 @@
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Union, Any, Set, Generator
+from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
@@ -1410,6 +1410,53 @@ class Assets:
             self._buses.remove(obj)
         except ValueError:
             print(f"Could not delete {obj.name}")
+
+    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+        """
+        Delete a :ref:`Bus<bus>` object from the grid.
+        :param lst: Array of objects to remove
+        :param delete_associated: Delete the associated branches and injections
+        """
+        buses_to_remove = set(lst)
+
+        branches_to_delete = list()
+        injections_to_delete = list()
+
+        # delete associated Branches in reverse order
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+            for i in range(len(branch_list) - 1, -1, -1):
+                if branch_list[i].bus_from in buses_to_remove:
+                    if delete_associated:
+                        branches_to_delete.append(branch_list[i])
+                    else:
+                        branch_list[i].bus_from = None
+                elif branch_list[i].bus_to in buses_to_remove:
+                    if delete_associated:
+                        branches_to_delete.append(branch_list[i])
+                    else:
+                        branch_list[i].bus_to = None
+
+        for elm in branches_to_delete:
+            self.delete_branch(obj=elm)
+
+        # delete the associated injection devices
+        for inj_list in self.get_injection_devices_lists():
+            for i in range(len(inj_list) - 1, -1, -1):
+                if inj_list[i].bus in buses_to_remove:
+                    if delete_associated:
+                        injections_to_delete.append(inj_list[i])
+                    else:
+                        inj_list[i].bus = None
+
+        for elm in injections_to_delete:
+            self.delete_injection_device(obj=elm)
+
+        # delete the bus itself
+        for elm in buses_to_remove:
+            try:
+                self._buses.remove(elm)
+            except ValueError:
+                print(f"Could not delete {elm.name}")
 
     def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
         """

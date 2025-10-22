@@ -12,15 +12,15 @@ from scipy.sparse import csc_matrix
 from VeraGridEngine.basic_structures import ObjVec, ObjMat, Vec
 
 # from VeraGridEngine.Utils.MIP.SimpleMip import LpExp, LpVar, LpModel, get_available_mip_solvers
-from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
+# from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
 # from VeraGridEngine.Utils.MIP.gslv_interface import (LpExp, LpVar, LpModel, get_available_mip_solvers)
 
-# try:
-#     from VeraGridEngine.Utils.MIP.gslv_interface import (LpExp, LpVar, LpModel, get_available_mip_solvers)
-#     print("Using gslv mip interface")
-# except ImportError:
-#     from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
-#     print("Using pulp")
+try:
+    from VeraGridEngine.Utils.MIP.ortools_interface import (LpExp, LpVar, LpModel, get_available_mip_solvers)
+    print("Using ortools mip interface")
+except ImportError:
+    from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
+    print("Using pulp")
 
 
 def join(init: str, vals: List[int], sep="_"):

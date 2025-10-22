@@ -180,9 +180,6 @@ def ward_standard_reduction(grid: MultiCircuit,
     # ----------------------------------------------------------------------
     # Remove the external buses
     # ----------------------------------------------------------------------
-
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
+    grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     return grid

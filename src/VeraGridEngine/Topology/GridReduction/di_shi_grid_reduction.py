@@ -369,9 +369,7 @@ def di_shi_reduction(grid: MultiCircuit,
 
     # remove the buses of the external system finally
     # Delete the external buses
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
+    grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     # Step 3 – Relocate generators -------------------------------------------------------------------------------------
 

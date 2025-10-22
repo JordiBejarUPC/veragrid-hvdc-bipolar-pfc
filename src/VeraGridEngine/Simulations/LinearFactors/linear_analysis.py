@@ -493,7 +493,7 @@ class LinearAnalysis:
             rates=rates
         )
 
-    def get_flows(self, Sbus: CxVec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec:
+    def get_flows(self, Sbus: CxVec | Vec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec | Vec:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (nbus)
@@ -514,7 +514,7 @@ class LinearAnalysis:
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
 
-    def get_flows2d(self, Sbus: CxMat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat:
+    def get_flows2d(self, Sbus: CxMat | Mat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat | Mat:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (time, nbus) for 2D
