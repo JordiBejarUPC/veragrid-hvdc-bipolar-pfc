@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List, Union
 from VeraGridEngine.enumerations import (SolverType, MIPSolvers, ZonalGrouping, TimeGrouping, AcOpfMode, DeviceType,
-                                         SubObjectType)
+                                         SubObjectType, MIPFramework)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
@@ -47,7 +47,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  acopf_mode: AcOpfMode = AcOpfMode.ACOPFstd,
                  acopf_v0: Vec | None = None,
                  acopf_S0: Vec | None = None,
-                 robust: bool = False,):
+                 robust: bool = False,
+                 mip_framework: MIPFramework = MIPFramework.PuLP):
         """
         Optimal power flow options
         :param verbose:
@@ -121,6 +122,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.acopf_mode = acopf_mode
 
         self.robust = robust
+
+        self.mip_framework: MIPFramework = mip_framework
 
         # IPS settings
         self.ips_method: SolverType = ips_method

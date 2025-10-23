@@ -34,9 +34,9 @@ from VeraGridEngine.DataStructures.fluid_turbine_data import FluidTurbineData
 from VeraGridEngine.DataStructures.fluid_pump_data import FluidPumpData
 from VeraGridEngine.DataStructures.fluid_p2x_data import FluidP2XData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, DateVec, Mat
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, lpDot, join
-from VeraGridEngine.enumerations import HvdcControlType, ZonalGrouping, MIPSolvers, TapPhaseControl, \
-    ConverterControlType
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, lpDot, join, get_model_instance
+from VeraGridEngine.enumerations import (HvdcControlType, ZonalGrouping, MIPSolvers, TapPhaseControl,
+                                         ConverterControlType, MIPFramework)
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import (LinearAnalysis, LinearMultiContingency,
                                                                       LinearMultiContingencies)
 
@@ -1838,7 +1838,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       progress_func: Union[None, Callable[[float], None]] = None,
                       export_model_fname: Union[None, str] = None,
                       verbose: int = 0,
-                      robust: bool = False) -> OpfVars:
+                      robust: bool = False,
+                      mip_framework: MIPFramework = MIPFramework.PuLP) -> OpfVars:
     """
     Run linear optimal power flow
     :param grid: MultiCircuit instance
@@ -1925,7 +1926,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                        n_cap_buses=len(capacity_nodes_idx))
 
     # create the MIP problem object
-    lp_model: LpModel = LpModel(solver_type)
+    lp_model: LpModel = get_model_instance(tpe=mip_framework, solver_type=solver_type)
 
     # objective function
     f_obj: Union[LpExp, float] = 0.0
@@ -2206,7 +2207,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
 
-    if status == LpModel.OPTIMAL:
+    if status == lp_model.OPTIMAL:
         logger.add_info("Objective function", value=lp_model.fobj_value())
         mip_vars.acceptable_solution = True
     else:

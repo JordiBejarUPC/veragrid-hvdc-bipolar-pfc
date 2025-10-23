@@ -12,17 +12,12 @@ from __future__ import annotations
 
 from typing import List, Union, Callable, Any
 import subprocess
-# import VeraGridEngine.Utils.ThirdParty.pulp as pulp
-# from VeraGridEngine.Utils.ThirdParty.pulp.apis.highs_py import HiGHS
-# from VeraGridEngine.Utils.ThirdParty.pulp.apis.cplex_cmd import CPLEX_CMD
-# from VeraGridEngine.Utils.ThirdParty.pulp.model.lp_objects import LpAffineExpression as LpExp
-# from VeraGridEngine.Utils.ThirdParty.pulp.model.lp_objects import LpConstraint as LpCst
-# from VeraGridEngine.Utils.ThirdParty.pulp.model.lp_objects import LpVariable as LpVar
 import pulp
 from pulp import LpVariable as LpVar, LpConstraint as LpCst, LpAffineExpression as LpExp
 from pulp import HiGHS, CPLEX_CMD
 from VeraGridEngine.enumerations import MIPSolvers
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Utils.MIP.mip_interface_template import AbstractLpModel
 
 
 def get_lp_var_value(x: Union[float, LpVar]) -> float:
@@ -41,7 +36,7 @@ def get_lp_var_value(x: Union[float, LpVar]) -> float:
         return x
 
 
-def get_available_mip_solvers() -> List[str]:
+def get_pulp_available_mip_solvers() -> List[str]:
     """
     Get a list of candidate solvers
     :return:
@@ -64,7 +59,7 @@ def get_available_mip_solvers() -> List[str]:
     return solvers2
 
 
-class LpModel:
+class PulpLpModel(AbstractLpModel):
     """
     LPModel implementation for PuLP
     """
@@ -73,6 +68,11 @@ class LpModel:
     originally_infeasible = False
 
     def __init__(self, solver_type: MIPSolvers):
+        """
+
+        :param solver_type:
+        """
+        super().__init__(solver_type)
 
         self.solver_type: MIPSolvers = solver_type
 
@@ -252,7 +252,12 @@ class LpModel:
                     debugging_f_obj += sl
 
                     # add the variable to the current constraint
-                    cst += sl
+                    if cst.sense == pulp.LpConstraintLE:
+                        cst += sl
+                    elif cst.sense == pulp.LpConstraintGE:
+                        cst -= sl
+                    else:  # equality
+                        cst += sl
 
                     # store for later
                     slacks.append((cst_name, sl))
@@ -269,7 +274,7 @@ class LpModel:
                 # clear the relaxed slacks list
                 self.relaxed_slacks = list()
 
-                if status_d == LpModel.OPTIMAL:
+                if status_d == PulpLpModel.OPTIMAL:
 
                     # pick the original objective function
                     cst_slack_map = list()
@@ -308,7 +313,7 @@ class LpModel:
                     # solve the modified (original) model
                     status = self.model.solve(solver=self.get_solver(show_logs=show_logs))
 
-                    if status == LpModel.OPTIMAL:
+                    if status == PulpLpModel.OPTIMAL:
 
                         for i in range(len(self.relaxed_slacks)):
                             k, var, _ = self.relaxed_slacks[i]

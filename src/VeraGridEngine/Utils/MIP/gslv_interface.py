@@ -14,6 +14,7 @@ from typing import List, Union, Callable, Any
 from pygslv import LpModel as gslvLpModel, LpResult, LpCst, LpVar, LpExp
 from VeraGridEngine.enumerations import MIPSolvers
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Utils.MIP.mip_interface_template import AbstractLpModel
 
 
 def get_available_mip_solvers() -> List[str]:
@@ -39,7 +40,7 @@ def get_available_mip_solvers() -> List[str]:
     return [MIPSolvers.HIGHS.value]
 
 
-class LpModel:
+class LpModel(AbstractLpModel):
     """
     LPModel implementation for PuLP
     """
@@ -48,6 +49,7 @@ class LpModel:
     originally_infeasible = False
 
     def __init__(self, solver_type: MIPSolvers):
+        super().__init__(solver_type)
 
         self.solver_type: MIPSolvers = solver_type
 

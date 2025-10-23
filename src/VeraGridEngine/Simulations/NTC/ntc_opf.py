@@ -12,7 +12,7 @@ import os
 import numpy as np
 from typing import List, Union, Tuple, Callable
 
-from VeraGridEngine.enumerations import MIPSolvers, ZonalGrouping
+from VeraGridEngine.enumerations import MIPSolvers, MIPFramework, ZonalGrouping
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -26,10 +26,11 @@ from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
 from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, BoolVec, CxMat, Mat, ObjVec
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, join
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, join, get_model_instance
 from VeraGridEngine.enumerations import TapPhaseControl, HvdcControlType, AvailableTransferMode, ConverterControlType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
-from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, compute_dP
+from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, \
+    compute_dP
 from VeraGridEngine.IO.file_system import opf_file_path
 
 
@@ -1596,8 +1597,8 @@ def add_linear_branches_formulation(t_idx: int,
 
                     # here flows is always a variable
                     prob.set_var_bounds(branch_vars.flows[t_idx, m],
-                                   lb=-rate_pu * (abs(loading[m]) + 0.1),
-                                   ub=rate_pu * (abs(loading[m]) + 0.1))
+                                        lb=-rate_pu * (abs(loading[m]) + 0.1),
+                                        ub=rate_pu * (abs(loading[m]) + 0.1))
                 else:
                     # here flows is always a variable
                     prob.set_var_bounds(branch_vars.flows[t_idx, m], lb=-rate_pu, ub=rate_pu)
@@ -2143,7 +2144,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        progress_func: Union[None, Callable[[float], None]] = None,
                        export_model_fname: Union[None, str] = None,
                        verbose: int = 0,
-                       robust: bool = False) -> NtcVars:
+                       robust: bool = False,
+                       mip_framework: MIPFramework = MIPFramework.PuLP) -> NtcVars:
     """
 
     :param grid: MultiCircuit instance
@@ -2167,6 +2169,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param export_model_fname: Export the model into LP and MPS?
     :param verbose: Verbosity level
     :param robust: Robust optimization?
+    :param mip_framework: MIPFramework to use
     :return: NtcVars class with the results
     """
     mode_2_int = {
@@ -2188,7 +2191,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     n_vsc = grid.get_vsc_number()
 
     # Declare the LP model
-    lp_model: LpModel = LpModel(solver_type)
+    lp_model: LpModel = get_model_instance(tpe=mip_framework, solver_type=solver_type)
 
     # declare structures of LP vars
     mip_vars = NtcVars(nt=1, nbus=n, ng=ng, nb=nb, nl=nl, nbr=nbr, n_hvdc=n_hvdc, n_vsc=n_vsc,
@@ -2381,7 +2384,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                     dT=1.0
                 )
 
-                branch_loading_con = np.abs(branch_flows / (nc.passive_branch_data.contingency_rates / nc.Sbase + 1e-20))
+                branch_loading_con = np.abs(
+                    branch_flows / (nc.passive_branch_data.contingency_rates / nc.Sbase + 1e-20))
 
                 # formulate the contingencies
                 f_obj += add_linear_branches_contingencies_formulation(
@@ -2435,7 +2439,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
 
-    if status == LpModel.OPTIMAL:
+    if status == lp_model.OPTIMAL:
         logger.add_info("Objective function", value=lp_model.fobj_value())
         mip_vars.acceptable_solution[t_idx] = True
     else:

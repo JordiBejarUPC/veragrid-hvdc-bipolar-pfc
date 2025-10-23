@@ -28,16 +28,49 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="5.5.10">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Made the schematic editors available from the table">
+      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/mip_interface_template.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/test_mip_interfaces.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/controllable_shunt_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/controllable_shunt_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/line_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/line_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/transformer_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/transformer_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_segment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_segment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer2w_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer2w_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/controllable_shunt_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/controllable_shunt_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/fluids_try.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/fluids_try.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NodalCapacity/nodal_capacity_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NodalCapacity/nodal_capacity_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/selected_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/selected_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/copt_api.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/cplex_cmd.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/cplex_py.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/gurobi_cmd.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/gurobi_py.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/highs_cmd.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/highs_py.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/lp_solver.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/lp_solver_cmd.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/scip_api.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/apis/xpress_api.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/constants.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/model/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/model/lp_objects.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/model/lp_problem.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/mps_lp.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/paths.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/pulp.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/sparse.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/ThirdParty/pulp/utilities.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -264,7 +297,7 @@
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python tests.pytest in tests">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -720,7 +753,7 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest in test_ntc.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -733,7 +766,7 @@
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_ntc.py&quot;" />
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
@@ -760,16 +793,16 @@
       <item itemvalue="Python.ptdf_grid_reduction" />
       <item itemvalue="Python.ptdf_grid_reduction2" />
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python tests.pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" />
+      <item itemvalue="Python tests.pytest in test_ntc.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest in test_ntc.py" />
         <item itemvalue="Python.ptdf_grid_reduction" />
         <item itemvalue="Python.ptdf_grid_reduction2" />
-        <item itemvalue="Python tests.pytest in /home/santi/Documentos/Git/eRoots/VeraGrid/src/tests/test_3ph_pf_neutral.py" />
       </list>
     </recent_temporary>
   </component>
@@ -1901,7 +1934,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="643" />
+    <option name="localTasksCounter" value="644" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1947,7 +1980,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added power flow video" />
     <MESSAGE value="Added intro video" />
     <MESSAGE value="Morphed the PTDF based reduction into a di-shi based reduction" />
     <MESSAGE value="Improved deletion of devices" />
@@ -1972,7 +2004,8 @@
     <MESSAGE value="Allowing grid reduction from the map" />
     <MESSAGE value="Added apply active to grid.get_S, get_P, etc" />
     <MESSAGE value="5.5.10" />
-    <option name="LAST_COMMIT_MESSAGE" value="5.5.10" />
+    <MESSAGE value="Made the schematic editors available from the table" />
+    <option name="LAST_COMMIT_MESSAGE" value="Made the schematic editors available from the table" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2041,11 +2074,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
           <line>2313</line>
           <option name="timeStamp" value="54" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>698</line>
-          <option name="timeStamp" value="55" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py</url>

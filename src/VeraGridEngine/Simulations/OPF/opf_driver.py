@@ -150,7 +150,8 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 logger=self.logger,
                 export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
-                robust=self.options.robust
+                robust=self.options.robust,
+                mip_framework=self.options.mip_framework
             )
 
             self.results.voltage = opf_vars.bus_vars.Vm[0, :] * np.exp(1j * opf_vars.bus_vars.Va[0, :])

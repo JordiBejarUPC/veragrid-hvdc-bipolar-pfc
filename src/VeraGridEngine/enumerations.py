@@ -351,6 +351,32 @@ class MIPSolvers(Enum):
             return MIPSolvers.HIGHS
 
 
+class MIPFramework(Enum):
+    """
+    MIP framework enumeration
+    """
+    OrTools = 'or-tools'
+    PuLP = 'PuLP'
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return MIPFramework[s]
+        except KeyError:
+            return MIPFramework.PuLP
+
+
 class TimeGrouping(Enum):
     """
     Time groupings enumeration
