@@ -397,21 +397,21 @@ The modeling approaches are often thought of as follows:
   and switches.
 
 This school of thought leaves us in a vacuum that we may feel inclined to fill
-with ad-hoc topology processing cases. But, after going through the described process, 
+with ad-hoc topology processing cases. But, after going through the described steps, 
 one finds that this complexity is indeed unjustified because the **node-breaker** 
 and **bus-branch** philosophies are fundamentally the same. In steps 1 to 3
-we have mathematically demonstrated that:
+we have implicitly demonstrated that:
 
 > - A ConnectivityNode is a **bus** before the topology processing.
 > - A TopologyNode is a **bus** after the topology processing.
 
-Following this new found truth, the TopologyNode's should not be shared in any
-model or database since they are a particular product of the database state and the  
-switches should always be reduced before simulation to avoid numerical singularities.
+Following this new found truth, the TopologyNode should not be shared in any
+model or database since they are a particular product of the database state 
+and the switches should always be reduced before simulation to avoid numerical singularities.
 
-**To recapitulate**: A common misconception is that bus-branch models 
+Again, a common misconception is that bus-branch models 
 lack switches, whereas node-breaker models include them. In practice, both 
-approaches can incorporate switches. This fact is often emphasized in official CGMES trainings. 
+approaches can incorporate switches. This fact is often emphasized in official CGMES trainings.
 If a **ConnectivityNode** must have an `N:1` association with a **TopologicalNode**, this
 implies that any ConnectivityNode ultimately represents a TopologicalNode.
 This reinforces the argument that both are two faces of the same coin,
