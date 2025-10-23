@@ -57,9 +57,9 @@ def get_model_instance(tpe: MIPFramework, solver_type: MIPSolvers) -> LpModel:
     :param solver_type: MIPSolvers
     :return: OrToolsLpModel or PulpLpModel
     """
-    if tpe == "ortools" and ORTOOLS_AVAILABLE:
+    if tpe == MIPFramework.OrTools and ORTOOLS_AVAILABLE:
         return OrToolsLpModel(solver_type)
-    elif tpe == "pulp":
+    elif tpe == MIPFramework.PuLP:
         return PulpLpModel(solver_type)
     else:
         return PulpLpModel(solver_type)
@@ -71,9 +71,9 @@ def get_available_mip_solvers(tpe: MIPFramework) -> List[str]:
     :param tpe:
     :return:
     """
-    if tpe == "ortools" and ORTOOLS_AVAILABLE:
+    if tpe == MIPFramework.OrTools and ORTOOLS_AVAILABLE:
         return get_ortools_available_mip_solvers()
-    elif tpe == "pulp":
+    elif tpe == MIPFramework.PuLP:
         return get_pulp_available_mip_solvers()
     else:
         return get_pulp_available_mip_solvers()

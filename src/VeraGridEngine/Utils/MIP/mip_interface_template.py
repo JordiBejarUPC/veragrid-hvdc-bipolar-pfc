@@ -23,7 +23,8 @@ class AbstractLpModel(ABC):
     OPTIMAL: Any
     INFINITY: float = 1e20
 
-    def __init__(self, solver_type: MIPSolvers):
+    def __init__(self, solver_type: MIPSolvers, name: str):
+        self.name = name
         self.solver_type = solver_type
         self.logger = Logger()
         self.relaxed_slacks: List[Tuple[int, Any, float]] = []

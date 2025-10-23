@@ -72,7 +72,7 @@ class PulpLpModel(AbstractLpModel):
 
         :param solver_type:
         """
-        super().__init__(solver_type)
+        super().__init__(solver_type, name="PuLP")
 
         self.solver_type: MIPSolvers = solver_type
 

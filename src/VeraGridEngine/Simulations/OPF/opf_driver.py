@@ -359,6 +359,9 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             else:
                 raise Exception(f"{self.options.solver} Not implemented yet")
 
+        else:
+            self.opf()
+
         self.toc()
 
         if self.options.generate_report:

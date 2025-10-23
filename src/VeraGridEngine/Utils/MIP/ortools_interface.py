@@ -21,6 +21,7 @@ from VeraGridEngine.enumerations import MIPSolvers
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Utils.MIP.mip_interface_template import AbstractLpModel
 
+
 # this avoids displaying all the solver logger information, should only be called once
 # init.CppBridge.init_logging("")
 
@@ -41,11 +42,14 @@ def get_ortools_available_mip_solvers() -> List[str]:
 
 
 def get_solver_params_string(
-    solver: str,
-    relative_gap: float = 1e-8,
-    abs_gap: float = 1e-8,
-    time_limit: float | None = None,
-    verbose: bool = False
+        solver: str,
+        relative_gap: float = 1e-10,
+        abs_gap: float = 1e-10,
+        primal_feasibility_tolerance: float = 1e-10,
+        dual_feasibility_tolerance: float = 1e-10,
+        optimality_tolerance: float = 1e-10,
+        time_limit: float | None = None,
+        verbose: bool = False
 ) -> str:
     """
     Returns a string of solver-specific parameters suitable for
@@ -53,17 +57,22 @@ def get_solver_params_string(
     :param solver: one of "SCIP", "CBC", "CPLEX", "GUROBI", "XPRESS", "HIGHS", "GLOP", "PDLP"
     :param relative_gap: relative optimality gap tolerance
     :param abs_gap: absolute optimality gap tolerance
+    :param primal_feasibility_tolerance:
+    :param dual_feasibility_tolerance:
+    :param optimality_tolerance:
     :param time_limit: time limit in seconds (if supported)
     :param verbose: whether to enable verbose solver output
     :return: parameter string
     """
     s = ""
     if solver == "HIGHS":
-        s += f"mip_rel_gap = {relative_gap}\n"
+        # https://ergo-code.github.io/HiGHS/dev/options/definitions/
+        # also: https://www.gams.com/50/docs/S_HIGHS.html
+        s += f"primal_residual_tolerance = {relative_gap}\n"
         s += f"mip_abs_gap = {abs_gap}\n"
-        # feasibility tolerances
-        s += "primal_feasibility_tolerance = 1e-7\n"
-        s += "dual_feasibility_tolerance = 1e-7\n"
+        s += f"primal_feasibility_tolerance = {primal_feasibility_tolerance}\n"
+        s += f"dual_feasibility_tolerance = {dual_feasibility_tolerance}\n"
+        s += f"optimality_tolerance = {optimality_tolerance}\n"
         if time_limit is not None:
             s += f"time_limit = {time_limit}\n"
         if verbose:
@@ -84,13 +93,13 @@ def get_solver_params_string(
             s += f"limits/time = {time_limit}\n"
         if verbose:
             s += "display/verblevel = 4\n"
-        s += "numerics/feastol = 1e-8\n"
-        s += "numerics/dualfeastol = 1e-8\n"
+        s += f"numerics/feastol = {primal_feasibility_tolerance}\n"
+        s += f"numerics/dualfeastol = {dual_feasibility_tolerance}\n"
 
     elif solver == "GLOP":
         # GLOP is for continuous LP; gap tolerances less relevant, focus on feasibility tolerance
-        s += "primal_tolerance = 1e-7\n"
-        s += "dual_tolerance = 1e-7\n"
+        s += f"primal_tolerance = {primal_feasibility_tolerance}\n"
+        s += f"dual_tolerance = {dual_feasibility_tolerance}\n"
         if time_limit is not None:
             s += f"time_limit = {time_limit}\n"
         if verbose:
@@ -125,7 +134,7 @@ def get_solver_params_string(
             s += f"maxtime = {time_limit}\n"
         if verbose:
             s += "outputlog = 1\n"
-        s += "feastol = 1e-8\n"
+        s += f"feastol = {primal_feasibility_tolerance}\n"
         s += "opt_tol = 1e-8\n"
 
     elif solver == "PDLP":
@@ -152,7 +161,7 @@ class OrToolsLpModel(AbstractLpModel):
     originally_infeasible = False
 
     def __init__(self, solver_type: MIPSolvers):
-        super().__init__(solver_type)
+        super().__init__(solver_type, name="OrTools")
 
         self.solver_type: MIPSolvers = solver_type
 
