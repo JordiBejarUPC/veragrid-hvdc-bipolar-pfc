@@ -50,22 +50,20 @@ rarely dealt with in a structured and comprehensive manner.
 
 **A Graph in Power Systems**
 
-A power system model is essentially a graph. A graph is structure
-where relationships are represented with **nodes** (the thing the is related) 
-and **edges** (the relationship). To understand topology processing, 
-it's essential to grasp the basics of graph theory. A graph is composed of:
+A graph is composed of:
 
-- **Nodes (or Buses):** Represent points of calculation, such as substations, 
+- **Nodes:** These are the buses of a model that represent points of calculation, such as substation bars, 
 generation points, or load centers.
-- **Edges (or Branches):** Represent the connections, such as transmission lines, 
-transformers, or circuit breakers.
+- **Edges:** Represent the connections, such as transmission lines, transformers, or switches.
 
-This abstraction simplifies the network, retaining its essential
-connectivity and operational properties.
+This abstraction simplifies the network from the bolts and welds to a simpler, 
+yet correct simplification that retains the essential connectivity information.
 
-Note: If you come from the Ontologies world, a power system's graph is strictly speaking buses and branches.
-Branches connected to fictitious entities that may or may not be connected to buses have no room here,
-since in power systems software we don't like waste. I certainly don't.
+Note about ontologies: In the ontologies world, any device can be related to any other in a all-to-all fashion.
+This means that nothig prevents a line to be connected to more than two points, 
+among many other wasteful modelling propositions.
+In this article we will use proper network theory graphs where branches 
+transmit electricity and nodes are the points where we measure.
 
 **Why is Topology Processing Important?**
 
@@ -73,15 +71,14 @@ Topology processing ensures that the network's operational model reflects
 accurately its physical state. Without proper processing, analyses may yield
 inaccurate results, leading to operational inefficiencies or even failures.
 
-Topology processing helps to:
-
-- Ensure the model is computationally feasible.
-- Identify and correct data inconsistencies.
-- Optimize the simulation by reducing unnecessary complexities.
+Topology processing helps to ensure the model is computationally feasible,
+to identify and correct data inconsistencies and to optimize the simulation 
+by reducing unnecessary complexities.
 
 In less abstract terms, topology processing is about determining the simulatable
-sub-circuits within a circuit. Here, a circuit refers to a collection of equipment,
-its relationships, and states in the most general sense. 
+sub-circuits within a a collection of equipment. 
+Here, a circuit refers to a collection of equipment, its relationships, 
+and states in the most general sense. 
 
 We perform the topology processing as a precaution before simulating, 
 because what we want is to be able to use the electrotechnical formulas 
@@ -101,11 +98,12 @@ To solve for $V$, we need to invert $Y$:
 $$V = Y^{-1} \times I^*$$
 
 However, $Y$ may not always be invertible for any arbitrary collection
-of equipment. This necessitates finding sub-circuits. Additionally, certain
-branches in the circuit might have zero impedance, making $Y$ singular. We
-must eliminate these problematic branches as part of the processing.
+of equipment. This is because certain branches in the circuit might have 
+zero impedance, making $Y$ singular. 
+Or simply because there are grid parts disconnected from the rest, 
+making $Y$ also singular.
 
-Broadly, topology processing involves the following steps:
+The topology processing involves the following steps:
 
 1. **Reduce problematic branches:** Address switches and jumpers that cause singularities.
 2. **Find the simulatable islands:** Identify isolated groups of interconnected elements.
