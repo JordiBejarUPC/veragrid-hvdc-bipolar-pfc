@@ -303,16 +303,13 @@ def compute_current_loads(bus_idx: IntVec,
             I[c2] -= np.conj(Istar[ca] / voltage_c)
 
         elif star and a_connected:
-            voltage_angle = np.angle(V[a2])
-            I[a2] += -np.conj(Istar[ab]) * 1 * np.exp(1j * voltage_angle)
+            I[a2] += -np.conj(Istar[ab] / voltage_a)
 
         elif star and b_connected:
-            voltage_angle = np.angle(V[b2])
-            I[b2] += -np.conj(Istar[bc]) * 1 * np.exp(1j * voltage_angle)
+            I[b2] += -np.conj(Istar[bc] / voltage_b)
 
         elif star and c_connected:
-            voltage_angle = np.angle(V[c2])
-            I[c2] += -np.conj(Istar[ca]) * 1 * np.exp(1j * voltage_angle)
+            I[c2] += -np.conj(Istar[ca] / voltage_c)
 
         else:
             pass
