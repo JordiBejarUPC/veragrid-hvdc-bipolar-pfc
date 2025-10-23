@@ -268,7 +268,7 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     Sbus[pv] = P_pv + 1j * Q_pv  # keep the original P injection and set the calculated reactive power for PV nodes
 
     # Add the shunt power V^2 x Y^*
-    Vm = np.abs(V_expanded)
+    Vm = np.abs(V)
     Sbus = np.conj(Yshunt_bus) @ (Vm * Vm)
     Sbus_expanded = expand_magnitudes(Sbus, bus_lookup)
 

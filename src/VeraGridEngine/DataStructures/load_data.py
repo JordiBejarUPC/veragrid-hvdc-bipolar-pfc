@@ -40,7 +40,7 @@ class LoadData:
         self.I3_delta = np.zeros(self.nelm * 4, dtype=complex)
         self.I3_star = np.zeros(self.nelm * 4, dtype=complex)
 
-        self.Y3_delta = np.zeros(self.nelm * 3, dtype=complex)
+        self.Y3_delta = np.zeros(self.nelm * 4, dtype=complex)
         self.Y3_star = np.zeros((self.nelm * 4, 4), dtype=complex)
 
         # reliability

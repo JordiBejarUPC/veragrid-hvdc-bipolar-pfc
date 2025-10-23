@@ -64,9 +64,9 @@ print()
 print(res.get_voltage_3ph_df())
 print()
 print(res.get_current_3ph_df())
-
-print("\nConverged? ", res.converged)
-print("\nIterations: ", res.iterations)
+#
+# print("\nConverged? ", res.converged)
+# print("\nIterations: ", res.iterations)
 
 # print()
 # print(res.voltage_A)

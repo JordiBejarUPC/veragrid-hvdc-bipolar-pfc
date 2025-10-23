@@ -394,13 +394,14 @@ def get_load_data(data: LoadData,
 
             if fill_three_phase:
                 if elm.conn == ShuntConnectionType.GroundedStar:
-                    data.S3_star[3 * ii + 1] = elm.get_Sa_at(t_idx)
-                    data.S3_star[3 * ii + 2] = elm.get_Sb_at(t_idx)
-                    data.S3_star[3 * ii + 3] = elm.get_Sc_at(t_idx)
 
-                    data.I3_star[3 * ii + 1] = elm.get_I1_at(t_idx)
-                    data.I3_star[3 * ii + 2] = elm.get_I2_at(t_idx)
-                    data.I3_star[3 * ii + 3] = elm.get_I3_at(t_idx)
+                    data.S3_star[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_star[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_star[4 * ii + 3] = elm.get_Sc_at(t_idx)
+
+                    data.I3_star[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_star[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_star[4 * ii + 3] = elm.get_I3_at(t_idx)
 
                     data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_conj_at(t_idx)
                     data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_conj_at(t_idx)
@@ -483,13 +484,13 @@ def get_load_data(data: LoadData,
                     #     data.Y3_delta[3 * ii + 1] = complex(elm.G2, -elm.B2)
                     #     data.Y3_delta[3 * ii + 2] = complex(elm.G3, -elm.B3)
 
-                    data.S3_delta[3 * ii + 1] = elm.get_Sa_at(t_idx)
-                    data.S3_delta[3 * ii + 2] = elm.get_Sb_at(t_idx)
-                    data.S3_delta[3 * ii + 3] = elm.get_Sc_at(t_idx)
+                    data.S3_delta[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_delta[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_delta[4 * ii + 3] = elm.get_Sc_at(t_idx)
 
-                    data.I3_delta[3 * ii + 1] = elm.get_I1_at(t_idx)
-                    data.I3_delta[3 * ii + 2] = elm.get_I2_at(t_idx)
-                    data.I3_delta[3 * ii + 3] = elm.get_I3_at(t_idx)
+                    data.I3_delta[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_delta[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_delta[4 * ii + 3] = elm.get_I3_at(t_idx)
 
                     if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
                         data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
@@ -498,9 +499,9 @@ def get_load_data(data: LoadData,
                             Yca=elm.get_Y3_conj_at(t_idx)
                         )
                     else:
-                        data.Y3_delta[3 * ii + 0] = elm.get_Y1_conj_at(t_idx)
-                        data.Y3_delta[3 * ii + 1] = elm.get_Y2_conj_at(t_idx)
-                        data.Y3_delta[3 * ii + 2] = elm.get_Y3_conj_at(t_idx)
+                        data.Y3_delta[4 * ii + 1] = elm.get_Y1_conj_at(t_idx)
+                        data.Y3_delta[4 * ii + 2] = elm.get_Y2_conj_at(t_idx)
+                        data.Y3_delta[4 * ii + 3] = elm.get_Y3_conj_at(t_idx)
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
 
