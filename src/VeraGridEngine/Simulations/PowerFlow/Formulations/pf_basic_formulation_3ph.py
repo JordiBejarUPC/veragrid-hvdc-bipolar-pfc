@@ -282,19 +282,25 @@ def compute_current_loads(bus_idx: IntVec,
             I[c2] = -(Ica - Ibc)
 
         elif delta and ab_connected:
-            voltage_angle = np.angle(V[a2] - V[b2])
-            I[a2] += -np.conj(Idelta[ab]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
-            I[b2] += np.conj(Idelta[ab]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
+
+            Iab = np.conj(Idelta[ab] / voltage_ab)
+
+            I[a2] = -(Iab)
+            I[b2] = -(-Iab)
 
         elif delta and bc_connected:
-            voltage_angle = np.angle(V[b2] - V[c2])
-            I[b2] += -np.conj(Idelta[bc]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
-            I[c2] += np.conj(Idelta[bc]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
+
+            Ibc = np.conj(Idelta[bc] / voltage_bc)
+
+            I[b2] = -(Ibc)
+            I[c2] = -(-Ibc)
 
         elif delta and ca_connected:
-            voltage_angle = np.angle(V[c2] - V[a2])
-            I[c2] += -np.conj(Idelta[ca]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
-            I[a2] += np.conj(Idelta[ca]) / (np.sqrt(3)) * 1 * np.exp(1j * voltage_angle)
+
+            Ica = np.conj(Idelta[ca] / voltage_ca)
+
+            I[a2] = -(-Ica)
+            I[c2] = -(Ica)
 
         elif star and a_connected and b_connected and c_connected:
 
@@ -892,28 +898,28 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # End Test
 
         # Test Current Load
-        C = self.Ybus[3:6,0:3]
-        C = np.array(C.todense())
-        D = self.Ybus[3:6,3:6]
-        D = np.array(D.todense())
-
-        Us = self.V[0:3] # Slack Voltage
-
-        Ul = self.V[3:6] # Our Load Voltage
-
-        Il = C @ Us + D @ Ul
-
-        print('Il =', abs(Il * (self.nc.Sbase / 3)))
-
-        Ul_DSS = np.array([
-            0.89869665706803647520 * np.exp(1j * -2.75657808574164953086 * np.pi/180),
-            0.90976740143101608727 * np.exp(1j * -122.31589929629066659800 * np.pi/180),
-            0.92107437826441029838 * np.exp(1j * 118.13640667650442139802 * np.pi/180)
-        ]) # OpenDSS Load Voltage
-
-        Il_DSS = C @ Us + D @ Ul_DSS
-
-        print('Il_DSS =', abs(Il_DSS * (self.nc.Sbase / 3)))
+        # C = self.Ybus[3:6,0:3]
+        # C = np.array(C.todense())
+        # D = self.Ybus[3:6,3:6]
+        # D = np.array(D.todense())
+        #
+        # Us = self.V[0:3] # Slack Voltage
+        #
+        # Ul = self.V[3:6] # Our Load Voltage
+        #
+        # Il = C @ Us + D @ Ul
+        #
+        # print('Il =', abs(Il * (self.nc.Sbase / 3)))
+        #
+        # Ul_DSS = np.array([
+        #     0.89869665706803647520 * np.exp(1j * -2.75657808574164953086 * np.pi/180),
+        #     0.90976740143101608727 * np.exp(1j * -122.31589929629066659800 * np.pi/180),
+        #     0.92107437826441029838 * np.exp(1j * 118.13640667650442139802 * np.pi/180)
+        # ]) # OpenDSS Load Voltage
+        #
+        # Il_DSS = C @ Us + D @ Ul_DSS
+        #
+        # print('Il_DSS =', abs(Il_DSS * (self.nc.Sbase / 3)))
 
         # End Test
 
