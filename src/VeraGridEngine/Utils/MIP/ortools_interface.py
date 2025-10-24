@@ -301,8 +301,7 @@ class OrToolsLpModel(AbstractLpModel):
         if progress_text is not None:
             progress_text(f"Solving model with {self.solver_type.value}...")
 
-        # original_mdl = self.model
-        original_mdl = self.pass_through_file(fname="pass_thought_file.mps")
+        original_mdl = self.model
         status = self.solver.solve(original_mdl)
 
         # if it failed...
