@@ -92,8 +92,8 @@ class Block:
                  algebraic_eqs: List[Expr] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
-                 in_vars: List[Var] | None = None,
-                 out_vars: List[Var] | None = None):
+                 in_vars: Dict[str, Var] | None = None,
+                 out_vars: Dict[str, Var] | None = None):
 
         # ,
         # external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None
@@ -130,8 +130,8 @@ class Block:
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
 
-        self.in_vars: List[Var] = list() if in_vars is None else in_vars
-        self.out_vars: List[Var] = list() if out_vars is None else out_vars
+        self.in_vars: Dict[str, Var] = dict() if in_vars is None else in_vars
+        self.out_vars: Dict[str, Var] = dict() if out_vars is None else out_vars
 
         # self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict if external_mapping is None else {elm.pf_ref: elm
         #                                                                 for elm in self.algebraic_vars}
@@ -329,7 +329,7 @@ def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
     param = Var("param")
 
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - param])
-    blk.event_dict[param] = Const(value)
+    blk.event_dict[param] = Const(1)
     return y, blk
 
 
@@ -356,14 +356,23 @@ def gain(k: float, u: Var | Const, name: str = "gain_out") -> Tuple[Var, Block]:
     return y, blk
 
 
-def adder(inputs: Sequence[Var | Const], name: str = "sum_out") -> Tuple[Var, Block]:
+def adder(inputs: List[Var], name: str = "sum_out") -> Tuple[Var, Block]:
     if len(inputs) == 0:
         raise ValueError("adder() needs at least one input variable")
     y = Var(name)
-    expr: Expr = inputs[0]
-    for v in inputs[1:]:
-        expr += v
+    in_vars_dict: Dict[str, Var] = dict()
+    expr: Expr = Const(0)
+
+    in_vars_dict[str(0)] = inputs[0]
+    in_vars_dict[str(1)] = inputs[1]
+
+    for i, v in enumerate(inputs):
+        expr += inputs[i]
+
+
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
+    blk.in_vars=in_vars_dict
+    blk.out_vars[str(0)] = y
     return y, blk
 
 

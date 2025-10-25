@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import pdb
 import sys
 import copy
 from enum import Enum, auto
@@ -15,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QComboBox, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
                                QListView, QAbstractItemView, QPushButton, QListWidget, QInputDialog, QWidget,
-                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit)
+                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
@@ -305,7 +306,9 @@ class BlockItem(QGraphicsRectItem):
 
             if dlg.exec() == QDialog.DialogCode.Accepted:
                 new_val = spin.value()
-                _ , self.subsys = constant(new_val)
+                var_obj = next((v for v in self.subsys.event_dict.keys() if v.name == "param"), None)
+                self.subsys.event_dict[var_obj] = Const(new_val)
+                # _ , self.subsys = constant(new_val)
                 self.name_item.setPlainText(f"Const({new_val})")
             return
 
@@ -790,8 +793,8 @@ def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value
         value = const_value if const_value is not None else 0.0
         y, blk = constant(value, name="const")
         blk.name = "const"
-        blk.in_vars = []
-        blk.out_vars = [y]
+        blk.in_vars = dict()
+        blk.out_vars[str(0)]=y
         return blk
 
     if block_type == BlockType.VARIABLE:
@@ -819,10 +822,6 @@ def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value
         inputs = placeholders(ins, "sum_in_")
         y, blk = adder(inputs, name="sum_out")
         blk.name = "sum"
-        if not getattr(blk, "in_vars", None):
-            blk.in_vars = inputs
-        if not getattr(blk, "out_vars", None):
-            blk.out_vars = [y]
         return blk
 
     # INTEGRATOR (1 input -> 1 state output)
@@ -920,9 +919,14 @@ class DiagramScene(QGraphicsScene):
                     dst_port: PortItem = item
                     connection = ConnectionItem(self.source_port, dst_port)
 
-                    dst_var = self.source_port.subsystem.subsys.out_vars[self.source_port.index]
+                    dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
 
-                    dst_port.subsystem.subsys.in_vars[dst_port.index] = dst_var
+
+                    for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
+                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
+                        dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                    dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
+                    pdb.set_trace()
                     # dst_port.subsystem.subsys.active_in_vars.append(dst_port.subsystem.subsys.in_vars[dst_port.index])
 
                     self.addItem(connection)
@@ -1158,6 +1162,8 @@ class TemplateEditor(QtWidgets.QWidget):
             return self.selected_template.event_dict
         return {}
 
+
+
 class InspectModel(QWidget):
     def __init__(self, model_host, parent=None):
         super().__init__(parent)
@@ -1180,14 +1186,19 @@ class InspectModel(QWidget):
         self.list_vars = QListWidget()
         left_panel.addWidget(self.list_vars)
 
-        # Parameters
+        # Parameters (table)
         param_header_layout = QHBoxLayout()
         param_label = QLabel("Parameters")
         param_header_layout.addWidget(param_label)
         left_panel.addLayout(param_header_layout)
 
-        self.list_params = QListWidget()
-        left_panel.addWidget(self.list_params)
+        self.table_params = QTableWidget()
+        self.table_params.setColumnCount(2)
+        self.table_params.setHorizontalHeaderLabels(["Name", "Value"])
+        self.table_params.horizontalHeader().setStretchLastSection(True)
+        self.table_params.verticalHeader().setVisible(False)
+        self.table_params.setEditTriggers(QTableWidget.NoEditTriggers)  # make read-only for now
+        left_panel.addWidget(self.table_params)
 
         # ----------------- RIGHT PANEL -----------------
         right_panel = QVBoxLayout()
@@ -1200,6 +1211,8 @@ class InspectModel(QWidget):
 
         self.list_eqns = QListWidget()
         right_panel.addWidget(self.list_eqns)
+
+        # Initial population
         self.refresh_lists(self.model_host.model)
 
     def refresh_lists(self, model=None, clear=True):
@@ -1207,35 +1220,32 @@ class InspectModel(QWidget):
         if model is None:
             model = self.model_host.model
 
-        # Only clear at the top-level call
         if clear:
             self.list_vars.clear()
-            self.list_params.clear()
+            self.table_params.setRowCount(0)
             self.list_eqns.clear()
 
-        # Add variables
+        # --- Variables ---
         for var in model.state_vars + model.algebraic_vars:
             item = QListWidgetItem(f"{var.name} ({'state' if var in model.state_vars else 'algebraic'})")
             self.list_vars.addItem(item)
 
-        # for var in getattr(model, "active_in_vars", []):
-        #     item = QListWidgetItem(f"{var.name} (input)")
-        #     self.list_vars.addItem(item)
-
-         # Parameters (uncomment when available)
+        # --- Parameters ---
         for param, value in model.event_dict.items():
-            item = QListWidgetItem(param.name)
-            self.list_params.addItem(item)
+            row = self.table_params.rowCount()
+            self.table_params.insertRow(row)
+            self.table_params.setItem(row, 0, QTableWidgetItem(param.name))
+            self.table_params.setItem(row, 1, QTableWidgetItem(str(model.event_dict[param])))
 
-        # Add Equations
+        # --- Equations ---
         for eq in model.state_eqs + model.algebraic_eqs:
-            item = QListWidgetItem(f"{symbolic_to_string(eq)} ({'state' if eq in model.state_eqs else 'algebraic'})")
+            eq_type = "state" if eq in model.state_eqs else "algebraic"
+            item = QListWidgetItem(f"{symbolic_to_string(eq)} ({eq_type})")
             self.list_eqns.addItem(item)
 
-        # Recurse into children, but without clearing
+        # Recurse into submodels
         for submodel in getattr(model, "children", []):
             self.refresh_lists(submodel, clear=False)
-
 
 
 class BlockBoxesEditor(QSplitter):
