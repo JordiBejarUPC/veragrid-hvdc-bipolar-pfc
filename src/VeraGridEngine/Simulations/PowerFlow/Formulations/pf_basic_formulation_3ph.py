@@ -248,6 +248,7 @@ def compute_current_loads(bus_idx: IntVec,
         b2 = bus_lookup[b]
         c2 = bus_lookup[c]
 
+        nn = 4 * k + 0
         ab = 4 * k + 1
         bc = 4 * k + 2
         ca = 4 * k + 3
@@ -259,6 +260,7 @@ def compute_current_loads(bus_idx: IntVec,
         bc_connected = (Idelta[bc] != zero_load)
         ca_connected = (Idelta[ca] != zero_load)
 
+        n_connected = (Istar[nn] != zero_load)
         a_connected = (Istar[ab] != zero_load)
         b_connected = (Istar[bc] != zero_load)
         c_connected = (Istar[ca] != zero_load)
@@ -302,20 +304,36 @@ def compute_current_loads(bus_idx: IntVec,
             I[a2] = -(-Ica)
             I[c2] = -(Ica)
 
+        elif star and a_connected and b_connected and c_connected and n_connected:
+
+            # I[a2] -= np.conj(Istar[ab]) * (V[a2] / abs(V[a2]))
+            # I[b2] -= np.conj(Istar[bc]) * (V[b2] / abs(V[b2]))
+            # I[c2] -= np.conj(Istar[ca]) * (V[c2] / abs(V[c2]))
+
+            I[a2] -= np.conj(Istar[ab] / voltage_a)
+            I[b2] -= np.conj(Istar[bc] / voltage_b)
+            I[c2] -= np.conj(Istar[ca] / voltage_c)
+
+            I[n2] -= I[a2] + I[b2] + I[c2]
+
         elif star and a_connected and b_connected and c_connected:
+
+            # I[a2] -= np.conj(Istar[ab]) * (V[a2] / abs(V[a2]))
+            # I[b2] -= np.conj(Istar[bc]) * (V[b2] / abs(V[b2]))
+            # I[c2] -= np.conj(Istar[ca]) * (V[c2] / abs(V[c2]))
 
             I[a2] -= np.conj(Istar[ab] / voltage_a)
             I[b2] -= np.conj(Istar[bc] / voltage_b)
             I[c2] -= np.conj(Istar[ca] / voltage_c)
 
         elif star and a_connected:
-            I[a2] += -np.conj(Istar[ab] / voltage_a)
+            I[a2] -= np.conj(Istar[ab] / voltage_a)
 
         elif star and b_connected:
-            I[b2] += -np.conj(Istar[bc] / voltage_b)
+            I[b2] -= np.conj(Istar[bc] / voltage_b)
 
         elif star and c_connected:
-            I[c2] += -np.conj(Istar[ca] / voltage_c)
+            I[c2] -= np.conj(Istar[ca] / voltage_c)
 
         else:
             pass
@@ -354,14 +372,15 @@ def compute_Ibus_delta(bus_idx: IntVec,
         b = 4 * f + 2
         c = 4 * f + 3
 
-        n2 = bus_lookup[a]
+        n2 = bus_lookup[n]
         a2 = bus_lookup[a]
         b2 = bus_lookup[b]
         c2 = bus_lookup[c]
 
-        ab = 3 * k + 0
-        bc = 3 * k + 1
-        ca = 3 * k + 2
+        nn = 4 * k + 0
+        ab = 4 * k + 1
+        bc = 4 * k + 2
+        ca = 4 * k + 3
 
         ab_connected = (Sdelta[ab] != 0.0 + 0.0j or Ydelta[ab] != 0.0 + 0.0j)
         bc_connected = (Sdelta[bc] != 0.0 + 0.0j or Ydelta[bc] != 0.0 + 0.0j)
@@ -885,7 +904,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # converged?
         self._converged = self._error < self.options.tolerance
 
-        # Test Impedance Load #
+        # Test Impedance Loads
         # C = self.Ybus[4:8,0:4]
         # C = np.array(C.todense())
         # D = self.Ybus[4:8,4:8]
@@ -897,7 +916,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # End Test
 
-        # Test Current Load
+        # Test Current Loads
         # C = self.Ybus[3:6,0:3]
         # C = np.array(C.todense())
         # D = self.Ybus[3:6,3:6]

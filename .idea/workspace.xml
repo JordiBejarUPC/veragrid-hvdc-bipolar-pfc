@@ -28,11 +28,14 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Single-phase GroundedStar current loads + TEST.">
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_Delta_2ph.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Two-phase Delta current loads + TEST.">
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_NeutralStar_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -165,6 +168,7 @@
     "Python tests.pytest for test_3ph_pf_neutral.test_current_delta_3ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_1ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph.executor": "Run",
+    "Python tests.pytest for test_3ph_pf_neutral.test_current_neutralstar_3ph.executor": "Run",
     "Python tests.pytest for test_ac_opf.test_superconductors_handling.executor": "Run",
     "Python tests.pytest for test_basic.test_gridcal_basic_pi.executor": "Debug",
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
@@ -189,10 +193,11 @@
     "Python.Current_Delta_3ph.executor": "Run",
     "Python.Current_GroundedStar_1ph.executor": "Run",
     "Python.Current_GroundedStar_3ph.executor": "Run",
+    "Python.Current_NeutralStar_3ph.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
     "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
-    "Python.Impedance_Delta_2ph.executor": "Run",
+    "Python.Impedance_Delta_2ph.executor": "Debug",
     "Python.Impedance_GroundedStar_1ph.executor": "Debug",
     "Python.Impedance_NeutralStar_1ph.executor": "Debug",
     "Python._callers.executor": "Debug",
@@ -274,7 +279,7 @@
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_2ph">
+  <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -752,7 +757,7 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in test_3ph_pf_neutral.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest for test_3ph_pf_neutral.test_current_neutralstar_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -766,26 +771,26 @@
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <option name="_new_target" value="&quot;test_3ph_pf_neutral.test_current_neutralstar_3ph&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
     <list>
       <item itemvalue="Python.block_solver" />
       <item itemvalue="Python.test_raw_cgmes_cross_roundtrip" />
+      <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_neutralstar_3ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_2ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_1ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_3ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph" />
-      <item itemvalue="Python tests.pytest in test_3ph_pf_neutral.py" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_neutralstar_3ph" />
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_2ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_1ph" />
-        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_3ph" />
-        <item itemvalue="Python tests.pytest in test_3ph_pf_neutral.py" />
       </list>
     </recent_temporary>
   </component>
@@ -1916,7 +1921,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="640" />
+    <option name="localTasksCounter" value="641" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1962,7 +1967,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved bus to voltage level conversion (WIP)" />
     <MESSAGE value="added gslv contingencies example" />
     <MESSAGE value="Incorporated GSLV contingencies snapshot" />
     <MESSAGE value="Added power flow video" />
@@ -1987,7 +1991,8 @@
     <MESSAGE value="Delta and GroundedStar current loads" />
     <MESSAGE value="Tests for Delta and GroundedStar current loads." />
     <MESSAGE value="Single-phase GroundedStar current loads + TEST." />
-    <option name="LAST_COMMIT_MESSAGE" value="Single-phase GroundedStar current loads + TEST." />
+    <MESSAGE value="Two-phase Delta current loads + TEST." />
+    <option name="LAST_COMMIT_MESSAGE" value="Two-phase Delta current loads + TEST." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2059,13 +2064,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>775</line>
+          <line>779</line>
           <option name="timeStamp" value="55" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py</url>
-          <line>936</line>
-          <option name="timeStamp" value="3074" />
+          <line>955</line>
+          <option name="timeStamp" value="73" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

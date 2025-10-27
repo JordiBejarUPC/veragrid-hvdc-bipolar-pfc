@@ -441,27 +441,31 @@ def get_load_data(data: LoadData,
 
                 elif elm.conn == ShuntConnectionType.NeutralStar:
 
+                    # Admittance
                     Ya = elm.get_Y1_conj_at(t_idx)
                     Yb = elm.get_Y2_conj_at(t_idx)
                     Yc = elm.get_Y3_conj_at(t_idx)
-
                     # First row
                     data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-4
                     data.Y3_star[4 * ii + 0, 1] = -Ya
                     data.Y3_star[4 * ii + 0, 2] = -Yb
                     data.Y3_star[4 * ii + 0, 3] = -Yc
-
                     # Second row
                     data.Y3_star[4 * ii + 1, 0] = -Ya
                     data.Y3_star[4 * ii + 1, 1] = Ya
-
                     # Third row
                     data.Y3_star[4 * ii + 2, 0] = -Yb
                     data.Y3_star[4 * ii + 2, 2] = Yb
-
                     # Fourth row
                     data.Y3_star[4 * ii + 3, 0] = -Yc
                     data.Y3_star[4 * ii + 3, 3] = Yc
+
+                    # Current
+                    data.I3_star[4 * ii + 0] = -elm.get_I1_at(t_idx) - elm.get_I2_at(t_idx) - elm.get_I3_at(t_idx)
+                    data.I3_star[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_star[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_star[4 * ii + 3] = elm.get_I3_at(t_idx)
+
 
                 elif elm.conn == ShuntConnectionType.Delta:
 

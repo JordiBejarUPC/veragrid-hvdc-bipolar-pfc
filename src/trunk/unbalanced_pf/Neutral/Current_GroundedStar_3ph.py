@@ -52,7 +52,7 @@ grid.add_transformer2w(XFM_1)
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
 res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                             solver_type=SolverType.LM,
+                                                             solver_type=SolverType.NR,
                                                              retry_with_other_methods=False))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -62,8 +62,8 @@ pd.set_option("display.float_format", "{:.5f}".format)
 
 print()
 print(res.get_voltage_3ph_df())
-print()
-print(res.get_current_3ph_df())
+# print()
+# print(res.get_current_3ph_df())
 #
 # print("\nConverged? ", res.converged)
 # print("\nIterations: ", res.iterations)
