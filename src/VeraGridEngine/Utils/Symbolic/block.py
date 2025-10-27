@@ -323,13 +323,16 @@ class Block:
 # Pre defined blocks
 # ----------------------------------------------------------------------------------------------------------------------
 
-def constant(value: float, name: str = "const") -> Tuple[Var, Block]:
-
+def constant(name: str = "const") -> Tuple[Var, Block]:
+    name: str = "const"
     y = Var(name)
     param = Var("param")
 
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - param])
-    blk.event_dict[param] = Const(1)
+    blk.event_dict[param] = Const(0.0)
+    blk.in_vars = dict()
+    blk.out_vars[str(0)] = y
+    blk.name = "const"
     return y, blk
 
 
@@ -356,24 +359,22 @@ def gain(k: float, u: Var | Const, name: str = "gain_out") -> Tuple[Var, Block]:
     return y, blk
 
 
-def adder(inputs: List[Var], name: str = "sum_out") -> Tuple[Var, Block]:
+def adder() -> Block:
+    inputs = [Var("sum_in_1"), Var("sum_in_2")] # will not be specified if inputs can be more than 2
     if len(inputs) == 0:
         raise ValueError("adder() needs at least one input variable")
-    y = Var(name)
+    y = Var("sum_out")
     in_vars_dict: Dict[str, Var] = dict()
-    expr: Expr = Const(0)
-
-    in_vars_dict[str(0)] = inputs[0]
-    in_vars_dict[str(1)] = inputs[1]
-
-    for i, v in enumerate(inputs):
-        expr += inputs[i]
-
-
+    expr: Expr = inputs[0]
+    for i, inpt in enumerate(inputs):
+        in_vars_dict[str(i)] = inpt
+        if i>0:
+            expr += inpt
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
     blk.in_vars=in_vars_dict
     blk.out_vars[str(0)] = y
-    return y, blk
+    blk.name = "sum"
+    return blk
 
 
 def substract(inputs: Sequence[Var | Const], name: str = "substract_out") -> Tuple[Var, Block]:

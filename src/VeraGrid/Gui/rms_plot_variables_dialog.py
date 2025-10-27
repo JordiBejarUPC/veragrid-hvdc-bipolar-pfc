@@ -48,7 +48,7 @@ class RmsPlotDialog(QDialog):
         self.devices = devices_options
         self.results_table = ResultsTable(
                 data=np.array(results.values),
-                index=np.array(pd.to_datetime(results.time_array).total_seconds().astype(str), dtype=np.str_),
+                index=np.array(pd.to_datetime(results.time_array).astype(str), dtype=np.str_), # from Santiago add index=np.array(pd.to_datetime(results.time_array).total_seconds().astype(str), dtype=np.str_)
                 columns=results.variable_array,
                 title="Rms Simulation Results",
                 units=results.units,

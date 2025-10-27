@@ -780,7 +780,7 @@ class GraphicsView(QGraphicsView):
 
 
 
-def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value: Optional[float] = None) -> Block:
+def create_block_of_type(block_type: BlockType, ins: int = 0, outs: int = 0, const_value: Optional[float] = None) -> Block:
     """
     Create a Block appropriate for block_type. Use placeholder Vars for inputs/outputs
     so that Block.in_vars and Block.out_vars are not empty.
@@ -790,11 +790,7 @@ def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value
         return [Var(f"{base}{i}") for i in range(n)]
 
     if block_type == BlockType.CONSTANT:
-        value = const_value if const_value is not None else 0.0
-        y, blk = constant(value, name="const")
-        blk.name = "const"
-        blk.in_vars = dict()
-        blk.out_vars[str(0)]=y
+        y, blk = constant()
         return blk
 
     if block_type == BlockType.VARIABLE:
@@ -817,11 +813,8 @@ def create_block_of_type(block_type: BlockType, ins: int, outs: int, const_value
         return blk
 
     # SUM / ADDER (N inputs)
-    if block_type == BlockType.SUM or block_type == BlockType.PRODUCT:
-        # for SUM use adder; for PRODUCT you may later implement product()
-        inputs = placeholders(ins, "sum_in_")
-        y, blk = adder(inputs, name="sum_out")
-        blk.name = "sum"
+    if block_type == BlockType.SUM:
+        blk = adder()
         return blk
 
     # INTEGRATOR (1 input -> 1 state output)
@@ -925,8 +918,10 @@ class DiagramScene(QGraphicsScene):
                     for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
                         dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                    for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
+                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
+                        dst_port.subsystem.subsys.state_eqs[i] = new_equ
                     dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
-                    pdb.set_trace()
                     # dst_port.subsystem.subsys.active_in_vars.append(dst_port.subsystem.subsys.in_vars[dst_port.index])
 
                     self.addItem(connection)
@@ -1402,10 +1397,7 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                blk: Block = create_block_of_type(block_type=tpe,
-                                              ins=2,
-                                              outs=1,
-                                              const_value=3)
+                blk: Block = create_block_of_type(block_type=tpe)
 
                 if blk is not None:
                     self.main_block.add(blk)

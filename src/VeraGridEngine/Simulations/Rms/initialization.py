@@ -352,17 +352,26 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
     # initialize injections
     for elm in grid.get_injection_devices_iter():
         elm.initialize_rms()
-        # resolve events
-        # check if there is an event actuating through this element and initialize rms accordingly
-        rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
-        if len(rms_evts) != 0:
-            # here the equations for the parameters are changed according to the event
+        # create dictionary for collecting events of the same parameter
 
-            for rms_event in rms_events:
+        if elm.rms_model.model.event_dict is not None:
+            collect_events = {
+                key: {"times": [], "values": []}
+                for key in elm.rms_model.model.event_dict.keys()
+            }
+            # find out if there are events affecting the device parameters
+            rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
+            if len(rms_evts) !=0:
+                for rms_evt in rms_evts:
+                    collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+                    collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+                    # TODO: implement the function in block: apply_event
+                for param, events_info in collect_events.items():
+                    default_value = copy.deepcopy(elm.rms_model.model.event_dict[param])
+                    elm.rms_model.model.event_dict[param] = piecewise(grid.time, np.array(events_info["times"]),
+                                                                  np.array(events_info["values"]), default_value)
 
-                # TODO: implement the function in block: apply_event
-                default_value = copy.deepcopy(elm.rms_model.model.event_dict[rms_event.parameter])
-                elm.rms_model.model.event_dict[rms_event.parameter] = piecewise(grid.time, rms_event.times, rms_event.values, default_value)
+
         # after applying the events the model has to be "build"
         mdl = elm.rms_model.model
         # add variable to conservation equations of the bus to which the element is connected

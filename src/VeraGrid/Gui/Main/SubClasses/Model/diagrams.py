@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import pdb
 from typing import List, Tuple, Union, Callable, Iterable
 
 import networkx as nx
@@ -2574,11 +2575,13 @@ class DiagramsMain(CompiledArraysMain):
                                                  category="single" if len(target_devices) == 1 else "multiple")
                     self.circuit.add_rms_events_group(group)
 
-                    event_data = rms_events_dialog.get_data()
+                    events_data = rms_events_dialog.get_data() # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
+                    events_list = []
+                    for i, event in enumerate(events_data["parameters"]):
+                        events_list.append(dev.RmsEvent(target_device, device_params[device_params_str.index(events_data["parameters"][i])], float(events_data["target_times"][i]), float(events_data["values"][i]), group=group))
 
-                    event1 = dev.RmsEvent(target_device, device_params[device_params_str.index(event_data["parameter"])], np.array(event_data["target_times"]), np.array(event_data["new_values"]), group=group)
-
-                    self.circuit.add_rms_event(event1)
+                    for event in events_list:
+                        self.circuit.add_rms_event(event)
 
             else:
                 raise ValueError(f"Select one and only one device to add event to")
