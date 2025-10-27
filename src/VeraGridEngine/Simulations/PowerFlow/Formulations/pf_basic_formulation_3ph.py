@@ -316,6 +316,21 @@ def compute_current_loads(bus_idx: IntVec,
 
             I[n2] -= I[a2] + I[b2] + I[c2]
 
+        elif star and a_connected and n_connected:
+
+            I[a2] -= np.conj(Istar[ab] / voltage_a)
+            I[n2] -= I[a2]
+
+        elif star and b_connected and n_connected:
+
+            I[b2] -= np.conj(Istar[bc] / voltage_b)
+            I[n2] -= I[b2]
+
+        elif star and c_connected and n_connected:
+
+            I[c2] -= np.conj(Istar[ca] / voltage_c)
+            I[n2] -= I[c2]
+
         elif star and a_connected and b_connected and c_connected:
 
             # I[a2] -= np.conj(Istar[ab]) * (V[a2] / abs(V[a2]))
