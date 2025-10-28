@@ -323,10 +323,10 @@ class Block:
 # Pre defined blocks
 # ----------------------------------------------------------------------------------------------------------------------
 
-def constant(name: str = "const") -> Block:
-    name: str = "const"
-    y = Var(name)
-    param = Var("param")
+def constant(item_name:str = "") -> Block:
+    name: str = "const_"
+    y = Var(name + item_name)
+    param = Var("param_" + item_name)
 
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - param])
     blk.event_dict[param] = Const(0.0)
@@ -335,11 +335,11 @@ def constant(name: str = "const") -> Block:
     blk.name = "const"
     return blk
 
-def gain() -> Block:
-    inputs = [Var("inp_num")]
+def gain(item_name:str = "") -> Block:
+    inputs = [Var("inp_num_" + item_name)]
     name: str = "gain"
-    y = Var(name)
-    gain_param = Var("gain_param")
+    y = Var(name + item_name)
+    gain_param = Var("gain_param_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
@@ -353,7 +353,7 @@ def gain() -> Block:
 
 
 
-def variable(name: str = "variable", vartype: str = "vartype") -> Tuple[Var, Block]:
+def variable(name: str = "variable_", vartype: str = "vartype_") -> Tuple[Var, Block]:
     y = Var(name)
     if vartype == 'state':
         blk = Block(state_vars=[y])
@@ -372,9 +372,9 @@ def equation(expr: str = 'expression', etype: str = "etype") -> Block:
 
 
 
-def adder() -> Block:
-    inputs = [Var("sum_in_1"), Var("sum_in_2")] # will not be specified if inputs can be more than 2
-    y = Var("sum_out")
+def adder(item_name:str = "") -> Block:
+    inputs = [Var("sum_in_1_" + item_name), Var("sum_in_2_" + item_name)] # will not be specified if inputs can be more than 2
+    y = Var("sum_out_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0]
     for i, inpt in enumerate(inputs):
@@ -387,9 +387,9 @@ def adder() -> Block:
     blk.name = "sum"
     return blk
 
-def substract() -> Block:
-    inputs = [Var("minuend"), Var("subtrahend")]
-    y = Var("difference")
+def substract(item_name:str = "") -> Block:
+    inputs = [Var("minuend_" + item_name), Var("subtrahend_" + item_name)]
+    y = Var("difference_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0] - inputs[1]
     for i, inpt in enumerate(inputs):
@@ -400,9 +400,9 @@ def substract() -> Block:
     blk.name = "substraction"
     return blk
 
-def product() -> Block:
-    inputs = [Var("factor1"), Var("factor2")] # will not be specified if inputs can be more than 2
-    y = Var("product_out")
+def product(item_name:str = "") -> Block:
+    inputs = [Var("factor1_" + item_name), Var("factor2_" + item_name)] # will not be specified if inputs can be more than 2
+    y = Var("product_out_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0] * inputs[1]
     for i, inpt in enumerate(inputs):
@@ -413,9 +413,9 @@ def product() -> Block:
     blk.name = "product"
     return blk
 
-def divide() -> Block:
-    inputs = [Var("divident"), Var("divisor")] # will not be specified if inputs can be more than 2
-    y = Var("quotient")
+def divide(item_name:str = "") -> Block:
+    inputs = [Var("divident_" + item_name), Var("divisor_" + item_name)] # will not be specified if inputs can be more than 2
+    y = Var("quotient_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0]/inputs[1]
     for i, inpt in enumerate(inputs):
@@ -426,9 +426,9 @@ def divide() -> Block:
     blk.name = "divide"
     return blk
 
-def absolut() -> Block:
-    inputs = [Var("inp_num")] # will not be specified if inputs can be more than 2
-    y = Var("absolut")
+def absolut(item_name:str = "") -> Block:
+    inputs = [Var("inp_num_" + item_name)] # will not be specified if inputs can be more than 2
+    y = Var("absolut_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = abs(inputs[0])
     for i, inpt in enumerate(inputs):

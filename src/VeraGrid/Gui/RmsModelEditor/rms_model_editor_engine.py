@@ -232,7 +232,7 @@ class ResizeHandle(QGraphicsRectItem):
 
 
 class BlockItem(QGraphicsRectItem):
-    def __init__(self, block_sys: Block):
+    def __init__(self, name: str):
         """
 
         :param block_sys: Block
@@ -242,7 +242,8 @@ class BlockItem(QGraphicsRectItem):
         # ------------------------
         # API
         # ------------------------
-        self.subsys = block_sys
+        self.subsys = None
+        self.name = name
 
         # ---------------------------
         # Graphical stuff
@@ -256,7 +257,11 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setAcceptHoverEvents(True)
 
-        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+    def set_subsystem(self, block: Block):
+        self.subsys = block
+
+    def build_item(self):
+        self.name_item = QGraphicsTextItem(self.name, self)
 
         self.name_item.setPos(10, 5)
 
@@ -268,12 +273,13 @@ class BlockItem(QGraphicsRectItem):
 
         self.resize_handle = ResizeHandle(self)
 
-        # ✅ Avoid triggering overridden setRect during init
         super().setRect(0, 0, 100, 60)
         self.update_ports()
         self.update_handle_position()
 
         self._resizing_from_handle = False
+
+
 
 
     def mouseDoubleClickEvent(self, event):
@@ -794,44 +800,44 @@ class GraphicsView(QGraphicsView):
 
 
 
-def create_block_of_type(block_type: BlockType) -> Block:
+def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block:
     """
     Create a Block appropriate for block_type. Use placeholder Vars for inputs/outputs
     so that Block.in_vars and Block.out_vars are not empty.
     """
     # GAIN (single output)
     if block_type == BlockType.CONSTANT:
-        blk = constant()
+        blk = constant(item_name)
         return blk
 
     # GAIN (single input -> single output)
     if block_type == BlockType.GAIN:
-        blk = gain()
+        blk = gain(item_name)
         return blk
 
     # SUM / ADDER (2 inputs)
     if block_type == BlockType.SUM:
-        blk = adder()
+        blk = adder(item_name)
         return blk
 
     # SUBSTRACT (2 inputs)
     if block_type == BlockType.SUBSTRACT:
-        blk = substract()
+        blk = substract(item_name)
         return blk
 
     # PRODUCT (2 inputs)
     if block_type == BlockType.PRODUCT:
-        blk = product()
+        blk = product(item_name)
         return blk
 
     # DIVIDE (2 inputs)
     if block_type == BlockType.DIVIDE:
-        blk = divide()
+        blk = divide(item_name)
         return blk
 
     # ABSOLUT (single input -> single output)
     if block_type == BlockType.ABS:
-        blk = absolut()
+        blk = absolut(item_name)
         return blk
 
 def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]):
@@ -1150,6 +1156,29 @@ class TemplateEditor(QtWidgets.QWidget):
             return self.selected_template.event_dict
         return {}
 
+class NameDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Block name")
+        layout = QVBoxLayout(self)
+
+        self.label = QLabel("Enter block name:")
+        self.edit = QLineEdit()
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+            parent=self
+        )
+
+        layout.addWidget(self.label)
+        layout.addWidget(self.edit)
+        layout.addWidget(self.buttons)
+
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+    def get_name(self):
+        return self.edit.text().strip()
+
 
 
 class InspectModel(QWidget):
@@ -1253,6 +1282,8 @@ class BlockBoxesEditor(QSplitter):
         self.diagram = diagram
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
+
+
 
         # --------------------------------------------------------------------------------------------------------------
         # Widget creation
@@ -1390,11 +1421,20 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                blk: Block = create_block_of_type(block_type=tpe)
+                item = None
+                dialog = NameDialog(self.view)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    name = dialog.get_name()
+                    if name:
+                        item = BlockItem(name=name)
 
-                if blk is not None:
-                    self.main_block.add(blk)
-                    item = BlockItem(blk)
+                        block = create_block_of_type(item_name=name, block_type=tpe)
+                        item.set_subsystem(block)
+                        item.build_item()
+
+                if item.subsys is not None:
+                    self.main_block.add(item.subsys)
+
 
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
@@ -1402,7 +1442,7 @@ class BlockBoxesEditor(QSplitter):
                     self.diagram.add_node(
                         x=x0,
                         y=y0,
-                        device_uid=blk.uid,
+                        device_uid=item.subsys.uid,
                         tpe=tpe.name
                     )
 
