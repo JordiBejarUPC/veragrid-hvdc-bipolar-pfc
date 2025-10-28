@@ -28,11 +28,21 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Three-phase NeutralStar current loads + TEST.">
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_NeutralStar_1ph.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Single-phase NeutralStar current loads + TEST.">
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_Delta_2ph.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_GroundedStar_1ph.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_GroundedStar_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_FloatingStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Current_NeutralStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/open_dss_values.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/open_dss_values.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -189,6 +199,7 @@
     "Python.AnalysisDialogue.executor": "Run",
     "Python.Current_Delta_2ph.executor": "Run",
     "Python.Current_Delta_3ph.executor": "Run",
+    "Python.Current_FloatingStar_3ph.executor": "Run",
     "Python.Current_GroundedStar_1ph.executor": "Run",
     "Python.Current_GroundedStar_3ph.executor": "Run",
     "Python.Current_NeutralStar_1ph.executor": "Run",
@@ -197,8 +208,12 @@
     "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
     "Python.Impedance_Delta_2ph.executor": "Debug",
+    "Python.Impedance_FloatingStar_3ph.executor": "Run",
     "Python.Impedance_GroundedStar_1ph.executor": "Debug",
     "Python.Impedance_NeutralStar_1ph.executor": "Debug",
+    "Python.Power_Delta_2ph.executor": "Run",
+    "Python.Power_GroundedStar_1ph.executor": "Run",
+    "Python.Power_GroundedStar_3ph.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
     "Python.block_solver.executor": "Run",
@@ -215,6 +230,7 @@
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.open_dss_values.executor": "Run",
+    "Python.pf_basic_formulation_3ph.executor": "Run",
     "Python.profile.executor": "Debug",
     "Python.pymoo_example.executor": "Debug",
     "Python.python_console.executor": "Run",
@@ -785,11 +801,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_1ph" />
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_neutralstar_1ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_neutralstar_3ph" />
-        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_3ph" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_delta_2ph" />
-        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral.test_current_groundedstar_1ph" />
       </list>
     </recent_temporary>
   </component>
@@ -1920,7 +1936,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="642" />
+    <option name="localTasksCounter" value="643" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1966,7 +1982,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Incorporated GSLV contingencies snapshot" />
     <MESSAGE value="Added power flow video" />
     <MESSAGE value="Added intro video" />
     <MESSAGE value="Morphed the PTDF based reduction into a di-shi based reduction" />
@@ -1991,7 +2006,8 @@
     <MESSAGE value="Single-phase GroundedStar current loads + TEST." />
     <MESSAGE value="Two-phase Delta current loads + TEST." />
     <MESSAGE value="Three-phase NeutralStar current loads + TEST." />
-    <option name="LAST_COMMIT_MESSAGE" value="Three-phase NeutralStar current loads + TEST." />
+    <MESSAGE value="Single-phase NeutralStar current loads + TEST." />
+    <option name="LAST_COMMIT_MESSAGE" value="Single-phase NeutralStar current loads + TEST." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2063,13 +2079,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>779</line>
+          <line>792</line>
           <option name="timeStamp" value="55" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py</url>
-          <line>970</line>
-          <option name="timeStamp" value="73" />
+          <line>489</line>
+          <option name="timeStamp" value="90" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

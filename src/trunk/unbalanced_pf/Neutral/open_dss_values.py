@@ -6,7 +6,7 @@ engine = dss.DSS
 
 # Cargar el circuito
 engine.Text.Command = "ClearAll"
-engine.Text.Command = r"Redirect C:/Users/alexb/OneDrive/eRoots/OpenDSS_Basics/13bus/Neutral/Current_GroundedStar_3ph.dss"
+engine.Text.Command = r"Redirect C:/Users/alexb/OneDrive/eRoots/OpenDSS_Basics/13bus/Neutral/Current_NeutralStar_3ph.dss"
 engine.Text.Command = "Solve"
 
 # Acceder al circuito activo
@@ -25,7 +25,7 @@ for bus in all_buses:
         magn = voltages[i]
         angle = voltages[i+1]
         fase = ["A", "B", "C"][i//2] if i//2 < 3 else f"F{i//2+1}"
-        print(f"  Fase {fase}: {magn/(480/np.sqrt(3)):.20f}, {angle:.20f}°")
+        print(f"  Fase {fase}: {magn/(4160/np.sqrt(3)):.20f}, {angle:.20f}°")
 
 I = np.zeros(3, dtype=complex)
 Ibranch = np.zeros(3, dtype=complex)
@@ -43,6 +43,6 @@ for idx, load in enumerate(["Load.634a", "Load.634b", "Load.634c"]):
 
     #print(f"{load}: {magn:.2f} A, {angle:.2f}°")
 
-print("\nCurrent OpenDSS:")
-I = I / (100*10**6/(np.sqrt(3)*480))
+print("\nCurrent Modules at OpenDSS:")
+I = I / (100*10**6/(np.sqrt(3)*4160))
 print(abs(I))

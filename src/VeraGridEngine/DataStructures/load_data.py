@@ -32,6 +32,7 @@ class LoadData:
 
         self.S3_delta = np.zeros(self.nelm * 4, dtype=complex)
         self.S3_star = np.zeros(self.nelm * 4, dtype=complex)
+        self.S3_floatingstar = np.zeros(self.nelm * 4, dtype=complex)
 
         self.A_floatingstar = np.zeros(self.nelm, dtype=complex)
         self.B_floatingstar = np.zeros(self.nelm, dtype=complex)
@@ -39,6 +40,7 @@ class LoadData:
 
         self.I3_delta = np.zeros(self.nelm * 4, dtype=complex)
         self.I3_star = np.zeros(self.nelm * 4, dtype=complex)
+        self.I3_floatingstar = np.zeros(self.nelm * 4, dtype=complex)
 
         self.Y3_delta = np.zeros(self.nelm * 4, dtype=complex)
         self.Y3_star = np.zeros((self.nelm * 4, 4), dtype=complex)
@@ -83,14 +85,15 @@ class LoadData:
         data.I = self.I[elm_idx]
         data.Y = self.Y[elm_idx]
 
-        elm_idx_3 = ((elm_idx * 3)[:, np.newaxis] + np.arange(3)).flatten()
         elm_idx_4 = ((elm_idx * 4)[:, np.newaxis] + np.arange(4)).flatten()
 
         data.S3_delta = self.S3_delta[elm_idx_4]
         data.S3_star = self.S3_star[elm_idx_4]
+        data.S3_floatingstar = self.S3_floatingstar[elm_idx_4]
 
         data.I3_delta = self.I3_delta[elm_idx_4]
         data.I3_star = self.I3_star[elm_idx_4]
+        data.I3_floatingstar = self.I3_floatingstar[elm_idx_4]
 
         data.Y3_delta = self.Y3_delta[elm_idx_4]
         data.Y3_star = self.Y3_star[elm_idx_4]

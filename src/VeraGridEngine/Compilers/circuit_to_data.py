@@ -412,32 +412,45 @@ def get_load_data(data: LoadData,
 
                 elif elm.conn == ShuntConnectionType.FloatingStar:
 
+                    # Admittances
                     Ya = elm.get_Y1_conj_at(t_idx)
                     Yb = elm.get_Y2_conj_at(t_idx)
                     Yc = elm.get_Y3_conj_at(t_idx)
 
-                    data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
-                    data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
-                    data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
+                    if Ya != 0.0+0.0j and Yb != 0.0+0.0j and Yc != 0.0+0.0j:
+                        data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
+                        data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
+                        data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
 
-                    A = Ya / (Ya + Yb + Yc)
-                    B = Yb / (Ya + Yb + Yc)
-                    C = Yc / (Ya + Yb + Yc)
+                        A = Ya / (Ya + Yb + Yc)
+                        B = Yb / (Ya + Yb + Yc)
+                        C = Yc / (Ya + Yb + Yc)
 
-                    # First row
-                    data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
-                    data.Y3_star[4 * ii + 1, 2] = -B * Ya
-                    data.Y3_star[4 * ii + 1, 3] = -C * Ya
+                        # First row
+                        data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
+                        data.Y3_star[4 * ii + 1, 2] = -B * Ya
+                        data.Y3_star[4 * ii + 1, 3] = -C * Ya
 
-                    # Second row
-                    data.Y3_star[4 * ii + 2, 1] = -A * Yb
-                    data.Y3_star[4 * ii + 2, 2] = (1 - B) * Yb
-                    data.Y3_star[4 * ii + 2, 3] = -C * Yb
+                        # Second row
+                        data.Y3_star[4 * ii + 2, 1] = -A * Yb
+                        data.Y3_star[4 * ii + 2, 2] = (1 - B) * Yb
+                        data.Y3_star[4 * ii + 2, 3] = -C * Yb
 
-                    # Third row
-                    data.Y3_star[4 * ii + 3, 1] = -A * Yc
-                    data.Y3_star[4 * ii + 3, 2] = -B * Yc
-                    data.Y3_star[4 * ii + 3, 3] = (1 - C) * Yc
+                        # Third row
+                        data.Y3_star[4 * ii + 3, 1] = -A * Yc
+                        data.Y3_star[4 * ii + 3, 2] = -B * Yc
+                        data.Y3_star[4 * ii + 3, 3] = (1 - C) * Yc
+
+                    # Currents
+                    Ia = elm.get_I1_at(t_idx)
+                    Ib = elm.get_I2_at(t_idx)
+                    Ic = elm.get_I3_at(t_idx)
+
+                    if Ia != 0.0+0.0j and Ib != 0.0+0.0j and Ic != 0.0+0.0j:
+
+                        data.I3_floatingstar[4 * ii + 1] = Ia
+                        data.I3_floatingstar[4 * ii + 2] = Ib
+                        data.I3_floatingstar[4 * ii + 3] = Ic
 
                 elif elm.conn == ShuntConnectionType.NeutralStar:
 

@@ -343,6 +343,22 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
         results.load_Vn = nc.load_data.A_floatingstar[load_idx] * results.voltage_A[load_bus_idx] + \
                           nc.load_data.B_floatingstar[load_idx] * results.voltage_B[load_bus_idx] + \
                           nc.load_data.C_floatingstar[load_idx] * results.voltage_C[load_bus_idx]
+
+    elif nc.load_data.I3_floatingstar[load_idx+1] > 0.0+0.0j:
+        Ia = np.conj(nc.load_data.I3_floatingstar[load_idx+1])
+        Ib = np.conj(nc.load_data.I3_floatingstar[load_idx+2])
+        Ic = np.conj(nc.load_data.I3_floatingstar[load_idx+3])
+
+        A = Ia + Ib + Ic
+        B = Ia * (results.voltage_B[load_bus_idx] + results.voltage_C[load_bus_idx]) + Ib * (
+                    results.voltage_A[load_bus_idx] + results.voltage_C[load_bus_idx]) + Ic * (
+                        results.voltage_A[load_bus_idx] + results.voltage_B[load_bus_idx])
+        C = Ia * results.voltage_B[load_bus_idx] * results.voltage_C[load_bus_idx] + Ib * results.voltage_A[
+            load_bus_idx] * results.voltage_C[load_bus_idx] + Ic * results.voltage_A[load_bus_idx] * results.voltage_B[
+                load_bus_idx]
+
+        results.load_Vn = (B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+
     else:
         results.load_Vn = results.voltage_N[load_bus_idx]
 

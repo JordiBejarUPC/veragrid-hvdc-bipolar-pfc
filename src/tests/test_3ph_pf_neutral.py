@@ -617,13 +617,13 @@ def test_current_groundedstar_3ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.8938-0.051j])
+        [1 + 0j, 0.89133821-0.0455198j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48983287-0.76381542j])
+        [-0.5 - 0.8660254j, -0.48551977-0.7643368j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.43040155+0.81267735j])
+        [-0.5 + 0.8660254j, -0.43223299+0.81036939j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
@@ -924,13 +924,13 @@ def test_current_groundedstar_1ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.8938-0.051j])
+        [1 + 0j, 0.89133821-0.0455198j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5 - 0.8660254j])
+        [-0.5 - 0.8660254j, -0.5-0.8660254j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5 + 0.8660254j])
+        [-0.5 + 0.8660254j, -0.5+0.8660254j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
