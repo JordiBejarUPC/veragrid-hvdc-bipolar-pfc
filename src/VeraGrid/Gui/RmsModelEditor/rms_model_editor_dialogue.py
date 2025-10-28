@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+import pdb
 import re
 
 from typing import List, Dict, Union
@@ -159,7 +159,6 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 #         return RmsEvent(selected_device, selected_param, time, value)
 
 
-
 class RmsEventEditor(QtWidgets.QDialog):
     def __init__(self, devices: List[ALL_DEV_TYPES], event, parent=None):
         super().__init__(parent)
@@ -167,23 +166,27 @@ class RmsEventEditor(QtWidgets.QDialog):
         self.setMinimumWidth(400)
 
         self.devices = devices
-        self.event = event
 
-        # Inicial values from event
-        device = event.device
-        param = event.parameter
+        # Extract parameters for initial device
+        if event.device is not None:
+            device = event.device
+            self.current_device = device
+            self.parameters: List = [p for p in device.rms_model.model.event_dict]
+            self.parameters_str: List[str] = [p.name for p in self.parameters]
+        else:
+            self.parameters: List = []
+            self.parameters_str: List[str] = []
+            self.current_device = None
+
+        # Initial event values
+        param = event.parameter if event.parameter is not None else None
         time = event.time if event.time is not None else 0.0
         value = event.value if event.value is not None else 0.0
 
         # Store current selections
-        self.current_device = device
         self.current_parameter = param
         self.current_time = time
         self.current_value = value
-
-        # Extract parameters for initial device
-        self.parameters: List = list() if device is None else [p for p in device.rms_model.model.event_dict]
-        self.parameters_str: List[str] = [p.name for p in self.parameters]
 
         # Devices names
         self.dev_str = [d.name for d in self.devices]
@@ -223,16 +226,29 @@ class RmsEventEditor(QtWidgets.QDialog):
         self.value_input.setValue(value)
         layout.addWidget(self.value_input)
 
+        # --- 🔹 Buttons layout (OK / Cancel) ---
+        button_layout = QtWidgets.QHBoxLayout()
+        self.ok_button = QtWidgets.QPushButton("OK")
+        self.cancel_button = QtWidgets.QPushButton("Cancel")
+        button_layout.addStretch(1)
+        button_layout.addWidget(self.ok_button)
+        button_layout.addWidget(self.cancel_button)
+        layout.addLayout(button_layout)
+
         # --- Connections ---
         self.select_device_btn.clicked.connect(self.on_select_device)
         self.dev_selector.currentIndexChanged.connect(self.on_device_changed)
         self.param_selector.currentIndexChanged.connect(self.on_param_changed)
         self.time_input.valueChanged.connect(self.on_time_changed)
         self.value_input.valueChanged.connect(self.on_value_changed)
+        self.ok_button.clicked.connect(self.accept)       # 🔹 Accepts dialog
+        self.cancel_button.clicked.connect(self.reject)   # 🔹 Cancels dialog
 
-        # Set initial selection in device combo
-        self.dev_selector.setCurrentText(device.name)
-        self.param_selector.setCurrentText(param.name)
+        # Set initial selections
+        if self.current_device is not None:
+            self.dev_selector.setCurrentText(self.current_device.name)
+        if param is not None:
+            self.param_selector.setCurrentText(param.name)
 
     # --------------------------
     # Event handlers
@@ -245,15 +261,15 @@ class RmsEventEditor(QtWidgets.QDialog):
         # Update parameter combo
         self.param_selector.clear()
         self.param_selector.addItems([p.name for p in self.parameters])
-        # Reset current parameter to first one
-        self.current_parameter = self.parameters[0]
+        # Reset current parameter
+        if self.parameters:
+            self.current_parameter = self.parameters[0]
 
     def on_device_changed(self, index):
-        # optional: update current_device automatically
         self.current_device = self.devices[index]
 
     def on_param_changed(self, index):
-        if index >= 0 and index < len(self.parameters):
+        if 0 <= index < len(self.parameters):
             self.current_parameter = self.parameters[index]
 
     def on_time_changed(self, value):
@@ -262,15 +278,12 @@ class RmsEventEditor(QtWidgets.QDialog):
     def on_value_changed(self, value):
         self.current_value = value
 
-    # --------------------------
-    # Helper functions
-    # --------------------------
     def get_dev_parameters(self, current_device):
         self.parameters = [p for p in current_device.rms_model.model.event_dict]
 
     def get_updated_event(self):
-        """Return updated RmsEvent based on current selections."""
-        return self.event.__class__(  # assuming event is RmsEvent
+        """Return an updated RmsEvent with the edited fields."""
+        return RmsEvent(
             device=self.current_device,
             parameter=self.current_parameter,
             time=self.current_time,
