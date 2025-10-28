@@ -42,6 +42,10 @@ class Line_0_RmsTemplate(RmsModelTemplate):
         # self.b = Const(self.ys.imag)
         self.bsh = Var('bsh')
 
+        self.event_dict = {self.g: Const(1.98019801980198),
+                                  self.b: Const(-19.801980198019802),
+                                  self.bsh: Const(0.02187)}
+
     def get_block(self):
         block = Block(
             algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
@@ -61,8 +65,6 @@ class Line_0_RmsTemplate(RmsModelTemplate):
                 VarPowerFlowRefferenceType.Qt: self.Qt,
             }
 
-        block.event_dict = {self.g: Const(1.98019801980198),
-                                  self.b: Const(-19.801980198019802),
-                                  self.bsh: Const(0.02187)}
+        block.event_dict = self.event_dict
 
         return block

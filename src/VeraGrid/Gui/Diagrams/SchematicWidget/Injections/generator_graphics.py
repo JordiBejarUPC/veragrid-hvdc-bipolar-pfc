@@ -6,7 +6,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import numpy as np
-from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
@@ -16,12 +15,8 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.enumerations import DeviceType
-
-from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsParameterDialog
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget

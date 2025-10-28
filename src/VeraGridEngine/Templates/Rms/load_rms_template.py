@@ -29,7 +29,7 @@ class LoadRmsTemplate(RmsModelTemplate):
         self.Ql = Var("Ql")
         self.Pl = Var("Pl")
 
-        self.events_dict = {self.Pl0: Const(-0.075000000001172),
+        self.event_dict = {self.Pl0: Const(-0.075000000001172),
                                   self.Ql0: Const(-0.009999999862208533)}
 
     def get_block(self):
@@ -45,7 +45,7 @@ class LoadRmsTemplate(RmsModelTemplate):
             ]
         )
 
-        block.event_dict = self.events_dict
+        block.event_dict = self.event_dict
         block.external_mapping={
                 VarPowerFlowRefferenceType.P: self.Pl,
                 VarPowerFlowRefferenceType.Q: self.Ql

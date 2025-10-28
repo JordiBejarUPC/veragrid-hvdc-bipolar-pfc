@@ -6,7 +6,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
-from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPen, QBrush
 from PySide6.QtWidgets import QMenu, QGraphicsRectItem, QGraphicsSceneContextMenuEvent
@@ -15,12 +14,9 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
-
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -253,65 +249,38 @@ class LineGraphicItem(LineGraphicTemplateItem):
         templ_catalogue = dict()
         templ_list = []
         for templ in templates:
-            if templ.tpe == DeviceType.LineDevice:
+            if templ.tpe == DeviceType.GeneratorDevice:
                 templ_list.append(templ.name)
                 templ_catalogue[templ.name] = templ
 
+        # prompt RmsModelEditorGUI
+        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
+                                             templates_catalogue=templ_catalogue, parent=self.editor)
+        rms_model_editor.show()
 
-        # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templ_list, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
-
-            if choice_dialog.choice == "template":
-
-                # select template
-
-                line_template = templ_catalogue[choice_dialog.selected_template]
-
-                # TODO: Should we be able to change the value of the parameters when choosing a template?
-                # set parameter values from user input using RmsParameterDialog
-                # param_dialog = RmsParameterDialog(line_template, parent=self.editor)
-                # if param_dialog.exec() == QtWidgets.QDialog.Accepted:
-                #     new_values = param_dialog.get_values()
-                #     for param, value in new_values.items():
-                #         setattr(line_template, param, Const(value))  # set parameter value
-
-                # relate Vaf, Vat, Vaf and Vmf variables from template to Vaf, Vat, Vaf and Vmf variables from api_object (which are related to connection bus)
-                # TODO: Check if this is working or eventually we should use a dictionary for vars and equations to change directly the block.
-
-                line_template.Vmf = Vmf
-                line_template.Vaf = Vaf
-                line_template.Vmt = Vmt
-                line_template.Vat = Vat
-
-                # I didn't find a way of connecting Vm and Va of the generator with Vm and Va of the bus without having the build_block function.
-
-
-                self.api_object.rms_model.template = line_template.get_block()
-
-            elif choice_dialog.choice == "editor":
-
-                self.api_object.rms_model.model.external_mapping={
-                    VarPowerFlowRefferenceType.Pf: self.api_object.Pf,
-                    VarPowerFlowRefferenceType.Pt: self.api_object.Pt,
-                    VarPowerFlowRefferenceType.Qf: self.api_object.Qf,
-                    VarPowerFlowRefferenceType.Qt: self.api_object.Qt,
-                }
-
-                if self.api_object.Pf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Pt not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qt not in self.api_object.rms_model.model.algebraic_vars:
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pf)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pt)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qf)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qt)
-
-                if self.api_object.Vmf not in self.api_object.rms_model.model.in_vars and self.api_object.Vaf not in self.api_object.rms_model.model.in_vars and self.api_object.Vmt not in self.api_object.rms_model.model.in_vars and self.api_object.Vat not in self.api_object.rms_model.model.in_vars:
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vmf)
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vaf)
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vmt)
-                    self.api_object.rms_model.model.in_vars.append(self.api_object.Vat)
-
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
+    # elif choice_dialog.choice == "editor":
+    #
+    #             self.api_object.rms_model.model.external_mapping={
+    #                 VarPowerFlowRefferenceType.Pf: self.api_object.Pf,
+    #                 VarPowerFlowRefferenceType.Pt: self.api_object.Pt,
+    #                 VarPowerFlowRefferenceType.Qf: self.api_object.Qf,
+    #                 VarPowerFlowRefferenceType.Qt: self.api_object.Qt,
+    #             }
+    #
+    #             if self.api_object.Pf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Pt not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qt not in self.api_object.rms_model.model.algebraic_vars:
+    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pf)
+    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pt)
+    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qf)
+    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qt)
+    #
+    #             if self.api_object.Vmf not in self.api_object.rms_model.model.in_vars and self.api_object.Vaf not in self.api_object.rms_model.model.in_vars and self.api_object.Vmt not in self.api_object.rms_model.model.in_vars and self.api_object.Vat not in self.api_object.rms_model.model.in_vars:
+    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vmf)
+    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vaf)
+    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vmt)
+    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vat)
+    #
+    #             dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+    #             dlg.show()
 
     def add_to_catalogue(self):
         """

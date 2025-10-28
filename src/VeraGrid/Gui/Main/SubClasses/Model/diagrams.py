@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import os
-import pdb
 from typing import List, Tuple, Union, Callable, Iterable
 
 import networkx as nx
@@ -45,7 +44,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsEventDialogue
+from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]

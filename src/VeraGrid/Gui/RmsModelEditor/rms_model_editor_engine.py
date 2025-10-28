@@ -23,12 +23,13 @@ from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QMod
 
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
-    adder,
     constant,
-    variable,
-    equation,
     gain,
-    integrator,
+    adder,
+    substract,
+    product,
+    divide,
+    absolut,
     generic
 )
 
@@ -62,25 +63,14 @@ class BlockBridge:
 
 
 class BlockType(Enum):
+
+    CONSTANT = auto()
     GAIN = auto()
     SUM = auto()
-    INTEGRATOR = auto()
-    DERIVATIVE = auto()
+    SUBSTRACT = auto()
     PRODUCT = auto()
     DIVIDE = auto()
-    SQRT = auto()
-    SQUARE = auto()
     ABS = auto()
-    MIN = auto()
-    MAX = auto()
-    STEP = auto()
-    CONSTANT = auto()
-    VARIABLE = auto()
-    SATURATION = auto()
-    RELATIONAL = auto()
-    LOGICAL = auto()
-    SOURCE = auto()
-    DRAIN = auto()
     GENERIC = auto()
 
 
@@ -310,6 +300,30 @@ class BlockItem(QGraphicsRectItem):
                 self.subsys.event_dict[var_obj] = Const(new_val)
                 # _ , self.subsys = constant(new_val)
                 self.name_item.setPlainText(f"Const({new_val})")
+            return
+
+        if self.subsys.name.lower().startswith("gain") or self.subsys.name == "GAIN":
+            dlg = QDialog()
+            dlg.setWindowTitle("Edit Gain Parameter Value")
+            layout = QVBoxLayout(dlg)
+
+            spin = QDoubleSpinBox(dlg)
+            spin.setRange(-1e6, 1e6)
+            spin.setValue(self.subsys.value if hasattr(self.subsys, "value") else 0.0)
+            layout.addWidget(QLabel("Gain parameter value:"))
+            layout.addWidget(spin)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            layout.addWidget(buttons)
+            buttons.accepted.connect(dlg.accept)
+            buttons.rejected.connect(dlg.reject)
+
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                new_val = spin.value()
+                var_obj = next((v for v in self.subsys.event_dict.keys() if v.name == "gain_param"), None)
+                self.subsys.event_dict[var_obj] = Const(new_val)
+                # _ , self.subsys = constant(new_val)
+                self.name_item.setPlainText(f"Gain({new_val})")
             return
 
         super().mouseDoubleClickEvent(event)
@@ -780,78 +794,45 @@ class GraphicsView(QGraphicsView):
 
 
 
-def create_block_of_type(block_type: BlockType, ins: int = 0, outs: int = 0, const_value: Optional[float] = None) -> Block:
+def create_block_of_type(block_type: BlockType) -> Block:
     """
     Create a Block appropriate for block_type. Use placeholder Vars for inputs/outputs
     so that Block.in_vars and Block.out_vars are not empty.
     """
-
-    def placeholders(n, base):
-        return [Var(f"{base}{i}") for i in range(n)]
-
+    # GAIN (single output)
     if block_type == BlockType.CONSTANT:
-        y, blk = constant()
-        return blk
-
-    if block_type == BlockType.VARIABLE:
-        y, blk = variable(name="variable")
-        blk.name = "variable"
-        blk.in_vars = []
-        blk.out_vars = [y]
+        blk = constant()
         return blk
 
     # GAIN (single input -> single output)
     if block_type == BlockType.GAIN:
-
-        u = Var("gain_u")  # placeholder input var
-        y, blk = gain(1.0, u, name="gain_out")
-        blk.name = "gain"
-        if not getattr(blk, "in_vars", None):
-            blk.in_vars = [u]
-        if not getattr(blk, "out_vars", None):
-            blk.out_vars = [y]
+        blk = gain()
         return blk
 
-    # SUM / ADDER (N inputs)
+    # SUM / ADDER (2 inputs)
     if block_type == BlockType.SUM:
         blk = adder()
         return blk
 
-    # INTEGRATOR (1 input -> 1 state output)
-    if block_type == BlockType.INTEGRATOR:
-        u = Var("int_u")
-        x, blk = integrator(u, name="x")
-        blk.name = "integrator"
-        if not getattr(blk, "in_vars", None):
-            blk.in_vars = [u]
-        if not getattr(blk, "out_vars", None):
-            blk.out_vars = [x]
+    # SUBSTRACT (2 inputs)
+    if block_type == BlockType.SUBSTRACT:
+        blk = substract()
         return blk
 
-    # SOURCE: a block with only an output (like a constant/source)
-    if block_type == BlockType.SOURCE:
-        y, blk = constant(0.0, name="source_out")
-        blk.name = "source"
-        if not getattr(blk, "out_vars", None):
-            blk.out_vars = [y]
-        blk.in_vars = []
+    # PRODUCT (2 inputs)
+    if block_type == BlockType.PRODUCT:
+        blk = product()
         return blk
 
-    # DRAIN: a sink with inputs but no outputs
-    if block_type == BlockType.DRAIN:
-        ins_vars = placeholders(ins, "drain_in_")
-        blk = Block(name="DRAIN")
-        blk.name = "drain"
-        blk.in_vars = ins_vars
-        blk.out_vars = []
+    # DIVIDE (2 inputs)
+    if block_type == BlockType.DIVIDE:
+        blk = divide()
         return blk
 
-    in_vars = placeholders(ins, f"{block_type.name.lower()}_in_")
-    out_vars = [Var(f"{block_type.name.lower()}_out{i}") for i in range(outs)]
-    blk = Block(name=block_type.name)
-    blk.in_vars = in_vars
-    blk.out_vars = out_vars
-    return blk
+    # ABSOLUT (single input -> single output)
+    if block_type == BlockType.ABS:
+        blk = absolut()
+        return blk
 
 def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]):
     blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
@@ -913,7 +894,6 @@ class DiagramScene(QGraphicsScene):
                     connection = ConnectionItem(self.source_port, dst_port)
 
                     dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
-
 
                     for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
@@ -1083,6 +1063,19 @@ class TemplateEditor(QtWidgets.QWidget):
                 Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
                 self.selected_template.Vm = Vm
                 self.selected_template.Va = Va
+
+            if self.selected_template.tpe == DeviceType.LoadDevice:
+                Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+                self.selected_template.Vm = Vm
+                self.selected_template.Va = Va
+
+            if self.selected_template.tpe == DeviceType.LineDevice:
+                Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
+                Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+                self.selected_template.Vmf = Vmf
+                self.selected_template.Vaf = Vaf
+                self.selected_template.Vmt = Vmt
+                self.selected_template.Vat = Vat
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
@@ -1438,14 +1431,8 @@ class BlockBoxesEditor(QSplitter):
 
 
             else:
-                ins = 2 if block_type in {BlockType.SUM, BlockType.PRODUCT, BlockType.MIN, BlockType.MAX} else 1
-                outs = 1
-                if block_type == BlockType.SOURCE:
-                    ins = 0
-                elif block_type == BlockType.DRAIN:
-                    outs = 0
 
-                blk = create_block_of_type(block_type, ins=ins, outs=outs)
+                blk = create_block_of_type(block_type)
                 blk.uid = uid
 
                 block_item = BlockItem(blk)
