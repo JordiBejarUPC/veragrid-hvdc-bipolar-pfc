@@ -425,10 +425,6 @@ def compute_power_loads(bus_idx: IntVec,
         b_connected = (Sstar[bc] != zero_load)
         c_connected = (Sstar[ca] != zero_load)
 
-        voltage_angle_a = np.angle(V[a2])
-        voltage_angle_b = np.angle(V[b2])
-        voltage_angle_c = np.angle(V[c2])
-
         if star and a_connected and b_connected and c_connected:
 
             I[a2] -= np.conj(Sstar[ab] / (V[a2]))
@@ -496,14 +492,20 @@ def compute_Ibus_delta(bus_idx: IntVec,
 
         if ab_connected and bc_connected and ca_connected:
             if a2 > -1 and b2 > -1 and c2 > -1:
-                I[a2] = -1 * ((V[a2] * Sdelta[ab]) / (V[a2] - V[b2]) - (V[a2] * Sdelta[ca]) / (V[c2] - V[a2]))
-                I[b2] = -1 * ((V[b2] * Sdelta[bc]) / (V[b2] - V[c2]) - (V[b2] * Sdelta[ab]) / (V[a2] - V[b2]))
-                I[c2] = -1 * ((V[c2] * Sdelta[ca]) / (V[c2] - V[a2]) - (V[c2] * Sdelta[bc]) / (V[b2] - V[c2]))
+
+                I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
+                I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
+                I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
+                I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
+                I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+
             else:
                 raise Exception('Incorrect load phasing, non-existing phases for this load')
 
         elif ab_connected:
             if a2 > -1 and b2 > -1:
+
                 # Power
                 I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
                 I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
@@ -511,28 +513,35 @@ def compute_Ibus_delta(bus_idx: IntVec,
                 # Admittance
                 I[a2] += -1 * (V[a2] - V[b2]) * Ydelta[ab] / 3
                 I[b2] += -1 * (V[b2] - V[a2]) * Ydelta[ab] / 3
+
             else:
                 raise Exception('Incorrect load phasing, non-existing phases for this load')
 
         elif bc_connected:
             if b2 > -1 and c2 > -1:
-                # S[b2] = -1 * V[b2] * Sdelta[bc] / (V[b2] - V[c2])
-                # S[c2] = -1 * V[c2] * Sdelta[bc] / (V[c2] - V[b2])
+
+                # Power
+                I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
 
                 # Admittance
                 I[b2] += -1 * (V[b2] - V[c2]) * Ydelta[bc] / 3
                 I[c2] += -1 * (V[c2] - V[b2]) * Ydelta[bc] / 3
+
             else:
                 raise Exception('Incorrect load phasing, non-existing phases for this load')
 
         elif ca_connected:
             if c2 > -1 and a2 > -1:
-                # S[c2] = -1 * V[c2] * Sdelta[ca] / (V[c2] - V[a2])
-                # S[a2] = -1 * V[a2] * Sdelta[ca] / (V[a2] - V[c2])
+
+                # Power
+                I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
+                I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
 
                 # Admittance
                 I[c2] += -1 * (V[c2] - V[a2]) * Ydelta[ca] / 3
                 I[a2] += -1 * (V[a2] - V[c2]) * Ydelta[ca] / 3
+
             else:
                 raise Exception('Incorrect load phasing, non-existing phases for this load')
 
