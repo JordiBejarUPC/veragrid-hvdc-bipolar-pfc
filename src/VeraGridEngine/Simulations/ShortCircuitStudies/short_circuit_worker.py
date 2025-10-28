@@ -17,7 +17,6 @@ from VeraGridEngine.basic_structures import CxVec, Vec, IntVec
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (compute_ybus,
                                                                                         compute_Ibus_delta,
                                                                                         compute_current_loads,
-                                                                                        compute_Sbus_star,
                                                                                         compute_ybus_generator,
                                                                                         expand_magnitudes,
                                                                                         expand_indices_3ph,

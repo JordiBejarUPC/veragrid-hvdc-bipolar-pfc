@@ -189,28 +189,28 @@ def compute_Ibus(nc: NumericalCircuit) -> CxVec:
     return Ibus
 
 
-def compute_Sbus_star(nc: NumericalCircuit, V: CxVec, mask) -> Tuple[CxVec, CxVec]:
-    """
-    Compute the Ibus vector
-    :param nc:
-    :param V:
-    :param mask:
-    :return:
-    """
-    n = nc.bus_data.nbus
-    idx4 = np.array([0, 1, 2, 3])
-    Sbus = np.zeros(n * 4, dtype=complex)
-
-    for k in range(nc.load_data.nelm):
-        f = nc.load_data.bus_idx[k]
-        k4 = 4 * k + idx4
-        f4 = 4 * f + idx4
-        Sbus[f4] -= nc.load_data.S3_star[k4] * nc.load_data.active[k]
-
-    # Y_power_star_linear = np.conj(Sbus[mask]) / np.abs(V) ** 2
-    Y_power_star_linear = 0
-
-    return Sbus, Y_power_star_linear
+# def compute_Sbus_star(nc: NumericalCircuit, V: CxVec, mask) -> Tuple[CxVec, CxVec]:
+#     """
+#     Compute the Ibus vector
+#     :param nc:
+#     :param V:
+#     :param mask:
+#     :return:
+#     """
+#     n = nc.bus_data.nbus
+#     idx4 = np.array([0, 1, 2, 3])
+#     Sbus = np.zeros(n * 4, dtype=complex)
+#
+#     for k in range(nc.load_data.nelm):
+#         f = nc.load_data.bus_idx[k]
+#         k4 = 4 * k + idx4
+#         f4 = 4 * f + idx4
+#         Sbus[f4] -= nc.load_data.S3_star[k4] * nc.load_data.active[k]
+#
+#     # Y_power_star_linear = np.conj(Sbus[mask]) / np.abs(V) ** 2
+#     Y_power_star_linear = 0
+#
+#     return Sbus, Y_power_star_linear
 
 
 # @nb.njit(cache=True)
@@ -308,9 +308,16 @@ def compute_current_loads(bus_idx: IntVec,
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 
+            # voltage_angle_n = np.angle(V[n2])
+
+            # I[a2] -= np.conj(Istar[ab]) * np.exp(1j * (voltage_angle_a - voltage_angle_n))
+            # I[b2] -= np.conj(Istar[bc]) * np.exp(1j * (voltage_angle_b - voltage_angle_n))
+            # I[c2] -= np.conj(Istar[ca]) * np.exp(1j * (voltage_angle_c - voltage_angle_n))
+
             I[a2] -= np.conj(Istar[ab]) * np.exp(1j * voltage_angle_a)
             I[b2] -= np.conj(Istar[bc]) * np.exp(1j * voltage_angle_b)
             I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
+
             I[n2] -= I[a2] + I[b2] + I[c2]
 
         elif star and a_connected and n_connected:
@@ -353,11 +360,15 @@ def compute_current_loads(bus_idx: IntVec,
             B = Ia * (V[b2] + V[c2]) + Ib * (V[a2] + V[c2]) + Ic * (V[a2] + V[b2])
             C = Ia * V[b2] * V[c2] + Ib * V[a2] * V[c2] + Ic * V[a2] * V[b2]
 
-            Vn = (B - np.sqrt(B**2 - 4 * A * C)) / (2 * A)
+            Vn = (B + np.sqrt(B**2 - 4 * A * C)) / (2 * A)
 
-            I[a2] -= Ia * ((V[a2] - Vn) / abs(V[a2] - Vn))
-            I[b2] -= Ib * ((V[b2] - Vn) / abs(V[b2] - Vn))
-            I[c2] -= Ic * ((V[c2] - Vn) / abs(V[c2] - Vn))
+            voltage_angle_an = np.angle(V[a2] - Vn)
+            voltage_angle_bn = np.angle(V[b2] - Vn)
+            voltage_angle_cn = np.angle(V[c2] - Vn)
+
+            I[a2] -= Ia * np.exp(1j * voltage_angle_an)
+            I[b2] -= Ib * np.exp(1j * voltage_angle_bn)
+            I[c2] -= Ic * np.exp(1j * voltage_angle_cn)
 
         else:
             pass
@@ -414,13 +425,24 @@ def compute_power_loads(bus_idx: IntVec,
         b_connected = (Sstar[bc] != zero_load)
         c_connected = (Sstar[ca] != zero_load)
 
+        voltage_angle_a = np.angle(V[a2])
+        voltage_angle_b = np.angle(V[b2])
+        voltage_angle_c = np.angle(V[c2])
+
         if star and a_connected and b_connected and c_connected:
-            I[a2] -= np.conj(Sstar[ab] / V[a2])
-            I[b2] -= np.conj(Sstar[bc] / V[b2])
-            I[c2] -= np.conj(Sstar[ca] / V[c2])
+
+            I[a2] -= np.conj(Sstar[ab] / (V[a2]))
+            I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+            I[c2] -= np.conj(Sstar[ca] / (V[c2]))
 
         elif star and a_connected:
             I[a2] -= np.conj(Sstar[ab] / (V[a2]))
+
+        elif star and b_connected:
+            I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+
+        elif star and c_connected:
+            I[c2] -= np.conj(Sstar[ca] / (V[c2]))
 
         else:
             pass
@@ -711,10 +733,10 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         self.logger = logger
         self.nc = nc
 
-        self.S0, self.Y_power_star_linear = compute_Sbus_star(nc, V0new, self.mask)
-        self.Y_power_star_linear: CxVec
-        self.S0 = self.S0 / (nc.Sbase / 3)
-        self.Y_power_star_linear = self.Y_power_star_linear / (nc.Sbase / 3)
+        # self.S0, self.Y_power_star_linear = compute_Sbus_star(nc, V0new, self.mask)
+        # self.Y_power_star_linear: CxVec
+        # self.S0 = self.S0 / (nc.Sbase / 3)
+        # self.Y_power_star_linear = self.Y_power_star_linear / (nc.Sbase / 3)
         # self.I0: CxVec = compute_Ibus(nc) / (nc.Sbase / 3)
 
         self.Qmin = expand3ph(Qmin)[self.mask] * 100e6
@@ -725,7 +747,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
             types=self.nc.bus_data.bus_types
         )
 
-        self.S0 = self.S0[self.mask]
+        # self.S0 = self.S0[self.mask]
         # self.I0 = self.I0[self.mask]
 
         self.vd = expand_slice_indices_3ph(vd, self.bus_lookup)

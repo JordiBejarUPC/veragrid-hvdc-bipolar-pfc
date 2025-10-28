@@ -40,10 +40,10 @@ grid.add_transformer2w(XFM_1)
 # ----------------------------------------------------------------------------------------------------------------------
 load_634 = gce.Load(P1=0.7,
                     Q1=0.5,
-                    Q2=0.6,
-                    B2=0.45,
-                    Q3=0.5,
-                    B3=0.4)
+                    P2=0.6,
+                    Q2=0.45,
+                    P3=0.5,
+                    Q3=0.4)
 load_634.conn = ShuntConnectionType.GroundedStar
 grid.add_load(bus=bus_634, api_obj=load_634)
 
@@ -67,5 +67,9 @@ print(res.get_current_3ph_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-
-# print(res.voltage_A)
+print()
+print(res.voltage_A)
+print()
+print(res.voltage_B)
+print()
+print(res.voltage_C)
