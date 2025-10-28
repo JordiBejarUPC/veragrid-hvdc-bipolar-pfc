@@ -277,9 +277,9 @@ def compute_current_loads(bus_idx: IntVec,
 
         if delta and ab_connected and bc_connected and ca_connected:
 
-            Iab = np.conj(Idelta[ab]) * np.exp(1j * voltage_angle_ab)
-            Ibc = np.conj(Idelta[bc]) * np.exp(1j * voltage_angle_bc)
-            Ica = np.conj(Idelta[ca]) * np.exp(1j * voltage_angle_ca)
+            Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
+            Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
+            Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
 
             I[a2] = -(Iab - Ica)
             I[b2] = -(Ibc - Iab)
@@ -287,21 +287,21 @@ def compute_current_loads(bus_idx: IntVec,
 
         elif delta and ab_connected:
 
-            Iab = np.conj(Idelta[ab]) * np.exp(1j * voltage_angle_ab)
+            Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
 
             I[a2] = -(Iab)
             I[b2] = -(-Iab)
 
         elif delta and bc_connected:
 
-            Ibc = np.conj(Idelta[bc]) * np.exp(1j * voltage_angle_bc)
+            Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
 
             I[b2] = -(Ibc)
             I[c2] = -(-Ibc)
 
         elif delta and ca_connected:
 
-            Ica = np.conj(Idelta[ca]) * np.exp(1j * voltage_angle_ca)
+            Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
 
             I[a2] = -(-Ica)
             I[c2] = -(Ica)

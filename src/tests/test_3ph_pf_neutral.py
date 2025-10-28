@@ -780,13 +780,13 @@ def test_current_delta_3ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.91142295-0.04957461j])
+        [1 + 0j, 0.90895297-0.04547238j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48604435-0.75582812j])
+        [-0.5 - 0.8660254j, -0.48137856-0.75702959j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.4253786+0.80540273j])
+        [-0.5 + 0.8660254j, -0.4275744+0.80250197j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
@@ -850,13 +850,13 @@ def test_current_delta_2ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.96161995-0.05616073j])
+        [1 + 0j, 0.95973492-0.05481973j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.46162239-0.80986805j])
+        [-0.5 - 0.8660254j, -0.45973492-0.81120567j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5 + 0.8660254j])
+        [-0.5 + 0.8660254j, -0.5+0.8660254j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
