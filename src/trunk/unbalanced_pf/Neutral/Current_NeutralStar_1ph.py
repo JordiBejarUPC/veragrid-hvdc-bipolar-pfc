@@ -85,3 +85,64 @@ print("\nIterations: ", res.iterations)
 # print(res.voltage_B)
 # print()
 # print(res.voltage_C)
+
+# print("\nSpecified Current Modules:")
+# Ispec = np.zeros(1)
+# Ispec[0] = abs(0.7 + 0.5j) / (100/3)
+# print(Ispec)
+#
+# print("\nCurrent Modules at VeraGrid:")
+# Ivg = np.zeros(1)
+# Ivg[0] = abs(res.It_B[0])
+# print(Ivg)
+#
+# # ---------------------------------------------------------------------------------------------------------------------
+# # OpenDSS
+# # ---------------------------------------------------------------------------------------------------------------------
+# import dss
+# import numpy as np
+#
+# # Crea el engine
+# engine = dss.DSS
+#
+# # Cargar el circuito
+# engine.Text.Command = "ClearAll"
+# engine.Text.Command = r"Redirect C:/Users/alexb/OneDrive/eRoots/OpenDSS_Basics/13bus/Neutral/Current_NeutralStar_1ph_abcn.dss"
+# engine.Text.Command = "Solve"
+#
+# # Acceder al circuito activo
+# circuit = engine.ActiveCircuit
+#
+# # Lista de buses
+# all_buses = circuit.AllBusNames
+#
+# for bus in all_buses:
+#     circuit.SetActiveBus(bus)
+#     voltages = circuit.ActiveBus.VMagAngle  # [V1, ang1, V2, ang2, V3, ang3...]
+#     U = np.zeros(3)
+#
+#     # print(f"\nBus {bus}:")
+#     for i in range(0, len(voltages), 2):
+#         magn = voltages[i]
+#         angle = voltages[i+1]
+#         fase = ["A", "B", "C"][i//2] if i//2 < 3 else f"F{i//2+1}"
+#         # print(f"  Fase {fase}: {magn/(4160/np.sqrt(3)):.20f}, {angle:.20f}°")
+#
+# Idss = np.zeros(1, dtype=complex)
+#
+# #######################################################################################################################
+#
+# for idx, load in enumerate(["Load.634a"]):
+#     circuit.SetActiveElement(load)
+#     currents = circuit.ActiveCktElement.CurrentsMagAng
+#
+#     magn = currents[0]
+#     angle = currents[1]
+#
+#     Idss[idx] = magn * np.exp(1j * np.deg2rad(angle))
+#
+#     #print(f"{load}: {magn:.2f} A, {angle:.2f}°")
+#
+# print("\nCurrent Modules at OpenDSS:")
+# Idss = Idss / (100*10**6/(np.sqrt(3)*4160))
+# print(abs(Idss))

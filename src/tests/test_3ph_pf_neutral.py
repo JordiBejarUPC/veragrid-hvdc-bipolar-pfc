@@ -706,13 +706,13 @@ def test_current_neutralstar_3ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0.j, 0.96528138-0.01874815j])
+        [1 + 0.j, 0.96531932-0.01773808j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.51293954-0.83862493j])
+        [-0.5 - 0.8660254j, -0.5116578-0.83808239j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.4801515+0.85157508j])
+        [-0.5 + 0.8660254j, -0.4798735+0.8519028j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
@@ -939,7 +939,7 @@ def test_current_groundedstar_1ph():
 
 def test_current_neutralstar_1ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a single-phase current load connected in NeutralStar.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -1009,13 +1009,13 @@ def test_current_neutralstar_1ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.95311965-0.03364013j])
+        [1 + 0j, 0.95117569-0.03075078j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.52117645-0.88219292j])
+        [-0.5 - 0.8660254j, -0.52211318-0.88088602j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.51870402+0.85351396j])
+        [-0.5 + 0.8660254j, -0.51942473+0.85466506j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)

@@ -85,12 +85,12 @@ print(res.get_voltage_3ph_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-print()
-print(res.voltage_A)
-print()
-print(res.voltage_B)
-print()
-print(res.voltage_C)
+# print()
+# print(res.voltage_A)
+# print()
+# print(res.voltage_B)
+# print()
+# print(res.voltage_C)
 
 # print("\nSpecified Current Modules:")
 # Ispec = np.zeros(3)
@@ -99,13 +99,12 @@ print(res.voltage_C)
 # Ispec[2] = abs(0.5 + 0.4j) / (100/3)
 # print(Ispec)
 #
-# I = np.zeros(3)
-# I[0] = abs(res.It_A[0])
-# I[1] = abs(res.It_B[0])
-# I[2] = abs(res.It_C[0])
-#
 # print("\nCurrent Modules at VeraGrid:")
-# print(I)
+# Ivg = np.zeros(3)
+# Ivg[0] = abs(res.It_A[0])
+# Ivg[1] = abs(res.It_B[0])
+# Ivg[2] = abs(res.It_C[0])
+# print(Ivg)
 #
 # # ---------------------------------------------------------------------------------------------------------------------
 # # OpenDSS

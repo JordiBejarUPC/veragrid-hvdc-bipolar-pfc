@@ -219,7 +219,8 @@ def compute_current_loads(bus_idx: IntVec,
                           V: CxVec,
                           Istar: CxVec,
                           Idelta: CxVec,
-                          Ifloating: CxVec) -> Tuple[CxVec, CxVec]:
+                          Ifloating: CxVec,
+                          error) -> Tuple[CxVec, CxVec]:
     """
 
     :param bus_idx:
@@ -267,6 +268,7 @@ def compute_current_loads(bus_idx: IntVec,
         b_connected = (Istar[bc] != zero_load)
         c_connected = (Istar[ca] != zero_load)
 
+        voltage_angle_n = np.angle(V[n2])
         voltage_angle_a = np.angle(V[a2])
         voltage_angle_b = np.angle(V[b2])
         voltage_angle_c = np.angle(V[c2])
@@ -308,32 +310,49 @@ def compute_current_loads(bus_idx: IntVec,
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 
-            # voltage_angle_n = np.angle(V[n2])
-
             # I[a2] -= np.conj(Istar[ab]) * np.exp(1j * (voltage_angle_a - voltage_angle_n))
             # I[b2] -= np.conj(Istar[bc]) * np.exp(1j * (voltage_angle_b - voltage_angle_n))
             # I[c2] -= np.conj(Istar[ca]) * np.exp(1j * (voltage_angle_c - voltage_angle_n))
+            # I[n2] -= I[a2] + I[b2] + I[c2]
 
-            I[a2] -= np.conj(Istar[ab]) * np.exp(1j * voltage_angle_a)
-            I[b2] -= np.conj(Istar[bc]) * np.exp(1j * voltage_angle_b)
-            I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
+            # I[a2] -= np.conj(Istar[ab]) * np.exp(1j * voltage_angle_a)
+            # I[b2] -= np.conj(Istar[bc]) * np.exp(1j * voltage_angle_b)
+            # I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
+            # I[n2] -= I[a2] + I[b2] + I[c2]
 
-            I[n2] -= I[a2] + I[b2] + I[c2]
+            Uan = V[a2] - V[n2]
+            Ubn = V[b2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ian = np.conj(Istar[ab]) * (Uan / abs(Uan))
+            Ibn = np.conj(Istar[bc]) * (Ubn / abs(Ubn))
+            Icn = np.conj(Istar[ca]) * (Ucn / abs(Ucn))
+
+            I[a2] -= Ian
+            I[b2] -= Ibn
+            I[c2] -= Icn
+            I[n2] += (Ian + Ibn + Icn)
 
         elif star and a_connected and n_connected:
 
-            I[a2] -= np.conj(Istar[ab]) * np.exp(1j * voltage_angle_a)
-            I[n2] -= I[a2]
+            Uan = V[a2] - V[n2]
+            Ian = np.conj(Istar[ab]) * (Uan / abs(Uan))
+            I[a2] -= Ian
+            I[n2] += Ian
 
         elif star and b_connected and n_connected:
 
-            I[b2] -= np.conj(Istar[bc]) * np.exp(1j * voltage_angle_b)
-            I[n2] -= I[b2]
+            Ubn = V[b2] - V[n2]
+            Ibn = np.conj(Istar[bc]) * (Ubn / abs(Ubn))
+            I[b2] -= Ibn
+            I[n2] += Ibn
 
         elif star and c_connected and n_connected:
 
-            I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
-            I[n2] -= I[c2]
+            Ucn = V[c2] - V[n2]
+            Icn = np.conj(Istar[ca]) * (Ucn / abs(Ucn))
+            I[c2] -= Icn
+            I[n2] += Icn
 
         elif star and a_connected and b_connected and c_connected:
 
@@ -672,6 +691,11 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
         else:
             x4[4 * k + idx4] = (Vm[k] + magnitudes) * np.exp(1j * (Va[k] + angles))
 
+    x4[4] = 0.045491 * np.exp(1j * 32.4 * np.pi/180)
+    x4[5] = 0.95166 * np.exp(1j * -1.9 * np.pi / 180)
+    x4[6] = 1.024 * np.exp(1j * -120.7 * np.pi / 180)
+    x4[7] = 1.0001 * np.exp(1j * 121.3 * np.pi / 180)
+
     return x4
 
 
@@ -741,6 +765,9 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         PfFormulationTemplate.__init__(self, V0=V0new.astype(complex), options=options)
         self.logger = logger
         self.nc = nc
+
+        self.Un_array = []
+        self.Ua_array = []
 
         # self.S0, self.Y_power_star_linear = compute_Sbus_star(nc, V0new, self.mask)
         # self.Y_power_star_linear: CxVec
@@ -858,7 +885,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
                                                      Idelta=self.nc.load_data.I3_delta,
-                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+                                                     Ifloating=self.nc.load_data.I3_floatingstar,
+                                                     error=self.error)
 
         self.I0 = I0 / (self.nc.Sbase / 3)
         self.Y_current_linear = Y_current_linear / (self.nc.Sbase / 3)
@@ -917,7 +945,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
                                                      Idelta=self.nc.load_data.I3_delta,
-                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+                                                     Ifloating=self.nc.load_data.I3_floatingstar,
+                                                     error=self.error)
 
         self.I0 = I0 / (self.nc.Sbase / 3)
         self.Y_current_linear = Y_current_linear / (self.nc.Sbase / 3)
@@ -971,7 +1000,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
                                                      Idelta=self.nc.load_data.I3_delta,
-                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+                                                     Ifloating=self.nc.load_data.I3_floatingstar,
+                                                     error=self.error)
 
         self.I0 = I0 / (self.nc.Sbase / 3)
         self.Y_current_linear = Y_current_linear / (self.nc.Sbase / 3)
@@ -1136,7 +1166,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
                                                      Idelta=self.nc.load_data.I3_delta,
-                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+                                                     Ifloating=self.nc.load_data.I3_floatingstar,
+                                                     error=self.error)
 
         self.I0 = I0 / (self.nc.Sbase / 3)
         self.Y_current_linear = Y_current_linear / (self.nc.Sbase / 3)
@@ -1150,6 +1181,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         self.Icalc = compute_current(self.Ybus, self.V)
 
         self._f = compute_fx(self.Icalc, Ibus, self.idx_dP, self.idx_dQ)
+
         return self._f
 
     def Jacobian(self, autodiff: bool = True) -> CSC:
@@ -1158,6 +1190,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         :return:
         """
+        # TO delete
+        Un_val = np.angle(self.V[4], deg=True)
+        Ua_val = np.angle(self.V[5], deg=True)
+
+        self.Un_array.append(Un_val)
+        self.Ua_array.append(Ua_val)
+
         # Assumes the internal vars were updated already with self.x2var()
         if self.Ybus.format != 'csc':
             self.Ybus = self.Ybus.tocsc()
