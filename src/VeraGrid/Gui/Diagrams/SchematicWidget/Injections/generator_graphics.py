@@ -4,8 +4,11 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
+
+import pdb
 from typing import TYPE_CHECKING
 import numpy as np
+from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
@@ -127,9 +130,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         :return:
         """
-        # connect generator(api_object) with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
-        Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-
         # load templates
         templates = self.editor.circuit.rms_models
 
@@ -142,11 +142,13 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 templ_catalogue[templ.name] = templ
 
         # prompt RmsModelEditorGUI
-        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list, templates_catalogue= templ_catalogue, parent=self.editor)
+
+        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, api_object_templ_model_host=self.api_object.templ_rms_model, api_object_blkbox_model_host=self.api_object.blkbox_rms_model, api_object_equ_model_host=self.api_object.equ_rms_model, templates_list=templ_list,
+                                             templates_catalogue=templ_catalogue, api_object= self.api_object, parent=self.editor)
         rms_model_editor.show()
 
 
-            # elif choice_dialog.choice == "editor":
+        # elif choice_dialog.choice == "editor":
             #
             #     self.api_object.rms_model.model.external_mapping = {
             #         VarPowerFlowRefferenceType.P: self.api_object.P_g,

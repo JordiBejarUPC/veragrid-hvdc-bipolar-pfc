@@ -249,13 +249,14 @@ class LineGraphicItem(LineGraphicTemplateItem):
         templ_catalogue = dict()
         templ_list = []
         for templ in templates:
-            if templ.tpe == DeviceType.GeneratorDevice:
+            if templ.tpe == DeviceType.LineDevice:
                 templ_list.append(templ.name)
                 templ_catalogue[templ.name] = templ
 
         # prompt RmsModelEditorGUI
         rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
-                                             templates_catalogue=templ_catalogue, parent=self.editor)
+                                             templates_catalogue=templ_catalogue, api_object=self.api_object,
+                                             parent=self.editor)
         rms_model_editor.show()
 
     # elif choice_dialog.choice == "editor":

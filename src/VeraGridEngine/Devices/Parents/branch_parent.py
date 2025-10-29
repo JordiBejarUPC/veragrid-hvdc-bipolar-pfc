@@ -58,6 +58,9 @@ class BranchParent(PhysicalDevice):
         'bus_to_pos',
         'group',
         '_rms_model',
+        '_templ_rms_model',
+        '_blkbox_rms_model',
+        '_equ_rms_model',
     )
 
     def __init__(self,
@@ -183,6 +186,9 @@ class BranchParent(PhysicalDevice):
         self.group: Union[BranchGroup, None] = None
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
+        self._templ_rms_model: DynamicModelHost = DynamicModelHost()
+        self._blkbox_rms_model: DynamicModelHost = DynamicModelHost()
+        self._equ_rms_model: DynamicModelHost = DynamicModelHost()
 
         self.register('bus_from', units="", tpe=DeviceType.BusDevice,
                       definition='Name of the bus at the "from" side', editable=False)
@@ -222,6 +228,14 @@ class BranchParent(PhysicalDevice):
                       is_color=True)
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
+        self.register(key='templ_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+                      definition='RMS dynamic model for templates editor', display=False)
+
+        self.register(key='blkbox_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+                      definition='RMS dynamic model for block boxes editor', display=False)
+
+        self.register(key='equ_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+                      definition='RMS dynamic model for equations editor', display=False)
 
         self.register(key='bus_from_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                       display=False)
@@ -248,6 +262,45 @@ class BranchParent(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
+
+    @property
+    def templ_rms_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
+        return self._templ_rms_model
+
+    @templ_rms_model.setter
+    def templ_rms_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._templ_rms_model = value
+
+    @property
+    def blkbox_rms_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
+        return self._blkbox_rms_model
+
+    @blkbox_rms_model.setter
+    def blkbox_rms_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._blkbox_rms_model = value
+
+    @property
+    def equ_rms_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
+        return self._equ_rms_model
+
+    @equ_rms_model.setter
+    def equ_rms_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._equ_rms_model = value
 
     @property
     def bus_from(self) -> Bus:

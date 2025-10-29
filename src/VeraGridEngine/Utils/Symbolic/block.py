@@ -625,14 +625,19 @@ def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: i
     input_vars = [Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
     blk.in_vars = input_vars
 
-    for v in state_outputs:
+    for i, v in enumerate(state_outputs):
         var = Var(v)
         blk.state_vars.append(var)
-        blk.out_vars.append(var)
+        blk.out_vars[str(i)] = var
 
-    for v in algebraic_outputs:
+    for i, v in enumerate(algebraic_outputs):
         var = Var(v)
         blk.algebraic_vars.append(var)
-        blk.out_vars.append(var)
+        blk.out_vars[str(i)] = var
+
+    in_vars_dict: Dict[str, Var] = dict()
+    for i, inpt in enumerate(input_vars):
+        in_vars_dict[str(i)] = inpt
+    blk.in_vars = in_vars_dict
 
     return blk

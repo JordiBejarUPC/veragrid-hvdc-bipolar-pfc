@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QComboBox, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
                                QListView, QAbstractItemView, QPushButton, QListWidget, QInputDialog, QWidget,
-                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem)
+                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem, QMessageBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
@@ -1008,7 +1008,7 @@ class TemplateEditor(QtWidgets.QWidget):
     parametersUpdated = Signal(dict)  # Emitida al cambiar un parámetro
     templateApplied = Signal(object)  # Emitida al aplicar un template al modelo
 
-    def __init__(self, templates_list, templates_catalogue, api_object_model_host=None, api_object=None, parent=None):
+    def __init__(self, templates_list, templates_catalogue, api_object, api_object_model_host, parent=None):
         super().__init__(parent)
 
         self.templates_catalogue = templates_catalogue
@@ -1140,15 +1140,10 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
             return
         try:
-            self.api_object_model_host.template = self.selected_template.get_block()
+            self.api_object_model_host.model = self.selected_template.get_block()
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to apply template:\n{e}")
             return
-
-        # Notify that template has been applied
-        self.templateApplied.emit(self.selected_template)
-
-        QtWidgets.QMessageBox.information(self, "Template Applied", f"Template '{self.selected_template.name}' applied successfully.")
 
     def get_event_dict(self):
         """Returns current event_dict"""
@@ -1472,10 +1467,11 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                blk = create_block_of_type(block_type)
-                blk.uid = uid
+                block_item = BlockItem(name="name")
 
-                block_item = BlockItem(blk)
+                block = create_block_of_type(item_name="name", block_type=block_type)
+                block_item.set_subsystem(block)
+                block_item.build_item()
                 self.scene.addItem(block_item)
                 block_item.setPos(node.x, node.y)
 
@@ -1711,10 +1707,10 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
 
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
-    def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object = None, parent=None):
+    def __init__(self, api_object_model_host, api_object_templ_model_host, api_object_blkbox_model_host,
+                 api_object_equ_model_host, templates_list, templates_catalogue,
+                 api_object=None, parent=None):
         super().__init__(parent)
-        """
-        """
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -1723,39 +1719,74 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.resize(1000, 700)
 
         self.model_host = api_object_model_host
+        self.templ_model_host = api_object_templ_model_host
+        self.blkbox_model_host = api_object_blkbox_model_host
+        self.equ_model_host = api_object_equ_model_host
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
         self.api_object = api_object
 
         # --- templates editor layout ---
-        # templates_model_host = DynamicModelHost()
-        self.template_editor = TemplateEditor(self.templates_list, self.templates_catalogue, self.model_host, self.api_object)
+        self.template_editor = TemplateEditor(
+            self.templates_list, self.templates_catalogue,
+            self.api_object, self.templ_model_host
+        )
         self.ui.templatesLayout.addWidget(self.template_editor)
 
         # --- block boxes editor layout ---
-        # blockboxes_editor_model_host = DynamicModelHost()
-        self.blockboxes_editor = BlockBoxesEditor(block=self.model_host.model, diagram=self.model_host.diagram, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
+        self.blockboxes_editor = BlockBoxesEditor(
+            block=self.blkbox_model_host.model,
+            diagram=self.blkbox_model_host.diagram,
+            templates_list=self.templates_list,
+            templates_catalogue=self.templates_catalogue
+        )
         self.blockboxes_editor.rebuild_scene_from_diagram()
-
         self.ui.editorLayout.addWidget(self.blockboxes_editor)
 
-        # add equations editor
-        # equations_editor_model_host = DynamicModelHost()
-        self.equations_editor = EditEquations(self.model_host)
+        # --- equations editor layout ---
+        self.equations_editor = EditEquations(self.equ_model_host)
         self.ui.equations_editor_layout.addWidget(self.equations_editor)
 
+        # --- status bar setup ---
+        self.status_label = QtWidgets.QLabel("🔵 No model applied")
+        self.statusBar().addPermanentWidget(self.status_label)
+        self.statusBar().showMessage("Ready")
 
-        # Apply selected model
-        self.choice_model_dict = {"Template model": self.template_editor.api_object_model_host.model,
-                                  "Block editor model": self.blockboxes_editor.main_block,
-                                  "Equations editor model": self.equations_editor.model_host.model}
-
+        # --- connections ---
         self.ui.apply_selected_model_pushButton.clicked.connect(self.on_select_model)
 
     def on_select_model(self):
-        """uploads the selected template and connects Vm and Va variables with bus variables"""
+        """Uploads the selected template and connects Vm and Va variables with bus variables."""
+
+        choice_model_dict = {
+            "Template model": self.template_editor.api_object_model_host.model,
+            "Block editor model": self.blockboxes_editor.main_block,
+            "Equations editor model": self.equations_editor.model_host.model
+        }
+
         selected_model = self.ui.model_selector_comboBox.currentText()
-        self.model_host.model = self.choice_model_dict[selected_model]
+        self.model_host.model = choice_model_dict[selected_model]
+
+        # Determinar el origen (para el mensaje)
+        if selected_model == "Template model":
+            source = "Template editor"
+        elif selected_model == "Block editor model":
+            source = "Blockboxes editor"
+        else:
+            source = "Equations editor"
+
+        # --- Mostrar aviso emergente (opcional) ---
+        QMessageBox.information(
+            self,
+            "Model Applied",
+            f"Model from {source} applied to device."
+        )
+
+        # --- Actualizar la barra de estado ---
+        self.status_label.setText(f"🟢 Current model: {source}")
+        self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
+
+        # --- Activar botón (si aplica) ---
         self.ui.apply_selected_model_pushButton.setEnabled(True)
 
 
