@@ -177,6 +177,13 @@ class Block:
         """
         self.children.append(val)
 
+    def remove(self, val: Block):
+        """
+        Remove a block from block children
+        :param val: Block
+        """
+        self.children.remove(val)
+
     def apply_events(self, events: List[RmsEvent]):
         """
         Apply events to this block
@@ -229,8 +236,8 @@ class Block:
             ],
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
-            "in_vars": _serialize_var_list(self.in_vars),
-            "out_vars": _serialize_var_list(self.out_vars),
+            "in_vars":  [{"number": number, "var": var.to_dict()} for number, var in self.in_vars.items()],
+            "out_vars": [{"number": number, "var": var.to_dict()} for number, var in self.out_vars.items()]
         }
 
     @staticmethod
@@ -240,8 +247,6 @@ class Block:
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
         children = [Block.parse(child) for child in data.get("children", [])]
-        in_vars = _deserialize_var_list(data.get("in_vars", []))
-        out_vars = _deserialize_var_list(data.get("out_vars", []))
 
         block = Block(
             state_vars=state_vars,
@@ -250,8 +255,6 @@ class Block:
             algebraic_eqs=algebraic_eqs,
             init_eqs={},
             children=children,
-            in_vars=in_vars,
-            out_vars=out_vars,
         )
 
         block.uid = int(data.get("uid", block.uid))
@@ -301,6 +304,20 @@ class Block:
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.event_dict[var] = expr
+
+        block.in_vars = {}
+        for pair in data.get("in_vars", []):
+            number = pair["number"]
+            var_dict = pair["var"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+            block.in_vars[number] = var
+
+        block.out_vars = {}
+        for pair in data.get("out_vars", []):
+            number = pair["number"]
+            var_dict = pair["var"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+            block.out_vars[number] = var
 
         block.var_mapping = {v.name: v for v in block.algebraic_vars}
         return block

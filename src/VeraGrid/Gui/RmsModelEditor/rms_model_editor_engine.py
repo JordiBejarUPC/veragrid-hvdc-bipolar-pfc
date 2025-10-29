@@ -10,7 +10,7 @@ import copy
 from enum import Enum, auto
 from typing import List, Dict, Optional, Union, Sequence
 from dataclasses import dataclass
-
+from functools import partial
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
@@ -382,31 +382,32 @@ class BlockItem(QGraphicsRectItem):
                     port.connection.update_path()
         return super().itemChange(change, value)
 
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-
-        delete_action = QAction("Remove Block", menu)
-        menu.addAction(delete_action)
-
-        edit_action = None
-        if self.subsys.name == "generic":
-            edit_action = QAction("Edit Block", menu)
-            menu.addAction(edit_action)
-
-        chosen = menu.exec(event.screenPos())
-
-        if chosen == delete_action:
-            for port in self.inputs + self.outputs:
-                if port.connection:
-                    self.scene().removeItem(port.connection)
-                    if port.connection.source_port:
-                        port.connection.source_port.connection = None
-                    if port.connection.target_port:
-                        port.connection.target_port.connection = None
-            self.scene().removeItem(self)
-
-        elif chosen == edit_action:
-            self.open_generic_editor()
+    # def contextMenuEvent(self, event):
+    #     menu = QMenu()
+    #
+    #     delete_action = QAction("Remove Block", menu)
+    #     menu.addAction(delete_action)
+    #
+    #     edit_action = None
+    #     if self.subsys.name == "generic":
+    #         edit_action = QAction("Edit Block", menu)
+    #         menu.addAction(edit_action)
+    #
+    #     chosen = menu.exec(event.screenPos())
+    #
+    #     if chosen == delete_action:
+    #         for port in self.inputs + self.outputs:
+    #             if port.connection:
+    #                 self.scene().removeItem(port.connection)
+    #                 if port.connection.source_port:
+    #                     port.connection.source_port.connection = None
+    #                 if port.connection.target_port:
+    #                     port.connection.target_port.connection = None
+    #         self.scene().removeItem(self)
+    #         pdb.set_trace()
+    #
+    #     elif chosen == edit_action:
+    #         self.open_generic_editor()
 
     def open_generic_editor(self):
         dlg = QDialog()
@@ -858,6 +859,23 @@ class DiagramScene(QGraphicsScene):
     def get_main_block(self):
         return self._main_block
 
+    def contextMenuEvent(self, event):
+        items = self.items(event.scenePos())
+        if not items:
+            return
+
+        for item in items:
+            if isinstance(item, (BlockItem, ModelHostItem)):
+                menu = QMenu()
+                remove_action = QAction("Remove Block", menu)
+                menu.addAction(remove_action)
+
+                # Safer binding (avoids bool argument issue)
+                remove_action.triggered.connect(partial(self.editor.remove_item, item))
+
+                # Show the context menu at the mouse cursor position
+                menu.exec(event.screenPos())
+                break
 
     def mousePressEvent(self, event):
         for item in self.items(event.scenePos()):
@@ -1353,6 +1371,26 @@ class BlockBoxesEditor(QSplitter):
 
         # Mostrar el diálogo
         dialog.exec()
+
+    def remove_item(self, item: BlockItem | ModelHostItem):
+        # remove item from scene
+        pdb.set_trace()
+        for port in item.inputs + item.outputs:
+            if port.connection:
+                self.scene.removeItem(port.connection)
+                self.diagram.con_data.remove(port.connection)
+                if port.connection.source_port:
+                    port.connection.source_port.connection = None
+                if port.connection.target_port:
+                    port.connection.target_port.connection = None
+        self.scene.removeItem(item)
+
+        # remove block from main_block
+        self.main_block.children.remove(item.subsys)
+        pdb.set_trace()
+
+        # remove data from diagram
+        del self.diagram.node_data[item.subsys.uid]
 
     def graphicsDragEnterEvent(self, event: QDragEnterEvent) -> None:
         """
