@@ -479,6 +479,12 @@ def get_load_data(data: LoadData,
                     data.I3_star[4 * ii + 2] = elm.get_I2_at(t_idx)
                     data.I3_star[4 * ii + 3] = elm.get_I3_at(t_idx)
 
+                    # Current
+                    data.S3_star[4 * ii + 0] = -elm.get_Sa_at(t_idx) - elm.get_Sb_at(t_idx) - elm.get_Sc_at(t_idx)
+                    data.S3_star[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_star[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_star[4 * ii + 3] = elm.get_Sc_at(t_idx)
+
 
                 elif elm.conn == ShuntConnectionType.Delta:
 

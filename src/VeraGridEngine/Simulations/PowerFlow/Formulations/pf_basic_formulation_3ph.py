@@ -310,16 +310,6 @@ def compute_current_loads(bus_idx: IntVec,
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 
-            # I[a2] -= np.conj(Istar[ab]) * np.exp(1j * (voltage_angle_a - voltage_angle_n))
-            # I[b2] -= np.conj(Istar[bc]) * np.exp(1j * (voltage_angle_b - voltage_angle_n))
-            # I[c2] -= np.conj(Istar[ca]) * np.exp(1j * (voltage_angle_c - voltage_angle_n))
-            # I[n2] -= I[a2] + I[b2] + I[c2]
-
-            # I[a2] -= np.conj(Istar[ab]) * np.exp(1j * voltage_angle_a)
-            # I[b2] -= np.conj(Istar[bc]) * np.exp(1j * voltage_angle_b)
-            # I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
-            # I[n2] -= I[a2] + I[b2] + I[c2]
-
             Uan = V[a2] - V[n2]
             Ubn = V[b2] - V[n2]
             Ucn = V[c2] - V[n2]
@@ -444,7 +434,43 @@ def compute_power_loads(bus_idx: IntVec,
         b_connected = (Sstar[bc] != zero_load)
         c_connected = (Sstar[ca] != zero_load)
 
-        if star and a_connected and b_connected and c_connected:
+        if star and a_connected and b_connected and c_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ubn = V[b2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ian = np.conj(Sstar[ab] / Uan)
+            Ibn = np.conj(Sstar[bc] / Ubn)
+            Icn = np.conj(Sstar[ca] / Ucn)
+
+            I[a2] -= Ian
+            I[b2] -= Ibn
+            I[c2] -= Icn
+            I[n2] += (Ian + Ibn + Icn)
+
+        elif star and a_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ian = np.conj(Sstar[ab] / Uan)
+            I[a2] -= Ian
+            I[n2] += Ian
+
+        elif star and b_connected and n_connected:
+
+            Ubn = V[b2] - V[n2]
+            Ibn = np.conj(Sstar[bc] / Ubn)
+            I[b2] -= Ibn
+            I[n2] += Ibn
+
+        elif star and c_connected and n_connected:
+
+            Ucn = V[c2] - V[n2]
+            Icn = np.conj(Sstar[ca] / Ucn)
+            I[c2] -= Icn
+            I[n2] += Icn
+
+        elif star and a_connected and b_connected and c_connected:
 
             I[a2] -= np.conj(Sstar[ab] / (V[a2]))
             I[b2] -= np.conj(Sstar[bc] / (V[b2]))
@@ -690,11 +716,6 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
             x4[4 * k + idx4] = (Vm[k] + magnitudes_slack) * np.exp(1j * (Va[k] + angles_slack))
         else:
             x4[4 * k + idx4] = (Vm[k] + magnitudes) * np.exp(1j * (Va[k] + angles))
-
-    x4[4] = 0.045491 * np.exp(1j * 32.4 * np.pi/180)
-    x4[5] = 0.95166 * np.exp(1j * -1.9 * np.pi / 180)
-    x4[6] = 1.024 * np.exp(1j * -120.7 * np.pi / 180)
-    x4[7] = 1.0001 * np.exp(1j * 121.3 * np.pi / 180)
 
     return x4
 
