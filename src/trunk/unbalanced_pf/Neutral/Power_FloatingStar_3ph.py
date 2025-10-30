@@ -23,12 +23,12 @@ grid.add_bus(obj=bus_634)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(P1=0.3,
-                    Q1=0.3,
-                    P2=0.2,
-                    Q2=0.2,
-                    P3=0.1,
-                    Q3=0.1)
+load_634 = gce.Load(P1=0.7,
+                    Q1=0.5,
+                    P2=0.6,
+                    Q2=0.45,
+                    P3=0.5,
+                    Q3=0.4)
 load_634.conn = ShuntConnectionType.FloatingStar
 grid.add_load(bus=bus_634, api_obj=load_634)
 
@@ -68,14 +68,14 @@ print(res.get_load_neutral_voltage_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-# print()
-# print(res.load_Vn)
-# print()
-# print(res.voltage_A)
-# print()
-# print(res.voltage_B)
-# print()
-# print(res.voltage_C)
+print()
+print(res.load_Vn)
+print()
+print(res.voltage_A)
+print()
+print(res.voltage_B)
+print()
+print(res.voltage_C)
 
 print("\nSpecified Power Modules:")
 Sspec = np.zeros(3)
@@ -86,21 +86,21 @@ print(Sspec)
 
 print("\nPower Modules at VeraGrid UI*:")
 Svg = np.zeros(3)
-Svg[0] = abs(np.conj(res.It_A[0]) * (res.voltage_A[1] - 0.4366946443796176 *np.exp(1j * -83.64411053109009 * np.pi/180)))
-Svg[1] = abs(np.conj(res.It_B[0]) * (res.voltage_B[1] - 0.4366946443796176 *np.exp(1j * -83.64411053109009 * np.pi/180)))
-Svg[2] = abs(np.conj(res.It_C[0]) * (res.voltage_C[1] - 0.4366946443796176 *np.exp(1j * -83.64411053109009 * np.pi/180)))
+Svg[0] = abs(np.conj(res.It_A[0]) * (res.voltage_A[1] - res.load_Vn[0]))
+Svg[1] = abs(np.conj(res.It_B[0]) * (res.voltage_B[1] - res.load_Vn[0]))
+Svg[2] = abs(np.conj(res.It_C[0]) * (res.voltage_C[1] - res.load_Vn[0]))
 print(Svg)
 
 print('\nRatio Sspec/Svg')
 Sratio = Sspec / Svg
 print(Sratio)
 
-print("\nPower Modules at VeraGrid:")
-Svg = np.zeros(3)
-Svg[0] = abs(res.St_A[0]) / (100/3)
-Svg[1] = abs(res.St_B[0]) / (100/3)
-Svg[2] = abs(res.St_C[0]) / (100/3)
-print(Svg)
+# print("\nPower Modules at VeraGrid:")
+# Svg = np.zeros(3)
+# Svg[0] = abs(res.St_A[0]) / (100/3)
+# Svg[1] = abs(res.St_B[0]) / (100/3)
+# Svg[2] = abs(res.St_C[0]) / (100/3)
+# print(Svg)
 
 # print('\nRatio Sspec/Svg')
 # Sratio = Sspec / Svg

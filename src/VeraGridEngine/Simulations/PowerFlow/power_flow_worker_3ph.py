@@ -361,16 +361,12 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
 
     elif nc.load_data.S3_floatingstar[load_idx+1] > 0.0+0.0j:
 
-        # Vn_prev = (results.voltage_A[load_bus_idx] + results.voltage_B[load_bus_idx] + results.voltage_C[load_bus_idx]) / 3
-        Vn_prev = 0.01
-
         Ia, Ib, Ic, results.load_Vn = floating_star_powers(results.voltage_A[load_bus_idx],
                                                            results.voltage_B[load_bus_idx],
                                                            results.voltage_C[load_bus_idx],
                                                            nc.load_data.S3_floatingstar[load_idx + 1],
                                                            nc.load_data.S3_floatingstar[load_idx + 2],
-                                                           nc.load_data.S3_floatingstar[load_idx + 3],
-                                                           Vn_prev)
+                                                           nc.load_data.S3_floatingstar[load_idx + 3])
 
     else:
         results.load_Vn = results.voltage_N[load_bus_idx]

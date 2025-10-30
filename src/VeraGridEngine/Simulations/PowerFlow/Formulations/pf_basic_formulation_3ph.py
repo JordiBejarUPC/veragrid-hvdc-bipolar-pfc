@@ -484,8 +484,8 @@ def compute_power_loads(bus_idx: IntVec,
 
         elif floating:
 
-            Ia, Ib, Ic = floating_star_powers(V[a2], V[b2], V[c2],
-                                              Sfloating[ab], Sfloating[bc], Sfloating[ca])
+            Ia, Ib, Ic, Un = floating_star_powers(V[a2], V[b2], V[c2],
+                                                  Sfloating[ab], Sfloating[bc], Sfloating[ca])
             I[a2] -= Ia
             I[b2] -= Ib
             I[c2] -= Ic

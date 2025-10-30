@@ -286,145 +286,19 @@ def floating_star_powers(Ua,
     C = Sa*Ub*Uc + Sb*Ua*Uc + Sc*Ua*Ub
 
     Un_p = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
-    Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+    # Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
 
-    # Ia = np
+    Un = Un_p
 
+    Ia = np.conj(Sa / (Ua - Un))
+    Ib = np.conj(Sb / (Ub - Un))
+    Ic = np.conj(Sc / (Uc - Un))
 
-# def floating_star_powers(Va, Vb, Vc, Sa, Sb, Sc, Vn):
-#
-#     def Iphase(U, S):
-#         Umag = abs(U)
-#         if Umag < 1e-12:   # guard
-#             return 0j
-#         return np.conj(S / U)
-#
-#     for _ in range(25):  # few Newton steps are usually enough
-#         Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
-#         Ia = Iphase(Ua, Sa)
-#         Ib = Iphase(Ub, Sb)
-#         Ic = Iphase(Uc, Sc)
-#         F = Ia + Ib + Ic                        # complex residual
-#         if abs(F) < 1e-12:
-#             break
-#
-#         # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
-#         # A simple, very stable approximation is to use a secant-like step:
-#         eps = 1e-12
-#         dV = eps * (1.0 + 1.0j)
-#         Uad, Ubd, Ucd = Va - (Vn + dV), Vb - (Vn + dV), Vc - (Vn + dV)
-#         Iad = Iphase(Uad, Sa)
-#         Ibd = Iphase(Ubd, Sb)
-#         Icd = Iphase(Ucd, Sc)
-#         Fd = Iad + Ibd + Icd
-#         Jsec = (Fd - F) / dV if dV != 0 else 1.0
-#         if Jsec == 0:
-#             break
-#         # damped update
-#         Vn = Vn - 0.7 * F / Jsec
-#
-#     # final phase currents to inject (load consumes → subtract at phases)
-#     Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
-#     Ia = Iphase(Ua, Sa)
-#     Ib = Iphase(Ub, Sb)
-#     Ic = Iphase(Uc, Sc)
-#
-#     # print('In =', Ia + Ib + Ic)
-#
-#     return Ia, Ib, Ic, Vn
+    # print('\nUn_p = ', abs(Un_p), '<', np.angle(Un_p, deg=True), 'º')
+    # print('\nUn_n = ', abs(Un_n), '<', np.angle(Un_n, deg=True), 'º')
+    # print('\nIn = ', Ia + Ib + Ic)
 
-# def Iphase(U, S):
-#     Um2 = (U.real*U.real + U.imag*U.imag)
-#     if Um2 < 1e-18:  # guard
-#         return 0j
-#     return np.conj(S / U)
-#
-# # Helper: accumulate residual (Fr, Fi) and Jacobian J wrt x=Re(Vn), y=Im(Vn)
-# def residual_and_jac(Vn, Va, Sa, Vb, Sb, Vc, Sc):
-#     Fr = Fi = 0.0
-#     Jxx = Jxy = Jyx = Jyy = 0.0
-#
-#     for Vf, S in ((Va, Sa), (Vb, Sb), (Vc, Sc)):
-#         # U = Vf - Vn
-#         a = (Vf.real - Vn.real)
-#         b = (Vf.imag - Vn.imag)
-#         den = a*a + b*b
-#         if den < 1e-18:
-#             continue
-#
-#         # Sc = conj(S) = (P - jQ) -> Sr = P, Si = -Q
-#         Sr = (S.real)
-#         Si = (-S.imag)
-#
-#         # Numerators
-#         Nr = Sr*a - Si*b
-#         Ni = Sr*b + Si*a
-#
-#         # Currents (add to residual)
-#         Ir = Nr / den
-#         Ii = Ni / den
-#         Fr += Ir
-#         Fi += Ii
-#
-#         # Partials wrt a,b
-#         dIr_da = (Sr*den - Nr*(2*a)) / (den*den)
-#         dIr_db = (-Si*den - Nr*(2*b)) / (den*den)
-#         dIi_da = (Si*den - Ni*(2*a)) / (den*den)
-#         dIi_db = (Sr*den - Ni*(2*b)) / (den*den)
-#
-#         # Chain rule: a = Vf.real - x, b = Vf.imag - y  -> ∂/∂x = -∂/∂a, ∂/∂y = -∂/∂b
-#         Jxx += -dIr_da
-#         Jxy += -dIr_db
-#         Jyx += -dIi_da
-#         Jyy += -dIi_db
-#
-#     J = np.array([[Jxx, Jxy],
-#                   [Jyx, Jyy]], dtype=float)
-#     r = np.array([Fr, Fi], dtype=float)
-#     return r, J
-#
-# def floating_star_powers(Va,
-#                          Vb,
-#                          Vc,
-#                          Sa,
-#                          Sb,
-#                          Sc,
-#                          Vn0,
-#                          maxit=50,
-#                          tol=1e-9,
-#                          damp=0.7):
-#     """
-#     Solve for floating neutral Vn so that sum_f conj(Sf/(Vf - Vn)) = 0.
-#     Returns Ia, Ib, Ic, Vn.
-#     """
-#     Vn = Vn0
-#
-#     for _ in range(maxit):
-#         r, J = residual_and_jac(Vn, Va, Sa, Vb, Sb, Vc, Sc)
-#         if np.hypot(r[0], r[1]) < tol:
-#             break
-#
-#         # Solve J * step = -r
-#         try:
-#             step = np.linalg.solve(J, -r)
-#         except np.linalg.LinAlgError:
-#             # fallback: small damped step along residual direction
-#             step = -0.1 * r
-#
-#         # Damped update
-#         Vn = complex(Vn.real + damp*step[0], Vn.imag + damp*step[1])
-#
-#     # Final currents
-#     Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
-#     Ia = Iphase(Ua, Sa)
-#     Ib = Iphase(Ub, Sb)
-#     Ic = Iphase(Uc, Sc)
-#
-#     # print('In =', Ia+Ib+Ic)
-#     print('Vn =', abs(Vn), '<', np.angle(Vn, deg=True), 'º')
-#
-#     return Ia, Ib, Ic, Vn
-
+    return Ia, Ib, Ic, Un
 
 
 def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
