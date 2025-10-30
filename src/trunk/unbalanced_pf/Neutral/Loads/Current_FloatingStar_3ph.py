@@ -28,7 +28,18 @@ load_634 = gce.Load(Ir1=0.7,
                     Ir2=0.6,
                     Ii2=0.45,
                     Ir3=0.5,
-                    Ii3=0.4)
+                    Ii3=0.4,
+                    name='Original')
+load_634.conn = ShuntConnectionType.FloatingStar
+grid.add_load(bus=bus_634, api_obj=load_634)
+
+load_634 = gce.Load(Ir1=0.7 / 2,
+                    Ii1=0.5 / 2,
+                    Ir2=0.6 / 2,
+                    Ii2=0.45 / 2,
+                    Ir3=0.5 / 2,
+                    Ii3=0.4 / 2,
+                    name='Half')
 load_634.conn = ShuntConnectionType.FloatingStar
 grid.add_load(bus=bus_634, api_obj=load_634)
 
@@ -77,25 +88,25 @@ print("\nIterations: ", res.iterations)
 # print()
 # print(res.voltage_C)
 
-print("\nSpecified Current Modules:")
-Ispec = np.zeros(3)
-Ispec[0] = abs(0.7 + 0.5j) / (100/3)
-Ispec[1] = abs(0.6 + 0.45j) / (100/3)
-Ispec[2] = abs(0.5 + 0.4j) / (100/3)
-print(Ispec)
-
-print("\nCurrent Modules at VeraGrid:")
-Ivg = np.zeros(3)
-Ivg[0] = abs(res.It_A[0])
-Ivg[1] = abs(res.It_B[0])
-Ivg[2] = abs(res.It_C[0])
-print(Ivg)
-
-print("\nSum of Currents at VeraGrid:")
-Ivg_a = res.It_A
-Ivg_b = res.It_B
-Ivg_c = res.It_C
-print(abs(Ivg_a+Ivg_b+Ivg_c))
+# print("\nSpecified Current Modules:")
+# Ispec = np.zeros(3)
+# Ispec[0] = abs(0.7 + 0.5j) / (100/3)
+# Ispec[1] = abs(0.6 + 0.45j) / (100/3)
+# Ispec[2] = abs(0.5 + 0.4j) / (100/3)
+# print(Ispec)
+#
+# print("\nCurrent Modules at VeraGrid:")
+# Ivg = np.zeros(3)
+# Ivg[0] = abs(res.It_A[0])
+# Ivg[1] = abs(res.It_B[0])
+# Ivg[2] = abs(res.It_C[0])
+# print(Ivg)
+#
+# print("\nSum of Currents at VeraGrid:")
+# Ivg_a = res.It_A
+# Ivg_b = res.It_B
+# Ivg_c = res.It_C
+# print(abs(Ivg_a+Ivg_b+Ivg_c))
 
 # print("\nCurrent Modules at VeraGrid:")
 # Ivg = np.zeros(3)

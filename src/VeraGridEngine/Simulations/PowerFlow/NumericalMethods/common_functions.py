@@ -286,9 +286,12 @@ def floating_star_powers(Ua,
     C = Sa*Ub*Uc + Sb*Ua*Uc + Sc*Ua*Ub
 
     Un_p = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
-    # Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+    Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
 
-    Un = Un_p
+    if abs(Un_p) < abs(Un_n):
+        Un = Un_p
+    else:
+        Un = Un_n
 
     Ia = np.conj(Sa / (Ua - Un))
     Ib = np.conj(Sb / (Ub - Un))
@@ -297,6 +300,8 @@ def floating_star_powers(Ua,
     # print('\nUn_p = ', abs(Un_p), '<', np.angle(Un_p, deg=True), 'º')
     # print('\nUn_n = ', abs(Un_n), '<', np.angle(Un_n, deg=True), 'º')
     # print('\nIn = ', Ia + Ib + Ic)
+
+    Un_abs = abs(Un)
 
     return Ia, Ib, Ic, Un
 
@@ -357,8 +362,11 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     If_expanded = expand_magnitudes(If, branch_lookup)
     It_expanded = expand_magnitudes(It, branch_lookup)
 
-    Sf_expanded = (Vf_expanded-Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
-    St_expanded = (Vt_expanded-Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
+    Sf_expanded = Vf_expanded * np.conj(If_expanded) * (Sbase / 3)
+    St_expanded = Vt_expanded * np.conj(It_expanded) * (Sbase / 3)
+
+    Sf_load_expanded = (Vf_expanded-Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
+    St_load_expanded = (Vt_expanded-Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
 
     # Branch losses in MVA
     losses = (Sf_expanded + St_expanded)

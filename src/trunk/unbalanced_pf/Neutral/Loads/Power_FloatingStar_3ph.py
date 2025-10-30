@@ -23,14 +23,25 @@ grid.add_bus(obj=bus_634)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(P1=0.7,
-                    Q1=0.5,
-                    P2=0.6,
-                    Q2=0.45,
-                    P3=0.5,
-                    Q3=0.4)
-load_634.conn = ShuntConnectionType.FloatingStar
-grid.add_load(bus=bus_634, api_obj=load_634)
+load_634_1 = gce.Load(P1=0.7,
+                      Q1=0.5,
+                      P2=0.6,
+                      Q2=0.45,
+                      P3=0.5,
+                      Q3=0.4,
+                      name='Original')
+load_634_1.conn = ShuntConnectionType.FloatingStar
+grid.add_load(bus=bus_634, api_obj=load_634_1)
+
+load_634_2 = gce.Load(P1=0.7 / 2,
+                      Q1=0.5 / 2,
+                      P2=0.6 / 2,
+                      Q2=0.45 / 2,
+                      P3=0.5 / 2,
+                      Q3=0.4 / 2,
+                      name='Half')
+load_634_2.conn = ShuntConnectionType.FloatingStar
+grid.add_load(bus=bus_634, api_obj=load_634_2)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Transformer
@@ -88,9 +99,9 @@ print("\nIterations: ", res.iterations)
 #
 # print("\nPower Modules at VeraGrid UI*:")
 # Svg = np.zeros(3)
-# Svg[0] = abs(np.conj(res.It_A[0]) * (res.voltage_A[1] - res.load_Vn[0]))
-# Svg[1] = abs(np.conj(res.It_B[0]) * (res.voltage_B[1] - res.load_Vn[0]))
-# Svg[2] = abs(np.conj(res.It_C[0]) * (res.voltage_C[1] - res.load_Vn[0]))
+# Svg[0] = abs(np.conj(res.It_A[0]) * res.voltage_A[1])
+# Svg[1] = abs(np.conj(res.It_B[0]) * res.voltage_B[1])
+# Svg[2] = abs(np.conj(res.It_C[0]) * res.voltage_C[1])
 # print(Svg)
 #
 # print('\nRatio Sspec/Svg')

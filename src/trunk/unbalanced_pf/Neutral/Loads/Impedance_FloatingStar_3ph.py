@@ -28,7 +28,18 @@ load_634 = gce.Load(G1=0.7,
                     G2=0.6,
                     B2=0.45,
                     G3=0.5,
-                    B3=0.4)
+                    B3=0.4,
+                    name='Original')
+load_634.conn = ShuntConnectionType.FloatingStar
+grid.add_load(bus=bus_634, api_obj=load_634)
+
+load_634 = gce.Load(G1=0.3,
+                    B1=0.3,
+                    G2=0.2,
+                    B2=0.2,
+                    G3=0.1,
+                    B3=0.1,
+                    name='Half')
 load_634.conn = ShuntConnectionType.FloatingStar
 grid.add_load(bus=bus_634, api_obj=load_634)
 
