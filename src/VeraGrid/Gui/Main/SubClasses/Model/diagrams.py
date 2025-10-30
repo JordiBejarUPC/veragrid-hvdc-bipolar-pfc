@@ -2766,7 +2766,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         for diagram_widget in self.diagram_widgets_list:
             if isinstance(diagram_widget, SchematicWidget):
-                diagram_widget.delete_diagram_elements(elements)
+                diagram_widget.delete_diagram_elements(elements, propagate=False)
 
 
 

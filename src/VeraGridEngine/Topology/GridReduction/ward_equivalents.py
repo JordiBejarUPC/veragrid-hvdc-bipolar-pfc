@@ -74,9 +74,9 @@ def get_reduction_sets_1(nc: NumericalCircuit,
 
 
 def ward_standard_reduction(grid: MultiCircuit,
-                            reduction_bus_indices: IntVec,
-                            V0: CxVec,
-                            logger: Logger) -> MultiCircuit:
+                           reduction_bus_indices: IntVec,
+                           V0: CxVec,
+                           logger: Logger) -> MultiCircuit:
     """
     Ward standard reduction according to:
     REVIEW OF THE WARD CLASS OF EXTERNAL EQUIVALENTS FOR POWER SYSTEMS

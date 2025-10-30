@@ -110,7 +110,8 @@ class GridReduceDialogue(QtWidgets.QDialog):
                     grid_reduced, logger = ward_standard_reduction(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage
+                        V0=pf_res.voltage,
+                        logger=self.logger
                     )
 
                 elif method == GridReductionMethod.PTDF:
