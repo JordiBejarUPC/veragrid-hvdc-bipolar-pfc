@@ -61,8 +61,9 @@ pd.set_option("display.float_format", "{:.5f}".format)
 
 print()
 print(res.get_voltage_3ph_df())
-print()
-print(res.get_current_3ph_df())
+
+# print()
+# print(res.get_current_3ph_df())
 
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)

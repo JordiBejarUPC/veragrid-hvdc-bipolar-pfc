@@ -28,11 +28,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Three-phase FloatingStar power loads + TEST. All 21 neutral tests passing.">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Organization and simplification of pf_basic_formulation_3ph.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/common_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/common_functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_FloatingStar_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Power_NeutralStar_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1938,7 +1940,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="651" />
+    <option name="localTasksCounter" value="652" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1984,7 +1986,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed critical bug with VEraGrid GUI polluting VeraGridEngine" />
     <MESSAGE value="5.5.8" />
     <MESSAGE value="Added RmsPlotDialog button in the results" />
     <MESSAGE value="Worked on the RmsEditor" />
@@ -2009,7 +2010,8 @@
     <MESSAGE value="Three-phase and Single-phase NeutralStar power loads + TESTS. All neutral tests passing." />
     <MESSAGE value="Three-phase FloatingStar current loads + TESTS. All neutral tests passing." />
     <MESSAGE value="Three-phase FloatingStar power loads + TEST. All 21 neutral tests passing." />
-    <option name="LAST_COMMIT_MESSAGE" value="Three-phase FloatingStar power loads + TEST. All 21 neutral tests passing." />
+    <MESSAGE value="Organization and simplification of pf_basic_formulation_3ph.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Organization and simplification of pf_basic_formulation_3ph.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

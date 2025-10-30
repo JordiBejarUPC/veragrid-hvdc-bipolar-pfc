@@ -64,6 +64,8 @@ print()
 print(res.get_voltage_3ph_df())
 print()
 print(res.get_load_neutral_voltage_df())
+# print()
+# print(res.get_current_3ph_df())
 
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
@@ -76,7 +78,7 @@ print("\nIterations: ", res.iterations)
 # print(res.voltage_B)
 # print()
 # print(res.voltage_C)
-#
+
 # print("\nSpecified Power Modules:")
 # Sspec = np.zeros(3)
 # Sspec[0] = abs(0.7 + 0.5j) / (100/3)
@@ -94,7 +96,7 @@ print("\nIterations: ", res.iterations)
 # print('\nRatio Sspec/Svg')
 # Sratio = Sspec / Svg
 # print(Sratio)
-
+#
 # print("\nPower Modules at VeraGrid:")
 # Svg = np.zeros(3)
 # Svg[0] = abs(res.St_A[0]) / (100/3)

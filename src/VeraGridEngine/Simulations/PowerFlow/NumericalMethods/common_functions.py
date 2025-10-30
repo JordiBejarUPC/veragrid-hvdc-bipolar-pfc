@@ -303,6 +303,7 @@ def floating_star_powers(Ua,
 
 def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
                                           V: CxVec,
+                                          Vn_floating: CxVec,
                                           F: IntVec, T: IntVec,
                                           pv: IntVec, vd: IntVec,
                                           Ybus: CscMat, Yf: CscMat, Yt: CscMat,
@@ -329,8 +330,8 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     :param branch_lookup:
     :return:
     """
-
     V_expanded = expand_magnitudes(V, bus_lookup)
+    Vn_floating_expanded = expand_magnitudes(Vn_floating, bus_lookup)
 
     # power at the slack nodes
     Sbus[vd] = V[vd] * np.conj(Ybus[vd, :] @ V)
@@ -348,14 +349,16 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     # Branches current, loading, etc
     Vf_expanded = V_expanded[F]
     Vt_expanded = V_expanded[T]
+    Vf_floating_expanded = Vn_floating_expanded[F]
+    Vt_floating_expanded = Vn_floating_expanded[T]
 
     If = Yf @ V
     It = Yt @ V
     If_expanded = expand_magnitudes(If, branch_lookup)
     It_expanded = expand_magnitudes(It, branch_lookup)
 
-    Sf_expanded = Vf_expanded * np.conj(If_expanded) * (Sbase / 3)
-    St_expanded = Vt_expanded * np.conj(It_expanded) * (Sbase / 3)
+    Sf_expanded = (Vf_expanded-Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
+    St_expanded = (Vt_expanded-Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
 
     # Branch losses in MVA
     losses = (Sf_expanded + St_expanded)
