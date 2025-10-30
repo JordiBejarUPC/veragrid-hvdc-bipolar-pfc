@@ -17,8 +17,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
-    QMainWindow, QPushButton, QSizePolicy, QSpacerItem,
-    QTabWidget, QVBoxLayout, QWidget)
+    QLabel, QMainWindow, QPushButton, QSizePolicy,
+    QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
 from .icons_rc import *
 
 class Ui_MainWindow(object):
@@ -55,6 +55,20 @@ class Ui_MainWindow(object):
         self.horizontalSpacer = QSpacerItem(856, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
+
+        self.currently_editing_block_label = QLabel(self.frame)
+        self.currently_editing_block_label.setObjectName(u"currently_editing_block_label")
+
+        self.horizontalLayout.addWidget(self.currently_editing_block_label)
+
+        self.horizontalSpacer_2 = QSpacerItem(48, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout.addItem(self.horizontalSpacer_2)
+
+        self.currently_editing_object_label = QLabel(self.frame)
+        self.currently_editing_object_label.setObjectName(u"currently_editing_object_label")
+
+        self.horizontalLayout.addWidget(self.currently_editing_object_label)
 
 
         self.verticalLayout.addWidget(self.frame)
@@ -114,6 +128,8 @@ class Ui_MainWindow(object):
 
         self.model_selector_comboBox.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Select model to apply", None))
         self.apply_selected_model_pushButton.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
+        self.currently_editing_block_label.setText(QCoreApplication.translate("MainWindow", u"Submodel:", None))
+        self.currently_editing_object_label.setText(QCoreApplication.translate("MainWindow", u"Device:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Template", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Block editor", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_edit), QCoreApplication.translate("MainWindow", u"Equations editor", None))

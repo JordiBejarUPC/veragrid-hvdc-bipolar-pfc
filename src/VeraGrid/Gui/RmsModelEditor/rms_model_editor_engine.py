@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import uuid
 import pdb
 import sys
 import copy
@@ -41,6 +42,13 @@ from VeraGridEngine.enumerations import DeviceType
 
 
 #### block editor ########
+
+def _new_uid() -> int:
+    """
+    Generate a fresh UUID‑v4 string.
+    :return: UUIDv4 in integer format
+    """
+    return uuid.uuid4().int
 
 def change_font_size(obj, font_size: int):
     """
@@ -168,6 +176,7 @@ class PortItem(QGraphicsEllipseItem):
 class ConnectionItem(QGraphicsPathItem):
     def __init__(self, source_port, target_port):
         super().__init__()
+        self.uid: int = _new_uid()
         self.setZValue(-1)
         self.source_port = source_port
         self.target_port = target_port
@@ -489,7 +498,7 @@ class BlockItem(QGraphicsRectItem):
         return layout
 
 class ModelHostItem(QGraphicsRectItem):
-    def __init__(self, model_host_sys: DynamicModelHost, templates_list, templates_catalogue):
+    def __init__(self, model_host_sys: DynamicModelHost, templ_model_host_sys: DynamicModelHost, blkbox_model_host_sys: DynamicModelHost, equ_model_host_sys: DynamicModelHost, api_object_name, templates_list, templates_catalogue):
         """
 
         :param block_sys: Block
@@ -500,6 +509,10 @@ class ModelHostItem(QGraphicsRectItem):
         # API
         # ------------------------
         self.model_host = model_host_sys
+        self.templ_model_host = templ_model_host_sys
+        self.blkbox_model_host = templ_model_host_sys
+        self.equ_model_host = templ_model_host_sys
+        self.api_object_name = api_object_name
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
 
@@ -539,7 +552,7 @@ class ModelHostItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
 
-        editor_window = RmsModelEditorGUI(api_object_model_host=self.model_host, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
+        editor_window = RmsModelEditorGUI(api_object_name = self.api_object_name, api_object_model_host=self.model_host, api_object_templ_model_host= self.templ_model_host,  api_object_blkbox_model_host= self.blkbox_model_host, api_object_equ_model_host=self.equ_model_host,  templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
         editor_window.show()
         # Muy importante: guardar referencia para que no se destruya
         self.editor_window = editor_window
@@ -703,6 +716,11 @@ class GenericBlockDialog(QDialog):
 
         layout = QFormLayout(self)
 
+        # --- New: name field ---
+        self.name_edit = QLineEdit()
+        layout.addRow("Block name:", self.name_edit)
+
+        # --- Existing fields ---
         self.state_inputs_spin = QSpinBox()
         self.state_inputs_spin.setMinimum(0)
         layout.addRow("Number of state inputs:", self.state_inputs_spin)
@@ -717,18 +735,20 @@ class GenericBlockDialog(QDialog):
         self.algeb_outputs_edit = QLineEdit()
         layout.addRow("Algebraic outputs (comma separated):", self.algeb_outputs_edit)
 
-        # buttons
+        # --- Buttons ---
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
 
     def get_values(self):
+        """Return all dialog values."""
+        name = self.name_edit.text().strip()
         state_ins = self.state_inputs_spin.value()
         state_outs = [s.strip() for s in self.state_outputs_edit.text().split(",") if s.strip()]
         algeb_ins = self.algeb_inputs_spin.value()
         algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
-        return state_ins, state_outs, algeb_ins, algeb_outs
+        return name, state_ins, state_outs, algeb_ins, algeb_outs
 
 
 
@@ -932,7 +952,7 @@ class DiagramScene(QGraphicsScene):
 
                     color = connection.pen().color().name()
                     # save branches in diagram
-                    self.editor.diagram.add_branch(self.source_port.subsystem.subsys.uid, dst_port.subsystem.subsys.uid, self.source_port.index, dst_port.index, color)
+                    self.editor.diagram.add_branch(connection.uid, self.source_port.subsystem.subsys.uid, dst_port.subsystem.subsys.uid, self.source_port.index, dst_port.index, color)
                     break
 
             self.removeItem(self.temp_line)
@@ -1284,6 +1304,7 @@ class BlockBoxesEditor(QSplitter):
     """
 
     def __init__(self,
+                 api_object_name: str,
                  block: Block,
                  diagram: BlockDiagram,
                  templates_list,
@@ -1291,6 +1312,7 @@ class BlockBoxesEditor(QSplitter):
                  parent=None):
         super().__init__(parent)
 
+        self.api_object_name = api_object_name
         self.main_block = block
         self.diagram = diagram
         self.templates_list = templates_list
@@ -1374,11 +1396,10 @@ class BlockBoxesEditor(QSplitter):
 
     def remove_item(self, item: BlockItem | ModelHostItem):
         # remove item from scene
-        pdb.set_trace()
         for port in item.inputs + item.outputs:
             if port.connection:
                 self.scene.removeItem(port.connection)
-                self.diagram.con_data.remove(port.connection)
+                del self.diagram.con_data[port.connection.uid]
                 if port.connection.source_port:
                     port.connection.source_port.connection = None
                 if port.connection.target_port:
@@ -1386,9 +1407,9 @@ class BlockBoxesEditor(QSplitter):
         self.scene.removeItem(item)
 
         # remove block from main_block
-        self.main_block.children.remove(item.subsys)
-        pdb.set_trace()
-
+        for sub_block in self.main_block.children:
+            if sub_block.uid == item.subsys.uid:
+                self.main_block.children.remove(sub_block)
         # remove data from diagram
         del self.diagram.node_data[item.subsys.uid]
 
@@ -1428,22 +1449,27 @@ class BlockBoxesEditor(QSplitter):
             if tpe == BlockType.GENERIC:
                 dialog = GenericBlockDialog(self)
                 if dialog.exec() == QDialog.DialogCode.Accepted:
-                    state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
+                    name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
 
                     model_host: DynamicModelHost = DynamicModelHost()
+                    templ_model_host:  DynamicModelHost = DynamicModelHost()
+                    blkbox_model_host: DynamicModelHost = DynamicModelHost()
+                    equ_model_host: DynamicModelHost = DynamicModelHost()
 
                     model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
                     self.main_block.add(model_host.model)
 
-                    item = ModelHostItem(model_host, self.templates_list, self.templates_catalogue)
+                    item = ModelHostItem(model_host, templ_model_host, blkbox_model_host, equ_model_host, self.api_object_name, self.templates_list, self.templates_catalogue)
 
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
+                        name = name,
                         x=x0,
                         y=y0,
                         device_uid=model_host.model.uid,
+                        api_object_name=self.api_object_name,
                         tpe=tpe.name,
                         state_ins=state_ins,
                         state_outs=state_outs,
@@ -1455,6 +1481,7 @@ class BlockBoxesEditor(QSplitter):
             else:
 
                 item = None
+                name = None
                 dialog = NameDialog(self.view)
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     name = dialog.get_name()
@@ -1473,10 +1500,11 @@ class BlockBoxesEditor(QSplitter):
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
+                        name = name,
                         x=x0,
                         y=y0,
+                        tpe=tpe.name,
                         device_uid=item.subsys.uid,
-                        tpe=tpe.name
                     )
 
     def rebuild_scene_from_diagram(self):
@@ -1491,13 +1519,16 @@ class BlockBoxesEditor(QSplitter):
             if block_type == BlockType.GENERIC:
 
                 model_host = DynamicModelHost()
+                templ_model_host = DynamicModelHost()
+                blkbox_model_host = DynamicModelHost()
+                equ_model_host = DynamicModelHost()
                 model_host.model = create_generic_block(
                     node.state_ins, node.state_outs,
                     node.algeb_ins, node.algeb_outs
                 )
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
+                item = ModelHostItem(model_host_sys = model_host, templ_model_host_sys = templ_model_host, blkbox_model_host_sys=blkbox_model_host, equ_model_host_sys=equ_model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
                 self.scene.addItem(item)
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item
@@ -1505,9 +1536,10 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                block_item = BlockItem(name="name")
+                block_item = BlockItem(name=node.name)
 
-                block = create_block_of_type(item_name="name", block_type=block_type)
+                block = create_block_of_type(item_name=node.name, block_type=block_type)
+                block.uid = uid
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 self.scene.addItem(block_item)
@@ -1517,7 +1549,7 @@ class BlockBoxesEditor(QSplitter):
 
 
         # Recreate connections
-        for con in self.diagram.con_data:
+        for uid, con in self.diagram.con_data.items():
             src_item = uid_to_blockitem.get(con.from_uid)
             dst_item = uid_to_blockitem.get(con.to_uid)
             if not src_item or not dst_item:
@@ -1530,6 +1562,7 @@ class BlockBoxesEditor(QSplitter):
                 continue  # invalid port number
 
             connection = ConnectionItem(src_port, dst_port)
+            connection.uid = uid
             self.scene.addItem(connection)
 
         self.block_system = self.scene.get_main_block()
@@ -1746,7 +1779,7 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
     def __init__(self, api_object_model_host, api_object_templ_model_host, api_object_blkbox_model_host,
-                 api_object_equ_model_host, templates_list, templates_catalogue,
+                 api_object_equ_model_host, templates_list, templates_catalogue, api_object_name,
                  api_object=None, parent=None):
         super().__init__(parent)
 
@@ -1756,6 +1789,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.setWindowTitle("RMS Model Editor")
         self.resize(1000, 700)
 
+        self.api_object_name = api_object_name
         self.model_host = api_object_model_host
         self.templ_model_host = api_object_templ_model_host
         self.blkbox_model_host = api_object_blkbox_model_host
@@ -1770,9 +1804,11 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             self.api_object, self.templ_model_host
         )
         self.ui.templatesLayout.addWidget(self.template_editor)
+        self.ui.currently_editing_object_label.setText(self.api_object_name)
 
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
+            api_object_name= self.api_object_name,
             block=self.blkbox_model_host.model,
             diagram=self.blkbox_model_host.diagram,
             templates_list=self.templates_list,
@@ -1805,7 +1841,6 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         selected_model = self.ui.model_selector_comboBox.currentText()
         self.model_host.model = choice_model_dict[selected_model]
 
-        # Determinar el origen (para el mensaje)
         if selected_model == "Template model":
             source = "Template editor"
         elif selected_model == "Block editor model":
@@ -1813,18 +1848,18 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         else:
             source = "Equations editor"
 
-        # --- Mostrar aviso emergente (opcional) ---
+        #---info to the user---
         QMessageBox.information(
             self,
             "Model Applied",
             f"Model from {source} applied to device."
         )
 
-        # --- Actualizar la barra de estado ---
+        # --- Update model applyed ---
         self.status_label.setText(f"🟢 Current model: {source}")
         self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
 
-        # --- Activar botón (si aplica) ---
+        # --- Activate push button---
         self.ui.apply_selected_model_pushButton.setEnabled(True)
 
 

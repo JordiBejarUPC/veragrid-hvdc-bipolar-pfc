@@ -14,10 +14,12 @@ from VeraGridEngine.enumerations import DeviceType
 
 @dataclass
 class BlockDiagramNode:
+    name: str
     x: float
     y: float
     tpe: str
     device_uid: int
+    api_object_name: str
     state_ins: int
     state_outs: Sequence[str]
     algeb_ins: int
@@ -26,10 +28,12 @@ class BlockDiagramNode:
 
     def get_node_dict(self) -> Dict[str, Any]:
         data: Dict[str, Any] = {
+            'name': self.name,
             'x': self.x,
             'y': self.y,
             'tpe': self.tpe,
             'device_uid': self.device_uid,
+            'api_object_name': self.api_object_name,
             'state_ins': self.state_ins,
             'state_uots': self.state_outs,
             'algeb_ins': self.algeb_ins,
@@ -74,13 +78,18 @@ class BlockDiagram:
         :param name: Diagram name
         """
         self.node_data: Dict[int, BlockDiagramNode] = dict()
-        self.con_data: List[BlockDiagramConnection] = list()
+        self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
-    def add_node(self, x: float, y: float, tpe: str, device_uid: int, state_ins: int = 0,
+    def add_node(self, name: str, x: float, y: float, tpe: str, device_uid: int, api_object_name: str = "", state_ins: int = 0,
                  state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [],
                  subdiagram: BlockDiagram = None):
         """
-
+        :param api_object_name:
+        :param state_ins:
+        :param state_outs:
+        :param algeb_ins:
+        :param algeb_outs:
+        :param name:
         :param x:
         :param y:
         :param device_uid:
@@ -89,10 +98,12 @@ class BlockDiagram:
         :return:
         """
         self.node_data[device_uid] = BlockDiagramNode(
+            name = name,
             x=x,
             y=y,
             tpe=tpe,
             device_uid=device_uid,
+            api_object_name=api_object_name,
             state_ins=state_ins,
             state_outs=state_outs,
             algeb_ins=algeb_ins,
@@ -100,10 +111,10 @@ class BlockDiagram:
             sub_diagram=subdiagram
         )
 
-    def add_branch(self, device_uid_from: int, device_uid_to: int,
+    def add_branch(self, connectionitem_uid: int, device_uid_from: int, device_uid_to: int,
                    port_number_from: int, port_number_to: int, color: str):
         """
-
+        :param connectionitem_uid:
         :param device_uid_from:
         :param device_uid_to:
         :param port_number_from:
@@ -111,22 +122,21 @@ class BlockDiagram:
         :param color:
         :return:
         """
-        self.con_data.append(
-            BlockDiagramConnection(
+
+        self.con_data[connectionitem_uid] = BlockDiagramConnection(
                 from_uid=device_uid_from,
                 to_uid=device_uid_to,
                 port_number_from=port_number_from,
                 port_number_to=port_number_to,
                 color=color
             )
-        )
 
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
         graph_info = {device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
         return graph_info
 
     def get_con_data_dict(self) -> Dict[int, Dict[str, Any]]:
-        graph_info = {index: connection.get_connection_dict() for index, connection in enumerate(self.con_data)}
+        graph_info = {connection_uid: connection.get_connection_dict() for connection_uid, connection in self.con_data.items()}
         return graph_info
 
     def parse_nodes(self, nodes_data) -> None:
@@ -142,10 +152,12 @@ class BlockDiagram:
                 subdiagram.parse_branches(node["sub_diagram"]["connections"])
 
             self.node_data[int(uid)] = BlockDiagramNode(
+                name=node['name'],
                 x=node['x'],
                 y=node['y'],
                 tpe=node['tpe'],
                 device_uid=node['device_uid'],
+                api_object_name=node['api_object_name'],
                 state_ins=node['state_ins'],
                 state_outs=node['state_outs'],
                 algeb_ins=node['algeb_ins'],
@@ -157,14 +169,14 @@ class BlockDiagram:
         """
         Parse connection data from dictionary
         """
-        self.con_data = []
-        for idx, node in con_data.items():
-            self.con_data.append(BlockDiagramConnection(
-                from_uid=node['from_uid'],
-                to_uid=node['to_uid'],
-                port_number_from=node['port_number_from'],
-                port_number_to=node['port_number_to'],
-                color=node['color'],
+        self.con_data = dict()
+        for uid, con in con_data.items():
+            self.con_data[int(uid)] = (BlockDiagramConnection(
+                from_uid=con['from_uid'],
+                to_uid=con['to_uid'],
+                port_number_from=con['port_number_from'],
+                port_number_to=con['port_number_to'],
+                color=con['color'],
             ))
 
 
