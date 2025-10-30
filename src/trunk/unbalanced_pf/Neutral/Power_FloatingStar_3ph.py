@@ -68,32 +68,32 @@ print(res.get_load_neutral_voltage_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-print()
-print(res.load_Vn)
-print()
-print(res.voltage_A)
-print()
-print(res.voltage_B)
-print()
-print(res.voltage_C)
-
-print("\nSpecified Power Modules:")
-Sspec = np.zeros(3)
-Sspec[0] = abs(0.7 + 0.5j) / (100/3)
-Sspec[1] = abs(0.6 + 0.45j) / (100/3)
-Sspec[2] = abs(0.5 + 0.4j) / (100/3)
-print(Sspec)
-
-print("\nPower Modules at VeraGrid UI*:")
-Svg = np.zeros(3)
-Svg[0] = abs(np.conj(res.It_A[0]) * (res.voltage_A[1] - res.load_Vn[0]))
-Svg[1] = abs(np.conj(res.It_B[0]) * (res.voltage_B[1] - res.load_Vn[0]))
-Svg[2] = abs(np.conj(res.It_C[0]) * (res.voltage_C[1] - res.load_Vn[0]))
-print(Svg)
-
-print('\nRatio Sspec/Svg')
-Sratio = Sspec / Svg
-print(Sratio)
+# print()
+# print(res.load_Vn)
+# print()
+# print(res.voltage_A)
+# print()
+# print(res.voltage_B)
+# print()
+# print(res.voltage_C)
+#
+# print("\nSpecified Power Modules:")
+# Sspec = np.zeros(3)
+# Sspec[0] = abs(0.7 + 0.5j) / (100/3)
+# Sspec[1] = abs(0.6 + 0.45j) / (100/3)
+# Sspec[2] = abs(0.5 + 0.4j) / (100/3)
+# print(Sspec)
+#
+# print("\nPower Modules at VeraGrid UI*:")
+# Svg = np.zeros(3)
+# Svg[0] = abs(np.conj(res.It_A[0]) * (res.voltage_A[1] - res.load_Vn[0]))
+# Svg[1] = abs(np.conj(res.It_B[0]) * (res.voltage_B[1] - res.load_Vn[0]))
+# Svg[2] = abs(np.conj(res.It_C[0]) * (res.voltage_C[1] - res.load_Vn[0]))
+# print(Svg)
+#
+# print('\nRatio Sspec/Svg')
+# Sratio = Sspec / Svg
+# print(Sratio)
 
 # print("\nPower Modules at VeraGrid:")
 # Svg = np.zeros(3)
@@ -106,8 +106,8 @@ print(Sratio)
 # Sratio = Sspec / Svg
 # print(Sratio)
 
-print("\nSum of Currents at VeraGrid:")
-Ivg_a = res.It_A
-Ivg_b = res.It_B
-Ivg_c = res.It_C
-print(Ivg_a+Ivg_b+Ivg_c)
+# print("\nSum of Currents at VeraGrid:")
+# Ivg_a = res.It_A
+# Ivg_b = res.It_B
+# Ivg_c = res.It_C
+# print(Ivg_a+Ivg_b+Ivg_c)

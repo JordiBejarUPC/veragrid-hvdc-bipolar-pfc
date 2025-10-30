@@ -15,7 +15,6 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.basic_structures import CxVec, Vec, IntVec
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (compute_ybus,
-                                                                                        compute_Ibus_delta,
                                                                                         compute_current_loads,
                                                                                         compute_ybus_generator,
                                                                                         expand_magnitudes,
