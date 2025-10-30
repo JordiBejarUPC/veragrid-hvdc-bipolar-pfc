@@ -373,9 +373,6 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
     Pbus3_load, Pbus3_gen, Pbus3_gen_srap = X[:, 0], X[:, 1], X[:, 2]
 
-
-    
-
     dPload = Pbus_load2 - Pbus3_load
     dPgen = Pbus_gen2 - Pbus3_gen
     dPgen_srap = Pbus_gen_srap2 - Pbus3_gen_srap
@@ -404,7 +401,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
         bus = grid.buses[i]
         if abs(dPload[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=dPload[i])
+            elm = Load(name=f"compensated load {i}", P=-dPload[i])
 
             if dPbus_load_ts is not None:
                 elm.P_prof = dPbus_load_ts[:, i]
@@ -412,7 +409,8 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_load(bus=bus, api_obj=elm)
 
         if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False, 
+                            is_controlled=False, power_factor=0.999)
 
             if dPbus_gen_ts is not None:
                 elm.P_prof = -dPbus_gen_ts[:, i]
@@ -420,7 +418,8 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_generator(bus=bus, api_obj=elm)
 
         if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True,
+                            is_controlled=False, power_factor=0.999)
 
             if dPbus_gen_srap_ts is not None:
                 elm.P_prof = -dPbus_gen_srap_ts[:, i]
