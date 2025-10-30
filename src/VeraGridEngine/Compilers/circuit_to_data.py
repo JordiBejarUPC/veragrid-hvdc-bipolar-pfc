@@ -452,6 +452,17 @@ def get_load_data(data: LoadData,
                         data.I3_floatingstar[4 * ii + 2] = Ib
                         data.I3_floatingstar[4 * ii + 3] = Ic
 
+                    # Powers
+                    Sa = elm.get_Sa_at(t_idx)
+                    Sb = elm.get_Sb_at(t_idx)
+                    Sc = elm.get_Sc_at(t_idx)
+
+                    if Sa != 0.0+0.0j and Sb != 0.0+0.0j and Sc != 0.0+0.0j:
+
+                        data.S3_floatingstar[4 * ii + 1] = Sa
+                        data.S3_floatingstar[4 * ii + 2] = Sb
+                        data.S3_floatingstar[4 * ii + 3] = Sc
+
                 elif elm.conn == ShuntConnectionType.NeutralStar:
 
                     # Admittance
@@ -487,25 +498,6 @@ def get_load_data(data: LoadData,
 
 
                 elif elm.conn == ShuntConnectionType.Delta:
-
-                    # data.S3_delta[3 * ii + 0] = complex(elm.Pa, elm.Qa)
-                    # data.S3_delta[3 * ii + 1] = complex(elm.Pb, elm.Qb)
-                    # data.S3_delta[3 * ii + 2] = complex(elm.Pc, elm.Qc)
-                    #
-                    # data.I3_delta[3 * ii + 0] = complex(elm.Ir1, elm.Ii1)
-                    # data.I3_delta[3 * ii + 1] = complex(elm.Ir2, elm.Ii2)
-                    # data.I3_delta[3 * ii + 2] = complex(elm.Ir3, elm.Ii3)
-                    #
-                    # if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
-                    #     data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
-                    #         Yab=complex(elm.G1, -elm.B1),
-                    #         Ybc=complex(elm.G2, -elm.B2),
-                    #         Yca=complex(elm.G3, -elm.B3)
-                    #     )
-                    # else:
-                    #     data.Y3_delta[3 * ii + 0] = complex(elm.G1, -elm.B1)
-                    #     data.Y3_delta[3 * ii + 1] = complex(elm.G2, -elm.B2)
-                    #     data.Y3_delta[3 * ii + 2] = complex(elm.G3, -elm.B3)
 
                     data.S3_delta[4 * ii + 1] = elm.get_Sa_at(t_idx)
                     data.S3_delta[4 * ii + 2] = elm.get_Sb_at(t_idx)

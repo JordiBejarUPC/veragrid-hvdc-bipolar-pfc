@@ -14,6 +14,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph,
                                                                                         expand3ph,
                                                                                         expandVoltage3ph)
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (floating_star_currents,
+                                                                                    floating_star_powers)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.levenberg_marquadt_fx import levenberg_marquardt_fx
@@ -345,19 +347,30 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
                           nc.load_data.C_floatingstar[load_idx] * results.voltage_C[load_bus_idx]
 
     elif nc.load_data.I3_floatingstar[load_idx+1] > 0.0+0.0j:
-        Ia = np.conj(nc.load_data.I3_floatingstar[load_idx+1])
-        Ib = np.conj(nc.load_data.I3_floatingstar[load_idx+2])
-        Ic = np.conj(nc.load_data.I3_floatingstar[load_idx+3])
 
-        A = Ia + Ib + Ic
-        B = Ia * (results.voltage_B[load_bus_idx] + results.voltage_C[load_bus_idx]) + Ib * (
-                    results.voltage_A[load_bus_idx] + results.voltage_C[load_bus_idx]) + Ic * (
-                        results.voltage_A[load_bus_idx] + results.voltage_B[load_bus_idx])
-        C = Ia * results.voltage_B[load_bus_idx] * results.voltage_C[load_bus_idx] + Ib * results.voltage_A[
-            load_bus_idx] * results.voltage_C[load_bus_idx] + Ic * results.voltage_A[load_bus_idx] * results.voltage_B[
-                load_bus_idx]
+        Vn_prev = (results.voltage_A[load_bus_idx] + results.voltage_B[load_bus_idx] + results.voltage_C[
+            load_bus_idx]) / 3
 
-        results.load_Vn = (B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+        Ia, Ib, Ic, results.load_Vn = floating_star_currents(results.voltage_A[load_bus_idx],
+                                                             results.voltage_B[load_bus_idx],
+                                                             results.voltage_C[load_bus_idx],
+                                                             nc.load_data.I3_floatingstar[load_idx + 1],
+                                                             nc.load_data.I3_floatingstar[load_idx + 2],
+                                                             nc.load_data.I3_floatingstar[load_idx + 3],
+                                                             Vn_prev)
+
+    elif nc.load_data.S3_floatingstar[load_idx+1] > 0.0+0.0j:
+
+        # Vn_prev = (results.voltage_A[load_bus_idx] + results.voltage_B[load_bus_idx] + results.voltage_C[load_bus_idx]) / 3
+        Vn_prev = 0.01
+
+        Ia, Ib, Ic, results.load_Vn = floating_star_powers(results.voltage_A[load_bus_idx],
+                                                           results.voltage_B[load_bus_idx],
+                                                           results.voltage_C[load_bus_idx],
+                                                           nc.load_data.S3_floatingstar[load_idx + 1],
+                                                           nc.load_data.S3_floatingstar[load_idx + 2],
+                                                           nc.load_data.S3_floatingstar[load_idx + 3],
+                                                           Vn_prev)
 
     else:
         results.load_Vn = results.voltage_N[load_bus_idx]

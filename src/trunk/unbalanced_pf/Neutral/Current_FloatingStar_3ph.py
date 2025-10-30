@@ -77,25 +77,37 @@ print("\nIterations: ", res.iterations)
 # print()
 # print(res.voltage_C)
 
-# print("\nSpecified Current Modules:")
-# Ispec = np.zeros(3)
-# Ispec[0] = abs(0.7 + 0.5j) / (100/3)
-# Ispec[1] = abs(0.6 + 0.45j) / (100/3)
-# Ispec[2] = abs(0.5 + 0.4j) / (100/3)
-# print(Ispec)
-#
-# I = np.zeros(3)
-# I[0] = abs(res.It_A[0])
-# I[1] = abs(res.It_B[0])
-# I[2] = abs(res.It_C[0])
-#
+print("\nSpecified Current Modules:")
+Ispec = np.zeros(3)
+Ispec[0] = abs(0.7 + 0.5j) / (100/3)
+Ispec[1] = abs(0.6 + 0.45j) / (100/3)
+Ispec[2] = abs(0.5 + 0.4j) / (100/3)
+print(Ispec)
+
+print("\nCurrent Modules at VeraGrid:")
+Ivg = np.zeros(3)
+Ivg[0] = abs(res.It_A[0])
+Ivg[1] = abs(res.It_B[0])
+Ivg[2] = abs(res.It_C[0])
+print(Ivg)
+
+print("\nSum of Currents at VeraGrid:")
+Ivg_a = res.It_A
+Ivg_b = res.It_B
+Ivg_c = res.It_C
+print(abs(Ivg_a+Ivg_b+Ivg_c))
+
 # print("\nCurrent Modules at VeraGrid:")
-# print(I)
-# print(abs(I[0] + I[1] + I[2]))
-#
-# # ---------------------------------------------------------------------------------------------------------------------
-# # OpenDSS
-# # ---------------------------------------------------------------------------------------------------------------------
+# Ivg = np.zeros(3)
+# Ivg[0] = abs((0.7 - 0.5j) / (100/3) / np.conj(res.voltage_A[1] - res.load_Vn[0]))
+# Ivg[1] = abs((0.6 - 0.45j) / (100/3) / np.conj(res.voltage_B[1] - res.load_Vn[0]))
+# Ivg[2] = abs((0.5 - 0.4j) / (100/3) / np.conj(res.voltage_C[1] - res.load_Vn[0]))
+# print(Ivg)
+# print('sumI', abs(Ivg[0] + Ivg[1] + Ivg[2]))
+
+# ---------------------------------------------------------------------------------------------------------------------
+# OpenDSS
+# ---------------------------------------------------------------------------------------------------------------------
 # import dss
 # import numpy as np
 #

@@ -11,7 +11,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.Derivatives.ac_jacobian import create_J_vc_csc
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (
-    compute_fx_error, power_flow_post_process_nonlinear_3ph
+    compute_fx_error, power_flow_post_process_nonlinear_3ph, floating_star_currents, floating_star_powers
 )
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
                                                                                      compute_slack_distribution)
@@ -212,7 +212,6 @@ def compute_Ibus(nc: NumericalCircuit) -> CxVec:
 #
 #     return Sbus, Y_power_star_linear
 
-
 # @nb.njit(cache=True)
 def compute_current_loads(bus_idx: IntVec,
                           bus_lookup: IntVec,
@@ -276,6 +275,8 @@ def compute_current_loads(bus_idx: IntVec,
         voltage_angle_ab = np.angle(V[a2] - V[b2])
         voltage_angle_bc = np.angle(V[b2] - V[c2])
         voltage_angle_ca = np.angle(V[c2] - V[a2])
+
+        Vn = 0
 
         if delta and ab_connected and bc_connected and ca_connected:
 
@@ -360,24 +361,18 @@ def compute_current_loads(bus_idx: IntVec,
             I[c2] -= np.conj(Istar[ca]) * np.exp(1j * voltage_angle_c)
 
         elif floating:
+            if 'Vn_prev' not in locals():
+                Vn_prev = (V[a2] + V[b2] + V[c2]) / 3
 
-            Ia = np.conj(Ifloating[ab])
-            Ib = np.conj(Ifloating[bc])
-            Ic = np.conj(Ifloating[ca])
+            Ia, Ib, Ic, Vn = floating_star_currents(V[a2], V[b2], V[c2],
+                                                    Ifloating[ab], Ifloating[bc], Ifloating[ca],
+                                                    Vn_prev)
 
-            A = Ia + Ib + Ic
-            B = Ia * (V[b2] + V[c2]) + Ib * (V[a2] + V[c2]) + Ic * (V[a2] + V[b2])
-            C = Ia * V[b2] * V[c2] + Ib * V[a2] * V[c2] + Ic * V[a2] * V[b2]
-
-            Vn = (B + np.sqrt(B**2 - 4 * A * C)) / (2 * A)
-
-            voltage_angle_an = np.angle(V[a2] - Vn)
-            voltage_angle_bn = np.angle(V[b2] - Vn)
-            voltage_angle_cn = np.angle(V[c2] - Vn)
-
-            I[a2] -= Ia * np.exp(1j * voltage_angle_an)
-            I[b2] -= Ib * np.exp(1j * voltage_angle_bn)
-            I[c2] -= Ic * np.exp(1j * voltage_angle_cn)
+            I[a2] -= Ia
+            I[b2] -= Ib
+            I[c2] -= Ic
+            # no neutral node injection for floating star
+            Vn_prev = Vn  # warm-start next outer iteration
 
         else:
             pass
@@ -385,7 +380,7 @@ def compute_current_loads(bus_idx: IntVec,
     # Y_current_linear = I / V
     Y_current_linear = 0
 
-    return I, Y_current_linear
+    return I, Y_current_linear, Vn
 
 
 def compute_power_loads(bus_idx: IntVec,
@@ -433,6 +428,8 @@ def compute_power_loads(bus_idx: IntVec,
         a_connected = (Sstar[ab] != zero_load)
         b_connected = (Sstar[bc] != zero_load)
         c_connected = (Sstar[ca] != zero_load)
+
+        Vn = 0
 
         if star and a_connected and b_connected and c_connected and n_connected:
 
@@ -485,13 +482,21 @@ def compute_power_loads(bus_idx: IntVec,
         elif star and c_connected:
             I[c2] -= np.conj(Sstar[ca] / (V[c2]))
 
+        elif floating:
+
+            Ia, Ib, Ic = floating_star_powers(V[a2], V[b2], V[c2],
+                                              Sfloating[ab], Sfloating[bc], Sfloating[ca])
+            I[a2] -= Ia
+            I[b2] -= Ib
+            I[c2] -= Ic
+
         else:
             pass
 
     # Y_current_linear = I / V
     Y_power_linear = 0
 
-    return I, Y_power_linear
+    return I, Y_power_linear, Vn
 
 
 # @nb.njit(cache=True)
@@ -895,13 +900,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                V=V,
                                                                bus_lookup=self.bus_lookup)
 
-        Ipower, Y_power_linear = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+        Ipower, Y_power_linear, Un_p = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Sstar=self.nc.load_data.S3_star,
                                                      Sfloating=self.nc.load_data.S3_floatingstar)
 
-        I0, Y_current_linear = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+        I0, Y_current_linear, Un_c = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
@@ -955,13 +960,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                V=V,
                                                                bus_lookup=self.bus_lookup)
 
-        Ipower, Y_power_linear = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+        Ipower, Y_power_linear, Un_p = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                        bus_lookup=self.bus_lookup,
                                                        V=self.V,
                                                        Sstar=self.nc.load_data.S3_star,
                                                        Sfloating=self.nc.load_data.S3_floatingstar)
 
-        I0, Y_current_linear = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+        I0, Y_current_linear, Un_c = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
@@ -1010,13 +1015,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                V=self.V,
                                                                bus_lookup=self.bus_lookup)
 
-        Ipower, Y_power_linear = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                     bus_lookup=self.bus_lookup,
-                                                     V=self.V,
-                                                     Sstar=self.nc.load_data.S3_star,
-                                                     Sfloating=self.nc.load_data.S3_floatingstar)
+        Ipower, Y_power_linear, Un_p = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                         bus_lookup=self.bus_lookup,
+                                                         V=self.V,
+                                                         Sstar=self.nc.load_data.S3_star,
+                                                         Sfloating=self.nc.load_data.S3_floatingstar)
 
-        I0, Y_current_linear = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+        I0, Y_current_linear, Un_c = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
@@ -1107,18 +1112,18 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # End Test
 
         # Test GroundedStar Current Loads
-        # C = self.Ybus[3:6,0:3]
-        # C = np.array(C.todense())
-        # D = self.Ybus[3:6,3:6]
-        # D = np.array(D.todense())
-        #
-        # Us = self.V[0:3] # Slack Voltage
-        #
-        # Ul = self.V[3:6] # Our Load Voltage
-        #
-        # Il = C @ Us + D @ Ul
-        #
-        # print('Il_VG =', abs(Il))
+        C = self.Ybus[3:6,0:3]
+        C = np.array(C.todense())
+        D = self.Ybus[3:6,3:6]
+        D = np.array(D.todense())
+
+        Us = self.V[0:3] # Slack Voltage
+
+        Il = Ipower[3:6] # Our Load Current
+
+        Ul = np.linalg.inv(D) @ ((Il/ (self.nc.Sbase / 3)) - C @ Us)
+
+        print('Ul_VG =', abs(Ul))
         #
         # Ul_DSS = np.array([
         #     0.89869665706803647520 * np.exp(1j * -2.75657808574164953086 * np.pi/180),
@@ -1132,7 +1137,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # End Test
 
-        # # Test GroundedStar Current Loads
+        # # Test NeutralStar Current Loads
         # C = self.Ybus[4:8,0:4]
         # C = np.array(C.todense())
         # D = self.Ybus[4:8,4:8]
@@ -1159,6 +1164,14 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # End Test
 
+        # Power Test
+        # print("\nPower Modules at VeraGrid UI*:")
+        # Svg = np.zeros(3)
+        # Ia = complex(Il[0])
+        # Ua = complex(self.V[3])
+        # Svg[0] = abs(np.conj(Ia) * (Ua - Un_p)) / (100/3)
+        # print(Svg)
+
         return self._error, self._converged, x, self.f
 
     def fx(self) -> Vec:
@@ -1176,13 +1189,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                V=self.V,
                                                                bus_lookup=self.bus_lookup)
 
-        Ipower, Y_power_linear = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+        Ipower, Y_power_linear, Un_p = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Sstar=self.nc.load_data.S3_star,
                                                      Sfloating=self.nc.load_data.S3_floatingstar)
 
-        I0, Y_current_linear = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+        I0, Y_current_linear, Un_c = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
                                                      bus_lookup=self.bus_lookup,
                                                      V=self.V,
                                                      Istar=self.nc.load_data.I3_star,
