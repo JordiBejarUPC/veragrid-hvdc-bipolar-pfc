@@ -130,7 +130,8 @@ def ward_standard_reduction(grid: MultiCircuit,
 
     IE = YEB @ VB + YEE @ VE
 
-    Ieq = - YBE @ YEE_fact(IE)
+    # Ieq = - YBE @ YEE_fact(IE)
+    Ieq = YBE @ YEE_fact(IE)
 
     # Equivalent power injections at the boundary
     Seq = (VB * np.conj(Ieq)) * nc.Sbase
