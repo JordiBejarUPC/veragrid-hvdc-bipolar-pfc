@@ -157,16 +157,21 @@ def ward_standard_reduction(grid: MultiCircuit,
                 f = b_buses[i]
                 t = b_buses[j]
 
-                z = 1.0 / Yeq[i, j]
+                # Avoid adding impedances for disconnected cross-boundaries
+                if abs(Yeq[i, j]) > 1e-6:
+                    z = 1.0 / Yeq[i, j]
 
-                grid.add_series_reactance(obj=dev.SeriesReactance(
-                    name=f"Equivalent boundary impedance {b_buses[i]}-{b_buses[j]}",
-                    bus_from=grid.buses[f],
-                    bus_to=grid.buses[t],
-                    r=z.real,
-                    x=z.imag,
-                    rate=9999.0
-                ))
+                    grid.add_series_reactance(obj=dev.SeriesReactance(
+                        name=f"Equivalent boundary impedance {b_buses[i]}-{b_buses[j]}",
+                        bus_from=grid.buses[f],
+                        bus_to=grid.buses[t],
+                        r=z.real,
+                        x=z.imag,
+                        rate=9999.0
+                    ))
+                else:
+                    logger.add_warning(msg=f"Impedance between buses {f} and {t} is too small, \
+                                       skipping the boundary series reactance")
 
     # ----------------------------------------------------------------------
     # Add equivalent loads at the boundary
