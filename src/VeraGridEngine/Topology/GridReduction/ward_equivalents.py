@@ -75,8 +75,7 @@ def get_reduction_sets_1(nc: NumericalCircuit,
 
 def ward_standard_reduction(grid: MultiCircuit,
                            reduction_bus_indices: IntVec,
-                           V0: CxVec,
-                           logger: Logger) -> MultiCircuit:
+                           V0: CxVec) -> Tuple[MultiCircuit, Logger]:
     """
     Ward standard reduction according to:
     REVIEW OF THE WARD CLASS OF EXTERNAL EQUIVALENTS FOR POWER SYSTEMS
@@ -84,9 +83,10 @@ def ward_standard_reduction(grid: MultiCircuit,
     :param grid: MultiCircuit
     :param reduction_bus_indices: Indices of the buses to reduce
     :param V0: Initial power flow voltages
-    :param logger: Logger instance
     :return: Modified (in-place) MultiCircuit
     """
+    logger = Logger()
+
     nc = compile_numerical_circuit_at(grid, t_idx=None)
 
     # find the boundary set: buses from the internal set the join to the external set
@@ -182,4 +182,4 @@ def ward_standard_reduction(grid: MultiCircuit,
     # ----------------------------------------------------------------------
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
-    return grid
+    return grid, logger
