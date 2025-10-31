@@ -2081,7 +2081,7 @@ class SimulationsMain(TimeEventsMain):
             acopf_v0 = pf_results.voltage
             acopf_S0 = pf_results.Sbus
         else:
-            if ips_init_with_pf:
+            if ips_init_with_pf and solver == SolverType.NONLINEAR_OPF:
                 self.show_warning_toast("Run a power flow first")
                 ips_init_with_pf = False
 

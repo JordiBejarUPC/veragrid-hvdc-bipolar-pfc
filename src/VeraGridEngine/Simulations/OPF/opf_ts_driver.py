@@ -615,6 +615,18 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.fluid_path_flow[ti, :] = npa_res.fluid_path_vars.flow
                 self.results.fluid_injection_flow[ti, :] = npa_res.fluid_inject_vars.flow
 
+        else:
+            if self.options.time_grouping == TimeGrouping.NoGrouping:
+                self.opf()
+            else:
+                if self.time_indices is None:
+                    self.opf()
+                else:
+                    if len(self.time_indices) == 0:
+                        self.opf()
+                    else:
+                        self.opf_by_groups()
+
         if self.options.generate_report:
             self.add_report()
 
