@@ -28,10 +28,11 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed critical bug with underground susceptance templates">
-      <change afterPath="$PROJECT_DIR$/src/trunk/anarede/gridcal_pwf_parser.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/anarede/pwf_parser_to_m_file.ipynb" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Moved the compiled arrays from the numerical circuit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +73,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="427_start_implementing_rms_in_GUI" />
+        <entry key="$PROJECT_DIR$" value="devel" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -157,6 +158,7 @@
     "Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor": "Debug",
     "Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor": "Run",
     "Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor": "Debug",
+    "Python tests.pytest for src.tests.test_power_flow_matpower.executor": "Run",
     "Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor": "Debug",
     "Python tests.pytest for test_ac_opf.test_superconductors_handling.executor": "Run",
     "Python tests.pytest for test_basic.test_gridcal_basic_pi.executor": "Debug",
@@ -173,7 +175,7 @@
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Debug",
+    "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -192,6 +194,8 @@
     "Python.new_diagram2.executor": "Run",
     "Python.profile.executor": "Debug",
     "Python.pymoo_example.executor": "Debug",
+    "Python.pyside6-designer (1).executor": "Run",
+    "Python.pyside6-designer.executor": "Run",
     "Python.python_console.executor": "Run",
     "Python.raw_imp_exp_test.executor": "Run",
     "Python.readme_checks.executor": "Run",
@@ -220,7 +224,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "devel",
+    "git-widget-placeholder": "better__pf__initialization",
     "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/src/trunk/anarede",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -239,11 +243,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/trunk/anarede" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
       <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -253,7 +257,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python tests.pytest for src.tests.test_power_flow_matpower">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -532,52 +536,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="correct_icons" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/correct_icons.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="new_diagram2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/trunk/qt_related/new_diagram" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/trunk/qt_related/new_diagram/new_diagram2.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="ENV_FILES" value="" />
@@ -705,6 +663,24 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for src.tests.test_power_flow_matpower" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;src.tests.test_power_flow_matpower&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="pytest for test_ntc.test_ntc_ultra_simple" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="ENV_FILES" value="" />
@@ -723,27 +699,45 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <list>
-      <item itemvalue="Python.correct_icons" />
-      <item itemvalue="Python.new_diagram2" />
       <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest for src.tests.test_power_flow_matpower" />
+      <item itemvalue="Python tests.pytest in tests" />
       <item itemvalue="Python tests.pytest for test_ntc.test_ntc_ultra_simple" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for src.tests.test_power_flow_matpower" />
+        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python tests.pytest for test_ntc.test_ntc_ultra_simple" />
-        <item itemvalue="Python.new_diagram2" />
         <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.correct_icons" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-164cda30dcd9-0af03a5fa574-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26830.99" />
+        <option value="bundled-python-sdk-4e2b1448bda8-9a97661f3031-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.27397.106" />
       </set>
     </attachedChunks>
   </component>
@@ -1868,7 +1862,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="628" />
+    <option name="localTasksCounter" value="632" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1914,10 +1908,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="moved rms initialization out of the MultiCircuit" />
-    <MESSAGE value="got some changes from horrendous alex comit" />
-    <MESSAGE value="several tweaks before the release" />
-    <MESSAGE value="5.4.0" />
     <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Improved contingency docs" />
     <MESSAGE value="added lat and lon to the injection" />
@@ -1939,7 +1929,11 @@
     <MESSAGE value="some improvements in the zoom on laptops" />
     <MESSAGE value="Fixed NTC generation limits" />
     <MESSAGE value="Fixed NTC generation limits test" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed NTC generation limits test" />
+    <MESSAGE value="Added anarede examples" />
+    <MESSAGE value="minimal fix when transformer templates do not exist" />
+    <MESSAGE value="Added missing bus highlight clearing action" />
+    <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
+    <option name="LAST_COMMIT_MESSAGE" value="Moved the compiled arrays from the numerical circuit" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

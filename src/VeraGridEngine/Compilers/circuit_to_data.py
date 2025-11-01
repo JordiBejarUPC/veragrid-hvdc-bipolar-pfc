@@ -1039,17 +1039,19 @@ def get_battery_data(
 def fill_parent_branch(i: int,
                        elm: BRANCH_TYPES,
                        data: PassiveBranchData,
+                       bus_data: BusData,
                        bus_dict: Dict[Bus, int],
-                       t_idx: int | None = None,
-                       time_series: bool = False):
+                       bus_voltage_used: BoolVec,
+                       t_idx: int | None = None,):
     """
 
     :param i:
     :param elm:
     :param data:
+    :param bus_data:
     :param bus_dict:
+    :param bus_voltage_used:
     :param t_idx:
-    :param time_series:
     :return:
     """
     data.names[i] = elm.name
@@ -1075,6 +1077,12 @@ def fill_parent_branch(i: int,
     data.monitor_loading[i] = int(elm.monitor_loading)
 
     data.virtual_tap_f[i], data.virtual_tap_t[i] = elm.get_virtual_taps()
+
+    # if not bus_voltage_used[f]:
+    #     bus_data.Vbus[f] = data.virtual_tap_f[i]
+    #
+    # if not bus_voltage_used[t]:
+    #     bus_data.Vbus[t] = data.virtual_tap_t[i]
 
     return f, t
 
@@ -1117,9 +1125,10 @@ def fill_controllable_branch(
     fill_parent_branch(i=ii,
                        elm=elm,
                        data=data,
+                       bus_data=bus_data,
                        bus_dict=bus_dict,
-                       t_idx=t_idx,
-                       time_series=time_series)
+                       bus_voltage_used=bus_voltage_used,
+                       t_idx=t_idx)
 
     if control_taps_phase:
         ctrl_data.tap_phase_control_mode[ii] = elm.get_tap_phase_control_mode_at(t_idx)
@@ -1243,9 +1252,10 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1299,9 +1309,10 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1490,9 +1501,10 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1523,9 +1535,10 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           t_idx=t_idx)
 
         if fill_three_phase:
             data.phA[ii] = 1
@@ -1696,7 +1709,7 @@ def get_vsc_data(
     :param logger: Logger
     :return: VscData
     """
-    bus_angle_used = bus_data.bus_types == BusMode.Slack_tpe.value
+    bus_angle_used = np.array(bus_data.bus_types == BusMode.Slack_tpe.value).astype(bool)
     ii = 0
 
     # VSC
