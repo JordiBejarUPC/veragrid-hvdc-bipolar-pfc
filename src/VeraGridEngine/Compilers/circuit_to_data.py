@@ -1709,7 +1709,7 @@ def get_vsc_data(
     :param logger: Logger
     :return: VscData
     """
-    bus_angle_used = bus_data.bus_types == BusMode.Slack_tpe.value
+    bus_angle_used = np.array(bus_data.bus_types == BusMode.Slack_tpe.value).astype(bool)
     ii = 0
 
     # VSC
