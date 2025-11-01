@@ -1078,11 +1078,11 @@ def fill_parent_branch(i: int,
 
     data.virtual_tap_f[i], data.virtual_tap_t[i] = elm.get_virtual_taps()
 
-    if not bus_voltage_used[f]:
-        bus_data.Vbus[f] = data.virtual_tap_f[i]
-
-    if not bus_voltage_used[t]:
-        bus_data.Vbus[t] = data.virtual_tap_t[i]
+    # if not bus_voltage_used[f]:
+    #     bus_data.Vbus[f] = data.virtual_tap_f[i]
+    #
+    # if not bus_voltage_used[t]:
+    #     bus_data.Vbus[t] = data.virtual_tap_t[i]
 
     return f, t
 
