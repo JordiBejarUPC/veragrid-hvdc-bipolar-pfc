@@ -5,7 +5,7 @@
 import os
 import numpy as np
 import VeraGridEngine.api as gce
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction
+from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
 
 
 def test_ward_reduction():
@@ -53,6 +53,98 @@ def test_ward_reduction():
     ok = np.allclose(Flows4, Flows0[internal_branches], atol=1e-10)
     assert ok
 
+    
+def test_ptdf_projected_14_reduction():
+    """
+    Test to check the PTDF projected reduction
+    :return:
+    """
+    remove_bus_idx_list = [np.array([8, 11]), 
+                           np.array([9, 10]),
+                           np.array([8, 11, 9, 10]),
+                           np.array([0, 1, 2])]
+
+    pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR)
+
+    # Open a new grid instance every time
+    # Check the reduction works with any combination of buses to remove
+    for remove_bus_idx in remove_bus_idx_list:
+        fname = os.path.join('data', 'grids', 'case14_to_reduce.veragrid')
+        grid = gce.open_file(filename=fname)
+        red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=remove_bus_idx)
+        pf_res_reduced = gce.power_flow(grid=red_grid, options=pf_options)
+
+        assert pf_res_reduced.converged
+
+    return None
+
+    
+def test_ptdf_projected_14_complex_reduction():
+    """
+    Test to check the PTDF projected reduction
+    :return:
+    """
+    remove_bus_idx_list = [np.array([8, 11]), 
+                           np.array([9, 10]),
+                           np.array([8, 11, 9, 10]),
+                           np.array([0, 1, 2]),
+                           np.array([21]),
+                           np.array([14, 17]),
+                           np.array([14, 17, 21]),
+                           np.array([21, 14, 17, 0, 3])]
+
+    pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR)
+
+    # Open a new grid instance every time
+    # Check the reduction works with any combination of buses to remove
+    for remove_bus_idx in remove_bus_idx_list:
+        fname = os.path.join('data', 'grids', 'case14_complex_to_reduce.veragrid')
+        # fname = os.path.join('src', 'tests', 'data', 'grids', 'case14_complex_to_reduce.veragrid')
+        grid = gce.open_file(filename=fname)
+        red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=remove_bus_idx)
+        pf_res_reduced = gce.power_flow(grid=red_grid, options=pf_options)
+
+        assert pf_res_reduced.converged
+
+    return None
+
+
+def test_ptdf_projected_14_complex_inactive_reduction():
+    """
+    Test to check the PTDF projected reduction
+    :return:
+    """
+    remove_bus_idx_list = [np.array([8, 11]), 
+                           np.array([9, 10]),
+                           np.array([8, 11, 9, 10]),
+                           np.array([0, 1, 2]),
+                           np.array([21]),
+                           np.array([14, 17]),
+                           np.array([14, 17, 21]),
+                           np.array([21, 14, 17, 0, 3]),
+                           np.array([22]),
+                           np.array([22, 21]),
+                           np.array([22, 21, 14, 17]),
+                           np.array([22, 21, 14, 4])]
+
+    pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR)
+
+    # Open a new grid instance every time
+    # Check the reduction works with any combination of buses to remove
+    for remove_bus_idx in remove_bus_idx_list:
+        fname = os.path.join('data', 'grids', 'case14_to_reduce_inactive.veragrid')
+        # fname = os.path.join('src', 'tests', 'data', 'grids', 'case14_to_reduce_inactive.veragrid')
+        grid = gce.open_file(filename=fname)
+        red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=remove_bus_idx)
+        pf_res_reduced = gce.power_flow(grid=red_grid, options=pf_options)
+
+        assert pf_res_reduced.converged
+
+    return None
+
 
 if __name__ == '__main__':
-    test_ward_reduction()
+    # test_ward_reduction()
+    # test_ptdf_projected_14_reduction()
+    # test_ptdf_projected_14_complex_reduction()
+    test_ptdf_projected_14_complex_inactive_reduction()
