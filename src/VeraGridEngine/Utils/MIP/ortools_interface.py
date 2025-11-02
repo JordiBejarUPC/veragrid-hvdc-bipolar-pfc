@@ -221,6 +221,14 @@ class OrToolsLpModel(AbstractLpModel):
         """
         return self.model.new_int_var(lb=lb, ub=ub, name=name)
 
+    def add_bin(self, name: str = "") -> LpVar:
+        """
+        Make integer LP var
+        :param name: name (optional)
+        :return: LpVar
+        """
+        return self.model.new_int_var(lb=0, ub=1, name=name)
+
     def add_var(self, lb: float, ub: float, name: str = "") -> LpVar:
         """
         Make floating point LP var

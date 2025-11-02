@@ -734,7 +734,7 @@ class OpfVars:
         return data
 
 
-def add_linear_generation_formulation(t: Union[int, None],
+def add_linear_generation_formulation(local_t: Union[int, None],
                                       Sbase: float,
                                       time_array: DateVec,
                                       bus_vars: BusVars,
@@ -743,15 +743,18 @@ def add_linear_generation_formulation(t: Union[int, None],
                                       prob: LpModel,
                                       unit_commitment: bool,
                                       ramp_constraints: bool,
+                                      consider_time_up_down: bool,
+                                      area_spinning_reserve: bool,
                                       skip_generation_limits: bool,
                                       all_generators_fixed: bool,
                                       vd: IntVec,
                                       nodal_capacity_active: bool,
                                       generation_expansion_planning: bool,
-                                      use_glsk_as_cost: bool):
+                                      use_glsk_as_cost: bool,
+                                      logger: Logger) -> LpExp:
     """
     Add MIP generation formulation
-    :param t: time step
+    :param local_t: time step
     :param Sbase: base power (100 MVA)
     :param time_array: complete time array
     :param bus_vars: BusVars
@@ -760,6 +763,8 @@ def add_linear_generation_formulation(t: Union[int, None],
     :param prob: LpModel
     :param unit_commitment: formulate unit commitment?
     :param ramp_constraints: formulate ramp constraints?
+    :param consider_time_up_down: consider time up/down?
+    :param area_spinning_reserve: area spinning reserve?
     :param skip_generation_limits: skip the generation limits?
     :param all_generators_fixed: All generators take their snapshot or profile values
                                  instead of resorting to dispatchable status
@@ -767,6 +772,7 @@ def add_linear_generation_formulation(t: Union[int, None],
     :param nodal_capacity_active: nodal capacity active?
     :param generation_expansion_planning: generation expansion plan?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
+    :param logger: Logger object
     :return objective function
     """
     f_obj = 0.0
@@ -780,7 +786,7 @@ def add_linear_generation_formulation(t: Union[int, None],
 
     if time_array is not None:
         if len(time_array) > 0:
-            year = time_array[t].year - time_array[0].year
+            year = time_array[local_t].year - time_array[0].year
         else:
             year = 0
     else:
@@ -789,7 +795,7 @@ def add_linear_generation_formulation(t: Union[int, None],
     # add generation stuff
     for k in range(gen_data_t.nelm):
 
-        gen_vars.cost[t, k] = 0.0
+        gen_vars.cost[local_t, k] = 0.0
         bus_idx = gen_data_t.bus_idx[k]
         # nodal_cap_condition = gen_data_t.bus_idx[k] not in vd if nodal_capacity_active else True
 
@@ -798,82 +804,104 @@ def add_linear_generation_formulation(t: Union[int, None],
             if gen_data_t.dispatchable[k] and not all_generators_fixed:
 
                 # declare active power var (limits will be applied later)
-                gen_vars.p[t, k] = prob.add_var(-1e20, 1e20, join("gen_p_", [t, k], "_"))
+                gen_vars.p[local_t, k] = prob.add_var(-1e20, 1e20, join("gen_p_", [local_t, k], "_"))
 
                 if unit_commitment:
 
                     # declare unit commitment vars
-                    gen_vars.starting_up[t, k] = prob.add_int(0, 1,
-                                                              join("gen_starting_up_", [t, k], "_"))
-                    gen_vars.producing[t, k] = prob.add_int(0, 1,
-                                                            join("gen_producing_", [t, k], "_"))
-                    gen_vars.shutting_down[t, k] = prob.add_int(0, 1,
-                                                                join("gen_shutting_down_", [t, k], "_"))
+                    gen_vars.starting_up[local_t, k] = prob.add_bin(join("gen_starting_up_", [local_t, k], "_"))
+                    gen_vars.producing[local_t, k] = prob.add_bin(join("gen_producing_", [local_t, k], "_"))
+                    gen_vars.shutting_down[local_t, k] = prob.add_bin(join("gen_shutting_down_", [local_t, k], "_"))
 
                     # operational cost (linear...)
                     if use_glsk_as_cost:
-                        gen_vars.cost[t, k] += gen_data_t.shift_key[k] * gen_vars.p[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
                     else:
-                        gen_vars.cost[t, k] += (gen_data_t.cost_1[k] * gen_vars.p[t, k]
-                                                + gen_data_t.cost_0[k] * gen_vars.producing[t, k])
+                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]
+                                                      + gen_data_t.cost_0[k] * gen_vars.producing[local_t, k])
 
                     # start-up cost
-                    gen_vars.cost[t, k] += gen_data_t.startup_cost[k] * gen_vars.starting_up[t, k]
+                    if gen_data_t.startup_cost[k] != 0.0:
+                        gen_vars.cost[local_t, k] += gen_data_t.startup_cost[k] * gen_vars.starting_up[local_t, k]
+
+                    # shut-down cost
+                    if gen_data_t.shut_down_cost[k] != 0.0:
+                        gen_vars.cost[local_t, k] += gen_data_t.shut_down_cost[k] * gen_vars.shutting_down[local_t, k]
 
                     # power boundaries of the generator
                     if not skip_generation_limits:
                         prob.add_cst(
-                            cst=gen_vars.p[t, k] >= (gen_data_t.pmin[k] / Sbase * gen_vars.producing[t, k]),
-                            name=join("gen_geq_Pmin", [t, k], "_"))
+                            cst=gen_vars.p[local_t, k] >= (gen_data_t.pmin[k] / Sbase * gen_vars.producing[local_t, k]),
+                            name=join("gen_geq_Pmin", [local_t, k], "_")
+                        )
                         prob.add_cst(
-                            cst=gen_vars.p[t, k] <= (gen_data_t.pmax[k] / Sbase * gen_vars.producing[t, k]),
-                            name=join("gen_leq_Pmax", [t, k], "_"))
+                            cst=gen_vars.p[local_t, k] <= (gen_data_t.pmax[k] / Sbase * gen_vars.producing[local_t, k]),
+                            name=join("gen_leq_Pmax", [local_t, k], "_")
+                        )
 
-                    if t is not None:
-                        if t == 0:
-                            prob.add_cst(cst=gen_vars.starting_up[t, k] - gen_vars.shutting_down[t, k] ==
-                                             gen_vars.producing[t, k] - float(gen_data_t.active[k]),
-                                         name=join("binary_alg1_", [t, k], "_"))
-                            prob.add_cst(cst=gen_vars.starting_up[t, k] + gen_vars.shutting_down[t, k] <= 1,
-                                         name=join("binary_alg2_", [t, k], "_"))
+                    if local_t is not None:
+                        if local_t == 0:
+                            # NOTE: Here, gen_data_t.active[k] represents the producing state at t-1
+                            prob.add_cst(cst=gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
+                                             gen_vars.producing[local_t, k] - float(gen_data_t.active[k]),
+                                         name=join("binary_alg1_", [local_t, k], "_"))
+                            prob.add_cst(cst=gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1,
+                                         name=join("binary_alg2_", [local_t, k], "_"))
                         else:
                             prob.add_cst(
-                                cst=(gen_vars.starting_up[t, k] - gen_vars.shutting_down[t, k] ==
-                                     gen_vars.producing[t, k] - gen_vars.producing[t - 1, k]),
-                                name=join("binary_alg3_", [t, k], "_")
+                                cst=(gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
+                                     gen_vars.producing[local_t, k] - gen_vars.producing[local_t - 1, k]),
+                                name=join("binary_alg3_", [local_t, k], "_")
                             )
                             prob.add_cst(
-                                cst=gen_vars.starting_up[t, k] + gen_vars.shutting_down[t, k] <= 1,
-                                name=join("binary_alg4_", [t, k], "_")
+                                cst=gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1,
+                                name=join("binary_alg4_", [local_t, k], "_")
                             )
                 else:
                     # No unit commitment
 
                     # Operational cost (linear...)
                     if use_glsk_as_cost:
-                        gen_vars.cost[t, k] += gen_data_t.shift_key[k] * gen_vars.p[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
                     else:
-                        gen_vars.cost[t, k] += (gen_data_t.cost_1[k] * gen_vars.p[t, k]) + gen_data_t.cost_0[k]
+                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + \
+                                                     gen_data_t.cost_0[k]
 
                     if not skip_generation_limits:
-                        prob.set_var_bounds(var=gen_vars.p[t, k],
+                        prob.set_var_bounds(var=gen_vars.p[local_t, k],
                                             lb=gen_data_t.pmin[k] / Sbase,
                                             ub=gen_data_t.pmax[k] / Sbase)
 
                 # add the ramp constraints
-                if ramp_constraints and t is not None:
-                    if t > 0:
-                        if gen_data_t.ramp_up[k] < gen_data_t.pmax[k] and gen_data_t.ramp_down[k] < gen_data_t.pmax[k]:
-                            # if the ramp is actually sufficiently restrictive...
-                            dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0  # time increment in hours
+                if ramp_constraints and local_t > 0 and not skip_generation_limits:
 
-                            # - ramp_down · dt <= P(t) - P(t-1) <= ramp_up · dt
-                            prob.add_cst(
-                                cst=-gen_data_t.ramp_down[k] / Sbase * dt <= gen_vars.p[t, k] - gen_vars.p[t - 1, k]
-                            )
-                            prob.add_cst(
-                                cst=gen_vars.p[t, k] - gen_vars.p[t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt
-                            )
+                    # if the ramp is actually sufficiently restrictive...
+                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
+
+                    if gen_data_t.ramp_up[k] <= gen_data_t.pmax[k]:
+                        # P(t) - P(t-1) <= ramp_up · dt / Sbase
+                        prob.add_cst(
+                            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt,
+                            name=join("ramp_up", [local_t, k])
+                        )
+                    else:
+                        logger.add_warning("Generator ramp up greater then Pmax",
+                                           value=gen_data_t.ramp_up[k],
+                                           device=f"{k}: {gen_data_t.names[k]}",
+                                           expected_value=gen_data_t.pmax[k])
+
+                    if gen_data_t.ramp_down[k] <= - gen_data_t.pmax[k]:
+                        # P(t-1) - P(t) <= ramp_down · dt / Sbase
+                        # NOTE: Ramp down must be negative
+                        prob.add_cst(
+                            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= gen_data_t.ramp_down[k] / Sbase * dt,
+                            name=join("ramp_dwn", [local_t, k])
+                        )
+                    else:
+                        logger.add_error("Generator ramp down lower than -Pmax",
+                                         value=gen_data_t.ramp_down[k],
+                                         device=f"{k}: {gen_data_t.names[k]}",
+                                         expected_value=-gen_data_t.pmax[k])
 
                 # Generation Expansion Planning
                 if gen_data_t.is_candidate[k] and generation_expansion_planning:
@@ -881,77 +909,82 @@ def add_linear_generation_formulation(t: Union[int, None],
                     money_factor = np.power(1.0 + gen_data_t.discount_rate[k] / 100.0, year)
 
                     # declare the investment binary
-                    gen_vars.invested[t, k] = prob.add_int(lb=0, ub=1, name=join("Ig_", [t, k]))
+                    gen_vars.invested[local_t, k] = prob.add_int(lb=0, ub=1, name=join("Ig_", [local_t, k]))
 
                     # add the investment cost to the objective
-                    f_obj += gen_vars.invested[t, k] * (gen_data_t.pmax[k] / Sbase) * gen_data_t.capex[k] * money_factor
+                    f_obj += gen_vars.invested[local_t, k] * (gen_data_t.pmax[k] / Sbase) * gen_data_t.capex[
+                        k] * money_factor
 
-                    if t > 0:
+                    if local_t > 0:
                         # installation persistence
-                        prob.add_cst(gen_vars.invested[t - 1, k] <= gen_vars.invested[t, k],
-                                     name=join("persist_", [t, k]))
+                        prob.add_cst(
+                            gen_vars.invested[local_t - 1, k] <= gen_vars.invested[local_t, k],
+                            name=join("persist_", [local_t, k])
+                        )
 
                     # maximum production constraint
-                    prob.add_cst(gen_vars.p[t, k] <= (gen_data_t.pmax[k] / Sbase) * gen_vars.invested[t, k],
-                                 name=join("max_prod_", [t, k]))
+                    prob.add_cst(gen_vars.p[local_t, k] <= (gen_data_t.pmax[k] / Sbase) * gen_vars.invested[local_t, k],
+                                 name=join("max_prod_", [local_t, k]))
                 else:
                     # is invested for already
-                    gen_vars.invested[t, k] = 1
+                    gen_vars.invested[local_t, k] = 1
 
             else:
 
-                ## it is NOT dispatchable
+                # NOTE: it is NOT dispatchable
                 p = gen_data_t.p[k] / Sbase
 
                 # the generator is not dispatchable at time step
                 if p > 0:
 
-                    gen_vars.shedding[t, k] = prob.add_var(0, p, join("gen_shedding_", [t, k], "_"))
+                    gen_vars.shedding[local_t, k] = prob.add_var(0, p,
+                                                                 join("gen_shedding_", [local_t, k], "_"))
 
-                    gen_vars.p[t, k] = p - gen_vars.shedding[t, k]
+                    gen_vars.p[local_t, k] = p - gen_vars.shedding[local_t, k]
 
                     if use_glsk_as_cost:
-                        gen_vars.cost[t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[local_t, k]
                     else:
-                        gen_vars.cost[t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[local_t, k]
 
                 elif p < 0:
                     # the negative sign is because P is already negative here, to make it positive
-                    gen_vars.shedding[t, k] = prob.add_var(0, -p, join("gen_shedding_", [t, k], "_"))
+                    gen_vars.shedding[local_t, k] = prob.add_var(0, -p,
+                                                                 join("gen_shedding_", [local_t, k], "_"))
 
-                    gen_vars.p[t, k] = p + gen_vars.shedding[t, k]
+                    gen_vars.p[local_t, k] = p + gen_vars.shedding[local_t, k]
 
                     if use_glsk_as_cost:
-                        gen_vars.cost[t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[local_t, k]
                     else:
-                        gen_vars.cost[t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[t, k]
+                        gen_vars.cost[local_t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[local_t, k]
 
                 else:
                     # the generation value is exactly zero
-                    prob.set_var_bounds(var=gen_vars.p[t, k], lb=0.0, ub=0.0)
+                    prob.set_var_bounds(var=gen_vars.p[local_t, k], lb=0.0, ub=0.0)
 
-                gen_vars.producing[t, k] = 1
-                gen_vars.shutting_down[t, k] = 0
-                gen_vars.starting_up[t, k] = 0
+                gen_vars.producing[local_t, k] = 1
+                gen_vars.shutting_down[local_t, k] = 0
+                gen_vars.starting_up[local_t, k] = 0
 
                 # Operational cost (linear...)
                 if use_glsk_as_cost:
-                    gen_vars.cost[t, k] += gen_data_t.shift_key[k] * gen_vars.p[t, k]
+                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
                 else:
-                    gen_vars.cost[t, k] += (gen_data_t.cost_1[k] * gen_vars.p[t, k]) + gen_data_t.cost_0[k]
+                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
 
             # add to the balance
-            bus_vars.Pbalance[t, bus_idx] += gen_vars.p[t, k]
+            bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
 
             # add to the generation injections in case of inter-area
-            bus_vars.Pgen[t, bus_idx] += gen_vars.p[t, k]
+            bus_vars.Pgen[local_t, bus_idx] += gen_vars.p[local_t, k]
 
         else:
             # the generator is not available at time step
-            gen_vars.p[t, k] = 0.0  # there has not been any variable assigned to p[t, k] at this point
+            gen_vars.p[local_t, k] = 0.0  # there has not been any variable assigned to p[t, k] at this point
 
         # add to the objective function the total cost of the generator
-        f_obj += gen_vars.cost[t, k]
+        f_obj += gen_vars.cost[local_t, k]
 
     return f_obj
 
@@ -1821,6 +1854,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       contingency_groups_used: Union[List[ContingencyGroup], None] = None,
                       unit_commitment: bool = False,
                       ramp_constraints: bool = False,
+                      consider_time_up_down: bool = False,
+                      area_spinning_reserve: bool = False,
                       generation_expansion_planning: bool = False,
                       all_generators_fixed: bool = False,
                       lodf_threshold: float = 0.001,
@@ -1851,6 +1886,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param contingency_groups_used: List of contingency groups to use
     :param unit_commitment: Formulate unit commitment?
     :param ramp_constraints: Formulate ramp constraints?
+    :param consider_time_up_down: Consider the time up/down?
+    :param area_spinning_reserve: Area spinning reserve?
     :param generation_expansion_planning: Generation expansion planning?
     :param all_generators_fixed: All generators take their snapshot or profile values
                                  instead of resorting to dispatchable status
@@ -1870,6 +1907,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param export_model_fname: Export the model into LP and MPS?
     :param verbose: verbosity level
     :param robust: Robust optimization?
+    :param mip_framework: MIP framework to use
     :return: OpfVars
     """
     bus_dict = {bus: i for i, bus in enumerate(grid.buses)}
@@ -1983,7 +2021,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
         # formulate generation -------------------------------------------------------------------------------------
         f_obj += add_linear_generation_formulation(
-            t=local_t_idx,
+            local_t=local_t_idx,
             Sbase=nc.Sbase,
             time_array=grid.time_profile,
             bus_vars=mip_vars.bus_vars,
@@ -1997,7 +2035,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
             vd=indices.vd,
             nodal_capacity_active=active_nodal_capacity,
             generation_expansion_planning=generation_expansion_planning,
-            use_glsk_as_cost=use_glsk_as_cost
+            use_glsk_as_cost=use_glsk_as_cost,
+            logger=logger
         )
 
         # formulate batteries --------------------------------------------------------------------------------------

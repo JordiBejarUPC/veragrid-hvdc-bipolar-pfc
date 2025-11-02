@@ -2041,6 +2041,9 @@ class SimulationsMain(TimeEventsMain):
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
         maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         unit_commitment = self.ui.opfUnitCommitmentCheckBox.isChecked()
+        consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
+        consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
+        area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
@@ -2105,6 +2108,9 @@ class SimulationsMain(TimeEventsMain):
             maximize_flows=maximize_flows,
             inter_aggregation_info=inter_aggregation_info,
             unit_commitment=unit_commitment,
+            consider_ramps=consider_ramps,
+            consider_time_up_down=consider_time_up_down,
+            area_spinning_reserve=area_spinning_reserve,
             generation_expansion_planning=generation_expansion_planning,
             export_model_fname=export_model_fname,
             generate_report=generate_report,

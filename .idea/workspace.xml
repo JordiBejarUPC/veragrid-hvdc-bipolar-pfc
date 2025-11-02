@@ -28,11 +28,24 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Some refactorings&#10;Improved the pf initialization in pf grids">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Improved the pf initialization in pf grids">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/md_source/optimal_power_flow.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/optimal_power_flow.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/generator_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/generator_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/mip_interface_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/mip_interface_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/New England_solar_case_OPF.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/New England_solar_case_OPF.gridcal" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -258,7 +271,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest in tests">
+  <component name="RunManager" selected="Python.update_gui_file">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -537,6 +550,53 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 virtualenv at ~/Git/eRoots/VeraGrid/.venv312" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -659,42 +719,6 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for src.tests.test_power_flow_matpower" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;src.tests.test_power_flow_matpower&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
-    <configuration name="pytest for test_ntc.test_ntc_ultra_simple" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_ntc.test_ntc_ultra_simple&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
     <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="ENV_FILES" value="" />
@@ -714,19 +738,19 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.pyside6-designer" />
+      <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
       <item itemvalue="Python tests.pytest for src.tests.test_ac_opf.test_pegase89" />
-      <item itemvalue="Python tests.pytest for src.tests.test_power_flow_matpower" />
       <item itemvalue="Python tests.pytest in tests" />
-      <item itemvalue="Python tests.pytest for test_ntc.test_ntc_ultra_simple" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python.pyside6-designer" />
+        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for src.tests.test_ac_opf.test_pegase89" />
-        <item itemvalue="Python tests.pytest for src.tests.test_power_flow_matpower" />
-        <item itemvalue="Python tests.pytest for test_ntc.test_ntc_ultra_simple" />
       </list>
     </recent_temporary>
   </component>
@@ -1858,7 +1882,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="634" />
+    <option name="localTasksCounter" value="635" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1904,7 +1928,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added lat and lon to the injection" />
     <MESSAGE value="improved icons" />
     <MESSAGE value="improved pkg function" />
     <MESSAGE value="several refactors" />
@@ -1929,7 +1952,8 @@
     <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
     <MESSAGE value="minimal type change" />
     <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
-    <option name="LAST_COMMIT_MESSAGE" value="Some refactorings&#10;Improved the pf initialization in pf grids" />
+    <MESSAGE value="Improved the pf initialization in pf grids" />
+    <option name="LAST_COMMIT_MESSAGE" value="Improved the pf initialization in pf grids" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

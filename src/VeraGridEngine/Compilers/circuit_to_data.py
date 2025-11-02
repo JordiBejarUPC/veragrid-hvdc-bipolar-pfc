@@ -829,6 +829,9 @@ def fill_generator_parent(
     data.x1[k] = elm.X1
     data.x2[k] = elm.X2
 
+    data.startup_cost[k] = elm.StartupCost
+    data.shut_down_cost[k] = elm.ShutdownCost
+
     data.ramp_up[k] = elm.RampUp
     data.ramp_down[k] = elm.RampDown
     data.min_time_up[k] = elm.MinTimeUp
@@ -1101,7 +1104,6 @@ def fill_controllable_branch(
         bus_data: BusData,
         bus_dict: Dict[Bus, int],
         t_idx: int | None,
-        time_series: bool,
         opf_results: VALID_OPF_RESULTS | None,
         use_stored_guess: bool,
         bus_voltage_used: BoolVec,
@@ -1118,7 +1120,6 @@ def fill_controllable_branch(
     :param bus_data:
     :param bus_dict:
     :param t_idx:
-    :param time_series:
     :param opf_results:
     :param use_stored_guess:
     :param bus_voltage_used:
@@ -1217,12 +1218,10 @@ def get_branch_data(
         apply_temperature: bool,
         branch_tolerance_mode: BranchImpedanceMode,
         t_idx: int | None,
-        time_series: bool = False,
         opf_results: VALID_OPF_RESULTS | None = None,
         use_stored_guess: bool = False,
         control_taps_modules: bool = True,
         control_taps_phase: bool = True,
-        control_remote_voltage: bool = True,
         logger: Logger = Logger(),
         fill_three_phase: bool = False
 ) -> Dict[BRANCH_TYPES, int]:
@@ -1237,12 +1236,10 @@ def get_branch_data(
     :param apply_temperature: apply the temperature correction?
     :param branch_tolerance_mode: BranchImpedanceMode
     :param t_idx: time index (-1 is useless)
-    :param time_series: compile time series? else the sanpshot is compiled
     :param opf_results: OptimalPowerFlowResults
     :param use_stored_guess: use the stored voltage ?
     :param control_taps_modules: Control TapsModules
     :param control_taps_phase: Control TapsPhase
-    :param control_remote_voltage: Control RemoteVoltage
     :param logger: Logger
     :param fill_three_phase: Fill the tree phase info?
     :return: BranchData
@@ -1349,7 +1346,6 @@ def get_branch_data(
                                  bus_data=bus_data,
                                  bus_dict=bus_dict,
                                  t_idx=t_idx,
-                                 time_series=time_series,
                                  opf_results=opf_results,
                                  use_stored_guess=use_stored_guess,
                                  bus_voltage_used=bus_voltage_used,
@@ -1415,7 +1411,6 @@ def get_branch_data(
                                      bus_data=bus_data,
                                      bus_dict=bus_dict,
                                      t_idx=t_idx,
-                                     time_series=time_series,
                                      opf_results=opf_results,
                                      use_stored_guess=use_stored_guess,
                                      bus_voltage_used=bus_voltage_used,
@@ -1470,7 +1465,6 @@ def get_branch_data(
                                  bus_data=bus_data,
                                  bus_dict=bus_dict,
                                  t_idx=t_idx,
-                                 time_series=time_series,
                                  opf_results=opf_results,
                                  use_stored_guess=use_stored_guess,
                                  bus_voltage_used=bus_voltage_used,
@@ -2143,7 +2137,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         ctrl_data=nc.active_branch_data,
         circuit=circuit,
         t_idx=t_idx,
-        time_series=time_series,
         bus_dict=bus_dict,
         bus_data=nc.bus_data,
         bus_voltage_used=bus_voltage_used,
@@ -2153,7 +2146,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         use_stored_guess=use_stored_guess,
         control_taps_modules=control_taps_modules,
         control_taps_phase=control_taps_phase,
-        control_remote_voltage=control_remote_voltage,
         fill_three_phase=fill_three_phase
     )
 
