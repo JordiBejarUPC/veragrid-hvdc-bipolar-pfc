@@ -404,7 +404,7 @@ class SchematicWidget(BaseDiagramWidget):
         self.expand_factor = 1.1
 
         # Scale the view / do the zoom
-        self.scale_factor = 1.02  # 1.15
+        self.scale_factor = 1.15  # 1.15
 
         # Zoom indicator
         self._zoom = 0
