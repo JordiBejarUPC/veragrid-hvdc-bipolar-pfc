@@ -1042,7 +1042,8 @@ def fill_parent_branch(i: int,
                        bus_data: BusData,
                        bus_dict: Dict[Bus, int],
                        bus_voltage_used: BoolVec,
-                       t_idx: int | None = None,):
+                       use_stored_guess=False,
+                       t_idx: int | None = None, ):
     """
 
     :param i:
@@ -1051,6 +1052,7 @@ def fill_parent_branch(i: int,
     :param bus_data:
     :param bus_dict:
     :param bus_voltage_used:
+    :param use_stored_guess:
     :param t_idx:
     :return:
     """
@@ -1082,10 +1084,10 @@ def fill_parent_branch(i: int,
     # that do have a significant virtual tap difference.
     # i.e. transformers for distribution systems
 
-    if not bus_voltage_used[f]:
+    if not bus_voltage_used[f] and not use_stored_guess:
         bus_data.Vbus[f] = data.virtual_tap_f[i]
 
-    if not bus_voltage_used[t]:
+    if not bus_voltage_used[t] and not use_stored_guess:
         bus_data.Vbus[t] = data.virtual_tap_t[i]
 
     return f, t
@@ -1132,6 +1134,7 @@ def fill_controllable_branch(
                        bus_data=bus_data,
                        bus_dict=bus_dict,
                        bus_voltage_used=bus_voltage_used,
+                       use_stored_guess=use_stored_guess,
                        t_idx=t_idx)
 
     if control_taps_phase:
@@ -1259,6 +1262,7 @@ def get_branch_data(
                            bus_data=bus_data,
                            bus_dict=bus_dict,
                            bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
                            t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
@@ -1316,6 +1320,7 @@ def get_branch_data(
                            bus_data=bus_data,
                            bus_dict=bus_dict,
                            bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
                            t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
@@ -1508,6 +1513,7 @@ def get_branch_data(
                            bus_data=bus_data,
                            bus_dict=bus_dict,
                            bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
                            t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
@@ -1542,6 +1548,7 @@ def get_branch_data(
                            bus_data=bus_data,
                            bus_dict=bus_dict,
                            bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
                            t_idx=t_idx)
 
         if fill_three_phase:
