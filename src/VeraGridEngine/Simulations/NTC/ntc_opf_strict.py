@@ -26,7 +26,7 @@ from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
 from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, BoolVec, StrVec, CxMat, Mat, ObjVec
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, join
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, OrToolsLpModel, join
 from VeraGridEngine.enumerations import TapPhaseControl, HvdcControlType, AvailableTransferMode, ConverterControlType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
 from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, compute_dP
@@ -446,7 +446,7 @@ def pmode3_formulation2(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
     return flow
 
 
-def formulate_lp_abs_value(prob: LpModel, lp_var: LpVar, ub: float, M: float, name: str):
+def formulate_lp_abs_value(prob: OrToolsLpModel, lp_var: LpVar, ub: float, M: float, name: str):
     """
     Generic function to compute lp abs variable
     :param prob: lp solver instance
@@ -473,7 +473,7 @@ def formulate_lp_abs_value(prob: LpModel, lp_var: LpVar, ub: float, M: float, na
 
 
 def formulate_lp_piece_wise(
-        solver: LpModel,
+        solver: OrToolsLpModel,
         lp_var: Union[float, LpVar],
         higher_exp: Union[float, LpExp, LpVar],
         lower_exp: Union[float, LpExp, LpVar],
@@ -542,7 +542,7 @@ def formulate_lp_piece_wise(
 
 
 def formulate_hvdc_Pmode3_single_flow(
-        solver: LpModel,
+        solver: OrToolsLpModel,
         active,
         P0,
         rate,
@@ -660,7 +660,7 @@ class BusNtcVars:
         self.delta_p = np.zeros((nt, n_elm), dtype=object)
         self.proportions = np.zeros((nt, n_elm), dtype=float)
 
-    def get_values(self, Sbase: float, model: LpModel) -> "BusNtcVars":
+    def get_values(self, Sbase: float, model: OrToolsLpModel) -> "BusNtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
         :return: BusVars
@@ -721,7 +721,7 @@ class BranchNtcVars:
 
         self.inter_space_branches: List[Tuple[int, float]] = list()  # index, sense
 
-    def get_values(self, Sbase: float, model: LpModel) -> "BranchNtcVars":
+    def get_values(self, Sbase: float, model: OrToolsLpModel) -> "BranchNtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
         :param Sbase:
@@ -792,7 +792,7 @@ class HvdcNtcVars:
 
         self.inter_space_hvdc: List[Tuple[int, float]] = list()  # index, sense
 
-    def get_values(self, Sbase: float, model: LpModel) -> "HvdcNtcVars":
+    def get_values(self, Sbase: float, model: OrToolsLpModel) -> "HvdcNtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
         :return: HvdcVars
@@ -836,7 +836,7 @@ class VscNtcVars:
 
         self.inter_space_vsc: List[Tuple[int, float]] = list()  # index, sense
 
-    def get_values(self, Sbase: float, model: LpModel) -> "VscNtcVars":
+    def get_values(self, Sbase: float, model: OrToolsLpModel) -> "VscNtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
         :return: HvdcVars
@@ -866,7 +866,7 @@ class NtcVars:
     """
 
     def __init__(self, nt: int, nbus: int, ng: int, nb: int, nl: int, nbr: int, n_hvdc: int, n_vsc: int,
-                 model: LpModel):
+                 model: OrToolsLpModel):
         """
         Constructor
         :param nt: number of time steps
@@ -907,7 +907,7 @@ class NtcVars:
 
         self.inter_area_flows = np.zeros(nt, dtype=float)
 
-    def get_values(self, Sbase: float, model: LpModel) -> "NtcVars":
+    def get_values(self, Sbase: float, model: OrToolsLpModel) -> "NtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
         :param Sbase
@@ -1030,7 +1030,7 @@ def add_linear_injections_formulation(t: Union[int, None],
                                       transfer_method: AvailableTransferMode,
                                       skip_generation_limits: bool,
                                       ntc_vars: NtcVars,
-                                      prob: LpModel,
+                                      prob: OrToolsLpModel,
                                       logger: Logger):
     """
     Add MIP injections formulation
@@ -1128,7 +1128,7 @@ def add_linear_branches_formulation(t_idx: int,
                                     active_branch_data_t: ActiveBranchData,
                                     branch_vars: BranchNtcVars,
                                     bus_vars: BusNtcVars,
-                                    prob: LpModel,
+                                    prob: OrToolsLpModel,
                                     monitor_only_sensitive_branches: bool,
                                     monitor_only_ntc_load_rule_branches: bool,
                                     alpha: Vec,
@@ -1296,7 +1296,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   bus_vars: BusNtcVars,
                                                   hvdc_vars: HvdcNtcVars,
                                                   vsc_vars: VscNtcVars,
-                                                  prob: LpModel,
+                                                  prob: OrToolsLpModel,
                                                   linear_multi_contingencies: LinearMultiContingencies,
                                                   monitor_only_ntc_load_rule_branches: bool,
                                                   monitor_only_sensitive_branches: bool,
@@ -1399,7 +1399,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                                 hvdc_data_t: HvdcData,
                                 hvdc_vars: HvdcNtcVars,
                                 vars_bus: BusNtcVars,
-                                prob: LpModel,
+                                prob: OrToolsLpModel,
                                 saturate: bool = True):
     """
 
@@ -1537,7 +1537,7 @@ def add_linear_vsc_formulation(t_idx: int,
                                vsc_data_t: VscData,
                                vsc_vars: VscNtcVars,
                                bus_vars: BusNtcVars,
-                               prob: LpModel,
+                               prob: OrToolsLpModel,
                                logger: Logger,
                                saturate: bool = True):
     """
@@ -1724,7 +1724,7 @@ def add_linear_node_balance(t_idx: int,
                             vd: IntVec,
                             bus_data: BusData,
                             bus_vars: BusNtcVars,
-                            prob: LpModel,
+                            prob: OrToolsLpModel,
                             logger: Logger):
     """
     Add the kirchhoff nodal equality
@@ -1825,7 +1825,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     n_vsc = grid.get_vsc_number()
 
     # Declare the LP model
-    lp_model: LpModel = LpModel(solver_type)
+    lp_model: OrToolsLpModel = OrToolsLpModel(solver_type)
 
     # declare structures of LP vars
     mip_vars = NtcVars(nt=1, nbus=n, ng=ng, nb=nb, nl=nl, nbr=nbr, n_hvdc=n_hvdc, n_vsc=n_vsc,
@@ -2043,7 +2043,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
 
-    if status == LpModel.OPTIMAL:
+    if status == OrToolsLpModel.OPTIMAL:
         logger.add_info("Objective function", value=lp_model.fobj_value())
         mip_vars.acceptable_solution[t_idx] = True
     else:

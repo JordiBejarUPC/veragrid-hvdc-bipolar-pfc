@@ -273,7 +273,7 @@ class BaseDiagramWidget(QSplitter):
 
     def remove_element(self,
                        device: ALL_DEV_TYPES,
-                       graphic_object: GenericDiagramWidget | None = None,
+                       graphic_object: GenericDiagramWidget | QGraphicsItem | None = None,
                        delete_from_db: bool = False) -> bool:
         """
         Remove device from the diagram and the database.
@@ -339,6 +339,7 @@ class BaseDiagramWidget(QSplitter):
         This function is a utility function to call this function in other diagrams through the GUI
         :param device: ALL_DEV_TYPES
         :param propagate: propagate
+        :param graphic_object: QGraphicsItem
         :return:
         """
         self.diagram.delete_device(device=device)
@@ -409,7 +410,7 @@ class BaseDiagramWidget(QSplitter):
         self.delete_with_dialogue(selected=self._get_selected(),
                                   delete_from_db=delete_from_db)
 
-    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES]):
+    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES], propagate: bool):
         """
         Delete device from the diagram registry
         :param elements: list of elements to delete

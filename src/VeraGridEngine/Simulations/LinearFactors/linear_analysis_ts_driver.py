@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, Union, TYPE_CHECKING
 from VeraGridEngine.basic_structures import IntVec
-from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
+from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearAnalysisTs
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.enumerations import SimulationTypes
@@ -28,13 +28,16 @@ class LinearAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                  options: Union[LinearAnalysisOptions, None] = None,
                  time_indices: Union[IntVec, None] = None,
                  clustering_results: Union[ClusteringResults, None] = None,
-                 opf_time_series_results=None):
+                 opf_time_series_results=None,
+                 simplified_compilation: bool = True):
         """
         TimeSeries Analysis constructor
         :param grid: MultiCircuit instance
         :param options: LinearAnalysisOptions instance (optional)
         :param time_indices: array of time indices to simulate (optional)
         :param clustering_results: ClusteringResults instance (optional)
+        :param simplified_compilation: If true, the detailed compilation is replaced with a very fast
+                                       status analysis from LinearAnalysisTs
         """
         TimeSeriesDriverTemplate.__init__(
             self,
@@ -46,6 +49,8 @@ class LinearAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.options: LinearAnalysisOptions = LinearAnalysisOptions() if options is None else options
 
         self.opf_time_series_results = opf_time_series_results
+
+        self.simplified_compilation = simplified_compilation
 
         self.drivers: Dict[int, LinearAnalysis] = dict()
 
@@ -66,37 +71,38 @@ class LinearAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         """
 
         self.tic()
-
-        self.report_text('Computing TS linear analysis...')
-
         self.__cancel__ = False
+        self.report_text('Computing TS linear analysis...')
+        lin_ts = LinearAnalysisTs(self.grid)
 
-        # Compute bus Injections
-        # Pbus = self.grid.get_Pbus_prof()
+        self.report_text('Computing flows...')
 
-        # Compute different topologies to consider
-        # tpg = self.get_topologic_groups()
+        if self.simplified_compilation:
+            # Theoretically equivallent but cannot be ensured 100%
+            self.results.S = self.grid.get_Pbus_prof(apply_active=True)
+            self.results.Sf = lin_ts.get_flows_ts(P=self.results.S,
+                                                  progress_func=self.report_progress,
+                                                  progress_text=self.report_text)
 
-        for it, t in enumerate(self.time_indices):
-            self.report_text('Linear analysis at ' + str(self.grid.time_profile[t]))
-            self.report_progress2(it, len(self.time_indices))
+        else:
+            for it, t in enumerate(self.time_indices):
+                self.report_text('Linear analysis at ' + str(self.grid.time_profile[t]))
+                self.report_progress2(it, len(self.time_indices))
 
-            nc: NumericalCircuit = compile_numerical_circuit_at(circuit=self.grid,
-                                                                t_idx=t,
-                                                                opf_results=self.opf_time_series_results,
-                                                                logger=self.logger)
+                nc: NumericalCircuit = compile_numerical_circuit_at(circuit=self.grid,
+                                                                    t_idx=t,
+                                                                    opf_results=self.opf_time_series_results,
+                                                                    logger=self.logger)
 
-            driver_ = LinearAnalysis(
-                nc=nc,
-                distributed_slack=self.options.distribute_slack,
-                correct_values=self.options.correct_values,
-                # distributed_slack=True,
-                # correct_values=False,
-            )
+                driver_ = LinearAnalysis(
+                    nc=nc,
+                    distributed_slack=self.options.distribute_slack,
+                    correct_values=self.options.correct_values,
+                )
 
-            Sbus = nc.get_power_injections_pu()
-            self.results.S[it, :] = Sbus * nc.Sbase
-            self.results.Sf[it, :] = driver_.get_flows(Sbus=Sbus) * nc.Sbase
+                Sbus = nc.get_power_injections_pu()
+                self.results.S[it, :] = Sbus * nc.Sbase
+                self.results.Sf[it, :] = driver_.get_flows(Sbus=Sbus) * nc.Sbase
 
         rates = self.grid.get_branch_rates()
         self.results.loading = self.results.Sf.real / (rates + 1e-9)

@@ -202,9 +202,9 @@ def ptdf_reduction_ree_bad(grid: MultiCircuit,
 
     # flows
     Flows0 = PTDF @ Pbus0
-    Flow_load = PTDF @ Pload
-    Flow_gen = PTDF @ Pgen
-    Flow_gen_srap = PTDF @ Pgen_srap
+    Flow0_load = PTDF @ Pload
+    Flow0_gen = PTDF @ Pgen
+    Flow0_gen_srap = PTDF @ Pgen_srap
 
     # reduce
     to_be_deleted = [grid.buses[e] for e in e_buses]
@@ -221,7 +221,7 @@ def ptdf_reduction_ree_bad(grid: MultiCircuit,
     lin2 = LinearAnalysis(nc2)
 
     # reconstruct injections that should be to keep the flows the same
-    b = np.c_[Flow_load[i_branches], Flow_gen[i_branches], Flow_gen_srap[i_branches]]
+    b = np.c_[Flow0_load[i_branches], Flow0_gen[i_branches], Flow0_gen_srap[i_branches]]
     X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
     Pload3, Pgen3, Pgen_srap3 = X[:, 0], X[:, 1], X[:, 2]
 
@@ -235,7 +235,7 @@ def ptdf_reduction_ree_bad(grid: MultiCircuit,
 
         bus = grid.buses[i]
         if abs(dPload[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=-dPload[i])
+            elm = Load(name=f"compensated load {i}", P=dPload[i])
             grid.add_load(bus=bus, api_obj=elm)
 
         if abs(dPgen[i]) > tol:
@@ -399,7 +399,7 @@ def ptdf_reduction(grid: MultiCircuit,
 if __name__ == "__main__":
     import VeraGridEngine as vg
 
-    circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
+    circuit = vg.open_file("completo.veragrid")
 
     nc = vg.compile_numerical_circuit_at(circuit=circuit, t_idx=None)
     lin = vg.LinearAnalysis(nc=nc)
@@ -409,7 +409,7 @@ if __name__ == "__main__":
     else:
         lin_ts = None
 
-    ptdf_reduction(
+    ptdf_reduction_ree_bad(
         grid=circuit,
         reduction_bus_indices=[4],
         PTDF=lin.PTDF,

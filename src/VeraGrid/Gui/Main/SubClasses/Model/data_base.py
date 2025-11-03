@@ -13,7 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
-from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
+from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays_model import CompiledArraysModule
 from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
 import VeraGridEngine.basic_structures as bs
 import VeraGridEngine.Devices as dev
@@ -27,6 +27,7 @@ from VeraGridEngine.Topology.detect_substations import detect_substations, detec
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
+from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsModelEditorGUI
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
@@ -35,6 +36,9 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue
+from VeraGrid.Gui.Diagrams.Editors.transformer_editor import TransformerEditor
+from VeraGrid.Gui.Diagrams.Editors.transformer3w_editor import Transformer3WEditor
+from VeraGrid.Gui.Diagrams.Editors.controllable_shunt_editor import ControllableShuntEditor
 
 
 class DataBaseTableMain(DiagramsMain):
@@ -187,7 +191,7 @@ class DataBaseTableMain(DiagramsMain):
 
         :return:
         """
-        mdl = gf.get_tree_model(d=NumericalCircuit.available_structures,
+        mdl = gf.get_tree_model(d=CompiledArraysModule.available_structures,
                                 top='Arrays')
 
         self.ui.simulationDataStructuresTreeView.setModel(mdl)
@@ -679,7 +683,17 @@ class DataBaseTableMain(DiagramsMain):
         """
         Call the grid reduction dialogue on the schematic selection
         """
-        selected_buses = self.get_selected_buses()
+
+        diagram_widget = self.get_selected_diagram_widget()
+        if isinstance(diagram_widget, SchematicWidget):
+            selected_buses = diagram_widget.get_selected_buses()
+            selected_se = list()
+
+        elif isinstance(diagram_widget, GridMapWidget):
+            selected_se = diagram_widget.get_selected_substations()
+            selected_buses = diagram_widget.get_selected_buses()
+        else:
+            return None
 
         if len(selected_buses):
             # get the previous power flow
@@ -695,6 +709,19 @@ class DataBaseTableMain(DiagramsMain):
 
             if self.grid_reduction_dialogue.did_reduce:
                 self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+
+            if isinstance(diagram_widget, GridMapWidget):
+                # if this is a map, delete the elements from there
+                for se_graphics in selected_se:
+                    if se_graphics.api_object is not None:
+                        diagram_widget.delete_element_utility_function(
+                            device=se_graphics.api_object,
+                            propagate=True
+                        )
+
+            self.show_info_toast("Done!")
+        else:
+            self.show_warning_toast("No selected buses :/")
 
     def add_objects(self):
         """
@@ -890,6 +917,33 @@ class DataBaseTableMain(DiagramsMain):
                         self.rms_model_Editor_window = RmsModelEditorGUI(model_host=self.circuit.rms_models[idx], )
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)
                         self.rms_model_Editor_window.show()
+
+                    elif elm_type == DeviceType.LineDevice.value:
+
+                        elm = self.circuit.lines[idx]
+                        dlg = LineEditor(line=elm, grid=self.circuit)
+                        dlg.exec()
+
+                    elif elm_type == DeviceType.Transformer2WDevice.value:
+
+                        elm = self.circuit.transformers2w[idx]
+                        dlg = TransformerEditor(branch=elm, grid=self.circuit, modify_on_accept=True)
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.ControllableShuntDevice.value:
+
+                        dlg = ControllableShuntEditor(api_object=self.circuit.controllable_shunts[idx])
+                        if dlg.exec():
+                            pass
+
+                    elif elm_type == DeviceType.Transformer3WDevice.value:
+
+                        elm = self.circuit.transformers3w[idx]
+                        Sbase = self.circuit.Sbase
+                        dlg = Transformer3WEditor(elm, Sbase, modify_on_accept=True)
+                        if dlg.exec():
+                            pass
 
                     else:
 
