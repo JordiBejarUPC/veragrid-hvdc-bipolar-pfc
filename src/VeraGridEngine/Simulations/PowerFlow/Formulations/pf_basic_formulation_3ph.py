@@ -489,78 +489,6 @@ def compute_power_loads(bus_idx: IntVec,
     return I, Y_power_linear, Un_floating
 
 
-# @nb.njit(cache=True)
-def compute_admittance_delta_loads(bus_idx: IntVec,
-                                   Ydelta: CxVec,
-                                   V: CxVec,
-                                   bus_lookup: IntVec) -> Tuple[CxVec, CxVec]:
-    """
-    :param bus_idx:
-    :param Ydelta:
-    :param V:
-    :param bus_lookup:
-    :return:
-    """
-    n = len(V)
-    nelm = len(bus_idx)
-    I = np.zeros(n, dtype=complex)
-    zero_load = 0.0 + 0.0j
-
-    for k in range(nelm):
-        f = bus_idx[k]
-
-        n = 4 * f + 0
-        a = 4 * f + 1
-        b = 4 * f + 2
-        c = 4 * f + 3
-
-        n2 = bus_lookup[n]
-        a2 = bus_lookup[a]
-        b2 = bus_lookup[b]
-        c2 = bus_lookup[c]
-
-        nn = 4 * k + 0
-        ab = 4 * k + 1
-        bc = 4 * k + 2
-        ca = 4 * k + 3
-
-        ab_connected = (Ydelta[ab] != zero_load)
-        bc_connected = (Ydelta[bc] != zero_load)
-        ca_connected = (Ydelta[ca] != zero_load)
-
-        if ab_connected:
-            if a2 > -1 and b2 > -1:
-
-                I[a2] += -1 * (V[a2] - V[b2]) * Ydelta[ab] / 3
-                I[b2] += -1 * (V[b2] - V[a2]) * Ydelta[ab] / 3
-
-            else:
-                raise Exception('Incorrect load phasing, non-existing phases for this load')
-
-        elif bc_connected:
-            if b2 > -1 and c2 > -1:
-
-                I[b2] += -1 * (V[b2] - V[c2]) * Ydelta[bc] / 3
-                I[c2] += -1 * (V[c2] - V[b2]) * Ydelta[bc] / 3
-
-            else:
-                raise Exception('Incorrect load phasing, non-existing phases for this load')
-
-        elif ca_connected:
-            if c2 > -1 and a2 > -1:
-
-                I[c2] += -1 * (V[c2] - V[a2]) * Ydelta[ca] / 3
-                I[a2] += -1 * (V[a2] - V[c2]) * Ydelta[ca] / 3
-
-            else:
-                raise Exception('Incorrect load phasing, non-existing phases for this load')
-
-    # Y_power_delta_linear = np.conj(S) / np.pow(np.abs(V), 2)
-    Y_admittance_delta_linear = 0
-
-    return I, Y_admittance_delta_linear
-
-
 def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-6) -> CSC:
     """
     Compute the Jacobian matrix of `func` at `x` using finite differences.
@@ -845,10 +773,6 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
-        Iadmittance_delta, Y_admittance_delta_linear = compute_admittance_delta_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                      Ydelta=self.nc.load_data.Y3_delta,
-                                                                                      V=V,
-                                                                                      bus_lookup=self.bus_lookup)
 
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                                              bus_lookup=self.bus_lookup,
@@ -864,7 +788,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Idelta=self.nc.load_data.I3_delta,
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Iadmittance_delta + Ipower + Icurrent) / (self.nc.Sbase / 3)
+        Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, V)
 
         dI = Icalc - Ibus  # compute the mismatch
@@ -895,10 +819,6 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
-        Iadmittance_delta, Y_admittance_delta_linear = compute_admittance_delta_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                      Ydelta=self.nc.load_data.Y3_delta,
-                                                                                      V=V,
-                                                                                      bus_lookup=self.bus_lookup)
 
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                                              bus_lookup=self.bus_lookup,
@@ -914,7 +834,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Idelta=self.nc.load_data.I3_delta,
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Iadmittance_delta + Ipower + Icurrent) / (self.nc.Sbase / 3)
+        Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, V)
 
         dI = Icalc - Ibus  # compute the mismatch
@@ -941,10 +861,6 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
-        Iadmittance_delta, Y_admittance_delta_linear = compute_admittance_delta_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                      Ydelta=self.nc.load_data.Y3_delta,
-                                                                                      V=self.V,
-                                                                                      bus_lookup=self.bus_lookup)
 
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                                              bus_lookup=self.bus_lookup,
@@ -960,7 +876,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Idelta=self.nc.load_data.I3_delta,
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Iadmittance_delta + Ipower + Icurrent) / (self.nc.Sbase / 3)
+        Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         self.Icalc = compute_current(self.Ybus, self.V)
 
         dI = self.Icalc - Ibus  # compute the mismatch
@@ -1104,11 +1020,6 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         # NOTE: Assumes the internal vars were updated already with self.x2var()
 
-        Iadmittance_delta, Y_admittance_delta_linear = compute_admittance_delta_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                      Ydelta=self.nc.load_data.Y3_delta,
-                                                                                      V=self.V,
-                                                                                      bus_lookup=self.bus_lookup)
-
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                                              bus_lookup=self.bus_lookup,
                                                                              V=self.V,
@@ -1123,7 +1034,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Idelta=self.nc.load_data.I3_delta,
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Iadmittance_delta + Ipower + Icurrent) / (self.nc.Sbase / 3)
+        Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         self.Icalc = compute_current(self.Ybus, self.V)
 
         self._f = compute_fx(self.Icalc, Ibus, self.idx_dP, self.idx_dQ)

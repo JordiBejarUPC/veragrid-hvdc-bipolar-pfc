@@ -35,7 +35,7 @@ class ShuntData:
 
         # self.Y3_delta = np.zeros(self.nelm * 3, dtype=complex)
         self.Y3_star = np.zeros((self.nelm * 4, 4), dtype=complex)
-        self.Y3_delta = np.zeros((self.nelm * 4, 4), dtype=complex)
+        self.Y3_delta = np.zeros((self.nelm * 4), dtype=complex)
 
         self.A_floatingstar = np.zeros(self.nelm, dtype=complex)
         self.B_floatingstar = np.zeros(self.nelm, dtype=complex)

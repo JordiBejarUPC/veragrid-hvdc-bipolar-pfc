@@ -496,7 +496,6 @@ def get_load_data(data: LoadData,
                     data.S3_star[4 * ii + 2] = elm.get_Sb_at(t_idx)
                     data.S3_star[4 * ii + 3] = elm.get_Sc_at(t_idx)
 
-
                 elif elm.conn == ShuntConnectionType.Delta:
 
                     data.S3_delta[4 * ii + 1] = elm.get_Sa_at(t_idx)
@@ -507,16 +506,12 @@ def get_load_data(data: LoadData,
                     data.I3_delta[4 * ii + 2] = elm.get_I2_at(t_idx)
                     data.I3_delta[4 * ii + 3] = elm.get_I3_at(t_idx)
 
-                    if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
-                        data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
-                            Yab=elm.get_Y1_conj_at(t_idx),
-                            Ybc=elm.get_Y2_conj_at(t_idx),
-                            Yca=elm.get_Y3_conj_at(t_idx)
-                        )
-                    else:
-                        data.Y3_delta[4 * ii + 1] = elm.get_Y1_conj_at(t_idx)
-                        data.Y3_delta[4 * ii + 2] = elm.get_Y2_conj_at(t_idx)
-                        data.Y3_delta[4 * ii + 3] = elm.get_Y3_conj_at(t_idx)
+                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
+                        Yab=elm.get_Y1_conj_at(t_idx),
+                        Ybc=elm.get_Y2_conj_at(t_idx),
+                        Yca=elm.get_Y3_conj_at(t_idx)
+                    )
+
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
 
@@ -826,23 +821,11 @@ def get_shunt_data(
 
                 elif elm.conn == ShuntConnectionType.Delta:
 
-                    Yab = elm.get_Ya_at(t_idx)
-                    Ybc = elm.get_Yb_at(t_idx)
-                    Yca = elm.get_Yc_at(t_idx)
-
-                    if Yab != 0.0+0.0j and Ybc != 0.0+0.0j and Yca != 0.0+0.0j:
-
-                        data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
-                            Yab=Yab,
-                            Ybc=Ybc,
-                            Yca=Yca
-                        )
-
-                    else:
-
-                        data.Y3_delta[4 * ii + 1] = Yab
-                        data.Y3_delta[4 * ii + 2] = Ybc
-                        data.Y3_delta[4 * ii + 3] = Yca
+                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
+                        Yab=elm.get_Ya_at(t_idx),
+                        Ybc=elm.get_Yb_at(t_idx),
+                        Yca=elm.get_Yc_at(t_idx)
+                    )
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
