@@ -145,6 +145,17 @@ class LoadData:
         data.I = self.I.copy()
         data.Y = self.Y.copy()
 
+        data.S3_delta = self.S3_delta.copy()
+        data.S3_star = self.S3_star.copy()
+        data.S3_floatingstar = self.S3_floatingstar.copy()
+
+        data.I3_delta = self.I3_delta.copy()
+        data.I3_star = self.I3_star.copy()
+        data.I3_floatingstar = self.I3_floatingstar.copy()
+
+        data.Y3_delta = self.Y3_delta.copy()
+        data.Y3_star = self.Y3_star.copy()
+
         data.mttf = self.mttf.copy()
         data.mttr = self.mttr.copy()
 

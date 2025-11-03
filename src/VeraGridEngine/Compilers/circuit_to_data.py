@@ -762,19 +762,87 @@ def get_shunt_data(
             data.Y[k] = elm.get_Y_at(t_idx)
 
             if fill_three_phase:
+
                 if elm.conn == ShuntConnectionType.GroundedStar:
 
-                    data.Y3_star[3 * ii + 0, 1] = elm.get_Ya_at(t_idx)
-                    data.Y3_star[3 * ii + 1, 2] = elm.get_Yb_at(t_idx)
-                    data.Y3_star[3 * ii + 2, 3] = elm.get_Yc_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Ya_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Yb_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Yc_at(t_idx)
+                    data.Y3_star[4 * ii + 1, 1] = elm.get_Ya_at(t_idx)
+                    data.Y3_star[4 * ii + 2, 2] = elm.get_Yb_at(t_idx)
+                    data.Y3_star[4 * ii + 3, 3] = elm.get_Yc_at(t_idx)
+
+                elif elm.conn == ShuntConnectionType.FloatingStar:
+
+                    # Admittances
+                    Ya = elm.get_Ya_at(t_idx)
+                    Yb = elm.get_Yb_at(t_idx)
+                    Yc = elm.get_Yc_at(t_idx)
+
+                    if Ya != 0.0+0.0j and Yb != 0.0+0.0j and Yc != 0.0+0.0j:
+                        data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
+                        data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
+                        data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
+
+                        A = Ya / (Ya + Yb + Yc)
+                        B = Yb / (Ya + Yb + Yc)
+                        C = Yc / (Ya + Yb + Yc)
+
+                        # First row
+                        data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
+                        data.Y3_star[4 * ii + 1, 2] = -B * Ya
+                        data.Y3_star[4 * ii + 1, 3] = -C * Ya
+
+                        # Second row
+                        data.Y3_star[4 * ii + 2, 1] = -A * Yb
+                        data.Y3_star[4 * ii + 2, 2] = (1 - B) * Yb
+                        data.Y3_star[4 * ii + 2, 3] = -C * Yb
+
+                        # Third row
+                        data.Y3_star[4 * ii + 3, 1] = -A * Yc
+                        data.Y3_star[4 * ii + 3, 2] = -B * Yc
+                        data.Y3_star[4 * ii + 3, 3] = (1 - C) * Yc
+
+                elif elm.conn == ShuntConnectionType.NeutralStar:
+
+                    # Admittance
+                    Ya = elm.get_Ya_at(t_idx)
+                    Yb = elm.get_Yb_at(t_idx)
+                    Yc = elm.get_Yc_at(t_idx)
+                    # First row
+                    data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-4
+                    data.Y3_star[4 * ii + 0, 1] = -Ya
+                    data.Y3_star[4 * ii + 0, 2] = -Yb
+                    data.Y3_star[4 * ii + 0, 3] = -Yc
+                    # Second row
+                    data.Y3_star[4 * ii + 1, 0] = -Ya
+                    data.Y3_star[4 * ii + 1, 1] = Ya
+                    # Third row
+                    data.Y3_star[4 * ii + 2, 0] = -Yb
+                    data.Y3_star[4 * ii + 2, 2] = Yb
+                    # Fourth row
+                    data.Y3_star[4 * ii + 3, 0] = -Yc
+                    data.Y3_star[4 * ii + 3, 3] = Yc
 
                 elif elm.conn == ShuntConnectionType.Delta:
 
-                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
-                        Yab=elm.get_Ya_at(t_idx),
-                        Ybc=elm.get_Yb_at(t_idx),
-                        Yca=elm.get_Yc_at(t_idx)
-                    )
+                    Yab = elm.get_Ya_at(t_idx)
+                    Ybc = elm.get_Yb_at(t_idx)
+                    Yca = elm.get_Yc_at(t_idx)
+
+                    if Yab > 0.0+0.0j and Ybc > 0.0+0.0j and Yca > 0.0+0.0j:
+
+                        data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
+                            Yab=Yab,
+                            Ybc=Ybc,
+                            Yca=Yca
+                        )
+
+                    else:
+
+                        data.Y3_delta[4 * ii + 1] = Yab
+                        data.Y3_delta[4 * ii + 2] = Ybc
+                        data.Y3_delta[4 * ii + 3] = Yca
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
