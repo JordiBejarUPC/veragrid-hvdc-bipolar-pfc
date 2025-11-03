@@ -805,7 +805,7 @@ def get_shunt_data(
                     Yb = elm.get_Yb_at(t_idx)
                     Yc = elm.get_Yc_at(t_idx)
                     # First row
-                    data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-4
+                    data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-10j
                     data.Y3_star[4 * ii + 0, 1] = -Ya
                     data.Y3_star[4 * ii + 0, 2] = -Yb
                     data.Y3_star[4 * ii + 0, 3] = -Yc

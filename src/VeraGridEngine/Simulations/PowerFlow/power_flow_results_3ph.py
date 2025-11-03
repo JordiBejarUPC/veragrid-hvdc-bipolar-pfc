@@ -653,6 +653,18 @@ class PowerFlowResults3Ph(ResultsTemplate):
 
         return df
 
+    def get_shunt_neutral_voltage_df(self) -> pd.DataFrame:
+        """
+        Get a DataFrame with the load neutral voltage results, Vm in p.u., Va in deg
+        :return: DataFrame
+        """
+        df = pd.DataFrame(data={
+            'Vm_N': np.abs(self.shunt_Vn).round(5),
+            'Va_N': np.angle(self.shunt_Vn, deg=True).round(1)
+        }, index=self.sh_names)
+
+        return df
+
     def get_current_3ph_df(self) -> pd.DataFrame:
         """
         Get a DataFrame with the buses results, Vm in p.u., Va in deg

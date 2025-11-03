@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 logger = gce.Logger()
-
 grid = gce.MultiCircuit()
 grid.fBase = 60
 
@@ -23,14 +22,9 @@ grid.add_bus(obj=bus_634)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(G1=0.7,
-                    B1=0.5,
-                    G2=0.0,
-                    B2=0.0,
-                    G3=0.0,
-                    B3=0.0)
-load_634.conn = ShuntConnectionType.NeutralStar
-grid.add_load(bus=bus_634, api_obj=load_634)
+shunt = gce.Shunt(B1=0.7)
+shunt.conn = ShuntConnectionType.NeutralStar
+grid.add_shunt(bus=bus_634, api_obj=shunt)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Line
@@ -83,9 +77,9 @@ print(res.get_voltage_3ph_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-print()
-print(res.voltage_A)
-print()
-print(res.voltage_B)
-print()
-print(res.voltage_C)
+# print()
+# print(res.voltage_A)
+# print()
+# print(res.voltage_B)
+# print()
+# print(res.voltage_C)
