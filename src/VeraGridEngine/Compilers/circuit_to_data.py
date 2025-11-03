@@ -830,7 +830,7 @@ def get_shunt_data(
                     Ybc = elm.get_Yb_at(t_idx)
                     Yca = elm.get_Yc_at(t_idx)
 
-                    if Yab > 0.0+0.0j and Ybc > 0.0+0.0j and Yca > 0.0+0.0j:
+                    if Yab != 0.0+0.0j and Ybc != 0.0+0.0j and Yca != 0.0+0.0j:
 
                         data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
                             Yab=Yab,

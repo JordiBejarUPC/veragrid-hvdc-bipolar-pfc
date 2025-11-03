@@ -74,9 +74,9 @@ def test_shunt_groundedstar_3ph():
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_floatingstar_3ph():
+def test_shunt_floatingstar_3ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a three-phase shunt connected in FloatingStar.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -99,14 +99,6 @@ def test_impedance_floatingstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Load
     # ----------------------------------------------------------------------------------------------------------------------
-    load_634 = gce.Load(G1=0.7,
-                        B1=0.5,
-                        G2=0.6,
-                        B2=0.45,
-                        G3=0.5,
-                        B3=0.4)
-    load_634.conn = ShuntConnectionType.FloatingStar
-    grid.add_load(bus=bus_634, api_obj=load_634)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Transformer
@@ -153,9 +145,9 @@ def test_impedance_floatingstar_3ph():
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_neutralstar_3ph():
+def test_shunt_neutralstar_3ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a three-phase shunt connected in NeutralStar.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -178,14 +170,6 @@ def test_impedance_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Load
     # ----------------------------------------------------------------------------------------------------------------------
-    load_634 = gce.Load(G1=0.7,
-                        B1=0.5,
-                        G2=0.6,
-                        B2=0.45,
-                        G3=0.5,
-                        B3=0.4)
-    load_634.conn = ShuntConnectionType.NeutralStar
-    grid.add_load(bus=bus_634, api_obj=load_634)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Line
@@ -242,9 +226,9 @@ def test_impedance_neutralstar_3ph():
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_delta_3ph():
+def test_shunt_delta_3ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a three-phase shunt connected in Delta.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -267,14 +251,11 @@ def test_impedance_delta_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Load
     # ----------------------------------------------------------------------------------------------------------------------
-    load_634 = gce.Load(G1=0.7,
-                        B1=0.5,
-                        G2=0.6,
-                        B2=0.45,
-                        G3=0.5,
-                        B3=0.4)
-    load_634.conn = ShuntConnectionType.Delta
-    grid.add_load(bus=bus_634, api_obj=load_634)
+    shunt = gce.Shunt(B1=0.7,
+                      B2=0.6,
+                      B3=0.5)
+    shunt.conn = ShuntConnectionType.Delta
+    grid.add_shunt(bus=bus_634, api_obj=shunt)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Transformer
@@ -303,22 +284,22 @@ def test_impedance_delta_3ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Ua_reference = np.array(
-        [1 + 0j, 0.91678499 - 0.04164258j])
+        [1 + 0j, 1.08074599-0.03834548j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48340674 - 0.76670763j])
+        [-0.5 - 0.8660254j, -0.58678775-0.90797257j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.43337825 + 0.80835022j])
+        [-0.5 + 0.8660254j, -0.49395824+0.94631805j])
 
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_delta_2ph():
+def test_shunt_delta_2ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a two-phase load connected in Delta.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -390,9 +371,9 @@ def test_impedance_delta_2ph():
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_groundedstar_1ph():
+def test_shunt_groundedstar_1ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a single-phase shunt connected in GroundedStar.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 
@@ -415,14 +396,6 @@ def test_impedance_groundedstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Load
     # ----------------------------------------------------------------------------------------------------------------------
-    load_634 = gce.Load(G1=0.7,
-                        B1=0.5,
-                        G2=0.0,
-                        B2=0.0,
-                        G3=0.0,
-                        B3=0.0)
-    load_634.conn = ShuntConnectionType.GroundedStar
-    grid.add_load(bus=bus_634, api_obj=load_634)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Transformer
@@ -464,9 +437,9 @@ def test_impedance_groundedstar_1ph():
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
 
 
-def test_impedance_neutralstar_1ph():
+def test_shunt_neutralstar_1ph():
     '''
-    This test executes a three-phase power flow with neutral into a three-phase load connected in GroundedStar.
+    This test executes a three-phase power flow with neutral into a three-phase shunt connected in NeutralStar.
     The obtained results are compared against the ones obtained in OpenDSS.
     '''
 

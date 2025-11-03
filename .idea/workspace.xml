@@ -28,41 +28,11 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Validation of neutral voltages with different floating loads connected at the same bus.">
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_Delta_2ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_Delta_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_FloatingStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_GroundedStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_GroundedStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_Delta_2ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_Delta_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_FloatingStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_GroundedStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_GroundedStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_NeutralStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_NeutralStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_Delta_2ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_Delta_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_FloatingStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_GroundedStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_GroundedStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_NeutralStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_NeutralStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_Delta_2ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_Delta_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_FloatingStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_GroundedStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_GroundedStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_NeutralStar_1ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_NeutralStar_3ph.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/__init__.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Validation of GroundedStar Shunts + Test.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/load_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/shunt_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/shunt_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral_shunts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral_shunts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_Delta_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_Delta_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -203,6 +173,7 @@
     "Python tests.pytest for test_3ph_pf_neutral.test_power_groundedstar_1ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_power_groundedstar_3ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_power_neutralstar_3ph.executor": "Run",
+    "Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_groundedstar_3ph.executor": "Run",
     "Python tests.pytest for test_ac_opf.test_superconductors_handling.executor": "Run",
     "Python tests.pytest for test_basic.test_gridcal_basic_pi.executor": "Debug",
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
@@ -296,7 +267,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "devel__merge__3ph",
-    "last_opened_file_path": "C:/Users/alexb/VeraGrid/src/trunk/unbalanced_pf/Neutral",
+    "last_opened_file_path": "C:/Users/alexb/VeraGrid/src/tests",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -314,11 +285,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\alexb\VeraGrid\src\tests" />
       <recent name="C:\Users\alexb\VeraGrid\src\trunk\unbalanced_pf\Neutral" />
       <recent name="C:\Users\alexb\VeraGrid\src\trunk\unbalanced_pf" />
       <recent name="$PROJECT_DIR$/src/trunk/equivalents" />
       <recent name="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction" />
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\alexb\VeraGrid\src\trunk\unbalanced_pf\Neutral\Loads" />
@@ -328,7 +299,7 @@
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_3ph">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -688,6 +659,52 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_3ph_pf_neutral_shunts.test_shunt_delta_3ph&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for test_3ph_pf_neutral_shunts.test_shunt_groundedstar_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_3ph_pf_neutral_shunts.test_shunt_groundedstar_3ph&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_3ph" />
+      <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_groundedstar_3ph" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_3ph" />
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_groundedstar_3ph" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -1816,7 +1833,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="654" />
+    <option name="localTasksCounter" value="655" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1862,7 +1879,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Worked on the RmsEditor" />
     <MESSAGE value="Fixed error with PTDF split correction in trunk" />
     <MESSAGE value="added WMOD recognition in raw parsing" />
     <MESSAGE value="added build status to physical device and substation" />
@@ -1887,7 +1903,8 @@
     <MESSAGE value="Organization and simplification of pf_basic_formulation_3ph.py" />
     <MESSAGE value="Corrected calculation of the powers at the power flow post_process, taking into account the neutral voltage." />
     <MESSAGE value="Validation of neutral voltages with different floating loads connected at the same bus." />
-    <option name="LAST_COMMIT_MESSAGE" value="Validation of neutral voltages with different floating loads connected at the same bus." />
+    <MESSAGE value="Validation of GroundedStar Shunts + Test." />
+    <option name="LAST_COMMIT_MESSAGE" value="Validation of GroundedStar Shunts + Test." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1966,6 +1983,11 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
           <line>421</line>
           <option name="timeStamp" value="69" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
+          <line>858</line>
+          <option name="timeStamp" value="76" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
