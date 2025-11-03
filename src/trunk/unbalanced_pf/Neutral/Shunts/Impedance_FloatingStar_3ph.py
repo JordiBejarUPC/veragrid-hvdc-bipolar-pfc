@@ -23,25 +23,11 @@ grid.add_bus(obj=bus_634)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(G1=0.7,
-                    B1=0.5,
-                    G2=0.6,
-                    B2=0.45,
-                    G3=0.5,
-                    B3=0.4,
-                    name='Original')
-load_634.conn = ShuntConnectionType.FloatingStar
-grid.add_load(bus=bus_634, api_obj=load_634)
-
-load_634 = gce.Load(G1=0.3,
-                    B1=0.3,
-                    G2=0.2,
-                    B2=0.2,
-                    G3=0.1,
-                    B3=0.1,
-                    name='Half')
-load_634.conn = ShuntConnectionType.FloatingStar
-grid.add_load(bus=bus_634, api_obj=load_634)
+shunt = gce.Shunt(B1=0.7,
+                  B2=0.6,
+                  B3=0.5)
+shunt.conn = ShuntConnectionType.FloatingStar
+grid.add_shunt(bus=bus_634, api_obj=shunt)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Transformer
@@ -74,16 +60,16 @@ pd.set_option("display.float_format", "{:.5f}".format)
 print()
 print(res.get_voltage_3ph_df())
 print()
-print(res.get_load_neutral_voltage_df())
+print(res.get_shunt_neutral_voltage_df())
 
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)
 
-# print()
-# print(res.load_Vn)
-# print()
-# print(res.voltage_A)
-# print()
-# print(res.voltage_B)
-# print()
-# print(res.voltage_C)
+print()
+print(res.shunt_Vn)
+print()
+print(res.voltage_A)
+print()
+print(res.voltage_B)
+print()
+print(res.voltage_C)

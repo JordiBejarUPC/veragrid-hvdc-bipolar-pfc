@@ -28,14 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Validation of 1ph GroundedStar Shunts + Test.">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Validation of 3ph and 1ph NeutralStar Shunts + Tests.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral_shunts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_neutral_shunts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_1ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_NeutralStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Shunts/Impedance_FloatingStar_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1902,7 +1898,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="658" />
+    <option name="localTasksCounter" value="659" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1948,7 +1944,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="changed the parent of the substation to physical device" />
     <MESSAGE value="fixed gslv version comparison" />
     <MESSAGE value="5.5.9" />
     <MESSAGE value="test_3ph_pf_neutral.py PASSING" />
@@ -1973,7 +1968,8 @@
     <MESSAGE value="Validation of 3ph Delta Shunts + Test." />
     <MESSAGE value="Validation of 2ph Delta Shunts + Test." />
     <MESSAGE value="Validation of 1ph GroundedStar Shunts + Test." />
-    <option name="LAST_COMMIT_MESSAGE" value="Validation of 1ph GroundedStar Shunts + Test." />
+    <MESSAGE value="Validation of 3ph and 1ph NeutralStar Shunts + Tests." />
+    <option name="LAST_COMMIT_MESSAGE" value="Validation of 3ph and 1ph NeutralStar Shunts + Tests." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2057,6 +2053,16 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py</url>
           <line>386</line>
           <option name="timeStamp" value="79" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py</url>
+          <line>381</line>
+          <option name="timeStamp" value="83" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py</url>
+          <line>388</line>
+          <option name="timeStamp" value="84" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -99,6 +99,11 @@ def test_shunt_floatingstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Load
     # ----------------------------------------------------------------------------------------------------------------------
+    shunt = gce.Shunt(B1=0.7,
+                      B2=0.6,
+                      B3=0.5)
+    shunt.conn = ShuntConnectionType.FloatingStar
+    grid.add_shunt(bus=bus_634, api_obj=shunt)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Transformer
@@ -127,19 +132,19 @@ def test_shunt_floatingstar_3ph():
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.07318343 - 0.02992788j]
+        [0.08814062-0.05504086j]
     )
 
     Ua_reference = np.array(
-        [1 + 0j, 0.91048917 - 0.04147616j])
+        [1 + 0j, 1.08411732-0.04518634j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.47968669 - 0.77307996j])
+        [-0.5 - 0.8660254j, -0.58170353-0.90036275j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.43080248 + 0.81455613j])
+        [-0.5 + 0.8660254j, -0.5024138+0.9455491j])
 
-    assert np.allclose(res.load_Vn, Un_reference, atol=1e-4)
+    assert np.allclose(res.shunt_Vn, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
     assert np.allclose(res.voltage_B, Ub_reference, atol=1e-4)
     assert np.allclose(res.voltage_C, Uc_reference, atol=1e-4)
