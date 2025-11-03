@@ -255,6 +255,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionConsolidate_diagram_coordinates.triggered.connect(self.consolidate_diagram_coordinates)
         self.ui.actionReset_coordinates.triggered.connect(self.reset_diagram_coordinates)
         self.ui.actionRotate.triggered.connect(self.rotate)
+        self.ui.actionClear_highlights.triggered.connect(self.clear_big_bus_markers)
 
         # Buttons
         self.ui.colour_results_pushButton.clicked.connect(self.colour_diagrams)
@@ -409,13 +410,15 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(widget, GridMapWidget):
                 widget.center()
 
-    def get_selected_buses(self) -> List[Tuple[int, dev.Bus, BusGraphicItem]]:
+    def get_selected_buses(self) -> List[Tuple[int, dev.Bus, BusGraphicItem | None]]:
         """
         Get the selected buses
         :return: list of (bus position, bus object, bus_graphics object)
         """
         diagram_widget = self.get_selected_diagram_widget()
         if isinstance(diagram_widget, SchematicWidget):
+            return diagram_widget.get_selected_buses()
+        elif isinstance(diagram_widget, GridMapWidget):
             return diagram_widget.get_selected_buses()
         else:
             return list()
@@ -2360,11 +2363,10 @@ class DiagramsMain(CompiledArraysMain):
 
     def clear_big_bus_markers(self):
         """
-        Set a big marker at the selected buses
+        Clear big markers at the selected buses
         """
 
         for diagram in self.diagram_widgets_list:
-
             if isinstance(diagram, SchematicWidget):
                 diagram.clear_big_bus_markers()
 
@@ -2764,7 +2766,9 @@ class DiagramsMain(CompiledArraysMain):
         """
         for diagram_widget in self.diagram_widgets_list:
             if isinstance(diagram_widget, SchematicWidget):
-                diagram_widget.delete_diagram_elements(elements)
+                diagram_widget.delete_diagram_elements(elements, propagate=False)
+
+
 
             elif isinstance(diagram_widget, GridMapWidget):
                 pass

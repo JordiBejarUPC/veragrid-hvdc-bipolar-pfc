@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.9.3
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -31,7 +31,7 @@ class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1338, 742)
+        mainWindow.resize(1372, 742)
         mainWindow.setMinimumSize(QSize(1198, 742))
         mainWindow.setBaseSize(QSize(0, 0))
         font = QFont()
@@ -568,6 +568,7 @@ class Ui_mainWindow(object):
         icon75 = QIcon()
         icon75.addFile(u":/Icons/icons/add_remedial_action.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionAdd_selected_as_remedial_action.setIcon(icon75)
+        self.actionAdd_selected_as_remedial_action.setFont(font)
         self.actionDetect_facilities = QAction(mainWindow)
         self.actionDetect_facilities.setObjectName(u"actionDetect_facilities")
         icon76 = QIcon()
@@ -624,6 +625,19 @@ class Ui_mainWindow(object):
         icon80.addFile(u":/Icons/icons/ss_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionRun_Small_Signal_RMS_Simulation.setIcon(icon80)
         self.actionRun_Small_Signal_RMS_Simulation.setMenuRole(QAction.MenuRole.TextHeuristicRole)
+        self.actionAdd_rms_event_to_selected = QAction(mainWindow)
+        self.actionAdd_rms_event_to_selected.setObjectName(u"actionAdd_rms_event_to_selected")
+        icon81 = QIcon()
+        icon81.addFile(u":/Icons/icons/dyn_add.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionAdd_rms_event_to_selected.setIcon(icon81)
+        self.actionAdd_rms_event_to_selected.setFont(font)
+        self.actionAdd_rms_event_to_selected.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionClear_highlights = QAction(mainWindow)
+        self.actionClear_highlights.setObjectName(u"actionClear_highlights")
+        icon82 = QIcon()
+        icon82.addFile(u":/Icons/icons/highlight2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionClear_highlights.setIcon(icon82)
+        self.actionClear_highlights.setFont(font)
         self.centralwidget = QWidget(mainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_3 = QGridLayout(self.centralwidget)
@@ -743,9 +757,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_37.addWidget(self.diagramsListView)
 
-        icon81 = QIcon()
-        icon81.addFile(u":/Icons/icons/show_color_controls.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_6.addTab(self.tab_3, icon81, "")
+        icon83 = QIcon()
+        icon83.addFile(u":/Icons/icons/show_color_controls.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_6.addTab(self.tab_3, icon83, "")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.verticalLayout = QVBoxLayout(self.tab)
@@ -1136,9 +1150,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_38.addWidget(self.frame_58)
 
-        icon82 = QIcon()
-        icon82.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_6.addTab(self.tab_4, icon82, "")
+        icon84 = QIcon()
+        icon84.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_6.addTab(self.tab_4, icon84, "")
 
         self.verticalLayout_2.addWidget(self.tabWidget_6)
 
@@ -1166,9 +1180,9 @@ class Ui_mainWindow(object):
         self.colour_results_pushButton = QPushButton(self.grid_colouring_frame)
         self.colour_results_pushButton.setObjectName(u"colour_results_pushButton")
         self.colour_results_pushButton.setMaximumSize(QSize(32, 16777215))
-        icon83 = QIcon()
-        icon83.addFile(u":/Icons/icons/color_grid.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.colour_results_pushButton.setIcon(icon83)
+        icon85 = QIcon()
+        icon85.addFile(u":/Icons/icons/color_grid.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.colour_results_pushButton.setIcon(icon85)
 
         self.gridLayout_31.addWidget(self.colour_results_pushButton, 0, 2, 2, 1)
 
@@ -1253,9 +1267,9 @@ class Ui_mainWindow(object):
 
         self.structure_analysis_pushButton = QPushButton(self.frame_54)
         self.structure_analysis_pushButton.setObjectName(u"structure_analysis_pushButton")
-        icon84 = QIcon()
-        icon84.addFile(u":/Icons/icons/histogram.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.structure_analysis_pushButton.setIcon(icon84)
+        icon86 = QIcon()
+        icon86.addFile(u":/Icons/icons/histogram.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.structure_analysis_pushButton.setIcon(icon86)
 
         self.horizontalLayout_28.addWidget(self.structure_analysis_pushButton)
 
@@ -1277,9 +1291,9 @@ class Ui_mainWindow(object):
         self.horizontalLayout_25.setContentsMargins(0, 0, 0, 0)
         self.set_profile_state_button = QPushButton(self.frame_9)
         self.set_profile_state_button.setObjectName(u"set_profile_state_button")
-        icon85 = QIcon()
-        icon85.addFile(u":/Icons/icons/copy2left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_profile_state_button.setIcon(icon85)
+        icon87 = QIcon()
+        icon87.addFile(u":/Icons/icons/copy2left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_profile_state_button.setIcon(icon87)
 
         self.horizontalLayout_25.addWidget(self.set_profile_state_button)
 
@@ -1303,17 +1317,17 @@ class Ui_mainWindow(object):
 
         self.add_object_pushButton = QPushButton(self.frame_9)
         self.add_object_pushButton.setObjectName(u"add_object_pushButton")
-        icon86 = QIcon()
-        icon86.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.add_object_pushButton.setIcon(icon86)
+        icon88 = QIcon()
+        icon88.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.add_object_pushButton.setIcon(icon88)
 
         self.horizontalLayout_25.addWidget(self.add_object_pushButton)
 
         self.delete_selected_objects_pushButton = QPushButton(self.frame_9)
         self.delete_selected_objects_pushButton.setObjectName(u"delete_selected_objects_pushButton")
-        icon87 = QIcon()
-        icon87.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.delete_selected_objects_pushButton.setIcon(icon87)
+        icon89 = QIcon()
+        icon89.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.delete_selected_objects_pushButton.setIcon(icon89)
 
         self.horizontalLayout_25.addWidget(self.delete_selected_objects_pushButton)
 
@@ -1368,9 +1382,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_11.addWidget(self.frame_20)
 
-        icon88 = QIcon()
-        icon88.addFile(u":/Icons/icons/area_transfer.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_5.addTab(self.tab_2, icon88, "")
+        icon90 = QIcon()
+        icon90.addFile(u":/Icons/icons/area_transfer.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_5.addTab(self.tab_2, icon90, "")
         self.tab_16 = QWidget()
         self.tab_16.setObjectName(u"tab_16")
         self.verticalLayout_42 = QVBoxLayout(self.tab_16)
@@ -1397,26 +1411,26 @@ class Ui_mainWindow(object):
 
         self.delete_profiles_structure_pushButton = QPushButton(self.frame)
         self.delete_profiles_structure_pushButton.setObjectName(u"delete_profiles_structure_pushButton")
-        icon89 = QIcon()
-        icon89.addFile(u":/Icons/icons/new (delete).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.delete_profiles_structure_pushButton.setIcon(icon89)
+        icon91 = QIcon()
+        icon91.addFile(u":/Icons/icons/new (delete).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.delete_profiles_structure_pushButton.setIcon(icon91)
 
         self.horizontalLayout.addWidget(self.delete_profiles_structure_pushButton)
 
         self.edit_profiles_pushButton = QPushButton(self.frame)
         self.edit_profiles_pushButton.setObjectName(u"edit_profiles_pushButton")
-        icon90 = QIcon()
-        icon90.addFile(u":/Icons/icons/import_profiles.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.edit_profiles_pushButton.setIcon(icon90)
+        icon92 = QIcon()
+        icon92.addFile(u":/Icons/icons/import_profiles.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.edit_profiles_pushButton.setIcon(icon92)
         self.edit_profiles_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.edit_profiles_pushButton)
 
         self.edit_profiles_from_models_pushButton = QPushButton(self.frame)
         self.edit_profiles_from_models_pushButton.setObjectName(u"edit_profiles_from_models_pushButton")
-        icon91 = QIcon()
-        icon91.addFile(u":/Icons/icons/import_models.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.edit_profiles_from_models_pushButton.setIcon(icon91)
+        icon93 = QIcon()
+        icon93.addFile(u":/Icons/icons/import_models.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.edit_profiles_from_models_pushButton.setIcon(icon93)
         self.edit_profiles_from_models_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.edit_profiles_from_models_pushButton)
@@ -1427,9 +1441,9 @@ class Ui_mainWindow(object):
 
         self.plot_time_series_pushButton = QPushButton(self.frame)
         self.plot_time_series_pushButton.setObjectName(u"plot_time_series_pushButton")
-        icon92 = QIcon()
-        icon92.addFile(u":/Icons/icons/plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.plot_time_series_pushButton.setIcon(icon92)
+        icon94 = QIcon()
+        icon94.addFile(u":/Icons/icons/plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.plot_time_series_pushButton.setIcon(icon94)
 
         self.horizontalLayout.addWidget(self.plot_time_series_pushButton)
 
@@ -1454,25 +1468,25 @@ class Ui_mainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.copy_profile_pushButton = QPushButton(self.frame_12)
         self.copy_profile_pushButton.setObjectName(u"copy_profile_pushButton")
-        icon93 = QIcon()
-        icon93.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.copy_profile_pushButton.setIcon(icon93)
+        icon95 = QIcon()
+        icon95.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copy_profile_pushButton.setIcon(icon95)
 
         self.horizontalLayout_4.addWidget(self.copy_profile_pushButton)
 
         self.paste_profiles_pushButton = QPushButton(self.frame_12)
         self.paste_profiles_pushButton.setObjectName(u"paste_profiles_pushButton")
-        icon94 = QIcon()
-        icon94.addFile(u":/Icons/icons/paste.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.paste_profiles_pushButton.setIcon(icon94)
+        icon96 = QIcon()
+        icon96.addFile(u":/Icons/icons/paste.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.paste_profiles_pushButton.setIcon(icon96)
 
         self.horizontalLayout_4.addWidget(self.paste_profiles_pushButton)
 
         self.set_linear_combination_profile_pushButton = QPushButton(self.frame_12)
         self.set_linear_combination_profile_pushButton.setObjectName(u"set_linear_combination_profile_pushButton")
-        icon95 = QIcon()
-        icon95.addFile(u":/Icons/icons/copy2right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_linear_combination_profile_pushButton.setIcon(icon95)
+        icon97 = QIcon()
+        icon97.addFile(u":/Icons/icons/copy2right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_linear_combination_profile_pushButton.setIcon(icon97)
 
         self.horizontalLayout_4.addWidget(self.set_linear_combination_profile_pushButton)
 
@@ -1488,37 +1502,37 @@ class Ui_mainWindow(object):
 
         self.profile_add_pushButton = QPushButton(self.frame_12)
         self.profile_add_pushButton.setObjectName(u"profile_add_pushButton")
-        self.profile_add_pushButton.setIcon(icon86)
+        self.profile_add_pushButton.setIcon(icon88)
 
         self.horizontalLayout_4.addWidget(self.profile_add_pushButton)
 
         self.profile_subtract_pushButton = QPushButton(self.frame_12)
         self.profile_subtract_pushButton.setObjectName(u"profile_subtract_pushButton")
-        self.profile_subtract_pushButton.setIcon(icon87)
+        self.profile_subtract_pushButton.setIcon(icon89)
 
         self.horizontalLayout_4.addWidget(self.profile_subtract_pushButton)
 
         self.profile_multiply_pushButton = QPushButton(self.frame_12)
         self.profile_multiply_pushButton.setObjectName(u"profile_multiply_pushButton")
-        icon96 = QIcon()
-        icon96.addFile(u":/Icons/icons/multiply.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.profile_multiply_pushButton.setIcon(icon96)
+        icon98 = QIcon()
+        icon98.addFile(u":/Icons/icons/multiply.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.profile_multiply_pushButton.setIcon(icon98)
 
         self.horizontalLayout_4.addWidget(self.profile_multiply_pushButton)
 
         self.profile_divide_pushButton = QPushButton(self.frame_12)
         self.profile_divide_pushButton.setObjectName(u"profile_divide_pushButton")
-        icon97 = QIcon()
-        icon97.addFile(u":/Icons/icons/divide.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.profile_divide_pushButton.setIcon(icon97)
+        icon99 = QIcon()
+        icon99.addFile(u":/Icons/icons/divide.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.profile_divide_pushButton.setIcon(icon99)
 
         self.horizontalLayout_4.addWidget(self.profile_divide_pushButton)
 
         self.set_profile_value_pushButton = QPushButton(self.frame_12)
         self.set_profile_value_pushButton.setObjectName(u"set_profile_value_pushButton")
-        icon98 = QIcon()
-        icon98.addFile(u":/Icons/icons/copy2up.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_profile_value_pushButton.setIcon(icon98)
+        icon100 = QIcon()
+        icon100.addFile(u":/Icons/icons/copy2up.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_profile_value_pushButton.setIcon(icon100)
 
         self.horizontalLayout_4.addWidget(self.set_profile_value_pushButton)
 
@@ -1533,9 +1547,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_42.addWidget(self.frame_12)
 
-        icon99 = QIcon()
-        icon99.addFile(u":/Icons/icons/time_series.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_5.addTab(self.tab_16, icon99, "")
+        icon101 = QIcon()
+        icon101.addFile(u":/Icons/icons/time_series.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_5.addTab(self.tab_16, icon101, "")
 
         self.verticalLayout_26.addWidget(self.tabWidget_5)
 
@@ -1574,9 +1588,9 @@ class Ui_mainWindow(object):
         self.compute_simulation_data_pushButton = QPushButton(self.frame_28)
         self.compute_simulation_data_pushButton.setObjectName(u"compute_simulation_data_pushButton")
         self.compute_simulation_data_pushButton.setMaximumSize(QSize(32, 16777215))
-        icon100 = QIcon()
-        icon100.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.compute_simulation_data_pushButton.setIcon(icon100)
+        icon102 = QIcon()
+        icon102.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.compute_simulation_data_pushButton.setIcon(icon102)
 
         self.gridLayout_19.addWidget(self.compute_simulation_data_pushButton, 0, 0, 1, 1)
 
@@ -1610,23 +1624,23 @@ class Ui_mainWindow(object):
 
         self.copyArraysToNumpyButton = QPushButton(self.frame_29)
         self.copyArraysToNumpyButton.setObjectName(u"copyArraysToNumpyButton")
-        icon101 = QIcon()
-        icon101.addFile(u":/Icons/icons/array.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.copyArraysToNumpyButton.setIcon(icon101)
+        icon103 = QIcon()
+        icon103.addFile(u":/Icons/icons/array.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copyArraysToNumpyButton.setIcon(icon103)
 
         self.gridLayout_23.addWidget(self.copyArraysToNumpyButton, 0, 1, 1, 1)
 
         self.plotArraysButton = QPushButton(self.frame_29)
         self.plotArraysButton.setObjectName(u"plotArraysButton")
         self.plotArraysButton.setMinimumSize(QSize(32, 0))
-        self.plotArraysButton.setIcon(icon92)
+        self.plotArraysButton.setIcon(icon94)
 
         self.gridLayout_23.addWidget(self.plotArraysButton, 0, 6, 1, 1)
 
         self.copyArraysButton = QPushButton(self.frame_29)
         self.copyArraysButton.setObjectName(u"copyArraysButton")
         self.copyArraysButton.setMinimumSize(QSize(32, 0))
-        self.copyArraysButton.setIcon(icon93)
+        self.copyArraysButton.setIcon(icon95)
 
         self.gridLayout_23.addWidget(self.copyArraysButton, 0, 2, 1, 1)
 
@@ -1634,9 +1648,9 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_7.addWidget(self.simulationDataSplitter)
 
-        icon102 = QIcon()
-        icon102.addFile(u":/Icons/icons/spmat.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_3.addTab(self.compiledArraysTab, icon102, "")
+        icon104 = QIcon()
+        icon104.addFile(u":/Icons/icons/spmat.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_3.addTab(self.compiledArraysTab, icon104, "")
         self.commentsTab = QWidget()
         self.commentsTab.setObjectName(u"commentsTab")
         self.verticalLayout_18 = QVBoxLayout(self.commentsTab)
@@ -1646,9 +1660,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_18.addWidget(self.comments_textEdit)
 
-        icon103 = QIcon()
-        icon103.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_3.addTab(self.commentsTab, icon103, "")
+        icon105 = QIcon()
+        icon105.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_3.addTab(self.commentsTab, icon105, "")
 
         self.verticalLayout_9.addWidget(self.tabWidget_3)
 
@@ -1710,7 +1724,7 @@ class Ui_mainWindow(object):
 
         self.deleteDriverButton = QPushButton(self.frame_62)
         self.deleteDriverButton.setObjectName(u"deleteDriverButton")
-        self.deleteDriverButton.setIcon(icon87)
+        self.deleteDriverButton.setIcon(icon89)
 
         self.horizontalLayout_34.addWidget(self.deleteDriverButton)
 
@@ -1827,45 +1841,45 @@ class Ui_mainWindow(object):
 
         self.results_traspose_checkBox = QCheckBox(self.frame_8)
         self.results_traspose_checkBox.setObjectName(u"results_traspose_checkBox")
-        icon104 = QIcon()
-        icon104.addFile(u":/Icons/icons/transpose.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_traspose_checkBox.setIcon(icon104)
+        icon106 = QIcon()
+        icon106.addFile(u":/Icons/icons/transpose.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_traspose_checkBox.setIcon(icon106)
 
         self.horizontalLayout_2.addWidget(self.results_traspose_checkBox)
 
         self.results_as_cdf_checkBox = QCheckBox(self.frame_8)
         self.results_as_cdf_checkBox.setObjectName(u"results_as_cdf_checkBox")
-        icon105 = QIcon()
-        icon105.addFile(u":/Icons/icons/cdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_as_cdf_checkBox.setIcon(icon105)
+        icon107 = QIcon()
+        icon107.addFile(u":/Icons/icons/cdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_as_cdf_checkBox.setIcon(icon107)
 
         self.horizontalLayout_2.addWidget(self.results_as_cdf_checkBox)
 
         self.results_as_abs_checkBox = QCheckBox(self.frame_8)
         self.results_as_abs_checkBox.setObjectName(u"results_as_abs_checkBox")
-        icon106 = QIcon()
-        icon106.addFile(u":/Icons/icons/abs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_as_abs_checkBox.setIcon(icon106)
+        icon108 = QIcon()
+        icon108.addFile(u":/Icons/icons/abs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_as_abs_checkBox.setIcon(icon108)
 
         self.horizontalLayout_2.addWidget(self.results_as_abs_checkBox)
 
         self.stacked_plot_checkBox = QCheckBox(self.frame_8)
         self.stacked_plot_checkBox.setObjectName(u"stacked_plot_checkBox")
-        icon107 = QIcon()
-        icon107.addFile(u":/Icons/icons/stacked_plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.stacked_plot_checkBox.setIcon(icon107)
+        icon109 = QIcon()
+        icon109.addFile(u":/Icons/icons/stacked_plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.stacked_plot_checkBox.setIcon(icon109)
 
         self.horizontalLayout_2.addWidget(self.stacked_plot_checkBox)
 
         self.copy_results_pushButton = QPushButton(self.frame_8)
         self.copy_results_pushButton.setObjectName(u"copy_results_pushButton")
-        self.copy_results_pushButton.setIcon(icon93)
+        self.copy_results_pushButton.setIcon(icon95)
 
         self.horizontalLayout_2.addWidget(self.copy_results_pushButton)
 
         self.copy_numpy_button = QPushButton(self.frame_8)
         self.copy_numpy_button.setObjectName(u"copy_numpy_button")
-        self.copy_numpy_button.setIcon(icon101)
+        self.copy_numpy_button.setIcon(icon103)
 
         self.horizontalLayout_2.addWidget(self.copy_numpy_button)
 
@@ -1877,7 +1891,7 @@ class Ui_mainWindow(object):
 
         self.plot_data_pushButton = QPushButton(self.frame_8)
         self.plot_data_pushButton.setObjectName(u"plot_data_pushButton")
-        self.plot_data_pushButton.setIcon(icon92)
+        self.plot_data_pushButton.setIcon(icon94)
 
         self.horizontalLayout_2.addWidget(self.plot_data_pushButton)
 
@@ -1887,7 +1901,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_40.addWidget(self.frame_5)
 
-        self.tabWidget_4.addTab(self.tab_7, icon101, "")
+        self.tabWidget_4.addTab(self.tab_7, icon103, "")
         self.tab_14 = QWidget()
         self.tab_14.setObjectName(u"tab_14")
         self.verticalLayout_41 = QVBoxLayout(self.tab_14)
@@ -1928,7 +1942,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_13.addWidget(self.frame_33)
 
-        self.tabWidget.addTab(self.ResultsTab, icon92, "")
+        self.tabWidget.addTab(self.ResultsTab, icon94, "")
         self.main_console_tab = QWidget()
         self.main_console_tab.setObjectName(u"main_console_tab")
         self.verticalLayout_22 = QVBoxLayout(self.main_console_tab)
@@ -1987,9 +2001,9 @@ class Ui_mainWindow(object):
 
         self.runSourceCodeButton = QPushButton(self.frame_55)
         self.runSourceCodeButton.setObjectName(u"runSourceCodeButton")
-        icon108 = QIcon()
-        icon108.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.runSourceCodeButton.setIcon(icon108)
+        icon110 = QIcon()
+        icon110.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.runSourceCodeButton.setIcon(icon110)
 
         self.horizontalLayout_3.addWidget(self.runSourceCodeButton)
 
@@ -2059,9 +2073,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_33.addWidget(self.consoleFrame)
 
-        icon109 = QIcon()
-        icon109.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_2.addTab(self.pythonConsoleTab, icon109, "")
+        icon111 = QIcon()
+        icon111.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_2.addTab(self.pythonConsoleTab, icon111, "")
         self.sourceCodeTab = QWidget()
         self.sourceCodeTab.setObjectName(u"sourceCodeTab")
         self.verticalLayout_39 = QVBoxLayout(self.sourceCodeTab)
@@ -2085,7 +2099,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_22.addWidget(self.frame_10)
 
-        self.tabWidget.addTab(self.main_console_tab, icon109, "")
+        self.tabWidget.addTab(self.main_console_tab, icon111, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -2978,45 +2992,26 @@ class Ui_mainWindow(object):
         self.groupBox.setFont(font6)
         self.gridLayout_18 = QGridLayout(self.groupBox)
         self.gridLayout_18.setObjectName(u"gridLayout_18")
-        self.useGslkAsCostsOpfCheckBox = QCheckBox(self.groupBox)
-        self.useGslkAsCostsOpfCheckBox.setObjectName(u"useGslkAsCostsOpfCheckBox")
-        self.useGslkAsCostsOpfCheckBox.setFont(font7)
+        self.label_132 = QLabel(self.groupBox)
+        self.label_132.setObjectName(u"label_132")
 
-        self.gridLayout_18.addWidget(self.useGslkAsCostsOpfCheckBox, 7, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.label_132, 4, 0, 1, 2)
 
         self.considerContingenciesOpfCheckBox = QCheckBox(self.groupBox)
         self.considerContingenciesOpfCheckBox.setObjectName(u"considerContingenciesOpfCheckBox")
         self.considerContingenciesOpfCheckBox.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.considerContingenciesOpfCheckBox, 6, 0, 1, 2)
+        self.gridLayout_18.addWidget(self.considerContingenciesOpfCheckBox, 9, 0, 1, 2)
 
-        self.save_mip_checkBox = QCheckBox(self.groupBox)
-        self.save_mip_checkBox.setObjectName(u"save_mip_checkBox")
-        self.save_mip_checkBox.setFont(font7)
+        self.mip_solver_comboBox = QComboBox(self.groupBox)
+        self.mip_solver_comboBox.setObjectName(u"mip_solver_comboBox")
+        self.mip_solver_comboBox.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.save_mip_checkBox, 13, 0, 1, 2)
-
-        self.fixOpfCheckBox = QCheckBox(self.groupBox)
-        self.fixOpfCheckBox.setObjectName(u"fixOpfCheckBox")
-        self.fixOpfCheckBox.setFont(font7)
-
-        self.gridLayout_18.addWidget(self.fixOpfCheckBox, 10, 0, 1, 2)
+        self.gridLayout_18.addWidget(self.mip_solver_comboBox, 0, 1, 1, 1)
 
         self.verticalSpacer_18 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_18.addItem(self.verticalSpacer_18, 14, 0, 1, 1)
-
-        self.opfUnitCommitmentCheckBox = QCheckBox(self.groupBox)
-        self.opfUnitCommitmentCheckBox.setObjectName(u"opfUnitCommitmentCheckBox")
-        self.opfUnitCommitmentCheckBox.setFont(font7)
-
-        self.gridLayout_18.addWidget(self.opfUnitCommitmentCheckBox, 5, 0, 1, 1)
-
-        self.label_4 = QLabel(self.groupBox)
-        self.label_4.setObjectName(u"label_4")
-        self.label_4.setFont(font7)
-
-        self.gridLayout_18.addWidget(self.label_4, 1, 0, 1, 1)
+        self.gridLayout_18.addItem(self.verticalSpacer_18, 17, 0, 1, 1)
 
         self.opfContingencyToleranceSpinBox = QDoubleSpinBox(self.groupBox)
         self.opfContingencyToleranceSpinBox.setObjectName(u"opfContingencyToleranceSpinBox")
@@ -3033,17 +3028,11 @@ class Ui_mainWindow(object):
 
         self.gridLayout_18.addWidget(self.opfZonalGroupByComboBox, 2, 1, 1, 1)
 
-        self.opfGEPCheckBox = QCheckBox(self.groupBox)
-        self.opfGEPCheckBox.setObjectName(u"opfGEPCheckBox")
-        self.opfGEPCheckBox.setFont(font7)
+        self.save_mip_checkBox = QCheckBox(self.groupBox)
+        self.save_mip_checkBox.setObjectName(u"save_mip_checkBox")
+        self.save_mip_checkBox.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.opfGEPCheckBox, 9, 0, 1, 2)
-
-        self.label_104 = QLabel(self.groupBox)
-        self.label_104.setObjectName(u"label_104")
-        self.label_104.setFont(font7)
-
-        self.gridLayout_18.addWidget(self.label_104, 3, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.save_mip_checkBox, 16, 0, 1, 2)
 
         self.opf_time_grouping_comboBox = QComboBox(self.groupBox)
         self.opf_time_grouping_comboBox.setObjectName(u"opf_time_grouping_comboBox")
@@ -3051,10 +3040,11 @@ class Ui_mainWindow(object):
 
         self.gridLayout_18.addWidget(self.opf_time_grouping_comboBox, 1, 1, 1, 1)
 
-        self.label_132 = QLabel(self.groupBox)
-        self.label_132.setObjectName(u"label_132")
+        self.label_4 = QLabel(self.groupBox)
+        self.label_4.setObjectName(u"label_4")
+        self.label_4.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.label_132, 4, 0, 1, 2)
+        self.gridLayout_18.addWidget(self.label_4, 1, 0, 1, 1)
 
         self.label_10 = QLabel(self.groupBox)
         self.label_10.setObjectName(u"label_10")
@@ -3068,17 +3058,59 @@ class Ui_mainWindow(object):
 
         self.gridLayout_18.addWidget(self.label_103, 2, 0, 1, 1)
 
-        self.mip_solver_comboBox = QComboBox(self.groupBox)
-        self.mip_solver_comboBox.setObjectName(u"mip_solver_comboBox")
-        self.mip_solver_comboBox.setFont(font7)
+        self.fixOpfCheckBox = QCheckBox(self.groupBox)
+        self.fixOpfCheckBox.setObjectName(u"fixOpfCheckBox")
+        self.fixOpfCheckBox.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.mip_solver_comboBox, 0, 1, 1, 1)
+        self.gridLayout_18.addWidget(self.fixOpfCheckBox, 13, 0, 1, 2)
+
+        self.opfGEPCheckBox = QCheckBox(self.groupBox)
+        self.opfGEPCheckBox.setObjectName(u"opfGEPCheckBox")
+        self.opfGEPCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.opfGEPCheckBox, 12, 0, 1, 2)
+
+        self.label_104 = QLabel(self.groupBox)
+        self.label_104.setObjectName(u"label_104")
+        self.label_104.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.label_104, 3, 0, 1, 1)
+
+        self.opfConsiderUpDownTimeCheckBox = QCheckBox(self.groupBox)
+        self.opfConsiderUpDownTimeCheckBox.setObjectName(u"opfConsiderUpDownTimeCheckBox")
+        self.opfConsiderUpDownTimeCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.opfConsiderUpDownTimeCheckBox, 7, 0, 1, 2)
+
+        self.opfConsiderRampsCheckBox = QCheckBox(self.groupBox)
+        self.opfConsiderRampsCheckBox.setObjectName(u"opfConsiderRampsCheckBox")
+        self.opfConsiderRampsCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.opfConsiderRampsCheckBox, 6, 0, 1, 2)
+
+        self.opfUnitCommitmentCheckBox = QCheckBox(self.groupBox)
+        self.opfUnitCommitmentCheckBox.setObjectName(u"opfUnitCommitmentCheckBox")
+        self.opfUnitCommitmentCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.opfUnitCommitmentCheckBox, 5, 0, 1, 2)
+
+        self.opfSpinningReserveCheckBox = QCheckBox(self.groupBox)
+        self.opfSpinningReserveCheckBox.setObjectName(u"opfSpinningReserveCheckBox")
+        self.opfSpinningReserveCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.opfSpinningReserveCheckBox, 8, 0, 1, 2)
+
+        self.useGslkAsCostsOpfCheckBox = QCheckBox(self.groupBox)
+        self.useGslkAsCostsOpfCheckBox.setObjectName(u"useGslkAsCostsOpfCheckBox")
+        self.useGslkAsCostsOpfCheckBox.setFont(font7)
+
+        self.gridLayout_18.addWidget(self.useGslkAsCostsOpfCheckBox, 10, 0, 1, 2)
 
         self.approximateLossesOpfCheckBox = QCheckBox(self.groupBox)
         self.approximateLossesOpfCheckBox.setObjectName(u"approximateLossesOpfCheckBox")
         self.approximateLossesOpfCheckBox.setFont(font7)
 
-        self.gridLayout_18.addWidget(self.approximateLossesOpfCheckBox, 8, 0, 1, 1)
+        self.gridLayout_18.addWidget(self.approximateLossesOpfCheckBox, 11, 0, 1, 2)
 
 
         self.gridLayout_10.addWidget(self.groupBox, 3, 3, 1, 1)
@@ -3592,7 +3624,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.frame_40)
 
-        self.tabWidget_9.addTab(self.transfer_tab, icon88, "")
+        self.tabWidget_9.addTab(self.transfer_tab, icon90, "")
         self.contingencies_tab = QWidget()
         self.contingencies_tab.setObjectName(u"contingencies_tab")
         self.horizontalLayout_42 = QHBoxLayout(self.contingencies_tab)
@@ -3955,13 +3987,25 @@ class Ui_mainWindow(object):
 
         self.gridLayout_35.addWidget(self.label_415, 0, 0, 1, 1)
 
+        self.label_418 = QLabel(self.frame_110)
+        self.label_418.setObjectName(u"label_418")
+        palette29 = QPalette()
+        palette29.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette29.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette29.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_418.setPalette(palette29)
+        self.label_418.setFont(font4)
+        self.label_418.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
+
+        self.gridLayout_35.addWidget(self.label_418, 0, 1, 1, 2)
+
         self.line_63 = QFrame(self.frame_110)
         self.line_63.setObjectName(u"line_63")
-        palette29 = QPalette()
-        palette29.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette29.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette29.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_63.setPalette(palette29)
+        palette30 = QPalette()
+        palette30.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette30.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette30.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_63.setPalette(palette30)
         self.line_63.setFrameShadow(QFrame.Shadow.Plain)
         self.line_63.setLineWidth(4)
         self.line_63.setFrameShape(QFrame.Shape.HLine)
@@ -3979,35 +4023,6 @@ class Ui_mainWindow(object):
         self.frame_114.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_36 = QGridLayout(self.frame_114)
         self.gridLayout_36.setObjectName(u"gridLayout_36")
-        self.label_406 = QLabel(self.frame_114)
-        self.label_406.setObjectName(u"label_406")
-        self.label_406.setFont(font1)
-
-        self.gridLayout_36.addWidget(self.label_406, 3, 0, 1, 1)
-
-        self.ss_h_spinBox_2 = QDoubleSpinBox(self.frame_114)
-        self.ss_h_spinBox_2.setObjectName(u"ss_h_spinBox_2")
-        self.ss_h_spinBox_2.setFont(font1)
-        self.ss_h_spinBox_2.setDecimals(4)
-        self.ss_h_spinBox_2.setMinimum(0.000000000000000)
-        self.ss_h_spinBox_2.setMaximum(1000.000000000000000)
-        self.ss_h_spinBox_2.setSingleStep(0.001000000000000)
-        self.ss_h_spinBox_2.setValue(0.001000000000000)
-
-        self.gridLayout_36.addWidget(self.ss_h_spinBox_2, 3, 1, 1, 1)
-
-        self.label_410 = QLabel(self.frame_114)
-        self.label_410.setObjectName(u"label_410")
-        self.label_410.setFont(font1)
-
-        self.gridLayout_36.addWidget(self.label_410, 1, 0, 1, 1)
-
-        self.label_416 = QLabel(self.frame_114)
-        self.label_416.setObjectName(u"label_416")
-        self.label_416.setFont(font1)
-
-        self.gridLayout_36.addWidget(self.label_416, 2, 0, 1, 1)
-
         self.ss_assessment_time_spinBox_2 = QDoubleSpinBox(self.frame_114)
         self.ss_assessment_time_spinBox_2.setObjectName(u"ss_assessment_time_spinBox_2")
         self.ss_assessment_time_spinBox_2.setFont(font1)
@@ -4017,56 +4032,25 @@ class Ui_mainWindow(object):
         self.ss_assessment_time_spinBox_2.setSingleStep(0.010000000000000)
         self.ss_assessment_time_spinBox_2.setValue(0.000000000000000)
 
-        self.gridLayout_36.addWidget(self.ss_assessment_time_spinBox_2, 2, 1, 1, 1)
-
-        self.label_413 = QLabel(self.frame_114)
-        self.label_413.setObjectName(u"label_413")
-        self.label_413.setFont(font1)
-
-        self.gridLayout_36.addWidget(self.label_413, 0, 0, 1, 1)
-
-        self.ss_int_method_comboBox_2 = QComboBox(self.frame_114)
-        self.ss_int_method_comboBox_2.addItem("")
-        self.ss_int_method_comboBox_2.addItem("")
-        self.ss_int_method_comboBox_2.setObjectName(u"ss_int_method_comboBox_2")
-        self.ss_int_method_comboBox_2.setMinimumSize(QSize(200, 0))
-        self.ss_int_method_comboBox_2.setFont(font1)
-        self.ss_int_method_comboBox_2.setEditable(False)
-
-        self.gridLayout_36.addWidget(self.ss_int_method_comboBox_2, 0, 1, 1, 1)
-
-        self.tolerance_ss_spinBox_2 = QSpinBox(self.frame_114)
-        self.tolerance_ss_spinBox_2.setObjectName(u"tolerance_ss_spinBox_2")
-        self.tolerance_ss_spinBox_2.setFont(font1)
-        self.tolerance_ss_spinBox_2.setMinimum(1)
-        self.tolerance_ss_spinBox_2.setMaximum(15)
-        self.tolerance_ss_spinBox_2.setValue(4)
-
-        self.gridLayout_36.addWidget(self.tolerance_ss_spinBox_2, 1, 1, 1, 1)
+        self.gridLayout_36.addWidget(self.ss_assessment_time_spinBox_2, 0, 1, 1, 1)
 
         self.label_417 = QLabel(self.frame_114)
         self.label_417.setObjectName(u"label_417")
 
-        self.gridLayout_36.addWidget(self.label_417, 4, 0, 1, 1)
+        self.gridLayout_36.addWidget(self.label_417, 1, 0, 1, 1)
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_36.addItem(self.verticalSpacer_2, 5, 0, 1, 1)
+        self.gridLayout_36.addItem(self.verticalSpacer_2, 2, 0, 1, 1)
+
+        self.label_416 = QLabel(self.frame_114)
+        self.label_416.setObjectName(u"label_416")
+        self.label_416.setFont(font1)
+
+        self.gridLayout_36.addWidget(self.label_416, 0, 0, 1, 1)
 
 
         self.gridLayout_35.addWidget(self.frame_114, 4, 0, 1, 3)
-
-        self.label_418 = QLabel(self.frame_110)
-        self.label_418.setObjectName(u"label_418")
-        palette30 = QPalette()
-        palette30.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette30.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette30.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_418.setPalette(palette30)
-        self.label_418.setFont(font4)
-        self.label_418.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
-
-        self.gridLayout_35.addWidget(self.label_418, 0, 1, 1, 2)
 
 
         self.horizontalLayout_21.addWidget(self.frame_110)
@@ -5063,14 +5047,14 @@ class Ui_mainWindow(object):
 
         self.gridLayout_8.addWidget(self.tabWidget_9, 0, 1, 1, 1)
 
-        self.tabWidget.addTab(self.SettingsTab, icon82, "")
+        self.tabWidget.addTab(self.SettingsTab, icon84, "")
 
         self.gridLayout_3.addWidget(self.tabWidget, 0, 0, 1, 1)
 
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1338, 21))
+        self.menuBar.setGeometry(QRect(0, 0, 1372, 33))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
@@ -5088,6 +5072,8 @@ class Ui_mainWindow(object):
         self.menuDiagrams.setObjectName(u"menuDiagrams")
         self.menuplugins = QMenu(self.menuBar)
         self.menuplugins.setObjectName(u"menuplugins")
+        self.menuEvents = QMenu(self.menuBar)
+        self.menuEvents.setObjectName(u"menuEvents")
         mainWindow.setMenuBar(self.menuBar)
         self.toolBar = QToolBar(mainWindow)
         self.toolBar.setObjectName(u"toolBar")
@@ -5102,6 +5088,7 @@ class Ui_mainWindow(object):
         self.menuBar.addAction(self.menuActions.menuAction())
         self.menuBar.addAction(self.menuDiagrams.menuAction())
         self.menuBar.addAction(self.menuModel.menuAction())
+        self.menuBar.addAction(self.menuEvents.menuAction())
         self.menuBar.addAction(self.menuSimulations.menuAction())
         self.menuBar.addAction(self.menuplugins.menuAction())
         self.menuBar.addAction(self.menuAbout.menuAction())
@@ -5139,6 +5126,8 @@ class Ui_mainWindow(object):
         self.menuSimulations.addAction(self.actionShort_Circuit)
         self.menuSimulations.addAction(self.actionVoltage_stability)
         self.menuSimulations.addAction(self.actionContingency_analysis)
+        self.menuSimulations.addAction(self.actionRun_Dynamic_RMS_Simulation)
+        self.menuSimulations.addAction(self.actionRun_Small_Signal_RMS_Simulation)
         self.menuSimulations.addSeparator()
         self.menuSimulations.addAction(self.actionOPF)
         self.menuSimulations.addAction(self.actionOpf_to_Power_flow)
@@ -5152,7 +5141,6 @@ class Ui_mainWindow(object):
         self.menuSimulations.addAction(self.actionFind_node_groups)
         self.menuSimulations.addAction(self.actionPower_flow_Stochastic)
         self.menuSimulations.addAction(self.actionInvestments_evaluation)
-        self.menuSimulations.addAction(self.actionAdd_selected_as_new_investment)
         self.menuSimulations.addAction(self.actionReliability)
         self.menuSimulations.addAction(self.actionBlackout_cascade)
         self.menuSimulations.addSeparator()
@@ -5169,9 +5157,6 @@ class Ui_mainWindow(object):
         self.menuModel.addAction(self.actionScale)
         self.menuModel.addSeparator()
         self.menuModel.addAction(self.actionLaunch_data_analysis_tool)
-        self.menuModel.addAction(self.actionInitialize_contingencies)
-        self.menuModel.addAction(self.actionAdd_selected_to_contingency)
-        self.menuModel.addAction(self.actionAdd_selected_as_remedial_action)
         self.menuModel.addAction(self.actionSubstation_wizard)
         self.menuModel.addAction(self.actionFix_generators_active_based_on_the_power)
         self.menuModel.addAction(self.actionFix_loads_active_based_on_the_power)
@@ -5194,6 +5179,7 @@ class Ui_mainWindow(object):
         self.menuDiagrams.addAction(self.actionSet_schematic_positions_from_GPS_coordinates)
         self.menuDiagrams.addAction(self.actionColor_buses_by)
         self.menuDiagrams.addAction(self.actionSelect_buses_by)
+        self.menuDiagrams.addAction(self.actionClear_highlights)
         self.menuDiagrams.addSeparator()
         self.menuDiagrams.addAction(self.actionAdd_map)
         self.menuDiagrams.addAction(self.actionReset_coordinates)
@@ -5208,6 +5194,11 @@ class Ui_mainWindow(object):
         self.menuDiagrams.addSeparator()
         self.menuDiagrams.addAction(self.actionTakePicture)
         self.menuDiagrams.addAction(self.actionRecord_video)
+        self.menuEvents.addAction(self.actionInitialize_contingencies)
+        self.menuEvents.addAction(self.actionAdd_selected_to_contingency)
+        self.menuEvents.addAction(self.actionAdd_selected_as_new_investment)
+        self.menuEvents.addAction(self.actionAdd_selected_as_remedial_action)
+        self.menuEvents.addAction(self.actionAdd_rms_event_to_selected)
         self.toolBar.addAction(self.actionNew_project)
         self.toolBar.addAction(self.actionOpen_file)
         self.toolBar.addAction(self.actionSave)
@@ -5237,7 +5228,6 @@ class Ui_mainWindow(object):
         self.toolBar.addAction(self.actionactivate_time_series)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionAdd_selected_to_contingency)
-        self.toolBar.addAction(self.actionAdd_selected_as_remedial_action)
         self.toolBar.addAction(self.actionAdd_selected_as_new_investment)
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionBigger_nodes)
@@ -5607,15 +5597,20 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(shortcut)
         self.actionSubstation_wizard.setShortcut(QCoreApplication.translate("mainWindow", u"Ctrl+A, Ctrl+S", None))
 #endif // QT_CONFIG(shortcut)
-        self.actionRun_Dynamic_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Run Dynamic RMS Simulation", None))
+        self.actionRun_Dynamic_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Dynamic RMS Simulation", None))
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_RMS_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">RMS Simulation</span></p><p>Run a dynamic RMS simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.actionRun_Small_Signal_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Run Small-Signal RMS Simulation", None))
-        self.actionRun_Small_Signal_RMS_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Run Small-Signal RMS Simulation", None))
+        self.actionRun_Small_Signal_RMS_Simulation.setText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
+        self.actionRun_Small_Signal_RMS_Simulation.setIconText(QCoreApplication.translate("mainWindow", u"Small-Signal RMS Simulation", None))
 #if QT_CONFIG(tooltip)
         self.actionRun_Small_Signal_RMS_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Small Signal Simulation</span></p><p>Run a Small Signal stability analysis simulation</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
+        self.actionAdd_rms_event_to_selected.setText(QCoreApplication.translate("mainWindow", u"Add rms event to selected", None))
+#if QT_CONFIG(tooltip)
+        self.actionAdd_rms_event_to_selected.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Add RMS event</span></p><p>Create a new RMS event to the schematic selection</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.actionClear_highlights.setText(QCoreApplication.translate("mainWindow", u"Clear highlights", None))
 #if QT_CONFIG(tooltip)
         self.cancelButton.setToolTip(QCoreApplication.translate("mainWindow", u"Cancel process", None))
 #endif // QT_CONFIG(tooltip)
@@ -6136,44 +6131,56 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.ips_control_Qlimits_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control Q limits", None))
         self.groupBox.setTitle(QCoreApplication.translate("mainWindow", u"Linear settings", None))
-#if QT_CONFIG(tooltip)
-        self.useGslkAsCostsOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)", None))
-#endif // QT_CONFIG(tooltip)
-        self.useGslkAsCostsOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Use GSLK as costs", None))
+        self.label_132.setText("")
 #if QT_CONFIG(tooltip)
         self.considerContingenciesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider the contingencies when dispatching", None))
 #endif // QT_CONFIG(tooltip)
         self.considerContingenciesOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Compute contingencies", None))
 #if QT_CONFIG(tooltip)
+        self.mip_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer programming solver", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.opfContingencyToleranceSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"LODF matrix tolerance choosing contingencies", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
         self.save_mip_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>The program will save the MIP file in .lp format in the user VeraGrid folder before running a linear optimization study.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.save_mip_checkBox.setText(QCoreApplication.translate("mainWindow", u"Save MIP file", None))
 #if QT_CONFIG(tooltip)
+        self.opf_time_grouping_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the time grouping to possibly shorten the solution time.</p><p>This splits the time series by week, month, etc. and the subproblems are solved sequentially.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_4.setText(QCoreApplication.translate("mainWindow", u"Time grouping", None))
+        self.label_10.setText(QCoreApplication.translate("mainWindow", u"MIP solver", None))
+        self.label_103.setText(QCoreApplication.translate("mainWindow", u"Zone grouping", None))
+#if QT_CONFIG(tooltip)
         self.fixOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC", None))
 #endif // QT_CONFIG(tooltip)
         self.fixOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Fix infeasibilities and retry", None))
-#if QT_CONFIG(tooltip)
-        self.opfUnitCommitmentCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Apply unit commitment technique", None))
-#endif // QT_CONFIG(tooltip)
-        self.opfUnitCommitmentCheckBox.setText(QCoreApplication.translate("mainWindow", u"Unit commitment", None))
-        self.label_4.setText(QCoreApplication.translate("mainWindow", u"Time grouping", None))
-#if QT_CONFIG(tooltip)
-        self.opfContingencyToleranceSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"LODF matrix tolerance choosing contingencies", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.opfGEPCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Apply generation expansion planning", None))
 #endif // QT_CONFIG(tooltip)
         self.opfGEPCheckBox.setText(QCoreApplication.translate("mainWindow", u"Generation expansion planning", None))
         self.label_104.setText(QCoreApplication.translate("mainWindow", u"Contingency tolerance", None))
 #if QT_CONFIG(tooltip)
-        self.opf_time_grouping_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the time grouping to possibly shorten the solution time.</p><p>This splits the time series by week, month, etc. and the subproblems are solved sequentially.</p></body></html>", None))
+        self.opfConsiderUpDownTimeCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation minimum up/down time", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_132.setText("")
-        self.label_10.setText(QCoreApplication.translate("mainWindow", u"MIP solver", None))
-        self.label_103.setText(QCoreApplication.translate("mainWindow", u"Zone grouping", None))
+        self.opfConsiderUpDownTimeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider min up/down time", None))
 #if QT_CONFIG(tooltip)
-        self.mip_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer programming solver", None))
+        self.opfConsiderRampsCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation ramps", None))
 #endif // QT_CONFIG(tooltip)
+        self.opfConsiderRampsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider ramps", None))
+#if QT_CONFIG(tooltip)
+        self.opfUnitCommitmentCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Apply unit commitment technique", None))
+#endif // QT_CONFIG(tooltip)
+        self.opfUnitCommitmentCheckBox.setText(QCoreApplication.translate("mainWindow", u"Unit commitment", None))
+#if QT_CONFIG(tooltip)
+        self.opfSpinningReserveCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider per-area generation spinning reserve", None))
+#endif // QT_CONFIG(tooltip)
+        self.opfSpinningReserveCheckBox.setText(QCoreApplication.translate("mainWindow", u"Spinning reserve", None))
+#if QT_CONFIG(tooltip)
+        self.useGslkAsCostsOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)", None))
+#endif // QT_CONFIG(tooltip)
+        self.useGslkAsCostsOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Use GSLK as costs", None))
 #if QT_CONFIG(tooltip)
         self.approximateLossesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"When checked, the branch losses will be aproximated by a factor r * rate / (V^2)", None))
 #endif // QT_CONFIG(tooltip)
@@ -6371,29 +6378,20 @@ class Ui_mainWindow(object):
         self.label_407.setText("")
         self.label_412.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
         self.label_411.setText(QCoreApplication.translate("mainWindow", u"Int. method", None))
-        self.label_415.setText("")
-        self.label_406.setText(QCoreApplication.translate("mainWindow", u"Time step", None))
 #if QT_CONFIG(tooltip)
-        self.ss_h_spinBox_2.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
+        self.frame_110.setToolTip(QCoreApplication.translate("mainWindow", u"Small-signal performs an RMS simulation when the assessment time is not 0. Please check the RMS settings.", None))
 #endif // QT_CONFIG(tooltip)
-        self.ss_h_spinBox_2.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
-        self.label_410.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
-        self.label_416.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
+        self.label_415.setText("")
+        self.label_418.setText(QCoreApplication.translate("mainWindow", u"Small-Signal", None))
+#if QT_CONFIG(tooltip)
+        self.frame_114.setToolTip("")
+#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ss_assessment_time_spinBox_2.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.ss_assessment_time_spinBox_2.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
-        self.label_413.setText(QCoreApplication.translate("mainWindow", u"Int. method", None))
-        self.ss_int_method_comboBox_2.setItemText(0, QCoreApplication.translate("mainWindow", u"trapezoid", None))
-        self.ss_int_method_comboBox_2.setItemText(1, QCoreApplication.translate("mainWindow", u"implicit euler", None))
-
-        self.ss_int_method_comboBox_2.setCurrentText(QCoreApplication.translate("mainWindow", u"trapezoid", None))
-#if QT_CONFIG(tooltip)
-        self.tolerance_ss_spinBox_2.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.tolerance_ss_spinBox_2.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
         self.label_417.setText("")
-        self.label_418.setText(QCoreApplication.translate("mainWindow", u"Small-Signal", None))
+        self.label_416.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
         self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Dyn", None))
 #if QT_CONFIG(tooltip)
         self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Rms simulation settings", None))
@@ -6572,6 +6570,7 @@ class Ui_mainWindow(object):
         self.menuModel.setTitle(QCoreApplication.translate("mainWindow", u"Model", None))
         self.menuDiagrams.setTitle(QCoreApplication.translate("mainWindow", u"Diagram", None))
         self.menuplugins.setTitle(QCoreApplication.translate("mainWindow", u"plugins", None))
+        self.menuEvents.setTitle(QCoreApplication.translate("mainWindow", u"Events", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("mainWindow", u"toolBar", None))
     # retranslateUi
 

@@ -33,16 +33,11 @@ class FluidP2xGraphicItem(InjectionTemplateGraphicItem):
                                               editor=editor,
                                               device_type_name='fluid_p2x',
                                               w=40,
-                                              h=40,
-                                              glyph=Circle(self, 40, 40, "P2X"))
+                                              h=40)
 
-    @property
-    def api_object(self) -> FluidP2x:
-        return self._api_object
-
-    @property
-    def editor(self) -> SchematicWidget:
-        return self._editor
+        self.set_glyph(
+            glyph=Circle(self, 40, 40, "P2X", self.update_nexus)
+        )
 
     def recolour_mode(self):
         """

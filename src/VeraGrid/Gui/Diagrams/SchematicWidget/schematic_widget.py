@@ -8,7 +8,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING, cast
+from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING
 from collections.abc import Callable
 from warnings import warn
 import networkx as nx
@@ -41,10 +41,14 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
-from VeraGridEngine.Topology.substation_wizards import transform_busbar_to_connectivity_grid
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, TerminalType, BusGraphicType
+from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
+from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
+import VeraGridEngine.Devices.Diagrams.palettes as palettes
+from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.enumerations import TerminalType
 
+from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
@@ -59,18 +63,14 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics import VscGraph
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.upfc_graphics import UpfcGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.series_reactance_graphics import SeriesReactanceGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.switch_graphics import SwitchGraphicItem
-from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
-import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
-
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGridEngine.enumerations import TerminalType
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -403,6 +403,9 @@ class SchematicWidget(BaseDiagramWidget):
         # nodes distance "explosion" factor
         self.expand_factor = 1.1
 
+        # Scale the view / do the zoom
+        self.scale_factor = 1.15  # 1.15
+
         # Zoom indicator
         self._zoom = 0
 
@@ -511,16 +514,14 @@ class SchematicWidget(BaseDiagramWidget):
         """
         self.editor_graphics_view.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
-        # Scale the view / do the zoom
-        scale_factor = 1.15
         # print(event.angleDelta().x(), event.angleDelta().y(), event.angleDelta().manhattanLength() )
         if event.angleDelta().y() > 0:
             # Zoom in
-            self.zoom_in(scale_factor)
+            self.zoom_in()
 
         else:
             # Zooming out
-            self.zoom_out(scale_factor)
+            self.zoom_out()
 
     def graphicsKeyPressEvent(self, event: QKeyEvent):
         """
@@ -531,19 +532,17 @@ class SchematicWidget(BaseDiagramWidget):
         if event.key() == Qt.Key.Key_Delete:
             self.delete_selected_from_widget(delete_from_db=True)
 
-    def zoom_in(self, scale_factor: float = 1.15) -> None:
+    def zoom_in(self) -> None:
         """
+        zoom in
+        """
+        self.editor_graphics_view.scale(self.scale_factor, self.scale_factor)
 
-        :param scale_factor:
+    def zoom_out(self) -> None:
         """
-        self.editor_graphics_view.scale(scale_factor, scale_factor)
-
-    def zoom_out(self, scale_factor: float = 1.15) -> None:
+        Zoom out
         """
-
-        :param scale_factor:
-        """
-        self.editor_graphics_view.scale(1.0 / scale_factor, 1.0 / scale_factor)
+        self.editor_graphics_view.scale(1.0 / self.scale_factor, 1.0 / self.scale_factor)
 
     def create_bus_graphics(self, bus: Bus, x: float, y: float, h: float, w: float,
                             draw_labels: bool = True, r: float = 0.0) -> BusGraphicItem | None:
@@ -1552,62 +1551,6 @@ class SchematicWidget(BaseDiagramWidget):
 
                             self.create_line(bus_from=bus,
                                              bus_to=fn_bus,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_bus_and_cn():
-
-                            self.create_line(bus_from=self.started_branch.get_bus_from(),
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn_and_bus():
-
-                            self.create_line(bus_to=self.started_branch.get_bus_to(),
-                                             cn_from=self.started_branch.get_cn_from(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn():
-
-                            self.create_line(cn_from=self.started_branch.get_cn_from(),
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar_and_bus():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             bus_to=self.started_branch.get_bus_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_bus_and_busbar():
-
-                            self.create_line(bus_from=self.started_branch.get_bus_from(),
-                                             cn_to=self.started_branch.get_busbar_to().cn,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar_and_cn():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn_and_busbar():
-
-                            self.create_line(cn_from=self.started_branch.get_cn_from(),
-                                             cn_to=self.started_branch.get_busbar_to().cn,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             cn_to=self.started_branch.get_busbar_to().cn,
                                              from_port=self.started_branch.get_terminal_from(),
                                              to_port=self.started_branch.get_terminal_to())
 
@@ -4766,10 +4709,6 @@ class SchematicWidget(BaseDiagramWidget):
 
             generator_graphics.api_object.control_bus = sel_bus
 
-            if (yes_no_question(text="Do you want to set the profile?", title="Set regulation bus")
-                    and self.circuit.has_time_series):
-                generator_graphics.api_object.control_bus_prof.fill(sel_bus)
-
         else:
             error_msg(text="You need to select exactly one bus to be set as the generator regulation bus",
                       title="Set regulation bus")
@@ -4882,19 +4821,15 @@ class SchematicWidget(BaseDiagramWidget):
 
         self.draw_additional_diagram(diagram=diagram)
 
-    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+    def reconnect_bus_graphics(self,
+                               bus_graphics: BusGraphicItem,
+                               new_buses: List[Bus]):
         """
-        Transform the bus into a grid of buses to be able to compute the bus currents
-        :param bus_graphics: BusGraphicItem
+        Reconnect the graphic elements connected in bus_graphics
+        to whatever new graphics associated to new_buses
+        :param bus_graphics: Old graphics bus
+        :param new_buses: list of new API buses
         """
-
-        # convert a bus into many small buses connected by impedances
-        new_buses, new_lines = transform_busbar_to_connectivity_grid(grid=self.circuit,
-                                                                     busbar=bus_graphics.api_object)
-
-        # add the new buses
-        self.add_buses(buses=new_buses)
-
         # connected branches
         branch_graphics = bus_graphics.get_associated_branch_graphics()
 
@@ -4916,8 +4851,58 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
+    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+        """
+        Transform the bus into a grid of buses to be able to compute the bus currents
+        :param bus_graphics: BusGraphicItem
+        """
+
+        # convert a bus into many small buses connected by impedances
+        new_buses, new_lines = transform_bus_to_connectivity_grid(grid=self.circuit,
+                                                                  busbar=bus_graphics.api_object)
+
+        # add the new buses
+        self.add_buses(buses=new_buses)
+
+        # connected branches
+        self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+
         # Finally delete the old bus
         self.delete_element_utility_function(device=bus_graphics.api_object)
+
+    def convert_busbar_to_voltage_level(self, bus_graphics: BusGraphicItem):
+        """
+
+        :param bus_graphics:
+        :return:
+        """
+        vl_wizard = VoltageLevelConversionWizard(
+            bus=bus_graphics.api_object,
+            grid=self.circuit
+        )
+        vl_wizard.setModal(True)
+        vl_wizard.exec()  # waits until closed
+
+        if vl_wizard.closed_ok is not None:
+            new_buses = substation_wizards.transform_bus_into_voltage_level(
+                grid=self.circuit,
+                bus=bus_graphics.api_object,
+                vl_type=vl_wizard.get_vl_type(),
+                add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
+                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
+            )
+
+            # add the newly created buses to the diagram (with all their stuff that's not there already)
+            self.add_buses(buses=new_buses)
+
+            # reconnect graphics
+            self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+
+            # Finally delete the old bus
+            self.delete_element_utility_function(device=bus_graphics.api_object)
+
+        else:
+            self.gui.show_warning_toast("No conversion made...")
 
 
 def generate_schematic_diagram(buses: List[Bus],
@@ -5096,6 +5081,37 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
     # --------------------------------------------------------------------------------------------------------------
 
     return diagram
+
+
+def generate_grid_diagram(circuit: MultiCircuit,
+                          name: str = "",
+                          prog_func: Union[Callable, None] = None,
+                          text_func: Union[Callable, None] = None) -> SchematicDiagram:
+    """
+    Shortcut to generate diagram from a MultiCircuit object
+    :param circuit: MultiCircuit
+    :param name: name of the diagram
+    :param prog_func: progress callback
+    :param text_func: text callback
+    :return: SchematicDiagram
+    """
+    return generate_schematic_diagram(buses=circuit.get_buses(),
+                                      lines=circuit.get_lines(),
+                                      dc_lines=circuit.get_dc_lines(),
+                                      transformers2w=circuit.get_transformers2w(),
+                                      transformers3w=circuit.get_transformers3w(),
+                                      windings=circuit.get_windings(),
+                                      hvdc_lines=circuit.get_hvdc(),
+                                      vsc_devices=circuit.get_vsc(),
+                                      upfc_devices=circuit.get_upfc(),
+                                      series_reactances=circuit.get_series_reactances(),
+                                      switches=circuit.get_switches(),
+                                      fluid_nodes=circuit.get_fluid_nodes(),
+                                      fluid_paths=circuit.get_fluid_paths(),
+                                      explode_factor=1.0,
+                                      prog_func=prog_func,
+                                      text_func=text_func,
+                                      name=name)
 
 
 def get_devices_to_expand(circuit: MultiCircuit, buses: List[Bus], max_level: int = 1) -> Tuple[List[Bus],

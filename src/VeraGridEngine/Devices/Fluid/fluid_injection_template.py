@@ -44,7 +44,8 @@ class FluidInjectionTemplate(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=device_type)
+                                device_type=device_type,
+                                build_status=build_status)
 
         self.active = True
         self._active_prof = Profile(default_value=self.active, data_type=bool)
@@ -53,7 +54,6 @@ class FluidInjectionTemplate(PhysicalDevice):
         self.max_flow_rate = float(max_flow_rate)  # m3/s
         self._plant: FluidNode = plant
         self._generator: Generator = generator
-        self.build_status = build_status
 
         self.facility: Facility | None = None
 
@@ -66,9 +66,6 @@ class FluidInjectionTemplate(PhysicalDevice):
                       editable=False)
         self.register(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
                       editable=False)
-        self.register(key='build_status', units='', tpe=BuildStatus,
-                      definition='Branch build status. Used in expansion planning.')
-
         self.register(key='facility', units='', tpe=DeviceType.FacilityDevice,
                       definition='Facility where this is located', editable=True)
 

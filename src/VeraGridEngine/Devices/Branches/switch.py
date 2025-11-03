@@ -72,6 +72,9 @@ class Switch(BranchParent):
                               capex=0,
                               opex=0,
                               cost=0,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
                               device_type=DeviceType.SwitchDevice)
 
         # total impedance and admittance in p.u.
@@ -98,4 +101,5 @@ class Switch(BranchParent):
                       definition='Normal position of the switch')
         self.register(key='rated_current', units="kA", tpe=float,
                       definition='Rated current of the switch device.')
-        self.register(key='graphic_type', units='', tpe=SwitchGraphicType, definition='Graphic to use in the schematic.')
+        self.register(key='graphic_type', units='', tpe=SwitchGraphicType,
+                      definition='Graphic to use in the schematic.')

@@ -40,7 +40,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
-                                         ReliabilityMode)
+                                         ReliabilityMode, MIPFramework)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -325,7 +325,7 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
             self.ui.solver_comboBox.setCurrentIndex(0)
 
-            mip_solvers = get_available_mip_solvers()
+            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.NewtonPA:
@@ -381,7 +381,7 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setCurrentIndex(0)
 
             # MIP solvers
-            mip_solvers = get_available_mip_solvers()
+            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.Bentayga:
@@ -786,10 +786,10 @@ class SimulationsMain(TimeEventsMain):
         :return: sim.SmallSignalOptions
         """
         ops = sim.SmallSignalStabilityOptions(
-            time_step=self.ui.ss_h_spinBox_2.value(),
+            time_step=self.ui.h_spinBox.value(),
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
-            tolerance=self.ui.tolerance_ss_spinBox_2.value(),
-        integration_method=self.ui.ss_int_method_comboBox_2.currentText()
+            tolerance=self.ui.tolerance_rms_spinBox.value(),
+            integration_method=self.ui.rms_int_method_comboBox.currentText()
         )
 
         return ops
@@ -1008,7 +1008,6 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             self.run_small_signal_stability()
-
 
     def run_power_flow(self):
         """
@@ -2042,6 +2041,9 @@ class SimulationsMain(TimeEventsMain):
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
         maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         unit_commitment = self.ui.opfUnitCommitmentCheckBox.isChecked()
+        consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
+        consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
+        area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
@@ -2082,7 +2084,7 @@ class SimulationsMain(TimeEventsMain):
             acopf_v0 = pf_results.voltage
             acopf_S0 = pf_results.Sbus
         else:
-            if ips_init_with_pf:
+            if ips_init_with_pf and solver == SolverType.NONLINEAR_OPF:
                 self.show_warning_toast("Run a power flow first")
                 ips_init_with_pf = False
 
@@ -2091,33 +2093,41 @@ class SimulationsMain(TimeEventsMain):
 
         verbose = self.ui.ips_verbose_spinBox.value()
 
-        options = sim.OptimalPowerFlowOptions(solver=solver,
-                                              time_grouping=time_grouping,
-                                              zonal_grouping=zonal_grouping,
-                                              mip_solver=mip_solver,
-                                              power_flow_options=pf_options,
-                                              consider_contingencies=consider_contingencies,
-                                              contingency_groups_used=contingency_groups_used,
-                                              skip_generation_limits=skip_generation_limits,
-                                              lodf_tolerance=lodf_tolerance,
-                                              maximize_flows=maximize_flows,
-                                              inter_aggregation_info=inter_aggregation_info,
-                                              unit_commitment=unit_commitment,
-                                              generation_expansion_planning=generation_expansion_planning,
-                                              export_model_fname=export_model_fname,
-                                              generate_report=generate_report,
-                                              use_glsk_as_cost=use_glsk_as_cost,
-                                              add_losses_approximation=add_losses_approximation,
-                                              ips_method=ips_method,
-                                              ips_tolerance=ips_tolerance,
-                                              ips_iterations=ips_iterations,
-                                              ips_trust_radius=ips_trust_radius,
-                                              ips_init_with_pf=ips_init_with_pf,
-                                              ips_control_q_limits=ips_control_q_limits,
-                                              acopf_v0=acopf_v0,
-                                              acopf_S0=acopf_S0,
-                                              robust=robust,
-                                              verbose=verbose)
+        mip_framework = MIPFramework.OrTools
+
+        options = sim.OptimalPowerFlowOptions(
+            solver=solver,
+            time_grouping=time_grouping,
+            zonal_grouping=zonal_grouping,
+            mip_solver=mip_solver,
+            power_flow_options=pf_options,
+            consider_contingencies=consider_contingencies,
+            contingency_groups_used=contingency_groups_used,
+            skip_generation_limits=skip_generation_limits,
+            lodf_tolerance=lodf_tolerance,
+            maximize_flows=maximize_flows,
+            inter_aggregation_info=inter_aggregation_info,
+            unit_commitment=unit_commitment,
+            consider_ramps=consider_ramps,
+            consider_time_up_down=consider_time_up_down,
+            area_spinning_reserve=area_spinning_reserve,
+            generation_expansion_planning=generation_expansion_planning,
+            export_model_fname=export_model_fname,
+            generate_report=generate_report,
+            use_glsk_as_cost=use_glsk_as_cost,
+            add_losses_approximation=add_losses_approximation,
+            ips_method=ips_method,
+            ips_tolerance=ips_tolerance,
+            ips_iterations=ips_iterations,
+            ips_trust_radius=ips_trust_radius,
+            ips_init_with_pf=ips_init_with_pf,
+            ips_control_q_limits=ips_control_q_limits,
+            acopf_v0=acopf_v0,
+            acopf_S0=acopf_S0,
+            robust=robust,
+            verbose=verbose,
+            mip_framework=mip_framework
+        )
 
         return options
 
@@ -2164,7 +2174,7 @@ class SimulationsMain(TimeEventsMain):
             if results.converged:
                 self.show_info_toast("Optimal power flow converged :)")
             else:
-                self.show_warning_toast('Power flow not converged :/\n'
+                self.show_warning_toast('Optimal power flow not converged :/\n'
                                         'Check that all Branches have rating and \n'
                                         'that the generator bounds are ok.\n'
                                         'You may also use the diagnostic tool (F8)',
@@ -3052,13 +3062,11 @@ class SimulationsMain(TimeEventsMain):
 
                 if pf_results is not None:
 
-
-
                     self.add_simulation(SimulationTypes.RmsDynamic_run)
 
                     self.LOCK()
 
-                     # Compile the grid
+                    # Compile the grid
                     self.ui.progress_label.setText('Compiling the grid...')
                     QtGui.QGuiApplication.processEvents()
 
@@ -3070,9 +3078,9 @@ class SimulationsMain(TimeEventsMain):
                     drv = sim.RmsSimulationDriver(grid=self.circuit, options=options, pf_results=pf_results)
 
                     self.session.run(drv,
-                                post_func=self.post_rms,
-                                prog_func=self.ui.progressBar.setValue,
-                                text_func=self.ui.progress_label.setText)
+                                     post_func=self.post_rms,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
 
 
                 else:
@@ -3083,7 +3091,6 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             pass
-
 
     def post_rms(self):
         """
@@ -3108,7 +3115,6 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
 
     def automatic_pf_precision(self):
         """
@@ -3163,6 +3169,7 @@ class SimulationsMain(TimeEventsMain):
             self._remote_jobs.pop(driver_idtag)
 
             self.show_info_toast(f"Remote results received!")
+
     def run_small_signal_stability(self):
         """
         Run small signal simulation
@@ -3180,7 +3187,7 @@ class SimulationsMain(TimeEventsMain):
 
                     self.LOCK()
 
-                     # Compile the grid
+                    # Compile the grid
                     self.ui.progress_label.setText('Compiling the grid...')
                     QtGui.QGuiApplication.processEvents()
 
@@ -3192,10 +3199,9 @@ class SimulationsMain(TimeEventsMain):
                     drv = sim.SmallSignalStabilityDriver(grid=self.circuit, options=options, pf_results=pf_results)
 
                     self.session.run(drv,
-                                post_func=self.post_small_signal_stability,
-                                prog_func=self.ui.progressBar.setValue,
-                                text_func=self.ui.progress_label.setText)
-
+                                     post_func=self.post_small_signal_stability,
+                                     prog_func=self.ui.progressBar.setValue,
+                                     text_func=self.ui.progress_label.setText)
 
                 else:
                     info_msg('Run a power flow simulation first.\n'
@@ -3219,10 +3225,7 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.SmallSignal_run)
             self.update_available_results()
 
-            # if results.converged:
-            #     self.show_info_toast("Power flow converged :)")
-            # else:
-            #     self.show_warning_toast("Power flow not converged :/")
+            self.show_info_toast("Small-signal stability analysis has finished correctly!")
 
         else:
             warning_msg('There are no Small Signal Stability analysis results.', 'Small Signal Stability analysis')

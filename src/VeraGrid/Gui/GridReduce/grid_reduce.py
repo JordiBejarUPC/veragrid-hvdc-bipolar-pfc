@@ -15,10 +15,8 @@ from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction
+from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
-from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearAnalysisTs
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import GridReductionMethod
 
@@ -39,19 +37,25 @@ class GridReduceDialogue(QtWidgets.QDialog):
         self.ui = Ui_ReduceDialog()
         self.ui.setupUi(self)
         self.setWindowTitle('Grid reduction')
+        self.setModal(True)
 
         self.logger = Logger()
         self.logs_dialogue: LogsDialogue | None = None
 
         self.ui.listView.setModel(get_list_model(list(selected_buses_set)))
 
-        methods = [GridReductionMethod.DiShi, GridReductionMethod.PTDF, GridReductionMethod.Ward]
+        methods = [GridReductionMethod.PTDF,
+                   GridReductionMethod.PTDFProjected,
+                   GridReductionMethod.DiShi,
+                   GridReductionMethod.Ward]
         self.methods_dict = {m.value: m for m in methods}
         self.ui.methodComboBox.setModel(get_list_model([m.value for m in methods]))
 
         self._grid: MultiCircuit = grid
         self._session: SimulationSession = session
         self._selected_buses_set: Set[Bus] = selected_buses_set
+
+        self.did_reduce = False
 
         self.ui.reduceButton.clicked.connect(self.reduce_grid)
 
@@ -106,32 +110,33 @@ class GridReduceDialogue(QtWidgets.QDialog):
                     grid_reduced, logger = ward_standard_reduction(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage
+                        V0=pf_res.voltage,
                     )
 
                 elif method == GridReductionMethod.PTDF:
-                    # get the previous power flow
-                    nc = compile_numerical_circuit_at(circuit=self._grid, t_idx=None)
-                    lin = LinearAnalysis(nc=nc)
-
-                    if self._grid.has_time_series:
-                        lin_ts = LinearAnalysisTs(grid=self._grid)
-                    else:
-                        lin_ts = None
 
                     # NOTE: self._grid gets reduced in-place
                     grid_reduced, logger = ptdf_reduction(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
-                        PTDF=lin.PTDF,
-                        lin_ts=lin_ts
                     )
+
+                elif method == GridReductionMethod.PTDFProjected:
+
+                    # NOTE: self._grid gets reduced in-place
+                    grid_reduced, logger = ptdf_reduction_projected(
+                        grid=self._grid,
+                        reduction_bus_indices=reduction_bus_indices,
+                    )
+
                 else:
                     raise NotImplementedError("Reduction method not supported")
 
                 if logger.has_logs():
                     self.logs_dialogue = LogsDialogue(name="Import profiles", logger=logger)
                     self.logs_dialogue.exec()
+
+                self.did_reduce = True
             else:
                 pass  # not ok
         else:

@@ -8,7 +8,7 @@ from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, SubObjectType
+from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, SubObjectType, BuildStatus
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Aggregation import Area, Zone, Country
 from VeraGridEngine.Devices.Substation.substation import Substation
@@ -17,6 +17,7 @@ from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class Bus(PhysicalDevice):
@@ -91,7 +92,8 @@ class Bus(PhysicalDevice):
                  Vm0=1,
                  Va0=0,
                  graphic_type: BusGraphicType = BusGraphicType.BusBar,
-                 bus_bar: BusBar | None = None):
+                 bus_bar: BusBar | None = None,
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The Bus object is the container of all the possible devices that can be attached to
         a bus bar or Substation. Such objects can be loads, voltage controlled generators,
@@ -131,7 +133,8 @@ class Bus(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.BusDevice)
+                                device_type=DeviceType.BusDevice,
+                                build_status=build_status)
 
         self.active = bool(active)
         self._active_prof = Profile(default_value=self.active, data_type=bool)
@@ -169,17 +172,17 @@ class Bus(PhysicalDevice):
         self.r_fault = float(r_fault)
         self.x_fault = float(x_fault)
 
-        self.country: Country = country
+        self.country: Country | None = country
 
-        self.area: Area = area
+        self.area: Area | None = area
 
-        self.zone: Zone = zone
+        self.zone: Zone | None = zone
 
-        self.substation: Substation = substation
+        self.substation: Substation | None = substation
 
-        self._voltage_level: VoltageLevel = voltage_level
+        self._voltage_level: VoltageLevel | None = voltage_level
 
-        self._bus_bar: BusBar = bus_bar
+        self._bus_bar: BusBar | None = bus_bar
 
         if is_internal:
             self.graphic_type: BusGraphicType = BusGraphicType.Internal
@@ -285,6 +288,10 @@ class Bus(PhysicalDevice):
 
     @property
     def rms_model(self) -> DynamicModelHost:
+        """
+        RMS model
+        :return: DynamicMOdelHost
+        """
         return self._rms_model
 
     @rms_model.setter
@@ -309,6 +316,13 @@ class Bus(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
 
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
     @property
     def Vmin_prof(self) -> Profile:
         """
@@ -326,6 +340,13 @@ class Bus(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vmin_prof')
 
+    def get_Vmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vmin, self.Vmin_prof, t)
+
     @property
     def Vmax_prof(self) -> Profile:
         """
@@ -342,6 +363,13 @@ class Bus(PhysicalDevice):
             self._Vmax_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vmax_prof')
+
+    def get_Vmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vmax, self.Vmax_prof, t)
 
     @property
     def voltage_level(self) -> Union[VoltageLevel, None]:
@@ -472,7 +500,10 @@ class Bus(PhysicalDevice):
         return lon, lat
 
     @property
-    def internal(self):
+    def internal(self) -> bool:
+        """
+        Is the bus internal?
+        """
         return self.graphic_type == BusGraphicType.Internal
 
     @internal.setter
@@ -483,7 +514,10 @@ class Bus(PhysicalDevice):
             pass
 
     @property
-    def bus_bar(self) -> BusBar:
+    def bus_bar(self) -> BusBar | None:
+        """
+        Get the BusBar
+        """
         return self._bus_bar
 
     @bus_bar.setter
@@ -494,7 +528,9 @@ class Bus(PhysicalDevice):
             raise ValueError("The value must be a BusBar")
 
     def initialize_rms(self):
-
+        """
+        Initialize the RMS model
+        """
         if self.rms_model.empty():
             Vm = Var("Vm" + self.name)
             Va = Var("Va" + self.name)

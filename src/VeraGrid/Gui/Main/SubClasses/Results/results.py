@@ -234,7 +234,7 @@ class ResultsMain(SimulationsMain):
         mdl = self.ui.resultsTableView.model()
         if mdl is not None:
             mdl.copy_to_clipboard()
-            print('Copied!')
+            self.show_info_toast('Copied!')
         else:
             warning_msg('There is no profile displayed, please display one', 'Copy profile to clipboard')
 
@@ -245,7 +245,7 @@ class ResultsMain(SimulationsMain):
         mdl = self.ui.resultsTableView.model()
         if mdl is not None:
             mdl.copy_numpy_to_clipboard()
-            print('Copied!')
+            self.show_info_toast('Copied!')
         else:
             warning_msg('There is no profile displayed, please display one', 'Copy profile to clipboard')
 

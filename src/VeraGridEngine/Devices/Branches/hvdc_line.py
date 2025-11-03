@@ -13,6 +13,7 @@ from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.enumerations import HvdcControlType
 from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 
 
@@ -151,7 +152,6 @@ class HvdcLine(BranchParent):
         '_locations',
     )
 
-
     def __init__(self,
                  bus_from: Bus = None,
                  bus_to: Bus = None,
@@ -229,6 +229,9 @@ class HvdcLine(BranchParent):
                               capex=capex,
                               opex=opex,
                               cost=overload_cost,
+                              temp_base=25,
+                              temp_oper=25,
+                              alpha=0.0033,
                               device_type=DeviceType.HVDCLineDevice)
 
         # line length in km
@@ -324,6 +327,13 @@ class HvdcLine(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
 
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
     @property
     def rate_prof(self) -> Profile:
         """
@@ -340,6 +350,13 @@ class HvdcLine(BranchParent):
             self._rate_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a rate_prof')
+
+    def get_rate_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.rate, self.rate_prof, t)
 
     @property
     def contingency_factor_prof(self) -> Profile:
@@ -358,6 +375,13 @@ class HvdcLine(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a contingency_factor_prof')
 
+    def get_contingency_factor_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.contingency_factor, self.contingency_factor_prof, t)
+
     @property
     def Cost_prof(self) -> Profile:
         """
@@ -374,6 +398,13 @@ class HvdcLine(BranchParent):
             self._Cost_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost_prof')
+
+    def get_Cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost, self.Cost_prof, t)
 
     @property
     def Pset_prof(self) -> Profile:
@@ -392,6 +423,13 @@ class HvdcLine(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pset_prof')
 
+    def get_Pset_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pset, self.Pset_prof, t)
+
     @property
     def angle_droop_prof(self) -> Profile:
         """
@@ -408,6 +446,13 @@ class HvdcLine(BranchParent):
             self._angle_droop_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a angle_droop_prof')
+
+    def get_angle_droop_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.angle_droop, self.angle_droop_prof, t)
 
     @property
     def Vset_f_prof(self) -> Profile:
@@ -426,6 +471,13 @@ class HvdcLine(BranchParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vset_f_prof')
 
+    def get_Vset_f_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset_f, self.Vset_f_prof, t)
+
     @property
     def Vset_t_prof(self) -> Profile:
         """
@@ -442,6 +494,13 @@ class HvdcLine(BranchParent):
             self._Vset_t_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Vset_t_prof')
+
+    def get_Vset_t_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Vset_t, self.Vset_t_prof, t)
 
     @property
     def locations(self) -> LineLocations:

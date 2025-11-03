@@ -351,6 +351,32 @@ class MIPSolvers(Enum):
             return MIPSolvers.HIGHS
 
 
+class MIPFramework(Enum):
+    """
+    MIP framework enumeration
+    """
+    OrTools = 'or-tools'
+    PuLP = 'PuLP'
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return MIPFramework[s]
+        except KeyError:
+            return MIPFramework.PuLP
+
+
 class TimeGrouping(Enum):
     """
     Time groupings enumeration
@@ -1822,11 +1848,14 @@ class ResultTypes(Enum):
     # RMS Simulation
 
     RmsSimulationReport = 'Rms time series report'
+    RmsPlotResults = 'Rms plot results'
 
-    # RMS Small Signal Stability
+    # Small Signal Stability
     ParticipationFactors = "Participation Factors"
+    StateMatrix = "State Matrix"
     Modes = "Modes"
     SDomainPlot = "S-Domain Plot"
+    SDomainPlotHz = "S-Domain Plot in Hz"
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis'
@@ -1958,9 +1987,13 @@ class ResultTypes(Enum):
     InvestmentsWhenToMakePlot = "When to make them plot"
 
     # reliability
-    ReliabilityLoleResults = "LOLE"
+    ReliabilityLOLEResults = "LOLE"
     ReliabilityENSResults = "ENS"
     ReliabilityLOLFResults = "LOLF"
+    ReliabilityLOLETResults = "LOLET"
+    ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value
@@ -2134,7 +2167,7 @@ class Colormaps(Enum):
             return s
 
 
-class SubstationTypes(Enum):
+class VoltageLevelTypes(Enum):
     """
     Types of substation types
     """
@@ -2162,7 +2195,7 @@ class SubstationTypes(Enum):
         :return:
         """
         try:
-            return SubstationTypes[s]
+            return VoltageLevelTypes[s]
         except KeyError:
             return s
 
@@ -2317,6 +2350,7 @@ class GridReductionMethod(Enum):
     DiShi = "DiShi"
     WardLinear = "Ward linear"
     PTDF = "PTDF"
+    PTDFProjected = "PTDF projected"
 
     def __str__(self):
         return self.value

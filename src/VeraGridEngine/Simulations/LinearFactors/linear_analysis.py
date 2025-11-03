@@ -493,7 +493,7 @@ class LinearAnalysis:
             rates=rates
         )
 
-    def get_flows(self, Sbus: CxVec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec:
+    def get_flows(self, Sbus: CxVec | Vec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec | Vec:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (nbus)
@@ -514,7 +514,7 @@ class LinearAnalysis:
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
 
-    def get_flows2d(self, Sbus: CxMat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat:
+    def get_flows2d(self, Sbus: CxMat | Mat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat | Mat:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (time, nbus) for 2D
@@ -534,6 +534,34 @@ class LinearAnalysis:
             return Pf
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
+
+    def get_injections(self, flows: Vec) -> Vec:
+        """
+        Get injections that satisfy the flows
+        :param flows: Array of flows (nbranch)
+        :return: Array of injections (nbus)
+        """
+        if flows.ndim == 1:
+
+            Pbus, _, _, _ = np.linalg.lstsq(self.PTDF, flows)
+
+            return Pbus
+        else:
+            raise Exception(f'flows has unsupported dimensions: {flows.shape}')
+
+    def get_injections_2d(self, flows: Mat) -> Mat:
+        """
+        Get injections that satisfy the flows
+        :param flows: Matrix of flows (time, nbranch)
+        :return: Matrix of injections (time, nbus)
+        """
+        if flows.ndim == 2:
+
+            Pbus_t, _, _, _ = np.linalg.lstsq(self.PTDF, flows.T)
+
+            return Pbus_t.T
+        else:
+            raise Exception(f'flows has unsupported dimensions: {flows.shape}')
 
 
 class LinearMultiContingency:
@@ -586,6 +614,12 @@ class LinearMultiContingency:
 
         self.hvdc_odf = hvdc_odf
         self.vsc_odf = vsc_odf
+
+        # store flag for contingency emptyness
+        # self.enabled: bool = (self.mlodf_factors.nnz > 0
+        #                       or self.compensated_ptdf_factors.nnz > 0
+        #                       or injections_factor.sum() > 1)
+        self.enabled: bool = True
 
     def has_injection_contingencies(self) -> bool:
         """
@@ -700,13 +734,13 @@ class ContingencyIndices:
                  branches_dict: Dict[str, int],
                  hvdc_dict: Dict[str, int],
                  vsc_dict: Dict[str, int],
-                 generator_bus_index_dict: Dict[str, int]):
+                 injections_bus_index_dict: Dict[str, int]):
         """
         Contingency indices
         :param contingency_group: ContingencyGroup
         :param contingency_group_dict: dictionary to get the list of contingencies matching a contingency group
         :param branches_dict: dictionary to get the branch index by the branch idtag
-        :param generator_bus_index_dict: dictionary to get the generator bus index by the generator idtag
+        :param injections_bus_index_dict: dictionary to get the injection device bus index by the generator idtag
         """
 
         # get the group's contingencies
@@ -733,16 +767,31 @@ class ContingencyIndices:
                     if vsc_idx is not None:
                         vsc_contingency_indices_list.append(vsc_idx)
 
+                elif cnt.tpe in [DeviceType.GeneratorDevice,
+                                 DeviceType.BatteryDevice,
+                                 DeviceType.LoadDevice,
+                                 DeviceType.StaticGeneratorDevice]:
+
+                    # NOTE: We treat injection active contingencies as full power outages (100% power reduction)
+
+                    bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
+                    if bus_idx is not None:
+                        bus_contingency_indices_list.append(bus_idx)
+                        injections_factors_list.append(1.0)  # 100% power contingency
+                    else:
+                        print(f"contingency generator {cnt.device_idtag} not found")
+
                 else:
                     # search for the contingency in the Branches
                     br_idx = branches_dict.get(cnt.device_idtag, None)
                     if br_idx is not None:
                         branch_contingency_indices_list.append(br_idx)
                     else:
-                        print(f"contingency branch {cnt.device_idtag} not found")
+                        print(f"contingency device {cnt.device_type.value}:{cnt.device_idtag} not found")
 
             elif cnt.prop == ContingencyOperationTypes.PowerPercentage:
-                bus_idx = generator_bus_index_dict.get(cnt.device_idtag, None)
+                # this can only be an injection device
+                bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
                 if bus_idx is not None:
                     bus_contingency_indices_list.append(bus_idx)
                     injections_factors_list.append(cnt.value / 100.0)
@@ -778,7 +827,7 @@ class LinearMultiContingencies:
         self.__branches_dict = grid.get_branches_index_dict2(add_vsc=False, add_hvdc=False, add_switch=True)
         self.__hvdc_dict = grid.get_hvdc_index_dict()
         self.__vsc_dict = grid.get_vsc_index_dict()
-        self.__generator_bus_index_dict = grid.get_generator_bus_index_dict(bus_index_dict=bus_index_dict)
+        self.__injections_bus_index_dict = grid.get_injections_bus_index_dict(bus_index_dict=bus_index_dict)
 
         self.contingency_indices_list = list()
 
@@ -791,7 +840,7 @@ class LinearMultiContingencies:
                     branches_dict=self.__branches_dict,
                     hvdc_dict=self.__hvdc_dict,
                     vsc_dict=self.__vsc_dict,
-                    generator_bus_index_dict=self.__generator_bus_index_dict
+                    injections_bus_index_dict=self.__injections_bus_index_dict
                 )
             )
 
@@ -1020,7 +1069,7 @@ class LinearAnalysisTs:
 
         return lin.get_flows(Sbus=P)
 
-    def get_time_flow(self, branch_idx: int, bus_idx: int, P: CxVec | Vec) -> CxVec | Vec:
+    def get_branch_flow_ts(self, branch_idx: int, bus_idx: int, P: CxVec | Vec) -> CxVec | Vec:
         """
         Get the flow time series of a single branch given the injection time series of a single bus
         :param branch_idx: Branch index
@@ -1041,10 +1090,12 @@ class LinearAnalysisTs:
 
         return flow_ts
 
-    def get_time_flows(self, P: CxVec | Vec) -> CxVec | Vec:
+    def get_flows_ts(self, P: CxMat | Mat, progress_func=None, progress_text=None) -> CxMat | Mat:
         """
         Get the flow time series of all branches given the injection time series all buses
         :param P: Bus injection time series
+        :param progress_func: Progres function
+        :param progress_text: Progress text function
         :return: Branches flow time series
         """
         # must have the same size
@@ -1052,11 +1103,42 @@ class LinearAnalysisTs:
         assert P.shape[1] == self.nbus
 
         flow_ts = np.zeros((self.nt, self.nbr))
-
+        ii = 0
+        nn = len(self.groups)
         for t_idx, list_of_represented_time_steps in self.groups.items():
+
+            if progress_text is not None:
+                progress_text(f"Computing flows for time group {t_idx}")
+
             # get the linear analysis
             lin: LinearAnalysis = self._linear_analysis[t_idx]
 
             flow_ts[list_of_represented_time_steps, :] = lin.get_flows2d(Sbus=P[list_of_represented_time_steps, :])
 
+            if progress_func is not None:
+                ii += 1
+                progress_func(ii / nn * 100.0)
+
         return flow_ts
+
+    def get_injections_ts(self, flows_ts: CxMat | Mat) -> CxMat | Mat:
+        """
+        Get the flow time series of all branches given the injection time series all buses
+        :param flows_ts: Branches flow time series
+        :return: Bus injection time series
+        """
+        # must have the same size
+        assert flows_ts.shape[0] == self.nt
+        assert flows_ts.shape[1] == self.nbr
+
+        Pbus = np.zeros((self.nt, self.nbus))
+
+        for t_idx, list_of_represented_time_steps in self.groups.items():
+            # get the linear analysis
+            lin: LinearAnalysis = self._linear_analysis[t_idx]
+
+            Pbus[list_of_represented_time_steps, :] = lin.get_injections_2d(
+                flows=flows_ts[list_of_represented_time_steps, :]
+            )
+
+        return Pbus

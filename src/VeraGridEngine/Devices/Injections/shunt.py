@@ -8,7 +8,11 @@ from VeraGridEngine.enumerations import BuildStatus
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 
+
 class Shunt(ShuntParent):
+    __slots__ = (
+        "g", "b"
+    )
 
     def __init__(self, name='shunt', idtag=None, code='',
                  G=0.0, B=0.0, active=True,
@@ -63,29 +67,32 @@ class Shunt(ShuntParent):
                              opex=opex,
                              build_status=build_status,
                              device_type=DeviceType.ShuntDevice)
-        
-        Sbase: float = 100 #NOTE: to remove
+
+        Sbase: float = 100  # NOTE: to remove
         self.g = self.G / Sbase
         self.b = self.B / Sbase
-        
-    def initialize_rms(self):
-        if self.rms_model.empty():
 
+    def initialize_rms(self):
+        """
+        Initialize RMS
+        :return:
+        """
+        if self.rms_model.empty():
             Pshunt = Var("Pshunt")
             Qshunt = Var("Qshunt")
 
-            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm) 
+            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
 
             # Assign Block
             self.rms_model.model = Block(
                 algebraic_eqs=[
-                    Pshunt - self.g * Vm**2,
-                    Qshunt - self.b * Vm**2
+                    Pshunt - self.g * Vm ** 2,
+                    Qshunt - self.b * Vm ** 2
                 ],
                 algebraic_vars=[Pshunt, Qshunt],
                 init_eqs={
-                    Pshunt: self.g * Vm**2,
-                    Qshunt: self.b * Vm**2
+                    Pshunt: self.g * Vm ** 2,
+                    Qshunt: self.b * Vm ** 2
                 },
                 init_vars=[Pshunt, Qshunt],
                 parameters=[],

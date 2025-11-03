@@ -28,394 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added png equivalents">
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/icons/VeraGrid_icon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons/fix.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons/inputs_analysis 2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons/save.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons/savec.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons/automatic_layout.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons/color_grid.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons/run_cascade_step.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/auto-link-rnd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/auto-link.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/link-to-all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/link-to-selection.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons/transform.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/icons/dyn.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons/automatic_layout.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons/color_grid.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons/run_cascade_step.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons/CataloguePrivate.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons/CataloguePrivate2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/auto-link-rnd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/auto-link.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/link-to-all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/link-to-selection.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/auto-link-rnd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/auto-link.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/clear_runs.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/delete3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/link-to-all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/link-to-selection.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/plot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/plus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons/transform.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons/dyn.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/People.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/area_transfer.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/array.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/automatic_layout.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/bars.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/calculator.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/check_all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/clear_runs.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/clock.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/color_grid.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/console.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/copy2left.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/copy2right.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/copy2up.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/data.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/delete2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/delete3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/edit.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/export_pickle.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/fusion.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/grid_reduction.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/histogram.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/import_models.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/inputs_analysis 2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/load.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/load_add.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/loadc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/magnifying_glass.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/magnifying_glass2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/minus (gray).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/minus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/new.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/new2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/new2c.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/next.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/paste.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/plot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/plus (gray).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/plus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/prev.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/roseta.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/run_cascade_step.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/save.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/savec.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/schematic.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/squares.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/stats.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/to_cgmes.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/to_psse.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/to_roseta.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/tree.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/undo.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons/up.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/auto-link-rnd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/auto-link.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/link-to-all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/link-to-selection.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons/sigma.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SmallSignalEditor/Icons/ss_icon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons/plot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons/solar_power.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons/accept.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons/accept2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons/delete2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/auto-link-rnd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/auto-link.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/link-to-all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/link-to-selection.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/calc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/edit.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/minus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons/plus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/Catalogue.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/CatalogueAdd.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/People.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/SE.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/SE_Listen.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/abs.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_batt.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_contingency.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_gen.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_investment.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_load.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_shunt.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/add_stagen.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/area_transfer.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/array.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/assign_to_profile.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/atc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/atc_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/atc_ts_clustering.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/automatic_layout.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/bars.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/blackout.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/blueprint.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/bus_icon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/calculator.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/cdf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/check_all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/chip.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/clear_runs.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/clock.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/color_grid.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/color_grid2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/console.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/contingency_wizzard.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/continuation_power_flow.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/copy.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/copy2down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/copy2left.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/copy2right.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/copy2up.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/data.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/dc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/dcopf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/dcopf2ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/dcopf_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/delete.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/delete2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/delete3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/delete_conn.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/detect_tr.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/divide.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/dyn.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/edit.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/export_pickle.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/fusion.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/gear.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/grid_icon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/grid_reduction.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/highlight.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/highlight2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/histogram.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/import.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/import_models.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/import_profiles.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/inputs_analysis 2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/inputs_analysis.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/investment.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/latin_hypercube(OPF).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/latin_hypercube2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/load.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/load_add.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/loadc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/magnifying_glass.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/magnifying_glass2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/map (night).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/map.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/measurement.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/minus (gray).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/minus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ml.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/move_bus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/multiply.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/new.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/new2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/new2c.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/next.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ntc_opf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ntc_opf_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ntc_opf_ts_clustering.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/opf2pf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/opf_lh.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/otdf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/otdf_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/paste.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/pf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/pf_lh.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/pf_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/pf_ts_cluster.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/pic.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/piece.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/plot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/plus (gray).png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/plus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/powerplant.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/prev.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ptdf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ptdf_ts.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/rate_br.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/redo.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/resize.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/roseta.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/run_cascade.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/run_cascade_step.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/save.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/savec.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/schematic.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/short_circuit.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/show_color_controls.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/sigma.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/squares.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/ss_icon.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/stats.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/stochastic_pf.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/stochastic_power_flow.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/storage_loc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/sync.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/to_hvdc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/to_transformer.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/to_upfc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/to_vsc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/transformer3w.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/uncheck_all.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/undo.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/unhighlight.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/up.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/upfc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons/vsc.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons/plot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons/wind_power.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/correct_icons.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed missing params">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/AboutDialogue/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Analysis/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ContingencyPlanner/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CoordinatesInput/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/line_location_graphic_item.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/line_location_graphic_item.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_segment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_segment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Substation/substation_graphic_item.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Substation/substation_graphic_item.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/dc_line_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/dc_line_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/hvdc_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/hvdc_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/line_graphics_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/series_reactance_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/series_reactance_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/switch_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/switch_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer2w_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer2w_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer3w_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/transformer3w_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/upfc_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/upfc_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/vsc_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/vsc_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/vsc_graphics_3term.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/vsc_graphics_3term.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/winding_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Branches/winding_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_node_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_node_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_p2x_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_p2x_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_path_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_path_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_pump_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_pump_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_turbine_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Fluid/fluid_turbine_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/controllable_shunt_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/controllable_shunt_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/generator_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/generator_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/injections_template_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/injections_template_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/load_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Injections/load_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/diagrams_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/diagrams_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridGenerator/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadCatalogue/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/load_designer_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/load_designer_ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/load_designer_ui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/LoadDesigner/load_designer_ui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/correct_icons.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_data_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_data_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_data_gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_data_gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_models_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_models_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_models_gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profiles_from_models_gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/block_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/block_editor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/RosetaExplorer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/RosetaExplorer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RosetaExplorer/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SigmaAnalysis/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SolarPowerWizard/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SyncDialogue/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/SystemScaler/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TreeModelViewer/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/gui.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/gui.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/WindPowerWizard/icons_rc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -479,7 +94,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
-    &quot;accountId&quot;: &quot;d905e739-bce6-452f-b93d-3ff9fc8215e9&quot;
+    &quot;accountId&quot;: &quot;cb83a36c-6a26-4d28-9aa3-3af0083cd55d&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -510,7 +125,7 @@
   &quot;associatedIndex&quot;: 8
 }</component>
   <component name="ProjectId" id="1bGvT9JqoJhBes9WGdphyWxAfMi" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+  <component name="ProjectLevelVcsManager">
     <OptionsSetting value="false" id="Update" />
     <ConfirmationsSetting value="2" id="Add" />
   </component>
@@ -537,10 +152,12 @@
     &quot;Python tests.Nosetests in test_topology_processor.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.Nosetests in tests.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.Python tests in tests.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest for src.tests.test_ac_opf.test_pegase89.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor&quot;: &quot;Debug&quot;,
+    &quot;Python tests.pytest for src.tests.test_power_flow_matpower.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
@@ -573,8 +190,11 @@
     &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.multi_circuit.executor&quot;: &quot;Debug&quot;,
     &quot;Python.new_circuit_objects.executor&quot;: &quot;Run&quot;,
+    &quot;Python.new_diagram2.executor&quot;: &quot;Run&quot;,
     &quot;Python.profile.executor&quot;: &quot;Debug&quot;,
     &quot;Python.pymoo_example.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.pyside6-designer (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.pyside6-designer.executor&quot;: &quot;Run&quot;,
     &quot;Python.python_console.executor&quot;: &quot;Run&quot;,
     &quot;Python.raw_imp_exp_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
@@ -604,13 +224,13 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;devel&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/santi/Documentos/Git/eRoots/extended-equal-area-criterion&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/santi/Git/eRoots/VeraGrid/src/trunk/anarede&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyIntegratedToolsModulesConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;two.files.diff.last.used.file&quot;: &quot;C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
@@ -622,18 +242,18 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/trunk/anarede" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
       <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
+      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
   <component name="RunManager" selected="Python.ExecuteVeraGrid">
@@ -679,6 +299,15 @@
       <option name="OPTIONS" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="MatlabApplication">
+      <option name="FILE_PATH" value="" />
+      <option name="INTERPRETER_PATH" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="PARAMETERS" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -707,6 +336,7 @@
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -757,6 +387,7 @@
     </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -769,6 +400,7 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -786,6 +418,7 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Sphinx task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -803,6 +436,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Doctests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -822,6 +456,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Nosetests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -838,6 +473,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="py.test">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -853,17 +489,8 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="MatlabApplication">
-      <option name="FILE_PATH" value="" />
-      <option name="INTERPRETER_PATH" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="PARAMETERS" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+      <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -906,42 +533,20 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="correct_icons" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+    <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/correct_icons.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_gui_all" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/update_gui_all.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -951,7 +556,7 @@
       <method v="2" />
     </configuration>
     <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+      <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -973,7 +578,7 @@
       <method v="2" />
     </configuration>
     <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+      <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -1092,28 +697,44 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Python.upload_to_pypi" />
-      <item itemvalue="Python.update_gui_all" />
-      <item itemvalue="Python.correct_icons" />
+      <item itemvalue="Python.pyside6-designer" />
       <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python.update_gui_all" />
-        <item itemvalue="Python.correct_icons" />
-        <item itemvalue="Python.update_gui_file" />
         <item itemvalue="Python.upload_to_pypi" />
+        <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python.pyside6-designer" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-256f9dae541f-JavaScript-PY-253.20558.58" />
-        <option value="bundled-python-sdk-7e710ed067e7-8e468156c80b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.20558.58" />
+        <option value="bundled-python-sdk-4e2b1448bda8-9a97661f3031-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.27397.106" />
       </set>
     </attachedChunks>
   </component>
@@ -2238,7 +1859,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="628" />
+    <option name="localTasksCounter" value="637" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -2271,7 +1892,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="HEAD" />
+                        <option value="origin/17_implement_rms_templates" />
                       </list>
                     </value>
                   </entry>
@@ -2284,16 +1905,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="automatic initialization equations fixed" />
-    <MESSAGE value="moved rms initialization out of the MultiCircuit" />
-    <MESSAGE value="got some changes from horrendous alex comit" />
-    <MESSAGE value="several tweaks before the release" />
-    <MESSAGE value="5.4.0" />
-    <MESSAGE value="5.4.0 b" />
-    <MESSAGE value="Improved contingency docs" />
-    <MESSAGE value="added lat and lon to the injection" />
-    <MESSAGE value="improved icons" />
-    <MESSAGE value="improved pkg function" />
     <MESSAGE value="several refactors" />
     <MESSAGE value="formatted" />
     <MESSAGE value="added verbose" />
@@ -2303,13 +1914,23 @@
     <MESSAGE value="Fixed test" />
     <MESSAGE value="icon crazyness" />
     <MESSAGE value="icons check" />
-    <MESSAGE value="Fixed bus change&#10;Worked towards the implementation of the bus-&gt;substation thing" />
-    <MESSAGE value="Improved icons" />
-    <MESSAGE value="Icons fix" />
-    <MESSAGE value="5.5.2" />
-    <MESSAGE value="migrated main to png" />
-    <MESSAGE value="added png equivalents" />
-    <option name="LAST_COMMIT_MESSAGE" value="added png equivalents" />
+    <MESSAGE value="showing icons in macos menus" />
+    <MESSAGE value="fixed macos icon menu" />
+    <MESSAGE value="improved windows icon thing" />
+    <MESSAGE value="some changes" />
+    <MESSAGE value="some improvements in the zoom on laptops" />
+    <MESSAGE value="Fixed NTC generation limits" />
+    <MESSAGE value="Fixed NTC generation limits test" />
+    <MESSAGE value="Added anarede examples" />
+    <MESSAGE value="minimal fix when transformer templates do not exist" />
+    <MESSAGE value="Added missing bus highlight clearing action" />
+    <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
+    <MESSAGE value="minimal type change" />
+    <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
+    <MESSAGE value="Improved the pf initialization in pf grids" />
+    <MESSAGE value="Improved OPF" />
+    <MESSAGE value="Fixed missing params" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed missing params" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2625,7 +2246,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py</url>
-          <line>210</line>
+          <line>207</line>
           <option name="timeStamp" value="2659" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2637,21 +2258,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_to_gridcal.py</url>
           <line>2528</line>
           <option name="timeStamp" value="2661" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_opf.py</url>
-          <line>394</line>
-          <option name="timeStamp" value="2679" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_opf.py</url>
-          <line>431</line>
-          <option name="timeStamp" value="2680" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_opf.py</url>
-          <line>392</line>
-          <option name="timeStamp" value="2690" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/table_models.py</url>
@@ -2720,12 +2326,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py</url>
-          <line>477</line>
+          <line>491</line>
           <option name="timeStamp" value="2967" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py</url>
-          <line>479</line>
+          <line>493</line>
           <option name="timeStamp" value="2968" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2740,13 +2346,33 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py</url>
-          <line>573</line>
+          <line>552</line>
           <option name="timeStamp" value="2976" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py</url>
           <line>174</line>
           <option name="timeStamp" value="2977" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py</url>
+          <line>209</line>
+          <option name="timeStamp" value="2980" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
+          <line>282</line>
+          <option name="timeStamp" value="2981" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py</url>
+          <line>1687</line>
+          <option name="timeStamp" value="2985" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py</url>
+          <line>88</line>
+          <option name="timeStamp" value="2986" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

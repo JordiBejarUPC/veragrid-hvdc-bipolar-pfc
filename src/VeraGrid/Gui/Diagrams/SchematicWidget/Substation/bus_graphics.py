@@ -8,8 +8,8 @@ from typing import Union, TYPE_CHECKING, List, Dict
 import webbrowser
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QRectF, QRect, QPointF
-from PySide6.QtGui import QPen, QCursor, QIcon, QPixmap, QBrush, QColor
-from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent
+from PySide6.QtGui import QPen, QCursor, QBrush, QColor
+from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent, QGraphicsItem
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
@@ -31,9 +31,9 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
-from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
@@ -202,8 +202,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.vl_wizard: VoltageLevelConversionWizard | None = None
-
         # Update size:
         self.change_size(w=self.w)
 
@@ -258,8 +256,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         for graphics in self._child_graphics:
             conn.append(graphics)
+            conn.append(graphics.nexus)
 
         return conn
+
+    def get_extra_graphics(self) -> List[QGraphicsItem]:
+        return self.get_associated_widgets()
 
     def get_nexus_point(self) -> QPointF:
         """
@@ -639,12 +641,18 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         menu.exec_(event.screenPos())
 
     def edit_rms(self):
-        """
-        Open the appropriate editor dialogue
-        :return:
-        """
-        dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
-        dlg.show()
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: missing finding the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                dlg.show()
 
     def assign_status_to_profile(self):
         """
@@ -681,12 +689,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Open the voltage level conversion wizard
         """
-        self.vl_wizard = VoltageLevelConversionWizard()
+        self.editor.convert_busbar_to_voltage_level(bus_graphics=self)
 
-        # open
-        self.vl_wizard.show()
-
-    def convert_to_connectivity_grid(self):
+    def convert_to_connectivity_grid(self) -> None:
         """
         Transform this bus into a grid of buses to be able to compute the bus currents
         and delete this bus afterwards

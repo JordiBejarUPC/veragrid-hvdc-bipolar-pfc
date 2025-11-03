@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QMenu
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, Polygon, Square
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGridEngine.Devices.Injections.load import Load
@@ -39,12 +40,13 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                                               h=20)
 
         # triangle
-        self.set_glyph(glyph=Polygon(self,
-                                     polygon=QPolygonF([QPointF(0, 0),
-                                                        QPointF(self.w, 0),
-                                                        QPointF(self.w / 2, self.h)]),
-                                     update_nexus_fcn=self.update_nexus)
-                       )
+        self.set_glyph(glyph=Polygon(
+            self,
+            polygon=QPolygonF([QPointF(0, 0),
+                               QPointF(self.w, 0),
+                               QPointF(self.w / 2, self.h)]),
+            update_nexus_fcn=self.update_nexus)
+        )
 
     @property
     def api_object(self) -> Load:
@@ -57,23 +59,32 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         @return:
         """
         if self.api_object is not None:
-            menu = QMenu()
+            menu = self.get_base_context_menu()
             menu.addSection("Load")
 
-
             add_menu_entry(menu=menu,
-                        text="Rms Editor",
-                        function_ptr=self.edit_rms,
-                        icon_path=":/Icons/icons/edit.png")
+                           text="Rms Editor",
+                           function_ptr=self.edit_rms,
+                           icon_path=":/Icons/icons/edit.png")
 
             menu.exec(event.screenPos())
         else:
-            pass
+            self.editor.gui.show_error_toast("The graphic has no API object!")
 
     def edit_rms(self):
         """
-        Open the appropriate editor dialogue
+
         :return:
         """
-        dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
-        dlg.show()
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: missing finding the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                dlg.show()

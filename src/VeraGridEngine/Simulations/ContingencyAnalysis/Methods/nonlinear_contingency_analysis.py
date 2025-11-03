@@ -72,7 +72,7 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
     mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
 
     # run 0
-    pf_res_0 = multi_island_pf_nc(nc=nc,
+    base_res = multi_island_pf_nc(nc=nc,
                                   options=pf_opts)
 
     if options.use_srap:
@@ -112,7 +112,7 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
         # run
         pf_res = multi_island_pf_nc(nc=nc,
                                     options=pf_opts,
-                                    V_guess=pf_res_0.voltage,
+                                    V_guess=base_res.voltage,
                                     logger=logger)
 
         results.Sf[ic, :] = pf_res.Sf
@@ -125,8 +125,8 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
                                t_prob=t_prob,
                                mon_idx=mon_idx,
                                nc=nc,
-                               base_flow=np.abs(pf_res_0.Sf),
-                               base_loading=np.abs(pf_res_0.loading),
+                               base_flow=np.abs(base_res.Sf),
+                               base_loading=np.abs(base_res.loading),
                                contingency_flows=np.abs(pf_res.Sf),
                                contingency_loadings=np.abs(pf_res.loading),
                                contingency_idx=ic,

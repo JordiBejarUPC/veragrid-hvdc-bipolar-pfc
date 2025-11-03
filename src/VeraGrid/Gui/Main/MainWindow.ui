@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1338</width>
+    <width>1372</width>
     <height>742</height>
    </rect>
   </property>
@@ -5679,23 +5679,14 @@ QProgressBar::chunk{
                <string>Linear settings</string>
               </property>
               <layout class="QGridLayout" name="gridLayout_18">
-               <item row="7" column="0">
-                <widget class="QCheckBox" name="useGslkAsCostsOpfCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</string>
-                 </property>
+               <item row="4" column="0" colspan="2">
+                <widget class="QLabel" name="label_132">
                  <property name="text">
-                  <string>Use GSLK as costs</string>
+                  <string/>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="0" colspan="2">
+               <item row="9" column="0" colspan="2">
                 <widget class="QCheckBox" name="considerContingenciesOpfCheckBox">
                  <property name="font">
                   <font>
@@ -5711,8 +5702,8 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="13" column="0" colspan="2">
-                <widget class="QCheckBox" name="save_mip_checkBox">
+               <item row="0" column="1">
+                <widget class="QComboBox" name="mip_solver_comboBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
@@ -5720,30 +5711,11 @@ QProgressBar::chunk{
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP file in .lp format in the user VeraGrid folder before running a linear optimization study.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                 </property>
-                 <property name="text">
-                  <string>Save MIP file</string>
+                  <string>Choose the external mixed integer programming solver</string>
                  </property>
                 </widget>
                </item>
-               <item row="10" column="0" colspan="2">
-                <widget class="QCheckBox" name="fixOpfCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</string>
-                 </property>
-                 <property name="text">
-                  <string>Fix infeasibilities and retry</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="14" column="0">
+               <item row="17" column="0">
                 <spacer name="verticalSpacer_18">
                  <property name="orientation">
                   <enum>Qt::Orientation::Vertical</enum>
@@ -5755,35 +5727,6 @@ QProgressBar::chunk{
                   </size>
                  </property>
                 </spacer>
-               </item>
-               <item row="5" column="0">
-                <widget class="QCheckBox" name="opfUnitCommitmentCheckBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Apply unit commitment technique</string>
-                 </property>
-                 <property name="text">
-                  <string>Unit commitment</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_4">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Time grouping</string>
-                 </property>
-                </widget>
                </item>
                <item row="3" column="1">
                 <widget class="QDoubleSpinBox" name="opfContingencyToleranceSpinBox">
@@ -5817,8 +5760,8 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="9" column="0" colspan="2">
-                <widget class="QCheckBox" name="opfGEPCheckBox">
+               <item row="16" column="0" colspan="2">
+                <widget class="QCheckBox" name="save_mip_checkBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
@@ -5826,23 +5769,10 @@ QProgressBar::chunk{
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Apply generation expansion planning</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The program will save the MIP file in .lp format in the user VeraGrid folder before running a linear optimization study.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="text">
-                  <string>Generation expansion planning</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QLabel" name="label_104">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                   <bold>false</bold>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Contingency tolerance</string>
+                  <string>Save MIP file</string>
                  </property>
                 </widget>
                </item>
@@ -5859,10 +5789,16 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="4" column="0" colspan="2">
-                <widget class="QLabel" name="label_132">
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_4">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
                  <property name="text">
-                  <string/>
+                  <string>Time grouping</string>
                  </property>
                 </widget>
                </item>
@@ -5892,8 +5828,8 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="0" column="1">
-                <widget class="QComboBox" name="mip_solver_comboBox">
+               <item row="13" column="0" colspan="2">
+                <widget class="QCheckBox" name="fixOpfCheckBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
@@ -5901,11 +5837,123 @@ QProgressBar::chunk{
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Choose the external mixed integer programming solver</string>
+                  <string>Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC</string>
+                 </property>
+                 <property name="text">
+                  <string>Fix infeasibilities and retry</string>
                  </property>
                 </widget>
                </item>
-               <item row="8" column="0">
+               <item row="12" column="0" colspan="2">
+                <widget class="QCheckBox" name="opfGEPCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Apply generation expansion planning</string>
+                 </property>
+                 <property name="text">
+                  <string>Generation expansion planning</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="label_104">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Contingency tolerance</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0" colspan="2">
+                <widget class="QCheckBox" name="opfConsiderUpDownTimeCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Consider generation minimum up/down time</string>
+                 </property>
+                 <property name="text">
+                  <string>Consider min up/down time</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0" colspan="2">
+                <widget class="QCheckBox" name="opfConsiderRampsCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Consider generation ramps</string>
+                 </property>
+                 <property name="text">
+                  <string>Consider ramps</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0" colspan="2">
+                <widget class="QCheckBox" name="opfUnitCommitmentCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Apply unit commitment technique</string>
+                 </property>
+                 <property name="text">
+                  <string>Unit commitment</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="0" colspan="2">
+                <widget class="QCheckBox" name="opfSpinningReserveCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Consider per-area generation spinning reserve</string>
+                 </property>
+                 <property name="text">
+                  <string>Spinning reserve</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="0" colspan="2">
+                <widget class="QCheckBox" name="useGslkAsCostsOpfCheckBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                   <bold>false</bold>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)</string>
+                 </property>
+                 <property name="text">
+                  <string>Use GSLK as costs</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="0" colspan="2">
                 <widget class="QCheckBox" name="approximateLossesOpfCheckBox">
                  <property name="font">
                   <font>
@@ -8160,6 +8208,9 @@ QProgressBar::chunk{
                 <height>16777214</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>Small-signal performs an RMS simulation when the assessment time is not 0. Please check the RMS settings.</string>
+              </property>
               <property name="frameShape">
                <enum>QFrame::Shape::NoFrame</enum>
               </property>
@@ -8195,6 +8246,58 @@ QProgressBar::chunk{
                  </property>
                  <property name="scaledContents">
                   <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1" colspan="2">
+                <widget class="QLabel" name="label_418">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>16</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Small-Signal</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
                  </property>
                 </widget>
                </item>
@@ -8256,6 +8359,9 @@ QProgressBar::chunk{
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
+                 <property name="toolTip">
+                  <string/>
+                 </property>
                  <property name="frameShape">
                   <enum>QFrame::Shape::NoFrame</enum>
                  </property>
@@ -8263,73 +8369,7 @@ QProgressBar::chunk{
                   <enum>QFrame::Shadow::Raised</enum>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_36">
-                  <item row="3" column="0">
-                   <widget class="QLabel" name="label_406">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>Time step</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QDoubleSpinBox" name="ss_h_spinBox_2">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial time for the simulation. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="suffix">
-                     <string>s</string>
-                    </property>
-                    <property name="decimals">
-                     <number>4</number>
-                    </property>
-                    <property name="minimum">
-                     <double>0.000000000000000</double>
-                    </property>
-                    <property name="maximum">
-                     <double>1000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>0.001000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>0.001000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="label_410">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>Tolerance</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="label_416">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>Assessment time</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
+                  <item row="0" column="1">
                    <widget class="QDoubleSpinBox" name="ss_assessment_time_spinBox_2">
                     <property name="font">
                      <font>
@@ -8359,81 +8399,14 @@ QProgressBar::chunk{
                     </property>
                    </widget>
                   </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_413">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>Int. method</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="ss_int_method_comboBox_2">
-                    <property name="minimumSize">
-                     <size>
-                      <width>200</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="editable">
-                     <bool>false</bool>
-                    </property>
-                    <property name="currentText">
-                     <string>trapezoid</string>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>trapezoid</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>implicit euler</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QSpinBox" name="tolerance_ss_spinBox_2">
-                    <property name="font">
-                     <font>
-                      <pointsize>9</pointsize>
-                     </font>
-                    </property>
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="prefix">
-                     <string>1e-</string>
-                    </property>
-                    <property name="minimum">
-                     <number>1</number>
-                    </property>
-                    <property name="maximum">
-                     <number>15</number>
-                    </property>
-                    <property name="value">
-                     <number>4</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
+                  <item row="1" column="0">
                    <widget class="QLabel" name="label_417">
                     <property name="text">
                      <string/>
                     </property>
                    </widget>
                   </item>
-                  <item row="5" column="0">
+                  <item row="2" column="0">
                    <spacer name="verticalSpacer_2">
                     <property name="orientation">
                      <enum>Qt::Orientation::Vertical</enum>
@@ -8446,59 +8419,19 @@ QProgressBar::chunk{
                     </property>
                    </spacer>
                   </item>
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_416">
+                    <property name="font">
+                     <font>
+                      <pointsize>9</pointsize>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Assessment time</string>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
-                </widget>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <widget class="QLabel" name="label_418">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>16</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Small-Signal</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
-                 </property>
                 </widget>
                </item>
               </layout>
@@ -11230,8 +11163,8 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1338</width>
-     <height>21</height>
+     <width>1372</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="font">
@@ -11297,6 +11230,8 @@ QProgressBar::chunk{
     <addaction name="actionShort_Circuit"/>
     <addaction name="actionVoltage_stability"/>
     <addaction name="actionContingency_analysis"/>
+    <addaction name="actionRun_Dynamic_RMS_Simulation"/>
+    <addaction name="actionRun_Small_Signal_RMS_Simulation"/>
     <addaction name="separator"/>
     <addaction name="actionOPF"/>
     <addaction name="actionOpf_to_Power_flow"/>
@@ -11310,7 +11245,6 @@ QProgressBar::chunk{
     <addaction name="actionFind_node_groups"/>
     <addaction name="actionPower_flow_Stochastic"/>
     <addaction name="actionInvestments_evaluation"/>
-    <addaction name="actionAdd_selected_as_new_investment"/>
     <addaction name="actionReliability"/>
     <addaction name="actionBlackout_cascade"/>
     <addaction name="separator"/>
@@ -11337,9 +11271,6 @@ QProgressBar::chunk{
     <addaction name="actionScale"/>
     <addaction name="separator"/>
     <addaction name="actionLaunch_data_analysis_tool"/>
-    <addaction name="actionInitialize_contingencies"/>
-    <addaction name="actionAdd_selected_to_contingency"/>
-    <addaction name="actionAdd_selected_as_remedial_action"/>
     <addaction name="actionSubstation_wizard"/>
     <addaction name="actionFix_generators_active_based_on_the_power"/>
     <addaction name="actionFix_loads_active_based_on_the_power"/>
@@ -11367,6 +11298,7 @@ QProgressBar::chunk{
     <addaction name="actionSet_schematic_positions_from_GPS_coordinates"/>
     <addaction name="actionColor_buses_by"/>
     <addaction name="actionSelect_buses_by"/>
+    <addaction name="actionClear_highlights"/>
     <addaction name="separator"/>
     <addaction name="actionAdd_map"/>
     <addaction name="actionReset_coordinates"/>
@@ -11387,10 +11319,21 @@ QProgressBar::chunk{
      <string>plugins</string>
     </property>
    </widget>
+   <widget class="QMenu" name="menuEvents">
+    <property name="title">
+     <string>Events</string>
+    </property>
+    <addaction name="actionInitialize_contingencies"/>
+    <addaction name="actionAdd_selected_to_contingency"/>
+    <addaction name="actionAdd_selected_as_new_investment"/>
+    <addaction name="actionAdd_selected_as_remedial_action"/>
+    <addaction name="actionAdd_rms_event_to_selected"/>
+   </widget>
    <addaction name="menuProject"/>
    <addaction name="menuActions"/>
    <addaction name="menuDiagrams"/>
    <addaction name="menuModel"/>
+   <addaction name="menuEvents"/>
    <addaction name="menuSimulations"/>
    <addaction name="menuplugins"/>
    <addaction name="menuAbout"/>
@@ -11454,7 +11397,6 @@ QProgressBar::chunk{
    <addaction name="actionactivate_time_series"/>
    <addaction name="separator"/>
    <addaction name="actionAdd_selected_to_contingency"/>
-   <addaction name="actionAdd_selected_as_remedial_action"/>
    <addaction name="actionAdd_selected_as_new_investment"/>
    <addaction name="separator"/>
    <addaction name="actionBigger_nodes"/>
@@ -12979,6 +12921,11 @@ QProgressBar::chunk{
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add remedial action&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new remedial action from the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
    <property name="shortcut">
     <string>Ctrl+A, Ctrl+R</string>
    </property>
@@ -13124,7 +13071,7 @@ QProgressBar::chunk{
      <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
    </property>
    <property name="text">
-    <string>Run Dynamic RMS Simulation</string>
+    <string>Dynamic RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;RMS Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a dynamic RMS simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -13139,16 +13086,50 @@ QProgressBar::chunk{
      <normaloff>:/Icons/icons/ss_icon.png</normaloff>:/Icons/icons/ss_icon.png</iconset>
    </property>
    <property name="text">
-    <string>Run Small-Signal RMS Simulation</string>
+    <string>Small-Signal RMS Simulation</string>
    </property>
    <property name="iconText">
-    <string>Run Small-Signal RMS Simulation</string>
+    <string>Small-Signal RMS Simulation</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Small Signal Simulation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionAdd_rms_event_to_selected">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/Icons/icons/dyn_add.png</normaloff>:/Icons/icons/dyn_add.png</iconset>
+   </property>
+   <property name="text">
+    <string>Add rms event to selected</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add RMS event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new RMS event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionClear_highlights">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/highlight2.png</normaloff>:/Icons/icons/highlight2.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clear highlights</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
    </property>
   </action>
  </widget>

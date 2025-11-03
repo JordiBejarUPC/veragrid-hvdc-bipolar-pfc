@@ -369,9 +369,7 @@ def di_shi_reduction(grid: MultiCircuit,
 
     # remove the buses of the external system finally
     # Delete the external buses
-    to_be_deleted = [grid.buses[e] for e in e_buses]
-    for bus in to_be_deleted:
-        grid.delete_bus(obj=bus, delete_associated=True)
+    grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
     # Step 3 – Relocate generators -------------------------------------------------------------------------------------
 
@@ -416,26 +414,27 @@ def di_shi_reduction(grid: MultiCircuit,
 
     # add loads
     for i, S in enumerate(dSred):
-        ld = dev.Load(name=f"compensation {i}", P=S.real, Q=S.imag)
-        grid.add_load(bus=grid.buses[i], api_obj=ld)
+        if abs(S) > tol:
+            ld = dev.Load(name=f"compensation {i}", P=S.real, Q=S.imag)
+            grid.add_load(bus=grid.buses[i], api_obj=ld)
 
     return grid, logger
 
 
-if __name__ == '__main__':
-    import VeraGridEngine as gce
-
-    fname = '/home/santi/Documentos/Git/GitHub/VeraGrid/src/tests/data/grids/Matpower/case9.m'
-    fname_expected = '/home/santi/Documentos/Git/GitHub/VeraGrid/src/tests/data/grids/Matpower/ieee9_reduced.m'
-
-    reduction_bus_indices_ = np.array([2, 4, 5, 6])
-
-    grid_ = gce.open_file(fname)
-    grid_expected = gce.open_file(fname_expected)
-
-    grid_red, logger_ = di_shi_reduction(grid=grid_.copy(),
-                                         reduction_bus_indices=reduction_bus_indices_,
-                                         V0=gce.power_flow(grid_).voltage,
-                                         tol=1e-8)
-
-    logger_.print()
+# if __name__ == '__main__':
+#     import VeraGridEngine as gce
+#
+#     fname = '/home/santi/Documentos/Git/GitHub/VeraGrid/src/tests/data/grids/Matpower/case9.m'
+#     fname_expected = '/home/santi/Documentos/Git/GitHub/VeraGrid/src/tests/data/grids/Matpower/ieee9_reduced.m'
+#
+#     reduction_bus_indices_ = np.array([2, 4, 5, 6])
+#
+#     grid_ = gce.open_file(fname)
+#     grid_expected = gce.open_file(fname_expected)
+#
+#     grid_red, logger_ = di_shi_reduction(grid=grid_.copy(),
+#                                          reduction_bus_indices=reduction_bus_indices_,
+#                                          V0=gce.power_flow(grid_).voltage,
+#                                          tol=1e-8)
+#
+#     logger_.print()

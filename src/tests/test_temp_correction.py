@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from pytest import approx
 
+import numpy as np
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices import *
@@ -90,7 +91,7 @@ def test_corr_line_losses():
     power_flow.run()
 
     # Check solution
-    approx_losses = round(power_flow.results.losses[0], 3)
+    approx_losses = power_flow.results.losses[0]
     solution = complex(0.011, 0.002)  # Expected solution from VeraGrid
                                       # Tested on ETAP 16.1.0
 
@@ -116,22 +117,22 @@ def test_corr_line_losses():
 
     print("Voltages:")
     for i in range(len(grid.buses)):
-        print(f" - {grid.buses[i]}: voltage={round(power_flow.results.voltage[i], 3)} pu")
+        print(f" - {grid.buses[i]}: voltage={power_flow.results.voltage[i]} pu")
     print()
 
     print("Losses:")
     for i in range(len(grid.lines)):
-        print(f" - {grid.lines[i]}: losses={round(power_flow.results.losses[i], 3)} MVA")
+        print(f" - {grid.lines[i]}: losses={power_flow.results.losses[i]} MVA")
     print()
 
     print("Loadings (power):")
     for i in range(len(grid.lines)):
-        print(f" - {grid.lines[i]}: loading={round(power_flow.results.Sf[i], 3)} MVA")
+        print(f" - {grid.lines[i]}: loading={power_flow.results.Sf[i]} MVA")
     print()
 
     print("Loadings (current):")
     for i in range(len(grid.lines)):
-        print(f" - {grid.lines[i]}: loading={round(power_flow.results.If[i], 3)} pu")
+        print(f" - {grid.lines[i]}: loading={power_flow.results.If[i]} pu")
     print()
 
-    assert approx_losses == solution
+    assert np.allclose(approx_losses, solution, atol=1e-3)

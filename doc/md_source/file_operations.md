@@ -13,18 +13,19 @@ VeraGrid supports a great deal of file formats.
 
 |                    |read   | write |
 |--------------------|-------|-------|
-| VeraGrid            |✅      | ✅     |
+| VeraGrid           |✅      | ✅     |
 | Json               |✅      | ✅     |
 | CIM                |✅      | ✅     |
 | CGMES 2.4.15       |✅      | ✅     |
 | CGMES 3.0          |✅      | ✅     |
 | ucte (UCTE)        |✅      |       |
 | m (Matpower)       |✅      |       |
-| p (Pandapower)     |✅      |       |
-| nc (PyPSA)         |✅      |       |
+| p (PandaPower)*    |✅      |       |
+| nc (PyPSA)*        |✅      |       |
 | raw/rawx (PSS/e)   |✅      | ✅     |
 | epc (PSLF)         |✅      |       |
 | dgs (PowerFactory) |✅      |       |
+
 
 **Compatibility caveat**
 

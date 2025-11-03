@@ -162,6 +162,10 @@ class DriverTemplate:
         return self.__cancel__
 
     def isRunning(self):
+        """
+
+        :return:
+        """
         return self._is_running
 
 
@@ -173,14 +177,14 @@ class TimeSeriesDriverTemplate(DriverTemplate):
     def __init__(
             self,
             grid: MultiCircuit,
-            time_indices: IntVec,
+            time_indices: IntVec | None,
             clustering_results: Union[ClusteringResults, None] = None,
             engine: EngineType = EngineType.VeraGrid,
             check_time_series: bool = True):
         """
         Time Series driver constructor
         :param grid: MultiCircuit instance
-        :param time_indices: array of time indices to simulate
+        :param time_indices: array of time indices to simulate (optional)
         :param clustering_results: ClusteringResults object (optional)
         """
         if not grid.has_time_series and check_time_series:
@@ -195,7 +199,6 @@ class TimeSeriesDriverTemplate(DriverTemplate):
             self.time_indices: IntVec = clustering_results.time_indices
             self.sampled_probabilities: Vec = clustering_results.sampled_probabilities
             self.original_sample_idx: IntVec = clustering_results.original_sample_idx
-
 
         else:
             self.using_clusters = False

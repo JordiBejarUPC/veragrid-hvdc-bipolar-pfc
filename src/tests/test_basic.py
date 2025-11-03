@@ -170,7 +170,7 @@ def test_basic():
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={1000 * round(power_flow.results.losses[i], 3)} kVA")
+        print(f" - {branches[i]}: losses={1000 * power_flow.results.losses[i]} kVA")
     print()
 
     equal = True
@@ -321,7 +321,7 @@ def test_gridcal_basic_pi():
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={1000 * round(power_flow.results.losses[i], 3)} kVA")
+        print(f" - {branches[i]}: losses={1000 * power_flow.results.losses[i]} kVA")
     print()
 
     equal = True

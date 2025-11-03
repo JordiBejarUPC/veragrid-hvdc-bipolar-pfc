@@ -273,7 +273,7 @@ class BaseDiagramWidget(QSplitter):
 
     def remove_element(self,
                        device: ALL_DEV_TYPES,
-                       graphic_object: GenericDiagramWidget | None = None,
+                       graphic_object: GenericDiagramWidget | QGraphicsItem | None = None,
                        delete_from_db: bool = False) -> bool:
         """
         Remove device from the diagram and the database.
@@ -333,15 +333,19 @@ class BaseDiagramWidget(QSplitter):
             self.object_editor_table.setModel(None)
             return False
 
-    def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True):
+    def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True,
+                                        graphic_object: QGraphicsItem | None = None):
         """
         This function is a utility function to call this function in other diagrams through the GUI
         :param device: ALL_DEV_TYPES
         :param propagate: propagate
+        :param graphic_object: QGraphicsItem
         :return:
         """
         self.diagram.delete_device(device=device)
-        graphic_object: QGraphicsItem = self.graphics_manager.delete_device(device=device)
+
+        if graphic_object is None:
+            graphic_object: QGraphicsItem = self.graphics_manager.delete_device(device=device)
 
         if graphic_object is not None:
             self._remove_from_scene(graphic_object)
@@ -375,7 +379,7 @@ class BaseDiagramWidget(QSplitter):
 
             dlg = DeleteDialogue(
                 names_list=[f"{device.device_type.value}: "
-                              f"{device.name}"
+                            f"{device.name}"
                             for device in extended_lst],
                 delete_from_db=delete_from_db,
                 title="Delete Selected",
@@ -387,7 +391,6 @@ class BaseDiagramWidget(QSplitter):
 
             if dlg.is_accepted:
                 for device in extended_lst:
-
                     self.remove_element(device=device,
                                         graphic_object=self.graphics_manager.query(elm=device),
                                         delete_from_db=dlg.delete_from_db)
@@ -407,13 +410,22 @@ class BaseDiagramWidget(QSplitter):
         self.delete_with_dialogue(selected=self._get_selected(),
                                   delete_from_db=delete_from_db)
 
-    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES]):
+    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES], propagate: bool):
         """
         Delete device from the diagram registry
         :param elements: list of elements to delete
         """
         for elm in elements:
-            self.delete_element_utility_function(elm)
+            graphic_object: QGraphicsItem = self.graphics_manager.delete_device(device=elm)
+
+            # this calls internally to delete_element_utility_function
+            self.remove_element(
+                device=elm,
+                graphic_object=graphic_object
+            )
+
+            self.delete_element_utility_function(elm,
+                                                 graphic_object=graphic_object)
 
     def set_time_index(self, time_index: Union[int, None]):
         """

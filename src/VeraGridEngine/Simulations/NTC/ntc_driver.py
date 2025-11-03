@@ -97,7 +97,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 progress_func=self.report_progress,
                 export_model_fname=self.options.opf_options.export_model_fname,
                 verbose=self.options.opf_options.verbose,
-                robust=self.options.opf_options.robust
+                robust=self.options.opf_options.robust,
+                mip_framework=self.options.opf_options.mip_framework
             )
 
         # pack the results

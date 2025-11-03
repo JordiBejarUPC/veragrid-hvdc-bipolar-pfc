@@ -5,7 +5,7 @@
 import warnings
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Union, Any, Set, Generator
+from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
@@ -300,7 +300,6 @@ class Assets:
                 dev.VoltageLevel(),
                 dev.BusBar(),
                 dev.Bus(),
-                dev.Switch()
             ],
             "Injections": [
                 dev.Generator(),
@@ -322,6 +321,7 @@ class Assets:
                 dev.HvdcLine(),
                 dev.VSC(),
                 dev.UPFC(),
+                dev.Switch()
             ],
             "Fluid": [
                 dev.FluidNode(),
@@ -1411,6 +1411,53 @@ class Assets:
         except ValueError:
             print(f"Could not delete {obj.name}")
 
+    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+        """
+        Delete a :ref:`Bus<bus>` object from the grid.
+        :param lst: Array of objects to remove
+        :param delete_associated: Delete the associated branches and injections
+        """
+        buses_to_remove = set(lst)
+
+        branches_to_delete = list()
+        injections_to_delete = list()
+
+        # delete associated Branches in reverse order
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+            for i in range(len(branch_list) - 1, -1, -1):
+                if branch_list[i].bus_from in buses_to_remove:
+                    if delete_associated:
+                        branches_to_delete.append(branch_list[i])
+                    else:
+                        branch_list[i].bus_from = None
+                elif branch_list[i].bus_to in buses_to_remove:
+                    if delete_associated:
+                        branches_to_delete.append(branch_list[i])
+                    else:
+                        branch_list[i].bus_to = None
+
+        for elm in branches_to_delete:
+            self.delete_branch(obj=elm)
+
+        # delete the associated injection devices
+        for inj_list in self.get_injection_devices_lists():
+            for i in range(len(inj_list) - 1, -1, -1):
+                if inj_list[i].bus in buses_to_remove:
+                    if delete_associated:
+                        injections_to_delete.append(inj_list[i])
+                    else:
+                        inj_list[i].bus = None
+
+        for elm in injections_to_delete:
+            self.delete_injection_device(obj=elm)
+
+        # delete the bus itself
+        for elm in buses_to_remove:
+            try:
+                self._buses.remove(elm)
+            except ValueError:
+                print(f"Could not delete {elm.name}")
+
     def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
         """
         Get a list of buses that can be found in the list of Areas | Zones | Countries
@@ -1425,6 +1472,24 @@ class Assets:
                 data.append(bus)
 
         return data
+
+    def get_bus_devices(self, bus: dev.Bus) -> Tuple[List[BRANCH_TYPES], List[INJECTION_DEVICE_TYPES]]:
+        """
+        Get the list of associated branches and the list of associated injections
+        :param bus: 
+        :return: associated_branches, associated_injections
+        """
+        associated_branches = list()
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.bus_from == bus or elm.bus_to == bus:
+                associated_branches.append(elm)
+
+        associated_injections = list()
+        for elm in self.get_injection_devices_iter():
+            if elm.bus == bus:
+                associated_injections.append(elm)
+
+        return associated_branches, associated_injections
 
     # ------------------------------------------------------------------------------------------------------------------
     # Bus bars
@@ -5511,6 +5576,18 @@ class Assets:
             for elm in lst:
                 yield elm
 
+    def get_injections_bus_index_dict(self, bus_index_dict: Dict[dev.Bus, int] = None):
+        """
+        Get a dictionary of generators related to their bus index
+        :param bus_index_dict: bus object to bus index dictionary (optional)
+        :return: generator object to bus index dictionary
+
+        """
+        if bus_index_dict is None:
+            bus_index_dict = self.get_bus_index_dict()
+
+        return {g.idtag: bus_index_dict[g.bus] for g in self.get_injection_devices_iter() if g.bus is not None}
+
     # ------------------------------------------------------------------------------------------------------------------
     # Load-like devices
     # ------------------------------------------------------------------------------------------------------------------
@@ -5533,6 +5610,16 @@ class Assets:
         for lst in self.get_load_like_devices_lists():
             elms += lst
         return elms
+
+    def get_load_like_devices_iter(self) -> Generator[INJECTION_DEVICE_TYPES, None, None]:
+        """
+        Get a list of all devices that can inject or subtract power from a node
+        :return: List of EditableDevice
+        """
+
+        for lst in self.get_load_like_devices_lists():
+            for elm in lst:
+                yield elm
 
     def get_load_like_device_number(self) -> int:
         """

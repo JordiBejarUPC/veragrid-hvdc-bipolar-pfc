@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QPushButton, QVBoxLayout, QDialog, QLabel, QDouble
 from VeraGrid.Gui.gui_functions import get_list_model
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType, OverheadLineType, UndergroundLineType
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
 class LineEditor(QDialog):
@@ -21,28 +22,32 @@ class LineEditor(QDialog):
 
     def __init__(self,
                  line: Line,
-                 Sbase=100,
-                 frequency=50,
-                 templates: Union[List[SequenceLineType | OverheadLineType | UndergroundLineType], None] = None,
-                 current_template: SequenceLineType | OverheadLineType | UndergroundLineType | None = None):
+                 grid: MultiCircuit):
         """
         Line Editor constructor
         :param line: Branch object to update
-        :param templates: List of templates
-        :param Sbase: Base power in MVA
+        :param grid: MultiCircuit
         """
         super(LineEditor, self).__init__()
 
         # keep pointer to the line object
         self.line = line
 
-        self.Sbase = Sbase
+        self.Sbase = grid.Sbase
 
-        self.frequency = frequency
+        self.frequency = grid.fBase
 
-        self.templates = templates
+        Vnom = line.get_max_bus_nominal_voltage()
+        self.templates = list()
 
-        self.current_template = current_template
+        for lst in [grid.sequence_line_types,
+                    grid.underground_cable_types,
+                    grid.overhead_line_types]:
+            for temp in lst:
+                if Vnom == temp.Vnom:
+                    self.templates.append(temp)
+
+        self.current_template = line.template
 
         self.selected_template = None
 
@@ -83,43 +88,42 @@ class LineEditor(QDialog):
 
         # catalogue
         self.catalogue_combo = QComboBox()
-        if self.templates is not None:
-            if len(self.templates) > 0:
-                self.catalogue_combo.setModel(get_list_model(self.templates))
+        if len(self.templates) > 0:
+            self.catalogue_combo.setModel(get_list_model(self.templates))
 
-                if self.current_template is not None:
-                    try:
-                        idx = self.templates.index(self.current_template)
-                        self.catalogue_combo.setCurrentIndex(idx)
+            if self.current_template is not None:
+                try:
+                    idx = self.templates.index(self.current_template)
+                    self.catalogue_combo.setCurrentIndex(idx)
 
-                        if isinstance(self.current_template, SequenceLineType):
-                            I_KA = self.current_template.Imax
-                            r_ohm = self.current_template.R
-                            x_ohm = self.current_template.X
-                            b_us = self.current_template.B
+                    if isinstance(self.current_template, SequenceLineType):
+                        I_KA = self.current_template.Imax
+                        r_ohm = self.current_template.R
+                        x_ohm = self.current_template.X
+                        b_us = self.current_template.B
 
-                        if isinstance(self.current_template, UndergroundLineType):
-                            I_KA = self.current_template.Imax
-                            r_ohm = self.current_template.R
-                            x_ohm = self.current_template.X
-                            b_us = self.current_template.B
+                    if isinstance(self.current_template, UndergroundLineType):
+                        I_KA = self.current_template.Imax
+                        r_ohm = self.current_template.R
+                        x_ohm = self.current_template.X
+                        b_us = self.current_template.B
 
-                        elif isinstance(self.current_template, OverheadLineType):
+                    elif isinstance(self.current_template, OverheadLineType):
 
-                            if self.current_template.check():
-                                R1, X1, Bsh1, I_kA = self.current_template.get_sequence_values(
-                                    circuit_idx=self.line.circuit_idx,
-                                    seq=1
-                                )
-                                r_ohm = R1
-                                x_ohm = X1
-                                b_us = Bsh1
-                            else:
-                                warning_msg(text=f"The template {self.current_template.name} contains errors",
-                                            title="Load template")
+                        if self.current_template.check():
+                            R1, X1, Bsh1, I_kA = self.current_template.get_sequence_values(
+                                circuit_idx=self.line.circuit_idx,
+                                seq=1
+                            )
+                            r_ohm = R1
+                            x_ohm = X1
+                            b_us = Bsh1
+                        else:
+                            warning_msg(text=f"The template {self.current_template.name} contains errors",
+                                        title="Load template")
 
-                    except ValueError:
-                        pass
+                except ValueError:
+                    pass
 
         # load template
         self.load_template_btn = QPushButton()
@@ -138,7 +142,7 @@ class LineEditor(QDialog):
         self.i_spinner = QDoubleSpinBox()
         self.i_spinner.setMinimum(0)
         self.i_spinner.setMaximum(9999999)
-        self.i_spinner.setDecimals(2)
+        self.i_spinner.setDecimals(6)
         self.i_spinner.setValue(I_KA)
         self.i_spinner.setSuffix(' KA')
 
@@ -189,14 +193,13 @@ class LineEditor(QDialog):
         self.accept_btn.clicked.connect(self.accept_click)
 
         # add all to the GUI
-        if templates is not None:
-            self.layout.addWidget(QLabel("Available templates"))
-            self.layout.addWidget(self.catalogue_combo)
-            self.catalogue_combo.currentIndexChanged.connect(self.update_max_circuits)
-            self.layout.addWidget((QLabel("Circuit index:")))
-            self.layout.addWidget(self.circuit_idx)
-            self.layout.addWidget(self.load_template_btn)
-            self.layout.addWidget(QLabel(""))
+        self.layout.addWidget(QLabel("Available templates"))
+        self.layout.addWidget(self.catalogue_combo)
+        self.catalogue_combo.currentIndexChanged.connect(self.update_max_circuits)
+        self.layout.addWidget((QLabel("Circuit index:")))
+        self.layout.addWidget(self.circuit_idx)
+        self.layout.addWidget(self.load_template_btn)
+        self.layout.addWidget(QLabel(""))
 
         self.layout.addWidget(QLabel("L: Line length"))
         self.layout.addWidget(self.l_spinner)

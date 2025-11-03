@@ -14,7 +14,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
                                          CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
                                          InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
-                                         ZonalGrouping, MIPSolvers, AcOpfMode, SubstationTypes, BranchGroupTypes,
+                                         ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod)
@@ -48,7 +48,7 @@ GCPROP_TYPES = Union[
     Type[BranchImpedanceMode],
     Type[FaultType],
     Type[TapChangerTypes],
-    Type[SubstationTypes],
+    Type[VoltageLevelTypes],
     Type[ContingencyOperationTypes],
     Type[BranchGroupTypes],
     Type[ConverterControlType],
@@ -225,6 +225,22 @@ def get_action_symbol(action: ActionType):
         return ""
 
 
+def get_at(snapshot_val: float | bool | int,
+           profile: Profile,
+           t: int | None) -> float | bool | int:
+    """
+    Get a GCPROP_TYPES value from a snapshot or a profile
+    :param snapshot_val: snapshot value
+    :param profile: Associated profile
+    :param t: time index (None for snapshot)
+    :return: Value
+    """
+    if t is None:
+        return snapshot_val
+    else:
+        return profile[t]
+
+
 class EditableDevice:
     """
     This is the main device class from which all inherit
@@ -263,7 +279,10 @@ class EditableDevice:
 
         self._idtag = parse_idtag(val=idtag)
 
-        self._name: str = name
+        if isinstance(name, str):
+            self._name: str = name
+        else:
+            self._name: str = ""
 
         self._code: str = code
 
@@ -514,7 +533,10 @@ class EditableDevice:
 
     @name.setter
     def name(self, val: str):
-        self._name = val
+        if isinstance(val, str):
+            self._name = val
+        else:
+            print(f"Trying {self.device_type.value} to set name with {str(val)}")
 
     def get_save_data(self) -> List[Union[str, float, int, bool, object]]:
         """

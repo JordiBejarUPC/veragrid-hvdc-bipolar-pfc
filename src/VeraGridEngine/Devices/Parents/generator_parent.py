@@ -10,7 +10,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.Utils.Symbolic.block import Var
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class GeneratorParent(InjectionParent):
@@ -20,7 +20,6 @@ class GeneratorParent(InjectionParent):
 
     __slots__ = (
         'control_bus',
-        '_control_bus_prof',
         'control_cn',
         '_P',
         '_P_prof',
@@ -85,7 +84,6 @@ class GeneratorParent(InjectionParent):
                                  device_type=device_type)
 
         self.control_bus = control_bus
-        self._control_bus_prof = Profile(default_value=control_bus, data_type=DeviceType.BusDevice)
 
         self._P = float(P)
         self._P_prof = Profile(default_value=self.P, data_type=float)
@@ -102,7 +100,7 @@ class GeneratorParent(InjectionParent):
         self._srap_enabled_prof = Profile(default_value=self.srap_enabled, data_type=bool)
 
         self.register(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Control bus',
-                      editable=True, profile_name="control_bus_prof")
+                      editable=True)
 
         self.register(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof')
         self.register(key='Pmin', units='MW', tpe=float, definition='Minimum active power. Used in OPF.',
@@ -133,23 +131,6 @@ class GeneratorParent(InjectionParent):
             print("The value you're trying to set into P is not a float :(")
 
     @property
-    def control_bus_prof(self) -> Profile:
-        """
-        Control bus profile
-        :return: Profile
-        """
-        return self._control_bus_prof
-
-    @control_bus_prof.setter
-    def control_bus_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._control_bus_prof = val
-        elif isinstance(val, np.ndarray):
-            self._control_bus_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into control_bus_prof')
-
-    @property
     def P_prof(self) -> Profile:
         """
         Cost profile
@@ -165,6 +146,13 @@ class GeneratorParent(InjectionParent):
             self._P_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a P_prof')
+
+    def get_P_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.P, self.P_prof, t)
 
     @property
     def srap_enabled_prof(self) -> Profile:
@@ -183,6 +171,13 @@ class GeneratorParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into srap_enabled_prof')
 
+    def get_srap_enabled_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.srap_enabled, self.srap_enabled_prof, t)
+
     @property
     def Pmax_prof(self) -> Profile:
         """
@@ -199,6 +194,13 @@ class GeneratorParent(InjectionParent):
             self._Pmax_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pmax_prof')
+
+    def get_Pmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pmax, self.Pmax_prof, t)
 
     @property
     def Pmin_prof(self) -> Profile:
@@ -217,14 +219,21 @@ class GeneratorParent(InjectionParent):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Pmin_prof')
 
-    def get_S(self) -> complex:
+    def get_Pmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pmin, self.Pmin_prof, t)
+
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(self.P, 0.0)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:

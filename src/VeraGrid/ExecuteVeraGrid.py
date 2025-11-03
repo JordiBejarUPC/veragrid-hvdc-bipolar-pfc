@@ -16,49 +16,30 @@ from VeraGrid.__version__ import about_msg
 # NOTE: For some reason I cannot begin to comprehend, the activation fails on windows if called before the GUI...
 import VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation
 
-from PySide6.QtCore import QDirIterator, QResource
-from PySide6.QtSvg import QSvgRenderer
-from VeraGrid.Gui.Main.VeraGridMain import runVeraGrid
-from VeraGrid.Gui.update_gui_all import update_all_icons
 
-if platform.system() == 'Windows':
+from VeraGrid.Gui.Main.VeraGridMain import runVeraGrid
+
+# set the app name
+APP_NAME = "veragrid"
+
+if platform.system() == 'Windows' or os.name == 'nt':
     # this makes the icon display properly under windows
-    myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+    myappid = u'mycompany.myproduct.subproduct.version'  # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
+elif os.name == "posix" or sys.platform.startswith("linux"):
 
-def check_all_svgs():
-    """
-    Iterate through all resources registered by icons_rc and check SVG validity.
-    :returns: if any icon has errors
-    """
-    it = QDirIterator(":/Icons", QDirIterator.IteratorFlag.Subdirectories)
-    bad_files = []
+    os.environ["QT_WAYLAND_CLIENT_IDENTIFIER"] = APP_NAME
 
-    while it.hasNext():
-        path = it.next()
-        if path.lower().endswith(".svg"):
-            res = QResource(path)
-            if not res.isValid():
-                print(f"[MISSING] {path}")
-                bad_files.append((path, "missing"))
-                continue
+    libc_name = ctypes.util.find_library("c")
+    if libc_name:
+        try:
+            libc = ctypes.CDLL(libc_name)
+            libc.prctl(15, APP_NAME.encode(), 0, 0, 0)
+        except Exception as e:
+            print(f"Could not set process name: {e}")
 
-            renderer = QSvgRenderer(path)
-            if not renderer.isValid():
-                print(f"[INVALID] {path}")
-                bad_files.append((path, "invalid"))
-            else:
-                pass
 
-    if len(bad_files) > 0:
-        print("\nSVG compatibility summary:")
-        for path, status in bad_files:
-            print(f"  {status.upper():<8} {path}")
-
-        update_all_icons()
-    else:
-        print("SVG compatibility summary: all ok")
 
 
 if __name__ == "__main__":

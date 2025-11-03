@@ -11,6 +11,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
 class FluidNode(PhysicalDevice):
@@ -62,7 +63,8 @@ class FluidNode(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.FluidNodeDevice)
+                                device_type=DeviceType.FluidNodeDevice,
+                                build_status=build_status)
 
         self.min_level = float(min_level)  # hm3
         self.max_level = float(max_level)  # hm3
@@ -71,8 +73,7 @@ class FluidNode(PhysicalDevice):
         self.initial_level = float(current_level)  # hm3
         self.spillage_cost = float(spillage_cost)  # m3/s
         self.inflow = float(inflow)  # m3/s
-        self._bus: Bus = bus
-        self.build_status = build_status
+        self._bus: Bus | None = bus
 
         self.color = color if color is not None else "#00aad4"  # nice blue color
 
@@ -102,9 +103,6 @@ class FluidNode(PhysicalDevice):
         self.register(key='bus', units='', tpe=DeviceType.BusDevice,
                       definition='Electrical bus.', editable=False)
 
-        self.register(key='build_status', units='', tpe=BuildStatus,
-                      definition='Branch build status. Used in expansion planning.')
-
         self.register(key='spillage_cost', units='e/(m3/s)', tpe=float,
                       definition='Cost of nodal spillage',
                       profile_name='spillage_cost_prof')
@@ -133,6 +131,13 @@ class FluidNode(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a spillage_cost_prof')
 
+    def get_spillage_cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.spillage_cost, self.spillage_cost_prof, t)
+
     @property
     def inflow_prof(self) -> Profile:
         """
@@ -149,6 +154,13 @@ class FluidNode(PhysicalDevice):
             self._inflow_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a inflow_prof')
+
+    def get_inflow_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.inflow, self.inflow_prof, t)
 
     @property
     def max_soc_prof(self) -> Profile:
@@ -167,6 +179,13 @@ class FluidNode(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a max soc prof')
 
+    def get_max_soc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.max_soc, self.max_soc_prof, t)
+
     @property
     def min_soc_prof(self) -> Profile:
         """
@@ -183,6 +202,13 @@ class FluidNode(PhysicalDevice):
             self._min_soc_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a min soc prof')
+
+    def get_min_soc_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.min_soc, self.min_soc_prof, t)
 
     def copy(self):
         """
@@ -211,7 +237,7 @@ class FluidNode(PhysicalDevice):
         return fluid_node
 
     @property
-    def bus(self) -> Bus:
+    def bus(self) -> Bus | None:
         """
         Bus getter function
         :return: Bus

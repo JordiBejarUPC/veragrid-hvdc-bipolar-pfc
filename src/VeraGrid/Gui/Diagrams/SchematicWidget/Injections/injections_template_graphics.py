@@ -63,7 +63,6 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.nexus = QGraphicsLineItem()
         self.nexus.setPen(QPen(self.color, self.width, self.style))
 
-
     def set_glyph(self, glyph: Square | Circle | Polygon | Condenser):
         """
 
@@ -247,7 +246,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.scale = scale
 
     def get_base_context_menu(self) -> QMenu:
-
+        """
+        Generate the base menu for injections
+        :return:
+        """
         menu = QMenu()
 
         add_menu_entry(menu=menu,

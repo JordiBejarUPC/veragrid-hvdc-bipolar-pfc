@@ -14,11 +14,13 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 import numba as nb
+from numba import float64
 import math
 import scipy.sparse as sp
 
-from scipy.sparse import csr_matrix, csc_matrix
-from scipy.sparse.linalg import gmres, spilu, LinearOperator
+from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
+from scipy.sparse.linalg import gmres, spilu, LinearOperator, spsolve, eigs
+from matplotlib import pyplot as plt
 from typing import Dict, List, Any, Callable, Sequence
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
@@ -36,6 +38,7 @@ def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) 
             break
         cur = nxt
     return cur
+
 
 
 def _compile_equations(eqs: Sequence[Expr],
@@ -326,6 +329,7 @@ class BlockSolver:
         self._parameters_eqs: List[Expr] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
+        self.v_glob_name2uid = block_system.vars_glob_name2uid
 
         for b in self.block_system.get_all_blocks():
             self._algebraic_vars.extend(b.algebraic_vars)
@@ -339,6 +343,7 @@ class BlockSolver:
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
         self._n_params = len(self._parameters)
+
 
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
@@ -1248,3 +1253,4 @@ class BlockSolver:
             df_simulation_results.to_csv(filename, index=False)
             print(f"Simulation results saved to: {filename}")
         return df_simulation_results
+

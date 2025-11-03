@@ -14,7 +14,7 @@ from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Var
+from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices import Technology
@@ -36,7 +36,6 @@ class InjectionParent(PhysicalDevice):
         '_Cost_prof',
         'capex',
         'opex',
-        'build_status',
         'facility',
         'technologies',
         'scalable',
@@ -86,7 +85,8 @@ class InjectionParent(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=device_type)
+                                device_type=device_type,
+                                build_status=build_status)
 
         self._bus = bus
 
@@ -104,8 +104,6 @@ class InjectionParent(PhysicalDevice):
         self.capex = capex
 
         self.opex = opex
-
-        self.build_status = build_status
 
         self.facility: Facility | None = None
 
@@ -137,9 +135,6 @@ class InjectionParent(PhysicalDevice):
         self.register(key='capex', units='e/MW', tpe=float,
                       definition='Cost of investment. Used in expansion planning.')
         self.register(key='opex', units='e/MWh', tpe=float, definition='Cost of operation. Used in expansion planning.')
-
-        self.register(key='build_status', units='', tpe=BuildStatus,
-                      definition='Branch build status. Used in expansion planning.')
 
         self.register(key='Cost', units='e/MWh', tpe=float, definition='Cost of not served energy. Used in OPF.',
                       profile_name='Cost_prof')
@@ -206,6 +201,13 @@ class InjectionParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
 
+    def get_active_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.active, self.active_prof, t)
+
     @property
     def Cost_prof(self) -> Profile:
         """
@@ -222,6 +224,13 @@ class InjectionParent(PhysicalDevice):
             self._Cost_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a Cost_prof')
+
+    def get_Cost_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Cost, self.Cost_prof, t)
 
     @property
     def shift_key_prof(self) -> Profile:
@@ -240,8 +249,19 @@ class InjectionParent(PhysicalDevice):
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a shift_key_prof')
 
+    def get_shift_key_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.shift_key, self.shift_key_prof, t)
+
     @property
     def use_kw(self):
+        """
+
+        :return:
+        """
         return self._use_kw
 
     @use_kw.setter
@@ -271,6 +291,10 @@ class InjectionParent(PhysicalDevice):
 
     @property
     def conn(self) -> ShuntConnectionType:
+        """
+
+        :return:
+        """
         return self._conn
 
     @conn.setter
@@ -280,6 +304,10 @@ class InjectionParent(PhysicalDevice):
 
     @property
     def rms_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
         return self._rms_model
 
     @rms_model.setter
@@ -287,14 +315,14 @@ class InjectionParent(PhysicalDevice):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
 
-    def get_S(self) -> complex:
+    def get_S_with_sign(self) -> complex:
         """
 
         :return:
         """
         return complex(0.0, 0.0)
 
-    def get_Sprof(self) -> CxVec:
+    def get_Sprof_with_sign(self) -> CxVec:
         """
 
         :return:

@@ -48,6 +48,7 @@ for k, br in enumerate(grid2.get_branches_iter()):
             "Pf pre": Sf_pre.real,
             "Pf post": pf_res2.Sf[k].real,
             "Pf err": abs(Sf_pre.real - pf_res2.Sf[k].real),
+            "Pf err %": abs(Sf_pre.real - pf_res2.Sf[k].real) / Sf_pre.real,
             "Qf pre": Sf_pre.imag,
             "Qf post": pf_res2.Sf[k].imag,
             "Qf err": abs(Sf_pre.imag - pf_res2.Sf[k].imag),
@@ -58,3 +59,4 @@ df_flow_comp = pd.DataFrame(data=flow_d2).transpose()
 print(df_flow_comp)
 
 print("Mean error:", df_flow_comp["Pf err"].mean(), '+-', df_flow_comp["Pf err"].std())
+print("Mean error %:", df_flow_comp["Pf err %"].mean(), '+-', df_flow_comp["Pf err %"].std())

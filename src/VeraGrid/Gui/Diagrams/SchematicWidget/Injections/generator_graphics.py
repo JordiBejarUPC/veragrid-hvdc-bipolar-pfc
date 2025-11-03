@@ -6,6 +6,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import numpy as np
+from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
@@ -15,7 +16,9 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
 from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -123,11 +126,32 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
     def edit_rms(self):
         """
-        Open the appropriate editor dialogue
+
         :return:
         """
-        dlg = RmsModelEditorGUI(self.api_object, parent=self.editor)
-        dlg.show()
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: missing finding the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+
+                self.api_object.rms_model.model.external_mapping = {
+                    DynamicVarType.P: self.api_object.P_g,
+                    DynamicVarType.Q: self.api_object.Q_g
+                }
+                if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
+                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
+
+                # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
+                #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                dlg.show()
 
     def to_battery(self):
         """

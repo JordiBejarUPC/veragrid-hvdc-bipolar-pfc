@@ -167,13 +167,7 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
         Open the appropriate editor dialogue
         :return:
         """
-        Sbase = self.editor.circuit.Sbase
-        templates = self.editor.circuit.transformer_types
-        current_template = self.api_object.template
-        dlg = TransformerEditor(self.api_object, Sbase,
-                                modify_on_accept=True,
-                                templates=templates,
-                                current_template=current_template)
+        dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=True)
         if dlg.exec():
             pass
 
@@ -200,13 +194,13 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
                 self.editor.circuit.add_transformer_type(self.api_object.template)
             else:
                 # raise dialogue to set the template
-                dlg = TransformerEditor(self.api_object, Sbase, modify_on_accept=False)
+                dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=False)
                 if dlg.exec():
                     tpe = dlg.get_template()
                     self.editor.circuit.add_transformer_type(tpe)
         else:
             # raise dialogue to set the template
-            dlg = TransformerEditor(self.api_object, Sbase, modify_on_accept=False)
+            dlg = TransformerEditor(self.api_object, grid=self.editor.circuit, modify_on_accept=False)
             if dlg.exec():
                 tpe = dlg.get_template()
                 self.editor.circuit.add_transformer_type(tpe)
