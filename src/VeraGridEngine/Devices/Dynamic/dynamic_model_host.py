@@ -35,7 +35,7 @@ class BlockDiagramNode:
             'device_uid': self.device_uid,
             'api_object_name': self.api_object_name,
             'state_ins': self.state_ins,
-            'state_uots': self.state_outs,
+            'state_outs': self.state_outs,
             'algeb_ins': self.algeb_ins,
             'algeb_outs': self.algeb_outs
         }
@@ -77,6 +77,7 @@ class BlockDiagram:
 
         :param name: Diagram name
         """
+        # self.index: List[int]
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
@@ -244,15 +245,10 @@ class DynamicModelHost(EditableDevice):
 
     @model.setter
     def model(self, val: Block):
-
-        if isinstance(val, Block):
-            self.template = val
-
-        elif isinstance(val, Block):
-            self._custom_model = val
-
-        else:
+        if not isinstance(val, Block):
             raise ValueError(f"Cannot set model with {val}")
+        self._custom_model = val
+
 
     @property
     def diagram(self) -> BlockDiagram:

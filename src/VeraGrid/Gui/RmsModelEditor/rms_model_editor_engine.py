@@ -498,7 +498,7 @@ class BlockItem(QGraphicsRectItem):
         return layout
 
 class ModelHostItem(QGraphicsRectItem):
-    def __init__(self, model_host_sys: DynamicModelHost, templ_model_host_sys: DynamicModelHost, blkbox_model_host_sys: DynamicModelHost, equ_model_host_sys: DynamicModelHost, api_object_name, templates_list, templates_catalogue):
+    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, templates_list, templates_catalogue):
         """
 
         :param block_sys: Block
@@ -509,9 +509,6 @@ class ModelHostItem(QGraphicsRectItem):
         # API
         # ------------------------
         self.model_host = model_host_sys
-        self.templ_model_host = templ_model_host_sys
-        self.blkbox_model_host = templ_model_host_sys
-        self.equ_model_host = templ_model_host_sys
         self.api_object_name = api_object_name
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
@@ -552,9 +549,9 @@ class ModelHostItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
 
-        editor_window = RmsModelEditorGUI(api_object_name = self.api_object_name, api_object_model_host=self.model_host, api_object_templ_model_host= self.templ_model_host,  api_object_blkbox_model_host= self.blkbox_model_host, api_object_equ_model_host=self.equ_model_host,  templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
+        editor_window = RmsModelEditorGUI(api_object_name = self.api_object_name, api_object_model_host=self.model_host, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
         editor_window.show()
-        # Muy importante: guardar referencia para que no se destruya
+
         self.editor_window = editor_window
 
     def resize_block(self, width, height):
@@ -1046,11 +1043,11 @@ class TemplateEditor(QtWidgets.QWidget):
     parametersUpdated = Signal(dict)  # Emitida al cambiar un parámetro
     templateApplied = Signal(object)  # Emitida al aplicar un template al modelo
 
-    def __init__(self, templates_list, templates_catalogue, api_object, api_object_model_host, parent=None):
+    def __init__(self, templates_list, templates_catalogue, api_object, parent=None):
         super().__init__(parent)
 
         self.templates_catalogue = templates_catalogue
-        self.api_object_model_host = api_object_model_host
+        self.model = Block()
         self.api_object = api_object
         self.selected_template = None
         self._vars_order = []
@@ -1178,7 +1175,7 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
             return
         try:
-            self.api_object_model_host.model = self.selected_template.get_block()
+            self.model = self.selected_template.get_block()
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to apply template:\n{e}")
             return
@@ -1270,6 +1267,9 @@ class InspectModel(QWidget):
         if model is None:
             model = self.model_host.model
 
+        print("first_refresh")
+        print(model.algebraic_vars)
+
         if clear:
             self.list_vars.clear()
             self.table_params.setRowCount(0)
@@ -1295,6 +1295,8 @@ class InspectModel(QWidget):
 
         # Recurse into submodels
         for submodel in getattr(model, "children", []):
+            print("submodel")
+            print(submodel.algebraic_vars)
             self.refresh_lists(submodel, clear=False)
 
 
@@ -1452,14 +1454,10 @@ class BlockBoxesEditor(QSplitter):
                     name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
 
                     model_host: DynamicModelHost = DynamicModelHost()
-                    templ_model_host:  DynamicModelHost = DynamicModelHost()
-                    blkbox_model_host: DynamicModelHost = DynamicModelHost()
-                    equ_model_host: DynamicModelHost = DynamicModelHost()
 
                     model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
                     self.main_block.add(model_host.model)
-
-                    item = ModelHostItem(model_host, templ_model_host, blkbox_model_host, equ_model_host, self.api_object_name, self.templates_list, self.templates_catalogue)
+                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list, self.templates_catalogue)
 
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
@@ -1519,16 +1517,14 @@ class BlockBoxesEditor(QSplitter):
             if block_type == BlockType.GENERIC:
 
                 model_host = DynamicModelHost()
-                templ_model_host = DynamicModelHost()
-                blkbox_model_host = DynamicModelHost()
-                equ_model_host = DynamicModelHost()
                 model_host.model = create_generic_block(
                     node.state_ins, node.state_outs,
                     node.algeb_ins, node.algeb_outs
                 )
+                self.main_block.add(model_host.model)
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host_sys = model_host, templ_model_host_sys = templ_model_host, blkbox_model_host_sys=blkbox_model_host, equ_model_host_sys=equ_model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
+                item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
                 self.scene.addItem(item)
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item
@@ -1542,9 +1538,11 @@ class BlockBoxesEditor(QSplitter):
                 block.uid = uid
                 block_item.set_subsystem(block)
                 block_item.build_item()
-                self.scene.addItem(block_item)
-                block_item.setPos(node.x, node.y)
+                if block_item.subsys is not None:
+                    self.main_block.add(block_item.subsys)
 
+                    self.scene.addItem(block_item)
+                    block_item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = block_item
 
 
@@ -1571,10 +1569,10 @@ class BlockBoxesEditor(QSplitter):
 ### equations editor ##########
 
 class EditEquations(QWidget):
-    def __init__(self, model_host, parent=None):
+    def __init__(self, model, parent=None):
         super().__init__(parent)
 
-        self.model_host = model_host  # DynamicModelHost
+        self.model = model  # DynamicModelHost
 
         main_layout = QHBoxLayout(self)
         self.setLayout(main_layout)
@@ -1624,12 +1622,12 @@ class EditEquations(QWidget):
         # self.btn_add_param.clicked.connect(self.add_parameter)
         # self.btn_add_eqn.clicked.connect(self.add_equation)
 
-        self.refresh_lists(self.model_host.model)
+        self.refresh_lists(self.model)
 
     def refresh_lists(self, model=None, clear=True):
         """Load current model variables, parameters, equations into lists."""
         if model is None:
-            model = self.model_host.model
+            model = self.model
 
         # Only clear at the top-level call
         if clear:
@@ -1778,8 +1776,7 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
 
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
-    def __init__(self, api_object_model_host, api_object_templ_model_host, api_object_blkbox_model_host,
-                 api_object_equ_model_host, templates_list, templates_catalogue, api_object_name,
+    def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
                  api_object=None, parent=None):
         super().__init__(parent)
 
@@ -1791,9 +1788,6 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.api_object_name = api_object_name
         self.model_host = api_object_model_host
-        self.templ_model_host = api_object_templ_model_host
-        self.blkbox_model_host = api_object_blkbox_model_host
-        self.equ_model_host = api_object_equ_model_host
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
         self.api_object = api_object
@@ -1801,7 +1795,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # --- templates editor layout ---
         self.template_editor = TemplateEditor(
             self.templates_list, self.templates_catalogue,
-            self.api_object, self.templ_model_host
+            self.api_object
         )
         self.ui.templatesLayout.addWidget(self.template_editor)
         self.ui.currently_editing_object_label.setText(self.api_object_name)
@@ -1809,8 +1803,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
             api_object_name= self.api_object_name,
-            block=self.blkbox_model_host.model,
-            diagram=self.blkbox_model_host.diagram,
+            block=self.model_host.model,
+            diagram=self.model_host.diagram,
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue
         )
@@ -1818,7 +1812,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.ui.editorLayout.addWidget(self.blockboxes_editor)
 
         # --- equations editor layout ---
-        self.equations_editor = EditEquations(self.equ_model_host)
+        self.equations_editor = EditEquations(self.model_host.model)
         self.ui.equations_editor_layout.addWidget(self.equations_editor)
 
         # --- status bar setup ---
@@ -1833,13 +1827,15 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         """Uploads the selected template and connects Vm and Va variables with bus variables."""
 
         choice_model_dict = {
-            "Template model": self.template_editor.api_object_model_host.model,
+            "Template model": self.template_editor.model,
             "Block editor model": self.blockboxes_editor.main_block,
-            "Equations editor model": self.equations_editor.model_host.model
+            "Equations editor model": self.equations_editor.model
         }
 
         selected_model = self.ui.model_selector_comboBox.currentText()
         self.model_host.model = choice_model_dict[selected_model]
+        if selected_model == "Block editor model":
+            self.model_host.diagram =  self.blockboxes_editor.diagram
 
         if selected_model == "Template model":
             source = "Template editor"
