@@ -79,6 +79,7 @@ class CompiledArraysMain(ServerMain):
         mdl = self.ui.simulationDataStructureTableView.model()
         mode = self.ui.arrayModeComboBox.currentText()
         mdl.copy_to_clipboard(mode=mode)
+        self.show_info_toast('Copied!')
 
     def copy_simulation_objects_data_to_numpy(self):
         """
@@ -87,6 +88,7 @@ class CompiledArraysMain(ServerMain):
         mdl = self.ui.simulationDataStructureTableView.model()
         mode = 'numpy'
         mdl.copy_to_clipboard(mode=mode)
+        self.show_info_toast('Copied!')
 
     def plot_simulation_objects_data(self):
         """

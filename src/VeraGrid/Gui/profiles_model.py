@@ -315,7 +315,7 @@ class ProfilesModel(WrappableTableModel):
             # there are no elements
             pass
 
-    def copy_to_clipboard(self, cols: Union[None, List[int]] = None) -> None:
+    def copy_to_clipboard(self, cols: Union[None, List[int]] = None) -> bool:
         """
         Copy profiles to clipboard
         :param cols:
@@ -357,10 +357,10 @@ class ProfilesModel(WrappableTableModel):
             cb.clear()
             cb.setText(data)
 
-            print('Copied!')
+            return True
         else:
             # there are no elements
-            pass
+            return False
 
     def add_state(self, columns: List[int], action_name: str = ''):
         """

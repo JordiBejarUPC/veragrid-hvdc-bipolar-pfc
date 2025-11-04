@@ -494,7 +494,11 @@ class TimeEventsMain(DataBaseTableMain):
             col_idx = 0
 
         if mdl is not None:
-            mdl.copy_to_clipboard(cols=list(cols))
+            ok = mdl.copy_to_clipboard(cols=list(cols))
+            if ok:
+                self.show_info_toast('Copied!')
+            else:
+                self.show_warning_toast('Nothing to copy')
         else:
             warning_msg('There is no profile displayed, please display one', 'Copy profile to clipboard')
 

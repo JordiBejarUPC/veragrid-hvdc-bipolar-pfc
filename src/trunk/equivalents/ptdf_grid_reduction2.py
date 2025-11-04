@@ -168,98 +168,11 @@ def get_reduction_sets(grid: MultiCircuit, reduction_bus_indices: Sequence[int],
     return external, internal, internal_branches
 
 
-# def ptdf_reduction_ree_bad(grid: MultiCircuit,
-#                            reduction_bus_indices: IntVec,
-#                            PTDF: Mat,
-#                            lin_ts: LinearAnalysisTs,
-#                            tol=1e-8) -> Tuple[MultiCircuit, Logger]:
-#     """
-#     In-place Grid reduction using the PTDF injection mirroring
-#     No theory available
-#     :param grid: MultiCircuit
-#     :param reduction_bus_indices: Bus indices of the buses to delete
-#     :param PTDF: PTDF matrix
-#     :param lin_ts: LinearAnalysisTs
-#     :param tol: Tolerance, any equivalent power value under this is omitted
-#     """
-#     logger = Logger()
-#
-#     # find the boundary set: buses from the internal set the join to the external set
-#     e_buses, i_buses, i_branches = get_reduction_sets(grid=grid, reduction_bus_indices=reduction_bus_indices)
-#
-#     if len(e_buses) == 0:
-#         logger.add_info(msg="Nothing to reduce")
-#         return grid, logger
-#
-#     if len(i_buses) == 0:
-#         logger.add_info(msg="Nothing to keep (null grid as a result)")
-#         return grid, logger
-#
-#     # base flows
-#     Pbus0 = grid.get_Pbus()
-#     Pload = get_Pload(grid)
-#     Pgen, Pgen_srap = get_Pgen(grid)
-#
-#     # flows
-#     Flows0 = PTDF @ Pbus0
-#     Flow_load = PTDF @ Pload
-#     Flow_gen = PTDF @ Pgen
-#     Flow_gen_srap = PTDF @ Pgen_srap
-#
-#     # reduce
-#     to_be_deleted = [grid.buses[e] for e in e_buses]
-#     for bus in to_be_deleted:
-#         grid.delete_bus(obj=bus, delete_associated=True)
-#
-#     # Injections that remain
-#     Pload2 = Pload[i_buses]
-#     Pgen2 = Pgen[i_buses]
-#     Pgen_srap2 = Pgen_srap[i_buses]
-#
-#     # re-make the linear analysis
-#     nc2 = compile_numerical_circuit_at(grid)
-#     lin2 = LinearAnalysis(nc2)
-#
-#     # reconstruct injections that should be to keep the flows the same
-#     b = np.c_[Flow_load[i_branches], Flow_gen[i_branches], Flow_gen_srap[i_branches]]
-#     X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
-#     Pload3, Pgen3, Pgen_srap3 = X[:, 0], X[:, 1], X[:, 2]
-#
-#     dPload = Pload2 - Pload3
-#     dPgen = Pgen2 - Pgen3
-#     dPgen_srap = Pgen_srap2 - Pgen_srap3
-#
-#     n2 = grid.get_bus_number()
-#     tol = 1e-5
-#     for i in range(n2):
-#
-#         bus = grid.buses[i]
-#         if abs(dPload[i]) > tol:
-#             elm = Load(name=f"compensated load {i}", P=-dPload[i])
-#             grid.add_load(bus=bus, api_obj=elm)
-#
-#         if abs(dPgen[i]) > tol:
-#             elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
-#             grid.add_generator(bus=bus, api_obj=elm)
-#
-#         if abs(dPgen_srap[i]) > tol:
-#             elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
-#             grid.add_generator(bus=bus, api_obj=elm)
-#
-#     # proof that the flows are actually the same
-#     Pbus4 = grid.get_Pbus()
-#     Flows4 = lin2.PTDF @ Pbus4
-#
-#     diff = Flows0[i_branches] - Flows4
-#
-#     return grid, logger
-
-
-def ptdf_reduction_ree_bad_mod(grid: MultiCircuit,
-                               reduction_bus_indices: IntVec,
-                               PTDF: Mat,
-                               lin_ts: LinearAnalysisTs,
-                               tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+def ptdf_reduction_ree_bad(grid: MultiCircuit,
+                           reduction_bus_indices: IntVec,
+                           PTDF: Mat,
+                           lin_ts: LinearAnalysisTs,
+                           tol=1e-8) -> Tuple[MultiCircuit, Logger]:
     """
     In-place Grid reduction using the PTDF injection mirroring
     No theory available
@@ -312,11 +225,12 @@ def ptdf_reduction_ree_bad_mod(grid: MultiCircuit,
     X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
     Pload3, Pgen3, Pgen_srap3 = X[:, 0], X[:, 1], X[:, 2]
 
-    dPload = Pload3 - Pload2
-    dPgen = Pgen3 - Pgen2
-    dPgen_srap = Pgen_srap3 - Pgen_srap2
+    dPload = Pload2 - Pload3
+    dPgen = Pgen2 - Pgen3
+    dPgen_srap = Pgen_srap2 - Pgen_srap3
 
     n2 = grid.get_bus_number()
+    tol = 1e-5
     for i in range(n2):
 
         bus = grid.buses[i]
@@ -325,11 +239,11 @@ def ptdf_reduction_ree_bad_mod(grid: MultiCircuit,
             grid.add_load(bus=bus, api_obj=elm)
 
         if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
             grid.add_generator(bus=bus, api_obj=elm)
 
         if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
             grid.add_generator(bus=bus, api_obj=elm)
 
     # proof that the flows are actually the same
@@ -410,11 +324,11 @@ def ptdf_reduction_ree_less_bad(grid: MultiCircuit,
     return grid, logger
 
 
-def ptdf_reduction_ree(grid: MultiCircuit,
-                       reduction_bus_indices: IntVec,
-                       PTDF: Mat,
-                       lin_ts: LinearAnalysisTs,
-                       tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+def ptdf_reduction(grid: MultiCircuit,
+                   reduction_bus_indices: IntVec,
+                   PTDF: Mat,
+                   lin_ts: LinearAnalysisTs,
+                   tol=1e-8) -> Tuple[MultiCircuit, Logger]:
     """
     In-place Grid reduction using the PTDF injection mirroring
     No theory available
@@ -485,7 +399,7 @@ def ptdf_reduction_ree(grid: MultiCircuit,
 if __name__ == "__main__":
     import VeraGridEngine as vg
 
-    circuit = vg.open_file("completo.veragrid")
+    circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
 
     nc = vg.compile_numerical_circuit_at(circuit=circuit, t_idx=None)
     lin = vg.LinearAnalysis(nc=nc)
@@ -495,7 +409,7 @@ if __name__ == "__main__":
     else:
         lin_ts = None
 
-    ptdf_reduction_ree_bad_mod(
+    ptdf_reduction(
         grid=circuit,
         reduction_bus_indices=[4],
         PTDF=lin.PTDF,
