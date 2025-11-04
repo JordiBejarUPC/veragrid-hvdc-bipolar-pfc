@@ -488,6 +488,156 @@ def bus(api_object) -> Block:
     )
     return bus_block
 
+def genqec(name: str = "") -> Block:
+    inputs = [Var("tm_" + name), Var("vf_" + name)]
+
+    in_vars_dict: Dict[str, Var] = dict()
+    for i, inpt in enumerate(inputs):
+        in_vars_dict[str(i)] = inpt
+    # Saturation factors
+    Sat_d = Var('Sat_d'+ name)
+    Sat_q = Var('Sat_q'+ name)
+
+    # Inputs (already in inputs_dict)
+    T_m = Var("T_m"+ name)  # mechanical torque
+    E_fd = Var("E_fd"+ name)  # field excitation
+
+    # States
+    delta = Var("delta"+ name)  # rotor angle
+    omega = Var("omega"+ name)  # rotor electrical speed
+    Eq1 = Var("Eq1"+ name)  # internal emf behind Xd'
+    Ed1 = Var("Ed1"+ name)
+    Eq2 = Var("Eq2"+ name)
+    Ed2 = Var("Ed2"+ name)
+    Eq_prime = Var("Eq_prime"+ name)  # transient voltage q-axis
+    Ed_prime = Var("Ed_prime"+ name)  # transient voltage d-axis
+    Eq_2prime = Var("Eq_2prime"+ name)  # subtransient voltage q-axis
+    Ed_2prime = Var("Ed_2prime"+ name)  # subtransient voltage d-axis
+
+    # Algebraic variables
+    Id = Var("Id"+ name)
+    Iq = Var("Iq"+ name)
+    Vd = Var("Vd"+ name)
+    Vq = Var("Vq"+ name)
+    Psid = Var("Psid"+ name)
+    Psiq = Var("Psiq"+ name)
+    Te = Var("Te"+ name)
+
+    # Saturated resistances
+    Xd_sat = Var('Xd_sat'+ name)
+    Xq_sat = Var('Xq_sat'+ name)
+    Xd_prime_sat = Var('Xd_prime_sat'+ name)
+    Xq_prime_sat = Var('Xq_prime_sat'+ name)
+    Xd_2prime_sat = Var('Xd_2prime_sat'+ name)
+    Xq_2prime_sat = Var('Xq_2prime_sat'+ name)
+    Ed2_coef = Var('Ed2_coef'+ name)
+    Eq2_coef = Var('Eq2_coef'+ name)
+
+    Vg = Var('Vg'+ name)
+    dg = Var('dg'+ name)
+    Pg = Var('Pg'+ name)
+    Qg = Var('Qg'+ name)
+
+    out_vars[str(0)] = Pg
+    out_vars[str(1)] = Qg
+
+    fn = Var('fn')  # system frequency [Hz]
+    ws = Var('ws')  # synchronous speed [rad/s]
+    M = Var('M')  # inertia constant
+    D = Var('D')  # damping (optional)
+    Rs = Var('Rs')  # stator resistance
+    Ra = Var('Ra')  # armature resistance (if distinct)
+
+    # Reactances
+    Xd = Var('Xd')
+    Xq = Var('Xq')
+    Xd_prime = Var('Xd_prime')
+    Xq_prime = Var('Xq_prime')
+    Xd_2prime = Var('Xd_2prime')
+    Xq_2prime = Var('Xq_2prime')
+    Xl = Var('Xl')
+
+    # Time constants
+    Td0_prime = Var('Td0_prime')
+    Tq0_prime = Var('Tq0_prime')
+    Td0_2prime = Var('Td0_2prime')
+    Tq0_2prime = Var('Tq0_2prime')
+
+    event_dict = {
+        fn: Const(50.0),
+        ws: Const(1.0),
+        M: Const(3.5),
+        D: Const(10.0),
+        Rs: Const(0.003),
+        Ra: Const(0.003),
+
+        # Reactances
+        Xd: Const(1.8),
+        Xq: Const(1.7),
+        Xd_prime: Const(0.3),
+        Xq_prime: Const(0.55),
+        Xd_2prime: Const(0.25),
+        Xq_2prime: Const(0.25),
+        Xl: Const(0.15),
+
+        # Time constants
+        Td0_prime: Const(8.0),
+        Tq0_prime: Const(0.4),
+        Td0_2prime: Const(0.03),
+        Tq0_2prime: Const(0.05)
+    }
+
+    generator_block = Block(
+        state_eqs=[
+            (omega - Const(1)) * ws,  # dδ/dt
+            (T_m - Te - D * (omega - Const(1))) * (1 / (M)),  # dω/dt
+            E_fd / Td0_prime - Sat_q * Eq1 / Td0_prime,  # dEq'/dt
+            -Sat_q * Ed1 / Tq0_prime,  # dEd'/dt
+            Eq2_coef * (-Eq2),  # dEq''/dt
+            Ed2_coef * (-Ed2),  # dEd''/dt
+        ],
+        state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
+        algebraic_eqs=[
+            Vd - (-Vg * sin(dg - delta)),
+            Vq - (Vg * cos(dg - delta)),
+            Pg - (Vd * Id + Vq * Iq),
+            Qg - (Vq * Id - Vd * Iq),
+            Vd - ((omega) * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
+            Vq - ((omega) * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
+            Psid - (Eq_prime - Id * Xd_2prime_sat),
+            Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
+            Te - (Psid * Iq - Psiq * Id),
+            (Xd_sat - Xd_prime_sat) * Eq1 - (
+                        (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
+            # Eq1 definition
+            (Xq_sat - Xq_prime_sat) * Ed1 - (
+                        (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
+            # Ed1 definition
+            (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
+                        (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
+            # Ed2 definition
+            (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
+                        (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
+            # Eq2 definition
+            Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
+            Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
+        ],
+        algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id, Iq])
+
+    generator_block.external_mapping={
+            VarPowerFlowRefferenceType.P: Pg,
+            VarPowerFlowRefferenceType.Q: Qg,
+            VarPowerFlowRefferenceType.Vm: Vg,
+            VarPowerFlowRefferenceType.Va: dg,
+        }
+    generator_block.in_vars=in_vars_dict
+    generator_block.out_vars[str(0)] = Pg
+    generator_block.out_vars[str(1)] = Qg
+
+
+
+    return generator_block
+
 
 def generator(api_object) -> Block:
     gen_object = api_object
