@@ -311,7 +311,7 @@ class BlockItem(QGraphicsRectItem):
 
             if dlg.exec() == QDialog.DialogCode.Accepted:
                 new_val = spin.value()
-                var_obj = next((v for v in self.subsys.event_dict.keys() if v.name == "param"), None)
+                var_obj = next((v for v in self.subsys.event_dict.keys() if "param" in v.name), None)
                 self.subsys.event_dict[var_obj] = Const(new_val)
                 # _ , self.subsys = constant(new_val)
                 self.name_item.setPlainText(f"Const({new_val})")
@@ -933,6 +933,8 @@ class DiagramScene(QGraphicsScene):
                 if isinstance(item, PortItem) and item.is_input and not item.is_connected():
                     dst_port: PortItem = item
                     connection = ConnectionItem(self.source_port, dst_port)
+                    dst_port.connection = connection
+                    self.source_port.connection = connection
 
                     dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
 
@@ -942,7 +944,7 @@ class DiagramScene(QGraphicsScene):
                     for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
                         dst_port.subsystem.subsys.state_eqs[i] = new_equ
-                    dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
+                    # dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
                     # dst_port.subsystem.subsys.active_in_vars.append(dst_port.subsystem.subsys.in_vars[dst_port.index])
 
                     self.addItem(connection)
@@ -1292,8 +1294,6 @@ class InspectModel(QWidget):
 
         # Recurse into submodels
         for submodel in getattr(model, "children", []):
-            print("submodel")
-            print(submodel.algebraic_vars)
             self.refresh_lists(submodel, clear=False)
 
 
@@ -1400,13 +1400,36 @@ class BlockBoxesEditor(QSplitter):
     def remove_item(self, item: BlockItem | ModelHostItem):
         # remove item from scene
         for port in item.inputs + item.outputs:
+
             if port.connection:
-                self.scene.removeItem(port.connection)
                 del self.diagram.con_data[port.connection.uid]
-                if port.connection.source_port:
-                    port.connection.source_port.connection = None
-                if port.connection.target_port:
-                    port.connection.target_port.connection = None
+                self.scene.removeItem(port.connection)
+
+                source_port = port.connection.source_port
+                target_port = port.connection.target_port
+
+                source_port.connection = None
+                target_port.connection = None
+
+                dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+
+                for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
+                    new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                    target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
+                    new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                    target_port.subsystem.subsys.state_eqs[i] = new_equ
+                #
+                # if port.connection.source_port:
+                #     port.connection.source_port.connection = None
+                #
+                # elif port.connection.target_port:
+                #     port.connection.target_port.connection = None
+                # #
+                # port.connection.source_port.connection = None
+                # port.connection.target_port.connection = None
+
+
         self.scene.removeItem(item)
 
         # remove block from main_block
