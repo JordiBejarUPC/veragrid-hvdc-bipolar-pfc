@@ -77,7 +77,7 @@ class BlockDiagram:
 
         :param name: Diagram name
         """
-        # self.index: List[int]
+        self.indexes: List[int] = list()
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 

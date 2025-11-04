@@ -1511,6 +1511,9 @@ class BlockBoxesEditor(QSplitter):
 
         uid_to_blockitem = {}
 
+        # fill main_block models
+        indexes = self.diagram.indexes
+
         # Recreate nodes
         for uid, node in self.diagram.node_data.items():
             block_type = BlockType[node.tpe]
