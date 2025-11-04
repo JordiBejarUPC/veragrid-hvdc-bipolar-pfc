@@ -372,7 +372,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
                                                                   nc.load_data.S3_floatingstar[4 * i + 3])
 
         else:
-            results.load_Vn[i] = results.voltage_N[load_bus_idx]
+            results.load_Vn[i] = results.voltage_N[load_bus_idx[i]]
 
     shunt_bus_idx = nc.shunt_data.bus_idx
     shunt_idx = nc.shunt_data.original_idx
@@ -384,7 +384,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
                                   nc.shunt_data.C_floatingstar[i] * results.voltage_C[shunt_bus_idx[i]]
 
         else:
-            results.shunt_Vn[i] = results.voltage_N[shunt_bus_idx]
+            results.shunt_Vn[i] = results.voltage_N[shunt_bus_idx[i]]
 
     return results
 

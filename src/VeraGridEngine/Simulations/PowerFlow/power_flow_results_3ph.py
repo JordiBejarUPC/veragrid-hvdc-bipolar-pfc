@@ -305,7 +305,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.shunt_q_B: Vec = np.zeros(n_sh)
         self.shunt_q_C: Vec = np.zeros(n_sh)
         self.shunt_Vn: Vec = np.zeros(n_sh, dtype=complex)
-
         self.load_Vn: Vec = np.zeros(n_load, dtype=complex)
 
         self.plot_bars_limit: int = 100
