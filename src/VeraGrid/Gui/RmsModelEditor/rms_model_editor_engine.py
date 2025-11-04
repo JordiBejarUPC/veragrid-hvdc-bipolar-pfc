@@ -1267,9 +1267,6 @@ class InspectModel(QWidget):
         if model is None:
             model = self.model_host.model
 
-        print("first_refresh")
-        print(model.algebraic_vars)
-
         if clear:
             self.list_vars.clear()
             self.table_params.setRowCount(0)
@@ -1311,14 +1308,18 @@ class BlockBoxesEditor(QSplitter):
                  diagram: BlockDiagram,
                  templates_list,
                  templates_catalogue,
+                 api_object=None,
                  parent=None):
         super().__init__(parent)
 
+        self.api_object = api_object
         self.api_object_name = api_object_name
         self.main_block = block
         self.diagram = diagram
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
+
+        self.nodes_index = 0
 
 
 
@@ -1463,6 +1464,7 @@ class BlockBoxesEditor(QSplitter):
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
+                        index=self.nodes_index,
                         name = name,
                         x=x0,
                         y=y0,
@@ -1475,6 +1477,7 @@ class BlockBoxesEditor(QSplitter):
                         algeb_outs=algeb_outs,
                         subdiagram= model_host.diagram
                     )
+                    self.nodes_index +=1
 
             else:
 
@@ -1498,21 +1501,20 @@ class BlockBoxesEditor(QSplitter):
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
+                        index = self.nodes_index,
                         name = name,
                         x=x0,
                         y=y0,
                         tpe=tpe.name,
                         device_uid=item.subsys.uid,
                     )
+                    self.nodes_index += 1
 
     def rebuild_scene_from_diagram(self):
         """Rebuilds the graphical scene from saved diagram data"""
         self.scene.clear()
 
         uid_to_blockitem = {}
-
-        # fill main_block models
-        indexes = self.diagram.indexes
 
         # Recreate nodes
         for uid, node in self.diagram.node_data.items():
@@ -1524,7 +1526,10 @@ class BlockBoxesEditor(QSplitter):
                     node.state_ins, node.state_outs,
                     node.algeb_ins, node.algeb_outs
                 )
-                self.main_block.add(model_host.model)
+
+                model_host.model.children = self.main_block.children[node.index].children
+                # if self.api_object is None:
+                #     self.main_block.add(model_host.model)
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
                 item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
@@ -1542,7 +1547,8 @@ class BlockBoxesEditor(QSplitter):
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 if block_item.subsys is not None:
-                    self.main_block.add(block_item.subsys)
+                    # if self.api_object is None and len(self.main_block.children) < len(self.diagram.node_data.keys()):
+                    #     self.main_block.add(block_item.subsys)
 
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
@@ -1809,7 +1815,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             block=self.model_host.model,
             diagram=self.model_host.diagram,
             templates_list=self.templates_list,
-            templates_catalogue=self.templates_catalogue
+            templates_catalogue=self.templates_catalogue,
+            api_object=self.api_object
         )
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.ui.editorLayout.addWidget(self.blockboxes_editor)
