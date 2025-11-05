@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.substation import Substation
 
@@ -19,7 +19,8 @@ class VoltageLevel(PhysicalDevice):
                  idtag: Union[str, None] = None,
                  code: str = '',
                  Vnom: float = 1.0,
-                 substation: Union[None, Substation] = None):
+                 substation: Union[None, Substation] = None,
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         Constructor
         :param name: Name
@@ -32,7 +33,8 @@ class VoltageLevel(PhysicalDevice):
                                 name=name,
                                 code=code,
                                 idtag=idtag,
-                                device_type=DeviceType.VoltageLevelDevice)
+                                device_type=DeviceType.VoltageLevelDevice,
+                                build_status=build_status)
 
         self.Vnom = float(Vnom)
 

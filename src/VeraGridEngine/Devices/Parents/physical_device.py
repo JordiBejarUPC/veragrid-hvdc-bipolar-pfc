@@ -2,11 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import datetime
 from typing import Union
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuthority
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, BuildStatus
 
 
 class PhysicalDevice(EditableDevice):
@@ -16,14 +18,16 @@ class PhysicalDevice(EditableDevice):
     __slots__ = (
         "modelling_authority",
         "_commissioned_date",
-        "_decommissioned_date"
+        "_decommissioned_date",
+        'build_status'
     )
 
     def __init__(self,
                  name: str,
                  idtag: Union[str, None],
                  code: str,
-                 device_type: DeviceType):
+                 device_type: DeviceType,
+                 build_status: BuildStatus):
         """
         PhysicalDevice
         :param name: Name of the device
@@ -41,7 +45,10 @@ class PhysicalDevice(EditableDevice):
         self.modelling_authority: Union[ModellingAuthority, None] = None
 
         self._commissioned_date: int = 0
+
         self._decommissioned_date: int = 0
+
+        self.build_status = build_status
 
         self.register(key='modelling_authority', units='', tpe=DeviceType.ModellingAuthority,
                       definition='Modelling authority of this asset')
@@ -49,6 +56,9 @@ class PhysicalDevice(EditableDevice):
                       is_date=True)
         self.register(key='decommissioned_date', units='', tpe=int, definition='Decommissioned date of the asset',
                       is_date=True)
+
+        self.register('build_status', units="", tpe=BuildStatus,
+                      definition="Device build status. Used in expansion planning.")
 
     @property
     def commissioned_date(self) -> int:

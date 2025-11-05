@@ -220,20 +220,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
         Open the appropriate editor dialogue
         :return:
         """
-        Sbase = self.editor.circuit.Sbase
-        Vnom = self.api_object.get_max_bus_nominal_voltage()
-        templates = list()
-
-        for lst in [self.editor.circuit.sequence_line_types,
-                    self.editor.circuit.underground_cable_types,
-                    self.editor.circuit.overhead_line_types]:
-            for temp in lst:
-                if Vnom == temp.Vnom:
-                    templates.append(temp)
-
-        current_template = self.api_object.template
-        dlg = LineEditor(line=self.api_object, Sbase=Sbase, frequency=self.editor.circuit.fBase,
-                         templates=templates, current_template=current_template)
+        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
         if dlg.exec():
             pass
 

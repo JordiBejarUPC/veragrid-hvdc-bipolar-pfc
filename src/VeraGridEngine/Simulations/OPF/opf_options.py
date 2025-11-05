@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List, Union
 from VeraGridEngine.enumerations import (SolverType, MIPSolvers, ZonalGrouping, TimeGrouping, AcOpfMode, DeviceType,
-                                         SubObjectType)
+                                         SubObjectType, MIPFramework)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
@@ -33,6 +33,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  maximize_flows=False,
                  inter_aggregation_info: InterAggregationInfo | None = None,
                  unit_commitment=False,
+                 consider_ramps=False,
+                 consider_time_up_down=False,
+                 area_spinning_reserve=False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
                  generation_expansion_planning: bool = False,
@@ -47,7 +50,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  acopf_mode: AcOpfMode = AcOpfMode.ACOPFstd,
                  acopf_v0: Vec | None = None,
                  acopf_S0: Vec | None = None,
-                 robust: bool = False,):
+                 robust: bool = False,
+                 mip_framework: MIPFramework = MIPFramework.PuLP):
         """
         Optimal power flow options
         :param verbose:
@@ -63,6 +67,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param maximize_flows:
         :param inter_aggregation_info:
         :param unit_commitment:
+        :param consider_ramps:
+        :param consider_time_up_down:
+        :param area_spinning_reserve:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
         :param export_model_fname:
         :param generate_report:
@@ -104,6 +111,12 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.unit_commitment = unit_commitment
 
+        self.consider_ramps = consider_ramps
+
+        self.consider_time_up_down = consider_time_up_down
+
+        self.area_spinning_reserve = area_spinning_reserve
+
         self.use_glsk_as_cost = use_glsk_as_cost
 
         self.add_losses_approximation = add_losses_approximation
@@ -121,6 +134,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.acopf_mode = acopf_mode
 
         self.robust = robust
+
+        self.mip_framework: MIPFramework = mip_framework
 
         # IPS settings
         self.ips_method: SolverType = ips_method
@@ -148,6 +163,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="use_glsk_as_cost", tpe=bool)
         self.register(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo)
         self.register(key="unit_commitment", tpe=bool)
+        self.register(key="consider_ramps", tpe=bool)
+        self.register(key="consider_time_up_down", tpe=bool)
+        self.register(key="area_spinning_reserve", tpe=bool)
         self.register(key="export_model_fname", tpe=str)
         self.register(key="generate_report", tpe=bool)
         self.register(key="acopf_mode", tpe=AcOpfMode)

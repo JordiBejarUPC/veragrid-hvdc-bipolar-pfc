@@ -63,7 +63,8 @@ class FluidNode(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.FluidNodeDevice)
+                                device_type=DeviceType.FluidNodeDevice,
+                                build_status=build_status)
 
         self.min_level = float(min_level)  # hm3
         self.max_level = float(max_level)  # hm3
@@ -73,7 +74,6 @@ class FluidNode(PhysicalDevice):
         self.spillage_cost = float(spillage_cost)  # m3/s
         self.inflow = float(inflow)  # m3/s
         self._bus: Bus | None = bus
-        self.build_status = build_status
 
         self.color = color if color is not None else "#00aad4"  # nice blue color
 
@@ -102,9 +102,6 @@ class FluidNode(PhysicalDevice):
 
         self.register(key='bus', units='', tpe=DeviceType.BusDevice,
                       definition='Electrical bus.', editable=False)
-
-        self.register(key='build_status', units='', tpe=BuildStatus,
-                      definition='Branch build status. Used in expansion planning.')
 
         self.register(key='spillage_cost', units='e/(m3/s)', tpe=float,
                       definition='Cost of nodal spillage',

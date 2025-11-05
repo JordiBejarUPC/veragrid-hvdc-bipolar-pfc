@@ -106,7 +106,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     progress_func=None,
                     export_model_fname=self.options.opf_options.export_model_fname,
                     verbose=self.options.opf_options.verbose,
-                    robust=self.options.opf_options.robust
+                    robust=self.options.opf_options.robust,
+                    mip_framework=self.options.opf_options.mip_framework
                 )
 
             if t_idx == 0:

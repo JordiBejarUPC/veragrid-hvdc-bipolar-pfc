@@ -214,6 +214,17 @@ class PortItem(QGraphicsEllipseItem):
         self.update_color()
         super().hoverLeaveEvent(event)
 
+    def to_json(self) -> dict:
+        """
+        Serialize this port using its local position.
+        """
+        return {
+            "id": self.id,
+            "parent": getattr(self.parentItem(), "id", None),
+            "x": float(self.pos().x()),
+            "y": float(self.pos().y()),
+        }
+
 
 class NodeItem(QGraphicsItem):
     """
@@ -233,7 +244,9 @@ class NodeItem(QGraphicsItem):
         self._rotation = 0.0
 
     def shape(self) -> QtGui.QPainterPath:
-        """Return a clickable shape matching the bounding rect."""
+        """
+        Return a clickable shape matching the bounding rect.
+        """
         path = QtGui.QPainterPath()
         path.addRect(self.boundingRect())
         return path
@@ -583,7 +596,7 @@ class TransformerItem(NodeItem):
 
     def paint(self, p: QtGui.QPainter, opt, w=None):
         """Draw two transparent circles vertically aligned."""
-        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         p.setPen(QtGui.QPen(Qt.GlobalColor.black, 2))
         p.setBrush(QtCore.Qt.BrushStyle.NoBrush)
 
@@ -599,34 +612,6 @@ class TransformerItem(NodeItem):
         return self.to_json_common()
 
 
-class DragHandle(QGraphicsRectItem):
-    def __init__(self, owner: "ConnectionItem", is_endpoint: bool = False, endpoint_index: int = 0):
-        """
-
-        :param owner:
-        :param is_endpoint:
-        :param endpoint_index:
-        """
-        super().__init__(-HANDLE_S / 2, -HANDLE_S / 2, HANDLE_S, HANDLE_S)
-        self.setBrush(BRUSH_HANDLE)
-        self.setPen(PEN_NORMAL)
-        self.setZValue(50)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
-        self.owner = owner
-        self.is_endpoint = is_endpoint
-        self.endpoint_index = endpoint_index  # 0 for A, 1 for B
-
-    def itemChange(self, change, value):
-        """
-
-        :param change:
-        :param value:
-        :return:
-        """
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            self.owner.handle_moved(self)
-        return super().itemChange(change, value)
 
 
 class WaypointHandle(QtWidgets.QGraphicsEllipseItem):

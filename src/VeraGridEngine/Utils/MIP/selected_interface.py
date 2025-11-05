@@ -9,18 +9,74 @@ Uncomment the appropriate interface imports to use: Pulp or OrTools
 from typing import List, Union, Tuple
 import numpy as np
 from scipy.sparse import csc_matrix
-from VeraGridEngine.basic_structures import ObjVec, ObjMat, Vec
+from VeraGridEngine.basic_structures import ObjVec, ObjMat
+from VeraGridEngine.enumerations import MIPFramework, MIPSolvers
 
-# from VeraGridEngine.Utils.MIP.SimpleMip import LpExp, LpVar, LpModel, get_available_mip_solvers
-from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
-# from VeraGridEngine.Utils.MIP.gslv_interface import (LpExp, LpVar, LpModel, get_available_mip_solvers)
+from VeraGridEngine.Utils.MIP.pulp_interface import (LpExp as PulpLpExp,
+                                                     LpVar as PulpLpVar,
+                                                     PulpLpModel,
+                                                     get_pulp_available_mip_solvers)
 
-# try:
-#     from VeraGridEngine.Utils.MIP.gslv_interface import (LpExp, LpVar, LpModel, get_available_mip_solvers)
-#     print("Using gslv mip interface")
-# except ImportError:
-#     from VeraGridEngine.Utils.MIP.pulp_interface import LpExp, LpVar, LpModel, get_available_mip_solvers
-#     print("Using pulp")
+try:
+    from VeraGridEngine.Utils.MIP.ortools_interface import (LpExp as OrToolsLpExp,
+                                                            LpVar as OrToolsLpVar,
+                                                            OrToolsLpModel,
+                                                            get_ortools_available_mip_solvers)
+
+    ORTOOLS_AVAILABLE = True
+    print("ortools available")
+except ImportError:
+    ORTOOLS_AVAILABLE = False
+    OrToolsLpModel = None
+    OrToolsLpExp = None
+    OrToolsLpVar = None
+    get_ortools_available_mip_solvers = None
+
+LpExp = Union[PulpLpExp, OrToolsLpExp]
+LpVar = Union[PulpLpVar, OrToolsLpVar]
+LpModel = Union[PulpLpModel, OrToolsLpModel]
+
+
+def get_available_mip_frameworks() -> List[MIPFramework]:
+    """
+    Get list of available frameworks
+    :return: List[MIPFramework]
+    """
+    lst = [MIPFramework.PuLP]
+
+    if ORTOOLS_AVAILABLE:
+        lst.append(MIPFramework.OrTools)
+
+    return lst
+
+
+def get_model_instance(tpe: MIPFramework, solver_type: MIPSolvers) -> LpModel:
+    """
+    Get an instance of the solver framework and the selected solver
+    :param tpe: MIPInterface framework
+    :param solver_type: MIPSolvers
+    :return: OrToolsLpModel or PulpLpModel
+    """
+    if tpe == MIPFramework.OrTools and ORTOOLS_AVAILABLE:
+        return OrToolsLpModel(solver_type)
+    elif tpe == MIPFramework.PuLP:
+        return PulpLpModel(solver_type)
+    else:
+        return PulpLpModel(solver_type)
+
+
+def get_available_mip_solvers(tpe: MIPFramework) -> List[str]:
+    """
+    Get the solvers available in the selected interface
+    :param tpe:
+    :return:
+    """
+    if tpe == MIPFramework.OrTools and ORTOOLS_AVAILABLE:
+        return get_ortools_available_mip_solvers()
+    elif tpe == MIPFramework.PuLP:
+        return get_pulp_available_mip_solvers()
+    else:
+        return get_pulp_available_mip_solvers()
 
 
 def join(init: str, vals: List[int], sep="_"):

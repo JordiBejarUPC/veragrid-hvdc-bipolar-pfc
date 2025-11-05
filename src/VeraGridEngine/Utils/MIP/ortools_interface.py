@@ -8,6 +8,7 @@ This module abstracts the synthax of ORTOOLS out
 so that in the future it can be exchanged with some
 other solver interface easily
 """
+from __future__ import annotations
 
 from typing import List, Union, Tuple, Iterable, Callable
 from ortools.linear_solver.python import model_builder
@@ -18,13 +19,14 @@ from ortools.linear_solver.python.model_builder import Variable as LpVar
 from ortools.linear_solver.python.model_builder_helper import SolveStatus
 from VeraGridEngine.enumerations import MIPSolvers
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Utils.MIP.mip_interface_template import AbstractLpModel
 
 
 # this avoids displaying all the solver logger information, should only be called once
 # init.CppBridge.init_logging("")
 
 
-def get_available_mip_solvers() -> List[str]:
+def get_ortools_available_mip_solvers() -> List[str]:
     """
     Get a list of candidate solvers
     :return:
@@ -39,10 +41,118 @@ def get_available_mip_solvers() -> List[str]:
     return res
 
 
+def get_solver_params_string(
+        solver: str,
+        relative_gap: float = 1e-10,
+        abs_gap: float = 1e-10,
+        primal_feasibility_tolerance: float = 1e-10,
+        dual_feasibility_tolerance: float = 1e-10,
+        optimality_tolerance: float = 1e-10,
+        time_limit: float | None = None,
+        verbose: bool = False
+) -> str:
+    """
+    Returns a string of solver-specific parameters suitable for
+    model_builder.Solver.SetSolverSpecificParametersAsString(...).
+    :param solver: one of "SCIP", "CBC", "CPLEX", "GUROBI", "XPRESS", "HIGHS", "GLOP", "PDLP"
+    :param relative_gap: relative optimality gap tolerance
+    :param abs_gap: absolute optimality gap tolerance
+    :param primal_feasibility_tolerance:
+    :param dual_feasibility_tolerance:
+    :param optimality_tolerance:
+    :param time_limit: time limit in seconds (if supported)
+    :param verbose: whether to enable verbose solver output
+    :return: parameter string
+    """
+    s = ""
+    if solver == "HIGHS":
+        # https://ergo-code.github.io/HiGHS/dev/options/definitions/
+        # also: https://www.gams.com/50/docs/S_HIGHS.html
+        s += f"primal_residual_tolerance = {relative_gap}\n"
+        s += f"mip_abs_gap = {abs_gap}\n"
+        s += f"primal_feasibility_tolerance = {primal_feasibility_tolerance}\n"
+        s += f"dual_feasibility_tolerance = {dual_feasibility_tolerance}\n"
+        s += f"optimality_tolerance = {optimality_tolerance}\n"
+        if time_limit is not None:
+            s += f"time_limit = {time_limit}\n"
+        if verbose:
+            s += "log_to_console = true\n"
+
+    elif solver == "CBC":
+        s += f"RELATIVE_MIP_GAP = {relative_gap}\n"
+        s += f"ABSOLUTE_MIP_GAP = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"MAX_TIME_IN_SECONDS = {time_limit}\n"
+        if verbose:
+            s += "VERBOSE = 1\n"
+
+    elif solver == "SCIP":
+        s += f"limits/gap = {relative_gap}\n"
+        s += f"limits/absgap = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"limits/time = {time_limit}\n"
+        if verbose:
+            s += "display/verblevel = 4\n"
+        s += f"numerics/feastol = {primal_feasibility_tolerance}\n"
+        s += f"numerics/dualfeastol = {dual_feasibility_tolerance}\n"
+
+    elif solver == "GLOP":
+        # GLOP is for continuous LP; gap tolerances less relevant, focus on feasibility tolerance
+        s += f"primal_tolerance = {primal_feasibility_tolerance}\n"
+        s += f"dual_tolerance = {dual_feasibility_tolerance}\n"
+        if time_limit is not None:
+            s += f"time_limit = {time_limit}\n"
+        if verbose:
+            s += "log_to_console = true\n"
+
+    elif solver == "CPLEX":
+        # Use CPLEX parameter names in the string
+        s += f"CPXPARAM_MIP_Tolerances_MIPGap = {relative_gap}\n"
+        s += f"CPXPARAM_MIP_Tolerances_AbsMIPGap = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"CPXPARAM_TimeLimit = {time_limit}\n"
+        if verbose:
+            s += "CPXPARAM_MIP_Display = 4\n"
+        s += "CPXPARAM_Simplex_Tolerances_Feasibility = 1e-7\n"
+        s += "CPXPARAM_Simplex_Tolerances_Optimality = 1e-7\n"
+
+    elif solver == "GUROBI":
+        # Use Gurobi parameter names in string
+        s += f"MIPGap = {relative_gap}\n"
+        s += f"MIPGapAbs = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"TimeLimit = {time_limit}\n"
+        if verbose:
+            s += "OutputFlag = 1\n"
+        s += "FeasibilityTol = 1e-8\n"
+        s += "OptimalityTol = 1e-8\n"
+
+    elif solver == "XPRESS":
+        s += f"miprelstop = {relative_gap}\n"
+        s += f"mipabsstop = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"maxtime = {time_limit}\n"
+        if verbose:
+            s += "outputlog = 1\n"
+        s += f"feastol = {primal_feasibility_tolerance}\n"
+        s += "opt_tol = 1e-8\n"
+
+    elif solver == "PDLP":
+        s += f"relative_optimality_tolerance = {relative_gap}\n"
+        s += f"absolute_optimality_tolerance = {abs_gap}\n"
+        if time_limit is not None:
+            s += f"time_limit = {time_limit}\n"
+        if verbose:
+            s += "log_to_console = true\n"
+        s += "termination_check_frequency = 1000\n"
+
+    else:
+        s = ""
+
+    return s
 
 
-
-class LpModel:
+class OrToolsLpModel(AbstractLpModel):
     """
     LPModel implementation for ORTOOLS
     """
@@ -51,10 +161,14 @@ class LpModel:
     originally_infeasible = False
 
     def __init__(self, solver_type: MIPSolvers):
+        super().__init__(solver_type, name="OrTools")
 
         self.solver_type: MIPSolvers = solver_type
 
         self.solver = model_builder.Solver(solver_type.value)
+        self.solver.set_solver_specific_parameters(
+            get_solver_params_string(solver=solver_type.value)
+        )
 
         if not self.solver.solver_is_supported():
             raise Exception(f"The solver {solver_type.value} is not supported")
@@ -81,7 +195,7 @@ class LpModel:
             var.lower_bound = lb
             var.upper_bound = ub
 
-    def save_model(self, file_name="ntc_opf_problem.lp"):
+    def save_model(self, file_name: str = "ntc_opf_problem.lp") -> None:
         """
         Save problem in LP format
         :param file_name: name of the file (.lp or .mps supported)
@@ -106,6 +220,14 @@ class LpModel:
         :return: LpVar
         """
         return self.model.new_int_var(lb=lb, ub=ub, name=name)
+
+    def add_bin(self, name: str = "") -> LpVar:
+        """
+        Make integer LP var
+        :param name: name (optional)
+        :return: LpVar
+        """
+        return self.model.new_int_var(lb=0, ub=1, name=name)
 
     def add_var(self, lb: float, ub: float, name: str = "") -> LpVar:
         """
@@ -155,7 +277,7 @@ class LpModel:
         """
         self.model.minimize(linear_expr=obj_function)
 
-    def pass_through_file(self, fname="pass_thought_file.lp"):
+    def pass_through_file(self, fname: str = "pass_thought_file.lp") -> model_builder.Model:
         """
 
         :param fname:
@@ -187,12 +309,11 @@ class LpModel:
         if progress_text is not None:
             progress_text(f"Solving model with {self.solver_type.value}...")
 
-        # original_mdl = self.model
-        original_mdl = self.pass_through_file(fname="pass_thought_file.mps")
+        original_mdl = self.model
         status = self.solver.solve(original_mdl)
 
         # if it failed...
-        if status != LpModel.OPTIMAL:
+        if status != OrToolsLpModel.OPTIMAL:
 
             self.originally_infeasible = True
 
@@ -218,14 +339,25 @@ class LpModel:
                 debugging_f_obj = 0
                 for i, cst in enumerate(debug_model.get_linear_constraints()):
                     # create a new slack var in the problem
-                    sl = debug_model.new_var(lb=0.0, ub=1e20, is_integer=False,
+                    sl = debug_model.new_var(lb=0.0, ub=self.INFINITY, is_integer=False,
                                              name=f'Slk_{i}_{cst.name}')
 
                     # add the variable to the new objective function
                     debugging_f_obj += sl
 
                     # add the variable to the current constraint
-                    cst.add_term(sl, 1.0)
+                    # cst.add_term(sl, 1.0)
+                    if cst.lower_bound <= -self.INFINITY and cst.upper_bound < self.INFINITY:
+                        # upper-bounded only  →  aᵗx ≤ ub  → relax upward
+                        cst.add_term(sl, +1.0)
+
+                    elif cst.lower_bound > -self.INFINITY and cst.upper_bound >= self.INFINITY:
+                        # lower-bounded only  →  aᵗx ≥ lb  → relax downward
+                        cst.add_term(sl, -1.0)
+
+                    else:
+                        # both bounds finite (equality or double-sided) → relax upward
+                        cst.add_term(sl, +1.0)
 
                     # store for later
                     slacks.append(sl)
@@ -236,7 +368,12 @@ class LpModel:
                 # solve the debug model
                 if progress_text is not None:
                     progress_text(f"Solving debug model with {self.solver_type.value}...")
-                status_d = self.solver.solve(debug_model)
+
+                # we create a new solver to handle the debug model
+                debug_solver = model_builder.Solver(self.solver_type.value)
+                debug_solver.set_solver_specific_parameters(get_solver_params_string(...))
+                status_d = debug_solver.solve(debug_model)
+                # status_d = self.solver.solve(debug_model)
 
                 # at this point we can delete the debug model
                 del debug_model
@@ -244,7 +381,7 @@ class LpModel:
                 # clear the relaxed slacks list
                 self.relaxed_slacks.clear()
 
-                if status_d == LpModel.OPTIMAL:
+                if status_d == OrToolsLpModel.OPTIMAL:
 
                     # pick the original objective function
                     main_f = original_mdl.objective_expression()
@@ -252,13 +389,13 @@ class LpModel:
                     for i, sl in enumerate(slacks):
 
                         # get the debugging slack value
-                        val = self.solver.value(sl)
+                        val = debug_solver.value(sl)
 
                         if val > 1e-10:
                             cst_name = original_mdl.linear_constraint_from_index(i).name
 
                             # add the slack in the main model
-                            sl2 = original_mdl.new_var(0, 1e20, is_integer=False,
+                            sl2 = original_mdl.new_var(0, self.INFINITY, is_integer=False,
                                                        name=f'Slk_rlx_{i}_{cst_name}')
                             self.relaxed_slacks.append((i, sl2, 0.0))  # the 0.0 value will be read later
 
@@ -276,7 +413,7 @@ class LpModel:
                         progress_text(f"Solving relaxed model with {self.solver_type.value}...")
                     status = self.solver.solve(original_mdl)
 
-                    if status == LpModel.OPTIMAL:
+                    if status == OrToolsLpModel.OPTIMAL:
 
                         for i in range(len(self.relaxed_slacks)):
                             k, var, _ = self.relaxed_slacks[i]
@@ -301,15 +438,18 @@ class LpModel:
         Get the objective function value
         :return:
         """
-        return self.solver.objective_value
+        return float(self.solver.objective_value)
 
     def is_mip(self):
         """
-        Is this odel a MIP?
-        :return:
+        Is this Model a MIP?
+        :return: Bool
         """
+        for var in self.model.get_variables():
+            if var.Integer():
+                return True
 
-        return [var.Integer() for var in self.model.get_variables()]
+        return False
 
     def get_value(self, x: Union[float, int, LpVar, LpExp, LpCst, LpCstBounded]) -> float:
         """
@@ -372,8 +512,6 @@ class LpModel:
             return "not solved"
         if stat == SolveStatus.INVALID_SOLVER_PARAMETERS:
             return "invalid solver params"
-        if stat == SolveStatus.MODEL_INVALID:
-            return "model invalid"
         if stat == SolveStatus.MODEL_IS_VALID:
             return "model is valid"
         return 'unknown'
