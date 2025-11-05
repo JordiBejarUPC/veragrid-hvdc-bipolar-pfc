@@ -51,6 +51,7 @@ def test_impedance_groundedstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -125,6 +126,7 @@ def test_impedance_floatingstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -293,6 +295,7 @@ def test_impedance_delta_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -367,6 +370,7 @@ def test_impedance_delta_2ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -441,6 +445,7 @@ def test_impedance_groundedstar_1ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -604,6 +609,7 @@ def test_current_groundedstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -678,6 +684,7 @@ def test_current_floatingstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -846,6 +853,7 @@ def test_current_delta_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -916,6 +924,7 @@ def test_current_delta_2ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -990,6 +999,7 @@ def test_current_groundedstar_1ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1149,6 +1159,7 @@ def test_power_groundedstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1222,6 +1233,7 @@ def test_power_floatingstar_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1390,6 +1402,7 @@ def test_power_delta_3ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1460,6 +1473,7 @@ def test_power_delta_2ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1530,6 +1544,7 @@ def test_power_groundedstar_1ph():
                               x=2 * 2)
     XFM_1.conn_f = WindingType.GroundedStar
     XFM_1.conn_t = WindingType.GroundedStar
+    XFM_1.phases = np.array([1, 2, 3])
     grid.add_transformer2w(XFM_1)
 
     # ----------------------------------------------------------------------------------------------------------------------
