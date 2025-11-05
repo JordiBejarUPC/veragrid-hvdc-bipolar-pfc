@@ -139,6 +139,8 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 contingency_groups_used=self.options.contingency_groups_used,
                 unit_commitment=self.options.unit_commitment,
                 ramp_constraints=False,
+                consider_time_up_down = False,
+                area_spinning_reserve = False,
                 all_generators_fixed=False,
                 lodf_threshold=self.options.lodf_tolerance,
                 maximize_inter_area_flow=self.options.maximize_flows,
@@ -150,7 +152,8 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 logger=self.logger,
                 export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
-                robust=self.options.robust
+                robust=self.options.robust,
+                mip_framework=self.options.mip_framework
             )
 
             self.results.voltage = opf_vars.bus_vars.Vm[0, :] * np.exp(1j * opf_vars.bus_vars.Va[0, :])
@@ -357,6 +360,9 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
 
             else:
                 raise Exception(f"{self.options.solver} Not implemented yet")
+
+        else:
+            self.opf()
 
         self.toc()
 

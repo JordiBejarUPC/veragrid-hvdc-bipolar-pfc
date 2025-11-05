@@ -126,7 +126,13 @@ class ControllableShuntEditor(QDialog):
 
     def accept_click(self):
         """
-
-        :return:
+        Modify and exit
         """
+        self.api_object.active_steps = self.get_active_steps()
+        self.api_object.g_steps = self.get_g_steps()
+        self.api_object.Gmax = self.api_object.g_steps.max()
+        self.api_object.Gmin = self.api_object.g_steps.min()
+        self.api_object.b_steps = self.get_b_steps()
+        self.api_object.Bmax = self.api_object.b_steps.max()
+        self.api_object.Bmin = self.api_object.b_steps.min()
         self.accept()

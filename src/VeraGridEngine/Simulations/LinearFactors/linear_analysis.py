@@ -493,7 +493,7 @@ class LinearAnalysis:
             rates=rates
         )
 
-    def get_flows(self, Sbus: CxVec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec:
+    def get_flows(self, Sbus: CxVec | Vec, P_hvdc: Vec | None = None, P_vsc: Vec | None = None) -> CxVec | Vec:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (nbus)
@@ -514,7 +514,7 @@ class LinearAnalysis:
         else:
             raise Exception(f'Sbus has unsupported dimensions: {Sbus.shape}')
 
-    def get_flows2d(self, Sbus: CxMat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat:
+    def get_flows2d(self, Sbus: CxMat | Mat, P_hvdc: Mat | None = None, P_vsc: Mat | None = None) -> CxMat | Mat:
         """
         Compute the time series branch Sf using the PTDF
         :param Sbus: Power Injections time series array (time, nbus) for 2D
@@ -557,9 +557,9 @@ class LinearAnalysis:
         """
         if flows.ndim == 2:
 
-            Pbus, _, _, _ = np.linalg.lstsq(self.PTDF, flows)
+            Pbus_t, _, _, _ = np.linalg.lstsq(self.PTDF, flows.T)
 
-            return Pbus
+            return Pbus_t.T
         else:
             raise Exception(f'flows has unsupported dimensions: {flows.shape}')
 
@@ -1090,10 +1090,12 @@ class LinearAnalysisTs:
 
         return flow_ts
 
-    def get_flows_ts(self, P: CxMat | Mat) -> CxMat | Mat:
+    def get_flows_ts(self, P: CxMat | Mat, progress_func=None, progress_text=None) -> CxMat | Mat:
         """
         Get the flow time series of all branches given the injection time series all buses
         :param P: Bus injection time series
+        :param progress_func: Progres function
+        :param progress_text: Progress text function
         :return: Branches flow time series
         """
         # must have the same size
@@ -1101,12 +1103,21 @@ class LinearAnalysisTs:
         assert P.shape[1] == self.nbus
 
         flow_ts = np.zeros((self.nt, self.nbr))
-
+        ii = 0
+        nn = len(self.groups)
         for t_idx, list_of_represented_time_steps in self.groups.items():
+
+            if progress_text is not None:
+                progress_text(f"Computing flows for time group {t_idx}")
+
             # get the linear analysis
             lin: LinearAnalysis = self._linear_analysis[t_idx]
 
             flow_ts[list_of_represented_time_steps, :] = lin.get_flows2d(Sbus=P[list_of_represented_time_steps, :])
+
+            if progress_func is not None:
+                ii += 1
+                progress_func(ii / nn * 100.0)
 
         return flow_ts
 

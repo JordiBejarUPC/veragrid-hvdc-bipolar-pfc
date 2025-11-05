@@ -415,13 +415,7 @@ class MapLineSegment(QGraphicsLineItem):
                 if Vnom == temp.Vnom:
                     templates.append(temp)
 
-        dlg = LineEditor(
-            line=self.api_object,
-            Sbase=self.editor.circuit.Sbase,
-            frequency=self.editor.circuit.fBase,
-            templates=templates,
-            current_template=self.api_object.template
-        )
+        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
         dlg.exec()
 
     def plot_profiles(self) -> None:

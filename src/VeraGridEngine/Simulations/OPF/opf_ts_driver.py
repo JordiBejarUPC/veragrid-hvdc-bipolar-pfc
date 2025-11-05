@@ -114,7 +114,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 consider_contingencies=self.options.consider_contingencies,
                 contingency_groups_used=self.grid.contingency_groups,
                 unit_commitment=self.options.unit_commitment,
-                ramp_constraints=self.options.unit_commitment,
+                ramp_constraints=self.options.consider_ramps,
+                consider_time_up_down=self.options.consider_time_up_down,
+                area_spinning_reserve=self.options.area_spinning_reserve,
                 generation_expansion_planning=self.options.generation_expansion_planning,
                 all_generators_fixed=False,
                 lodf_threshold=self.options.lodf_tolerance,
@@ -127,7 +129,8 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 progress_func=self.report_progress,
                 export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
-                robust=self.options.robust
+                robust=self.options.robust,
+                mip_framework=self.options.mip_framework
             )
 
             self.results.voltage = opf_vars.bus_vars.Vm * np.exp(1j * opf_vars.bus_vars.Va)
@@ -313,7 +316,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                     consider_contingencies=self.options.consider_contingencies,
                     contingency_groups_used=self.options.contingency_groups_used,
                     unit_commitment=self.options.unit_commitment,
-                    ramp_constraints=self.options.unit_commitment,
+                    ramp_constraints=self.options.consider_ramps,
+                    consider_time_up_down=self.options.consider_time_up_down,
+                    area_spinning_reserve=self.options.area_spinning_reserve,
                     generation_expansion_planning=self.options.generation_expansion_planning,
                     all_generators_fixed=False,
                     lodf_threshold=self.options.lodf_tolerance,
@@ -326,7 +331,8 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                     logger=self.logger,
                     export_model_fname=self.options.export_model_fname,
                     verbose=self.options.verbose,
-                    robust=self.options.robust
+                    robust=self.options.robust,
+                    mip_framework=self.options.mip_framework
                 )
 
                 self.results.voltage[time_indices, :] = opf_vars.bus_vars.Vm * np.exp(1j * opf_vars.bus_vars.Va)
@@ -612,6 +618,18 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.fluid_node_spillage[ti, :] = npa_res.fluid_node_vars.spillage
                 self.results.fluid_path_flow[ti, :] = npa_res.fluid_path_vars.flow
                 self.results.fluid_injection_flow[ti, :] = npa_res.fluid_inject_vars.flow
+
+        else:
+            if self.options.time_grouping == TimeGrouping.NoGrouping:
+                self.opf()
+            else:
+                if self.time_indices is None:
+                    self.opf()
+                else:
+                    if len(self.time_indices) == 0:
+                        self.opf()
+                    else:
+                        self.opf_by_groups()
 
         if self.options.generate_report:
             self.add_report()

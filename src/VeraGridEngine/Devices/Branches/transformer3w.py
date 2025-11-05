@@ -10,7 +10,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Branches.transformer_type import get_impedances
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
@@ -102,7 +102,8 @@ class Transformer3W(PhysicalDevice):
                  V1=10.0, V2=10.0, V3=10.0, active=True,
                  r12=0.0, r23=0.0, r31=0.0, x12=0.0, x23=0.0, x31=0.0,
                  rate12=0.0, rate23=0.0, rate31=0.0,
-                 x=0.0, y=0.0):
+                 x=0.0, y=0.0,
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         Constructor
         :param idtag: Unique identifier
@@ -132,7 +133,8 @@ class Transformer3W(PhysicalDevice):
                                 name=name,
                                 idtag=idtag,
                                 code=code,
-                                device_type=DeviceType.Transformer3WDevice)
+                                device_type=DeviceType.Transformer3WDevice,
+                                build_status=build_status)
 
         if bus0 is None:
             self.bus0 = Bus(name=name + '_bus', Vnom=1.0, xpos=x, ypos=y, is_internal=True)
