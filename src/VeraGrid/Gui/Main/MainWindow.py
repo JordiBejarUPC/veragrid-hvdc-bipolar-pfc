@@ -1889,6 +1889,12 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.saveResultsButton)
 
+        self.plot_dyn_data_pushButton = QPushButton(self.frame_8)
+        self.plot_dyn_data_pushButton.setObjectName(u"plot_dyn_data_pushButton")
+        self.plot_dyn_data_pushButton.setIcon(icon79)
+
+        self.horizontalLayout_2.addWidget(self.plot_dyn_data_pushButton)
+
         self.plot_data_pushButton = QPushButton(self.frame_8)
         self.plot_data_pushButton.setObjectName(u"plot_data_pushButton")
         self.plot_data_pushButton.setIcon(icon94)
@@ -5899,6 +5905,10 @@ class Ui_mainWindow(object):
         self.saveResultsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Export data", None))
 #endif // QT_CONFIG(tooltip)
         self.saveResultsButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.plot_dyn_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Lauch the dynamic plotter window", None))
+#endif // QT_CONFIG(tooltip)
+        self.plot_dyn_data_pushButton.setText("")
 #if QT_CONFIG(tooltip)
         self.plot_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot the data in a separated window", None))
 #endif // QT_CONFIG(tooltip)

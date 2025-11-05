@@ -2998,6 +2998,20 @@ QProgressBar::chunk{
                        </widget>
                       </item>
                       <item>
+                       <widget class="QPushButton" name="plot_dyn_data_pushButton">
+                        <property name="toolTip">
+                         <string>Lauch the dynamic plotter window</string>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="icon">
+                         <iconset resource="icons.qrc">
+                          <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
                        <widget class="QPushButton" name="plot_data_pushButton">
                         <property name="toolTip">
                          <string>Plot the data in a separated window</string>

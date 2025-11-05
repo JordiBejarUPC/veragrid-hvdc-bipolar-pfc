@@ -44,7 +44,7 @@ class ResultsMain(SimulationsMain):
         self.ui.copy_results_pushButton.clicked.connect(self.copy_results_data)
         self.ui.copy_numpy_button.clicked.connect(self.copy_results_data_as_numpy)
         self.ui.plot_data_pushButton.clicked.connect(self.plot_results)
-        # self.ui.plot_dyn_data_pushButton.clicked.connect(self.plot_dyn_results)
+        self.ui.plot_dyn_data_pushButton.clicked.connect(self.plot_dyn_results)
         self.ui.search_results_Button.clicked.connect(self.search_in_results)
         self.ui.deleteDriverButton.clicked.connect(self.delete_results_driver)
         self.ui.saveResultsLogsButton.clicked.connect(self.save_results_logs)
