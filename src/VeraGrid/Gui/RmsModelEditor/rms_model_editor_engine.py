@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem, QMessageBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
+from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QPoint
 
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
@@ -31,6 +31,8 @@ from VeraGridEngine.Utils.Symbolic.block import (
     product,
     divide,
     absolut,
+    generator,
+    genqec,
     generic
 )
 
@@ -79,7 +81,10 @@ class BlockType(Enum):
     PRODUCT = auto()
     DIVIDE = auto()
     ABS = auto()
+    GENERATOR = auto()
+    GENQEC = auto()
     GENERIC = auto()
+    BUS_CONNECTION = auto()
 
 
 class BlockTypeDialog(QDialog):
@@ -818,10 +823,9 @@ class GraphicsView(QGraphicsView):
 
 
 
-def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block:
+def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block | None:
     """
-    Create a Block appropriate for block_type. Use placeholder Vars for inputs/outputs
-    so that Block.in_vars and Block.out_vars are not empty.
+    Create a Block appropriate for block_type.
     """
     # GAIN (single output)
     if block_type == BlockType.CONSTANT:
@@ -857,6 +861,19 @@ def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block:
     if block_type == BlockType.ABS:
         blk = absolut(item_name)
         return blk
+
+    # GENERATOR (simple model)
+    if block_type == BlockType.GENERATOR:
+        blk = generator(item_name)
+        return blk
+
+    # GENQEC (generator with saturation)
+    if block_type == BlockType.GENQEC:
+        blk = genqec(item_name)
+        return blk
+
+    else:
+        return None
 
 def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]):
     blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
@@ -1366,6 +1383,41 @@ class BlockBoxesEditor(QSplitter):
 
         self.resize(800, 600)
 
+    def add_connection_vars(self):
+
+
+        bus_con_item = None
+        tpe = BlockType.BUS_CONNECTION
+        name = "bus_connection"
+        top_left_scene = self.view.mapToScene(QPoint(20, 20))
+        x0, y0 = 0, 0
+        bus_con_item = BlockItem(name=name)
+        Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+
+        bus_con_blk = Block()
+        bus_con_blk.out_vars[str(0)] = Vm
+        bus_con_blk.out_vars[str(1)] = Va
+        bus_con_blk.name = name
+
+        bus_con_item.set_subsystem(bus_con_blk)
+        bus_con_item.build_item()
+
+        if bus_con_item.subsys is not None:
+            self.scene.addItem(bus_con_item)
+            bus_con_item.setPos(QPointF(x0, y0))
+            # save nodes in diagram
+            self.diagram.add_node(
+                index=self.nodes_index,
+                name=name,
+                x=x0,
+                y=y0,
+                tpe=tpe.name,
+                device_uid=bus_con_item.subsys.uid,
+            )
+            self.nodes_index += 1
+        self.nodes_index +=1
+
+
     def open_inspect_dialog(self):
         # Crear el diálogo
         dialog = QDialog(self)
@@ -1560,6 +1612,24 @@ class BlockBoxesEditor(QSplitter):
                 item.setPos(QPointF(node.x, node.y))
                 uid_to_blockitem[uid] = item
 
+            elif block_type == BlockType.BUS_CONNECTION:
+                bus_con_item = BlockItem(name=node.name)
+                Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+
+                bus_con_blk = Block()
+                bus_con_blk.out_vars[str(0)] = Vm
+                bus_con_blk.out_vars[str(1)] = Va
+                bus_con_blk.name = node.name
+                bus_con_blk.uid = uid
+
+                bus_con_item.set_subsystem(bus_con_blk)
+                bus_con_item.build_item()
+
+                if bus_con_item.subsys is not None:
+                    self.scene.addItem(bus_con_item)
+                    bus_con_item.setPos(QPointF(node.x, node.y))
+                uid_to_blockitem[uid] = bus_con_item
+
 
             else:
 
@@ -1570,8 +1640,6 @@ class BlockBoxesEditor(QSplitter):
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 if block_item.subsys is not None:
-                    # if self.api_object is None and len(self.main_block.children) < len(self.diagram.node_data.keys()):
-                    #     self.main_block.add(block_item.subsys)
 
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
@@ -1841,7 +1909,15 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
         )
+        # === Add default bus connection block if diagram is empty ===
+        if not self.blockboxes_editor.diagram.node_data and self.api_object is not None:
+            self.blockboxes_editor.add_connection_vars()
         self.blockboxes_editor.rebuild_scene_from_diagram()
+        self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
+        self.blockboxes_editor.view.centerOn(0, 0)
+        self.blockboxes_editor.view.ensureVisible(0, 0, 100, 100)
+        self.blockboxes_editor.view.horizontalScrollBar().setValue(0)
+        self.blockboxes_editor.view.verticalScrollBar().setValue(0)
         self.ui.editorLayout.addWidget(self.blockboxes_editor)
 
         # --- equations editor layout ---

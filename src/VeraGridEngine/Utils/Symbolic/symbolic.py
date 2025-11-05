@@ -1026,6 +1026,8 @@ def symbolic_to_string(expr: Expr) -> str:
         return str(expr.value)
     elif isinstance(expr, Var):
         return expr.name
+    elif isinstance(expr, UndefinedConst):
+        return expr.name
     elif isinstance(expr, UnOp):
         if expr.op == "-":
             return f"-({symbolic_to_string(expr.operand)})"

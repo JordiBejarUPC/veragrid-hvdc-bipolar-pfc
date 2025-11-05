@@ -238,9 +238,6 @@ class LineGraphicItem(LineGraphicTemplateItem):
             pass
 
     def edit_rms(self):
-        # connect generator with connection bus by assigning Va and Vm variables
-        Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
-        Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
 
         # load templates
         templates = self.editor.circuit.rms_models
@@ -255,33 +252,10 @@ class LineGraphicItem(LineGraphicTemplateItem):
 
         # prompt RmsModelEditorGUI
         rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
-                                             templates_catalogue=templ_catalogue, api_object=self.api_object,
-                                             parent=self.editor)
+                                             templates_catalogue=templ_catalogue, api_object_name=self.api_object.name,
+                                             api_object=self.api_object, parent=self.editor)
         rms_model_editor.show()
 
-    # elif choice_dialog.choice == "editor":
-    #
-    #             self.api_object.rms_model.model.external_mapping={
-    #                 VarPowerFlowRefferenceType.Pf: self.api_object.Pf,
-    #                 VarPowerFlowRefferenceType.Pt: self.api_object.Pt,
-    #                 VarPowerFlowRefferenceType.Qf: self.api_object.Qf,
-    #                 VarPowerFlowRefferenceType.Qt: self.api_object.Qt,
-    #             }
-    #
-    #             if self.api_object.Pf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Pt not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qf not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Qt not in self.api_object.rms_model.model.algebraic_vars:
-    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pf)
-    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Pt)
-    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qf)
-    #                 self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Qt)
-    #
-    #             if self.api_object.Vmf not in self.api_object.rms_model.model.in_vars and self.api_object.Vaf not in self.api_object.rms_model.model.in_vars and self.api_object.Vmt not in self.api_object.rms_model.model.in_vars and self.api_object.Vat not in self.api_object.rms_model.model.in_vars:
-    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vmf)
-    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vaf)
-    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vmt)
-    #                 self.api_object.rms_model.model.in_vars.append(self.api_object.Vat)
-    #
-    #             dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-    #             dlg.show()
 
     def add_to_catalogue(self):
         """

@@ -74,9 +74,6 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
 
         :return:
         """
-        # connect generator(api_object) with connection bus by assigning Va and Vm variables to Va and Vm variables of the connection bus
-        Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-
         # load templates
         templates = self.editor.circuit.rms_models
 
@@ -90,26 +87,6 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
 
         # prompt RmsModelEditorGUI
         rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
-                                             templates_catalogue=templ_catalogue, api_object=self.api_object,
-                                             parent=self.editor)
+                                             templates_catalogue=templ_catalogue, api_object_name=self.api_object.name,
+                                             api_object=self.api_object, parent=self.editor)
         rms_model_editor.show()
-
-        # elif choice_dialog.choice == "editor":
-        #
-        #     self.api_object.rms_model.model.external_mapping = {
-        #         VarPowerFlowRefferenceType.P: self.api_object.P_g,
-        #         VarPowerFlowRefferenceType.Q: self.api_object.Q_g,
-        #
-        #     }
-        #     if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-        #         self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
-        #         self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-        #
-        #     if self.api_object.Vm not in self.api_object.rms_model.model.in_vars and self.api_object.Va not in self.api_object.rms_model.model.in_vars:
-        #         self.api_object.rms_model.model.in_vars.append(self.api_object.Vm)
-        #         self.api_object.rms_model.model.in_vars.append(self.api_object.Va)
-
-        # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-        #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-        # dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-        # dlg.show()

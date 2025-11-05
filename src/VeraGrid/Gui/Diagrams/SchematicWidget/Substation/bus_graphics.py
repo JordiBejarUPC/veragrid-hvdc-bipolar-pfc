@@ -501,11 +501,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        checkeable=True,
                        checked_value=self.draw_labels)
 
-        add_menu_entry(menu=menu,
-                       text="Rms Editor",
-                       function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/edit.png")
-
         sc = add_sub_menu(menu=menu,
                           text="Short circuit",
                           icon_path=":/Icons/icons/short_circuit.png")
@@ -638,22 +633,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        function_ptr=self.add_external_grid)
 
         menu.exec_(event.screenPos())
-
-    def edit_rms(self):
-        # connect generator with connection bus by assigning Va and Vm variables
-        # self.api_object.assign_input_vars_and_params()
-
-        # bus templates
-        templates_list, templates_catalogue = get_bus_catalogue()
-
-        # add templates to rms choice dialog
-        choice_dialog = RmsChoiceDialog(templates_list, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
-
-            if choice_dialog.choice == "template":
-                self.api_object.initialize_rms()
-
-
 
     def assign_status_to_profile(self):
         """
