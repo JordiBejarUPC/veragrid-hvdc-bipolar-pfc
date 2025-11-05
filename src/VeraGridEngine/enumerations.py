@@ -884,8 +884,9 @@ class WindingType(Enum):
     """
     Transformer windings connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
     ZigZag = "Z"
 

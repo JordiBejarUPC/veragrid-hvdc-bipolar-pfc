@@ -1527,10 +1527,10 @@ def get_branch_data(
              data.Ytt3[k4, :]) = elm.transformer_admittance(vtap_f=data.virtual_tap_f[ii],
                                                             vtap_t=data.virtual_tap_t[ii],
                                                             logger=logger)
-            data.phN[ii] = 0
-            data.phA[ii] = 1
-            data.phB[ii] = 1
-            data.phC[ii] = 1
+            (data.phN[ii],
+            data.phA[ii],
+            data.phB[ii],
+            data.phC[ii]) = elm.transformer_phases(logger=logger)
 
         data.conn[ii] = elm.conn
         data.m_taps[ii] = elm.tap_changer.tap_modules_array

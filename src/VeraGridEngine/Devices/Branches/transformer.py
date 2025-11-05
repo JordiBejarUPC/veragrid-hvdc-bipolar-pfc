@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Tuple
 
-from VeraGridEngine.basic_structures import Logger, Mat
+from VeraGridEngine.basic_structures import Logger, Mat, IntVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
                                          TapModuleControl, TapChangerTypes, WindingType)
@@ -32,7 +32,8 @@ class Transformer2W(ControllableBranchParent):
         'possible_transformer_types',
         '_conn_f',
         '_conn_t',
-        '_vector_group_number'
+        '_vector_group_number',
+        '_phases'
     )
 
     def __init__(self,
@@ -235,6 +236,7 @@ class Transformer2W(ControllableBranchParent):
         self._conn_f: WindingType = WindingType.GroundedStar
         self._conn_t: WindingType = WindingType.Delta
         self._vector_group_number: int = 0
+        self._phases: IntVec = np.array([0, 1, 2, 3])
 
         # register
         self.register(key='HV', units='kV', tpe=float, definition='High voltage rating')
@@ -257,6 +259,9 @@ class Transformer2W(ControllableBranchParent):
         self.register(key='vector_group_number', units='', tpe=int,
                       definition='Vector group number. It indicates the structural phase:'
                                  'phase = vector_group_number · 30º')
+
+        self.register(key='phases', units='', tpe=IntVec,
+                      definition='Which phases are present at the transformer')
 
         self.register(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False)
 
@@ -294,6 +299,18 @@ class Transformer2W(ControllableBranchParent):
             self._vector_group_number = val
         else:
             print("Vector group out of range (0-11)")
+
+    @property
+    def phases(self) -> IntVec:
+        return self._phases
+
+    @phases.setter
+    def phases(self, val: IntVec):
+        if isinstance(val, np.ndarray):
+            self._phases = val
+        else:
+            raise Exception("phases must be a numpy array (IntVec)")
+
 
     def set_hv_and_lv(self, HV: float, LV: float):
         """
@@ -562,6 +579,28 @@ class Transformer2W(ControllableBranchParent):
 
         return tpe
 
+    def transformer_phases(self, logger: Logger):
+        phaseN = phaseA = phaseB = phaseC = 0
+
+        for phase in self.phases:
+            if phase == 0:
+                phaseN = 1
+            elif phase == 1:
+                phaseA = 1
+            elif phase == 2:
+                phaseB = 1
+            elif phase == 3:
+                phaseC = 1
+            else:
+                logger.add_error(
+                    f"transformer_phases: Incorrect phase value {phase} in {self.name}",
+                    device=self.name
+                )
+                return phaseN, phaseA, phaseB, phaseC
+
+        return phaseN, phaseA, phaseB, phaseC
+
+
     def transformer_admittance(self,
                                vtap_f: float,
                                vtap_t: float,
@@ -574,8 +613,8 @@ class Transformer2W(ControllableBranchParent):
         :return: 3x3 matrices -> Yff, Yft, Ytf, Ytt
         """
 
-        conn_y_from = self.conn_f == WindingType.Star or self.conn_f == WindingType.GroundedStar
-        conn_y_to = self.conn_t == WindingType.Star or self.conn_t == WindingType.GroundedStar
+        conn_y_from = self.conn_f == WindingType.NeutralStar or self.conn_f == WindingType.GroundedStar
+        conn_y_to = self.conn_t == WindingType.NeutralStar or self.conn_t == WindingType.GroundedStar
 
         # phase_displacement = np.deg2rad(self.vector_group_number * 30.0)
         if self.conn_f == WindingType.Delta and conn_y_to: # Dy
@@ -829,7 +868,7 @@ class Transformer2W(ControllableBranchParent):
 
         else:
             logger.add_error("transformer_admittance: Unknown vector group", device=self.name)
-            zeros = np.zeros((3, 3), dtype=float)
+            zeros = np.zeros((4, 4), dtype=float)
             return zeros, zeros, zeros, zeros
 
         return Yff, Yft, Ytf, Ytt

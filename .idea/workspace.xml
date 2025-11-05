@@ -28,18 +28,33 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Validation of FloatingStar Shunts + Test.">
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/13_bus_ieee.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/13_bus_ieee_modified.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Solved three-phase all tests.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3_phase_pf_13bus.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_admittance_matrix.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_admittance_matrix.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_13bus.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_pf_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_Delta_2ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_Delta_2ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_Delta_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_Delta_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_FloatingStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_GroundedStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_GroundedStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_NeutralStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_NeutralStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Current_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Current_NeutralStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_Delta_2ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_Delta_2ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_Delta_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_Delta_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_FloatingStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_GroundedStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_GroundedStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_NeutralStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_NeutralStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Impedance_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Impedance_NeutralStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_Delta_2ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_Delta_2ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_Delta_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_Delta_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_FloatingStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_FloatingStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_GroundedStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_GroundedStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_NeutralStar_1ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_NeutralStar_1ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/Power_NeutralStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/Power_NeutralStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/Neutral/Transformers_Dd/__init__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -183,6 +198,7 @@
     "Python tests.pytest for test_3ph_pf_neutral.test_power_groundedstar_1ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_power_groundedstar_3ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral.test_power_neutralstar_3ph.executor": "Run",
+    "Python tests.pytest for test_3ph_pf_neutral_loads.test_current_delta_2ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral_loads.test_power_groundedstar_3ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_2ph.executor": "Run",
     "Python tests.pytest for test_3ph_pf_neutral_shunts.test_shunt_delta_3ph.executor": "Run",
@@ -734,6 +750,24 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for test_3ph_pf_neutral_loads.test_current_delta_2ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_3ph_pf_neutral_loads.test_current_delta_2ph&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="pytest for test_3ph_pf_neutral_loads.test_power_groundedstar_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
@@ -752,38 +786,20 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Python tests.pytest for test_3ph_admittance_matrix.test_2x2_bc" />
       <item itemvalue="Python tests.pytest for test_3ph_admittance_matrix.test_3x3_abc" />
+      <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_current_delta_2ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_power_groundedstar_3ph" />
       <item itemvalue="Python tests.pytest for test_3ph_pf_driver.test_ieee_13_bus_feeder_driver" />
-      <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_current_delta_2ph" />
         <item itemvalue="Python tests.pytest for test_3ph_admittance_matrix.test_3x3_abc" />
         <item itemvalue="Python tests.pytest for test_3ph_admittance_matrix.test_2x2_bc" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_driver.test_ieee_13_bus_feeder_driver" />
         <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_power_groundedstar_3ph" />
-        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -1914,7 +1930,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="659" />
+    <option name="localTasksCounter" value="660" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1960,7 +1976,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixed gslv version comparison" />
     <MESSAGE value="5.5.9" />
     <MESSAGE value="test_3ph_pf_neutral.py PASSING" />
     <MESSAGE value="Delta and GroundedStar current loads" />
@@ -1985,7 +2000,8 @@
     <MESSAGE value="Validation of 2ph Delta Shunts + Test." />
     <MESSAGE value="Validation of 1ph GroundedStar Shunts + Test." />
     <MESSAGE value="Validation of 3ph and 1ph NeutralStar Shunts + Tests." />
-    <option name="LAST_COMMIT_MESSAGE" value="Validation of 3ph and 1ph NeutralStar Shunts + Tests." />
+    <MESSAGE value="Solved three-phase all tests." />
+    <option name="LAST_COMMIT_MESSAGE" value="Solved three-phase all tests." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2059,6 +2075,16 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker_3ph.py</url>
           <line>374</line>
           <option name="timeStamp" value="2987" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py</url>
+          <line>600</line>
+          <option name="timeStamp" value="2990" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer.py</url>
+          <line>582</line>
+          <option name="timeStamp" value="2991" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

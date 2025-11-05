@@ -42,6 +42,7 @@ XFM_1 = gce.Transformer2W(name='XFM-1',
                           x=2*2)
 XFM_1.conn_f = WindingType.GroundedStar
 XFM_1.conn_t = WindingType.GroundedStar
+XFM_1.phases = np.array([1, 2, 3])
 grid.add_transformer2w(XFM_1)
 
 # ----------------------------------------------------------------------------------------------------------------------
