@@ -15,6 +15,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
     imag, conj, angle, exp, log, abs, piecewise
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+# from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 def _new_uid() -> int:
@@ -90,6 +91,7 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
+                 parameters: List[Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: Dict[str, Var] | None = None,
@@ -133,9 +135,11 @@ class Block:
         self.in_vars: Dict[str, Var] = dict() if in_vars is None else in_vars
         self.out_vars: Dict[str, Var] = dict() if out_vars is None else out_vars
 
-        # self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict if external_mapping is None else {elm.pf_ref: elm
-        #                                                                 for elm in self.algebraic_vars}
+        self.parameters = list() if parameters is None else parameters
+
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
+
+        # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
 
@@ -991,16 +995,15 @@ def load(name: str = "load") -> Block:
     return load_block
 
 
-def line(api_object) -> Block:
+def line(item_name: str, api_object: Any) -> Block:
     line_object = api_object
-    Qf = Var("Qf")
-    Qt = Var("Qt")
-    Pf = Var("Pf")
-    Pt = Var("Pt")
+    Qf = Var("Qf_" + item_name)
+    Qt = Var("Qt_" + item_name)
+    Pf = Var("Pf_" + item_name)
+    Pt = Var("Pt_" + item_name)
 
-    ys = 1.0 / complex(line_object.R, line_object.X)
-    g = Const(ys.real)
-    b = Const(ys.imag)
+    g = Const( 1.0 / complex(line_object.R, line_object.X).real)
+    b = Const( 1.0 / complex(line_object.R, line_object.X).imag)
     bsh = Const(line_object.B)
 
     Vmf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
@@ -1019,15 +1022,14 @@ def line(api_object) -> Block:
         ],
         algebraic_vars=[Pf, Pt, Qf, Qt],
         init_eqs={},
-        init_vars=[],
-        parameters=[],
-        external_mapping={
+        parameters=[])
+    line_block.external_mapping={
             VarPowerFlowRefferenceType.Pf: Pf,
             VarPowerFlowRefferenceType.Pt: Pt,
             VarPowerFlowRefferenceType.Qf: Qf,
             VarPowerFlowRefferenceType.Qt: Qt,
         }
-    )
+    return line_block
 
 
 def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
@@ -1035,7 +1037,6 @@ def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: i
     blk = Block()
     blk.name = "generic"
     input_vars = [Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
-    blk.in_vars = input_vars
 
     for i, v in enumerate(state_outputs):
         var = Var(v)

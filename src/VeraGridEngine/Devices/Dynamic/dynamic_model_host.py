@@ -17,7 +17,6 @@ from VeraGridEngine.enumerations import DeviceType
 
 @dataclass
 class BlockDiagramNode:
-    index: int
     name: str
     x: float
     y: float
@@ -33,7 +32,6 @@ class BlockDiagramNode:
 
     def get_node_dict(self) -> Dict[str, Any]:
         data: Dict[str, Any] = {
-            'index': self.index,
             'name': self.name,
             'x': self.x,
             'y': self.y,
@@ -84,15 +82,13 @@ class BlockDiagram:
 
         :param name: Diagram name
         """
-        self.index: int = 0
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
-    def add_node(self, index: int, name: str, x: float, y: float, tpe: str, device_uid: int, api_object_name: str = "", state_ins: int = 0,
+    def add_node(self, name: str, x: float, y: float, tpe: str, device_uid: int, api_object_name: str = "", state_ins: int = 0,
                  state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [], color = None,
                  subdiagram: BlockDiagram = None):
         """
-        :param index:
         :param api_object_name:
         :param state_ins:
         :param state_outs:
@@ -111,7 +107,6 @@ class BlockDiagram:
         if color is None:
             color = QColor("#C0C0C0")  # light blue
         self.node_data[device_uid] = BlockDiagramNode(
-            index=index,
             name = name,
             x=x,
             y=y,
@@ -167,7 +162,6 @@ class BlockDiagram:
                 subdiagram.parse_branches(node["sub_diagram"]["connections"])
 
             self.node_data[int(uid)] = BlockDiagramNode(
-                index=node['index'],
                 name=node['name'],
                 x=node['x'],
                 y=node['y'],

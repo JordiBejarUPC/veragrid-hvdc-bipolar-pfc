@@ -8,19 +8,19 @@ import numpy as np
 import pandas as pd
 
 
-
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults, ResultsTable
-from VeraGridEngine.enumerations import DeviceType
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QListWidget, QDialogButtonBox, QMenu
 )
 from PySide6.QtCore import Qt, QPoint
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults, ResultsTable
+from VeraGridEngine.enumerations import DeviceType
 import numpy as np
 import pandas as pd
 
@@ -183,11 +183,34 @@ class RmsPlotDialog(QDialog):
     # -------------------------------------------------------------
 
     def show_external_plot(self):
-
         if not self.selected_vars:
             return
 
         selected_col_idx = [self.uid2idx[uid] for uid in self.selected_vars]
-        fig, ax = plt.subplots(figsize=(10, 5))
+
+        # Create a separate dialog for the plot
+        external_dialog = QDialog(self)
+        external_dialog.setWindowTitle("Plot Window")
+        external_dialog.resize(900, 500)
+
+        layout = QVBoxLayout(external_dialog)
+
+        # Create figure and canvas
+        figure = Figure(figsize=(10, 5))
+        ax = figure.add_subplot(111)
+        canvas = FigureCanvas(figure)
+
+        # Add Matplotlib toolbar (includes Save, Zoom, Pan, etc.)
+        toolbar = NavigationToolbar(canvas, external_dialog)
+        layout.addWidget(toolbar)
+
+        layout.addWidget(canvas)
+
+        # Plot data
         self.results_table.plot(ax=ax, selected_col_idx=selected_col_idx)
-        plt.show(block=False)
+        canvas.draw()
+
+        external_dialog.show()
+
+
+

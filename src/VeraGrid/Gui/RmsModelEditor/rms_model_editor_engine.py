@@ -10,7 +10,7 @@ import sys
 import copy
 
 from enum import Enum, auto
-from typing import List, Dict, Optional, Union, Sequence
+from typing import List, Dict, Optional, Union, Sequence, Any
 from dataclasses import dataclass
 from functools import partial
 from PySide6 import QtWidgets
@@ -36,6 +36,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
     genqec,
     governor,
     exciter,
+    line,
     generic
 )
 
@@ -127,6 +128,7 @@ class BlockType(Enum):
     GENQEC = auto()
     GOVERNOR = auto()
     EXCITER = auto()
+    LINE = auto()
     GENERIC = auto()
     BUS_CONNECTION = auto()
 
@@ -558,7 +560,7 @@ class BlockItem(QGraphicsRectItem):
         return layout
 
 class ModelHostItem(QGraphicsRectItem):
-    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, templates_list, templates_catalogue):
+    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, api_object, templates_list, templates_catalogue):
         """
 
         :param block_sys: Block
@@ -572,6 +574,7 @@ class ModelHostItem(QGraphicsRectItem):
         self.api_object_name = api_object_name
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
+        self.api_object = api_object
 
         # ---------------------------
         # Graphical stuff
@@ -620,7 +623,7 @@ class ModelHostItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
 
-        editor_window = RmsModelEditorGUI(api_object_name = self.api_object_name, api_object_model_host=self.model_host, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue)
+        editor_window = RmsModelEditorGUI(api_object_model_host=self.model_host, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue, api_object_name = self.api_object_name, api_object= self.api_object)
         editor_window.show()
 
         self.editor_window = editor_window
@@ -889,7 +892,7 @@ class GraphicsView(QGraphicsView):
 
 
 
-def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block | None:
+def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str = "") -> Block | None:
     """
     Create a Block appropriate for block_type.
     """
@@ -946,6 +949,11 @@ def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block | 
     # GOVERNOR (governor with control)
     if block_type == BlockType.EXCITER:
         blk = exciter(item_name)
+        return blk
+
+    # LINE (line)
+    if block_type == BlockType.LINE:
+        blk = line(item_name, api_object)
         return blk
 
     else:
@@ -1231,19 +1239,28 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.Va = Va
 
             if self.selected_template.tpe == DeviceType.LineDevice:
+                # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
                 Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
                 self.selected_template.Vmf = Vmf
                 self.selected_template.Vaf = Vaf
                 self.selected_template.Vmt = Vmt
                 self.selected_template.Vat = Vat
+                # power flow parameters
+                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
+                self.selected_template.R = R
+                self.selected_template.X = X
+                self.selected_template.B = B
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
         self.template_name_label.setStyleSheet("font-size: 12pt; margin-top: 8px;")
         self.template_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        self.load_params_table(self.selected_template)
+        # call editable parameters dialog
+        if hasattr(self.selected_template, 'event_dict'):
+            if self.selected_template.event_dict:
+                self.load_params_table(self.selected_template)
         self.btn_apply_template.setEnabled(True)
 
     def load_params_table(self, selected_template):
@@ -1437,7 +1454,8 @@ class BlockBoxesEditor(QSplitter):
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
 
-        self.nodes_index = 0
+        # self.nodes_index = 0
+        # self.children_dict = dict()
 
 
 
@@ -1515,15 +1533,14 @@ class BlockBoxesEditor(QSplitter):
                 bus_from_con_item.setPos(x0, y0)
                 # save nodes in diagram
                 self.diagram.add_node(
-                    index=self.nodes_index,
                     name=name,
                     x=x0,
                     y=y0,
                     tpe=tpe.name,
                     device_uid=bus_from_con_item.subsys.uid,
                 )
-                self.nodes_index += 1
-                self.diagram.index += 1
+                # self.nodes_index += 1
+                # self.diagram.index += 1
 
             # add con bus to
             name = "Conn To"
@@ -1552,15 +1569,14 @@ class BlockBoxesEditor(QSplitter):
                 bus_to_con_item.setPos(QPointF(x0, y0))
                 # save nodes in diagram
                 self.diagram.add_node(
-                    index=self.nodes_index,
                     name=name,
                     x=x0,
                     y=y0,
                     tpe=tpe.name,
                     device_uid=bus_to_con_item.subsys.uid,
                 )
-                self.nodes_index += 1
-                self.diagram.index += 1
+                # self.nodes_index += 1
+                # self.diagram.index += 1
 
 
         else:
@@ -1585,15 +1601,14 @@ class BlockBoxesEditor(QSplitter):
                 bus_con_item.setPos(x0, y0)
                 # save nodes in diagram
                 self.diagram.add_node(
-                    index=self.nodes_index,
                     name=name,
                     x=x0,
                     y=y0,
                     tpe=tpe.name,
                     device_uid=bus_con_item.subsys.uid,
                 )
-                self.nodes_index += 1
-                self.diagram.index += 1
+                # self.nodes_index += 1
+                # self.diagram.index += 1
 
 
     def open_inspect_dialog(self):
@@ -1726,13 +1741,12 @@ class BlockBoxesEditor(QSplitter):
 
                     model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
                     self.main_block.add(model_host.model)
-                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list, self.templates_catalogue)
+                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list, self.templates_catalogue, self.api_object)
 
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
-                        index=self.nodes_index,
                         name = name,
                         x=x0,
                         y=y0,
@@ -1745,8 +1759,6 @@ class BlockBoxesEditor(QSplitter):
                         algeb_outs=algeb_outs,
                         subdiagram= model_host.diagram
                     )
-                    self.nodes_index +=1
-                    self.diagram.index +=1
 
             else:
 
@@ -1758,7 +1770,7 @@ class BlockBoxesEditor(QSplitter):
                     if name:
                         item = BlockItem(name=name)
 
-                        block = create_block_of_type(item_name=name, block_type=tpe)
+                        block = create_block_of_type(block_type=tpe, item_name=name, api_object = self.api_object, )
                         item.set_subsystem(block)
                         item.build_item()
 
@@ -1770,15 +1782,12 @@ class BlockBoxesEditor(QSplitter):
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
-                        index = self.nodes_index,
                         name = name,
                         x=x0,
                         y=y0,
                         tpe=tpe.name,
                         device_uid=item.subsys.uid,
                     )
-                    self.nodes_index += 1
-                    self.diagram.index += 1
 
     def rebuild_scene_from_diagram(self):
         """Rebuilds the graphical scene from saved diagram data"""
@@ -1786,8 +1795,8 @@ class BlockBoxesEditor(QSplitter):
 
         uid_to_blockitem = {}
 
-        # set number of nodes of the editor
-        self.nodes_index = self.diagram.index
+        # # set number of nodes of the editor
+        # self.nodes_index = self.diagram.index
 
         # Recreate nodes
         for uid, node in self.diagram.node_data.items():
@@ -1795,14 +1804,12 @@ class BlockBoxesEditor(QSplitter):
             if block_type == BlockType.GENERIC:
 
                 model_host = DynamicModelHost()
-                # model_host.model = create_generic_block(
-                #     node.state_ins, node.state_outs,
-                #     node.algeb_ins, node.algeb_outs
-                # )
-                model_host.model = self.main_block.children[node.index]
-                model_host.model.children = self.main_block.children[node.index].children
-                # if self.api_object is None:
-                #     self.main_block.add(model_host.model)
+
+                model_host.model = Block()
+                for model in self.main_block.children:
+                    if model.uid == node.device_uid:
+                        model_host.model = model
+
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
                 item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
@@ -1816,14 +1823,10 @@ class BlockBoxesEditor(QSplitter):
 
             elif block_type == BlockType.BUS_CONNECTION:
                 bus_con_item = BlockItem(name=node.name)
-                # Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-                #
-                # bus_con_blk = Block()
-                # bus_con_blk.out_vars[str(0)] = Vm
-                # bus_con_blk.out_vars[str(1)] = Va
-                # bus_con_blk.name = node.name
-                # bus_con_blk.uid = uid
-                bus_con_blk = self.main_block.children[node.index]
+                bus_con_blk = Block()
+                for model in self.main_block.children:
+                    if model.uid == node.device_uid:
+                        bus_con_blk = model
 
                 bus_con_item.set_subsystem(bus_con_blk)
                 bus_con_item.build_item()
@@ -1837,9 +1840,10 @@ class BlockBoxesEditor(QSplitter):
             else:
 
                 block_item = BlockItem(name=node.name)
-                block = self.main_block.children[node.index]
-                # block = create_block_of_type(item_name=node.name, block_type=block_type)
-                block.uid = uid
+                block = Block()
+                for model in self.main_block.children:
+                    if model.uid == node.device_uid:
+                        block = model
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 if block_item.subsys is not None:
@@ -2086,7 +2090,7 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
     def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
-                 api_object=None, parent=None):
+                 api_object=None, main_editor = False,  parent=None):
         super().__init__(parent)
 
         self.ui = Ui_MainWindow()
@@ -2100,6 +2104,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
         self.api_object = api_object
+        self.main_editor = main_editor
 
         # --- templates editor layout ---
         self.template_editor = TemplateEditor(
@@ -2119,8 +2124,9 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object
         )
         # === Add default bus connection block if diagram is empty ===
-        if not self.blockboxes_editor.diagram.node_data and self.api_object is not None:
+        if not self.blockboxes_editor.diagram.node_data and main_editor is not None:
             self.blockboxes_editor.add_connection_vars()
+        # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
         self.blockboxes_editor.view.centerOn(0, 0)

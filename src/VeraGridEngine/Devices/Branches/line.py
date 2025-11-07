@@ -86,7 +86,7 @@ class Line(BranchParent):
                  name='Line',
                  idtag=None,
                  code='',
-                 r=1e-20, x=0.00001, b=1e-20,
+                 r=1e-20, x=0.00001, b=4,
                  rate=1.0,
                  active=True,
                  tolerance=0.0,
@@ -713,10 +713,9 @@ class Line(BranchParent):
             Pf = Var("Pf")
             Pt = Var("Pt")
 
-            ys = 1.0 / complex(self.R, self.X)
-            g = Var("g")
-            b = Var("b")
-            bsh = Var("bsh")
+            g = Const((1.0 / complex(self.R, self.X)).real)
+            b = Const((1.0 / complex(self.R, self.X)).imag)
+            bsh =  self.B
 
             Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
@@ -744,9 +743,5 @@ class Line(BranchParent):
                 VarPowerFlowRefferenceType.Qf: Qf,
                 VarPowerFlowRefferenceType.Qt: Qt,
             }
-
-            block.event_dict = {g: Const(ys.real),
-                                b: Const(ys.imag),
-                                bsh:  Const(self.B)}
 
             self.rms_model.model = block
