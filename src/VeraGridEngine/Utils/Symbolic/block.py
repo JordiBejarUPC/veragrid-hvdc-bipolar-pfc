@@ -684,7 +684,9 @@ def genqec(name: str = "") -> Block:
 
     return generator_block
 
-def governor_controlled(name: str = "") -> Block:
+def governor(name: str = "") -> Block:
+
+
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
@@ -784,73 +786,87 @@ def governor_controlled(name: str = "") -> Block:
         ],
         algebraic_vars=[T_aux],
     )
-    controller_block.event_dict = events_dict
 
-    # TODO: to revuew this last part
-    u1 = omega - omega_ref
-    lead_lag_block, y1 = tf_to_diffblock(
-        num=[1, T2],
-        den=[1, T1],
-        x=u1,
-        name='gov0',
-    )
+    # TODO: to review this last part
+    # u1 = omega - omega_ref
+    # lead_lag_block, y1 = tf_to_diffblock(
+    #     num=[1, T2],
+    #     den=[1, T1],
+    #     x=u1,
+    #     name='gov0',
+    # )
+    #
+    # # ==============================
+    # # First Feed back Loop
+    # y2_3 = Var('y2_3_gov')
+    # algebraic_vars.append(y2_3)
+    # x2 = Pm_ref - K * y1 - y2_3
+    #
+    # y2 = x2 * (1 / T3)
+    # y2_1 = hard_sat(y2, Uc, Uo)
+    # tf1, y2_2 = tf_to_diffblock(
+    #     num=[1],
+    #     den=[0, 1],
+    #     x=y2_1,
+    #     name='gov1',
+    # )
+    # algebraic_eqs.append(y2_3 - hard_sat(y2_2, Pmin, Pmax))
+    #
+    # # ==============================
+    # # We compute different outputs for every tf
+    # tf2, y3_1 = tf_to_diffblock(
+    #     num=[1],
+    #     den=[1, T4],
+    #     x=y2_3,
+    #     name='gov2',
+    # )
+    # tf3, y3_2 = tf_to_diffblock(
+    #     num=[1],
+    #     den=[1, T5],
+    #     x=y3_1,
+    #     name='gov3',
+    # )
+    # tf4, y3_3 = tf_to_diffblock(
+    #     num=[1],
+    #     den=[1, T6],
+    #     x=y3_2,
+    #     name='gov4',
+    # )
+    # tf5, y3_4 = tf_to_diffblock(
+    #     num=[1],
+    #     den=[1, T7],
+    #     x=y3_3,
+    #     name='gov5',
+    # )
+    #
+    # u = K1 * y3_1 + K2 * y3_2 + K3 * y3_3 + K4 * y3_4 + T_aux
+    # aux_block = Block(
+    #     algebraic_eqs=[
+    #                       u - Tm
+    #                   ]
+    #                   + algebraic_eqs,
+    #     algebraic_vars=[Tm] + algebraic_vars,
+    # )
 
-    # ==============================
-    # First Feed back Loop
-    y2_3 = Var('y2_3_gov')
-    algebraic_vars.append(y2_3)
-    x2 = Pm_ref - K * y1 - y2_3
+    # governor_block = Block(
+    #     children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block]
+    # )
+    governor_block = Block()
 
-    y2 = x2 * (1 / T3)
-    y2_1 = hard_sat(y2, Uc, Uo)
-    tf1, y2_2 = tf_to_diffblock(
-        num=[1],
-        den=[0, 1],
-        x=y2_1,
-        name='gov1',
-    )
-    algebraic_eqs.append(y2_3 - hard_sat(y2_2, Pmin, Pmax))
+    governor_block.event_dict = events_dict
 
-    # ==============================
-    # We compute different outputs for every tf
-    tf2, y3_1 = tf_to_diffblock(
-        num=[1],
-        den=[1, T4],
-        x=y2_3,
-        name='gov2',
-    )
-    tf3, y3_2 = tf_to_diffblock(
-        num=[1],
-        den=[1, T5],
-        x=y3_1,
-        name='gov3',
-    )
-    tf4, y3_3 = tf_to_diffblock(
-        num=[1],
-        den=[1, T6],
-        x=y3_2,
-        name='gov4',
-    )
-    tf5, y3_4 = tf_to_diffblock(
-        num=[1],
-        den=[1, T7],
-        x=y3_3,
-        name='gov5',
-    )
+    governor_block.out_vars[str(0)] = Tm
 
-    u = K1 * y3_1 + K2 * y3_2 + K3 * y3_3 + K4 * y3_4 + T_aux
-    aux_block = Block(
-        algebraic_eqs=[
-                          u - Tm
-                      ]
-                      + algebraic_eqs,
-        algebraic_vars=[Tm] + algebraic_vars,
-    )
-
-    governor_block = Block(
-        children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block]
-    )
     return governor_block
+
+def exciter(item_name:str = "") -> Block:
+
+    vf = Var("vf" + item_name)
+    blk = Block()
+    blk.in_vars = dict()
+    blk.out_vars[str(0)] = vf
+    blk.name = "const"
+    return blk
 
 
 

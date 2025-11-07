@@ -6,6 +6,9 @@ from __future__ import annotations
 
 from typing import List, Dict, Any, Union, Sequence
 from dataclasses import dataclass
+
+from PySide6.QtGui import QColor
+
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -25,6 +28,7 @@ class BlockDiagramNode:
     state_outs: Sequence[str]
     algeb_ins: int
     algeb_outs: Sequence[str]
+    color: QColor
     sub_diagram: "BlockDiagram" = None
 
     def get_node_dict(self) -> Dict[str, Any]:
@@ -39,7 +43,8 @@ class BlockDiagramNode:
             'state_ins': self.state_ins,
             'state_outs': self.state_outs,
             'algeb_ins': self.algeb_ins,
-            'algeb_outs': self.algeb_outs
+            'algeb_outs': self.algeb_outs,
+            'color': self.color
         }
         if self.sub_diagram is not None:
             data['sub_diagram'] = {
@@ -79,11 +84,12 @@ class BlockDiagram:
 
         :param name: Diagram name
         """
+        self.index: int = 0
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
     def add_node(self, index: int, name: str, x: float, y: float, tpe: str, device_uid: int, api_object_name: str = "", state_ins: int = 0,
-                 state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [],
+                 state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [], color = None,
                  subdiagram: BlockDiagram = None):
         """
         :param index:
@@ -97,9 +103,13 @@ class BlockDiagram:
         :param y:
         :param device_uid:
         :param tpe:
+        :param color:
         :param subdiagram:
         :return:
         """
+
+        if color is None:
+            color = QColor("#C0C0C0")  # light blue
         self.node_data[device_uid] = BlockDiagramNode(
             index=index,
             name = name,
@@ -112,6 +122,7 @@ class BlockDiagram:
             state_outs=state_outs,
             algeb_ins=algeb_ins,
             algeb_outs=algeb_outs,
+            color=color,
             sub_diagram=subdiagram
         )
 
@@ -167,6 +178,7 @@ class BlockDiagram:
                 state_outs=node['state_outs'],
                 algeb_ins=node['algeb_ins'],
                 algeb_outs=node['algeb_outs'],
+                color=node['color'],
                 sub_diagram=subdiagram
             )
 

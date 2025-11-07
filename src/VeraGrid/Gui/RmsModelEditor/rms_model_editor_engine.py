@@ -8,6 +8,7 @@ import uuid
 import pdb
 import sys
 import copy
+
 from enum import Enum, auto
 from typing import List, Dict, Optional, Union, Sequence
 from dataclasses import dataclass
@@ -17,11 +18,11 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QComboBox, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
                                QListView, QAbstractItemView, QPushButton, QListWidget, QInputDialog, QWidget,
-                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem, QMessageBox)
+                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem,
+                               QMessageBox, QColorDialog)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QPoint
-
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     constant,
@@ -33,6 +34,8 @@ from VeraGridEngine.Utils.Symbolic.block import (
     absolut,
     generator,
     genqec,
+    governor,
+    exciter,
     generic
 )
 
@@ -42,8 +45,6 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, sy
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType
 
-
-#### block editor ########
 
 def _new_uid() -> int:
     """
@@ -62,6 +63,47 @@ def change_font_size(obj, font_size: int):
     font1 = obj.font()
     font1.setPointSize(font_size)
     obj.setFont(font1)
+
+def _get_var_name_from_subsys(subsys, is_input: bool, index: int) -> str:
+    """
+    Devuelve el nombre de la variable correspondiente al port.
+    Soporta subsys.in_vars/out_vars que sean listas o diccionarios indexados por str(index).
+    """
+    try:
+        if is_input:
+            container = getattr(subsys, "in_vars", None)
+        else:
+            container = getattr(subsys, "out_vars", None)
+
+        if container is None:
+            return "<no var>"
+
+        # primero intentamos como lista/sequence (index entero)
+        try:
+            var = container[index]
+        except Exception:
+            # intentamos como dict con clave string (ej. container['0'])
+            try:
+                var = container[str(index)]
+            except Exception:
+                # fallback: si es dict y tiene keys ordenadas, intentamos convertir index a posición
+                if isinstance(container, dict):
+                    keys = list(container.keys())
+                    try:
+                        var = container[keys[index]]
+                    except Exception:
+                        return "<no var>"
+                else:
+                    return "<no var>"
+
+        # Intentamos sacar el atributo .name si existe
+        if hasattr(var, "name"):
+            return var.name
+        # si es sympy symbol u otro, str() es la opción
+        return str(var)
+    except Exception:
+        return "<no var>"
+
 
 
 @dataclass
@@ -83,6 +125,8 @@ class BlockType(Enum):
     ABS = auto()
     GENERATOR = auto()
     GENQEC = auto()
+    GOVERNOR = auto()
+    EXCITER = auto()
     GENERIC = auto()
     BUS_CONNECTION = auto()
 
@@ -271,6 +315,8 @@ class BlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setAcceptHoverEvents(True)
 
+        self.setBrush(QBrush(QColor("#C0C0C0")))
+
     def set_subsystem(self, block: Block):
         self.subsys = block
 
@@ -284,6 +330,15 @@ class BlockItem(QGraphicsRectItem):
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+
+        # --- assign tooltips with the corresponding variable names---
+        for i, port in enumerate(self.inputs):
+            var_name = _get_var_name_from_subsys(self.subsys, is_input=True, index=i)
+            port.setToolTip(f"Input {i}: {var_name}")
+
+        for i, port in enumerate(self.outputs):
+            var_name = _get_var_name_from_subsys(self.subsys, is_input=False, index=i)
+            port.setToolTip(f"Output {i}: {var_name}")
 
         self.resize_handle = ResizeHandle(self)
 
@@ -539,6 +594,17 @@ class ModelHostItem(QGraphicsRectItem):
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+
+        self.setBrush(QBrush(QColor("#C0C0C0")))
+
+        # --- assign tooltips with the assigned variable name ---
+        for i, port in enumerate(self.inputs):
+            var_name = _get_var_name_from_subsys(self.model_host.model, is_input=True, index=i)
+            port.setToolTip(f"Input {i}: {var_name}")
+
+        for i, port in enumerate(self.outputs):
+            var_name = _get_var_name_from_subsys(self.model_host.model, is_input=False, index=i)
+            port.setToolTip(f"Output {i}: {var_name}")
 
         self.resize_handle = ResizeHandle(self)
 
@@ -872,6 +938,16 @@ def create_block_of_type(block_type: BlockType, item_name: str = "") -> Block | 
         blk = genqec(item_name)
         return blk
 
+    # GOVERNOR (governor with control)
+    if block_type == BlockType.GOVERNOR:
+        blk = governor(item_name)
+        return blk
+
+    # GOVERNOR (governor with control)
+    if block_type == BlockType.EXCITER:
+        blk = exciter(item_name)
+        return blk
+
     else:
         return None
 
@@ -893,21 +969,46 @@ class DiagramScene(QGraphicsScene):
     def get_main_block(self):
         return self._main_block
 
+    def change_item_fill_color(self, item:Union[BlockItem, ModelHostItem, ConnectionItem]):
+        new_color = QColorDialog.getColor()
+        if new_color.isValid():
+            if isinstance(item,(BlockItem, ModelHostItem)):
+                brush = item.brush()
+                brush.setColor(new_color)
+                item.setBrush(brush)
+                self.update()
+
+                # save new color in diagram
+                self.editor.diagram.node_data[item.subsys.uid].color = new_color
+            if isinstance(item, ConnectionItem):
+                pen = item.pen()
+                pen.setColor(new_color)
+                item.setPen(pen)
+                self.update()
+
+                # save new color in diagram
+                self.editor.diagram.con_data[item.uid].color = new_color
+
+
     def contextMenuEvent(self, event):
         items = self.items(event.scenePos())
         if not items:
             return
 
         for item in items:
-            if isinstance(item, (BlockItem, ModelHostItem)):
+            if isinstance(item, (BlockItem, ModelHostItem, ConnectionItem)):
                 menu = QMenu()
+
                 remove_action = QAction("Remove Block", menu)
                 menu.addAction(remove_action)
+                remove_action.triggered.connect(lambda checked=False, it=item: self.editor.remove_item(it))
 
-                # Safer binding (avoids bool argument issue)
-                remove_action.triggered.connect(partial(self.editor.remove_item, item))
+                color_action = QAction("Change Color", menu)
+                # ✅ Don't call the function here, just connect the callable
+                color_action.triggered.connect(lambda checked=False, it=item: self.change_item_fill_color(it))
+                menu.addAction(color_action)
 
-                # Show the context menu at the mouse cursor position
+                # Show context menu at cursor
                 menu.exec(event.screenPos())
                 break
 
@@ -1388,34 +1489,111 @@ class BlockBoxesEditor(QSplitter):
 
         bus_con_item = None
         tpe = BlockType.BUS_CONNECTION
-        name = "bus_connection"
-        top_left_scene = self.view.mapToScene(QPoint(20, 20))
-        x0, y0 = 0, 0
-        bus_con_item = BlockItem(name=name)
-        Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
 
-        bus_con_blk = Block()
-        bus_con_blk.out_vars[str(0)] = Vm
-        bus_con_blk.out_vars[str(1)] = Va
-        bus_con_blk.name = name
+        if self.api_object.device_type == DeviceType.LineDevice:
 
-        bus_con_item.set_subsystem(bus_con_blk)
-        bus_con_item.build_item()
+            # add con bus from
+            x0, y0 = 0, 0
+            name = "Conn From"
+            bus_from_con_item = BlockItem(name=name)
 
-        if bus_con_item.subsys is not None:
-            self.scene.addItem(bus_con_item)
-            bus_con_item.setPos(QPointF(x0, y0))
-            # save nodes in diagram
-            self.diagram.add_node(
-                index=self.nodes_index,
-                name=name,
-                x=x0,
-                y=y0,
-                tpe=tpe.name,
-                device_uid=bus_con_item.subsys.uid,
-            )
-            self.nodes_index += 1
-        self.nodes_index +=1
+            Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
+
+
+            bus_from_con_blk = Block()
+            bus_from_con_blk.out_vars[str(0)] = Vmf
+            bus_from_con_blk.out_vars[str(1)] = Vaf
+            bus_from_con_blk.name = name
+
+            self.main_block.add(bus_from_con_blk)
+
+            bus_from_con_item.set_subsystem(bus_from_con_blk)
+            bus_from_con_item.build_item()
+
+            if bus_from_con_item.subsys is not None:
+                self.scene.addItem(bus_from_con_item)
+                bus_from_con_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    index=self.nodes_index,
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_from_con_item.subsys.uid,
+                )
+                self.nodes_index += 1
+                self.diagram.index += 1
+
+            # add con bus to
+            name = "Conn To"
+            x0, y0 = 0, 100
+
+            bus_to_con_item = BlockItem(name=name)
+
+            Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+
+            bus_to_con_blk = Block()
+            bus_to_con_blk.out_vars[str(0)] = Vmt
+            bus_to_con_blk.out_vars[str(1)] = Vat
+            bus_to_con_blk.name = name
+
+            self.main_block.add(bus_to_con_blk)
+
+            bus_to_con_item.set_subsystem(bus_to_con_blk)
+            bus_to_con_item.build_item()
+
+            # Add to scene
+            self.scene.addItem(bus_to_con_item)
+            bus_to_con_item.setPos(QPointF(x0, y0))
+            if bus_to_con_item.subsys is not None:
+                # pdb.set_trace()
+                self.scene.addItem(bus_to_con_item)
+                bus_to_con_item.setPos(QPointF(x0, y0))
+                # save nodes in diagram
+                self.diagram.add_node(
+                    index=self.nodes_index,
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_to_con_item.subsys.uid,
+                )
+                self.nodes_index += 1
+                self.diagram.index += 1
+
+
+        else:
+            x0, y0 = 0, 0
+            name = "Conn Bus"
+
+            bus_con_item = BlockItem(name=name)
+            Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+
+            bus_con_blk = Block()
+            bus_con_blk.out_vars[str(0)] = Vm
+            bus_con_blk.out_vars[str(1)] = Va
+            bus_con_blk.name = name
+
+            self.main_block.add(bus_con_blk)
+
+            bus_con_item.set_subsystem(bus_con_blk)
+            bus_con_item.build_item()
+
+            if bus_con_item.subsys is not None:
+                self.scene.addItem(bus_con_item)
+                bus_con_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    index=self.nodes_index,
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_con_item.subsys.uid,
+                )
+                self.nodes_index += 1
+                self.diagram.index += 1
 
 
     def open_inspect_dialog(self):
@@ -1449,47 +1627,62 @@ class BlockBoxesEditor(QSplitter):
         # Mostrar el diálogo
         dialog.exec()
 
-    def remove_item(self, item: BlockItem | ModelHostItem):
+    def remove_item(self, item: BlockItem | ModelHostItem | ConnectionItem):
+
+        # remove connection from scene
+        if isinstance(item, ConnectionItem):
+
+            del self.diagram.con_data[item.uid]
+            self.scene.removeItem(item)
+
+            source_port = item.source_port
+            target_port = item.target_port
+
+            source_port.connection = None
+            target_port.connection = None
+
+            dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+
+            for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
+                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+            for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
+                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                target_port.subsystem.subsys.state_eqs[i] = new_equ
+
+
+
         # remove item from scene
-        for port in item.inputs + item.outputs:
+        if isinstance(item, (BlockItem, ModelHostItem)):
+            for port in item.inputs + item.outputs:
 
-            if port.connection:
-                del self.diagram.con_data[port.connection.uid]
-                self.scene.removeItem(port.connection)
+                if port.connection:
+                    del self.diagram.con_data[port.connection.uid]
+                    self.scene.removeItem(port.connection)
 
-                source_port = port.connection.source_port
-                target_port = port.connection.target_port
+                    source_port = port.connection.source_port
+                    target_port = port.connection.target_port
 
-                source_port.connection = None
-                target_port.connection = None
+                    source_port.connection = None
+                    target_port.connection = None
 
-                dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+                    dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
-                for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                    new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                    target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
-                for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                    new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                    target_port.subsystem.subsys.state_eqs[i] = new_equ
-                #
-                # if port.connection.source_port:
-                #     port.connection.source_port.connection = None
-                #
-                # elif port.connection.target_port:
-                #     port.connection.target_port.connection = None
-                # #
-                # port.connection.source_port.connection = None
-                # port.connection.target_port.connection = None
+                    for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
+                        new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                        target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                    for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
+                        new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                        target_port.subsystem.subsys.state_eqs[i] = new_equ
 
+            self.scene.removeItem(item)
 
-        self.scene.removeItem(item)
-
-        # remove block from main_block
-        for sub_block in self.main_block.children:
-            if sub_block.uid == item.subsys.uid:
-                self.main_block.children.remove(sub_block)
-        # remove data from diagram
-        del self.diagram.node_data[item.subsys.uid]
+            # remove block from main_block
+            for sub_block in self.main_block.children:
+                if sub_block.uid == item.subsys.uid:
+                    self.main_block.children.remove(sub_block)
+            # remove data from diagram
+            del self.diagram.node_data[item.subsys.uid]
 
     def graphicsDragEnterEvent(self, event: QDragEnterEvent) -> None:
         """
@@ -1553,6 +1746,7 @@ class BlockBoxesEditor(QSplitter):
                         subdiagram= model_host.diagram
                     )
                     self.nodes_index +=1
+                    self.diagram.index +=1
 
             else:
 
@@ -1584,6 +1778,7 @@ class BlockBoxesEditor(QSplitter):
                         device_uid=item.subsys.uid,
                     )
                     self.nodes_index += 1
+                    self.diagram.index += 1
 
     def rebuild_scene_from_diagram(self):
         """Rebuilds the graphical scene from saved diagram data"""
@@ -1591,17 +1786,20 @@ class BlockBoxesEditor(QSplitter):
 
         uid_to_blockitem = {}
 
+        # set number of nodes of the editor
+        self.nodes_index = self.diagram.index
+
         # Recreate nodes
         for uid, node in self.diagram.node_data.items():
             block_type = BlockType[node.tpe]
             if block_type == BlockType.GENERIC:
 
                 model_host = DynamicModelHost()
-                model_host.model = create_generic_block(
-                    node.state_ins, node.state_outs,
-                    node.algeb_ins, node.algeb_outs
-                )
-
+                # model_host.model = create_generic_block(
+                #     node.state_ins, node.state_outs,
+                #     node.algeb_ins, node.algeb_outs
+                # )
+                model_host.model = self.main_block.children[node.index]
                 model_host.model.children = self.main_block.children[node.index].children
                 # if self.api_object is None:
                 #     self.main_block.add(model_host.model)
@@ -1610,17 +1808,22 @@ class BlockBoxesEditor(QSplitter):
                 item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
                 self.scene.addItem(item)
                 item.setPos(QPointF(node.x, node.y))
+                brush = item.brush()
+                brush.setColor(node.color)
+                item.setBrush(brush)
+
                 uid_to_blockitem[uid] = item
 
             elif block_type == BlockType.BUS_CONNECTION:
                 bus_con_item = BlockItem(name=node.name)
-                Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-
-                bus_con_blk = Block()
-                bus_con_blk.out_vars[str(0)] = Vm
-                bus_con_blk.out_vars[str(1)] = Va
-                bus_con_blk.name = node.name
-                bus_con_blk.uid = uid
+                # Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+                #
+                # bus_con_blk = Block()
+                # bus_con_blk.out_vars[str(0)] = Vm
+                # bus_con_blk.out_vars[str(1)] = Va
+                # bus_con_blk.name = node.name
+                # bus_con_blk.uid = uid
+                bus_con_blk = self.main_block.children[node.index]
 
                 bus_con_item.set_subsystem(bus_con_blk)
                 bus_con_item.build_item()
@@ -1634,8 +1837,8 @@ class BlockBoxesEditor(QSplitter):
             else:
 
                 block_item = BlockItem(name=node.name)
-
-                block = create_block_of_type(item_name=node.name, block_type=block_type)
+                block = self.main_block.children[node.index]
+                # block = create_block_of_type(item_name=node.name, block_type=block_type)
                 block.uid = uid
                 block_item.set_subsystem(block)
                 block_item.build_item()
@@ -1643,6 +1846,9 @@ class BlockBoxesEditor(QSplitter):
 
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
+                    brush = block_item.brush()
+                    brush.setColor(node.color)
+                    block_item.setBrush(brush)
                 uid_to_blockitem[uid] = block_item
 
 
@@ -1661,6 +1867,9 @@ class BlockBoxesEditor(QSplitter):
 
             connection = ConnectionItem(src_port, dst_port)
             connection.uid = uid
+            pen = connection.pen()
+            pen.setColor(con.color)
+            connection.setPen(pen)
             self.scene.addItem(connection)
 
         self.block_system = self.scene.get_main_block()
