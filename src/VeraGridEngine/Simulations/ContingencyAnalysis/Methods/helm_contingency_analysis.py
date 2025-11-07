@@ -43,9 +43,9 @@ def helm_contingency_analysis(grid: MultiCircuit,
     results = ContingencyAnalysisResults(ncon=len(grid.contingency_groups),
                                          nbr=numerical_circuit.nbr,
                                          nbus=numerical_circuit.nbus,
-                                         branch_names=numerical_circuit.branch_names,
-                                         bus_names=numerical_circuit.bus_names,
-                                         bus_types=numerical_circuit.bus_types,
+                                         branch_names=numerical_circuit.passive_branch_data.names,
+                                         bus_names=numerical_circuit.bus_data.names,
+                                         bus_types=numerical_circuit.bus_data.bus_types,
                                          con_names=grid.get_contingency_group_names())
 
     # get contingency groups dictionary
@@ -65,6 +65,8 @@ def helm_contingency_analysis(grid: MultiCircuit,
                                   options=pf_opts)
 
     helm_variations = HelmVariations(numerical_circuit=numerical_circuit)
+
+    Sbus = numerical_circuit.get_power_injections_pu()
 
     # for each contingency group
     for ic, contingency_group in enumerate(grid.contingency_groups):
@@ -97,7 +99,7 @@ def helm_contingency_analysis(grid: MultiCircuit,
         V, Sf, loading = helm_variations.compute_variations(contingency_br_indices=contingency_br_indices)
 
         results.Sf[ic, :] = Sf
-        results.Sbus[ic, :] = numerical_circuit.Sbus
+        results.Sbus[ic, :] = Sbus
         results.loading[ic, :] = loading
         results.report.analyze(t=t,
                                t_prob=t_prob,
