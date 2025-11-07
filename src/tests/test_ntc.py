@@ -372,7 +372,6 @@ def test_issue_372_3():
         The HVDC power must be: P0 + angle_droop · (theta_f − theta_t) (all in proper units)
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
     fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -722,7 +721,8 @@ def test_ntc_pmode_saturation() -> None:
     grid = gce.open_file(fname)
 
     grid.hvdc_lines[0].control_mode = gce.HvdcControlType.type_0_free
-    grid.hvdc_lines[0].angle_droop = 0.2  # this will force a greater pmode3 flow
+    # grid.hvdc_lines[0].angle_droop = 0.2  # this will force a greater pmode3 flow
+    grid.hvdc_lines[0].angle_droop = 2000  # this will force a greater pmode3 flow
 
     grid.hvdc_lines[1].control_mode = gce.HvdcControlType.type_1_Pset
 
@@ -779,7 +779,7 @@ def test_ntc_pmode_saturation() -> None:
     theta_t = np.angle(res.voltage[4], deg=True)
     hvdc_power = dev.Pset + k * (theta_f - theta_t)
     assert np.isclose(res.hvdc_Pf[0], grid.hvdc_lines[0].rate, atol=1e-6)  # the power must saturate to the rate
-    assert res.hvdc_Pf[0] > hvdc_power  # the actual power must be greater than what the angles suggest
+    assert res.hvdc_Pf[0] < hvdc_power  # the actual power must be lower than what the angles suggest
 
     assert res.converged
     assert abs(res.nodal_balance.sum()) < 1e-8
@@ -1458,4 +1458,6 @@ if __name__ == '__main__':
     # test_ntc_pmode_saturation()
     # test_ntc_vsc()
     # test_ntc_vsc_contingencies()
-    test_2_node_several_conditions_ntc()
+    # test_2_node_several_conditions_ntc()
+    test_ntc_pmode_saturation()
+    # test_issue_372_3()

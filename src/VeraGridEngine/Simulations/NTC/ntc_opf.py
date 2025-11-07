@@ -1993,15 +1993,15 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 base_name="hvdc")
 
                     hvdc_vars.flows[t_idx, m] = pmode3_formulation_convex_hull(prob=prob,
-                                                                    t_idx=t_idx,
-                                                                    m=m,
-                                                                    rate=hvdc_data_t.rates[m] / Sbase,
-                                                                    P0=P0,
-                                                                    droop=droop,
-                                                                    theta_f=vars_bus.Va[t_idx, fr],
-                                                                    theta_t=vars_bus.Va[t_idx, to],
-                                                                    dtheta_max=1.57,
-                                                                    base_name="hvdc")
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=hvdc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=vars_bus.Va[t_idx, fr],
+                                                                       theta_t=vars_bus.Va[t_idx, to],
+                                                                       dtheta_max=1.0,
+                                                                       base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m] = formulate_hvdc_Pmode3_single_flow(
                     #     solver=prob,
