@@ -193,30 +193,33 @@ class HelmVariations:
                         ci = branch_index_mapping.get(c, None)
                         if ci:
                             contingency_br_indices_is.append(ci)
+                    contingency_br_indices_is = np.array(contingency_br_indices_is, dtype=int)
 
                     pre = self.preparations[n_island]
                     adm = island.get_admittance_matrices()
                     Sbus = island.get_power_injections_pu()
 
-                    V_isl, Sf_isl, loading_isl, err = calc_V_outage(nc=island,
-                                                                    If=np.zeros(island.nbr, dtype=complex),
-                                                                    Ybus=adm.Ybus,
-                                                                    sys_mat_factorization=pre.sys_mat_factorization,
-                                                                    V0=island.bus_data.Vbus,
-                                                                    S0=Sbus,
-                                                                    Uini=pre.Uini,
-                                                                    Xini=pre.Xini,
-                                                                    Yslack=pre.Yslack,
-                                                                    Vslack=pre.Vslack,
-                                                                    vec_P=pre.vec_P,
-                                                                    vec_Q=pre.vec_Q,
-                                                                    Ysh=pre.Ysh,
-                                                                    vec_W=pre.vec_W,
-                                                                    pq=pre.pq,
-                                                                    pv=pre.pv,
-                                                                    vd=pre.sl,
-                                                                    pqpv=pre.pqpv,
-                                                                    contingency_br_indices=contingency_br_indices_is)
+                    V_isl, Sf_isl, loading_isl, err = calc_V_outage(
+                        nc=island,
+                        If=np.zeros(island.nbr, dtype=complex),
+                        Ybus=adm.Ybus,
+                        sys_mat_factorization=pre.sys_mat_factorization,
+                        V0=island.bus_data.Vbus,
+                        S0=Sbus,
+                        Uini=pre.Uini,
+                        Xini=pre.Xini,
+                        Yslack=pre.Yslack,
+                        Vslack=pre.Vslack,
+                        vec_P=pre.vec_P,
+                        vec_Q=pre.vec_Q,
+                        Ysh=pre.Ysh,
+                        vec_W=pre.vec_W,
+                        pq=pre.pq,
+                        pv=pre.pv,
+                        vd=pre.sl,
+                        pqpv=pre.pqpv,
+                        contingency_br_indices=contingency_br_indices_is
+                    )
 
                     # assign objects to the full matrix
                     V[island.bus_data.original_idx] = V_isl
