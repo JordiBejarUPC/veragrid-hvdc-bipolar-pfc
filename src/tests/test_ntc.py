@@ -983,7 +983,7 @@ def test_ntc_vsc():
 def test_ntc_vsc_contingencies():
     """
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
-    No contingencies are enabled
+    Contingencies are enabled
     """
     fname = os.path.join('data', 'grids', 'ntc_test_cont (vsc).gridcal')
 
@@ -1535,5 +1535,7 @@ if __name__ == '__main__':
     # test_ntc_vsc_contingencies()
     # test_2_node_several_conditions_ntc()
     # test_ntc_pmode_saturation()
-    test_ntc_pmode_non_saturation()
+    # test_ntc_pmode_non_saturation()
     # test_issue_372_3()
+    test_hvdc_lines_tests()
+    # test_activs_2000_acdc()
