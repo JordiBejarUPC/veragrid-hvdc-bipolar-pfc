@@ -70,7 +70,6 @@ class SimulationsMain(TimeEventsMain):
         self.solvers_dict[SolverType.GAUSS.value] = SolverType.GAUSS
         self.solvers_dict[SolverType.LACPF.value] = SolverType.LACPF
         self.solvers_dict[SolverType.Linear.value] = SolverType.Linear
-        # self.solvers_dict[SolverType.GENERALISED.value] = SolverType.GENERALISED
 
         self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
         self.ui.solver_comboBox.setCurrentIndex(0)
@@ -92,7 +91,7 @@ class SimulationsMain(TimeEventsMain):
         self.lp_solvers_dict[SolverType.GREEDY_DISPATCH_OPF.value] = SolverType.GREEDY_DISPATCH_OPF
         self.ui.lpf_solver_comboBox.setModel(gf.get_list_model(list(self.lp_solvers_dict.keys())))
 
-        # reliabilty modes
+        # reliability modes
         self.reliability_mode_dict = OrderedDict()
         self.reliability_mode_dict[ReliabilityMode.GenerationAdequacy.value] = ReliabilityMode.GenerationAdequacy
         self.reliability_mode_dict[ReliabilityMode.GridMetrics.value] = ReliabilityMode.GridMetrics
@@ -156,6 +155,7 @@ class SimulationsMain(TimeEventsMain):
         # self.contingency_engines_dict[ContingencyMethod.OptimalPowerFlow.value] = ContingencyMethod.OptimalPowerFlow
         self.contingency_engines_dict[ContingencyMethod.Linear.value] = ContingencyMethod.Linear
         self.contingency_engines_dict[ContingencyMethod.PTDF_scan.value] = ContingencyMethod.PTDF_scan
+        self.contingency_engines_dict[ContingencyMethod.HELM.value] = ContingencyMethod.HELM
         self.ui.contingencyEngineComboBox.setModel(gf.get_list_model(list(self.contingency_engines_dict.keys())))
 
         # list of stochastic power flow methods
