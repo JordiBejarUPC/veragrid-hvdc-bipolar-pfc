@@ -1436,35 +1436,38 @@ class Assets:
                     else:
                         branch_list[i].bus_to = None
 
-        # Optimized batch deletion of branches
+        # Optimized branch removal by creating a set for faster lookups
+        branches_to_delete_set = set(branches_to_delete)
+        
+        # Remove branches directly from lists in one pass
+        # This is more efficient than calling delete_branch for each
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+            # Use list comprehension to not consider branches to delete 
+            # This is faster than the multiple remove() calls we had before
+            branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
+        
+        # Batch process groupings, faster than calling delete_groupings_with_object for each branch
         if branches_to_delete:
-            # Create a set for faster lookups
-            branches_to_delete_set = set(branches_to_delete)
+            branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
             
-            # Remove branches directly from lists in one pass (more efficient than calling delete_branch for each)
-            for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
-                # Use list comprehension to filter out branches to delete (faster than multiple remove() calls)
-                branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
+            # Process contingencies in batch
+            contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
+            for elm in contingencies_to_delete:
+                self.delete_contingency(elm, del_group=True)
             
-            # Batch process groupings (much faster than calling delete_groupings_with_object for each branch)
-            if branches_to_delete:
-                # Collect all idtags to check
-                branch_idtags = {b.idtag for b in branches_to_delete}
-                
-                # Process contingencies in batch
-                contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
-                for elm in contingencies_to_delete:
-                    self.delete_contingency(elm, del_group=True)
-                
-                # Process remedial actions in batch
-                remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
-                for elm in remedial_actions_to_delete:
-                    self.delete_remedial_action(elm, del_group=True)
-                
-                # Process investments in batch
-                investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
-                for elm in investments_to_delete:
-                    self.delete_investment(elm, del_group=True)
+            # Process remedial actions in batch
+            remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
+            for elm in remedial_actions_to_delete:
+                self.delete_remedial_action(elm, del_group=True)
+            
+            # Process investments in batch
+            investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
+            for elm in investments_to_delete:
+                self.delete_investment(elm, del_group=True)
+
+        else:
+            # No branches to delete, so nothing to be done
+            pass
 
         # delete the associated injection devices
         for inj_list in self.get_injection_devices_lists():
@@ -1479,8 +1482,11 @@ class Assets:
         if injections_to_delete:
             injections_to_delete_set = set(injections_to_delete)
             for inj_list in self.get_injection_devices_lists():
-                # Use list comprehension to filter out injections to delete
+                # Use list comprehension to filter out injections we have to delete
                 inj_list[:] = [inj for inj in inj_list if inj not in injections_to_delete_set]
+        else:
+            # No injections to delete, so nothing to be done
+            pass
 
         # delete the bus itself - use set difference for faster removal
         buses_to_remove_list = list(buses_to_remove)
