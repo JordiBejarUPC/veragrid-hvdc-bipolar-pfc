@@ -677,7 +677,7 @@ class DataBaseTableMain(DiagramsMain):
             self.grid_reduction_dialogue.exec()
 
             if self.grid_reduction_dialogue.did_reduce:
-                self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+                self.delete_from_all_diagrams(elements=list(selected_buses))
 
     def grid_reduction_from_schematic_selection(self):
         """
