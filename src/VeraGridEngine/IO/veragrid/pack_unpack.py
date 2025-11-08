@@ -1243,7 +1243,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                      comment=str(e))
 
                             else:
-                                raise Exception(f'Unsupported property type: {gc_prop.tpe}')
+                                raise Exception(f'Unsupported property type: {gc_prop.tpe} for {gc_prop.name}')
 
                         else:
                             # invalid property value

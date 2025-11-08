@@ -65,9 +65,8 @@ def short_circuit_post_process(
     # Branch loading in p.u.
     loading = Sfb / (branch_rates + 1e-9)
 
-
-
     return Sfb, Stb, If, It, Vbranch, loading, losses
+
 
 # def expand3ph(x: np.ndarray):
 #     """
@@ -130,26 +129,27 @@ def short_circuit_post_process_phases_abc(
     If = Yf @ V
     It = Yt @ V
 
-    If_expanded  = expand_magnitudes(If, branch_lookup)
-    It_expanded  = expand_magnitudes(It, branch_lookup)
+    If_expanded = expand_magnitudes(If, branch_lookup)
+    It_expanded = expand_magnitudes(It, branch_lookup)
 
-    Sf_expanded  = Vf_expanded * np.conj(If_expanded )
-    St_expanded  = Vt_expanded  * np.conj(It_expanded )
+    Sf_expanded = Vf_expanded * np.conj(If_expanded)
+    St_expanded = Vt_expanded * np.conj(It_expanded)
 
     # Branch losses in MVA (not really important for short-circuits)
-    losses_expanded = (Sf_expanded  + St_expanded) * calculation_inputs.Sbase
+    losses_expanded = (Sf_expanded + St_expanded) * calculation_inputs.Sbase
 
     # branch voltage increment
-    Vbranch_expanded  = Vf_expanded  - Vt_expanded
+    Vbranch_expanded = Vf_expanded - Vt_expanded
 
     # Branch power in MVA
-    Sfb_expanded  = Sf_expanded  * calculation_inputs.Sbase
-    Stb_expanded  = St_expanded  * calculation_inputs.Sbase
+    Sfb_expanded = Sf_expanded * calculation_inputs.Sbase
+    Stb_expanded = St_expanded * calculation_inputs.Sbase
 
     # Branch loading in p.u.
-    loading_expanded  = Sfb_expanded / (branch_rates_expanded + 1e-9)
+    loading_expanded = Sfb_expanded / (branch_rates_expanded + 1e-9)
 
     return Sfb_expanded, Stb_expanded, If_expanded, It_expanded, Vbranch_expanded, loading_expanded, losses_expanded
+
 
 def short_circuit_post_process_phases(
         calculation_inputs: NumericalCircuit,
@@ -462,13 +462,12 @@ def maximum_initial_shortcircuit_current(
         Zf: complex,
         faulted_bus: int
 ):
-
-    c_max = 1.1 # Voltage factor
-    Un = nc.bus_data.Vnom[faulted_bus] * 1e3 # Nominal voltage [V]
-    Zk = abs(Zf) * Un**2 / (nc.Sbase * 1e6) # Fault impedance [Ohm]
+    c_max = 1.1  # Voltage factor
+    Un = nc.bus_data.Vnom[faulted_bus] * 1e3  # Nominal voltage [V]
+    Zk = abs(Zf) * Un ** 2 / (nc.Sbase * 1e6)  # Fault impedance [Ohm]
 
     # Current contribution only from SGs
-    Ik_max_PFO = 1/Zk * c_max * Un / np.sqrt(3)
+    Ik_max_PFO = 1 / Zk * c_max * Un / np.sqrt(3)
     Isk_PF = 0
 
     # Current contribution only from CIGs
@@ -479,7 +478,6 @@ def maximum_initial_shortcircuit_current(
     Ik_max = Ik_max_PFO + Isk_PF
 
     return Ik_max
-
 
 
 def short_circuit_abc(nc: NumericalCircuit,
@@ -507,10 +505,12 @@ def short_circuit_abc(nc: NumericalCircuit,
 
     Vpf_masked = Vpf[mask]
 
+    # TODO: fix this
     Sstar, Y_power_star_linear = compute_Sbus_star(nc=nc,
                                                    V=Vpf_masked,
                                                    mask=mask)
 
+    # TODO: fix this
     Sdelta, Y_power_delta_linear = compute_Sbus_delta(bus_idx=nc.load_data.bus_idx,
                                                       Sdelta=nc.load_data.S3_delta,
                                                       Ydelta=nc.load_data.Y3_delta,
@@ -620,7 +620,7 @@ def short_circuit_abc(nc: NumericalCircuit,
     Yloads = Y_power_star_linear + Y_power_delta_linear + Y_current_linear
     Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
     Spf_expanded = expand_magnitudes(Spf, bus_lookup)
-    S = (Spf_expanded / (nc.Sbase/3) ) - Vpf * np.conj(Yloads_expanded * Vpf)
+    S = (Spf_expanded / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
     idx3 = np.array([0, 1, 2])
     gen_idx = nc.generator_data.bus_idx
     n_buses = len(nc.generator_data.bus_idx)
@@ -628,7 +628,7 @@ def short_circuit_abc(nc: NumericalCircuit,
     for i in range(n_buses):
         U = Vpf[gen_idx[i] + idx3]
         Y = Ybus_gen[np.ix_(gen_idx[i] + idx3, gen_idx[i] + idx3)]
-        I = np.conj( S[np.ix_(gen_idx[i] + idx3)] / U )
+        I = np.conj(S[np.ix_(gen_idx[i] + idx3)] / U)
         E = U + np.linalg.inv(Y) @ I
         Inorton_i = Y @ E
         Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
@@ -637,9 +637,9 @@ def short_circuit_abc(nc: NumericalCircuit,
     Usc_expanded = expand_magnitudes(Usc, bus_lookup)
 
     Ik_max = maximum_initial_shortcircuit_current(
-        nc = nc,
-        Zf = Zf[bus_index],
-        faulted_bus = bus_index
+        nc=nc,
+        Zf=Zf[bus_index],
+        faulted_bus=bus_index
     )
 
     """
@@ -656,15 +656,18 @@ def short_circuit_abc(nc: NumericalCircuit,
                                   area_names=None)
 
     Sfb, Stb, If, It, Vbranch, loading, losses = short_circuit_post_process_phases_abc(calculation_inputs=nc,
-                                                                                    V_expanded=Usc_expanded,
-                                                                                    branch_rates_expanded=expand3ph(nc.passive_branch_data.rates),
-                                                                                    Yf=Yf,
-                                                                                    Yt=Yt,
-                                                                                    F_expanded=expand_indices_3ph(nc.passive_branch_data.F),
-                                                                                    T_expanded=expand_indices_3ph(nc.passive_branch_data.T),
-                                                                                    mask=mask,
-                                                                                    branch_lookup=branch_lookup
-                                                                                    )
+                                                                                       V_expanded=Usc_expanded,
+                                                                                       branch_rates_expanded=expand3ph(
+                                                                                           nc.passive_branch_data.rates),
+                                                                                       Yf=Yf,
+                                                                                       Yt=Yt,
+                                                                                       F_expanded=expand_indices_3ph(
+                                                                                           nc.passive_branch_data.F),
+                                                                                       T_expanded=expand_indices_3ph(
+                                                                                           nc.passive_branch_data.T),
+                                                                                       mask=mask,
+                                                                                       branch_lookup=branch_lookup
+                                                                                       )
 
     results.voltageA = Usc_expanded[0::3]
     results.SfA = Sfb[0::3]  # in MVA already
