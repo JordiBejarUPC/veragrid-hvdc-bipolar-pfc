@@ -620,6 +620,10 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(g_d - g <=  gU * (1 - lam_d), name=nm("droop_link_hull_le"))
     prob.add_cst(g_d - g >=  gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
 
+    # Consistency so we saturate only if g beyond the limit
+    prob.add_cst(g >=  rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
+    prob.add_cst(g <= -rate * lam_l + gU * (1 - lam_l), name=nm("lower_sat_consistency_le"))
+
     return flow
 
 
@@ -1438,7 +1442,8 @@ def add_linear_injections_formulation(t: Union[int, None],
 
     # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
     # minimize the slacks
-    f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+    # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+    f_obj +=  - ntc_vars.delta_1[t]
 
     return f_obj, base_power
 
@@ -1784,8 +1789,10 @@ def add_linear_branches_formulation(t_idx: int,
                     prob.set_var_bounds(branch_vars.flows[t_idx, m], lb=-rate_pu, ub=rate_pu)
 
     # add the inter-area flows to the objective function with the correct sign
-    for k, sense in branch_vars.inter_space_branches:
-        f_obj += -branch_vars.flows[t_idx, k] * sense
+    # for k, sense in branch_vars.inter_space_branches:
+        # f_obj += -branch_vars.flows[t_idx, k] * sense
+
+    f_obj += 0.0
 
     return f_obj
 
@@ -1986,15 +1993,15 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 base_name="hvdc")
 
                     hvdc_vars.flows[t_idx, m] = pmode3_formulation_convex_hull(prob=prob,
-                                                                    t_idx=t_idx,
-                                                                    m=m,
-                                                                    rate=hvdc_data_t.rates[m] / Sbase,
-                                                                    P0=P0,
-                                                                    droop=droop,
-                                                                    theta_f=vars_bus.Va[t_idx, fr],
-                                                                    theta_t=vars_bus.Va[t_idx, to],
-                                                                    dtheta_max=1.57,
-                                                                    base_name="hvdc")
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=hvdc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=vars_bus.Va[t_idx, fr],
+                                                                       theta_t=vars_bus.Va[t_idx, to],
+                                                                       dtheta_max=1.0,
+                                                                       base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m] = formulate_hvdc_Pmode3_single_flow(
                     #     solver=prob,
@@ -2071,8 +2078,9 @@ def add_linear_hvdc_formulation(t_idx: int,
             prob.set_var_bounds(var=hvdc_vars.flows[t_idx, m], ub=0.0, lb=0.0)
 
     # add the flows to the objective function
-    for k, sense in hvdc_vars.inter_space_hvdc:
-        f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    # for k, sense in hvdc_vars.inter_space_hvdc:
+        # f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    f_obj += 0.0
 
     return f_obj
 
