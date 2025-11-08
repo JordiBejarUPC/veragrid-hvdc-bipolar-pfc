@@ -28,14 +28,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="synthax fixes to HELM contingencies">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingencies.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingencies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingency_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingency_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/linear_contingency_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/linear_contingency_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/basic_structures.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/basic_structures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingencies_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingencies_report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/driver_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/driver_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/tests/test_contingency.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_contingency.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -97,12 +95,14 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
-    &quot;accountId&quot;: &quot;cb83a36c-6a26-4d28-9aa3-3af0083cd55d&quot;
-  }
-}</component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="cb83a36c-6a26-4d28-9aa3-3af0083cd55d" />
+        <option name="url" value="https://github.com/eRoots-Analytics/VeraGrid.git" />
+      </UrlAndAccount>
+    </option>
+  </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
@@ -1846,7 +1846,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="642" />
+    <option name="localTasksCounter" value="643" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1892,7 +1892,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved BlockSolver compilation" />
     <MESSAGE value="more improvements to the block solver" />
     <MESSAGE value="Fixed test" />
     <MESSAGE value="icon crazyness" />
@@ -1917,7 +1916,8 @@
     <MESSAGE value="Added capacitance to the underground line model" />
     <MESSAGE value="fixed crash when CGMES RDFID are illegal" />
     <MESSAGE value="synthax fixes to HELM contingencies" />
-    <option name="LAST_COMMIT_MESSAGE" value="synthax fixes to HELM contingencies" />
+    <MESSAGE value="several fixes to the helm contingencies...not working though" />
+    <option name="LAST_COMMIT_MESSAGE" value="several fixes to the helm contingencies...not working though" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2368,23 +2368,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/tests/test_contingency.py</url>
-          <line>174</line>
-          <option name="timeStamp" value="2995" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_contingency.py</url>
-          <line>166</line>
-          <option name="timeStamp" value="2996" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingency_analysis.py</url>
-          <line>105</line>
-          <option name="timeStamp" value="3007" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/helm_contingencies.py</url>
-          <line>115</line>
-          <option name="timeStamp" value="3008" />
+          <line>182</line>
+          <option name="timeStamp" value="3009" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

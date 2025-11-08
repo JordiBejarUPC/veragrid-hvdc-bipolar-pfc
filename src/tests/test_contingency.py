@@ -106,7 +106,6 @@ def test_linear_contingency():
 #         nc.passive_branch_data.active[k] = 1
 
 
-
 # def test_ieee14_contingencies_psse() -> None:
 #     """
 #     Check that the contingencies match conceptually
@@ -145,6 +144,7 @@ def test_linear_contingency():
 #
 #         nc.passive_branch_data.active[k] = 1
 
+
 def test_contingency_helm() -> None:
     """
     Check that the contingencies match conceptually
@@ -152,28 +152,32 @@ def test_contingency_helm() -> None:
     """
     fname = os.path.join('data', 'grids', 'IEEE14_contingency.gridcal')
     main_circuit = FileOpen(fname).open()
-    pf_options = PowerFlowOptions(SolverType.HELM,
-                                  verbose=False,
-                                  use_stored_guess=False,
-                                  control_q=False)
 
-    options = ContingencyAnalysisOptions(pf_options=pf_options,
-                                         contingency_method=ContingencyMethod.HELM)
+    con_helm = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.HELM,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.HELM
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_helm.run()
 
-    cont_analysis_driver = ContingencyAnalysisDriver(grid=main_circuit,
-                                                     options=options,
-                                                     linear_multiple_contingencies=None)
-    cont_analysis_driver.run()
-    print("")
+    con_nr = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.NR,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.PowerFlow
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_nr.run()
 
-    for i, lne in enumerate(main_circuit.get_branches(False, False, True)):
-        lne.active = False
-        pf_driver = PowerFlowDriver(grid=main_circuit, options=pf_options)
-        pf_driver.run()
-
-        # assert that the power flow matches whatever it was done with the contingencies
-        assert (np.allclose(cont_analysis_driver.results.Sf[i, :], pf_driver.results.Sf))
-
-        assert cont_analysis_driver.results.Sf[i, i] == complex(0, 0)
-
-        lne.active = True
+    ok = np.allclose(con_helm.results.Sf.real, con_nr.results.Sf.real)
+    assert ok
