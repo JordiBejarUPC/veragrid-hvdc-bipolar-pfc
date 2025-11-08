@@ -12,6 +12,7 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.helm_contingencies i
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
+from VeraGridEngine.enumerations import ContingencyOperationTypes
 
 
 def helm_contingency_analysis(grid: MultiCircuit,
@@ -52,7 +53,7 @@ def helm_contingency_analysis(grid: MultiCircuit,
     cg_dict = grid.get_contingency_group_dict()
 
     branches_dict = grid.get_branches_dict(add_vsc=False, add_hvdc=False, add_switch=True)
-    calc_branches = grid.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)
+    # calc_branches = grid.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)
     mon_idx = numerical_circuit.passive_branch_data.get_monitor_enabled_indices()
 
     # keep the original states
@@ -79,15 +80,14 @@ def helm_contingency_analysis(grid: MultiCircuit,
         for cnt in contingencies:
 
             # search for the contingency in the Branches
-            if cnt.device_idtag in branches_dict:
-                br_idx = branches_dict[cnt.device_idtag]
-
-                if cnt.prop == 'active':
+            br_idx = branches_dict.get(cnt.device_idtag, None)
+            if br_idx is not None:
+                if cnt.prop == ContingencyOperationTypes.Active:
                     contingency_br_indices.append(br_idx)
                 else:
                     print(f'Unknown contingency property {cnt.prop} at {cnt.name} {cnt.idtag}')
             else:
-                pass
+                print(f"Contingency device not found in branches: {cnt.device_idtag}")
 
         # report progress
         if t is None:
@@ -96,7 +96,9 @@ def helm_contingency_analysis(grid: MultiCircuit,
                 calling_class.report_progress2(ic, len(grid.contingency_groups) * 100)
 
         # run
-        V, Sf, loading = helm_variations.compute_variations(contingency_br_indices=contingency_br_indices)
+        V, Sf, loading = helm_variations.compute_variations(
+            contingency_br_indices=np.array(contingency_br_indices)
+        )
 
         results.Sf[ic, :] = Sf
         results.Sbus[ic, :] = Sbus
