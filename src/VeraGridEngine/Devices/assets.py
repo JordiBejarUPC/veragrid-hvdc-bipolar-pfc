@@ -1411,18 +1411,18 @@ class Assets:
         except ValueError:
             print(f"Could not delete {obj.name}")
 
-    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+    def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
-        Delete a :ref:`Bus<bus>` object from the grid.
-        :param lst: Array of objects to remove
-        :param delete_associated: Delete the associated branches and injections
+        Delete branch objects that may contain contingencies, remedial actions, or investments
+        Used when you delete buses connected to branches
+        :param buses_to_remove: Set of buses to remove
+        :param delete_associated: Delete the associated branches
+        :return: None
         """
-        buses_to_remove = set(lst)
 
         branches_to_delete = list()
-        injections_to_delete = list()
 
-        # delete associated Branches in reverse order
+        # First find branches to delete from the passed buses
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             for i in range(len(branch_list) - 1, -1, -1):
                 if branch_list[i].bus_from in buses_to_remove:
@@ -1468,6 +1468,20 @@ class Assets:
         else:
             # No branches to delete, so nothing to be done
             pass
+
+        return None
+
+    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+        """
+        Delete a :ref:`Bus<bus>` object from the grid.
+        :param lst: Array of objects to remove
+        :param delete_associated: Delete the associated branches and injections
+        """
+        buses_to_remove = set(lst)
+        injections_to_delete = list()
+
+        # We delete the associated branches by knowing the buses to remove
+        self.delete_branches_with_sets(buses_to_remove, delete_associated)
 
         # delete the associated injection devices
         for inj_list in self.get_injection_devices_lists():
