@@ -454,7 +454,7 @@ class HelmPreparation:
 
     def __init__(self, sys_mat_factorization, Uini, Xini, Yslack, Vslack,
                  vec_P, vec_Q, Ysh, vec_W, pq, pv, pqpv, sl,
-                 npqpv, nbus, pqpv_original):
+                 npqpv, nbus, pqpv_original, pq_original):
         """
 
         :param sys_mat_factorization:
@@ -490,6 +490,7 @@ class HelmPreparation:
         self.npqpv = npqpv
         self.nbus = nbus
         self.pqpv_original = pqpv_original
+        self.pq_original = pq_original
 
 
 def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 0,
@@ -541,6 +542,7 @@ def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 
         nsl_counted[i] = compt
 
     pqpv_original = np.sort(np.r_[pq, pv])
+    pq_original = np.sort(np.r_[pq])
 
     pq_ = pq - nsl_counted[pq]
     pv_ = pv - nsl_counted[pv]
@@ -574,12 +576,13 @@ def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 
     mat_factorized = factorized(MAT)
 
     return HelmPreparation(mat_factorized, Uini, Xini, Yslack, Vslack, vec_P, vec_Q, Ysh, vec_W,
-                           pq_, pv_, pqpv_, sl, npqpv, nbus, pqpv_original)
+                           pq_, pv_, pqpv_, sl, npqpv, nbus, pqpv_original, pq_original)
 
 
 def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
                          Yslack, Ysh, Ybus, vec_P, vec_Q, S0,
-                         vec_W, V0, Vslack, pq, pv, pqpv, npqpv, nbus, sl, pqpv_original,
+                         vec_W, V0, Vslack, pq, pv, pqpv, npqpv, nbus, sl, 
+                         pqpv_original, pq_original, 
                          tolerance=1e-6, max_coeff=10):
     """
     Holomorphic Embedding LoadFlow Method as formulated by Josep Fanals Batllori in 2020
@@ -609,12 +612,14 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
     :param pqpv: sorted list of pq and pv nodes
     :param pq:list of pq nodes
     :param sl: list of slack nodes
+    :param pqpv_original: sorted list of pq and pv nodes in the original order, considering slack
+    :param pq_original: list of pq nodes in the original order, considering slack
     :param tolerance: target error (or tolerance)
     :param max_coeff: maximum number of coefficients
     :return: U, V, iter_, norm_f
     """
 
-    AYred = dY[np.ix_(pqpv, pqpv)]  # difference admittance matrix without slack buses
+    AYred = dY[np.ix_(pqpv_original, pqpv_original)]  # difference admittance matrix without slack buses
 
     # --------------------------- PREPARING IMPLEMENTATION -------------------------------------------------------------
     U = np.zeros((max_coeff + 1, npqpv), dtype=complex)  # voltages
@@ -634,8 +639,8 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
 
     Ysl_sum = Yslack.sum(axis=1).A1
 
-    dval[pq] = I_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] - 1.0 * AIred[pq]
-    dval[pv] = I_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] - 1.0 * AIred[pv]
+    dval[pq] = I_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] + 1.0 * AIred[pq]
+    dval[pv] = I_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] + 1.0 * AIred[pv]
 
     # compose the right-hand side vector
     RHS = np.r_[dval.real, dval.imag, vec_W[pv] - (U[0, pv] * U[0, pv]).real]  # vec_W[pv_] - 1.0
@@ -666,8 +671,8 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
 
         AIred = AYred @ U[c - 1, :]
 
-        dval[pq] = (vec_P[pq] - vec_Q[pq] * 1j) * X[c - 1, pq] - U[c - 1, pq] * Ysh[pq] - 1.0 * AIred[pq]
-        dval[pv] = -1j * conv2(X, Q, c, pv) - U[c - 1, pv] * Ysh[pv] + X[c - 1, pv] * vec_P[pv] - 1.0 * AIred[pv]
+        dval[pq] = (vec_P[pq] - vec_Q[pq] * 1j) * X[c - 1, pq] - U[c - 1, pq] * Ysh[pq] + 1.0 * AIred[pq]
+        dval[pv] = -1j * conv2(X, Q, c, pv) - U[c - 1, pv] * Ysh[pv] + X[c - 1, pv] * vec_P[pv] + 1.0 * AIred[pv]
 
         RHS = np.r_[dval.real, dval.imag, -conv3(U, U, c, pv).real]
 
@@ -683,8 +688,8 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
         V[pqpv_original] += U[c, :]
 
         if V.real.max() < 10:
-            Scalc = cf.compute_power(Ybus, V)
-            norm_f = cf.compute_fx_error(cf.compute_fx(Scalc, S0, pqpv, pq))
+            Scalc = cf.compute_power(Ybus - dY, V)
+            norm_f = cf.compute_fx_error(cf.compute_fx(Scalc, S0, pqpv_original, pq_original))
             converged = (norm_f <= tolerance) and (c % 2)  # we want an odd amount of coefficients
         else:
             # completely erroneous
