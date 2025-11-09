@@ -614,6 +614,25 @@ class Assets:
             elm.delete_profiles()
         self.time_profile = None
 
+    def resample_profiles(self, indices: IntVec):
+        """
+        resample the given profiles to the indices
+        :param indices: array of indices to keep
+        """
+        self.time_profile = pd.DatetimeIndex([self.time_profile[i] for i in indices])
+
+        for elm in self.items():
+            elm.resample_profiles(indices=indices)
+
+    def resample_profiles2(self, t0: int, t1: int):
+        """
+        Resample profiles
+        :param t0: first time index
+        :param t1: second time index
+        """
+        indices = np.arange(t0, t1)
+        self.resample_profiles(indices=indices)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Snapshot time
     # ------------------------------------------------------------------------------------------------------------------
