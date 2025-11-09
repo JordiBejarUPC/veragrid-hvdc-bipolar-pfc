@@ -100,6 +100,7 @@ def helm_contingency_analysis(grid: MultiCircuit,
             contingency_br_indices=np.array(contingency_br_indices)
         )
 
+        results.voltage[ic, :] = V
         results.Sf[ic, :] = Sf
         results.Sbus[ic, :] = Sbus
         results.loading[ic, :] = loading

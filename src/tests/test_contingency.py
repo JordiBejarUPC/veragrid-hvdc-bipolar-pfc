@@ -181,3 +181,7 @@ def test_contingency_helm() -> None:
 
     ok = np.allclose(con_helm.results.Sf.real, con_nr.results.Sf.real)
     assert ok
+
+
+if __name__ == "__main__":
+    test_contingency_helm()

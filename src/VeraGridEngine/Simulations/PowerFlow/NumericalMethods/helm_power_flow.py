@@ -454,7 +454,7 @@ class HelmPreparation:
 
     def __init__(self, sys_mat_factorization, Uini, Xini, Yslack, Vslack,
                  vec_P, vec_Q, Ysh, vec_W, pq, pv, pqpv, sl,
-                 npqpv, nbus):
+                 npqpv, nbus, pqpv_original):
         """
 
         :param sys_mat_factorization:
@@ -472,6 +472,7 @@ class HelmPreparation:
         :param sl:
         :param npqpv:
         :param nbus:
+        :param pqpv_original:
         """
         self.sys_mat_factorization = sys_mat_factorization
         self.Uini = Uini
@@ -488,6 +489,7 @@ class HelmPreparation:
         self.pqpv = pqpv
         self.npqpv = npqpv
         self.nbus = nbus
+        self.pqpv_original = pqpv_original
 
 
 def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 0,
@@ -538,6 +540,8 @@ def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 
             compt += 1
         nsl_counted[i] = compt
 
+    pqpv_original = np.sort(np.r_[pq, pv])
+
     pq_ = pq - nsl_counted[pq]
     pv_ = pv - nsl_counted[pv]
     pqpv_ = np.sort(np.r_[pq_, pv_])
@@ -570,12 +574,12 @@ def helm_preparation_dY(Yseries, V0, S0, Ysh0, pq, pv, sl, pqpv, verbose: int = 
     mat_factorized = factorized(MAT)
 
     return HelmPreparation(mat_factorized, Uini, Xini, Yslack, Vslack, vec_P, vec_Q, Ysh, vec_W,
-                           pq_, pv_, pqpv_, sl, npqpv, nbus)
+                           pq_, pv_, pqpv_, sl, npqpv, nbus, pqpv_original)
 
 
 def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
                          Yslack, Ysh, Ybus, vec_P, vec_Q, S0,
-                         vec_W, V0, Vslack, pq, pv, pqpv, npqpv, nbus, sl,
+                         vec_W, V0, Vslack, pq, pv, pqpv, npqpv, nbus, sl, pqpv_original,
                          tolerance=1e-6, max_coeff=10):
     """
     Holomorphic Embedding LoadFlow Method as formulated by Josep Fanals Batllori in 2020
@@ -630,8 +634,8 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
 
     Ysl_sum = Yslack.sum(axis=1).A1
 
-    dval[pq] = I_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] - AIred[pq]
-    dval[pv] = I_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] - AIred[pv]
+    dval[pq] = I_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] - 1.0 * AIred[pq]
+    dval[pv] = I_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] - 1.0 * AIred[pv]
 
     # compose the right-hand side vector
     RHS = np.r_[dval.real, dval.imag, vec_W[pv] - (U[0, pv] * U[0, pv]).real]  # vec_W[pv_] - 1.0
@@ -647,17 +651,23 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
     iter_ = 1
     c = 2
     converged = False
-    V = np.empty(nbus, dtype=complex)
+    # V = np.empty(nbus, dtype=complex)
+    # V[sl] = V0[sl]
+    # V[pqpv] = U[:c, :].sum(axis=0)
+
+    # Need the rebuild the voltage vector, as the passed pqpv indices are already reduced    
+    V = np.zeros(nbus, dtype=complex)
     V[sl] = V0[sl]
-    V[pqpv] = U[:c, :].sum(axis=0)
+    V[pqpv_original] = U[:c, :].sum(axis=0)
+
     norm_f = 0.0
 
     while c <= max_coeff and not converged:  # c defines the current depth
 
-        AIred = AYred * U[c - 1, :]
+        AIred = AYred @ U[c - 1, :]
 
-        dval[pq] = (vec_P[pq] - vec_Q[pq] * 1j) * X[c - 1, pq] - U[c - 1, pq] * Ysh[pq] - AIred[pq]
-        dval[pv] = -1j * conv2(X, Q, c, pv) - U[c - 1, pv] * Ysh[pv] + X[c - 1, pv] * vec_P[pv] - AIred[pv]
+        dval[pq] = (vec_P[pq] - vec_Q[pq] * 1j) * X[c - 1, pq] - U[c - 1, pq] * Ysh[pq] - 1.0 * AIred[pq]
+        dval[pv] = -1j * conv2(X, Q, c, pv) - U[c - 1, pv] * Ysh[pv] + X[c - 1, pv] * vec_P[pv] - 1.0 * AIred[pv]
 
         RHS = np.r_[dval.real, dval.imag, -conv3(U, U, c, pv).real]
 
@@ -670,7 +680,7 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
         X[c, :] = -conv1(U, X, c) / np.conj(U[0, :])
 
         # compute power mismatch
-        V[pqpv] += U[c, :]
+        V[pqpv_original] += U[c, :]
 
         if V.real.max() < 10:
             Scalc = cf.compute_power(Ybus, V)
