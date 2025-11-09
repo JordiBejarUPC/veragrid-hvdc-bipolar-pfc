@@ -2004,6 +2004,40 @@ QProgressBar::chunk{
                         </widget>
                        </item>
                        <item>
+                        <widget class="QPushButton" name="crop_profiles_pushButton">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series  crop to the selected time interval&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="icons.qrc">
+                           <normaloff>:/Icons/icons/time_series_crop.png</normaloff>:/Icons/icons/time_series_crop.png</iconset>
+                         </property>
+                         <property name="flat">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="crop_cluster_profiles_pushButton">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series crop to the clusteres time indices.&lt;/p&gt;&lt;p&gt;For that you need cluster simulation in memory&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="icons.qrc">
+                           <normaloff>:/Icons/icons/time_series_crop_cluster.png</normaloff>:/Icons/icons/time_series_crop_cluster.png</iconset>
+                         </property>
+                         <property name="flat">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <spacer name="horizontalSpacer">
                          <property name="orientation">
                           <enum>Qt::Orientation::Horizontal</enum>
@@ -11164,7 +11198,7 @@ QProgressBar::chunk{
      <x>0</x>
      <y>0</y>
      <width>1372</width>
-     <height>33</height>
+     <height>39</height>
     </rect>
    </property>
    <property name="font">
