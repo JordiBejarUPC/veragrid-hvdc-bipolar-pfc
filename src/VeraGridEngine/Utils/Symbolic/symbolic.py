@@ -17,8 +17,8 @@ from types import MappingProxyType
 
 from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
-# from VeraGridEngine.Utils.MultiLinear.diff_blocksolver import DiffBlock
-# from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar
+from VeraGridEngine.Utils.MultiLinear.diff_blocksolver import DiffBlock
+from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 NUMBER = Union[int, float, complex]
@@ -36,71 +36,6 @@ def _new_uid() -> int:
 # -----------------------------------------------------------------------------
 # Generic helpers
 # -----------------------------------------------------------------------------
-
-
-
-def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
-    return x_min + (x - x_min) * heaviside(x - x_min) - (x - x_max) * heaviside(x - x_max)
-
-
-def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
-    """
-    num: list of numerator coefficients [b0, b1, ..., bm]
-    den: list of denominator coefficients [a0, a1, ..., an]
-    u:   sympy symbol for input
-    y:   sympy function of t for output
-    """
-    if len(num) > len(den):
-        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    if num[-1] == 0 or den[-1] == 0:
-        raise ValueError("Leading coefficient of cannot be zero.")
-
-    if y is None:
-        y = Var('y_' + name)
-
-    aux_eqs = []
-    aux_vars = []
-    # check if is a expression
-    if not isinstance(x, Var):
-        u = Var('u_' + name)
-        aux_eqs.append((u - x).simplify())
-        aux_vars.append(u)
-        x = u
-
-    diff_vars_x = [x]
-    diff_vars_y = [y]
-    diff_vars = []
-    base_var = x
-    for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
-        diff_vars_x.append(new_diff)
-        if not in_registry:
-            diff_vars.append(new_diff)
-        base_var = new_diff
-    base_var = y
-    for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
-        diff_vars_y.append(new_diff)
-        if not in_registry:
-            diff_vars.append(new_diff)
-        base_var = new_diff
-
-    # Create the diff equation
-    rhs = np.array(diff_vars_x) @ np.array(num)
-    lhs = np.array(diff_vars_y) @ np.array(den)
-
-    block = DiffBlock(
-        name=name,
-        algebraic_vars=[y] + aux_vars,
-        algebraic_eqs=[lhs - rhs] + aux_eqs,
-        diff_vars=diff_vars,
-    )
-
-    return block, y
-
-
 
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
