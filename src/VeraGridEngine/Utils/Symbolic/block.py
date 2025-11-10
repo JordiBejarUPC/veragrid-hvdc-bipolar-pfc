@@ -687,7 +687,7 @@ def genqec(name: str = "") -> Block:
 
     return generator_block
 
-def governor(name: str = "") -> Block:
+def governor_no_load_control(name: str = "") -> Block:
     inputs = [Var("omega_" + name)]
 
     in_vars_dict: Dict[str, Var] = dict()
@@ -863,6 +863,201 @@ def governor(name: str = "") -> Block:
     governor_block.out_vars[str(0)] = Tm
 
     return governor_block
+
+
+def stabilizer(name: str = ""):
+    # PSS parameters with typical values
+    A1 = Var("A1")  # notch filter coefficient 1
+    A2 = Var("A2")  # notch filter coefficient 2
+    Ks = Var("Ks")  # stabilizer gain
+    t1 = Var("t1")  # lead time constant
+    t2 = Var("t2")  # lag time constant
+    t3 = Var("t3")  # lag time constant
+    t4 = Var("t4")  # second lag time constant
+    t5 = Var("t5")  # washout time constant
+    t6 = Var("t6")  # transducer time constant
+    VPssMaxPu = Var("VPssMaxPu")  # max stabilizer output
+    VPssMinPu = Var("VPssMinPu")  # min stabilizer output
+    SNom = Var("SNom")  # nominal apparent power
+
+    events_dict = {
+        # Stabilizer parameters
+        A1: Const(1.0),  # notch filter coefficient 1
+        A2: Const(1.0),  # notch filter coefficient 2
+        Ks: Const(20.0),  # stabilizer gain
+        t1: Const(0.1),  # lead time constant
+        t2: Const(0.02),  # lag time constant
+        t3: Const(0.02),  # lag time constant
+        t4: Const(0.1),  # second lag time constant
+        t5: Const(10.0),  # washout time constant
+        t6: Const(0.02),  # transducer time constant
+        VPssMaxPu: Const(1.0),  # max stabilizer output
+        VPssMinPu: Const(-1.0),  # min stabilizer output
+        SNom: Const(1.0),  # nominal apparent power
+    }
+
+    # variables
+    Vpss = Var('V_pss')
+    omega = Var('omega')
+    vars_block = Block(
+        algebraic_vars=[omega],
+    )
+
+    tf, y = tf_to_diffblock_with_states(
+        num=[1.0],
+        den=[1, t6],
+        x=omega,
+        name='stabilizer1',
+    )
+
+    tf2, y2 = tf_to_diffblock_with_states(
+        num=[0, t5],
+        den=[1, t5],
+        x=Ks * y,
+        name='stabilizer2',
+    )
+    tf3, y3 = tf_to_diffblock_with_states(
+        num=[1],
+        den=[1, A1, A2],
+        x=y2,
+        name='stabilizer3',
+    )
+    tf4, y4 = tf_to_diffblock_with_states(
+        num=[1, t1],
+        den=[1, t2],
+        x=y3,
+        name='stabilizer4',
+    )
+    tf5, y5 = tf_to_diffblock_with_states(
+        num=[1, t3],
+        den=[1, t4],
+        x=y4,
+        name='stabilizer5',
+    )
+
+    algebraic_eqs = []
+    algebraic_eqs.append(hard_sat(y5, VPssMinPu, VPssMaxPu) - Vpss)
+    block_1 = Block()
+
+    stabilizer_block = Block(
+        children=[tf, tf2, tf3, tf4, tf5],
+        algebraic_eqs=algebraic_eqs,
+        algebraic_vars=[Vpss],
+    )
+
+    stabilizer_block.add(vars_block)
+    stabilizer_block.add(block_1)
+
+    return stabilizer_block
+
+
+def build_exciter_model(name: str = ""):
+    inputs = [Var("IRPu_" + name), Var("Vg_" + name), Var("Efd_" + name), Var("Vpss_" + name)]
+
+    in_vars_dict: Dict[str, Var] = dict()
+    for i, inpt in enumerate(inputs):
+        in_vars_dict[str(i)] = inpt
+
+    algebraic_vars = []
+
+    # ---- Exciter (AVR) parameters ----
+    UsRefPu = Var("UsRefPu")  # reference voltage (pu)
+    AEz = Var("AEz")  # saturation gain
+    BEz = Var("BEz")  # saturation exponential coefficient
+    EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
+    EfeMinPu = Var("EfeMinPu")  # min exciter field voltage (pu)
+    Ka = Var("Ka")  # AVR gain
+    Kf = Var("Kf")  # exciter rate feedback gain
+
+    # ---- Exciter (AVR) time constants and limits ----
+    tA = Var("tA")  # AVR time constant (s)
+    tB = Var("tB")  # lead-lag: lag time constant (s)
+    tC = Var("tC")  # lead-lag: lead time constant (s)
+    tE = Var("tE")  # exciter field time constant (s)
+    tF = Var("tF")  # rate feedback time constant (s)
+    TolLi = Var("TolLi")  # limiter crossing tolerance (fraction)
+    tR = Var("tR")  # stator voltage filter time constant (s)
+
+    VaMaxPu = Var("VaMaxPu")  # AVR output max (pu)
+    VaMinPu = Var("VaMinPu")  # AVR output min (pu)
+    VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
+    VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
+
+    events_dict = {
+        # Exciter (AVR) parameters
+        UsRefPu: Const(1.0),  # reference voltage (pu)
+        AEz: Const(0.02),  # saturation gain
+        BEz: Const(1.5),  # saturation exponential coefficient
+        EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
+        EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
+        Ka: Const(200.0),  # AVR gain
+        Kf: Const(0.03),  # exciter rate feedback gain
+
+        # Time constants
+        tA: Const(0.02),  # AVR time constant (s)
+        tB: Const(10.0),  # lead-lag: lag time constant (s)
+        tC: Const(1.0),  # lead-lag: lead time constant (s)
+        tE: Const(0.5),  # exciter field time constant (s)
+        tF: Const(1.0),  # rate feedback time constant (s)
+        TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
+        tR: Const(0.02),  # stator voltage filter time constant (s)
+
+        # Limits
+        VaMaxPu: Const(20.0),  # AVR output max (pu)
+        VaMinPu: Const(-10.0),  # AVR output min (pu)
+        VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
+        VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
+    }
+
+    # ---Internal Blocks---
+    tf1, y1 = tf_to_diffblock(
+        num=[1],
+        den=[1, tR],
+        x=inputs[1],
+        name='exciter1',
+    )  # filtered stator voltage
+
+    # error1 = UPssPu - y + UsRefPu
+    error1 = (- y1 + UsRefPu) + inputs[3]
+    tf2, y2 = tf_to_diffblock(
+        num=[0, Kf],
+        den=[1, tF],
+        x=inputs[2],
+        name='exciter2',
+    )
+    error2 = error1 - y2
+
+    tf3, y3 = tf_to_diffblock(
+        num=[1, tC],
+        den=[1, tB],
+        x=error2,
+        name='exciter3',
+    )
+    tf4, y4 = tf_to_diffblock(
+        num=[Ka],
+        den=[1, tA],
+        x=y3,
+        name='exciter4',
+    )
+
+    y5 = hard_sat(y4, VaMinPu, VaMaxPu)
+
+
+    min_const = Const(max(events_dict['VaMinPu'], events_dict['EfeMinPu']))
+    max_const = Const(min(events_dict['VaMaxPu'], events_dict['EfeMaxPu']))
+    y6 = hard_sat(y4, min_const, max_const)
+    Efe = Var('Efe')
+    exciter_submodel, Efd = build_exciter_submodel(inputs[0], Efe, inputs[2], multilinear=multilinear)
+    linking_block = Block(
+        algebraic_eqs=[y6 - Efe],
+        algebraic_vars=[Efe] + algebraic_vars,
+
+    )
+
+    exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
+
+    return exciter_model, Efd
+
 
 def exciter(item_name:str = "") -> Block:
 

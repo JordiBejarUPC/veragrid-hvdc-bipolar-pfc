@@ -34,7 +34,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
     absolut,
     generator,
     genqec,
-    governor,
+    governor_no_load_control,
     exciter,
     line,
     generic
@@ -943,7 +943,7 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        blk = governor(item_name)
+        blk = governor_no_load_control(item_name)
         return blk
 
     # GOVERNOR (governor with control)
