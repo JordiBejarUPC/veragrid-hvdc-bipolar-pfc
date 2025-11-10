@@ -33,6 +33,8 @@ def calc_V_outage(nc: NumericalCircuit,
                   pv: IntVec,
                   vd: IntVec,
                   pqpv: IntVec,
+                  pqpv_original: IntVec,
+                  pq_original: IntVec,
                   contingency_br_indices: IntVec):
     """
     Calculate the voltage due to outages in a non-linear manner with HELM.
@@ -57,6 +59,8 @@ def calc_V_outage(nc: NumericalCircuit,
     :param pv: set of PV buses
     :param vd: set of slack buses
     :param pqpv: set of PQ + PV buses
+    :param pqpv_original: set of PQ + PV buses in the original order
+    :param pq_original: set of PQ buses in the original order, considering slack
     :param contingency_br_indices: array of branch indices of the contingency
     :return: V, Sf, loading, norm_f
     """
@@ -104,8 +108,10 @@ def calc_V_outage(nc: NumericalCircuit,
                                            npqpv=len(pqpv),
                                            nbus=nc.nbus,
                                            sl=vd,
+                                           pqpv_original=pqpv_original,
+                                           pq_original=pq_original,
                                            tolerance=1e-6,
-                                           max_coeff=10)
+                                           max_coeff=30)
 
     # compute flows
     Sf = V[nc.passive_branch_data.F] * np.conj(Yf @ V) * nc.Sbase
@@ -223,7 +229,9 @@ class HelmVariations:
                         pv=pre.pv,
                         vd=pre.sl,
                         pqpv=pre.pqpv,
-                        contingency_br_indices=contingency_br_indices_is
+                        pqpv_original=pre.pqpv_original,
+                        pq_original=pre.pq_original,
+                        contingency_br_indices=contingency_br_indices_is,
                     )
 
                     # assign objects to the full matrix

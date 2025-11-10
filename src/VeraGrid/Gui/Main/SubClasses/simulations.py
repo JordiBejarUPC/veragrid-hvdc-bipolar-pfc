@@ -2765,34 +2765,6 @@ class SimulationsMain(TimeEventsMain):
         if not self.session.is_anything_running():
             self.UNLOCK()
 
-    def get_clustering_results(self) -> Union[sim.ClusteringResults, None]:
-        """
-        Get the clustering results if available
-        :return: ClusteringResults or None
-        """
-        if self.ui.actionUse_clustering.isChecked():
-            _, clustering_results = self.session.clustering
-
-            if clustering_results is not None:
-                n = len(clustering_results.time_indices)
-
-                if n != self.ui.cluster_number_spinBox.value():
-                    error_msg("The number of clusters in the stored results is different from the specified :(\n"
-                              "Run another clustering analysis.")
-
-                    return None
-                else:
-                    # all ok
-                    return clustering_results
-            else:
-                # no results ...
-                self.show_warning_toast("There are no clustering results.")
-                self.ui.actionUse_clustering.setChecked(False)
-                return None
-
-        else:
-            # not marked ...
-            return None
 
     def run_clustering(self):
         """
