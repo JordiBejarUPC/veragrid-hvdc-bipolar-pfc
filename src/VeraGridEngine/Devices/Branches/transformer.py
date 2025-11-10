@@ -260,8 +260,8 @@ class Transformer2W(ControllableBranchParent):
                       definition='Vector group number. It indicates the structural phase:'
                                  'phase = vector_group_number · 30º')
 
-        self.register(key='phases', units='', tpe=IntVec,
-                      definition='Which phases are present at the transformer')
+        # TODO: do we need to edit the phases vector?
+        # self.register(key='phases', units='', tpe=IntVec, definition='Which phases are present at the transformer')
 
         self.register(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False)
 
@@ -310,7 +310,6 @@ class Transformer2W(ControllableBranchParent):
             self._phases = val
         else:
             raise Exception("phases must be a numpy array (IntVec)")
-
 
     def set_hv_and_lv(self, HV: float, LV: float):
         """
