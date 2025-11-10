@@ -23,6 +23,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
+from VeraGridEngine.enumerations import ShuntConnectionType
 
 
 # @nb.njit(cache=True)
@@ -76,6 +77,15 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
     return Ybus_gen.tocsc(), Yzeros
 
+
+# --- normalización de tipos auxiliares ---
+def is_yg(x) -> bool:
+    """
+    Devuelve True si x representa conexión 'Yg' (acepta Enum o str).
+    """
+    if hasattr(x, "value"):  # Enum
+        return x.value == "Yg"
+    return str(x) == "Yg"  # str u objeto que imprime 'Yg'
 
 def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matrix, CxVec, BoolVec, IntVec, IntVec]:
     """
@@ -142,6 +152,33 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     Ctot = Cfcopy + Ctcopy
     col_sums = np.array(Ctot.sum(axis=0))[0, :]
     binary_bus_mask = (col_sums > 0).astype(bool)
+
+    F = np.array(nc.passive_branch_data.F, dtype=int)
+    T = np.array(nc.passive_branch_data.T, dtype=int)
+
+    bus_has_neutral = np.ones(4 * n, dtype=bool)  # por defecto el neutro del bus está activo
+
+    for bus_idx in range(n):
+        connected = np.where((F == bus_idx) | (T == bus_idx))[0]
+        if connected.size == 0:
+            continue
+
+        grounded_here = False
+        for k in connected:
+            # Si este bus es el 'from' de la rama k y ese lado es Yg -> neutro a 0
+            if F[k] == bus_idx and is_yg(nc.passive_branch_data.conn_f[k]):
+                grounded_here = True
+                break
+            # Si este bus es el 'to' de la rama k y ese lado es Yg -> neutro a 0
+            if T[k] == bus_idx and is_yg(nc.passive_branch_data.conn_t[k]):
+                grounded_here = True
+                break
+
+        if grounded_here:
+            bus_has_neutral[4 * bus_idx + 0] = False  # desactiva el nodo de neutro del bus
+
+    # aplica la prioridad: si algún trafo aterra el neutro del bus, el neutro se elimina del solver
+    binary_bus_mask[0::4] = bus_has_neutral[0::4]
 
     Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)
     for k in range(nc.shunt_data.nelm):

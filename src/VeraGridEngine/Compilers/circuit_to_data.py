@@ -1533,6 +1533,8 @@ def get_branch_data(
             data.phC[ii]) = elm.transformer_phases(logger=logger)
 
         data.conn[ii] = elm.conn
+        data.conn_f[ii] = elm.conn_f
+        data.conn_t[ii] = elm.conn_t
         data.m_taps[ii] = elm.tap_changer.tap_modules_array
         data.tau_taps[ii] = elm.tap_changer.tap_angles_array
 

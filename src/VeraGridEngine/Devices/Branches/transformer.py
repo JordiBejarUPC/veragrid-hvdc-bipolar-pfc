@@ -233,10 +233,10 @@ class Transformer2W(ControllableBranchParent):
         # association with transformer templates
         # self.possible_transformer_types: Associations = Associations(device_type=DeviceType.TransformerTypeDevice)
 
-        self._conn_f: WindingType = WindingType.GroundedStar
-        self._conn_t: WindingType = WindingType.Delta
+        self._conn_f: WindingType = WindingType.Delta
+        self._conn_t: WindingType = WindingType.GroundedStar
         self._vector_group_number: int = 0
-        self._phases: IntVec = np.array([0, 1, 2, 3])
+        self._phases: IntVec = np.array([1, 2, 3])
 
         # register
         self.register(key='HV', units='kV', tpe=float, definition='High voltage rating')
@@ -659,6 +659,32 @@ class Transformer2W(ControllableBranchParent):
                 [0, 0, ytt, 0],
                 [0, 0, 0, ytt]
             ])
+
+        # if conn_y_from and conn_y_to:  # Yy
+        #     Yff = np.array([
+        #         [0, 0, 0, 0],
+        #         [0, yff, 0, 0],
+        #         [0, 0, yff, 0],
+        #         [0, 0, 0, yff]
+        #     ])
+        #     Yft = np.array([
+        #         [0, 0, 0, 0],
+        #         [0, yft, 0, 0],
+        #         [0, 0, yft, 0],
+        #         [0, 0, 0, yft]
+        #     ])
+        #     Ytf = np.array([
+        #         [0, 0, 0, 0],
+        #         [0, ytf, 0, 0],
+        #         [0, 0, ytf, 0],
+        #         [0, 0, 0, ytf]
+        #     ])
+        #     Ytt = np.array([
+        #         [0, 0, 0, 0],
+        #         [0, ytt, 0, 0],
+        #         [0, 0, ytt, 0],
+        #         [0, 0, 0, ytt]
+        #     ])
 
         # if conn_y_from and conn_y_to:  # Yy
         #     Yff = np.array([

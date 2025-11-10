@@ -678,7 +678,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
             'It_A': np.abs(self.It_A).round(5),
             'It_B': np.abs(self.It_B).round(5),
             'It_C': np.abs(self.It_C).round(5),
-        }, index=self.bus_names)
+        }, index=self.branch_names)
 
         return df
 

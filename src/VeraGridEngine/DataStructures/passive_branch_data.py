@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 import numpy as np
+
+from VeraGridEngine import ShuntConnectionType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.enumerations import WindingsConnection
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
@@ -41,6 +43,8 @@ class PassiveBranchData(BranchParentData):
         self.B2: Vec = np.zeros(self.nelm, dtype=float)
 
         self.conn: ObjVec = np.full(self.nelm, fill_value=WindingsConnection.GG, dtype=object)
+        self.conn_f: ObjVec = np.full(self.nelm, fill_value=ShuntConnectionType.NeutralStar, dtype=object)
+        self.conn_t: ObjVec = np.full(self.nelm, fill_value=ShuntConnectionType.NeutralStar, dtype=object)
 
         self.m_taps = SparseObjectArray(n=self.nelm)
         self.tau_taps = SparseObjectArray(n=self.nelm)
@@ -96,6 +100,8 @@ class PassiveBranchData(BranchParentData):
         data.B2 = self.B2[elm_idx]
 
         data.conn = self.conn[elm_idx]  # winding connection
+        data.conn_f = self.conn_f[elm_idx]
+        data.conn_t = self.conn_t[elm_idx]
 
         data.m_taps = self.m_taps.slice(elm_idx)
         data.tau_taps = self.tau_taps.slice(elm_idx)
@@ -141,6 +147,9 @@ class PassiveBranchData(BranchParentData):
         data.B2 = self.B.copy()
 
         data.conn = self.conn.copy()  # winding connection
+        data.conn_f = self.conn_f.copy()
+        data.conn_t = self.conn_t.copy()
+
         data.m_taps = self.m_taps.copy()
         data.tau_taps = self.tau_taps.copy()
 
