@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 logger = gce.Logger()
-
 grid = gce.MultiCircuit()
 grid.fBase = 60
 
@@ -14,23 +13,31 @@ grid.fBase = 60
 bus_632 = gce.Bus(name='Bus632', Vnom=4.16, xpos=0, ypos=0)
 bus_632.is_slack = True
 grid.add_bus(obj=bus_632)
-gen = gce.Generator(vset = 1.0)
+gen = gce.Generator()
 grid.add_generator(bus = bus_632, api_obj = gen)
 
-bus_634 = gce.Bus(name='Bus634', Vnom=4.16, xpos=200*5, ypos=0)
+bus_634 = gce.Bus(name='Bus634', Vnom=0.48, xpos=200*5, ypos=0)
 grid.add_bus(obj=bus_634)
 
+bus_636 = gce.Bus(name='Bus636', Vnom=0.48, xpos=400*5, ypos=0)
+grid.add_bus(obj=bus_636)
+
 # ----------------------------------------------------------------------------------------------------------------------
-# Load
+# Transformer
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(P1=0.7,
-                    Q1=0.5,
-                    P2=0.6,
-                    Q2=0.45,
-                    P3=0.5,
-                    Q3=0.4)
-load_634.conn = ShuntConnectionType.NeutralStar
-grid.add_load(bus=bus_634, api_obj=load_634)
+XFM_1 = gce.Transformer2W(name='XFM-1',
+                          bus_from=bus_632,
+                          bus_to=bus_634,
+                          HV=4.16,
+                          LV=0.48,
+                          nominal_power=0.5,
+                          rate=0.5,
+                          r=1.1*2,
+                          x=2*2)
+XFM_1.conn_f = WindingType.GroundedStar
+XFM_1.conn_t = WindingType.GroundedStar
+XFM_1.phases = np.array([1, 2, 3])
+grid.add_transformer2w(XFM_1)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Line
@@ -58,11 +65,19 @@ configuration = gce.create_known_abc_overhead_template(name='4 wire line',
                                                        frequency=60)
 grid.add_overhead_line(configuration)
 
-line = gce.Line(bus_from=bus_632,
-                bus_to=bus_634,
-                length=2000 * 0.0003048)
+line = gce.Line(bus_from=bus_634,
+                bus_to=bus_636,
+                length=100 * 0.0003048)
 line.apply_template(configuration, grid.Sbase, grid.fBase, logger)
 grid.add_line(obj=line)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Load
+# ----------------------------------------------------------------------------------------------------------------------
+load_636 = gce.Load(Ir1=0.3,
+                    Ii1=0.3)
+load_636.conn = ShuntConnectionType.NeutralStar
+grid.add_load(bus=bus_636, api_obj=load_636)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
@@ -80,15 +95,13 @@ print()
 print(res.get_voltage_3ph_df())
 print()
 print(res.get_current_3ph_df())
-# print()
-# print(res.get_load_neutral_voltage_df())
 
 print("\nConverged? ", res.converged)
-print("\nIterations: ", res.iterations)
+print("Iterations: ", res.iterations)
 
-# print()
-# print(res.voltage_A)
-# print()
-# print(res.voltage_B)
-# print()
-# print(res.voltage_C)
+# gce.save_file(grid=grid, filename='transformer_neutral.veragrid')
+
+print(res.voltage_N)
+print(res.voltage_A)
+print(res.voltage_B)
+print(res.voltage_C)
