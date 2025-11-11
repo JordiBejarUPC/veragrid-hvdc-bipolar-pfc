@@ -533,7 +533,7 @@ def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
     return None
 
     
-def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t,
+def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
                                    dtheta_max=1.57, base_name: str = "hvdc"):
     """
     Convex-hull (Balas) formulation for HVDC Pmode3.
@@ -594,8 +594,21 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     # Region selection
     prob.add_cst(lam_d + lam_u + lam_l == 1, name=nm("region_sum_eq"))
 
+    # New vars
+    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))   # control angle
+    s   = prob.add_var(lb=0.0,        ub=prob.INFINITY, name=nm("phi_slack_abs"))
+
+    # Use phi in droop law (replace your droop_affine_eq)
+    prob.add_cst(g == P0 + droop * phi, name=nm("droop_affine_eq_phi"))
+
+    # Softly tie phi to actual angle difference (absolute value with linear slacks)
+    prob.add_cst(s >=  phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
+    prob.add_cst(s >= -(phi - (theta_f - theta_t)), name=nm("phi_couple_neg"))
+
+    f_obj += 1.0 * s
+
     # Droop eq.
-    prob.add_cst(g == P0 + droop * (theta_f - theta_t), name=nm("droop_affine_eq"))
+    # prob.add_cst(g == P0 + droop * (theta_f - theta_t), name=nm("droop_affine_eq"))
 
     # Flow decomposition in the three areas
     prob.add_cst(flow == f_d + f_u + f_l, name=nm("flow_decomp_eq"))
@@ -624,7 +637,7 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(g >=  rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
     prob.add_cst(g <= -rate * lam_l + gU * (1 - lam_l), name=nm("lower_sat_consistency_le"))
 
-    return flow
+    return flow, f_obj
 
 
 def formulate_lp_abs_value(prob: LpModel, lp_var: LpVar, ub: float, M: float, name: str):
@@ -1993,7 +2006,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 theta_t=vars_bus.Va[t_idx, to],
                     #                                                 base_name="hvdc")
 
-                    hvdc_vars.flows[t_idx, m] = pmode3_formulation_convex_hull(prob=prob,
+                    hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
                                                                        t_idx=t_idx,
                                                                        m=m,
                                                                        rate=hvdc_data_t.rates[m] / Sbase,
@@ -2001,6 +2014,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                                                                        droop=droop,
                                                                        theta_f=vars_bus.Va[t_idx, fr],
                                                                        theta_t=vars_bus.Va[t_idx, to],
+                                                                       f_obj=f_obj,
                                                                        dtheta_max=1.0,
                                                                        base_name="hvdc")
 
