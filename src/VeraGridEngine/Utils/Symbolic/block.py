@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Tuple, Sequence, List, Dict, Any
+from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
