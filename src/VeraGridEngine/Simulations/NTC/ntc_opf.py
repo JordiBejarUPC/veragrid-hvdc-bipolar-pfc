@@ -1847,7 +1847,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
             vsc_flow=vsc_vars.flows[t_idx, :]
         )
 
-        for m in changed_idx:
+        for occ, m in enumerate(changed_idx):
 
             if isinstance(contingency_flows[m], LpExp):
 
@@ -1888,8 +1888,9 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
 
                     if con_loading[m] < 1.0:
                         # declare slack variables
-                        pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c]))
-                        neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c]))
+                        # Use occurrence index 'occ' to ensure unique names when changed_idx has duplicates
+                        pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c, occ]))
+                        neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c, occ]))
 
                         # register the contingency data to evaluate the result at the end
                         branch_vars.add_contingency_flow(t=t_idx, m=m, c=c,
@@ -1900,13 +1901,13 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                         # add upper rate constraint
                         prob.add_cst(
                             cst=contingency_flows[m] + pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
-                            name=join("br_cst_flow_upper_lim_", [t_idx, m, c])
+                            name=join("br_cst_flow_upper_lim_", [t_idx, m, c, occ])
                         )
 
                         # add lower rate constraint
                         prob.add_cst(
                             cst=contingency_flows[m] - neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
-                            name=join("br_cst_flow_lower_lim_", [t_idx, m, c])
+                            name=join("br_cst_flow_lower_lim_", [t_idx, m, c, occ])
                         )
 
                         f_obj += pos_slack + neg_slack

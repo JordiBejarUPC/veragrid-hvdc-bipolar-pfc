@@ -441,7 +441,9 @@ class BaseMainGui(QMainWindow):
         """
         Setup the time sliders
         """
-        for slider in [self.ui.diagram_step_slider, self.ui.db_step_slider]:
+        for slider in [self.ui.diagram_step_slider,
+                       self.ui.db_step_slider,
+                       self.ui.compiled_arrays_step_slider]:
             if self.circuit.has_time_series:
                 slider.setRange(-1, self.circuit.get_time_number() - 1)
             else:
