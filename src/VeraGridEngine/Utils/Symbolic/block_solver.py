@@ -692,7 +692,6 @@ class BlockSolver:
 
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        :param events_list:
         :param params0:
         :param t0: start time
         :param t_end: end time
