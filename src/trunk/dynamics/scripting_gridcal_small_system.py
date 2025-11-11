@@ -3,7 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import math
-import pdb
 
 import numpy as np
 from matplotlib import pyplot as plt

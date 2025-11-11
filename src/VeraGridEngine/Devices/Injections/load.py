@@ -78,7 +78,7 @@ class Load(LoadParent):
                  active=True, mttf=0.0, mttr=0.0, capex=0, opex=0,
                  n_customers: int = 0,
                  contracted_power: float = 0.0,
-                 init_params: dict[str, float] = {},
+                 init_params: dict[str, float] | None = None,
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The load object implements the so-called ZIP model, in which the load can be
@@ -180,7 +180,7 @@ class Load(LoadParent):
         self.Pl0 = Pl0
         self.Ql0 = Ql0
 
-        self.init_params = init_params
+        self.init_params = init_params if init_params is not None else dict()
 
         self.register(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof')
@@ -225,7 +225,7 @@ class Load(LoadParent):
                       profile_name='B3_prof')
         self.register(key='n_customers', units='unit', tpe=int,
                       definition='Number of customers represented by this load', profile_name='n_customers_prof')
-        self.register(key='contract_power', units='MVA', tpe=float, definition='Nominal contracted power', )
+        self.register(key='contract_power', units='MW', tpe=float, definition='Nominal contracted power', )
 
     @property
     def Ir_prof(self) -> Profile:
