@@ -30,14 +30,8 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1860,7 +1854,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="647" />
+    <option name="localTasksCounter" value="649" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1906,8 +1900,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="showing icons in macos menus" />
-    <MESSAGE value="fixed macos icon menu" />
     <MESSAGE value="improved windows icon thing" />
     <MESSAGE value="some changes" />
     <MESSAGE value="some improvements in the zoom on laptops" />
@@ -1931,7 +1923,9 @@
     <MESSAGE value="5.5.16" />
     <MESSAGE value="removed pygments dependency" />
     <MESSAGE value="deleted all the PDB imports" />
-    <option name="LAST_COMMIT_MESSAGE" value="deleted all the PDB imports" />
+    <MESSAGE value="Added time slider to examine arrays in the time series not only the snapshot" />
+    <MESSAGE value="Fixed time series data not changing on DB tree object change" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed time series data not changing on DB tree object change" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2171,11 +2165,6 @@
           <option name="timeStamp" value="2428" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_ts_results.py</url>
-          <line>345</line>
-          <option name="timeStamp" value="2490" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/remote.py</url>
           <line>175</line>
           <option name="timeStamp" value="2505" />
@@ -2391,9 +2380,34 @@
           <option name="timeStamp" value="3012" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>875</line>
-          <option name="timeStamp" value="3013" />
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py</url>
+          <line>247</line>
+          <option name="timeStamp" value="3015" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py</url>
+          <line>245</line>
+          <option name="timeStamp" value="3016" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py</url>
+          <line>1015</line>
+          <option name="timeStamp" value="3019" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py</url>
+          <line>1005</line>
+          <option name="timeStamp" value="3021" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py</url>
+          <line>1018</line>
+          <option name="timeStamp" value="3022" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/ProfilesInput/profile_dialogue.py</url>
+          <line>586</line>
+          <option name="timeStamp" value="3025" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
