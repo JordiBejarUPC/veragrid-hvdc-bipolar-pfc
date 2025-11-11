@@ -361,34 +361,6 @@ class NaNError(SolverError):
     """Raised when NaNs or Infs appear in the solution."""
     pass
 
-
-@dataclass(frozen=False)
-class DiffBlock(Block):
-    diff_vars: List[DiffVar] = field(default_factory=list)
-    lag_vars: List[DiffVar] = field(default_factory=list)
-    reformulated_vars: List[DiffVar] = field(default_factory=list)
-    differential_eqs: List[Expr] = field(default_factory=list)
-    pseudo_transient: bool = False
-
-    @classmethod
-    def from_block(cls, block: Block, **kwargs):
-        if isinstance(block, DiffBlock):
-            return block  # already a DiffBlock
-
-        # Create a new instance of DiffBlock, copying fields from the original Block
-        obj = cls.__new__(cls)  # create instance without __init__
-        obj.__dict__ = block.__dict__.copy()
-
-        # Ensure DiffBlock-specific fields are always initialised
-        obj.diff_vars = []
-        obj.lag_vars = []
-        obj.reformulated_vars = []
-        obj.differential_eqs = []
-
-        obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
-        return obj
-
-
 class DiffBlockSolver(BlockSolver):
 
     def __init__(self, block_system: Block, time: Var, use_jit: bool = True):
