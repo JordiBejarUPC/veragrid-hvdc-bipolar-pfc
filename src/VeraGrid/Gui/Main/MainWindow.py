@@ -649,6 +649,12 @@ class Ui_mainWindow(object):
         self.progress_frame.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_7 = QGridLayout(self.progress_frame)
         self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.progress_label = QLabel(self.progress_frame)
+        self.progress_label.setObjectName(u"progress_label")
+        self.progress_label.setFont(font)
+
+        self.gridLayout_7.addWidget(self.progress_label, 2, 3, 1, 1)
+
         self.progressBar = QProgressBar(self.progress_frame)
         self.progressBar.setObjectName(u"progressBar")
         self.progressBar.setFont(font)
@@ -663,7 +669,7 @@ class Ui_mainWindow(object):
         self.progressBar.setValue(20)
         self.progressBar.setInvertedAppearance(False)
 
-        self.gridLayout_7.addWidget(self.progressBar, 4, 3, 1, 1)
+        self.gridLayout_7.addWidget(self.progressBar, 5, 3, 1, 1)
 
         self.cancelButton = QPushButton(self.progress_frame)
         self.cancelButton.setObjectName(u"cancelButton")
@@ -671,13 +677,7 @@ class Ui_mainWindow(object):
         self.cancelButton.setFont(font)
         self.cancelButton.setIcon(icon48)
 
-        self.gridLayout_7.addWidget(self.cancelButton, 4, 0, 1, 1)
-
-        self.progress_label = QLabel(self.progress_frame)
-        self.progress_label.setObjectName(u"progress_label")
-        self.progress_label.setFont(font)
-
-        self.gridLayout_7.addWidget(self.progress_label, 2, 3, 1, 1)
+        self.gridLayout_7.addWidget(self.cancelButton, 5, 0, 1, 1)
 
 
         self.gridLayout_3.addWidget(self.progress_frame, 3, 0, 1, 1)
@@ -1590,18 +1590,19 @@ class Ui_mainWindow(object):
         self.frame_28.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_19 = QGridLayout(self.frame_28)
         self.gridLayout_19.setObjectName(u"gridLayout_19")
-        self.gridLayout_19.setContentsMargins(-1, -1, 0, -1)
+        self.gridLayout_19.setVerticalSpacing(8)
+        self.gridLayout_19.setContentsMargins(-1, 8, 0, -1)
         self.simulation_data_island_comboBox = QComboBox(self.frame_28)
         self.simulation_data_island_comboBox.setObjectName(u"simulation_data_island_comboBox")
 
-        self.gridLayout_19.addWidget(self.simulation_data_island_comboBox, 0, 2, 1, 2)
+        self.gridLayout_19.addWidget(self.simulation_data_island_comboBox, 0, 1, 1, 4)
 
         self.exportSimulationDataButton = QPushButton(self.frame_28)
         self.exportSimulationDataButton.setObjectName(u"exportSimulationDataButton")
         self.exportSimulationDataButton.setMaximumSize(QSize(32, 16777215))
         self.exportSimulationDataButton.setIcon(icon19)
 
-        self.gridLayout_19.addWidget(self.exportSimulationDataButton, 0, 1, 1, 1)
+        self.gridLayout_19.addWidget(self.exportSimulationDataButton, 0, 0, 1, 1)
 
         self.compute_simulation_data_pushButton = QPushButton(self.frame_28)
         self.compute_simulation_data_pushButton.setObjectName(u"compute_simulation_data_pushButton")
@@ -1610,13 +1611,13 @@ class Ui_mainWindow(object):
         icon104.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.compute_simulation_data_pushButton.setIcon(icon104)
 
-        self.gridLayout_19.addWidget(self.compute_simulation_data_pushButton, 0, 0, 1, 1)
+        self.gridLayout_19.addWidget(self.compute_simulation_data_pushButton, 0, 5, 1, 1)
 
         self.simulationDataStructuresTreeView = QTreeView(self.frame_28)
         self.simulationDataStructuresTreeView.setObjectName(u"simulationDataStructuresTreeView")
         self.simulationDataStructuresTreeView.setAnimated(True)
 
-        self.gridLayout_19.addWidget(self.simulationDataStructuresTreeView, 1, 0, 1, 4)
+        self.gridLayout_19.addWidget(self.simulationDataStructuresTreeView, 1, 0, 1, 6)
 
         self.simulationDataSplitter.addWidget(self.frame_28)
         self.frame_29 = QFrame(self.simulationDataSplitter)
@@ -1625,42 +1626,56 @@ class Ui_mainWindow(object):
         self.frame_29.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_23 = QGridLayout(self.frame_29)
         self.gridLayout_23.setObjectName(u"gridLayout_23")
+        self.gridLayout_23.setVerticalSpacing(8)
         self.gridLayout_23.setContentsMargins(0, 8, -1, -1)
-        self.arrayModeComboBox = QComboBox(self.frame_29)
-        self.arrayModeComboBox.setObjectName(u"arrayModeComboBox")
-
-        self.gridLayout_23.addWidget(self.arrayModeComboBox, 0, 3, 1, 1)
-
-        self.horizontalSpacer_23 = QSpacerItem(510, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_23.addItem(self.horizontalSpacer_23, 0, 5, 1, 1)
-
-        self.simulationDataStructureTableView = QTableView(self.frame_29)
-        self.simulationDataStructureTableView.setObjectName(u"simulationDataStructureTableView")
-
-        self.gridLayout_23.addWidget(self.simulationDataStructureTableView, 1, 0, 1, 7)
-
         self.copyArraysToNumpyButton = QPushButton(self.frame_29)
         self.copyArraysToNumpyButton.setObjectName(u"copyArraysToNumpyButton")
         icon105 = QIcon()
         icon105.addFile(u":/Icons/icons/array.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.copyArraysToNumpyButton.setIcon(icon105)
 
-        self.gridLayout_23.addWidget(self.copyArraysToNumpyButton, 0, 1, 1, 1)
+        self.gridLayout_23.addWidget(self.copyArraysToNumpyButton, 0, 3, 1, 1)
+
+        self.compiled_arrays_step_slider = QSlider(self.frame_29)
+        self.compiled_arrays_step_slider.setObjectName(u"compiled_arrays_step_slider")
+        self.compiled_arrays_step_slider.setOrientation(Qt.Orientation.Horizontal)
+
+        self.gridLayout_23.addWidget(self.compiled_arrays_step_slider, 0, 0, 1, 1)
+
+        self.horizontalSpacer_23 = QSpacerItem(300, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_23.addItem(self.horizontalSpacer_23, 0, 2, 1, 1)
 
         self.plotArraysButton = QPushButton(self.frame_29)
         self.plotArraysButton.setObjectName(u"plotArraysButton")
         self.plotArraysButton.setMinimumSize(QSize(32, 0))
         self.plotArraysButton.setIcon(icon96)
 
-        self.gridLayout_23.addWidget(self.plotArraysButton, 0, 6, 1, 1)
+        self.gridLayout_23.addWidget(self.plotArraysButton, 0, 8, 1, 1)
+
+        self.simulationDataStructureTableView = QTableView(self.frame_29)
+        self.simulationDataStructureTableView.setObjectName(u"simulationDataStructureTableView")
+
+        self.gridLayout_23.addWidget(self.simulationDataStructureTableView, 1, 0, 1, 9)
 
         self.copyArraysButton = QPushButton(self.frame_29)
         self.copyArraysButton.setObjectName(u"copyArraysButton")
         self.copyArraysButton.setMinimumSize(QSize(32, 0))
         self.copyArraysButton.setIcon(icon97)
 
-        self.gridLayout_23.addWidget(self.copyArraysButton, 0, 2, 1, 1)
+        self.gridLayout_23.addWidget(self.copyArraysButton, 0, 4, 1, 1)
+
+        self.arrayModeComboBox = QComboBox(self.frame_29)
+        self.arrayModeComboBox.setObjectName(u"arrayModeComboBox")
+
+        self.gridLayout_23.addWidget(self.arrayModeComboBox, 0, 5, 1, 1)
+
+        self.compiled_arrays_step_label = QLabel(self.frame_29)
+        self.compiled_arrays_step_label.setObjectName(u"compiled_arrays_step_label")
+        self.compiled_arrays_step_label.setFont(font1)
+        self.compiled_arrays_step_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.gridLayout_23.addWidget(self.compiled_arrays_step_label, 0, 1, 1, 1)
 
         self.simulationDataSplitter.addWidget(self.frame_29)
 
@@ -5629,11 +5644,11 @@ class Ui_mainWindow(object):
         self.actionAdd_rms_event_to_selected.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Add RMS event</span></p><p>Create a new RMS event to the schematic selection</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.actionClear_highlights.setText(QCoreApplication.translate("mainWindow", u"Clear highlights", None))
+        self.progress_label.setText("")
 #if QT_CONFIG(tooltip)
         self.cancelButton.setToolTip(QCoreApplication.translate("mainWindow", u"Cancel process", None))
 #endif // QT_CONFIG(tooltip)
         self.cancelButton.setText("")
-        self.progress_label.setText("")
 #if QT_CONFIG(tooltip)
         self.diagramsListView.setToolTip(QCoreApplication.translate("mainWindow", u"List of available diagrams", None))
 #endif // QT_CONFIG(tooltip)
@@ -5857,6 +5872,9 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.copyArraysToNumpyButton.setText("")
 #if QT_CONFIG(tooltip)
+        self.compiled_arrays_step_slider.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Time slider</span></p><p>Move this time slider to select the appropriate time slot to view.</p><p>The first position sets the snapshot values, the rest attend to the time series values.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
         self.plotArraysButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot values", None))
 #endif // QT_CONFIG(tooltip)
         self.plotArraysButton.setText("")
@@ -5864,6 +5882,7 @@ class Ui_mainWindow(object):
         self.copyArraysButton.setToolTip(QCoreApplication.translate("mainWindow", u"Copy array to clipboard", None))
 #endif // QT_CONFIG(tooltip)
         self.copyArraysButton.setText("")
+        self.compiled_arrays_step_label.setText(QCoreApplication.translate("mainWindow", u"Snapshot", None))
         self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.compiledArraysTab), QCoreApplication.translate("mainWindow", u"Compiled arrays", None))
 #if QT_CONFIG(tooltip)
         self.comments_textEdit.setToolTip(QCoreApplication.translate("mainWindow", u"Write here some comments about the grid", None))
