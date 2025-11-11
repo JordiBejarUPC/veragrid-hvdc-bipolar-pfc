@@ -82,6 +82,7 @@ class BlockDiagram:
 
         :param name: Diagram name
         """
+        self.status: str | None = None
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
@@ -234,6 +235,7 @@ class DynamicModelHost(EditableDevice):
         else:
             raise ValueError(f"Cannot set template with {val}")
 
+
     @property
     def custom_model(self):
         """
@@ -241,6 +243,20 @@ class DynamicModelHost(EditableDevice):
         :return:
         """
         return self._custom_model
+
+    @custom_model.setter
+    def custom_model(self, val: Block):
+        """
+
+        :param val:
+        :return:
+        """
+        if isinstance(val, Block):
+            self._custom_model = val
+        elif val is None:
+            self._custom_model = None
+        else:
+            raise ValueError(f"Cannot set template with {val}")
 
     @property
     def model(self) -> Block:

@@ -47,9 +47,6 @@ class InjectionParent(PhysicalDevice):
         'bus_pos',
         '_conn',
         '_rms_model',
-        '_templ_rms_model',
-        '_blkbox_rms_model',
-        '_equ_rms_model',
         'time'
     )
 
@@ -125,9 +122,6 @@ class InjectionParent(PhysicalDevice):
         self._conn: ShuntConnectionType = ShuntConnectionType.Star
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
-        self._templ_rms_model: DynamicModelHost = DynamicModelHost()
-        self._blkbox_rms_model: DynamicModelHost = DynamicModelHost()
-        self._equ_rms_model: DynamicModelHost = DynamicModelHost()
 
         self.bus_pos: int = 0
 
@@ -168,15 +162,6 @@ class InjectionParent(PhysicalDevice):
 
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
-
-        self.register(key='templ_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
-                      definition='RMS dynamic model for templates editor', display=False)
-
-        self.register(key='blkbox_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
-                      definition='RMS dynamic model for block boxes editor', display=False)
-
-        self.register(key='equ_rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
-                      definition='RMS dynamic model for equations editor', display=False)
 
         self.register(key='bus_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                       display=False)
@@ -329,45 +314,6 @@ class InjectionParent(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
-
-    @property
-    def templ_rms_model(self) -> DynamicModelHost:
-        """
-
-        :return:
-        """
-        return self._templ_rms_model
-
-    @templ_rms_model.setter
-    def templ_rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._templ_rms_model = value
-
-    @property
-    def blkbox_rms_model(self) -> DynamicModelHost:
-        """
-
-        :return:
-        """
-        return self._blkbox_rms_model
-
-    @blkbox_rms_model.setter
-    def blkbox_rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._blkbox_rms_model = value
-
-    @property
-    def equ_rms_model(self) -> DynamicModelHost:
-        """
-
-        :return:
-        """
-        return self._equ_rms_model
-
-    @equ_rms_model.setter
-    def equ_rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._equ_rms_model = value
 
     def get_S_with_sign(self) -> complex:
         """

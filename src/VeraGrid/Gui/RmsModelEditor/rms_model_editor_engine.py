@@ -34,7 +34,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
     absolut,
     generator,
     genqec,
-    governor,
+    governor_no_load_control,
     exciter,
     line,
     generic
@@ -117,16 +117,16 @@ class BlockBridge:
 
 class BlockType(Enum):
 
-    CONSTANT = auto()
+    CONST = auto()
     GAIN = auto()
     SUM = auto()
-    SUBSTRACT = auto()
+    SUBSTR = auto()
     PRODUCT = auto()
     DIVIDE = auto()
     ABS = auto()
     GENERATOR = auto()
     GENQEC = auto()
-    GOVERNOR = auto()
+    GOV = auto()
     EXCITER = auto()
     LINE = auto()
     GENERIC = auto()
@@ -897,7 +897,7 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
     Create a Block appropriate for block_type.
     """
     # GAIN (single output)
-    if block_type == BlockType.CONSTANT:
+    if block_type == BlockType.CONST:
         blk = constant(item_name)
         return blk
 
@@ -912,7 +912,7 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
         return blk
 
     # SUBSTRACT (2 inputs)
-    if block_type == BlockType.SUBSTRACT:
+    if block_type == BlockType.SUBSTR:
         blk = substract(item_name)
         return blk
 
@@ -942,8 +942,8 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
         return blk
 
     # GOVERNOR (governor with control)
-    if block_type == BlockType.GOVERNOR:
-        blk = governor(item_name)
+    if block_type == BlockType.GOV:
+        blk = governor_no_load_control(item_name)
         return blk
 
     # GOVERNOR (governor with control)
@@ -1454,9 +1454,7 @@ class BlockBoxesEditor(QSplitter):
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
 
-        # self.nodes_index = 0
-        # self.children_dict = dict()
-
+        self.block_counters: dict[BlockType, int] = {}
 
 
         # --------------------------------------------------------------------------------------------------------------
@@ -1762,17 +1760,15 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                item = None
-                name = None
-                dialog = NameDialog(self.view)
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    name = dialog.get_name()
-                    if name:
-                        item = BlockItem(name=name)
+                count = self.block_counters.get(tpe, 0) + 1
+                self.block_counters[tpe] = count
 
-                        block = create_block_of_type(block_type=tpe, item_name=name, api_object = self.api_object, )
-                        item.set_subsystem(block)
-                        item.build_item()
+                name = f"{tpe.name}_{count}"
+                item = BlockItem(name=name)
+
+                block = create_block_of_type(block_type=tpe, item_name=name, api_object = self.api_object, )
+                item.set_subsystem(block)
+                item.build_item()
 
                 if item.subsys is not None:
                     self.main_block.add(item.subsys)
@@ -1812,7 +1808,7 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
+                item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, api_object= self.api_object, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
                 self.scene.addItem(item)
                 item.setPos(QPointF(node.x, node.y))
                 brush = item.brush()
@@ -2117,14 +2113,14 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
             api_object_name= self.api_object_name,
-            block=self.model_host.model,
+            block=self.model_host.custom_model,
             diagram=self.model_host.diagram,
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
         )
         # === Add default bus connection block if diagram is empty ===
-        if not self.blockboxes_editor.diagram.node_data and main_editor is not None:
+        if not self.blockboxes_editor.diagram.node_data and main_editor:
             self.blockboxes_editor.add_connection_vars()
         # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
@@ -2141,6 +2137,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # --- status bar setup ---
         self.status_label = QtWidgets.QLabel("🔵 No model applied")
+        if self.model_host.diagram.status is not None:
+            self.status_label.setText(f"🟢 Current model: {self.model_host.diagram.status}")
         self.statusBar().addPermanentWidget(self.status_label)
         self.statusBar().showMessage("Ready")
 
@@ -2157,8 +2155,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         }
 
         selected_model = self.ui.model_selector_comboBox.currentText()
-        self.model_host.model = choice_model_dict[selected_model]
+        # self.model_host.model = choice_model_dict[selected_model]
+
+        if selected_model == "Template model":
+            self.model_host.template = self.template_editor.model
+
         if selected_model == "Block editor model":
+            self.model_host.template = None
             self.model_host.diagram =  self.blockboxes_editor.diagram
 
         if selected_model == "Template model":
@@ -2177,6 +2180,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # --- Update model applyed ---
         self.status_label.setText(f"🟢 Current model: {source}")
+        self.model_host.diagram.status = source
         self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
 
         # --- Activate push button---

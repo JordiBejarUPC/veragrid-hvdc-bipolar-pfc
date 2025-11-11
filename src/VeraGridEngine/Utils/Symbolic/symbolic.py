@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
-
+#
 # from VeraGridEngine.Utils.MultiLinear.diff_blocksolver import DiffBlock
 # from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -37,13 +37,7 @@ def _new_uid() -> int:
 # Generic helpers
 # -----------------------------------------------------------------------------
 
-
-
-def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
-    return x_min + (x - x_min) * heaviside(x - x_min) - (x - x_max) * heaviside(x - x_max)
-
-
-def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
+def tf_to_block(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
     den: list of denominator coefficients [a0, a1, ..., an]
@@ -99,8 +93,6 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Op
     )
 
     return block, y
-
-
 
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
