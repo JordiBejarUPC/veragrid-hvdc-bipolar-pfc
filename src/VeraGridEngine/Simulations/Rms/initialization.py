@@ -2,19 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
 import numpy as np
 import copy
-from pygments.lexers.textfmts import TodotxtLexer
-from scipy.optimize import newton_krylov
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic import BlockSolver
-from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one
-from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import _emit_one
+from VeraGridEngine.Utils.Symbolic.block import Block, Expr
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -80,8 +77,9 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
 
 
 def compose_system_block(grid: MultiCircuit,
-                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Block, Dict[Tuple[int, str], float]]:
-
+                         power_flow_results: PowerFlowResults,
+                         vars2device: Dict[int, PhysicalDevice],
+                         vars_glob_name2uid: Dict[str, int]) -> Tuple[Block, Dict[Tuple[int, str], float]]:
     """
     Compose all RMS models
     :param grid:
@@ -301,7 +299,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # instantiate vars2device  and vars_glob_name2uid dicts
 
-    vars2device:Dict[int, PhysicalDevice] = dict()
+    vars2device: Dict[int, PhysicalDevice] = dict()
     vars_glob_name2uid: Dict[str, int] = dict()
     # find events
     rms_events = grid.rms_events
@@ -316,8 +314,6 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
     Q: ObjVec = np.zeros(n, dtype=object)
     P_used = np.zeros(n, dtype=int)
     Q_used = np.zeros(n, dtype=int)
-
-
 
     # initialize buses
     for i, elm in enumerate(grid.buses):
