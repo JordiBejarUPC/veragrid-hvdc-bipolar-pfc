@@ -2632,27 +2632,14 @@ class SimulationsMain(TimeEventsMain):
 
                 if not self.session.is_this_running(SimulationTypes.InvestmentsEvaluation_run):
 
-                    if self.ui.internal_investment_methods_radioButton.isChecked():
-                        # evaluation method
-                        method = self.investment_evaluation_method_dict[
-                            self.ui.investment_evaluation_method_ComboBox.currentText()
-                        ]
+                    # evaluation method
+                    method = self.investment_evaluation_method_dict[
+                        self.ui.investment_evaluation_method_ComboBox.currentText()
+                    ]
 
-                        obj_fn_tpe = self.investment_evaluation_objfunc_dict[
-                            self.ui.investment_evaluation_objfunc_ComboBox.currentText()
-                        ]
-
-                        fn_ptr = None
-
-                    elif self.ui.plugins_investment_methods_radioButton.isChecked():
-
-                        method = InvestmentEvaluationMethod.FromPlugin
-                        obj_fn_tpe = InvestmentsEvaluationObjectives.FromPlugin
-                        fn_ptr = self.plugins_investment_evaluation_method_dict[
-                            self.ui.plugins_investment_evaluation_method_ComboBox.currentText()
-                        ]
-                    else:
-                        raise Exception("Unrecognized investment simulation mode")
+                    obj_fn_tpe = self.investment_evaluation_objfunc_dict[
+                        self.ui.investment_evaluation_objfunc_ComboBox.currentText()
+                    ]
 
                     # maximum number of function evaluations as a factor of the number of investments
                     max_eval = self.ui.max_investments_evluation_number_spinBox.value() * len(
@@ -2665,7 +2652,7 @@ class SimulationsMain(TimeEventsMain):
                         pf_options=self.get_selected_power_flow_options(),
                         opf_options=self.get_opf_options(),
                         obj_tpe=obj_fn_tpe,
-                        plugin_fcn_ptr=fn_ptr,
+                        plugin_fcn_ptr=None,
                     )
 
                     if obj_fn_tpe == InvestmentsEvaluationObjectives.PowerFlow:

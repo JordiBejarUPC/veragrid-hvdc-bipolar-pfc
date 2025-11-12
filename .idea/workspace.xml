@@ -30,12 +30,11 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/base_diagram_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/InvestmentsEvaluation/investments_evaluation_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/InvestmentsEvaluation/investments_evaluation_driver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -723,8 +722,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.pyside6-designer" />
       </list>
@@ -1858,7 +1857,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="649" />
+    <option name="localTasksCounter" value="650" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1904,7 +1903,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="improved windows icon thing" />
     <MESSAGE value="some changes" />
     <MESSAGE value="some improvements in the zoom on laptops" />
     <MESSAGE value="Fixed NTC generation limits" />
@@ -1929,7 +1927,8 @@
     <MESSAGE value="deleted all the PDB imports" />
     <MESSAGE value="Added time slider to examine arrays in the time series not only the snapshot" />
     <MESSAGE value="Fixed time series data not changing on DB tree object change" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed time series data not changing on DB tree object change" />
+    <MESSAGE value="Fixed some small bugs" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed some small bugs" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2405,14 +2404,15 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
-          <line>2740</line>
+          <line>2727</line>
           <option name="timeStamp" value="3027" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
-        <watch expression="__exception__" language="Python" />
+        <watch expression="capex" />
+        <watch expression="x" />
       </configuration>
     </watches-manager>
   </component>
