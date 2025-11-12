@@ -310,7 +310,10 @@ class ShortCircuitDriver(DriverTemplate):
                                                     Vpf=self.pf_results.voltage[island.bus_data.original_idx],
                                                     Zf=Zf[island.bus_data.original_idx],
                                                     island_bus_index=island_bus_index,
-                                                    fault_type=self.options.fault_type)  # TODO fill missing arguments
+                                                    fault_type=self.options.fault_type,
+                                                    method=self.options.method,
+                                                    phases=self.options.phases,
+                                                    Spf=self.pf_results.Sbus[island.bus_data.original_idx])
 
                     # merge results
                     results.apply_from_island(res, island.bus_data.original_idx,

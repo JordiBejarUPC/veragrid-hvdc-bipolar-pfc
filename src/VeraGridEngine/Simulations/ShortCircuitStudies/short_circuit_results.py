@@ -1407,6 +1407,26 @@ class ShortCircuitResults(ResultsTemplate):
         else:
             raise Exception('Unsupported result type: ' + str(result_type))
 
+    def get_voltage_df(self):
+
+        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0),
+                                  'Ua 0 [º]': np.angle(self.voltage0, deg=True),
+                                  'Um 1 [p.u.]': np.abs(self.voltage1),
+                                  'Ua 1 [º]': np.angle(self.voltage1, deg=True),
+                                  'Um 2 [p.u.]': np.abs(self.voltage2),
+                                  'Ua 2 [º]': np.angle(self.voltage2, deg=True)},
+                            index=self.bus_names)
+
+    def get_current_df(self):
+
+        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0),
+                                  'Ia 0 [º]': np.angle(self.If0, deg=True),
+                                  'Im 1 [p.u.]': np.abs(self.If1),
+                                  'Ia 1 [º]': np.angle(self.If1, deg=True),
+                                  'Im 2 [p.u.]': np.abs(self.If2),
+                                  'Ia 2 [º]': np.angle(self.If2, deg=True)},
+                            index=self.branch_names)
+
     def get_voltage_3ph_df(self):
         # phase buses results
         # vm_a = np.abs(self.voltageA)
