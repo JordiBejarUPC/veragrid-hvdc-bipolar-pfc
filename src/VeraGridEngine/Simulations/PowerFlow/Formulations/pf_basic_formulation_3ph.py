@@ -178,7 +178,7 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
             bus_has_neutral[4 * bus_idx + 0] = False  # desactiva el nodo de neutro del bus
 
     # aplica la prioridad: si algún trafo aterra el neutro del bus, el neutro se elimina del solver
-    binary_bus_mask[0::4] = bus_has_neutral[0::4]
+    binary_bus_mask[0::4] = binary_bus_mask[0::4] & bus_has_neutral[0::4]
 
     Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)
     for k in range(nc.shunt_data.nelm):
