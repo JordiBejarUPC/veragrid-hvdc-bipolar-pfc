@@ -28,12 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="TODO fill missing arguments, in short_circuit_driver.py">
-      <change afterPath="$PROJECT_DIR$/src/tests/test_3ph_sc_driver.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Three-phase short-circuit tests using the driver.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_results_3ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_results.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/ShortCircuit/phases.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/ShortCircuit/phases.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -166,7 +162,7 @@
     "Python tests.pytest for test_3ph_sc_driver.test_double_line_to_ground_fault.executor": "Run",
     "Python tests.pytest for test_3ph_sc_driver.test_line_to_line_fault.executor": "Run",
     "Python tests.pytest for test_3ph_sc_driver.test_single_line_to_ground_fault.executor": "Run",
-    "Python tests.pytest for test_3ph_sc_driver.test_three_phase_fault.executor": "Debug",
+    "Python tests.pytest for test_3ph_sc_driver.test_three_phase_fault.executor": "Run",
     "Python tests.pytest for test_3ph_sc_driver.test_three_phase_to_ground_fault.executor": "Run",
     "Python tests.pytest for test_ac_opf.test_superconductors_handling.executor": "Run",
     "Python tests.pytest for test_basic.test_gridcal_basic_pi.executor": "Debug",
@@ -272,7 +268,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for test_3ph_sc_driver.test_three_phase_fault">
+  <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -1867,7 +1863,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="652" />
+    <option name="localTasksCounter" value="653" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1913,7 +1909,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed NTC generation limits" />
     <MESSAGE value="Fixed NTC generation limits test" />
     <MESSAGE value="Added anarede examples" />
     <MESSAGE value="minimal fix when transformer templates do not exist" />
@@ -1938,7 +1933,8 @@
     <MESSAGE value="Fixed some small bugs" />
     <MESSAGE value="removed investment plugins option" />
     <MESSAGE value="TODO fill missing arguments, in short_circuit_driver.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="TODO fill missing arguments, in short_circuit_driver.py" />
+    <MESSAGE value="Three-phase short-circuit tests using the driver." />
+    <option name="LAST_COMMIT_MESSAGE" value="Three-phase short-circuit tests using the driver." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2416,11 +2412,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
           <line>2727</line>
           <option name="timeStamp" value="3027" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_3ph_sc_driver.py</url>
-          <line>2024</line>
-          <option name="timeStamp" value="3035" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
