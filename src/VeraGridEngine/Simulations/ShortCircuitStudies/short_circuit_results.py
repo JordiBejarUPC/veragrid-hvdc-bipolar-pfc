@@ -1428,29 +1428,13 @@ class ShortCircuitResults(ResultsTemplate):
                             index=self.branch_names)
 
     def get_voltage_3ph_df(self):
-        # phase buses results
-        # vm_a = np.abs(self.voltageA)
-        # vm_b = np.abs(self.voltageB)
-        # vm_c = np.abs(self.voltageC)
-        # va_a = np.angle(self.voltageA)
-        # va_b = np.angle(self.voltageB)
-        # va_c = np.angle(self.voltageC)
-        # phases_data = np.c_[vm_a, va_a*(180/np.pi), vm_b, va_b*(180/np.pi), vm_c, va_c*(180/np.pi)]
-        # phases_cols = ['U_mod A [p.u.]',
-        #                'U_ang A [º]',
-        #                'U_mod B [p.u.]',
-        #                'U_ang B [º]',
-        #                'U_mod C [p.u.]',
-        #                'U_ang C [º]',
-        #                ]
-        # df_phases = pd.DataFrame(data=phases_data, columns=phases_cols)
 
-        return pd.DataFrame(data={'U_mod A [p.u.]': np.abs(self.voltageA),
-                                  'U_ang A [º]': np.angle(self.voltageA, deg=True),
-                                  'U_mod B [p.u.]': np.abs(self.voltageB),
-                                  'U_ang B [º]': np.angle(self.voltageB, deg=True),
-                                  'U_mod C [p.u.]': np.abs(self.voltageC),
-                                  'U_ang C [º]': np.angle(self.voltageC, deg=True)},
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA).round(4),
+                                  'Ua A [º]': np.angle(self.voltageA, deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltageB).round(4),
+                                  'Ua B [º]': np.angle(self.voltageB, deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltageC).round(4),
+                                  'Ua C [º]': np.angle(self.voltageC, deg=True).round(1)},
                             index=self.bus_names)
 
     def export_all(self):

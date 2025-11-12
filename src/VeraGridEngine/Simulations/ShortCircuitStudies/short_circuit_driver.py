@@ -10,7 +10,7 @@ import numpy as np
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import CxVec
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowResults3Ph, PowerFlowOptions
 from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_worker import (short_circuit_ph3,
                                                                                  short_circuit_unbalanced,
@@ -42,10 +42,10 @@ class ShortCircuitDriver(DriverTemplate):
         :param pf_results: PowerFlowResults
         :param opf_results: OptimalPowerFlowResults
         """
-        assert isinstance(pf_results, PowerFlowResults)
+        # assert isinstance(pf_results, PowerFlowResults)
         DriverTemplate.__init__(self, grid=grid)
 
-        self.pf_results: PowerFlowResults | None = pf_results
+        self.pf_results: PowerFlowResults | PowerFlowResults3Ph | None = pf_results
         self.pf_options: PowerFlowOptions | None = pf_options
         self.opf_results: OptimalPowerFlowResults | None = opf_results
 
