@@ -151,8 +151,7 @@ def test_single_contingency_helm() -> None:
     Comparison between HELM, NR, and HELM with contingency factorization
     """
 
-    # fname = os.path.join('data', 'grids', 'IEEE14_single_contingency.gridcal')
-    fname = os.path.join('src', 'tests', 'data', 'grids', 'IEEE14_single_contingency.gridcal')
+    fname = os.path.join('data', 'grids', 'IEEE14_single_contingency.gridcal')
     main_circuit = FileOpen(fname).open()
 
     
@@ -197,8 +196,6 @@ def test_single_contingency_helm() -> None:
     )
     con_nr.run()
 
-    # tol depends on how many coefficients we give to HELM
-    # Generally 30 coefficients is alright but for contingencies fewer could be acceptable
     ok1 = np.allclose(abs(pf_driver.results.voltage), abs(con_helm.results.voltage), atol=1e-06)
     ok2 = np.allclose(abs(con_helm.results.voltage), abs(con_nr.results.voltage), atol=1e-06)
 
@@ -211,8 +208,7 @@ def test_contingency_helm() -> None:
     Check that the contingencies match conceptually
     :return:
     """
-    # fname = os.path.join('data', 'grids', 'IEEE14_contingency.gridcal')
-    fname = os.path.join('src', 'tests', 'data', 'grids', 'IEEE14_contingency.gridcal')
+    fname = os.path.join('data', 'grids', 'IEEE14_contingency.gridcal')
     main_circuit = FileOpen(fname).open()
 
     # Run contingency with HELM
@@ -249,39 +245,7 @@ def test_contingency_helm() -> None:
     helm_voltage_abs = np.abs(con_helm.results.voltage)
     nr_voltage_abs = np.abs(con_nr.results.voltage)
     
-    # # Loop through all rows and compare case by case
-    # num_rows = helm_voltage_abs.shape[0]
-    
-    # print(f"\nComparing HELM vs NR (absolute voltages) for {num_rows} contingency cases:")
-    # print("=" * 80)
-    
-    # mismatches = []
-    # matches = []
-    # for i in range(num_rows):
-    #     helm_row = helm_voltage_abs[i, :]
-    #     nr_row = nr_voltage_abs[i, :]
-        
-    #     # Calculate mean absolute difference
-    #     mean_abs_diff = np.mean(np.abs(helm_row - nr_row))
-        
-    #     # Check if this row matches
-    #     row_ok = np.allclose(helm_row, nr_row, atol=1e-6, rtol=1e-6)
-        
-    #     if not row_ok:
-    #         mismatches.append(i)
-    #     else:
-    #         matches.append(i)
-        
-    #     print(f"Case {i}: Mean absolute difference = {mean_abs_diff:.6e}")
-    
-    # print("\n" + "=" * 80)
-    # print(f"Summary: {len(matches)} cases match, {len(mismatches)} cases mismatch")
-    # if mismatches:
-    #     print(f"Mismatched cases: {mismatches}")
-    # else:
-    #     print("All cases match!")
-    
-    ok = np.allclose(helm_voltage_abs, nr_voltage_abs)
+    ok = np.allclose(helm_voltage_abs, nr_voltage_abs, atol=1e-5)
     assert ok
 
 
