@@ -60,7 +60,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
                 plot_y_idx=0,
                 max_eval=self.options.max_eval
             )
-            
+
     def initialize(self, max_iter: int):
         """
         Initialize the results
