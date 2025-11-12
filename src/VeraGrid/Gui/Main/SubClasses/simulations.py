@@ -11,7 +11,7 @@ from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
 
 # GUI imports
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
@@ -511,7 +511,7 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.circuit.valid_for_simulation():
             if self.circuit.time_profile is not None:
-                if len(self.circuit.time_profile) > 0:
+                if self.circuit.get_time_number() > 0:
                     return True
         return False
 
@@ -2764,7 +2764,6 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
 
     def run_clustering(self):
         """
