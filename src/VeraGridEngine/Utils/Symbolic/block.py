@@ -219,8 +219,8 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
     block = DiffBlock(
         algebraic_vars=y_states + x_states[1:] + aux_vars,
         algebraic_eqs=diff_eqs + aux_eqs,
-        diff_vars=diff_vars,
     )
+    block.diff_vars=diff_vars
     block.name = 'TF'
     return block, y_states[0]
 
@@ -713,6 +713,8 @@ class GenqecBuild:
          generator with quadratic saturation
         """
         # Inputs
+        # Vm: Bus voltage module
+        # Va: Bus voltage angle
         # Tm: mechanical torque (from governor)
         # Vf: excitation voltage (from exciter)
 
@@ -884,7 +886,7 @@ class GenqecBuild:
                             #flux
                             Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag],
             init_eqs = {
-            omega:0,
+            omega:Const(0),
             V_dag: inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
             V_qag: inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
@@ -894,18 +896,18 @@ class GenqecBuild:
             delta: atan(
                 (inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (1 + Sa) + Xl)) /
+                 ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
                 (inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (1 + Sa) + Xl))),
+                 ((Xq - Xl) / (Const(1) + Sa) + Xl))),
             Vd: (inputs[0] * sin(delta - inputs[1])),
             Vq: (inputs[0] * cos(delta - inputs[1])),
             Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
             Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (1 + Sa),
-            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (1 + Sa)) + (Xq_prime - Xl) * (Iq / (1 + Sa)),
+            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)),
             Eq_2prime: Vd,
             Ed_2prime: Vq,
             })
@@ -1115,6 +1117,8 @@ class GovernorBuild:
 
         governor_block.out_vars[str(0)] = Tm
 
+        governor_block.in_vars = in_vars_dict
+
         return governor_block
 
 class StabilizerBuild:
@@ -1172,32 +1176,32 @@ class StabilizerBuild:
 
         tf, y = tf_to_diffblock_with_states(
             num=np.array([1.0]),
-            den=np.array([1, t6]),
+            den=np.array([1, self.parameters["t6"]]),
             x=inputs[0],
             name='stabilizer1',
         )
 
         tf2, y2 = tf_to_diffblock_with_states(
-            num=np.array([0, t5]),
-            den=np.array([1, t5]),
+            num=np.array([0, self.parameters["t5"]]),
+            den=np.array([1, self.parameters["t5"]]),
             x=Ks * y,
             name='stabilizer2',
         )
         tf3, y3 = tf_to_diffblock_with_states(
             num=np.array([1]),
-            den=np.array([1, A1, A2]),
+            den=np.array([1, self.parameters["A1"], self.parameters["A2"]]),
             x=y2,
             name='stabilizer3',
         )
         tf4, y4 = tf_to_diffblock_with_states(
-            num=np.array([1, t1]),
-            den=np.array([1, t2]),
+            num=np.array([1, self.parameters["t1"]]),
+            den=np.array([1, self.parameters["t2"]]),
             x=y3,
             name='stabilizer4',
         )
         tf5, y5 = tf_to_diffblock_with_states(
-            num=np.array([1, t3]),
-            den=np.array([1, t4]),
+            num=np.array([1, self.parameters["t3"]]),
+            den=np.array([1, self.parameters["t4"]]),
             x=y4,
             name='stabilizer5',
         )
@@ -1214,7 +1218,7 @@ class StabilizerBuild:
 
         stabilizer_block.add(vars_block)
         stabilizer_block.add(block_1)
-        stabilizer_block.out_vars[str[0]] = Vpss
+        stabilizer_block.out_vars[str(0)] = Vpss
         stabilizer_block.event_dict = events_dict
         stabilizer_block.parameters = self.parameters
         stabilizer_block.name = "stabilizer"
@@ -1226,196 +1230,195 @@ class ExciterBuild:
 
         self.name: str = name
 
-def exciter(self):
-    """
-    exciter model
-    """
+        self.parameters = {
+            # Exciter (AVR) parameters
+            "Ka": Const(200.0),  # AVR gain
+            "Kf": Const(0.03),  # exciter rate feedback gain
 
-    # input variables
-    # IRPu: rotor current (pu) ???
-    # Va: measured stator voltage (from generator) (pu)
-    # Vpss: output from power system stabilizer (pu)
+            # Time constants
+            "tA": Const(0.02),  # AVR time constant (s)
+            "tB": Const(10.0),  # lead-lag: lag time constant (s)
+            "tC": Const(1.0),  # lead-lag: lead time constant (s)
+            "tE": Const(0.5),  # exciter field time constant (s)
+            "tF": Const(1.0),  # rate feedback time constant (s)
+            "tR": Const(0.02),  # stator voltage filter time constant (s)
 
-    inputs = [Var("IRPu_" + self.name), Var("Va_" + self.name), Var("Vpss_" + self.name)]
+           # Exciter submodel parameters
+            "Kc": Const(0.2),  # rectifier loading factor
+            "Kd": Const(0.1),  # demagnetizing factor
+            "Ke": Const(1.0),  # field resistance constant
 
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
-
-    algebraic_vars = []
-
-    # ______________________________________________________________________________________
-    #                                    variables
-    # ______________________________________________________________________________________
-
-    Vf = Var("Vf")
-    Efe = Var('Efe')
-
-    # Exciter internal variables
-    VeMaxPu = Var('VeMaxPu')
-    u_aux = Var('u_aux')
-
-    # ______________________________________________________________________________________
-    #                                    parameters
-    # ______________________________________________________________________________________
-
-    # ---- Exciter (AVR) parameters ----
-    UsRefPu = Var("UsRefPu")  # reference voltage (pu)
-    AEz = Var("AEz")  # saturation gain
-    BEz = Var("BEz")  # saturation exponential coefficient
-    EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
-    EfeMinPu = Var("EfeMinPu")  # min exciter field voltage (pu)
-    Ka = Var("Ka")  # AVR gain
-    Kf = Var("Kf")  # exciter rate feedback gain
-
-    # ---- Exciter (AVR) time constants and limits ----
-    tA = Var("tA")  # AVR time constant (s)
-    tB = Var("tB")  # lead-lag: lag time constant (s)
-    tC = Var("tC")  # lead-lag: lead time constant (s)
-    tE = Var("tE")  # exciter field time constant (s)
-    tF = Var("tF")  # rate feedback time constant (s)
-    TolLi = Var("TolLi")  # limiter crossing tolerance (fraction)
-    tR = Var("tR")  # stator voltage filter time constant (s)
-
-    VaMaxPu = Var("VaMaxPu")  # AVR output max (pu)
-    VaMinPu = Var("VaMinPu")  # AVR output min (pu)
-    VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
-    VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
-
-    # exciter submodel parameters
-    AEx = Var("AEx")  # Gain of saturation function
-    BEx = Var("BEx")  # Exponential coefficient of saturation function
-    Kc = Var("Kc")  # Rectifier loading factor
-    Kd = Var("Kd")  # Demagnetizing factor
-    Ke = Var("Ke")  # Exciter field resistance constant
-    tE_submodel = Var("tE_submodel")  # Exciter field time constant (s)
-    ToLLi = Var("ToLLi")  # Tolerance on limit crossing
-    VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
-    VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
-    F_rectifier = Var("F_rectifier")  # Rectifier factor
-
-    events_dict = {
-        # Exciter (AVR) parameters
-        UsRefPu: Const(1.0),  # reference voltage (pu)
-        AEz: Const(0.02),  # saturation gain
-        BEz: Const(1.5),  # saturation exponential coefficient
-        EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
-        EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
-        Ka: Const(200.0),  # AVR gain
-        Kf: Const(0.03),  # exciter rate feedback gain
-
-        # Time constants
-        tA: Const(0.02),  # AVR time constant (s)
-        tB: Const(10.0),  # lead-lag: lag time constant (s)
-        tC: Const(1.0),  # lead-lag: lead time constant (s)
-        tE: Const(0.5),  # exciter field time constant (s)
-        tF: Const(1.0),  # rate feedback time constant (s)
-        TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
-        tR: Const(0.02),  # stator voltage filter time constant (s)
-
-        # Limits
-        VaMaxPu: Const(20.0),  # AVR output max (pu)
-        VaMinPu: Const(-10.0),  # AVR output min (pu)
-        VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
-        VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
-
-        # Exciter submodel parameters
-        AEx: Const(0.02),  # saturation gain
-        BEx: Const(-0.01),  # exponential coeff of saturation function
-        Kc: Const(0.2),  # rectifier loading factor
-        Kd: Const(0.1),  # demagnetizing factor
-        Ke: Const(1.0),  # field resistance constant
-        tE_submodel: Const(0.5),  # exciter field time constant (s)
-        ToLLi: Const(0.05),  # tolerance on limit crossing
-        VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
-        VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
-        F_rectifier: Const(1.0),  # rectifier factor (1=DC, 0.5=AC)
-    }
-
-    # ---Internal Blocks---
-    tf1, y1 = tf_to_diffblock(
-        num=np.array([1]),
-        den=np.array([1, tR]),
-        x=inputs[1],
-        name='exciter1',
-    )  # filtered stator voltage
-
-    # error1 = UPssPu - y + UsRefPu
-    error1 = (- y1 + UsRefPu) + inputs[2]
-    tf2, y2 = tf_to_diffblock(
-        num=np.array([0, Kf]),
-        den=np.array([1, tF]),
-        x=Vf,
-        name='exciter2',
-    )
-    error2 = error1 - y2
-
-    tf3, y3 = tf_to_diffblock(
-        num=np.array([1, tC]),
-        den=np.array([1, tB]),
-        x=error2,
-        name='exciter3',
-    )
-    tf4, y4 = tf_to_diffblock(
-        num=np.array([Ka]),
-        den=np.array([1, tA]),
-        x=y3,
-        name='exciter4',
-    )
-
-    y5 = hard_sat(y4, VaMinPu, VaMaxPu)
+        }
 
 
-    min_const = Const(max(events_dict['VaMinPu'], events_dict['EfeMinPu']))
-    max_const = Const(min(events_dict['VaMaxPu'], events_dict['EfeMaxPu']))
-    y6 = hard_sat(y4, min_const, max_const)
+    def exciter(self):
+        """
+        exciter model
+        """
 
-    # exciter submodel
+        # input variables
+        # IRPu: rotor current (pu) ???
+        # Va: measured stator voltage (from generator) (pu)
+        # Vpss: output from power system stabilizer (pu)
 
-    algebraic_eqs_submodel = []
-    algebraic_vars_submodel = []
+        inputs = [Var("IRPu_" + self.name), Var("Va_" + self.name), Var("Vpss_" + self.name)]
 
-    x1 = VfeMaxPu - inputs[0] * Kd
-    error1 = Efe - (inputs[0] * Kd + u_aux)
+        in_vars_dict: Dict[str, Var] = dict()
+        for i, inpt in enumerate(inputs):
+            in_vars_dict[str(i)] = inpt
 
-    tf1, Ve_presat = tf_to_diffblock(
-        num=np.array([1]),
-        den=np.array([0, tE]),
-        x=error1,
-        name='subexciter1',
-    )
+        algebraic_vars = []
+
+        # ______________________________________________________________________________________
+        #                                    variables
+        # ______________________________________________________________________________________
+
+        Vf = Var("Vf")
+        Efe = Var('Efe')
+
+        # Exciter internal variables
+        VeMaxPu = Var('VeMaxPu')
+        u_aux = Var('u_aux')
+
+        # ______________________________________________________________________________________
+        #                                    parameters
+        # ______________________________________________________________________________________
+
+        # ---- Exciter (AVR) parameters ----
+        UsRefPu = Var("UsRefPu")  # reference voltage (pu)
+        AEz = Var("AEz")  # saturation gain
+        BEz = Var("BEz")  # saturation exponential coefficient
+        EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
+        EfeMinPu = Var("EfeMinPu")  # min exciter field voltage (pu)
+
+        # ---- Exciter (AVR) time constants and limits ----
+
+        TolLi = Var("TolLi")  # limiter crossing tolerance (fraction)
+
+        VaMaxPu = Var("VaMaxPu")  # AVR output max (pu)
+        VaMinPu = Var("VaMinPu")  # AVR output min (pu)
+        VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
+        VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
+
+        # exciter submodel parameters
+        AEx = Var("AEx")  # Gain of saturation function
+        BEx = Var("BEx")  # Exponential coefficient of saturation function
+        ToLLi = Var("ToLLi")  # Tolerance on limit crossing
+        VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
+        VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
+        F_rectifier = Var("F_rectifier")  # Rectifier factor
+
+        events_dict = {
+            # Exciter (AVR) parameters
+            UsRefPu: Const(1.0),  # reference voltage (pu)
+            AEz: Const(0.02),  # saturation gain
+            BEz: Const(1.5),  # saturation exponential coefficient
+            EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
+            EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
+
+            # Time constants
+            TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
+
+            # Limits
+            VaMaxPu: Const(20.0),  # AVR output max (pu)
+            VaMinPu: Const(-10.0),  # AVR output min (pu)
+            VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
+            VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
+
+            # Exciter submodel parameters
+            AEx: Const(0.02),  # saturation gain
+            BEx: Const(-0.01),  # exponential coeff of saturation function
+            ToLLi: Const(0.05),  # tolerance on limit crossing
+            VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
+            VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
+            F_rectifier: Const(1.0),  # rectifier factor (1=DC, 0.5=AC)
+        }
+
+        # ---Internal Blocks---
+        tf1, y1 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([1, self.parameters["tR"]]),
+            x=inputs[1],
+            name='exciter1',
+        )  # filtered stator voltage
+
+        # error1 = UPssPu - y + UsRefPu
+        error1 = (- y1 + UsRefPu) + inputs[2]
+        tf2, y2 = tf_to_diffblock(
+            num=np.array([0, self.parameters["Kf"]]),
+            den=np.array([1, self.parameters["tF"]]),
+            x=Vf,
+            name='exciter2',
+        )
+        error2 = error1 - y2
+
+        tf3, y3 = tf_to_diffblock(
+            num=np.array([1, self.parameters["tC"]]),
+            den=np.array([1, self.parameters["tB"]]),
+            x=error2,
+            name='exciter3',
+        )
+        tf4, y4 = tf_to_diffblock(
+            num=np.array([self.parameters["Ka"]]),
+            den=np.array([1, self.parameters["tA"]]),
+            x=y3,
+            name='exciter4',
+        )
+
+        y5 = hard_sat(y4, VaMinPu, VaMaxPu)
 
 
-    Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
-    aux_expr = Ke * Ve + AEx * Ve * exp(BEx * Ve)
-    algebraic_eqs_submodel.append(u_aux - aux_expr)
-    algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
+        min_const = Const(max(events_dict[VaMinPu], events_dict[EfeMinPu]))
+        max_const = Const(min(events_dict[VaMaxPu], events_dict[EfeMaxPu]))
+        y6 = hard_sat(y4, min_const, max_const)
+
+        # exciter submodel
+
+        algebraic_eqs_submodel = []
+        algebraic_vars_submodel = []
+
+        x1 = VfeMaxPu - inputs[0] * self.parameters["Kd"]
+        error1 = Efe - (inputs[0] * self.parameters["Kd"] + u_aux)
+
+        tf1, Ve_presat = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([0, self.parameters["tE"]]),
+            x=error1,
+            name='subexciter1',
+        )
 
 
-    f_input = Var('f_input')
-    f_output = f_exc(f_input)
-    algebraic_vars_submodel.append(f_input)
-    algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * Kc)
+        Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
+        aux_expr = self.parameters["Ke"] * Ve + AEx * Ve * exp(BEx * Ve)
+        algebraic_eqs_submodel.append(u_aux - aux_expr)
+        algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
 
-    algebraic_eqs_submodel.append(Vf - f_output * Ve)
 
-    aux_model = DiffBlock(
-        algebraic_eqs=algebraic_eqs_submodel,
-        algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
-    )
+        f_input = Var('f_input')
+        f_output = f_exc(f_input)
+        algebraic_vars_submodel.append(f_input)
+        algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * self.parameters["Kc"])
 
-    exciter_submodel = DiffBlock(children=[tf1, aux_model])
+        algebraic_eqs_submodel.append(Vf - f_output * Ve)
 
-    linking_block = Block(
-        algebraic_eqs=[y6 - Efe],
-        algebraic_vars=[Efe] + algebraic_vars,
+        aux_model = DiffBlock(
+            algebraic_eqs=algebraic_eqs_submodel,
+            algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
+        )
 
-    )
+        exciter_submodel = DiffBlock(children=[tf1, aux_model])
 
-    exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
-    exciter_model.out_vars[str(0)] = Vf
+        linking_block = Block(
+            algebraic_eqs=[y6 - Efe],
+            algebraic_vars=[Efe] + algebraic_vars,
 
-    return exciter_model
+        )
+
+        exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
+        exciter_model.out_vars[str(0)] = Vf
+        exciter_model.in_vars = in_vars_dict
+
+        return exciter_model
 
 
 def exciter(item_name:str = "") -> Block:

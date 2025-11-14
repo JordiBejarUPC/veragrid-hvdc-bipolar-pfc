@@ -37,7 +37,8 @@ from VeraGridEngine.Utils.Symbolic.block import (
     generator,
     GenqecBuild,
     GovernorBuild,
-    exciter,
+    StabilizerBuild,
+    ExciterBuild,
     line,
     generic
 )
@@ -153,6 +154,7 @@ class BlockType(Enum):
     GENERATOR = auto()
     GENQEC = auto()
     GOV = auto()
+    STAB = auto()
     EXCITER = auto()
     LINE = auto()
     GENERIC = auto()
@@ -231,7 +233,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setAcceptHoverEvents(True)
         self.subsystem = subsystem
         self.is_input = is_input
-        self.connection = None
+        self.connections: List[ConnectionItem] | None = None
         self.index = index
         self.total = total
 
@@ -247,7 +249,7 @@ class PortItem(QGraphicsEllipseItem):
         QApplication.restoreOverrideCursor()
 
     def is_connected(self):
-        return self.connection is not None
+        return self.connections is not None
 
 
 class ConnectionItem(QGraphicsPathItem):
@@ -257,8 +259,6 @@ class ConnectionItem(QGraphicsPathItem):
         self.setZValue(-1)
         self.source_port = source_port
         self.target_port = target_port
-        self.source_port.connection = self
-        self.target_port.connection = self
         self.setPen(QPen(Qt.GlobalColor.darkBlue, 2))
         self.setAcceptHoverEvents(True)
 
@@ -279,15 +279,6 @@ class ConnectionItem(QGraphicsPathItem):
 
     def hoverLeaveEvent(self, event):
         QApplication.restoreOverrideCursor()
-
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-        remove_action = QAction("Remove Connection", menu)
-        menu.addAction(remove_action)
-        if menu.exec(event.screenPos()) == remove_action:
-            self.scene().removeItem(self)
-            self.source_port.connection = None
-            self.target_port.connection = None
 
 
 class ResizeHandle(QGraphicsRectItem):
@@ -476,8 +467,9 @@ class BlockItem(QGraphicsRectItem):
         self.update_handle_position()
         # Also update connections
         for port in self.inputs + self.outputs:
-            if port.connection:
-                port.connection.update_path()
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -488,36 +480,10 @@ class BlockItem(QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             for port in self.inputs + self.outputs:
-                if port.connection:
-                    port.connection.update_path()
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
         return super().itemChange(change, value)
-
-    # def contextMenuEvent(self, event):
-    #     menu = QMenu()
-    #
-    #     delete_action = QAction("Remove Block", menu)
-    #     menu.addAction(delete_action)
-    #
-    #     edit_action = None
-    #     if self.subsys.name == "generic":
-    #         edit_action = QAction("Edit Block", menu)
-    #         menu.addAction(edit_action)
-    #
-    #     chosen = menu.exec(event.screenPos())
-    #
-    #     if chosen == delete_action:
-    #         for port in self.inputs + self.outputs:
-    #             if port.connection:
-    #                 self.scene().removeItem(port.connection)
-    #                 if port.connection.source_port:
-    #                     port.connection.source_port.connection = None
-    #                 if port.connection.target_port:
-    #                     port.connection.target_port.connection = None
-    #         self.scene().removeItem(self)
-    #         pdb.set_trace()
-    #
-    #     elif chosen == edit_action:
-    #         self.open_generic_editor()
 
     def open_generic_editor(self):
         dlg = QDialog()
@@ -699,8 +665,9 @@ class ModelHostItem(QGraphicsRectItem):
         self.update_handle_position()
         # Also update connections
         for port in self.inputs + self.outputs:
-            if port.connection:
-                port.connection.update_path()
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -711,34 +678,35 @@ class ModelHostItem(QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             for port in self.inputs + self.outputs:
-                if port.connection:
-                    port.connection.update_path()
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
         return super().itemChange(change, value)
 
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-
-        delete_action = QAction("Remove Block", menu)
-        menu.addAction(delete_action)
-
-
-        edit_action = QAction("Edit Block", menu)
-        menu.addAction(edit_action)
-
-        chosen = menu.exec(event.screenPos())
-
-        if chosen == delete_action:
-            for port in self.inputs + self.outputs:
-                if port.connection:
-                    self.scene().removeItem(port.connection)
-                    if port.connection.source_port:
-                        port.connection.source_port.connection = None
-                    if port.connection.target_port:
-                        port.connection.target_port.connection = None
-            self.scene().removeItem(self)
-
-        elif chosen == edit_action:
-            self.open_generic_editor()
+    # def contextMenuEvent(self, event):
+    #     menu = QMenu()
+    #
+    #     delete_action = QAction("Remove Block", menu)
+    #     menu.addAction(delete_action)
+    #
+    #
+    #     edit_action = QAction("Edit Block", menu)
+    #     menu.addAction(edit_action)
+    #
+    #     chosen = menu.exec(event.screenPos())
+    #
+    #     if chosen == delete_action:
+    #         for port in self.inputs + self.outputs:
+    #             if port.connection:
+    #                 self.scene().removeItem(port.connection)
+    #                 if port.connection.source_port:
+    #                     port.connection.source_port.connection = None
+    #                 if port.connection.target_port:
+    #                     port.connection.target_port.connection = None
+    #         self.scene().removeItem(self)
+    #
+    #     elif chosen == edit_action:
+    #         self.open_generic_editor()
 
     def open_generic_editor(self):
         dlg = QDialog()
@@ -987,9 +955,16 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
         blk = builder.governor()
         return blk
 
-    # GOVERNOR (governor with control)
+    # STABILIZER (stabilizer)
+    if block_type == BlockType.STAB:
+        builder = StabilizerBuild()
+        blk = builder.stabilizer()
+        return blk
+
+    # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        blk = exciter(item_name)
+        builder = ExciterBuild()
+        blk = builder.exciter()
         return blk
 
     # LINE (line)
@@ -1063,7 +1038,7 @@ class DiagramScene(QGraphicsScene):
 
     def mousePressEvent(self, event):
         for item in self.items(event.scenePos()):
-            if isinstance(item, PortItem) and not item.is_input and not item.is_connected():
+            if isinstance(item, PortItem) and not item.is_input:
                 self.source_port = item
                 path = QPainterPath(item.scenePos())
                 self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
@@ -1100,8 +1075,15 @@ class DiagramScene(QGraphicsScene):
                 if isinstance(item, PortItem) and item.is_input and not item.is_connected():
                     dst_port: PortItem = item
                     connection = ConnectionItem(self.source_port, dst_port)
-                    dst_port.connection = connection
-                    self.source_port.connection = connection
+
+                    dst_port.connections = list()
+                    dst_port.connections.append(connection)
+
+                    if self.source_port.connections is None:
+                        self.source_port.connections = list()
+                        self.source_port.connections.append(connection)
+                    else:
+                        self.source_port.connections.append(connection)
 
                     dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
 
@@ -1888,8 +1870,11 @@ class BlockBoxesEditor(QSplitter):
             source_port = item.source_port
             target_port = item.target_port
 
-            source_port.connection = None
-            target_port.connection = None
+            # source_port.connection = None
+            # target_port.connection = None
+
+            source_port.connections.remove(item)
+            target_port.connections = None
 
             dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
@@ -1906,24 +1891,25 @@ class BlockBoxesEditor(QSplitter):
         if isinstance(item, (BlockItem, ModelHostItem)):
             for port in item.inputs + item.outputs:
 
-                if port.connection:
-                    del self.diagram.con_data[port.connection.uid]
-                    self.scene.removeItem(port.connection)
+                if port.connections:
+                    for conn in port.connections:
+                        del self.diagram.con_data[conn.uid]
+                        self.scene.removeItem(conn)
 
-                    source_port = port.connection.source_port
-                    target_port = port.connection.target_port
+                        source_port = conn.source_port
+                        target_port = conn.target_port
 
-                    source_port.connection = None
-                    target_port.connection = None
+                        source_port.connections.remove(conn)
+                        target_port.connections = None
 
-                    dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+                        dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
-                    for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                        new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                        target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
-                    for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                        new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                        target_port.subsystem.subsys.state_eqs[i] = new_equ
+                        for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
+                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                        for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
+                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            target_port.subsystem.subsys.state_eqs[i] = new_equ
 
             self.scene.removeItem(item)
 
@@ -1978,8 +1964,9 @@ class BlockBoxesEditor(QSplitter):
                     self.main_block.add(model_host.model)
                     item = ModelHostItem(model_host, self.api_object_name, self.templates_list, self.templates_catalogue, self.api_object)
 
-                    self.scene.addItem(item)
+
                     item.setPos(QPointF(x0, y0))
+                    self.scene.addItem(item)
                     # save nodes in diagram
                     self.diagram.add_node(
                         name = name,
@@ -2046,8 +2033,9 @@ class BlockBoxesEditor(QSplitter):
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
                 item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, api_object= self.api_object, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
-                self.scene.addItem(item)
+
                 item.setPos(QPointF(node.x, node.y))
+                self.scene.addItem(item)
                 brush = item.brush()
                 brush.setColor(node.color)
                 item.setBrush(brush)

@@ -1242,7 +1242,7 @@ __all__ = [
     "DiffVar",
     "hard_sat",
     "UndefinedConst",
-    f_exc
+    "f_exc"
 ]
 #
 # x = Var("x")
