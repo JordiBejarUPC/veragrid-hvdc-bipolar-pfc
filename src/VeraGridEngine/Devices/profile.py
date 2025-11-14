@@ -552,7 +552,7 @@ class Profile:
 
     def set_sparse_data_from_data(self, indptr, data):
         """
-        Set spasrse data from indices
+        Set sparse data from indices
         :param indptr: array of data indices
         :param data: array of data values
         """
