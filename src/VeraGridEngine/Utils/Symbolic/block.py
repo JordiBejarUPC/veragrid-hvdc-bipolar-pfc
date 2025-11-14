@@ -13,7 +13,7 @@ from typing import Tuple, Sequence, List, Dict, Any, Optional
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
-    imag, conj, angle, exp, log, abs, piecewise, DiffVar
+    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, Fexc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -101,11 +101,11 @@ def block2diffblock(block: Block):
     return diff_block
 
 
-def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
+def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = None, name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
     den: list of denominator coefficients [a0, a1, ..., an]
-    u:   sympy symbol for input
+    x:   sympy symbol for input
     y:   sympy function of t for output
     """
     if len(num) > len(den):
@@ -118,7 +118,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Op
 
     aux_eqs = []
     aux_vars = []
-    # check if is a expression
+    # check if is an expression
     if not isinstance(x, Var):
         u = Var('u_' + name)
         aux_eqs.append((u - x).simplify())
@@ -149,12 +149,11 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Op
     rhs = np.array(diff_vars_x) @ np.array(num)
     lhs = np.array(diff_vars_y) @ np.array(den)
 
-    block = DiffBlock(
-        name=name,
-        algebraic_vars=[y] + aux_vars,
-        algebraic_eqs=[lhs - rhs] + aux_eqs,
-        diff_vars=diff_vars,
-    )
+    block = DiffBlock()
+    block.algebraic_vars=[y] + aux_vars
+    block.algebraic_eqs=[lhs - rhs] + aux_eqs
+    block.diff_vars=diff_vars
+
 
     return block, y
 
@@ -292,7 +291,7 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
-                 parameters: List[Const] | None = None,
+                 parameters: Dict[str, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: Dict[str, Var] | None = None,
@@ -336,14 +335,14 @@ class Block:
         self.in_vars: Dict[str, Var] = dict() if in_vars is None else in_vars
         self.out_vars: Dict[str, Var] = dict() if out_vars is None else out_vars
 
-        self.parameters = list() if parameters is None else parameters
+        self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
 
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
 
         # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
-
+        ##########################################################################################3
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
 
@@ -540,13 +539,13 @@ class Block:
         else:
             return False
 
-@dataclass(frozen=False)
 class DiffBlock(Block):
-    diff_vars: List[DiffVar] = field(default_factory=list)
-    lag_vars: List[DiffVar] = field(default_factory=list)
-    reformulated_vars: List[DiffVar] = field(default_factory=list)
-    differential_eqs: List[Expr] = field(default_factory=list)
+    diff_vars: List[DiffVar]
+    lag_vars: List[DiffVar]
+    reformulated_vars: List[DiffVar]
+    differential_eqs: List[Expr]
     pseudo_transient: bool = False
+
 
     @classmethod
     def from_block(cls, block: Block, **kwargs):
@@ -705,393 +704,418 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  in_vars=[err],
                  out_vars=[u])
 
+class GenqecBuild:
+    def __init__(self, name: str = ""):
 
-def genqec(name: str = "") -> Block:
-    inputs = [Var("Vg_" + name), Var("dg" + name), Var("tm_" + name), Var("vf_" + name)]
+        self.name: str = name
+    def genqec(self) -> Block:
+        """
+         generator with quadratic saturation
+        """
+        # Inputs
+        # Tm: mechanical torque (from governor)
+        # Vf: excitation voltage (from exciter)
 
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
+        inputs: List[Var] = [Var("Vm_" + self.name), Var("Va" + self.name), Var("Tm_" + self.name), Var("Vf_" + self.name)]
 
-    # Inputs
-    # T_m = Var("T_m")  # mechanical torque
-    # E_fd = Var("E_fd")  # field excitation
+        in_vars_dict: Dict[str, Var] = dict()
+        for i, inpt in enumerate(inputs):
+            in_vars_dict[str(i)] = inpt
 
-    # ______________________________________________________________________________________
-    #                                    variables
-    # ______________________________________________________________________________________
+        # ______________________________________________________________________________________
+        #                                    variables
+        # ______________________________________________________________________________________
 
-    # Saturation factors
-    Sat_d = Var('Sat_d' + name)
-    Sat_q = Var('Sat_q' + name)
+        # Saturation factors
+        Sat_d = Var('Sat_d' + self.name)
+        Sat_q = Var('Sat_q' + self.name)
 
-    # States
-    delta = Var("delta"+ name)  # rotor angle
-    omega = Var("omega"+ name)  # rotor electrical speed
-    Eq1 = Var("Eq1"+ name)  # internal emf behind Xd'
-    Ed1 = Var("Ed1"+ name)
-    Eq2 = Var("Eq2"+ name)
-    Ed2 = Var("Ed2"+ name)
-    Eq_prime = Var("Eq_prime"+ name)  # transient voltage q-axis
-    Ed_prime = Var("Ed_prime"+ name)  # transient voltage d-axis
-    Eq_2prime = Var("Eq_2prime"+ name)  # subtransient voltage q-axis
-    Ed_2prime = Var("Ed_2prime"+ name)  # subtransient voltage d-axis
+        # States
+        delta = Var("delta"+ self.name)  # rotor angle
+        omega = Var("omega"+ self.name)  # rotor electrical speed
+        Eq1 = Var("Eq1"+ self.name)  # internal emf behind Xd'
+        Ed1 = Var("Ed1"+ self.name)
+        Eq2 = Var("Eq2"+ self.name)
+        Ed2 = Var("Ed2"+ self.name)
+        Eq_prime = Var("Eq_prime"+ self.name)  # transient voltage q-axis
+        Ed_prime = Var("Ed_prime"+ self.name)  # transient voltage d-axis
+        Eq_2prime = Var("Eq_2prime"+ self.name)  # subtransient voltage q-axis
+        Ed_2prime = Var("Ed_2prime"+ self.name)  # subtransient voltage d-axis
 
-    # Algebraic variables
-    Id = Var("Id"+ name)
-    Iq = Var("Iq"+ name)
-    Vd = Var("Vd"+ name)
-    Vq = Var("Vq"+ name)
-    Psid = Var("Psid"+ name)
-    Psiq = Var("Psiq"+ name)
-    Te = Var("Te"+ name)
+        # Algebraic variables
+        Id = Var("Id"+ self.name)
+        Iq = Var("Iq"+ self.name)
+        Vd = Var("Vd"+ self.name)
+        Vq = Var("Vq"+ self.name)
+        Psid = Var("Psid"+ self.name)
+        Psiq = Var("Psiq"+ self.name)
+        Te = Var("Te"+ self.name)
 
-    # Saturated resistances
-    Xd_sat = Var('Xd_sat'+ name)
-    Xq_sat = Var('Xq_sat'+ name)
-    Xd_prime_sat = Var('Xd_prime_sat'+ name)
-    Xq_prime_sat = Var('Xq_prime_sat'+ name)
-    Xd_2prime_sat = Var('Xd_2prime_sat'+ name)
-    Xq_2prime_sat = Var('Xq_2prime_sat'+ name)
-    Ed2_coef = Var('Ed2_coef'+ name)
-    Eq2_coef = Var('Eq2_coef'+ name)
+        # Saturated resistances
+        Xd_sat = Var('Xd_sat'+ self.name)
+        Xq_sat = Var('Xq_sat'+ self.name)
+        Xd_prime_sat = Var('Xd_prime_sat'+ self.name)
+        Xq_prime_sat = Var('Xq_prime_sat'+ self.name)
+        Xd_2prime_sat = Var('Xd_2prime_sat'+ self.name)
+        Xq_2prime_sat = Var('Xq_2prime_sat'+ self.name)
+        Ed2_coef = Var('Ed2_coef'+ self.name)
+        Eq2_coef = Var('Eq2_coef'+ self.name)
 
-    # Vg = Var('Vg')
-    # dg = Var('dg')
-    Pg = Var('Pg'+ name)
-    Qg = Var('Qg'+ name)
+        # Vg = Var('Vg')
+        # dg = Var('dg')
+        Pg = Var('Pg'+ self.name)
+        Qg = Var('Qg'+ self.name)
 
-    Sa = Var('Sa')
-    V_qag = Var('V_qag')
-    V_dag = Var('V_dag')
-    Psi_ag = Var('Psi_ag')
+        Sa = Var('Sa')
+        V_qag = Var('V_qag')
+        V_dag = Var('V_dag')
+        Psi_ag = Var('Psi_ag')
 
-    #______________________________________________________________________________________
-    #                                    parameters
-    #______________________________________________________________________________________
-    fn = Var('fn')  # system frequency [Hz]
-    ws = Var('ws')  # synchronous speed [rad/s]
-    M = Var('M')  # inertia constant
-    D = Var('D')  # damping (optional)
-    Rs = Var('Rs')  # stator resistance
-    Ra = Var('Ra')  # armature resistance (if distinct)
-
-    # Reactances
-    Xd = Var('Xd')
-    Xq = Var('Xq')
-    Xd_prime = Var('Xd_prime')
-    Xq_prime = Var('Xq_prime')
-    Xd_2prime = Var('Xd_2prime')
-    Xq_2prime = Var('Xq_2prime')
-    Xl = Var('Xl')
-
-    # Time constants
-    Td0_prime = Var('Td0_prime')
-    Tq0_prime = Var('Tq0_prime')
-    Td0_2prime = Var('Td0_2prime')
-    Tq0_2prime = Var('Tq0_2prime')
-
-
-    A = Var('A')
-    B = Var("B")
-
-
-    event_dict = {
-        fn: Const(50.0),
-        ws: Const(1.0),
-        M: Const(3.5),
-        D: Const(10.0),
-        Rs: Const(0.003),
-        Ra: Const(0.003),
+        #______________________________________________________________________________________
+        #                                    parameters
+        #______________________________________________________________________________________
+        fn = Var('fn')  # system frequency [Hz]
+        ws = Var('ws')  # synchronous speed [rad/s]
+        M = Var('M')  # inertia constant
+        D = Var('D')  # damping (optional)
+        Rs = Var('Rs')  # stator resistance
+        Ra = Var('Ra')  # armature resistance (if distinct)
 
         # Reactances
-        Xd: Const(1.8),
-        Xq: Const(1.7),
-        Xd_prime: Const(0.3),
-        Xq_prime: Const(0.55),
-        Xd_2prime: Const(0.25),
-        Xq_2prime: Const(0.25),
-        Xl: Const(0.15),
+        Xd = Var('Xd')
+        Xq = Var('Xq')
+        Xd_prime = Var('Xd_prime')
+        Xq_prime = Var('Xq_prime')
+        Xd_2prime = Var('Xd_2prime')
+        Xq_2prime = Var('Xq_2prime')
+        Xl = Var('Xl')
 
         # Time constants
-        Td0_prime: Const(8.0),
-        Tq0_prime: Const(0.4),
-        Td0_2prime: Const(0.03),
-        Tq0_2prime: Const(0.05),
+        Td0_prime = Var('Td0_prime')
+        Tq0_prime = Var('Tq0_prime')
+        Td0_2prime = Var('Td0_2prime')
+        Tq0_2prime = Var('Tq0_2prime')
 
-        A: Const(5.0),
-        B: Const(1.0)
-    }
 
-    generator_block = Block(
-        state_eqs=[
-            (omega - Const(1)) * ws,  # dδ/dt
-            (inputs[2] - Te - D * (omega - Const(1))) * (1 / M),  # dω/dt
-            inputs[3] / Td0_prime - Sat_q * Eq1 / Td0_prime,  # dEq'/dt
-            -Sat_q * Ed1 / Tq0_prime,  # dEd'/dt
-            Eq2_coef * (-Eq2),  # dEq''/dt
-            Ed2_coef * (-Ed2),  # dEd''/dt
-        ],
-        state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
-        algebraic_eqs=[
-            Vd - (-inputs[2] * sin(inputs[3] - delta)), # from input block
-            Vq - (inputs[2] * cos(inputs[3] - delta)), # from input block
-            Pg - (Vd * Id + Vq * Iq), # from input block
-            Qg - (Vq * Id - Vd * Iq), # from input block
-            Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
-            Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
-            Psid - (Eq_prime - Id * Xd_2prime_sat),
-            Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
-            Te - (Psid * Iq - Psiq * Id),
-            (Xd_sat - Xd_prime_sat) * Eq1 - (
-                        (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
-            # Eq1 definition
-            (Xq_sat - Xq_prime_sat) * Ed1 - (
-                        (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
-            # Ed1 definition
-            (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
-                        (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
-            # Ed2 definition
-            (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
-                        (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
-            # Eq2 definition
-            Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
-            Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
-            # saturated resistance
-            Sat_d * Xd_2prime_sat - (Xd_2prime - Xl + Xl * Sat_d),
-            Sat_q * Xq_2prime_sat - (Xq_2prime - Xl + Xl * Sat_q),
-            Sat_d * Xd_prime_sat - (Xd_prime - Xl + Xl * Sat_d),
-            Sat_q * Xq_prime_sat - (Xq_prime - Xl + Xl * Sat_q),
-            Sat_d * Xd_sat - (Xd - Xl + Xl * Sat_d),
-            Sat_q * Xq_sat - (Xq - Xl + Xl * Sat_q),
-            # flux
-            V_dag - (Vd - Ra * Id + Xq_2prime_sat * Iq + Iq * Ra + Id * Xl),
-            V_qag - (Vq - Ra * Iq + Xd_2prime_sat * Id + Id * Ra - Iq * Xl),
-            (omega) * Psi_ag - (ws) * sqrt(V_qag * V_qag + V_dag * V_dag),
-            Sat_d - (Const(1) + Sa),
-            Sat_q - (Const(1) + Sa),
-            # saturations (quadratic)
-            Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4)))
-            ],
-        algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
-                        #saturated resistance
-                       Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
-                        #flux
-                        Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag],
-        init_eqs = {
-        omega:0,
-        V_dag: inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-            conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-        V_qag: inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-            conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-        Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-        Sa: A * (Psi_ag - B) ** 2,
-        delta: atan(
-            (inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-             ((Xq - Xl) / (1 + Sa) + Xl)) /
-            (inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-             ((Xq - Xl) / (1 + Sa) + Xl))),
-        Vd: (inputs[0] * sin(delta - inputs[1])),
-        Vq: (inputs[0] * cos(delta - inputs[1])),
-        Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-            conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-        Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-            conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-        Ed_prime: (Xq - Xq_prime) * Iq / (1 + Sa),
-        Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (1 + Sa)) + (Xq_prime - Xl) * (Iq / (1 + Sa)),
-        Eq_2prime: Vd,
-        Ed_2prime: Vq,
-        })
+        A = Var('A')
+        B = Var("B")
 
-    generator_block.external_mapping={
-            VarPowerFlowRefferenceType.P: Pg,
-            VarPowerFlowRefferenceType.Q: Qg,
+
+        event_dict = {
+            fn: Const(50.0),
+            ws: Const(1.0),
+            M: Const(3.5),
+            D: Const(10.0),
+            Rs: Const(0.003),
+            Ra: Const(0.003),
+
+            # Reactances
+            Xd: Const(1.8),
+            Xq: Const(1.7),
+            Xd_prime: Const(0.3),
+            Xq_prime: Const(0.55),
+            Xd_2prime: Const(0.25),
+            Xq_2prime: Const(0.25),
+            Xl: Const(0.15),
+
+            # Time constants
+            Td0_prime: Const(8.0),
+            Tq0_prime: Const(0.4),
+            Td0_2prime: Const(0.03),
+            Tq0_2prime: Const(0.05),
+
+            A: Const(5.0),
+            B: Const(1.0)
         }
-    generator_block.event_dict = event_dict
-    generator_block.in_vars=in_vars_dict
-    generator_block.out_vars[str(0)] = Pg
-    generator_block.out_vars[str(1)] = Qg
 
-    return generator_block
+        generator_block = Block(
+            state_eqs=[
+                (omega - Const(1)) * ws,  # dδ/dt
+                (inputs[2] - Te - D * (omega - Const(1))) * (1 / M),  # dω/dt
+                inputs[3] / Td0_prime - Sat_q * Eq1 / Td0_prime,  # dEq'/dt
+                -Sat_q * Ed1 / Tq0_prime,  # dEd'/dt
+                Eq2_coef * (-Eq2),  # dEq''/dt
+                Ed2_coef * (-Ed2),  # dEd''/dt
+            ],
+            state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
+            algebraic_eqs=[
+                Vd - (-inputs[2] * sin(inputs[3] - delta)), # from input block
+                Vq - (inputs[2] * cos(inputs[3] - delta)), # from input block
+                Pg - (Vd * Id + Vq * Iq), # from input block
+                Qg - (Vq * Id - Vd * Iq), # from input block
+                Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
+                Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
+                Psid - (Eq_prime - Id * Xd_2prime_sat),
+                Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
+                Te - (Psid * Iq - Psiq * Id),
+                (Xd_sat - Xd_prime_sat) * Eq1 - (
+                            (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
+                # Eq1 definition
+                (Xq_sat - Xq_prime_sat) * Ed1 - (
+                            (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
+                # Ed1 definition
+                (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
+                            (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
+                # Ed2 definition
+                (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
+                            (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
+                # Eq2 definition
+                Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
+                Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
+                # saturated resistance
+                Sat_d * Xd_2prime_sat - (Xd_2prime - Xl + Xl * Sat_d),
+                Sat_q * Xq_2prime_sat - (Xq_2prime - Xl + Xl * Sat_q),
+                Sat_d * Xd_prime_sat - (Xd_prime - Xl + Xl * Sat_d),
+                Sat_q * Xq_prime_sat - (Xq_prime - Xl + Xl * Sat_q),
+                Sat_d * Xd_sat - (Xd - Xl + Xl * Sat_d),
+                Sat_q * Xq_sat - (Xq - Xl + Xl * Sat_q),
+                # flux
+                V_dag - (Vd - Ra * Id + Xq_2prime_sat * Iq + Iq * Ra + Id * Xl),
+                V_qag - (Vq - Ra * Iq + Xd_2prime_sat * Id + Id * Ra - Iq * Xl),
+                (omega) * Psi_ag - (ws) * sqrt(V_qag * V_qag + V_dag * V_dag),
+                Sat_d - (Const(1) + Sa),
+                Sat_q - (Const(1) + Sa),
+                # saturations (quadratic)
+                Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4)))
+                ],
+            algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
+                            #saturated resistance
+                           Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
+                            #flux
+                            Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag],
+            init_eqs = {
+            omega:0,
+            V_dag: inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            V_qag: inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+            Sa: A * (Psi_ag - B) ** 2,
+            delta: atan(
+                (inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                 ((Xq - Xl) / (1 + Sa) + Xl)) /
+                (inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                 ((Xq - Xl) / (1 + Sa) + Xl))),
+            Vd: (inputs[0] * sin(delta - inputs[1])),
+            Vq: (inputs[0] * cos(delta - inputs[1])),
+            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
+            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
+            Ed_prime: (Xq - Xq_prime) * Iq / (1 + Sa),
+            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (1 + Sa)) + (Xq_prime - Xl) * (Iq / (1 + Sa)),
+            Eq_2prime: Vd,
+            Ed_2prime: Vq,
+            })
 
-def governor_no_load_control(name: str = "") -> Block:
-    inputs = [Var("omega_" + name)]
+        generator_block.external_mapping={
+                VarPowerFlowRefferenceType.P: Pg,
+                VarPowerFlowRefferenceType.Q: Qg,
+            }
+        generator_block.name= "genqec"
+        generator_block.event_dict = event_dict
+        generator_block.in_vars=in_vars_dict
+        generator_block.out_vars[str(0)] = Pg
+        generator_block.out_vars[str(1)] = Qg
+        generator_block.out_vars[str(2)] = omega
 
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
+        return generator_block
 
+class GovernorBuild:
+    def __init__(self, name: str = ""):
 
-    # ______________________________________________________________________________________
-    #                                    variables
-    # ______________________________________________________________________________________
+        self.name: str = name
 
-    Tm = Var("Tm")  # Mechanical power input (pu
-    Pe = Var("Pe")  # Mechanical power input (pu)
+        self.parameters = {
+            # Time constants
+            "T1": Const(1.0),  # governor time constant (s)
+            "T2": Const(1.0),  # reheater time constant (s)
+            "T3": Const(10.0),  # crossover time constant (s)
+            "T4": Const(0.2),  # lead/lag constant (s)
+            "T5": Const(0.5),  # lead/lag constant (s)
+            "T6": Const(0.1),  # lead/lag constant (s)
+            "T7": Const(0.05),  # lead/lag constant (s)
 
-    et = Var("et")
-    T_aux = Var('T_aux')
+            # Steam fractions (distribution factors)
+            "K1": Const(0.5),
+            "K2": Const(0.5),
+            "K3": Const(0.0),
+            "K4": Const(0.0),
+            "K5": Const(0.0),
+            "K6": Const(0.0),
+            "K7": Const(0.0),
+            "K8": Const(0.0),
+        }
 
-    algebraic_eqs = []
-    algebraic_vars = []
+    def governor(self) -> Block:
 
-    # ______________________________________________________________________________________
-    #                                    parameters
-    # ______________________________________________________________________________________
-    # Gains and limits
-    K = Var("K")  # governor gain (inverse droop)
-    Pmax = Var("Pmax")  # max mechanical power (pu)
-    Pmin = Var("Pmin")  # min mechanical power (pu)
-    Uc = Var("Uc")  # max valve closing rate (pu/s)
-    Uo = Var("Uo")  # max valve opening rate (pu/s)
-    T_aux = Var("T_aux")
+        """
+            governor model with no load control and with no free reference
+        """
 
+        # Inputs
+        # omega: omega (from generator)
 
-    # Time constants
-    T1 = Var("T1")  # governor time constant (s)
-    T2 = Var("T2")  # reheater time constant (s)
-    T3 = Var("T3")  # crossover time constant (s)
-    T4 = Var("T4")  # lead/lag constant (s)
-    T5 = Var("T5")  # lead/lag constant (s)
-    T6 = Var("T6")  # lead/lag constant (s)
-    T7 = Var("T7")  # lead/lag constant (s)
+        inputs = [Var("omega_" + self.name)]
 
-    # Steam fractions (distribution factors)
-    K1 = Var("K1")
-    K2 = Var("K2")
-    K3 = Var("K3")
-    K4 = Var("K4")
-    K5 = Var("K5")
-    K6 = Var("K6")
-    K7 = Var("K7")
-    K8 = Var("K8")
-
-    # Control
-
-    Kp = Var("Kp")
-    Ki = Var("Ki")
-    omega_ref = Var('omega_ref')
-    p0 = Var('p0')
-    P0 = Var('P0')
+        in_vars_dict: Dict[str, Var] = dict()
+        for i, inpt in enumerate(inputs):
+            in_vars_dict[str(i)] = inpt
 
 
-    events_dict = {
-        # control parameters
-        Kp: Const(-0.01),
-        Ki: Const(-0.01),
-        p0: Const(1.0),
-        P0: Const(0.01),
-        omega_ref: Const(1),
+        # ______________________________________________________________________________________
+        #                                    variables
+        # ______________________________________________________________________________________
 
-        # Governor parameters
-        K: Const(10.0),  # governor gain (inverse droop)
-        Pmax: Const(2.0),  # max mechanical power (pu)
-        Pmin: Const(0.0),  # min mechanical power (pu)
-        Uc: Const(-0.1),  # max valve closing rate (pu/s)
-        Uo: Const(0.1),  # max valve opening rate (pu/s)
-        T_aux: Const(0.0),
+        Tm = Var("Tm")  # Mechanical power input (pu
+        et = Var("et")
+        algebraic_eqs = []
+        algebraic_vars = []
+
+        # ______________________________________________________________________________________
+        #                                    parameters
+        # ______________________________________________________________________________________
 
         # Time constants
-        T1: Const(1.0),  # governor time constant (s)
-        T2: Const(1.0),  # reheater time constant (s)
-        T3: Const(10.0),  # crossover time constant (s)
-        T4: Const(0.2),  # lead/lag constant (s)
-        T5: Const(0.5),  # lead/lag constant (s)
-        T6: Const(0.1),  # lead/lag constant (s)
-        T7: Const(0.05),  # lead/lag constant (s)
+        T1 = Const(1.0)  # governor time constant (s)
+        T2 = Const(1.0)  # reheater time constant (s)
+        T3 = Const(10.0)  # crossover time constant (s)
+        T4 = Const(0.2)  # lead/lag constant (s)
+        T5 = Const(0.5)  # lead/lag constant (s)
+        T6 = Const(0.1)  # lead/lag constant (s)
+        T7 = Const(0.05)  # lead/lag constant (s)
 
         # Steam fractions (distribution factors)
-        K1: Const(0.5),
-        K2: Const(0.5),
-        K3: Const(0.0),
-        K4: Const(0.0),
-        K5: Const(0.0),
-        K6: Const(0.0),
-        K7: Const(0.0),
-        K8: Const(0.0),
-    }
-    controller_block = Block(
-        state_eqs=[
-            P0 * (inputs[0] - omega_ref)
-        ],
-        state_vars=[et],
-        algebraic_eqs=[
-            T_aux - (Kp * (inputs[0] - omega_ref) + Ki * et),
-        ],
-        algebraic_vars=[T_aux],
-    )
+        K1 = Const(0.5)
+        K2 = Const(0.5)
+        K3 = Const(0.0)
+        K4 = Const(0.0)
+        K5 = Const(0.0)
+        K6 = Const(0.0)
+        K7 = Const(0.0)
+        K8 = Const(0.0)
 
-    # TODO: to review this last part
-    u1 = inputs[0] - omega_ref
-    lead_lag_block, y1 = tf_to_diffblock(
-        num=[1, T2],
-        den=[1, T1],
-        x=u1,
-        name='gov0',
-    )
+        # Gains and limits
+        K = Var("K")  # governor gain (inverse droop)
+        Pmax = Var("Pmax")  # max mechanical power (pu)
+        Pmin = Var("Pmin")  # min mechanical power (pu)
+        Uc = Var("Uc")  # max valve closing rate (pu/s)
+        Uo = Var("Uo")  # max valve opening rate (pu/s)
+        T_aux = Var("T_aux")
 
-    # ==============================
-    # First Feed back Loop
-    y2_3 = Var('y2_3_gov')
-    algebraic_vars.append(y2_3)
-    x2 = Pm_ref - K * y1 - y2_3
+        # Control
+        Kp = Var("Kp")
+        Ki = Var("Ki")
+        omega_ref = Var('omega_ref')
+        p0 = Var('p0')
+        P0 = Var('P0')
 
-    y2 = x2 * (1 / T3)
-    y2_1 = hard_sat(y2, Uc, Uo)
-    tf1, y2_2 = tf_to_diffblock(
-        num=[1],
-        den=[0, 1],
-        x=y2_1,
-        name='gov1',
-    )
-    algebraic_eqs.append(y2_3 - hard_sat(y2_2, Pmin, Pmax))
+        # reference
+        Pm_ref = Var('Pm_ref')
 
-    # ==============================
-    # We compute different outputs for every tf
-    tf2, y3_1 = tf_to_diffblock(
-        num=[1],
-        den=[1, T4],
-        x=y2_3,
-        name='gov2',
-    )
-    tf3, y3_2 = tf_to_diffblock(
-        num=[1],
-        den=[1, T5],
-        x=y3_1,
-        name='gov3',
-    )
-    tf4, y3_3 = tf_to_diffblock(
-        num=[1],
-        den=[1, T6],
-        x=y3_2,
-        name='gov4',
-    )
-    tf5, y3_4 = tf_to_diffblock(
-        num=[1],
-        den=[1, T7],
-        x=y3_3,
-        name='gov5',
-    )
+        events_dict = {
+            # control parameters
+            Kp: Const(-0.01),
+            Ki: Const(-0.01),
+            p0: Const(1.0),
+            P0: Const(0.01),
+            omega_ref: Const(1),
 
-    u = K1 * y3_1 + K2 * y3_2 + K3 * y3_3 + K4 * y3_4 + T_aux
-    aux_block = Block(
-        algebraic_eqs=[
-                          u - Tm
-                      ]
-                      + algebraic_eqs,
-        algebraic_vars=[Tm] + algebraic_vars,
-    )
+            # Governor parameters
+            K: Const(10.0),  # governor gain (inverse droop)
+            Pmax: Const(2.0),  # max mechanical power (pu)
+            Pmin: Const(0.0),  # min mechanical power (pu)
+            Uc: Const(-0.1),  # max valve closing rate (pu/s)
+            Uo: Const(0.1),  # max valve opening rate (pu/s)
+            T_aux: Const(0.0),
 
-    governor_block = Block(
-        children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block]
-    )
-    governor_block.event_dict = events_dict
 
-    governor_block.out_vars[str(0)] = Tm
+            # reference
+            Pm_ref: Const(0.0963287180659294)
+        }
+        controller_block = Block(
+            state_eqs=[
+                P0 * (inputs[0] - omega_ref)
+            ],
+            state_vars=[et],
+            algebraic_eqs=[
+                T_aux - (Kp * (inputs[0] - omega_ref) + Ki * et),
+            ],
+            algebraic_vars=[T_aux],
+        )
 
-    return governor_block
+        u1 = inputs[0] - omega_ref
+        lead_lag_block, y1 = tf_to_diffblock(
+            num=np.array([1, self.parameters["T2"]]),
+            den=np.array([1, self.parameters["T1"]]),
+            x=u1,
+            name='gov0',
+        )
+
+        # ==============================
+        # First Feed back Loop
+        y2_3 = Var('y2_3_gov')
+        algebraic_vars.append(y2_3)
+        x2 = Pm_ref - K * y1 - y2_3
+
+        y2 = x2 * (1 / self.parameters["T3"])
+        y2_1 = hard_sat(y2, Uc, Uo)
+        tf1, y2_2 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([0, 1]),
+            x=y2_1,
+            name='gov1',
+        )
+        algebraic_eqs.append(y2_3 - hard_sat(y2_2, Pmin, Pmax))
+
+        # ==============================
+        # We compute different outputs for every tf
+        tf2, y3_1 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([1, self.parameters["T4"]]),
+            x=y2_3,
+            name='gov2',
+        )
+        tf3, y3_2 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([1, self.parameters["T5"]]),
+            x=y3_1,
+            name='gov3',
+        )
+        tf4, y3_3 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([1, self.parameters["T6"]]),
+            x=y3_2,
+            name='gov4',
+        )
+        tf5, y3_4 = tf_to_diffblock(
+            num=np.array([1]),
+            den=np.array([1, self.parameters["T7"]]),
+            x=y3_3,
+            name='gov5',
+        )
+
+        u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + self.parameters["K4"] * y3_4 + T_aux
+        aux_block = Block(
+            algebraic_eqs=[u - Tm] + algebraic_eqs,
+            algebraic_vars=[Tm] + algebraic_vars,
+        )
+
+        governor_block = Block(
+            children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block]
+        )
+
+        governor_block.name = "governor"
+
+        governor_block.event_dict = events_dict
+
+        governor_block.parameters = self.parameters
+
+        governor_block.out_vars[str(0)] = Tm
+
+        return governor_block
 
 
 def stabilizer(name: str = ""):
@@ -1181,13 +1205,37 @@ def stabilizer(name: str = ""):
 
 
 def build_exciter_model(name: str = ""):
-    inputs = [Var("IRPu_" + name), Var("Vg_" + name), Var("Efd_" + name), Var("Vpss_" + name)]
+    """
+    exciter model
+    """
+
+    # input variables
+    # IRPu: rotor current (pu) ???
+    # Va: measured stator voltage (from generator) (pu)
+    # Vpss: output from power system stabilizer (pu)
+
+    inputs = [Var("IRPu_" + name), Var("Va_" + name), Var("Vpss_" + name)]
 
     in_vars_dict: Dict[str, Var] = dict()
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
 
     algebraic_vars = []
+
+    # ______________________________________________________________________________________
+    #                                    variables
+    # ______________________________________________________________________________________
+
+    Vf = Var("Vf")
+    Efe = Var('Efe')
+
+    # Exciter internal variables
+    VeMaxPu = Var('VeMaxPu')
+    u_aux = Var('u_aux')
+
+    # ______________________________________________________________________________________
+    #                                    parameters
+    # ______________________________________________________________________________________
 
     # ---- Exciter (AVR) parameters ----
     UsRefPu = Var("UsRefPu")  # reference voltage (pu)
@@ -1211,6 +1259,18 @@ def build_exciter_model(name: str = ""):
     VaMinPu = Var("VaMinPu")  # AVR output min (pu)
     VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
     VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
+
+    # exciter submodel parameters
+    AEx = Var("AEx")  # Gain of saturation function
+    BEx = Var("BEx")  # Exponential coefficient of saturation function
+    Kc = Var("Kc")  # Rectifier loading factor
+    Kd = Var("Kd")  # Demagnetizing factor
+    Ke = Var("Ke")  # Exciter field resistance constant
+    tE_submodel = Var("tE_submodel")  # Exciter field time constant (s)
+    ToLLi = Var("ToLLi")  # Tolerance on limit crossing
+    VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
+    VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
+    F_rectifier = Var("F_rectifier")  # Rectifier factor
 
     events_dict = {
         # Exciter (AVR) parameters
@@ -1236,35 +1296,47 @@ def build_exciter_model(name: str = ""):
         VaMinPu: Const(-10.0),  # AVR output min (pu)
         VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
         VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
+
+        # Exciter submodel parameters
+        AEx: Const(0.02),  # saturation gain
+        BEx: Const(-0.01),  # exponential coeff of saturation function
+        Kc: Const(0.2),  # rectifier loading factor
+        Kd: Const(0.1),  # demagnetizing factor
+        Ke: Const(1.0),  # field resistance constant
+        tE_submodel: Const(0.5),  # exciter field time constant (s)
+        ToLLi: Const(0.05),  # tolerance on limit crossing
+        VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
+        VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
+        F_rectifier: Const(1.0),  # rectifier factor (1=DC, 0.5=AC)
     }
 
     # ---Internal Blocks---
     tf1, y1 = tf_to_diffblock(
-        num=[1],
-        den=[1, tR],
+        num=np.array([1]),
+        den=np.array([1, tR]),
         x=inputs[1],
         name='exciter1',
     )  # filtered stator voltage
 
     # error1 = UPssPu - y + UsRefPu
-    error1 = (- y1 + UsRefPu) + inputs[3]
+    error1 = (- y1 + UsRefPu) + inputs[2]
     tf2, y2 = tf_to_diffblock(
-        num=[0, Kf],
-        den=[1, tF],
-        x=inputs[2],
+        num=np.array([0, Kf]),
+        den=np.array([1, tF]),
+        x=Vf,
         name='exciter2',
     )
     error2 = error1 - y2
 
     tf3, y3 = tf_to_diffblock(
-        num=[1, tC],
-        den=[1, tB],
+        num=np.array([1, tC]),
+        den=np.array([1, tB]),
         x=error2,
         name='exciter3',
     )
     tf4, y4 = tf_to_diffblock(
-        num=[Ka],
-        den=[1, tA],
+        num=np.array([Ka]),
+        den=np.array([1, tA]),
         x=y3,
         name='exciter4',
     )
@@ -1275,8 +1347,44 @@ def build_exciter_model(name: str = ""):
     min_const = Const(max(events_dict['VaMinPu'], events_dict['EfeMinPu']))
     max_const = Const(min(events_dict['VaMaxPu'], events_dict['EfeMaxPu']))
     y6 = hard_sat(y4, min_const, max_const)
-    Efe = Var('Efe')
-    exciter_submodel, Efd = build_exciter_submodel(inputs[0], Efe, inputs[2], multilinear=multilinear)
+
+    # exciter submodel
+
+    algebraic_eqs_submodel = []
+    algebraic_vars_submodel = []
+
+    x1 = VfeMaxPu - inputs[0] * Kd
+    error1 = Efe - (inputs[0] * Kd + u_aux)
+
+    tf1, Ve_presat = tf_to_diffblock(
+        num=np.array([1]),
+        den=np.array([0, tE]),
+        x=error1,
+        name='subexciter1',
+    )
+
+
+    Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
+    aux_expr = Ke * Ve + AEx * Ve * exp(BEx * Ve)
+    algebraic_eqs_submodel.append(u_aux - aux_expr)
+
+    algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
+
+
+    f_input = Var('f_input')
+    f_output = f_exc(f_input)
+    algebraic_vars.append(f_input)
+    algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * Kc)
+
+    algebraic_eqs_submodel.append(Vf - f_output * Ve)
+
+    aux_model = DiffBlock(
+        algebraic_eqs=algebraic_eqs_submodel,
+        algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars
+    )
+
+    exciter_submodel = DiffBlock(children=[tf1, aux_model])
+
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],
         algebraic_vars=[Efe] + algebraic_vars,

@@ -63,6 +63,9 @@ def _heaviside(x):
 def heaviside(x: Any) -> Func:
     return Func("heaviside", _to_expr(x))
 
+def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
+    return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
+
 
 def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
     """
@@ -1228,7 +1231,10 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
-    "make_symbolic"
+    "make_symbolic",
+    "DiffVar",
+    "hard_sat",
+    "UndefinedConst"
 ]
 #
 # x = Var("x")

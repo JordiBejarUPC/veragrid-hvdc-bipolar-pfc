@@ -23,6 +23,8 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QPoint
+
+
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     constant,
@@ -33,8 +35,8 @@ from VeraGridEngine.Utils.Symbolic.block import (
     divide,
     absolut,
     generator,
-    genqec,
-    governor_no_load_control,
+    GenqecBuild,
+    GovernorBuild,
     exciter,
     line,
     generic
@@ -104,6 +106,30 @@ def _get_var_name_from_subsys(subsys, is_input: bool, index: int) -> str:
         return str(var)
     except Exception:
         return "<no var>"
+
+def change_model_params(mdl_old, mdl_new):
+    mdl_old.parameters = mdl_new.parameters
+    mdl_old.algebraic_eqs = mdl_new.algebraic_eqs
+    mdl_old.state_eqs = mdl_new.state_eqs
+    for eq in mdl_old.algebraic_eqs:
+        for var, wrong_var in zip(mdl_old.algebraic_vars, mdl_new.algebraic_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.state_vars, mdl_new.state_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.in_vars, mdl_new.in_vars):
+            eq.subs({wrong_var: var})
+
+    for eq in mdl_old.state_eqs:
+        for var, wrong_var in zip(mdl_old.algebraic_vars, mdl_new.algebraic_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.state_vars, mdl_new.state_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.in_vars, mdl_new.in_vars):
+            eq.subs({wrong_var: var})
+
+    if mdl_old.children:
+        for submodel_old, submodel_new in zip(mdl_old.children, mdl_new.children):
+            change_model_params(submodel_old, submodel_new)
 
 
 
@@ -352,9 +378,9 @@ class BlockItem(QGraphicsRectItem):
 
 
 
-
     def mouseDoubleClickEvent(self, event):
         # --- Constant editing ---
+        print(self.subsys.name)
         if self.subsys.name.lower().startswith("const") or self.subsys.name == "CONSTANT":
             dlg = QDialog()
             dlg.setWindowTitle("Edit Constant Value")
@@ -401,6 +427,19 @@ class BlockItem(QGraphicsRectItem):
                 self.subsys.event_dict[var_obj] = Const(new_val)
                 # _ , self.subsys = constant(new_val)
                 self.name_item.setPlainText(f"Gain({new_val})")
+            return
+
+        if self.subsys.name.lower().startswith("gov") or self.subsys.name.startswith == "GOV":
+            dialog = ParameterEditorDialog(self.subsys.parameters, self.subsys.event_dict)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                new_params, new_events = dialog.get_updated_data()
+                self.subsys.event_dict = new_events
+                constructor = GovernorBuild()
+                constructor.parameters = new_params
+                blk = constructor.governor()
+
+                change_model_params(self.subsys, blk)
+
             return
 
         super().mouseDoubleClickEvent(event)
@@ -938,12 +977,14 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        blk = genqec(item_name)
+        builder = GenqecBuild()
+        blk =builder.genqec()
         return blk
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        blk = governor_no_load_control(item_name)
+        builder = GovernorBuild()
+        blk = builder.governor()
         return blk
 
     # GOVERNOR (governor with control)
@@ -1070,8 +1111,7 @@ class DiagramScene(QGraphicsScene):
                     for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
                         dst_port.subsystem.subsys.state_eqs[i] = new_equ
-                    # dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
-                    # dst_port.subsystem.subsys.active_in_vars.append(dst_port.subsystem.subsys.in_vars[dst_port.index])
+                    dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
 
                     self.addItem(connection)
 
@@ -1323,6 +1363,196 @@ class TemplateEditor(QtWidgets.QWidget):
             return self.selected_template.event_dict
         return {}
 
+class ParameterEditorDialog(QDialog):
+    """
+    A dialog that edits BOTH:
+        - parameters: Dict[str, Const]
+        - event_dict: Dict[Var, Const]
+
+    The user only sees a 2-column table:  Name | Value
+    Internally we store metadata to reconstruct the updated dicts.
+    """
+
+    def __init__(self, parameters: dict, event_dict: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Model Parameters")
+        self.resize(450, 350)
+
+        self.parameters = parameters
+        self.event_dict = event_dict
+
+        # Output (filled when OK is pressed)
+        self.new_parameters = {}
+        self.new_event_dict = {}
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Edit the values:"))
+
+        # ---------------------------
+        # Table (two columns only)
+        # ---------------------------
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["Name", "Value"])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+        layout.addWidget(self.table)
+
+        self.populate_table()
+
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    # --------------------------------------------------------
+
+    def populate_table(self):
+        """Put both dictionaries into the table."""
+        total = len(self.parameters) + len(self.event_dict)
+        self.table.setRowCount(total)
+
+        row = 0
+
+        # --- parameters ---
+        for name, const in self.parameters.items():
+            self.add_row(row, name, getattr(const, "value", const))
+            # store metadata
+            self.table.item(row, 0).setData(Qt.UserRole, ("parameter", name))
+            row += 1
+
+        # --- event_dict ---
+        for var, const in self.event_dict.items():
+            name = getattr(var, "name", str(var))
+            self.add_row(row, name, getattr(const, "value", const))
+            # store metadata
+            self.table.item(row, 0).setData(Qt.UserRole, ("event", var))
+            row += 1
+
+    # --------------------------------------------------------
+
+    def add_row(self, row, name, value):
+        name_item = QTableWidgetItem(name)
+        name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        self.table.setItem(row, 0, name_item)
+
+        value_item = QTableWidgetItem(str(value))
+        self.table.setItem(row, 1, value_item)
+
+    # --------------------------------------------------------
+
+    def accept(self):
+        """Reads table values and rebuilds parameters + event_dict."""
+        for row in range(self.table.rowCount()):
+            meta = self.table.item(row, 0).data(Qt.UserRole)
+            value_str = self.table.item(row, 1).text()
+
+            # convert to float if possible
+            try:
+                value = float(value_str)
+            except ValueError:
+                value = value_str
+
+            if meta is None:
+                continue
+
+            origin, key = meta
+
+            if origin == "parameter":
+
+                self.new_parameters[key] = Const(value)
+
+            elif origin == "event":
+
+                self.new_event_dict[key] = Const(value)
+
+        super().accept()
+
+    # --------------------------------------------------------
+
+    def get_updated_data(self):
+        """Return updated (parameters, event_dict)."""
+        return self.new_parameters, self.new_event_dict
+
+# class ParameterEditorDialog(QDialog):
+#     """
+#     Dialogue to edit parameters of a block.
+#     """
+#
+#     def __init__(self, parameters: dict, event_dict: dict, parent=None):
+#         super().__init__(parent)
+#         self.setWindowTitle("Edit Parameters")
+#         self.resize(400, 300)
+#
+#         self.parameters = parameters  # {str: Const}
+#         self.new_parameters = {}
+#
+#         layout = QVBoxLayout(self)
+#         layout.addWidget(QLabel("Edit the parameters of this block:"))
+#
+#         # --- Crear la tabla ---
+#         self.table = QTableWidget()
+#         self.table.setColumnCount(2)
+#         self.table.setHorizontalHeaderLabels(["Parameter", "Value"])
+#         self.table.horizontalHeader().setStretchLastSection(True)
+#         self.table.verticalHeader().setVisible(False)
+#         self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+#
+#         self.populate_table()
+#         layout.addWidget(self.table)
+#
+#         # ---  OK / Cancel ---
+#         buttons = QDialogButtonBox(
+#             QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+#             Qt.Horizontal,
+#             self,
+#         )
+#         buttons.accepted.connect(self.accept)
+#         buttons.rejected.connect(self.reject)
+#         layout.addWidget(buttons)
+#
+#     # ------------------------------------------------------
+#
+#     def populate_table(self):
+#         """Llena la tabla con los parámetros actuales."""
+#         self.table.setRowCount(len(self.parameters))
+#         for row, (name, const) in enumerate(self.parameters.items()):
+#             # parameter value
+#             name_item = QTableWidgetItem(name)
+#             name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+#             self.table.setItem(row, 0, name_item)
+#
+#             # parameter name
+#             value = getattr(const, "value", const)
+#             value_item = QTableWidgetItem(str(value))
+#             self.table.setItem(row, 1, value_item)
+#
+#     # ------------------------------------------------------
+#
+#     def accept(self):
+#         """update dictionary"""
+#         for row in range(self.table.rowCount()):
+#             name = self.table.item(row, 0).text()
+#             value_text = self.table.item(row, 1).text()
+#
+#             try:
+#                 value = float(value_text)
+#             except ValueError:
+#                 value = value_text
+#             self.new_parameters[name] = Const(value)
+#
+#         super().accept()
+#
+#     # ------------------------------------------------------
+#
+#     def get_parameters(self) -> dict:
+#         """Devuelve el diccionario actualizado."""
+#         return self.new_parameters
+
 class NameDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1411,10 +1641,17 @@ class InspectModel(QWidget):
 
         # --- Variables ---
         for var in model.state_vars + model.algebraic_vars:
-            item = QListWidgetItem(f"{var.name} ({'state' if var in model.state_vars else 'algebraic'})")
+            item = QListWidgetItem(f"{var.name} ")
+            # ({'state' if var in model.state_vars else 'algebraic'})
             self.list_vars.addItem(item)
 
         # --- Parameters ---
+        for param, value in model.parameters.items():
+            row = self.table_params.rowCount()
+            self.table_params.insertRow(row)
+            self.table_params.setItem(row, 0, QTableWidgetItem(param))
+            self.table_params.setItem(row, 1, QTableWidgetItem(str(model.parameters[param])))
+
         for param, value in model.event_dict.items():
             row = self.table_params.rowCount()
             self.table_params.insertRow(row)
