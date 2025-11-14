@@ -66,6 +66,13 @@ def heaviside(x: Any) -> Func:
 def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
     return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
 
+def f_exc(In: Expr) -> Expr:
+    a = heaviside(-In)*(Const(0.577)*In)
+    b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2)))*heaviside(Const(0.433)-In)
+    c = ((sqrt(Const(0.75)-In**2) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
+    d = (Const(1.732) - In*Const(1.732))*(Const(1)*heaviside(Const(1.0)-In))
+    return a + b + c + d
+
 
 def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
     """
@@ -1234,7 +1241,8 @@ __all__ = [
     "make_symbolic",
     "DiffVar",
     "hard_sat",
-    "UndefinedConst"
+    "UndefinedConst",
+    f_exc
 ]
 #
 # x = Var("x")

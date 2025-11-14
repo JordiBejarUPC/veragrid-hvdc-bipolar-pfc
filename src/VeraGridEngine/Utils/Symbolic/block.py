@@ -13,7 +13,7 @@ from typing import Tuple, Sequence, List, Dict, Any, Optional
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
-    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, Fexc
+    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -1117,94 +1117,116 @@ class GovernorBuild:
 
         return governor_block
 
+class StabilizerBuild:
+    def __init__(self, name: str = ""):
 
-def stabilizer(name: str = ""):
-    # PSS parameters with typical values
-    A1 = Var("A1")  # notch filter coefficient 1
-    A2 = Var("A2")  # notch filter coefficient 2
-    Ks = Var("Ks")  # stabilizer gain
-    t1 = Var("t1")  # lead time constant
-    t2 = Var("t2")  # lag time constant
-    t3 = Var("t3")  # lag time constant
-    t4 = Var("t4")  # second lag time constant
-    t5 = Var("t5")  # washout time constant
-    t6 = Var("t6")  # transducer time constant
-    VPssMaxPu = Var("VPssMaxPu")  # max stabilizer output
-    VPssMinPu = Var("VPssMinPu")  # min stabilizer output
-    SNom = Var("SNom")  # nominal apparent power
+        self.name: str = name
 
-    events_dict = {
-        # Stabilizer parameters
-        A1: Const(1.0),  # notch filter coefficient 1
-        A2: Const(1.0),  # notch filter coefficient 2
-        Ks: Const(20.0),  # stabilizer gain
-        t1: Const(0.1),  # lead time constant
-        t2: Const(0.02),  # lag time constant
-        t3: Const(0.02),  # lag time constant
-        t4: Const(0.1),  # second lag time constant
-        t5: Const(10.0),  # washout time constant
-        t6: Const(0.02),  # transducer time constant
-        VPssMaxPu: Const(1.0),  # max stabilizer output
-        VPssMinPu: Const(-1.0),  # min stabilizer output
-        SNom: Const(1.0),  # nominal apparent power
-    }
+        self.parameters = {
+            # Stabilizer parameters
+            "A1": Const(1.0),  # notch filter coefficient 1
+            "A2": Const(1.0),  # notch filter coefficient 2
+            "t1": Const(0.1),  # lead time constant
+            "t2": Const(0.02),  # lag time constant
+            "t3": Const(0.02),  # lag time constant
+            "t4": Const(0.1),  # second lag time constant
+            "t5": Const(10.0),  # washout time constant
+            "t6": Const(0.02),  # transducer time constant
+            }
 
-    # variables
-    Vpss = Var('V_pss')
-    omega = Var('omega')
-    vars_block = Block(
-        algebraic_vars=[omega],
-    )
+    def stabilizer(self):
+        """
+           stabilizer model
+        """
 
-    tf, y = tf_to_diffblock_with_states(
-        num=[1.0],
-        den=[1, t6],
-        x=omega,
-        name='stabilizer1',
-    )
+        # input variables
+        # omega: omega from generator
 
-    tf2, y2 = tf_to_diffblock_with_states(
-        num=[0, t5],
-        den=[1, t5],
-        x=Ks * y,
-        name='stabilizer2',
-    )
-    tf3, y3 = tf_to_diffblock_with_states(
-        num=[1],
-        den=[1, A1, A2],
-        x=y2,
-        name='stabilizer3',
-    )
-    tf4, y4 = tf_to_diffblock_with_states(
-        num=[1, t1],
-        den=[1, t2],
-        x=y3,
-        name='stabilizer4',
-    )
-    tf5, y5 = tf_to_diffblock_with_states(
-        num=[1, t3],
-        den=[1, t4],
-        x=y4,
-        name='stabilizer5',
-    )
+        inputs = [Var("omega_" + self.name)]
 
-    algebraic_eqs = []
-    algebraic_eqs.append(hard_sat(y5, VPssMinPu, VPssMaxPu) - Vpss)
-    block_1 = Block()
+        in_vars_dict: Dict[str, Var] = dict()
+        for i, inpt in enumerate(inputs):
+            in_vars_dict[str(i)] = inpt
 
-    stabilizer_block = Block(
-        children=[tf, tf2, tf3, tf4, tf5],
-        algebraic_eqs=algebraic_eqs,
-        algebraic_vars=[Vpss],
-    )
+        # PSS parameters with typical values
 
-    stabilizer_block.add(vars_block)
-    stabilizer_block.add(block_1)
+        Ks = Var("Ks")  # stabilizer gain
+        VPssMaxPu = Var("VPssMaxPu")  # max stabilizer output
+        VPssMinPu = Var("VPssMinPu")  # min stabilizer output
+        SNom = Var("SNom")  # nominal apparent power
 
-    return stabilizer_block
+        events_dict = {
+            # Stabilizer parameters
+            Ks: Const(20.0),  # stabilizer gain
+            VPssMaxPu: Const(1.0),  # max stabilizer output
+            VPssMinPu: Const(-1.0),  # min stabilizer output
+            SNom: Const(1.0),  # nominal apparent power
+        }
 
+        # variables
+        Vpss = Var('V_pss')
 
-def build_exciter_model(name: str = ""):
+        vars_block = Block(
+            algebraic_vars=[],
+        )
+
+        tf, y = tf_to_diffblock_with_states(
+            num=np.array([1.0]),
+            den=np.array([1, t6]),
+            x=inputs[0],
+            name='stabilizer1',
+        )
+
+        tf2, y2 = tf_to_diffblock_with_states(
+            num=np.array([0, t5]),
+            den=np.array([1, t5]),
+            x=Ks * y,
+            name='stabilizer2',
+        )
+        tf3, y3 = tf_to_diffblock_with_states(
+            num=np.array([1]),
+            den=np.array([1, A1, A2]),
+            x=y2,
+            name='stabilizer3',
+        )
+        tf4, y4 = tf_to_diffblock_with_states(
+            num=np.array([1, t1]),
+            den=np.array([1, t2]),
+            x=y3,
+            name='stabilizer4',
+        )
+        tf5, y5 = tf_to_diffblock_with_states(
+            num=np.array([1, t3]),
+            den=np.array([1, t4]),
+            x=y4,
+            name='stabilizer5',
+        )
+
+        algebraic_eqs = list()
+        algebraic_eqs.append(hard_sat(y5, VPssMinPu, VPssMaxPu) - Vpss)
+        block_1 = Block()
+
+        stabilizer_block = Block(
+            children=[tf, tf2, tf3, tf4, tf5],
+            algebraic_eqs=algebraic_eqs,
+            algebraic_vars=[Vpss],
+        )
+
+        stabilizer_block.add(vars_block)
+        stabilizer_block.add(block_1)
+        stabilizer_block.out_vars[str[0]] = Vpss
+        stabilizer_block.event_dict = events_dict
+        stabilizer_block.parameters = self.parameters
+        stabilizer_block.name = "stabilizer"
+
+        return stabilizer_block
+
+class ExciterBuild:
+    def __init__(self, name: str = ""):
+
+        self.name: str = name
+
+def exciter(self):
     """
     exciter model
     """
@@ -1214,7 +1236,7 @@ def build_exciter_model(name: str = ""):
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [Var("IRPu_" + name), Var("Va_" + name), Var("Vpss_" + name)]
+    inputs = [Var("IRPu_" + self.name), Var("Va_" + self.name), Var("Vpss_" + self.name)]
 
     in_vars_dict: Dict[str, Var] = dict()
     for i, inpt in enumerate(inputs):
@@ -1367,20 +1389,19 @@ def build_exciter_model(name: str = ""):
     Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
     aux_expr = Ke * Ve + AEx * Ve * exp(BEx * Ve)
     algebraic_eqs_submodel.append(u_aux - aux_expr)
-
     algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
 
 
     f_input = Var('f_input')
     f_output = f_exc(f_input)
-    algebraic_vars.append(f_input)
+    algebraic_vars_submodel.append(f_input)
     algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * Kc)
 
     algebraic_eqs_submodel.append(Vf - f_output * Ve)
 
     aux_model = DiffBlock(
         algebraic_eqs=algebraic_eqs_submodel,
-        algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars
+        algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
     )
 
     exciter_submodel = DiffBlock(children=[tf1, aux_model])
@@ -1392,8 +1413,9 @@ def build_exciter_model(name: str = ""):
     )
 
     exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
+    exciter_model.out_vars[str(0)] = Vf
 
-    return exciter_model, Efd
+    return exciter_model
 
 
 def exciter(item_name:str = "") -> Block:
