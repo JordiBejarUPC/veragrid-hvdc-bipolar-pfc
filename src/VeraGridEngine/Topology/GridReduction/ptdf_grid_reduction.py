@@ -391,9 +391,10 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Pbus3_gen_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_ts[:, i_branches])
         Pbus3_gen_srap_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_srap_ts[:, i_branches])
 
-        dPbus_load_ts = Pload2_ts - Pbus3_load_ts
-        dPbus_gen_ts = Pgen2_ts - Pbus3_gen_ts
-        dPbus_gen_srap_ts = Pgen2_srap_ts - Pbus3_gen_srap_ts
+        dPbus_load_ts = Pbus3_load_ts - Pload2_ts
+        dPbus_gen_ts = Pbus3_gen_ts - Pgen2_ts
+        dPbus_gen_srap_ts = Pbus3_gen_srap_ts - Pgen2_srap_ts
+
     else:
         dPbus_load_ts = None
         dPbus_gen_ts = None
@@ -403,29 +404,84 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     for i in range(n2):
 
         bus = grid.buses[i]
-        if abs(dPload[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=-dPload[i])
+
+        # --------- NEW BLOCK -----------
+        # Instead of adding both generators and loads, we add only what is needed
+        power_balance = (dPgen[i] + dPgen_srap[i]) - (-dPload[i])
+
+        if power_balance > 0.0:
+
+            # Compute the proportion of SRAP generation to move
+            # The ratio is 1.0 if everything is SRAP based, 0.0 if fully non-SRAP
+            ratio_gen_srap = dPgen_srap[i] / (dPgen_srap[i] + dPgen[i] + 1e-20)
+
+            # Add the SRAP generator if there is any SRAP generation
+            if ratio_gen_srap > 1e-6:
+                elm_srap = Generator(name=f"compensated gen {i}", 
+                                P=power_balance * ratio_gen_srap, 
+                                srap_enabled=True)
+
+                if dPbus_gen_srap_ts is not None:
+                    elm_srap.P_prof = dPbus_gen_srap_ts[:, i]
+
+                grid.add_generator(bus=bus, api_obj=elm_srap)
+
+            else:
+                # no need to add an SRAP generator
+                pass
+        
+            # Add the non-SRAP generator if there is any non-SRAP generation
+            if (1 - ratio_gen_srap) > 1e-6:
+                elm_gen = Generator(name=f"compensated gen {i}", 
+                                P=power_balance * (1 - ratio_gen_srap), 
+                                srap_enabled=False)
+
+                if dPbus_gen_ts is not None:
+                    elm_gen.P_prof = dPbus_gen_ts[:, i]
+
+                grid.add_generator(bus=bus, api_obj=elm_gen)
+
+            else:
+                # no need to add a non SRAP generator
+                pass
+
+        elif power_balance < 0.0:
+            elm = Load(name=f"compensated load {i}", P=-power_balance)
 
             if dPbus_load_ts is not None:
                 elm.P_prof = dPbus_load_ts[:, i]
 
             grid.add_load(bus=bus, api_obj=elm)
 
-        if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
+        else:
+            # nothing to add
+            pass
+            
 
-            if dPbus_gen_ts is not None:
-                elm.P_prof = -dPbus_gen_ts[:, i]
+        # --------- OLD BLOCK -----------
+        # if abs(dPload[i]) > tol:
+        #     elm = Load(name=f"compensated load {i}", P=-dPload[i])
 
-            grid.add_generator(bus=bus, api_obj=elm)
+        #     if dPbus_load_ts is not None:
+        #         elm.P_prof = dPbus_load_ts[:, i]
 
-        if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
+        #     grid.add_load(bus=bus, api_obj=elm)
 
-            if dPbus_gen_srap_ts is not None:
-                elm.P_prof = -dPbus_gen_srap_ts[:, i]
+        # if abs(dPgen[i]) > tol:
+        #     elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
 
-            grid.add_generator(bus=bus, api_obj=elm)
+        #     if dPbus_gen_ts is not None:
+        #         elm.P_prof = -dPbus_gen_ts[:, i]
+
+        #     grid.add_generator(bus=bus, api_obj=elm)
+
+        # if abs(dPgen_srap[i]) > tol:
+        #     elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
+
+        #     if dPbus_gen_srap_ts is not None:
+        #         elm.P_prof = -dPbus_gen_srap_ts[:, i]
+
+        #     grid.add_generator(bus=bus, api_obj=elm)
 
     # proof that the flows are actually the same
     # Pbus4 = grid.get_Pbus(apply_active=True)
