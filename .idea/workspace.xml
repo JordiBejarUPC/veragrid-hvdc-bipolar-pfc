@@ -28,9 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="implemented dispatchable as profile added the must_run as profile in the generator">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixed long standing issue with excel sheet names limit">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Reliability/reliability_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Reliability/reliability_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/measurement.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/measurement.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_estimation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_estimation.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -257,7 +258,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -1843,7 +1844,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="656" />
+    <option name="localTasksCounter" value="657" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1889,7 +1890,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="minimal fix when transformer templates do not exist" />
     <MESSAGE value="Added missing bus highlight clearing action" />
     <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
     <MESSAGE value="minimal type change" />
@@ -1914,7 +1914,8 @@
     <MESSAGE value="Fixed bug when copying objects with profile" />
     <MESSAGE value="Fixed set value to column" />
     <MESSAGE value="implemented dispatchable as profile added the must_run as profile in the generator" />
-    <option name="LAST_COMMIT_MESSAGE" value="implemented dispatchable as profile added the must_run as profile in the generator" />
+    <MESSAGE value="fixed long standing issue with excel sheet names limit" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed long standing issue with excel sheet names limit" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2407,11 +2408,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/object_proxy_model.py</url>
           <line>127</line>
           <option name="timeStamp" value="3034" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/excel_interface.py</url>
-          <line>28</line>
-          <option name="timeStamp" value="3038" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
