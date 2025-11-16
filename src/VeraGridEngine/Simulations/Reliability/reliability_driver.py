@@ -2,11 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+import numba as nb
 import numpy as np
 
 from VeraGridEngine.enumerations import SimulationTypes, ReliabilityMode
-from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions, multi_island_pf_nc
+from VeraGridEngine.basic_structures import Vec, BoolVec
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import GreedyDispatchInputs
@@ -14,6 +15,31 @@ from VeraGridEngine.Simulations.Reliability.reliability import (reliability_simu
                                                                 find_time_blocks)
 from VeraGridEngine.Simulations.Reliability.reliability_results import ReliabilityResults
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+
+
+@nb.njit()
+def get_gen_pmax(nt: int, k: int, Snom: float, P_array: Vec, active_array: BoolVec, dispatchable_array: BoolVec):
+    """
+    Get a generator array of Pmax given the active and dispatcheable conditions
+    :param nt: Number of time steps
+    :param k: Generator index
+    :param Snom: Nominal power
+    :param P_array: Array of P
+    :param active_array: array of active
+    :param dispatchable_array: array of dispatcheable
+    :return: Array of possible Pmax
+    """
+    assert len(P_array) == nt
+    assert len(active_array) == nt
+    assert len(dispatchable_array) == nt
+    gen_pmax = np.zeros(nt)
+    for t in range(nt):
+        if dispatchable_array[t]:
+            gen_pmax[t, k] = Snom * active_array[t]
+        else:
+            gen_pmax[t, k] = P_array[t] * active_array[t]
+
+    return gen_pmax
 
 
 class ReliabilityStudyDriver(DriverTemplate):
@@ -97,10 +123,12 @@ class ReliabilityStudyDriver(DriverTemplate):
         for k, gen in enumerate(self.grid.generators):
             gen_mttf[k] = gen.mttf
             gen_mttr[k] = gen.mttr
-            if gen.enabled_dispatch:
-                gen_pmax[:, k] = gen.Snom * gen.active_prof.toarray()
-            else:
-                gen_pmax[:, k] = gen.P_prof.toarray() * gen.active_prof.toarray()
+            gen_pmax[:, k] = get_gen_pmax(nt=horizon,
+                                          k=k,
+                                          Snom=gen.Snom,
+                                          P_array=gen.P_prof.toarray(),
+                                          active_array=gen.active_prof.toarray(),
+                                          dispatchable_array=gen.enabled_dispatch_prof.toarray())
 
         lole, _, _ = reliability_simulation(
             n_sim=self.n_sim,
