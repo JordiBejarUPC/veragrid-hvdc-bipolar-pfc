@@ -20,13 +20,13 @@ from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_a
 @nb.njit()
 def get_gen_pmax(nt: int, k: int, Snom: float, P_array: Vec, active_array: BoolVec, dispatchable_array: BoolVec):
     """
-    Get a generator array of Pmax given the active and dispatcheable conditions
+    Get a generator array of Pmax given the active and dispatchable conditions
     :param nt: Number of time steps
     :param k: Generator index
     :param Snom: Nominal power
     :param P_array: Array of P
     :param active_array: array of active
-    :param dispatchable_array: array of dispatcheable
+    :param dispatchable_array: array of dispatchable
     :return: Array of possible Pmax
     """
     assert len(P_array) == nt
@@ -172,12 +172,20 @@ class ReliabilityStudyDriver(DriverTemplate):
 
         nc2 = nc.copy()
 
+        # Energy not supplied array
         ENS_arr = np.zeros(self.n_sim)
-        LOLE_arr = np.zeros(self.n_sim)  # nº of hours with incidences (not able to supply all demand)
-        LOLF_arr = np.zeros(self.n_sim)  # nº of incidences (not able to suppy all demand)
-        LOLE_total_arr = np.zeros(
-            self.n_sim)  # nº of hours with failures (independently of if it is possible to supply demand)
-        LOLF_total_arr = np.zeros(self.n_sim)  # nº of failures (independently of if it is possible to supply demand)
+
+        # nº of hours with incidences (not able to supply all demand)
+        LOLE_arr = np.zeros(self.n_sim)
+
+        # nº of incidences (not able to suppy all demand)
+        LOLF_arr = np.zeros(self.n_sim)
+
+        # nº of hours with failures (independently of if it is possible to supply demand)
+        LOLE_total_arr = np.zeros( self.n_sim)
+
+        # nº of failures (independently of if it is possible to supply demand)
+        LOLF_total_arr = np.zeros(self.n_sim)
 
         for sim_idx in range(self.n_sim):
 
@@ -213,13 +221,15 @@ class ReliabilityStudyDriver(DriverTemplate):
                 branches_with_incidences = simulated_branch_actives[:, indices_of_branches_with_incidences]
                 gens_with_indices = gen_actives[:, indices_of_gens_with_incidences]
 
+                # TODO: too convoluted, make a numba function if needed
                 total_number_of_branch_incidences = np.sum((~branches_with_incidences) & np.concatenate(
-                    [np.ones((1, branches_with_incidences.shape[1]), dtype=bool), branches_with_incidences[:-1, :]],
-                            axis=0))
+                    [np.ones((1, branches_with_incidences.shape[1]), dtype=bool),
+                     branches_with_incidences[:-1, :]], axis=0))
 
+                # TODO: too convoluted, make a numba function if needed
                 total_number_of_gens_incidences = np.sum((~gens_with_indices) & np.concatenate(
-                    [np.ones((1, gens_with_indices.shape[1]), dtype=bool), gens_with_indices[:-1, :]],
-                    axis=0))
+                    [np.ones((1, gens_with_indices.shape[1]), dtype=bool),
+                     gens_with_indices[:-1, :]], axis=0))
 
                 LOLF_total_arr[sim_idx] = total_number_of_branch_incidences + total_number_of_gens_incidences
 
@@ -238,14 +248,14 @@ class ReliabilityStudyDriver(DriverTemplate):
 
                         fail_to_meet_demand = False
 
-                        LOLE_total_arr[sim_idx] += 1 * dt
+                        LOLE_total_arr[sim_idx] += dt
 
                         # modify active states
                         nc2.passive_branch_data.active = simulated_branch_actives[t, :]
                         nc2.generator_data.active = gen_actives[t, :]
                         nc2.battery_data.active = batt_actives[t, :]
 
-                        E_not_supplied = 0
+                        E_not_supplied = 0.0
                         islands = nc2.split_into_islands(ignore_single_node_islands=False)
                         for island in islands:
 
@@ -275,7 +285,7 @@ class ReliabilityStudyDriver(DriverTemplate):
                                     E_not_supplied += unsatisfied_demand
 
                         if fail_to_meet_demand:
-                            LOLE_arr[sim_idx] += 1 * dt
+                            LOLE_arr[sim_idx] += dt
                             block_fail_to_meet_demand = True
 
                         # revert active states
@@ -290,11 +300,13 @@ class ReliabilityStudyDriver(DriverTemplate):
                         LOLF_arr[sim_idx] += 1
             self.report_progress2(current=sim_idx, total=self.n_sim)
 
-        self.results.LOLE_evolution = np.cumsum(LOLE_arr) / (np.arange(len(LOLE_arr)) + 1)
-        self.results.ENS_evolution = np.cumsum(ENS_arr) / (np.arange(len(ENS_arr)) + 1)
-        self.results.LOLF_evolution = np.cumsum(LOLF_arr) / (np.arange(len(LOLF_arr)) + 1)
-        self.results.LOLET_evolution = np.cumsum(LOLE_total_arr) / (np.arange(len(LOLE_total_arr)) + 1)
-        self.results.LOLFT_evolution = np.cumsum(LOLF_total_arr) / (np.arange(len(LOLF_total_arr)) + 1)
+        # TODO: Check if the +1 is correct we should divide at the end by N-1
+        sim_array = np.arange(self.n_sim) + 1
+        self.results.LOLE_evolution = np.cumsum(LOLE_arr) / sim_array
+        self.results.ENS_evolution = np.cumsum(ENS_arr) / sim_array
+        self.results.LOLF_evolution = np.cumsum(LOLF_arr) / sim_array
+        self.results.LOLET_evolution = np.cumsum(LOLE_total_arr) / sim_array
+        self.results.LOLFT_evolution = np.cumsum(LOLF_total_arr) / sim_array
 
     def cancel(self):
         self.__cancel__ = True
