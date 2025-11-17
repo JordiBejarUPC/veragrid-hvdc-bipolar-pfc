@@ -419,6 +419,15 @@ class DiffVar(Var):
     _registry: ClassVar[Dict[int, "DiffVar"]] = {}
     _absolute_registry: ClassVar[Dict[Tuple[int, int], "DiffVar"]] = {}
 
+    @property
+    def registry(self):
+        """
+        Return registry
+        :return:
+        """
+        return self._registry
+
+
     def __post_init__(self):
         key = self.base_var.uid
         if not isinstance(self.base_var, Var):

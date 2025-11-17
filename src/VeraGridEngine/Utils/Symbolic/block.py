@@ -130,7 +130,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = Non
     diff_vars = []
     base_var = x
     for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar._registry
+        in_registry = base_var.uid in DiffVar.registry
         new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
         diff_vars_x.append(new_diff)
         if not in_registry:
@@ -138,7 +138,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = Non
         base_var = new_diff
     base_var = y
     for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar._registry
+        in_registry = base_var.uid in DiffVar.registry
         new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
         diff_vars_y.append(new_diff)
         if not in_registry:
@@ -547,6 +547,7 @@ class DiffBlock(Block):
     pseudo_transient: bool = False
 
 
+
     @classmethod
     def from_block(cls, block: Block, **kwargs):
         if isinstance(block, DiffBlock):
@@ -753,6 +754,8 @@ class GenqecBuild:
         Psiq = Var("Psiq"+ self.name)
         Te = Var("Te"+ self.name)
 
+        IRPu = Var("IRPu")
+
         # Saturated resistances
         Xd_sat = Var('Xd_sat'+ self.name)
         Xq_sat = Var('Xq_sat'+ self.name)
@@ -878,13 +881,15 @@ class GenqecBuild:
                 Sat_d - (Const(1) + Sa),
                 Sat_q - (Const(1) + Sa),
                 # saturations (quadratic)
-                Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4)))
+                Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
+                IRPu - Eq1 * (1 + Sa)
                 ],
             algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
                             #saturated resistance
                            Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
                             #flux
-                            Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag],
+                            Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
+                            IRPu],
             init_eqs = {
             omega:Const(0),
             V_dag: inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
@@ -912,6 +917,7 @@ class GenqecBuild:
             Ed_2prime: Vq,
             })
 
+
         generator_block.external_mapping={
                 VarPowerFlowRefferenceType.P: Pg,
                 VarPowerFlowRefferenceType.Q: Qg,
@@ -922,6 +928,8 @@ class GenqecBuild:
         generator_block.out_vars[str(0)] = Pg
         generator_block.out_vars[str(1)] = Qg
         generator_block.out_vars[str(2)] = omega
+        generator_block.out_vars[str(3)] = IRPu
+
 
         return generator_block
 
@@ -1216,6 +1224,7 @@ class StabilizerBuild:
             algebraic_vars=[Vpss],
         )
 
+        stabilizer_block.in_vars = in_vars_dict
         stabilizer_block.add(vars_block)
         stabilizer_block.add(block_1)
         stabilizer_block.out_vars[str(0)] = Vpss

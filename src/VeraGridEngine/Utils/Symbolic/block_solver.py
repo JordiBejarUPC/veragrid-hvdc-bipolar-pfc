@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import pdb
 import time
 
 import uuid
@@ -354,7 +353,7 @@ class BlockSolver:
         uid2sym_vars: Dict[int, str] = dict()
         uid2sym_event_params: Dict[int, str] = dict()
         uid2sym_t: Dict[int, str] = dict()
-
+        self.uid2var: Dict[int, Var] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
         self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
