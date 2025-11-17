@@ -130,7 +130,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = Non
     diff_vars = []
     base_var = x
     for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar.registry
+        in_registry = base_var.uid in DiffVar._registry
         new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
         diff_vars_x.append(new_diff)
         if not in_registry:
@@ -138,7 +138,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = Non
         base_var = new_diff
     base_var = y
     for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar.registry
+        in_registry = base_var.uid in DiffVar._registry
         new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
         diff_vars_y.append(new_diff)
         if not in_registry:

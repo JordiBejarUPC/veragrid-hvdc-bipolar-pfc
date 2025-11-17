@@ -2564,7 +2564,7 @@ class DiagramsMain(CompiledArraysMain):
                 # launch rms event editor dialogue
 
                 target_device_name = target_device.type_name + ": " + target_device.name
-                device_params = [var for var in target_device.rms_model.template.event_dict.keys()] # list of device parameters
+                device_params = [var for var in target_device.rms_model.model.event_dict.keys()] # list of device parameters
                 device_params_str = [var.name for var in device_params]  # list of device parameters
                 rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
                                        target_device_name=target_device_name)

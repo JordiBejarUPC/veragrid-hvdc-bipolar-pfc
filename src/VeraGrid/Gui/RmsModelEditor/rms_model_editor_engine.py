@@ -1756,8 +1756,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_from_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
 
             # add con bus to
             name = "Conn To"
@@ -1792,9 +1790,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_to_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
-
 
         else:
             x0, y0 = 0, 0
@@ -1824,9 +1819,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
-
 
     def open_inspect_dialog(self):
         # Crear el diálogo
