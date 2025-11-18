@@ -8,12 +8,12 @@ from __future__ import annotations
 import uuid
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Tuple, Sequence, List, Dict, Any
+from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
-    imag, conj, angle, exp, log, abs, piecewise
+    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -80,6 +80,207 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
     return result
 
 
+def block2diffblock(block: Block):
+    diff_block = DiffBlock.from_block(block)
+
+    for i, eq in enumerate(block.state_eqs):
+        state_var = block.state_vars[i]
+        dt_var = DiffVar.get_or_create(name='dt_' + state_var.name, base_var=state_var)
+        eq = eq - dt_var
+        diff_block.algebraic_eqs.append(eq)
+        diff_block.algebraic_vars.append(state_var)
+        if dt_var not in diff_block.diff_vars:
+            diff_block.diff_vars.append(dt_var)
+
+    diff_block.state_eqs = []
+    diff_block.state_vars = []
+
+    for i, child_block in enumerate(diff_block.children):
+        diff_block.children[i] = block2diffblock(child_block)
+
+    return diff_block
+
+
+def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = None, name: Optional[str] = ''):
+    """
+    num: list of numerator coefficients [b0, b1, ..., bm]
+    den: list of denominator coefficients [a0, a1, ..., an]
+    x:   sympy symbol for input
+    y:   sympy function of t for output
+    """
+    if len(num) > len(den):
+        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+    if num[-1] == 0 or den[-1] == 0:
+        raise ValueError("Leading coefficient of cannot be zero.")
+
+    if y is None:
+        y = Var('y_' + name)
+
+    aux_eqs = []
+    aux_vars = []
+    # check if is an expression
+    if not isinstance(x, Var):
+        u = Var('u_' + name)
+        aux_eqs.append((u - x).simplify())
+        aux_vars.append(u)
+        x = u
+
+    diff_vars_x = [x]
+    diff_vars_y = [y]
+    diff_vars = []
+    base_var = x
+    for i in range(1, len(num)):
+        in_registry = base_var.uid in DiffVar._registry
+        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
+        diff_vars_x.append(new_diff)
+        if not in_registry:
+            diff_vars.append(new_diff)
+        base_var = new_diff
+    base_var = y
+    for i in range(1, len(den)):
+        in_registry = base_var.uid in DiffVar._registry
+        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
+        diff_vars_y.append(new_diff)
+        if not in_registry:
+            diff_vars.append(new_diff)
+        base_var = new_diff
+
+    # Create the diff equation
+    rhs = np.array(diff_vars_x) @ np.array(num)
+    lhs = np.array(diff_vars_y) @ np.array(den)
+
+    block = DiffBlock()
+    block.algebraic_vars=[y] + aux_vars
+    block.algebraic_eqs=[lhs - rhs] + aux_eqs
+    block.diff_vars=diff_vars
+
+
+    return block, y
+
+
+def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
+    """
+    num: numerator coefficients [b0,...,bm]
+    den: denominator coefficients [a0,...,an], with an != 0
+    u:   input Var
+    y:   output Var
+    """
+    if len(num) > len(den):
+        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+    if num[-1] == 0 or den[-1] == 0:
+        raise ValueError("Leading coefficient of cannot be zero.")
+
+    if y is None:
+        y = Var('y_' + name)
+
+    aux_eqs = []
+    aux_vars = []
+    # check if x is a expression
+    if not isinstance(x, Var):
+        u = Var('u_' + name)
+        aux_eqs.append(u - x)
+        aux_vars.append(u)
+        x = u
+
+    # Normalize
+    den = [c / den[-1] for c in den]
+    num = [c / den[-1] for c in num]
+
+    # States
+    x_states = [x]
+    y_states = [y]
+    y_states.extend([Var(f"y{i}") for i in range(1, len(den))])  # y1,...,yn
+    x_states.extend([Var(f"x{i}") for i in range(1, len(num))])  # x1,...,xm
+
+    # Differential equations (canonical form)
+    diff_eqs = []
+    diff_vars = []
+    for i in range(len(y_states) - 1):
+        in_registry = y_states[i].uid in DiffVar._registry
+        dy = DiffVar.get_or_create(f"d_{y_states[i].name}", base_var=y_states[i])
+        diff_eqs.append(y_states[i + 1] - dy)
+        if not in_registry:
+            diff_vars.append(dy)
+
+    for i in range(len(num) - 1):
+        in_registry = x_states[i].uid in DiffVar._registry
+        dx = DiffVar.get_or_create(f"d^{i}_{x.name}", base_var=x_states[i])
+        diff_eqs.append(x_states[i + 1] - dx)
+        if not in_registry:
+            diff_vars.append(dx)
+
+            # Last equation: linear combination
+    last_eq = (
+            sum(den[i] * y_states[i] for i in range(len(y_states)))
+            - sum(num[i] * x_states[i] for i in range(len(x_states)))
+    )
+    diff_eqs.append(last_eq)
+
+    block = DiffBlock(
+        algebraic_vars=y_states + x_states[1:] + aux_vars,
+        algebraic_eqs=diff_eqs + aux_eqs,
+    )
+    block.diff_vars=diff_vars
+    block.name = 'TF'
+    return block, y_states[0]
+
+
+def tf_to_block_with_states(num: np.ndarray, den: np.ndarray, x):
+    """
+    num: numerator coefficients [b0,...,bm]
+    den: denominator coefficients [a0,...,an], with an != 0
+    u:   input Expr or Var
+    y:   output Var
+    """
+    if len(num) >= len(den):
+        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+    if num[-1] == 0 or den[-1] == 0:
+        raise ValueError("Leading coefficient of cannot be zero.")
+
+    aux_eqs = []
+    aux_vars = []
+    # check if xis a expression
+    if not isinstance(x, Var):
+        u = Var('u')
+        aux_eqs.append(u - x)
+        aux_vars.append(u)
+        x = u
+
+    # Normalize
+    den = [c / den[-1] for c in den]
+    num = [c / den[-1] for c in num]
+
+    order = len(den)  # system order
+    x_states = [x]  # x0
+    x_states.extend([Var(f"x{i}") for i in range(1, order + 1)])  # x1,...,xn
+
+    # Differential equations (canonical form)
+    state_eqs = []
+    state_vars = []
+    for i in range(1, order):
+        state_eqs.append(x_states[i])
+        state_vars.append(x_states[i + 1])
+
+    y_states = [Var(f"y{i}") for i in range(len(num) + 1)]  # x1,...,xn
+    for i in range(len(num)):
+        state_eqs.append(y_states[i])
+        state_vars.append(y_states[i + 1])
+
+    # Last equation: linear combination
+    last_eq = (
+            sum(den[i] * y_states[i] for i in range(order))
+            - sum(num[i] * x_states[i] for i in range(len(num)))
+    )
+
+    block = Block(
+        state_eqs=state_eqs,
+        state_vars=state_vars,
+        algebraic_eqs=[last_eq] + aux_eqs,
+        algebraic_vars=x_states[0] + y_states[0] + aux_vars,
+    )
+    return block, y_states[0]
+
+
 class Block:
     """
     Class representing a Block
@@ -90,7 +291,7 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
-                 parameters: List[Const] | None = None,
+                 parameters: Dict[str, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: Dict[str, Var] | None = None,
@@ -134,14 +335,14 @@ class Block:
         self.in_vars: Dict[str, Var] = dict() if in_vars is None else in_vars
         self.out_vars: Dict[str, Var] = dict() if out_vars is None else out_vars
 
-        self.parameters = list() if parameters is None else parameters
+        self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
 
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
 
         # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
-
+        ##########################################################################################3
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
 
@@ -337,6 +538,34 @@ class Block:
             return self.to_dict() == other.to_dict()
         else:
             return False
+
+class DiffBlock(Block):
+    diff_vars: List[DiffVar]
+    lag_vars: List[DiffVar]
+    reformulated_vars: List[DiffVar]
+    differential_eqs: List[Expr]
+    pseudo_transient: bool = False
+
+
+
+    @classmethod
+    def from_block(cls, block: Block, **kwargs):
+        if isinstance(block, DiffBlock):
+            return block  # already a DiffBlock
+
+        # Create a new instance of DiffBlock, copying fields from the original Block
+        obj = cls.__new__(cls)  # create instance without __init__
+        obj.__dict__ = block.__dict__.copy()
+
+        # Ensure DiffBlock-specific fields are always initialised
+        obj.diff_vars = []
+        obj.lag_vars = []
+        obj.reformulated_vars = []
+        obj.differential_eqs = []
+
+        obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
+        return obj
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------

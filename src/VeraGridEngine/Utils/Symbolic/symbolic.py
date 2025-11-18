@@ -16,13 +16,10 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
-#
-# from VeraGridEngine.Utils.MultiLinear.diff_blocksolver import DiffBlock
-# from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 NUMBER = Union[int, float, complex]
-
 
 # -----------------------------------------------------------------------------
 # UUID helper
@@ -37,62 +34,6 @@ def _new_uid() -> int:
 # Generic helpers
 # -----------------------------------------------------------------------------
 
-def tf_to_block(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
-    """
-    num: list of numerator coefficients [b0, b1, ..., bm]
-    den: list of denominator coefficients [a0, a1, ..., an]
-    u:   sympy symbol for input
-    y:   sympy function of t for output
-    """
-    if len(num) > len(den):
-        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    if num[-1] == 0 or den[-1] == 0:
-        raise ValueError("Leading coefficient of cannot be zero.")
-
-    if y is None:
-        y = Var('y_' + name)
-
-    aux_eqs = []
-    aux_vars = []
-    # check if is a expression
-    if not isinstance(x, Var):
-        u = Var('u_' + name)
-        aux_eqs.append((u - x).simplify())
-        aux_vars.append(u)
-        x = u
-
-    diff_vars_x = [x]
-    diff_vars_y = [y]
-    diff_vars = []
-    base_var = x
-    for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
-        diff_vars_x.append(new_diff)
-        if not in_registry:
-            diff_vars.append(new_diff)
-        base_var = new_diff
-    base_var = y
-    for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
-        diff_vars_y.append(new_diff)
-        if not in_registry:
-            diff_vars.append(new_diff)
-        base_var = new_diff
-
-    # Create the diff equation
-    rhs = np.array(diff_vars_x) @ np.array(num)
-    lhs = np.array(diff_vars_y) @ np.array(den)
-
-    block = DiffBlock(
-        name=name,
-        algebraic_vars=[y] + aux_vars,
-        algebraic_eqs=[lhs - rhs] + aux_eqs,
-        diff_vars=diff_vars,
-    )
-
-    return block, y
 
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
@@ -121,6 +62,16 @@ def _heaviside(x):
 
 def heaviside(x: Any) -> Func:
     return Func("heaviside", _to_expr(x))
+
+def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
+    return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
+
+def f_exc(In: Expr) -> Expr:
+    a = heaviside(-In)*(Const(0.577)*In)
+    b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2)))*heaviside(Const(0.433)-In)
+    c = ((sqrt(Const(0.75)-In**2) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
+    d = (Const(1.732) - In*Const(1.732))*(Const(1)*heaviside(Const(1.0)-In))
+    return a + b + c + d
 
 
 def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
@@ -410,6 +361,179 @@ class UndefinedConst(Expr):
 
     def __repr__(self) -> str:
         return self.__str__()
+
+@dataclass(frozen=True)
+class LagVar(Var):
+    base_var: Var = field(default=None)
+    lag: int = field(default=None)
+
+    # Registry to ensure uniqueness
+    _registry: ClassVar[Dict[Tuple[int, int], "LagVar"]] = {}
+
+    def __post_init__(self):
+        # Optionally, you could add checks here to ensure base_var is an instance of Var
+        if not isinstance(self.base_var, Var):
+            raise TypeError(f"base_var must be an argument")
+        key = (self.base_var.uid, self.lag)
+        if key in self._registry:
+            raise ValueError(f"DiffVar for base_var {key} already exists.")
+        self._registry[key] = self
+        return self
+
+    def __eq__(self, other):
+        return isinstance(other, LagVar) and self.base_var.uid == other.base_var.uid and self.lag == other.lag
+
+    def __hash__(self):
+        return hash((self.base_var, self.lag))
+
+    @classmethod
+    def get_or_create(cls, name, base_var: Var, lag: int) -> "LagVar":
+        key = (base_var.uid, lag)
+        if key not in cls._registry:
+            return cls(name=name, base_var=base_var, lag=lag)
+        return cls._registry[key]
+
+    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Var], h: float):
+        # function that initializes the lag of the same order for the same original_var
+        diff_order = self.lag
+        if diff_order == 1:
+            return x0
+        elif diff_order == 2:
+            return x0 - dt * dx0[0]
+        else:
+            res = x0 - dt * dx0[0]
+
+        for i in range(1, diff_order + 1):
+            val = (diff_order + 1 - i) * (dt ** (i)) * ((-1) ** (i)) * dx0[i - 1]
+            res += val
+        return res.eval(dt=h)
+
+@dataclass(frozen=True)
+class DiffVar(Var):
+    """
+    Any variable
+    """
+    base_var: Var = field(default=None)
+
+    # Class-level registry
+    _registry: ClassVar[Dict[int, "DiffVar"]] = {}
+    _absolute_registry: ClassVar[Dict[Tuple[int, int], "DiffVar"]] = {}
+
+    @property
+    def registry(self):
+        """
+        Return registry
+        :return:
+        """
+        return self._registry
+
+
+    def __post_init__(self):
+        key = self.base_var.uid
+        if not isinstance(self.base_var, Var):
+            raise TypeError(f"base_var must be an argument of type Var")
+        if key in self._registry:
+            raise ValueError(f"DiffVar for base_var {key} already exists.")
+        self._registry[key] = self
+
+        # Register by (origin_var.uid, diff_order)
+        origin_uid = self.origin_var.uid
+        order = self.diff_order
+        self._absolute_registry[(origin_uid, order)] = self
+
+        return self
+
+    @classmethod
+    def get_or_create(cls, name: str, base_var: Var) -> "DiffVar":
+        key = base_var.uid
+        if key in cls._registry:
+            return cls._registry[key]
+        return cls(name=name, base_var=base_var)
+
+    def __eq__(self, other):
+        return isinstance(other, DiffVar) and self.base_var.uid == other.base_var.uid
+
+    def __hash__(self):
+        return hash((self.base_var))
+
+    @property
+    def diff_order(self) -> int:
+        order = 0
+        var = self
+        while isinstance(var, DiffVar):
+            var = var.base_var
+            order += 1
+        return order
+
+    @property
+    def origin_var(self) -> Var:
+        origin = self.base_var
+        while isinstance(origin, DiffVar):
+            origin = origin.base_var
+        return origin
+
+    @classmethod
+    def get_by_origin_and_order(cls, origin_var: Var, order: int) -> "DiffVar":
+        key = (origin_var.uid, order)
+        if key not in cls._absolute_registry:
+            raise KeyError(f"No DiffVar found for origin UID={origin_var.uid} and order={order}")
+        return cls._absolute_registry[key]
+
+    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
+        # function that initializes the lag of the same order for the same original_var
+        diff_order = self.diff_order
+        central_difference = True
+
+        for i in range(diff_order):
+            res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
+        return res.eval()
+
+    def approximation_expr(self, dt: Optional[Const], lag_can_be_0=True, central=False) -> Tuple:
+        """
+        Computes the n-th backward finite difference approximation of the derivative
+        using the closed-form backward difference formula.
+        """
+        origin_name = self.origin_var.name
+        if lag_can_be_0:
+            lag_var_0 = LagVar.get_or_create(
+                f"{origin_name}_lag_{0}",
+                base_var=self.origin_var,
+                lag=0
+            )
+        else:
+            lag_var_0 = self.origin_var
+
+        origin_name = self.origin_var.name
+        lag_total = self.diff_order
+        if self.diff_order == 1 and central:
+            lag_var_2 = LagVar.get_or_create(
+                f"{origin_name}_lag_{2}",
+                base_var=self.origin_var,
+                lag=2
+            )
+            return (lag_var_0 - lag_var_2) / (2 * dt), lag_total
+
+        # Compute the sum: ∑_{i=0}^{n} (-1)^i * C(n, i) * f(x - i*dt)
+        terms = []
+        minus1 = Const(-1)
+
+        for i in range(lag_total + 1):
+            if i == 0:
+                lag_var = lag_var_0
+            else:
+                lag_var = LagVar.get_or_create(
+                    f"{origin_name}_lag_{i}",
+                    base_var=self.origin_var,
+                    lag=i
+                )
+            coeff = minus1 ** i * Const(math.comb(lag_total, i))
+            terms.append(coeff * lag_var)
+
+        finite_diff_sum = sum(terms)
+
+        # Divide by dt^n for n-th derivative
+        result = finite_diff_sum / dt ** lag_total
+        return result.simplify(), lag_total
 
 
 @dataclass(frozen=True)
@@ -1123,7 +1247,11 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
-    "make_symbolic"
+    "make_symbolic",
+    "DiffVar",
+    "hard_sat",
+    "UndefinedConst",
+    "f_exc"
 ]
 #
 # x = Var("x")
