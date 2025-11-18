@@ -150,15 +150,23 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.FluidP2XDevice.value: ":/Icons/icons/fluid_p2x.png",
 
             "Groups": ":/Icons/icons/groups.png",
+            DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.png",
+            DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.png",
+            DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.png",
+
+            "Contingencies": ":/Icons/icons/contingency_group.png",
             DeviceType.ContingencyGroupDevice.value: ":/Icons/icons/contingency_group.png",
             DeviceType.ContingencyDevice.value: ":/Icons/icons/contingency.png",
             DeviceType.RemedialActionGroupDevice.value: ":/Icons/icons/remedial_action_group.png",
             DeviceType.RemedialActionDevice.value: ":/Icons/icons/remedial_action.png",
+            DeviceType.ShortCircuitDefinition.value: ":/Icons/icons/contingency.png",
+
+            "Investments": ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentsGroupDevice.value: ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentDevice.value: ":/Icons/icons/investment_dev.png",
-            DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.png",
-            DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.png",
-            DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.png",
+
+
+            "Dynamic": ":/Icons/icons/dyn_gray.png",
             DeviceType.RmsEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
             DeviceType.RmsEventDevice.value: ":/Icons/icons/dyn_gray.png",
 
@@ -166,6 +174,20 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.Technology.value: ":/Icons/icons/technology.png",
             DeviceType.FuelDevice.value: ":/Icons/icons/fuel.png",
             DeviceType.EmissionGasDevice.value: ":/Icons/icons/emission.png",
+
+            "Measurements": ":/Icons/icons/measurement.png",
+            DeviceType.PMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PtMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QtMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PgMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QgMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.IfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.ItMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.VmMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.VaMeasurementDevice.value: ":/Icons/icons/measurement.png",
 
             "Catalogue": ":/Icons/icons/Catalogue.png",
             DeviceType.WireDevice.value: ":/Icons/icons/ac_line.png",

@@ -260,7 +260,7 @@ class ConfigurationMain(ResultsMain):
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
                 "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
-                "unit_commitment": self.ui.opfUnitCommitmentCheckBox,
+                "dispatch_mode": self.ui.opfDispatchModeComboBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,
                 "area_spinning_reserve": self.ui.opfSpinningReserveCheckBox,

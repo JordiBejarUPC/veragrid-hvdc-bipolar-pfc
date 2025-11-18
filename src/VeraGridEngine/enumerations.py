@@ -1104,6 +1104,8 @@ class DeviceType(Enum):
     RemedialActionDevice = 'Remedial action'
     RemedialActionGroupDevice = 'Remedial action Group'
 
+    ShortCircuitDefinition = 'Short circuit definition'
+
     InvestmentDevice = 'Investment'
     InvestmentsGroupDevice = 'Investments Group'
 
@@ -1993,8 +1995,6 @@ class ResultTypes(Enum):
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
 
-
-
     def __str__(self):
         return self.value
 
@@ -2425,5 +2425,33 @@ class ReliabilityMode(Enum):
         """
         try:
             return ReliabilityMode[s]
+        except KeyError:
+            return s
+
+
+class OpfDispatchMode(Enum):
+    """
+    OpfGenerationMode
+    """
+    Simple = "Simple"
+    InterAreaRedispatch = "Inter-area redispatch"
+    UnitCommitment = "Unit commitment"
+    NodalCapacity = "Nodal capacity"
+    GenerationExpansionPlanning = "Generation expansion planning"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return OpfDispatchMode[s]
         except KeyError:
             return s

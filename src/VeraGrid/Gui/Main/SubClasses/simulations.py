@@ -40,7 +40,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
-                                         ReliabilityMode, MIPFramework)
+                                         ReliabilityMode, MIPFramework, OpfDispatchMode)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -90,6 +90,15 @@ class SimulationsMain(TimeEventsMain):
         self.lp_solvers_dict[SolverType.NONLINEAR_OPF.value] = SolverType.NONLINEAR_OPF
         self.lp_solvers_dict[SolverType.GREEDY_DISPATCH_OPF.value] = SolverType.GREEDY_DISPATCH_OPF
         self.ui.lpf_solver_comboBox.setModel(gf.get_list_model(list(self.lp_solvers_dict.keys())))
+
+        # opf dispatch methods
+        self.opf_dispatch_mode_dict = OrderedDict()
+        self.opf_dispatch_mode_dict[OpfDispatchMode.Simple.value] = OpfDispatchMode.Simple
+        self.opf_dispatch_mode_dict[OpfDispatchMode.UnitCommitment.value] = OpfDispatchMode.UnitCommitment
+        self.opf_dispatch_mode_dict[OpfDispatchMode.NodalCapacity.value] = OpfDispatchMode.NodalCapacity
+        self.opf_dispatch_mode_dict[OpfDispatchMode.InterAreaRedispatch.value] = OpfDispatchMode.InterAreaRedispatch
+        self.opf_dispatch_mode_dict[OpfDispatchMode.GenerationExpansionPlanning.value] = OpfDispatchMode.GenerationExpansionPlanning
+        self.ui.opfDispatchModeComboBox.setModel(gf.get_list_model(list(self.opf_dispatch_mode_dict.keys())))
 
         # reliability modes
         self.reliability_mode_dict = OrderedDict()
@@ -303,7 +312,6 @@ class SimulationsMain(TimeEventsMain):
         eng = self.get_preferred_engine()
 
         if eng == EngineType.GSLV:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # add the AC_OPF option
             self.lp_solvers_dict = OrderedDict()
@@ -329,7 +337,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.NewtonPA:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # add the AC_OPF option
             self.lp_solvers_dict = OrderedDict()
@@ -356,7 +363,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.VeraGrid:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -385,7 +391,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.Bentayga:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(False)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -408,7 +413,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setCurrentIndex(0)
 
         elif eng == EngineType.PGM:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(False)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -2031,6 +2035,7 @@ class SimulationsMain(TimeEventsMain):
         """
         # get the power flow options from the GUI
         solver = self.lp_solvers_dict[self.ui.lpf_solver_comboBox.currentText()]
+        dispatch_mode = self.opf_dispatch_mode_dict[self.ui.opfDispatchModeComboBox.currentText()]
         mip_solver = self.mip_solvers_dict.get(self.ui.mip_solver_comboBox.currentText(), MIPSolvers.HIGHS)
         time_grouping = self.opf_time_groups[self.ui.opf_time_grouping_comboBox.currentText()]
         zonal_grouping = self.opf_zonal_groups[self.ui.opfZonalGroupByComboBox.currentText()]
@@ -2040,13 +2045,11 @@ class SimulationsMain(TimeEventsMain):
         skip_generation_limits = self.ui.skipOpfGenerationLimitsCheckBox.isChecked()
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
         maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
-        unit_commitment = self.ui.opfUnitCommitmentCheckBox.isChecked()
         consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
         consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
         area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
-        generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
         use_glsk_as_cost = self.ui.useGslkAsCostsOpfCheckBox.isChecked()
         add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
@@ -2097,6 +2100,7 @@ class SimulationsMain(TimeEventsMain):
 
         options = sim.OptimalPowerFlowOptions(
             solver=solver,
+            dispatch_mode=dispatch_mode,
             time_grouping=time_grouping,
             zonal_grouping=zonal_grouping,
             mip_solver=mip_solver,
@@ -2107,11 +2111,9 @@ class SimulationsMain(TimeEventsMain):
             lodf_tolerance=lodf_tolerance,
             maximize_flows=maximize_flows,
             inter_aggregation_info=inter_aggregation_info,
-            unit_commitment=unit_commitment,
             consider_ramps=consider_ramps,
             consider_time_up_down=consider_time_up_down,
             area_spinning_reserve=area_spinning_reserve,
-            generation_expansion_planning=generation_expansion_planning,
             export_model_fname=export_model_fname,
             generate_report=generate_report,
             use_glsk_as_cost=use_glsk_as_cost,

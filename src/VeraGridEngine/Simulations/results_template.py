@@ -529,6 +529,6 @@ class DriverToSave:
         :param logger:
         """
         self.name = name
-        self.tpe = tpe
-        self.results = results
-        self.logger = logger
+        self.tpe: SimulationTypes = tpe
+        self.results: ResultsTemplate = results
+        self.logger: Logger = logger

@@ -29,7 +29,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
     # this list must be sorted in dependency order so that the
     # loading algorithm is able to find the object substitutions
 
-    object_types = {
+    return {
         'modelling_authority': dev.ModellingAuthority(),
 
         'area': dev.Area(),
@@ -99,6 +99,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'contingency_group': dev.ContingencyGroup(),
         'contingency': dev.Contingency(),
+        'short_circuit_definition': dev.ShortCircuitDefinition(),
 
         'remedial_action_group': dev.RemedialActionGroup(),
         'remedial_action': dev.RemedialAction(),
@@ -112,11 +113,24 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'fluid_pump': dev.FluidPump(),
         'fluid_p2x': dev.FluidP2x(),
 
+        'pi_measurement': dev.PiMeasurement(),
+        'qi_measurement': dev.QiMeasurement(),
+        'pf_measurement': dev.PfMeasurement(),
+        'qf_measurement': dev.QfMeasurement(),
+        'if_measurement': dev.IfMeasurement(),
+        'pt_measurement': dev.PtMeasurement(),
+        'qt_measurement': dev.QtMeasurement(),
+        'it_measurement': dev.ItMeasurement(),
+        'vm_measurement': dev.VmMeasurement(),
+        'va_measurement': dev.VaMeasurement(),
+        'pg_measurement': dev.PgMeasurement(),
+        'qg_measurement': dev.QgMeasurement(),
+
     }
-    return object_types
 
 
-def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger(),
+def gather_model_as_data_frames(circuit: MultiCircuit,
+                                logger: Logger = Logger(),
                                 legacy: bool = False) -> Dict[str, pd.DataFrame]:
     """
     Pack the circuit information into tables (DataFrames)
@@ -129,7 +143,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger()
 
     # get the master time profile
     time_profile = circuit.time_profile
-    nt = len(time_profile) if time_profile is not None else 0
+    nt = circuit.get_time_number()
 
     ########################################################################################################
     # declare objects to iterate  name: [sample object, list of objects, headers]
@@ -1484,11 +1498,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                 data_list = model_data.get(object_type_key, None)
 
                 if data_list is not None:
-                    devices, devices_dict = parse_object_type_from_json(template_elm=template_elm,
-                                                                        data_list=data_list,
-                                                                        elements_dict_by_type=elements_dict_by_type,
-                                                                        time_profile=circuit.time_profile,
-                                                                        logger=logger)
+                    devices, devices_dict = parse_object_type_from_json(
+                        template_elm=template_elm,
+                        data_list=data_list,
+                        elements_dict_by_type=elements_dict_by_type,
+                        time_profile=circuit.time_profile,
+                        logger=logger
+                    )
 
                     # set/augment the dictionary per type for later
                     prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List, Union
 from VeraGridEngine.enumerations import (SolverType, MIPSolvers, ZonalGrouping, TimeGrouping, AcOpfMode, DeviceType,
-                                         SubObjectType, MIPFramework)
+                                         SubObjectType, MIPFramework, OpfDispatchMode)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
@@ -22,6 +22,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
     def __init__(self,
                  verbose: int = 0,
                  solver: SolverType = SolverType.LINEAR_OPF,
+                 dispatch_mode: OpfDispatchMode = OpfDispatchMode.Simple,
                  time_grouping: TimeGrouping = TimeGrouping.NoGrouping,
                  zonal_grouping: ZonalGrouping = ZonalGrouping.NoGrouping,
                  mip_solver=MIPSolvers.HIGHS,
@@ -32,13 +33,11 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  lodf_tolerance=0.001,
                  maximize_flows=False,
                  inter_aggregation_info: InterAggregationInfo | None = None,
-                 unit_commitment=False,
                  consider_ramps=False,
                  consider_time_up_down=False,
                  area_spinning_reserve=False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
-                 generation_expansion_planning: bool = False,
                  export_model_fname: Union[None, str] = None,
                  generate_report=False,
                  ips_method: SolverType = SolverType.NR,
@@ -66,7 +65,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param lodf_tolerance:
         :param maximize_flows:
         :param inter_aggregation_info:
-        :param unit_commitment:
         :param consider_ramps:
         :param consider_time_up_down:
         :param area_spinning_reserve:
@@ -109,7 +107,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.inter_aggregation_info = inter_aggregation_info
 
-        self.unit_commitment = unit_commitment
+        self.dispatch_mode = dispatch_mode
 
         self.consider_ramps = consider_ramps
 
@@ -120,8 +118,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.use_glsk_as_cost = use_glsk_as_cost
 
         self.add_losses_approximation = add_losses_approximation
-
-        self.generation_expansion_planning = generation_expansion_planning
 
         self.max_va = 6.28
 
@@ -153,6 +149,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="time_grouping", tpe=TimeGrouping)
         self.register(key="zonal_grouping", tpe=ZonalGrouping)
         self.register(key="mip_solver", tpe=MIPSolvers)
+        self.register(key="dispatch_mode", tpe=OpfDispatchMode)
         self.register(key="power_flow_options", tpe=DeviceType.SimulationOptionsDevice)
         self.register(key="skip_generation_limits", tpe=bool)
         self.register(key="consider_contingencies", tpe=bool)
@@ -162,7 +159,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="add_losses_approximation", tpe=bool)
         self.register(key="use_glsk_as_cost", tpe=bool)
         self.register(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo)
-        self.register(key="unit_commitment", tpe=bool)
         self.register(key="consider_ramps", tpe=bool)
         self.register(key="consider_time_up_down", tpe=bool)
         self.register(key="area_spinning_reserve", tpe=bool)
