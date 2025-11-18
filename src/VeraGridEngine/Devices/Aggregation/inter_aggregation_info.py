@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import List, Tuple, TYPE_CHECKING
+from typing import List, Tuple, Set, TYPE_CHECKING
 import numpy as np
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType
 from VeraGridEngine.basic_structures import IntVec, Vec
@@ -30,6 +30,8 @@ class InterAggregationInfo(EditableDevice):
         'lst_br_hvdc',
         'objects_from',
         'objects_to',
+        'set_bus_idx_from',
+        'set_bus_idx_to',
         'logger',
     )
 
@@ -66,8 +68,8 @@ class InterAggregationInfo(EditableDevice):
         self.lst_to: List[Tuple[int, Bus]] = lst_to
 
         # sets of bus indices from and to for quick search
-        self.set_bus_idx_from = {idx for idx, _ in lst_from}
-        self.set_bus_idx_to = {idx for idx, _ in lst_to}
+        self.set_bus_idx_from: Set[int] = {idx for idx, _ in lst_from}
+        self.set_bus_idx_to: Set[int] = {idx for idx, _ in lst_to}
 
         # store the branch index, the branch ptr and the sense
         self.lst_br: List[Tuple[int, BRANCH_TYPES, float]] = lst_br

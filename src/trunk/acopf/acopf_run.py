@@ -1,12 +1,10 @@
 import os
 import VeraGridEngine.api as gce
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
-# from VeraGridEngine.Simulations.OPF.NumericalMethods.ac_opf import ac_optimal_power_flow
 from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
 from VeraGridEngine.enumerations import TapPhaseControl, TapModuleControl
 
 from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts
-# from VeraGridEngine.enumerations import TransformerControlType
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import NodalCapacityTimeSeriesDriver
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_options import NodalCapacityOptions
 import numpy as np
@@ -220,7 +218,6 @@ def two_grids_of_3bus():
     # run_nonlinear_opf(grid=grid, pf_options=pf_options, plot_error=True)
     island = compile_numerical_circuit_at(circuit=grid, t_idx=None)
 
-
     island_res = run_nonlinear_opf(grid=grid, pf_options=pf_options, opf_options=opf_options, plot_error=True)
 
 
@@ -238,12 +235,13 @@ def case9():
 
     pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR, verbose=1)
     opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF, ips_tolerance=1e-8,
+                                              power_flow_options=pf_options,
                                               ips_iterations=50, verbose=1, acopf_mode=gce.AcOpfMode.ACOPFstd)
-    res = run_nonlinear_opf(grid=grid, pf_options=pf_options, opf_options=opf_options, plot_error=True, pf_init=True,
+
+    res = run_nonlinear_opf(grid=grid, opf_options=opf_options, plot_error=True,
                             optimize_nodal_capacity=True,
                             nodal_capacity_sign=-1.0,
                             capacity_nodes_idx=np.array([5]))
-
 
 
 def case14_linear_vs_nonlinear():
@@ -283,7 +281,7 @@ def case14_linear_vs_nonlinear():
 
     # Linear OPF
     res = run_linear_opf_ts(grid=grid,
-                            optimize_nodal_capacity=True,
+                            dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
                             time_indices=None,
                             nodal_capacity_sign=-1.0,
                             capacity_nodes_idx=np.array([10, 11]))
@@ -360,10 +358,13 @@ def case_gb():
     file_path = os.path.join(new_directory, 'Grids_and_profiles', 'grids', 'GB Network.gridcal')
 
     grid = gce.FileOpen(file_path).open()
-    opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF, verbose=1, ips_iterations=100,
-                                              acopf_mode=gce.AcOpfMode.ACOPFstd, ips_tolerance=1e-8)
     pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR, verbose=1)
-    run_nonlinear_opf(grid=grid, pf_options=pf_options, opf_options=opf_options, plot_error=True, pf_init=True)
+    opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF,
+                                              power_flow_options=pf_options,
+                                              verbose=1, ips_iterations=100,
+                                              acopf_mode=gce.AcOpfMode.ACOPFstd, ips_tolerance=1e-8)
+
+    run_nonlinear_opf(grid=grid, opf_options=opf_options, plot_error=True)
 
 
 def case_pegase89():
@@ -380,7 +381,8 @@ def case_pegase89():
     grid = gce.FileOpen(file_path).open()
     # nc = compile_numerical_circuit_at(grid)
     opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF, verbose=1, ips_iterations=100,
-                                              acopf_mode=gce.AcOpfMode.ACOPFstd, ips_tolerance=1e-7, ips_control_q_limits=False)
+                                              acopf_mode=gce.AcOpfMode.ACOPFstd, ips_tolerance=1e-7,
+                                              ips_control_q_limits=False)
     pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR, verbose=1)
     # ac_optimal_power_flow(nc=nc, pf_options=pf_options, plot_error=True)
     run_nonlinear_opf(grid=grid, pf_options=pf_options, opf_options=opf_options, plot_error=True, pf_init=True)
@@ -402,9 +404,11 @@ def case300():
 
     grid = gce.FileOpen(file_path).open()
     pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR, verbose=1, max_iter=50)
-    opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF, verbose=1, ips_iterations=100,
+    opf_options = gce.OptimalPowerFlowOptions(solver=gce.SolverType.NONLINEAR_OPF,
+                                              power_flow_options=pf_options,
+                                              verbose=1, ips_iterations=100,
                                               acopf_mode=gce.AcOpfMode.ACOPFstd)
-    run_nonlinear_opf(grid=grid, pf_options=pf_options, opf_options=opf_options, plot_error=True, pf_init=True)
+    run_nonlinear_opf(grid=grid, opf_options=opf_options, plot_error=True)
 
 
 def casepegase13k():

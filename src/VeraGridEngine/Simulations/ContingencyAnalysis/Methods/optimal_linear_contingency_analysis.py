@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union
+import numpy as np
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
@@ -91,16 +92,15 @@ def optimal_linear_contingency_analysis(grid: MultiCircuit,
 
     # DC optimal power flow
     opf_vars = run_linear_opf_ts(grid=grid,
-                                 time_indices=[t],
+                                 time_indices=np.array([t]),
+                                 dispatch_mode=opf_options.dispatch_mode,
                                  solver_type=opf_options.mip_solver,
                                  zonal_grouping=opf_options.zonal_grouping,
                                  skip_generation_limits=False,
                                  consider_contingencies=True,
                                  contingency_groups_used=linear_multiple_contingencies.contingency_groups_used,
-                                 unit_commitment=False,
                                  ramp_constraints=False,
                                  lodf_threshold=options.lin_options.lodf_threshold,
-                                 maximize_inter_area_flow=False,
                                  inter_aggregation_info=None,
                                  energy_0=None,
                                  fluid_level_0=None,

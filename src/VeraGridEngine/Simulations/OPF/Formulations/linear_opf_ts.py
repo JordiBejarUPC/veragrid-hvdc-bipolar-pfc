@@ -2512,7 +2512,7 @@ def add_hydro_formulation(t: Union[int, None],
 
 def run_linear_opf_ts(grid: MultiCircuit,
                       time_indices: Union[IntVec, None],
-                      dispatch_mode: OpfDispatchMode = OpfDispatchMode.Simple,
+                      dispatch_mode: OpfDispatchMode = OpfDispatchMode.Normal,
                       solver_type: MIPSolvers = MIPSolvers.HIGHS,
                       zonal_grouping: ZonalGrouping = ZonalGrouping.NoGrouping,
                       skip_generation_limits: bool = False,
@@ -2522,11 +2522,9 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       consider_time_up_down: bool = False,
                       area_spinning_reserve: bool = False,
                       lodf_threshold: float = 0.001,
-                      maximize_inter_area_flow: bool = False,
                       inter_aggregation_info: InterAggregationInfo | None = None,
                       energy_0: Union[Vec, None] = None,
                       fluid_level_0: Union[Vec, None] = None,
-                      optimize_nodal_capacity: bool = False,
                       nodal_capacity_sign: float = 1.0,
                       capacity_nodes_idx: Union[IntVec, None] = None,
                       use_glsk_as_cost: bool = False,
@@ -2548,11 +2546,9 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param skip_generation_limits: Skip the generation limits?
     :param consider_contingencies: Consider the contingencies?
     :param contingency_groups_used: List of contingency groups to use
-    :param unit_commitment: Formulate unit commitment?
     :param ramp_constraints: Formulate ramp constraints?
     :param consider_time_up_down: Consider the time up/down?
     :param area_spinning_reserve: Area spinning reserve?
-    :param generation_expansion_planning: Generation expansion planning?
     :param lodf_threshold: LODF threshold value to consider contingencies
     :param maximize_inter_area_flow: Maximize the inter-area flow?
     :param inter_aggregation_info: Inter rea (or country, etc) information
@@ -2610,7 +2606,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
     gen_tech_shares_matrix = grid.get_gen_technology_connectivity_matrix()
     batt_tech_shares_matrix = grid.get_batt_technology_connectivity_matrix()
 
-    if maximize_inter_area_flow:
+    if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
         inter_area_branches = inter_aggregation_info.lst_br
         inter_area_hvdc = inter_aggregation_info.lst_br_hvdc
     else:
@@ -2662,13 +2658,13 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 mip_vars.bus_vars.Vm[local_t_idx, k] = lp_model.add_var(
                     lb=nc.bus_data.Vmin[k],
                     ub=nc.bus_data.Vmax[k],
-                    name=join("Vm_", [local_t_idx, k], "_")
+                    name=f"Vm_{local_t_idx}_{k}"
                 )
             else:
                 mip_vars.bus_vars.Va[local_t_idx, k] = lp_model.add_var(
                     lb=nc.bus_data.angle_min[k],
                     ub=nc.bus_data.angle_max[k],
-                    name=join("Va_", [local_t_idx, k], "_")
+                    name=f"Va_{local_t_idx}_{k}"
                 )
 
         # formulate loads ------------------------------------------------------------------------------------------
@@ -2683,7 +2679,12 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
         # formulate generation -------------------------------------------------------------------------------------
 
-        if dispatch_mode == OpfDispatchMode.Simple:
+        # formulate batteries energy
+        if local_t_idx == 0 and energy_0 is None:
+            # declare the initial energy of the batteries
+            energy_0 = nc.battery_data.soc_0 * nc.battery_data.enom  # in MWh here
+
+        if dispatch_mode == OpfDispatchMode.Normal:
 
             f_obj += add_linear_simple_generation_formulation(
                 local_t=local_t_idx,
@@ -2699,6 +2700,21 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
+            )
+
+            f_obj += add_linear_battery_formulation(
+                t=local_t_idx,
+                Sbase=nc.Sbase,
+                time_array=grid.time_profile,
+                bus_vars=mip_vars.bus_vars,
+                batt_data_t=nc.battery_data,
+                batt_vars=mip_vars.batt_vars,
+                prob=lp_model,
+                unit_commitment=False,
+                ramp_constraints=ramp_constraints,
+                skip_generation_limits=skip_generation_limits,
+                generation_expansion_planning=False,
+                energy_0=energy_0
             )
 
         elif dispatch_mode == OpfDispatchMode.UnitCommitment:
@@ -2719,6 +2735,21 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 logger=logger
             )
 
+            f_obj += add_linear_battery_formulation(
+                t=local_t_idx,
+                Sbase=nc.Sbase,
+                time_array=grid.time_profile,
+                bus_vars=mip_vars.bus_vars,
+                batt_data_t=nc.battery_data,
+                batt_vars=mip_vars.batt_vars,
+                prob=lp_model,
+                unit_commitment=True,
+                ramp_constraints=ramp_constraints,
+                skip_generation_limits=skip_generation_limits,
+                generation_expansion_planning=False,
+                energy_0=energy_0
+            )
+
         elif dispatch_mode == OpfDispatchMode.NodalCapacity:
             add_linear_nodal_capacity_generation_formulation(
                 local_t=local_t_idx,
@@ -2733,6 +2764,21 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 nodal_capacity_active=active_nodal_capacity,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
+            )
+
+            f_obj += add_linear_battery_formulation(
+                t=local_t_idx,
+                Sbase=nc.Sbase,
+                time_array=grid.time_profile,
+                bus_vars=mip_vars.bus_vars,
+                batt_data_t=nc.battery_data,
+                batt_vars=mip_vars.batt_vars,
+                prob=lp_model,
+                unit_commitment=False,
+                ramp_constraints=ramp_constraints,
+                skip_generation_limits=skip_generation_limits,
+                generation_expansion_planning=False,
+                energy_0=energy_0
             )
 
         elif dispatch_mode == OpfDispatchMode.GenerationExpansionPlanning:
@@ -2750,6 +2796,21 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 logger=logger
             )
 
+            f_obj += add_linear_battery_formulation(
+                t=local_t_idx,
+                Sbase=nc.Sbase,
+                time_array=grid.time_profile,
+                bus_vars=mip_vars.bus_vars,
+                batt_data_t=nc.battery_data,
+                batt_vars=mip_vars.batt_vars,
+                prob=lp_model,
+                unit_commitment=False,
+                ramp_constraints=ramp_constraints,
+                skip_generation_limits=skip_generation_limits,
+                generation_expansion_planning=True,
+                energy_0=energy_0
+            )
+
         elif dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
             f_obj += add_linear_generation_redispatch_formulation(
                 local_t=local_t_idx,
@@ -2764,25 +2825,22 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 logger=logger
             )
 
-        # formulate batteries --------------------------------------------------------------------------------------
-        if local_t_idx == 0 and energy_0 is None:
-            # declare the initial energy of the batteries
-            energy_0 = nc.battery_data.soc_0 * nc.battery_data.enom  # in MWh here
-
-        f_obj += add_linear_battery_formulation(
-            t=local_t_idx,
-            Sbase=nc.Sbase,
-            time_array=grid.time_profile,
-            bus_vars=mip_vars.bus_vars,
-            batt_data_t=nc.battery_data,
-            batt_vars=mip_vars.batt_vars,
-            prob=lp_model,
-            unit_commitment=unit_commitment,
-            ramp_constraints=ramp_constraints,
-            skip_generation_limits=skip_generation_limits,
-            generation_expansion_planning=generation_expansion_planning,
-            energy_0=energy_0
-        )
+            f_obj += add_linear_battery_formulation(
+                t=local_t_idx,
+                Sbase=nc.Sbase,
+                time_array=grid.time_profile,
+                bus_vars=mip_vars.bus_vars,
+                batt_data_t=nc.battery_data,
+                batt_vars=mip_vars.batt_vars,
+                prob=lp_model,
+                unit_commitment=False,
+                ramp_constraints=ramp_constraints,
+                skip_generation_limits=skip_generation_limits,
+                generation_expansion_planning=False,
+                energy_0=energy_0
+            )
+        else:
+            raise ValueError(f"dispatch mode not supported {dispatch_mode}")
 
         # formulate nodal capacity -------------------------------------------------------------------------------------
         if dispatch_mode == OpfDispatchMode.NodalCapacity:
@@ -2896,7 +2954,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                     logger.add_warning(msg="Contingencies enabled, but no contingency groups provided")
 
             # add inter area branch flow maximization ------------------------------------------------------------------
-            if maximize_inter_area_flow:
+            if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
 
                 # maximize the power at the from buses
                 for i in inter_aggregation_info.idx_bus_from:

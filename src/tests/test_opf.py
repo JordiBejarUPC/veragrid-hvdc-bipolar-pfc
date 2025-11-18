@@ -544,12 +544,12 @@ def test_opf_unit_commitment():
                                           retry_with_other_methods=False)
 
     opf_options = OptimalPowerFlowOptions(verbose=0,
+                                          dispatch_mode=OpfDispatchMode.UnitCommitment,
                                           solver=SolverType.LINEAR_OPF,
                                           power_flow_options=power_flow_options,
                                           time_grouping=TimeGrouping.Daily,
                                           mip_solver=MIPSolvers.HIGHS,
                                           mip_framework=MIPFramework.PuLP,
-                                          unit_commitment=True,
                                           generate_report=True)
 
     # run the opf time series

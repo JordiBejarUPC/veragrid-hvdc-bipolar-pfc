@@ -93,9 +93,9 @@ class SimulationsMain(TimeEventsMain):
 
         # opf dispatch methods
         self.opf_dispatch_mode_dict = OrderedDict()
-        self.opf_dispatch_mode_dict[OpfDispatchMode.Simple.value] = OpfDispatchMode.Simple
+        self.opf_dispatch_mode_dict[OpfDispatchMode.Normal.value] = OpfDispatchMode.Normal
         self.opf_dispatch_mode_dict[OpfDispatchMode.UnitCommitment.value] = OpfDispatchMode.UnitCommitment
-        self.opf_dispatch_mode_dict[OpfDispatchMode.NodalCapacity.value] = OpfDispatchMode.NodalCapacity
+        # self.opf_dispatch_mode_dict[OpfDispatchMode.NodalCapacity.value] = OpfDispatchMode.NodalCapacity
         self.opf_dispatch_mode_dict[OpfDispatchMode.InterAreaRedispatch.value] = OpfDispatchMode.InterAreaRedispatch
         self.opf_dispatch_mode_dict[OpfDispatchMode.GenerationExpansionPlanning.value] = OpfDispatchMode.GenerationExpansionPlanning
         self.ui.opfDispatchModeComboBox.setModel(gf.get_list_model(list(self.opf_dispatch_mode_dict.keys())))
@@ -2109,7 +2109,6 @@ class SimulationsMain(TimeEventsMain):
             contingency_groups_used=contingency_groups_used,
             skip_generation_limits=skip_generation_limits,
             lodf_tolerance=lodf_tolerance,
-            maximize_flows=maximize_flows,
             inter_aggregation_info=inter_aggregation_info,
             consider_ramps=consider_ramps,
             consider_time_up_down=consider_time_up_down,

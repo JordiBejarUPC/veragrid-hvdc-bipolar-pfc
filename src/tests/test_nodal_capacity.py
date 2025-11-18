@@ -40,7 +40,7 @@ def test_linear_vs_nonlinear_ncap():
 
     # Linear OPF
     res = run_linear_opf_ts(grid=grid,
-                            optimize_nodal_capacity=True,
+                            dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
                             time_indices=None,
                             nodal_capacity_sign=-1.0,
                             capacity_nodes_idx=np.array([10, 11]))

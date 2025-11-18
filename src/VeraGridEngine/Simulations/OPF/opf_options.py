@@ -22,7 +22,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
     def __init__(self,
                  verbose: int = 0,
                  solver: SolverType = SolverType.LINEAR_OPF,
-                 dispatch_mode: OpfDispatchMode = OpfDispatchMode.Simple,
+                 dispatch_mode: OpfDispatchMode = OpfDispatchMode.Normal,
                  time_grouping: TimeGrouping = TimeGrouping.NoGrouping,
                  zonal_grouping: ZonalGrouping = ZonalGrouping.NoGrouping,
                  mip_solver=MIPSolvers.HIGHS,
@@ -31,7 +31,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  contingency_groups_used: List[ContingencyGroup] = (),
                  skip_generation_limits=False,
                  lodf_tolerance=0.001,
-                 maximize_flows=False,
                  inter_aggregation_info: InterAggregationInfo | None = None,
                  consider_ramps=False,
                  consider_time_up_down=False,
@@ -63,7 +62,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param contingency_groups_used:
         :param skip_generation_limits:
         :param lodf_tolerance:
-        :param maximize_flows:
         :param inter_aggregation_info:
         :param consider_ramps:
         :param consider_time_up_down:
@@ -102,8 +100,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.contingency_groups_used: List[ContingencyGroup] = contingency_groups_used
 
         self.lodf_tolerance = lodf_tolerance
-
-        self.maximize_flows = maximize_flows
 
         self.inter_aggregation_info = inter_aggregation_info
 
@@ -155,7 +151,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="consider_contingencies", tpe=bool)
         self.register(key="contingency_groups_used", tpe=SubObjectType.Array)
         self.register(key="lodf_tolerance", tpe=float)
-        self.register(key="maximize_flows", tpe=bool)
         self.register(key="add_losses_approximation", tpe=bool)
         self.register(key="use_glsk_as_cost", tpe=bool)
         self.register(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo)

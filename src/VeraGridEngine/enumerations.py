@@ -2433,7 +2433,7 @@ class OpfDispatchMode(Enum):
     """
     OpfGenerationMode
     """
-    Simple = "Simple"
+    Normal = "Normal"
     InterAreaRedispatch = "Inter-area redispatch"
     UnitCommitment = "Unit commitment"
     NodalCapacity = "Nodal capacity"
