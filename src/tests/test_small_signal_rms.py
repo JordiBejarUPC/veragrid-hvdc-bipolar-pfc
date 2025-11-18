@@ -249,7 +249,6 @@ def stability_kundur_no_shunt():
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
-
     (Eigenvalues,
      PFactors,
      damping_ratios,
