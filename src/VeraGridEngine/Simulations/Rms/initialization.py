@@ -258,11 +258,10 @@ def compose_system_block(grid: MultiCircuit,
                 init_val = float(eq_fn(x, params_array))
                 init_guess[key] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
-        print(x)
         # TODO: change model to generator, exciter and governor separated and remove this
         for var in mdl.fix_vars:
             eq = mdl.fix_vars_eqs[var.uid]
-            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params, uid2sym_t)
+            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
             init_val = float(eq_fn(x, params_array))
             var.value = init_val
         sys_block.add(mdl)

@@ -30,6 +30,7 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added functionality to connect output port to several input ports">
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/test_benchmark_with_andes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/test_benchmark_with_andes.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -166,7 +167,7 @@
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
-    "Python tests.pytest in test_benchmark_with_andes.py.executor": "Run",
+    "Python tests.pytest in test_benchmark_with_andes.py.executor": "Debug",
     "Python tests.pytest in test_cgmes_ieeee.py.executor": "Run",
     "Python tests.pytest in test_copy.py.executor": "Run",
     "Python tests.pytest in test_load_save_load.py.executor": "Run",
@@ -2334,6 +2335,11 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py</url>
           <line>103</line>
           <option name="timeStamp" value="2986" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
+          <line>265</line>
+          <option name="timeStamp" value="3001" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

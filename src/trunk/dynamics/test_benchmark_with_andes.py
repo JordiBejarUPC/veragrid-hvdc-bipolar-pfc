@@ -401,6 +401,7 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
+    print(x0)
     vars_in_order = slv.sort_vars_from_uid(init_guess)
 
     start_simulation = time.time()
