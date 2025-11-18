@@ -1857,7 +1857,7 @@ class BlockBoxesEditor(QSplitter):
         if isinstance(item, ConnectionItem):
 
             del self.diagram.con_data[item.uid]
-            self.scene.removeItem(item)
+
 
             source_port = item.source_port
             target_port = item.target_port
@@ -1867,6 +1867,7 @@ class BlockBoxesEditor(QSplitter):
 
             source_port.connections.remove(item)
             target_port.connections = None
+            self.scene.removeItem(item)
 
             dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
