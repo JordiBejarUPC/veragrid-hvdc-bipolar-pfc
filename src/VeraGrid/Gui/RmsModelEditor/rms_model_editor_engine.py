@@ -259,6 +259,10 @@ class ConnectionItem(QGraphicsPathItem):
         self.setZValue(-1)
         self.source_port = source_port
         self.target_port = target_port
+        self.source_port.connections = list()
+        self.source_port.connections.append(self)
+        self.target_port.connections = list()
+        self.target_port.connections.append(self)
         self.setPen(QPen(Qt.GlobalColor.darkBlue, 2))
         self.setAcceptHoverEvents(True)
 
