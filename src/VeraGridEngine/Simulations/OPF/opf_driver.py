@@ -129,7 +129,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.report_text('Formulating problem...')
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=None,
                 dispatch_mode=self.options.dispatch_mode,
@@ -148,7 +148,6 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 use_glsk_as_cost=self.options.use_glsk_as_cost,
                 add_losses_approximation=self.options.add_losses_approximation,
                 logger=self.logger,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -189,6 +188,9 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out[0, :]
             self.results.fluid_path_flow = opf_vars.fluid_path_vars.flow[0, :]
             self.results.fluid_injection_flow = opf_vars.fluid_inject_vars.flow[0, :]
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.GREEDY_DISPATCH_OPF:
 

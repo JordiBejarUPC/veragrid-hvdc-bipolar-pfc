@@ -64,6 +64,8 @@ class ResultsTemplate:
         """
         self.name: str = name
 
+        self.report_text: str = ""
+
         self.study_results_type: StudyResultsType = study_results_type
 
         self.available_results: Dict[ResultTypes, List[ResultTypes]] = available_results

@@ -2427,10 +2427,9 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
-                       export_model_fname: Union[None, str] = None,
                        verbose: int = 0,
                        robust: bool = False,
-                       mip_framework: MIPFramework = MIPFramework.PuLP) -> NtcVars:
+                       mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[NtcVars, LpModel]:
     """
 
     :param grid: MultiCircuit instance
@@ -2451,7 +2450,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
-    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: Verbosity level
     :param robust: Robust optimization?
     :param mip_framework: MIPFramework to use
@@ -2716,11 +2714,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     if progress_func is not None:
         progress_func(0)
 
-    if export_model_fname is not None:
-        lp_model.save_model(file_name=export_model_fname)
-        logger.add_info("LP model saved", value=export_model_fname)
-        print('LP model saved as:', export_model_fname)
-
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
@@ -2807,4 +2800,4 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     logger.add_info("Structural inter-area rate", value=vars_v.structural_ntc[t_idx])
     logger.add_info("Inter-area NTC", value=vars_v.inter_area_flows[t_idx])
 
-    return vars_v
+    return vars_v, lp_model

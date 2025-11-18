@@ -81,6 +81,9 @@ class ResultsMain(SimulationsMain):
             self.ui.resultsLogsTreeView.setModel(logs_mdl)
             self.ui.resultsLogsTreeView.expandAll()
 
+            # set the report
+            self.ui.resultsReportTextEdit.setText(driver.results.report_text)
+
             if len(path) > 1:
 
                 if len(path) == 2:

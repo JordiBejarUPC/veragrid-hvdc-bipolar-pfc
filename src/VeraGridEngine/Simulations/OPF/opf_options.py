@@ -37,7 +37,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  area_spinning_reserve=False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
-                 export_model_fname: Union[None, str] = None,
+                 report_formulation: bool = False,
                  generate_report=False,
                  ips_method: SolverType = SolverType.NR,
                  ips_tolerance: float = 1e-4,
@@ -67,7 +67,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param consider_time_up_down:
         :param area_spinning_reserve:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
-        :param export_model_fname:
+        :param report_formulation:
         :param generate_report:
         :param ips_method:
         :param ips_tolerance:
@@ -119,7 +119,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.max_vm = 1.0
 
-        self.export_model_fname: Union[None, str] = export_model_fname
+        self.report_formulation: bool = report_formulation
 
         self.generate_report = generate_report
 
@@ -157,7 +157,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="consider_ramps", tpe=bool)
         self.register(key="consider_time_up_down", tpe=bool)
         self.register(key="area_spinning_reserve", tpe=bool)
-        self.register(key="export_model_fname", tpe=str)
+        self.register(key="report_formulation", tpe=bool)
         self.register(key="generate_report", tpe=bool)
         self.register(key="acopf_mode", tpe=AcOpfMode)
 

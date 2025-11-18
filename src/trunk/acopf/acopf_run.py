@@ -280,11 +280,11 @@ def case14_linear_vs_nonlinear():
     print('Nonlinear P nodal capacity: ', res.nodal_capacity)
 
     # Linear OPF
-    res = run_linear_opf_ts(grid=grid,
-                            dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
-                            time_indices=None,
-                            nodal_capacity_sign=-1.0,
-                            capacity_nodes_idx=np.array([10, 11]))
+    res, model = run_linear_opf_ts(grid=grid,
+                                   dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
+                                   time_indices=None,
+                                   nodal_capacity_sign=-1.0,
+                                   capacity_nodes_idx=np.array([10, 11]))
 
     print('Linear P nodal capacity: ', res.nodal_capacity_vars.P)
     print('')

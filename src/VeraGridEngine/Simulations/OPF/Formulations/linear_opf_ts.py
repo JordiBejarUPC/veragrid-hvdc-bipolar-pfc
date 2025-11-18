@@ -2532,12 +2532,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       logger: Logger = Logger(),
                       progress_text: Union[None, Callable[[str], None]] = None,
                       progress_func: Union[None, Callable[[float], None]] = None,
-                      export_model_fname: Union[None, str] = None,
                       verbose: int = 0,
                       robust: bool = False,
-                      mip_framework: MIPFramework = MIPFramework.PuLP) -> OpfVars:
+                      mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[OpfVars, LpModel]:
     """
-    Run linear optimal power flow
+    Formulate linear optimal power flow
     :param grid: MultiCircuit instance
     :param time_indices: Time indices (in the general scheme)
     :param dispatch_mode: OpfDispatchMode
@@ -2550,11 +2549,9 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param consider_time_up_down: Consider the time up/down?
     :param area_spinning_reserve: Area spinning reserve?
     :param lodf_threshold: LODF threshold value to consider contingencies
-    :param maximize_inter_area_flow: Maximize the inter-area flow?
     :param inter_aggregation_info: Inter rea (or country, etc) information
     :param energy_0: Vector of initial energy for batteries (size: Number of batteries)
     :param fluid_level_0: initial fluid level of the nodes
-    :param optimize_nodal_capacity: Optimize the nodal capacity? (optional)
     :param nodal_capacity_sign: if > 0 the generation is maximized, if < 0 the load is maximized
     :param capacity_nodes_idx: Array of bus indices to optimize their nodal capacity for
     :param use_glsk_as_cost: If true the generators use the GLSK as dispatch values
@@ -2562,7 +2559,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: Text progress callback
     :param progress_func: Numerical progress callback
-    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: verbosity level
     :param robust: Robust optimization?
     :param mip_framework: MIP framework to use
@@ -3021,11 +3017,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
     if progress_func is not None:
         progress_func(0)
 
-    if export_model_fname is not None:
-        lp_model.save_model(file_name=export_model_fname)
-        logger.add_info("LP model saved as", value=export_model_fname)
-        print('LP model saved as:', export_model_fname)
-
     status = lp_model.solve(robust=robust,
                             show_logs=verbose > 0,
                             progress_text=progress_text)
@@ -3055,4 +3046,4 @@ def run_linear_opf_ts(grid: MultiCircuit,
     logger += lp_model.logger
 
     # lp_model.save_model('nodal_opf.lp')
-    return vars_v
+    return vars_v, lp_model

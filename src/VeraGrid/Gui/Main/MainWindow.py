@@ -31,7 +31,7 @@ class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1372, 742)
+        mainWindow.resize(1433, 800)
         mainWindow.setMinimumSize(QSize(1198, 742))
         mainWindow.setBaseSize(QSize(0, 0))
         font = QFont()
@@ -683,24 +683,24 @@ class Ui_mainWindow(object):
 
         self.gridLayout_3.addWidget(self.progress_frame, 3, 0, 1, 1)
 
-        self.tabWidget = QTabWidget(self.centralwidget)
-        self.tabWidget.setObjectName(u"tabWidget")
+        self.mainTabWidget = QTabWidget(self.centralwidget)
+        self.mainTabWidget.setObjectName(u"mainTabWidget")
         font2 = QFont()
         font2.setPointSize(9)
-        self.tabWidget.setFont(font2)
+        self.mainTabWidget.setFont(font2)
         self.GridTab = QWidget()
         self.GridTab.setObjectName(u"GridTab")
         self.verticalLayout_9 = QVBoxLayout(self.GridTab)
         self.verticalLayout_9.setSpacing(0)
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
         self.verticalLayout_9.setContentsMargins(0, 0, 0, 0)
-        self.tabWidget_3 = QTabWidget(self.GridTab)
-        self.tabWidget_3.setObjectName(u"tabWidget_3")
-        self.tabWidget_3.setFont(font2)
-        self.tabWidget_3.setTabPosition(QTabWidget.TabPosition.South)
-        self.tabWidget_3.setTabShape(QTabWidget.TabShape.Rounded)
-        self.tabWidget_3.setElideMode(Qt.TextElideMode.ElideNone)
-        self.tabWidget_3.setDocumentMode(True)
+        self.modelTabWidget = QTabWidget(self.GridTab)
+        self.modelTabWidget.setObjectName(u"modelTabWidget")
+        self.modelTabWidget.setFont(font2)
+        self.modelTabWidget.setTabPosition(QTabWidget.TabPosition.South)
+        self.modelTabWidget.setTabShape(QTabWidget.TabShape.Rounded)
+        self.modelTabWidget.setElideMode(Qt.TextElideMode.ElideNone)
+        self.modelTabWidget.setDocumentMode(True)
         self.GridSectionTab = QWidget()
         self.GridSectionTab.setObjectName(u"GridSectionTab")
         self.verticalLayout_30 = QVBoxLayout(self.GridSectionTab)
@@ -1203,7 +1203,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_30.addWidget(self.frame_6)
 
-        self.tabWidget_3.addTab(self.GridSectionTab, icon60, "")
+        self.modelTabWidget.addTab(self.GridSectionTab, icon60, "")
         self.DataTab = QWidget()
         self.DataTab.setObjectName(u"DataTab")
         self.verticalLayout_8 = QVBoxLayout(self.DataTab)
@@ -1576,7 +1576,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_8.addWidget(self.dataStructuresSplitter)
 
-        self.tabWidget_3.addTab(self.DataTab, icon50, "")
+        self.modelTabWidget.addTab(self.DataTab, icon50, "")
         self.compiledArraysTab = QWidget()
         self.compiledArraysTab.setObjectName(u"compiledArraysTab")
         self.horizontalLayout_7 = QHBoxLayout(self.compiledArraysTab)
@@ -1684,7 +1684,7 @@ class Ui_mainWindow(object):
 
         icon106 = QIcon()
         icon106.addFile(u":/Icons/icons/spmat.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_3.addTab(self.compiledArraysTab, icon106, "")
+        self.modelTabWidget.addTab(self.compiledArraysTab, icon106, "")
         self.commentsTab = QWidget()
         self.commentsTab.setObjectName(u"commentsTab")
         self.verticalLayout_18 = QVBoxLayout(self.commentsTab)
@@ -1696,11 +1696,11 @@ class Ui_mainWindow(object):
 
         icon107 = QIcon()
         icon107.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_3.addTab(self.commentsTab, icon107, "")
+        self.modelTabWidget.addTab(self.commentsTab, icon107, "")
 
-        self.verticalLayout_9.addWidget(self.tabWidget_3)
+        self.verticalLayout_9.addWidget(self.modelTabWidget)
 
-        self.tabWidget.addTab(self.GridTab, icon60, "")
+        self.mainTabWidget.addTab(self.GridTab, icon60, "")
         self.ResultsTab = QWidget()
         self.ResultsTab.setObjectName(u"ResultsTab")
         self.verticalLayout_13 = QVBoxLayout(self.ResultsTab)
@@ -1811,10 +1811,10 @@ class Ui_mainWindow(object):
 
         self.splitter.addWidget(self.frame_14)
         self.results_splitter.addWidget(self.splitter)
-        self.tabWidget_4 = QTabWidget(self.results_splitter)
-        self.tabWidget_4.setObjectName(u"tabWidget_4")
-        self.tabWidget_4.setTabPosition(QTabWidget.TabPosition.East)
-        self.tabWidget_4.setDocumentMode(True)
+        self.resultsTabWidget = QTabWidget(self.results_splitter)
+        self.resultsTabWidget.setObjectName(u"resultsTabWidget")
+        self.resultsTabWidget.setTabPosition(QTabWidget.TabPosition.East)
+        self.resultsTabWidget.setDocumentMode(True)
         self.tab_7 = QWidget()
         self.tab_7.setObjectName(u"tab_7")
         self.verticalLayout_40 = QVBoxLayout(self.tab_7)
@@ -1935,7 +1935,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_40.addWidget(self.frame_5)
 
-        self.tabWidget_4.addTab(self.tab_7, icon105, "")
+        self.resultsTabWidget.addTab(self.tab_7, icon105, "")
         self.tab_14 = QWidget()
         self.tab_14.setObjectName(u"tab_14")
         self.verticalLayout_41 = QVBoxLayout(self.tab_14)
@@ -1968,15 +1968,26 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_41.addWidget(self.frame_56)
 
-        self.tabWidget_4.addTab(self.tab_14, icon50, "")
-        self.results_splitter.addWidget(self.tabWidget_4)
+        self.resultsTabWidget.addTab(self.tab_14, icon50, "")
+        self.tab_6 = QWidget()
+        self.tab_6.setObjectName(u"tab_6")
+        self.verticalLayout_19 = QVBoxLayout(self.tab_6)
+        self.verticalLayout_19.setObjectName(u"verticalLayout_19")
+        self.verticalLayout_19.setContentsMargins(-1, 6, -1, -1)
+        self.resultsReportTextEdit = QTextEdit(self.tab_6)
+        self.resultsReportTextEdit.setObjectName(u"resultsReportTextEdit")
+
+        self.verticalLayout_19.addWidget(self.resultsReportTextEdit)
+
+        self.resultsTabWidget.addTab(self.tab_6, icon107, "")
+        self.results_splitter.addWidget(self.resultsTabWidget)
 
         self.verticalLayout_28.addWidget(self.results_splitter)
 
 
         self.verticalLayout_13.addWidget(self.frame_33)
 
-        self.tabWidget.addTab(self.ResultsTab, icon96, "")
+        self.mainTabWidget.addTab(self.ResultsTab, icon96, "")
         self.main_console_tab = QWidget()
         self.main_console_tab.setObjectName(u"main_console_tab")
         self.verticalLayout_22 = QVBoxLayout(self.main_console_tab)
@@ -2133,7 +2144,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_22.addWidget(self.frame_10)
 
-        self.tabWidget.addTab(self.main_console_tab, icon113, "")
+        self.mainTabWidget.addTab(self.main_console_tab, icon113, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -2359,19 +2370,19 @@ class Ui_mainWindow(object):
 
         self.gridLayout_8.addWidget(self.frame_7, 0, 0, 1, 1)
 
-        self.tabWidget_9 = QTabWidget(self.SettingsTab)
-        self.tabWidget_9.setObjectName(u"tabWidget_9")
-        self.tabWidget_9.setEnabled(True)
-        self.tabWidget_9.setFont(font2)
-        self.tabWidget_9.setAutoFillBackground(False)
-        self.tabWidget_9.setInputMethodHints(Qt.InputMethodHint.ImhFormattedNumbersOnly)
-        self.tabWidget_9.setTabPosition(QTabWidget.TabPosition.South)
-        self.tabWidget_9.setIconSize(QSize(16, 16))
-        self.tabWidget_9.setElideMode(Qt.TextElideMode.ElideNone)
-        self.tabWidget_9.setUsesScrollButtons(False)
-        self.tabWidget_9.setDocumentMode(False)
-        self.tabWidget_9.setMovable(False)
-        self.tabWidget_9.setTabBarAutoHide(False)
+        self.settingsTabWidget = QTabWidget(self.SettingsTab)
+        self.settingsTabWidget.setObjectName(u"settingsTabWidget")
+        self.settingsTabWidget.setEnabled(True)
+        self.settingsTabWidget.setFont(font2)
+        self.settingsTabWidget.setAutoFillBackground(False)
+        self.settingsTabWidget.setInputMethodHints(Qt.InputMethodHint.ImhFormattedNumbersOnly)
+        self.settingsTabWidget.setTabPosition(QTabWidget.TabPosition.South)
+        self.settingsTabWidget.setIconSize(QSize(16, 16))
+        self.settingsTabWidget.setElideMode(Qt.TextElideMode.ElideNone)
+        self.settingsTabWidget.setUsesScrollButtons(False)
+        self.settingsTabWidget.setDocumentMode(False)
+        self.settingsTabWidget.setMovable(False)
+        self.settingsTabWidget.setTabBarAutoHide(False)
         self.pf_tab = QWidget()
         self.pf_tab.setObjectName(u"pf_tab")
         self.gridLayout_24 = QGridLayout(self.pf_tab)
@@ -2742,7 +2753,7 @@ class Ui_mainWindow(object):
 
         self.gridLayout_24.addWidget(self.frame_19, 2, 0, 1, 3)
 
-        self.tabWidget_9.addTab(self.pf_tab, icon5, "")
+        self.settingsTabWidget.addTab(self.pf_tab, icon5, "")
         self.cpf_tab = QWidget()
         self.cpf_tab.setObjectName(u"cpf_tab")
         self.horizontalLayout_10 = QHBoxLayout(self.cpf_tab)
@@ -2920,16 +2931,153 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_10.addItem(self.horizontalSpacer_24)
 
-        self.tabWidget_9.addTab(self.cpf_tab, icon10, "")
+        self.settingsTabWidget.addTab(self.cpf_tab, icon10, "")
         self.opf_tab = QWidget()
         self.opf_tab.setObjectName(u"opf_tab")
         self.gridLayout_10 = QGridLayout(self.opf_tab)
         self.gridLayout_10.setObjectName(u"gridLayout_10")
-        self.groupBox_3 = QGroupBox(self.opf_tab)
-        self.groupBox_3.setObjectName(u"groupBox_3")
+        self.groupBox = QGroupBox(self.opf_tab)
+        self.groupBox.setObjectName(u"groupBox")
         font7 = QFont()
         font7.setPointSize(12)
         font7.setBold(False)
+        self.groupBox.setFont(font7)
+        self.gridLayout_18 = QGridLayout(self.groupBox)
+        self.gridLayout_18.setObjectName(u"gridLayout_18")
+        self.opf_time_grouping_comboBox = QComboBox(self.groupBox)
+        self.opf_time_grouping_comboBox.setObjectName(u"opf_time_grouping_comboBox")
+        font8 = QFont()
+        font8.setPointSize(9)
+        font8.setBold(False)
+        self.opf_time_grouping_comboBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opf_time_grouping_comboBox, 3, 1, 1, 2)
+
+        self.opfSpinningReserveCheckBox = QCheckBox(self.groupBox)
+        self.opfSpinningReserveCheckBox.setObjectName(u"opfSpinningReserveCheckBox")
+        self.opfSpinningReserveCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opfSpinningReserveCheckBox, 10, 0, 1, 3)
+
+        self.useGslkAsCostsOpfCheckBox = QCheckBox(self.groupBox)
+        self.useGslkAsCostsOpfCheckBox.setObjectName(u"useGslkAsCostsOpfCheckBox")
+        self.useGslkAsCostsOpfCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.useGslkAsCostsOpfCheckBox, 13, 0, 1, 3)
+
+        self.label_15 = QLabel(self.groupBox)
+        self.label_15.setObjectName(u"label_15")
+        self.label_15.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.label_15, 5, 0, 1, 1)
+
+        self.opfZonalGroupByComboBox = QComboBox(self.groupBox)
+        self.opfZonalGroupByComboBox.setObjectName(u"opfZonalGroupByComboBox")
+        self.opfZonalGroupByComboBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opfZonalGroupByComboBox, 4, 1, 1, 2)
+
+        self.mip_framework_comboBox = QComboBox(self.groupBox)
+        self.mip_framework_comboBox.setObjectName(u"mip_framework_comboBox")
+        self.mip_framework_comboBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.mip_framework_comboBox, 5, 1, 1, 1)
+
+        self.label_4 = QLabel(self.groupBox)
+        self.label_4.setObjectName(u"label_4")
+        self.label_4.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.label_4, 3, 0, 1, 1)
+
+        self.label_132 = QLabel(self.groupBox)
+        self.label_132.setObjectName(u"label_132")
+
+        self.gridLayout_18.addWidget(self.label_132, 7, 0, 1, 2)
+
+        self.verticalSpacer_18 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_18.addItem(self.verticalSpacer_18, 19, 0, 1, 1)
+
+        self.opfConsiderUpDownTimeCheckBox = QCheckBox(self.groupBox)
+        self.opfConsiderUpDownTimeCheckBox.setObjectName(u"opfConsiderUpDownTimeCheckBox")
+        self.opfConsiderUpDownTimeCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opfConsiderUpDownTimeCheckBox, 9, 0, 1, 3)
+
+        self.approximateLossesOpfCheckBox = QCheckBox(self.groupBox)
+        self.approximateLossesOpfCheckBox.setObjectName(u"approximateLossesOpfCheckBox")
+        self.approximateLossesOpfCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.approximateLossesOpfCheckBox, 14, 0, 1, 3)
+
+        self.opfDispatchModeComboBox = QComboBox(self.groupBox)
+        self.opfDispatchModeComboBox.setObjectName(u"opfDispatchModeComboBox")
+        self.opfDispatchModeComboBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opfDispatchModeComboBox, 0, 1, 1, 2)
+
+        self.label_104 = QLabel(self.groupBox)
+        self.label_104.setObjectName(u"label_104")
+        self.label_104.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.label_104, 12, 0, 1, 1)
+
+        self.opfContingencyToleranceSpinBox = QDoubleSpinBox(self.groupBox)
+        self.opfContingencyToleranceSpinBox.setObjectName(u"opfContingencyToleranceSpinBox")
+        self.opfContingencyToleranceSpinBox.setFont(font8)
+        self.opfContingencyToleranceSpinBox.setDecimals(4)
+        self.opfContingencyToleranceSpinBox.setSingleStep(0.010000000000000)
+        self.opfContingencyToleranceSpinBox.setValue(0.050000000000000)
+
+        self.gridLayout_18.addWidget(self.opfContingencyToleranceSpinBox, 12, 1, 1, 2)
+
+        self.considerContingenciesOpfCheckBox = QCheckBox(self.groupBox)
+        self.considerContingenciesOpfCheckBox.setObjectName(u"considerContingenciesOpfCheckBox")
+        self.considerContingenciesOpfCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.considerContingenciesOpfCheckBox, 11, 0, 1, 3)
+
+        self.save_mip_checkBox = QCheckBox(self.groupBox)
+        self.save_mip_checkBox.setObjectName(u"save_mip_checkBox")
+        self.save_mip_checkBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.save_mip_checkBox, 18, 0, 1, 3)
+
+        self.fixOpfCheckBox = QCheckBox(self.groupBox)
+        self.fixOpfCheckBox.setObjectName(u"fixOpfCheckBox")
+        self.fixOpfCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.fixOpfCheckBox, 15, 0, 1, 3)
+
+        self.opfConsiderRampsCheckBox = QCheckBox(self.groupBox)
+        self.opfConsiderRampsCheckBox.setObjectName(u"opfConsiderRampsCheckBox")
+        self.opfConsiderRampsCheckBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.opfConsiderRampsCheckBox, 8, 0, 1, 3)
+
+        self.label_9 = QLabel(self.groupBox)
+        self.label_9.setObjectName(u"label_9")
+        self.label_9.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.label_9, 0, 0, 1, 1)
+
+        self.mip_solver_comboBox = QComboBox(self.groupBox)
+        self.mip_solver_comboBox.setObjectName(u"mip_solver_comboBox")
+        self.mip_solver_comboBox.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.mip_solver_comboBox, 5, 2, 1, 1)
+
+        self.label_103 = QLabel(self.groupBox)
+        self.label_103.setObjectName(u"label_103")
+        self.label_103.setFont(font8)
+
+        self.gridLayout_18.addWidget(self.label_103, 4, 0, 1, 1)
+
+
+        self.gridLayout_10.addWidget(self.groupBox, 3, 3, 1, 1)
+
+        self.groupBox_3 = QGroupBox(self.opf_tab)
+        self.groupBox_3.setObjectName(u"groupBox_3")
         self.groupBox_3.setFont(font7)
         self.gridLayout_27 = QGridLayout(self.groupBox_3)
         self.gridLayout_27.setObjectName(u"gridLayout_27")
@@ -2939,9 +3087,6 @@ class Ui_mainWindow(object):
 
         self.label_129 = QLabel(self.groupBox_3)
         self.label_129.setObjectName(u"label_129")
-        font8 = QFont()
-        font8.setPointSize(9)
-        font8.setBold(False)
         self.label_129.setFont(font8)
 
         self.gridLayout_27.addWidget(self.label_129, 2, 0, 1, 1)
@@ -3017,175 +3162,6 @@ class Ui_mainWindow(object):
 
         self.gridLayout_10.addWidget(self.groupBox_3, 3, 4, 1, 1)
 
-        self.horizontalSpacer_10 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_10.addItem(self.horizontalSpacer_10, 3, 5, 1, 1)
-
-        self.groupBox = QGroupBox(self.opf_tab)
-        self.groupBox.setObjectName(u"groupBox")
-        self.groupBox.setFont(font7)
-        self.gridLayout_18 = QGridLayout(self.groupBox)
-        self.gridLayout_18.setObjectName(u"gridLayout_18")
-        self.fixOpfCheckBox = QCheckBox(self.groupBox)
-        self.fixOpfCheckBox.setObjectName(u"fixOpfCheckBox")
-        self.fixOpfCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.fixOpfCheckBox, 16, 0, 1, 2)
-
-        self.opfContingencyToleranceSpinBox = QDoubleSpinBox(self.groupBox)
-        self.opfContingencyToleranceSpinBox.setObjectName(u"opfContingencyToleranceSpinBox")
-        self.opfContingencyToleranceSpinBox.setFont(font8)
-        self.opfContingencyToleranceSpinBox.setDecimals(4)
-        self.opfContingencyToleranceSpinBox.setSingleStep(0.010000000000000)
-        self.opfContingencyToleranceSpinBox.setValue(0.050000000000000)
-
-        self.gridLayout_18.addWidget(self.opfContingencyToleranceSpinBox, 13, 1, 1, 1)
-
-        self.opfSpinningReserveCheckBox = QCheckBox(self.groupBox)
-        self.opfSpinningReserveCheckBox.setObjectName(u"opfSpinningReserveCheckBox")
-        self.opfSpinningReserveCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opfSpinningReserveCheckBox, 11, 0, 1, 2)
-
-        self.opfZonalGroupByComboBox = QComboBox(self.groupBox)
-        self.opfZonalGroupByComboBox.setObjectName(u"opfZonalGroupByComboBox")
-        self.opfZonalGroupByComboBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opfZonalGroupByComboBox, 4, 1, 1, 1)
-
-        self.approximateLossesOpfCheckBox = QCheckBox(self.groupBox)
-        self.approximateLossesOpfCheckBox.setObjectName(u"approximateLossesOpfCheckBox")
-        self.approximateLossesOpfCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.approximateLossesOpfCheckBox, 15, 0, 1, 2)
-
-        self.save_mip_checkBox = QCheckBox(self.groupBox)
-        self.save_mip_checkBox.setObjectName(u"save_mip_checkBox")
-        self.save_mip_checkBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.save_mip_checkBox, 19, 0, 1, 2)
-
-        self.considerContingenciesOpfCheckBox = QCheckBox(self.groupBox)
-        self.considerContingenciesOpfCheckBox.setObjectName(u"considerContingenciesOpfCheckBox")
-        self.considerContingenciesOpfCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.considerContingenciesOpfCheckBox, 12, 0, 1, 2)
-
-        self.label_10 = QLabel(self.groupBox)
-        self.label_10.setObjectName(u"label_10")
-        self.label_10.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_10, 6, 0, 1, 1)
-
-        self.opfDispatchModeComboBox = QComboBox(self.groupBox)
-        self.opfDispatchModeComboBox.setObjectName(u"opfDispatchModeComboBox")
-        self.opfDispatchModeComboBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opfDispatchModeComboBox, 0, 1, 1, 1)
-
-        self.opf_time_grouping_comboBox = QComboBox(self.groupBox)
-        self.opf_time_grouping_comboBox.setObjectName(u"opf_time_grouping_comboBox")
-        self.opf_time_grouping_comboBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opf_time_grouping_comboBox, 3, 1, 1, 1)
-
-        self.label_4 = QLabel(self.groupBox)
-        self.label_4.setObjectName(u"label_4")
-        self.label_4.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_4, 3, 0, 1, 1)
-
-        self.useGslkAsCostsOpfCheckBox = QCheckBox(self.groupBox)
-        self.useGslkAsCostsOpfCheckBox.setObjectName(u"useGslkAsCostsOpfCheckBox")
-        self.useGslkAsCostsOpfCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.useGslkAsCostsOpfCheckBox, 14, 0, 1, 2)
-
-        self.verticalSpacer_18 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_18.addItem(self.verticalSpacer_18, 20, 0, 1, 1)
-
-        self.label_104 = QLabel(self.groupBox)
-        self.label_104.setObjectName(u"label_104")
-        self.label_104.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_104, 13, 0, 1, 1)
-
-        self.label_103 = QLabel(self.groupBox)
-        self.label_103.setObjectName(u"label_103")
-        self.label_103.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_103, 4, 0, 1, 1)
-
-        self.label_9 = QLabel(self.groupBox)
-        self.label_9.setObjectName(u"label_9")
-        self.label_9.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_9, 0, 0, 1, 1)
-
-        self.label_132 = QLabel(self.groupBox)
-        self.label_132.setObjectName(u"label_132")
-
-        self.gridLayout_18.addWidget(self.label_132, 8, 0, 1, 2)
-
-        self.opfConsiderUpDownTimeCheckBox = QCheckBox(self.groupBox)
-        self.opfConsiderUpDownTimeCheckBox.setObjectName(u"opfConsiderUpDownTimeCheckBox")
-        self.opfConsiderUpDownTimeCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opfConsiderUpDownTimeCheckBox, 10, 0, 1, 2)
-
-        self.mip_solver_comboBox = QComboBox(self.groupBox)
-        self.mip_solver_comboBox.setObjectName(u"mip_solver_comboBox")
-        self.mip_solver_comboBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.mip_solver_comboBox, 6, 1, 1, 1)
-
-        self.opfConsiderRampsCheckBox = QCheckBox(self.groupBox)
-        self.opfConsiderRampsCheckBox.setObjectName(u"opfConsiderRampsCheckBox")
-        self.opfConsiderRampsCheckBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.opfConsiderRampsCheckBox, 9, 0, 1, 2)
-
-        self.label_15 = QLabel(self.groupBox)
-        self.label_15.setObjectName(u"label_15")
-        self.label_15.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.label_15, 5, 0, 1, 1)
-
-        self.mip_framework_comboBox = QComboBox(self.groupBox)
-        self.mip_framework_comboBox.setObjectName(u"mip_framework_comboBox")
-        self.mip_framework_comboBox.setFont(font8)
-
-        self.gridLayout_18.addWidget(self.mip_framework_comboBox, 5, 1, 1, 1)
-
-
-        self.gridLayout_10.addWidget(self.groupBox, 3, 3, 1, 1)
-
-        self.label_73 = QLabel(self.opf_tab)
-        self.label_73.setObjectName(u"label_73")
-        palette15 = QPalette()
-        palette15.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette15.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette15.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_73.setPalette(palette15)
-        self.label_73.setFont(font5)
-        self.label_73.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
-
-        self.gridLayout_10.addWidget(self.label_73, 0, 1, 1, 1)
-
-        self.line_16 = QFrame(self.opf_tab)
-        self.line_16.setObjectName(u"line_16")
-        palette16 = QPalette()
-        palette16.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette16.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette16.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_16.setPalette(palette16)
-        self.line_16.setFrameShadow(QFrame.Shadow.Plain)
-        self.line_16.setLineWidth(4)
-        self.line_16.setFrameShape(QFrame.Shape.HLine)
-
-        self.gridLayout_10.addWidget(self.line_16, 2, 0, 1, 5)
-
         self.groupBox_2 = QGroupBox(self.opf_tab)
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.groupBox_2.setFont(font7)
@@ -3245,6 +3221,19 @@ class Ui_mainWindow(object):
 
         self.gridLayout_10.addWidget(self.groupBox_2, 3, 0, 1, 3)
 
+        self.line_16 = QFrame(self.opf_tab)
+        self.line_16.setObjectName(u"line_16")
+        palette15 = QPalette()
+        palette15.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette15.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette15.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_16.setPalette(palette15)
+        self.line_16.setFrameShadow(QFrame.Shadow.Plain)
+        self.line_16.setLineWidth(4)
+        self.line_16.setFrameShape(QFrame.Shape.HLine)
+
+        self.gridLayout_10.addWidget(self.line_16, 2, 0, 1, 5)
+
         self.label_72 = QLabel(self.opf_tab)
         self.label_72.setObjectName(u"label_72")
         self.label_72.setMinimumSize(QSize(24, 24))
@@ -3254,7 +3243,23 @@ class Ui_mainWindow(object):
 
         self.gridLayout_10.addWidget(self.label_72, 0, 0, 1, 1)
 
-        self.tabWidget_9.addTab(self.opf_tab, icon15, "")
+        self.horizontalSpacer_10 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_10.addItem(self.horizontalSpacer_10, 3, 5, 1, 1)
+
+        self.label_73 = QLabel(self.opf_tab)
+        self.label_73.setObjectName(u"label_73")
+        palette16 = QPalette()
+        palette16.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette16.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette16.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_73.setPalette(palette16)
+        self.label_73.setFont(font5)
+        self.label_73.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
+
+        self.gridLayout_10.addWidget(self.label_73, 0, 1, 1, 1)
+
+        self.settingsTabWidget.addTab(self.opf_tab, icon15, "")
         self.ntc_tab = QWidget()
         self.ntc_tab.setObjectName(u"ntc_tab")
         self.gridLayout_13 = QGridLayout(self.ntc_tab)
@@ -3483,7 +3488,7 @@ class Ui_mainWindow(object):
 
         self.gridLayout_13.addWidget(self.label_96, 0, 1, 1, 1)
 
-        self.tabWidget_9.addTab(self.ntc_tab, icon45, "")
+        self.settingsTabWidget.addTab(self.ntc_tab, icon45, "")
         self.nodal_capacity_tab = QWidget()
         self.nodal_capacity_tab.setObjectName(u"nodal_capacity_tab")
         self.gridLayout_16 = QGridLayout(self.nodal_capacity_tab)
@@ -3569,7 +3574,7 @@ class Ui_mainWindow(object):
 
         self.gridLayout_16.addItem(self.horizontalSpacer_4, 2, 2, 1, 1)
 
-        self.tabWidget_9.addTab(self.nodal_capacity_tab, icon70, "")
+        self.settingsTabWidget.addTab(self.nodal_capacity_tab, icon70, "")
         self.transfer_tab = QWidget()
         self.transfer_tab.setObjectName(u"transfer_tab")
         self.horizontalLayout_12 = QHBoxLayout(self.transfer_tab)
@@ -3670,7 +3675,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.frame_40)
 
-        self.tabWidget_9.addTab(self.transfer_tab, icon90, "")
+        self.settingsTabWidget.addTab(self.transfer_tab, icon90, "")
         self.contingencies_tab = QWidget()
         self.contingencies_tab.setObjectName(u"contingencies_tab")
         self.horizontalLayout_42 = QHBoxLayout(self.contingencies_tab)
@@ -3874,7 +3879,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_42.addWidget(self.frame_76)
 
-        self.tabWidget_9.addTab(self.contingencies_tab, icon44, "")
+        self.settingsTabWidget.addTab(self.contingencies_tab, icon44, "")
         self.rms_tab = QWidget()
         self.rms_tab.setObjectName(u"rms_tab")
         self.horizontalLayout_21 = QHBoxLayout(self.rms_tab)
@@ -4105,7 +4110,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_21.addItem(self.horizontalSpacer_12)
 
-        self.tabWidget_9.addTab(self.rms_tab, icon79, "")
+        self.settingsTabWidget.addTab(self.rms_tab, icon79, "")
         self.ml_tab = QWidget()
         self.ml_tab.setObjectName(u"ml_tab")
         self.horizontalLayout_6 = QHBoxLayout(self.ml_tab)
@@ -4565,7 +4570,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_6.addItem(self.horizontalSpacer_3)
 
-        self.tabWidget_9.addTab(self.ml_tab, icon57, "")
+        self.settingsTabWidget.addTab(self.ml_tab, icon57, "")
         self.topology_tab = QWidget()
         self.topology_tab.setObjectName(u"topology_tab")
         self.gridLayout_17 = QGridLayout(self.topology_tab)
@@ -4747,7 +4752,7 @@ class Ui_mainWindow(object):
 
         self.gridLayout_17.addWidget(self.frame_31, 0, 1, 1, 1)
 
-        self.tabWidget_9.addTab(self.topology_tab, icon13, "")
+        self.settingsTabWidget.addTab(self.topology_tab, icon13, "")
         self.file_tab = QWidget()
         self.file_tab.setObjectName(u"file_tab")
         self.horizontalLayout_40 = QHBoxLayout(self.file_tab)
@@ -4999,7 +5004,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_40.addItem(self.horizontalSpacer_27)
 
-        self.tabWidget_9.addTab(self.file_tab, icon4, "")
+        self.settingsTabWidget.addTab(self.file_tab, icon4, "")
         self.tab_5 = QWidget()
         self.tab_5.setObjectName(u"tab_5")
         self.verticalLayout_7 = QVBoxLayout(self.tab_5)
@@ -5074,18 +5079,18 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_7.addWidget(self.frame_2)
 
-        self.tabWidget_9.addTab(self.tab_5, icon71, "")
+        self.settingsTabWidget.addTab(self.tab_5, icon71, "")
 
-        self.gridLayout_8.addWidget(self.tabWidget_9, 0, 1, 1, 1)
+        self.gridLayout_8.addWidget(self.settingsTabWidget, 0, 1, 1, 1)
 
-        self.tabWidget.addTab(self.SettingsTab, icon84, "")
+        self.mainTabWidget.addTab(self.SettingsTab, icon84, "")
 
-        self.gridLayout_3.addWidget(self.tabWidget, 0, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.mainTabWidget, 0, 0, 1, 1)
 
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1372, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1433, 23))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
@@ -5272,13 +5277,13 @@ class Ui_mainWindow(object):
 
         self.retranslateUi(mainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
-        self.tabWidget_3.setCurrentIndex(0)
+        self.mainTabWidget.setCurrentIndex(3)
+        self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_5.setCurrentIndex(0)
-        self.tabWidget_4.setCurrentIndex(0)
+        self.resultsTabWidget.setCurrentIndex(2)
         self.tabWidget_2.setCurrentIndex(0)
-        self.tabWidget_9.setCurrentIndex(0)
+        self.settingsTabWidget.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(mainWindow)
@@ -5754,7 +5759,7 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.diagram_step_slider.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Time slider</span></p><p>Move this time slider to select the appropriate time slot to view.</p><p>The first position sets the snapshot values, the rest attend to the time series values.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.GridSectionTab), QCoreApplication.translate("mainWindow", u"Diagrams", None))
+        self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.GridSectionTab), QCoreApplication.translate("mainWindow", u"Diagrams", None))
 #if QT_CONFIG(tooltip)
         self.smart_search_lineEdit.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Type anything to search on the name property. </p><p><br/></p><p>For more advanced searches you can compose a filter expression:</p><p><span style=\" font-weight:700;\">Subjects:</span></p><p>col, idx, val, colobj, idxobj</p><p>colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.</p><p>If none is specified idxobj is taken</p><p><span style=\" font-weight:700;\">Operators:</span></p><p>&gt;, &lt;, &gt;=, &lt;=, !=, =, like, notlike, starts, ends</p><p><span style=\" font-weight:700;\">Examples:</span></p><p>Filter all object names that are similar to 'alba' and their Vnom property &gt; 200</p><p>-&gt; idx<span style=\" font-style:italic;\">obj.name like alba and idxobj.Vnom &gt; 200</span></p><p><span style=\" font-style:italic;\">Equivalently:</span></p><p><span style=\" font-style:italic;\">-&gt; name like alba and Vnom &gt; 200</span></p><p>[Enter] to search </p></body></html"
                         ">", None))
@@ -5856,7 +5861,7 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.set_profile_value_pushButton.setText("")
         self.tabWidget_5.setTabText(self.tabWidget_5.indexOf(self.tab_16), QCoreApplication.translate("mainWindow", u"Time series", None))
-        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.DataTab), QCoreApplication.translate("mainWindow", u"Database", None))
+        self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.DataTab), QCoreApplication.translate("mainWindow", u"Database", None))
 #if QT_CONFIG(tooltip)
         self.exportSimulationDataButton.setToolTip(QCoreApplication.translate("mainWindow", u"Export simulation data", None))
 #endif // QT_CONFIG(tooltip)
@@ -5881,12 +5886,12 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.copyArraysButton.setText("")
         self.compiled_arrays_step_label.setText(QCoreApplication.translate("mainWindow", u"Snapshot", None))
-        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.compiledArraysTab), QCoreApplication.translate("mainWindow", u"Compiled arrays", None))
+        self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.compiledArraysTab), QCoreApplication.translate("mainWindow", u"Compiled arrays", None))
 #if QT_CONFIG(tooltip)
         self.comments_textEdit.setToolTip(QCoreApplication.translate("mainWindow", u"Write here some comments about the grid", None))
 #endif // QT_CONFIG(tooltip)
-        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.commentsTab), QCoreApplication.translate("mainWindow", u"Comments", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.GridTab), QCoreApplication.translate("mainWindow", u"Model", None))
+        self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.commentsTab), QCoreApplication.translate("mainWindow", u"Comments", None))
+        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.GridTab), QCoreApplication.translate("mainWindow", u"Model", None))
         self.label_16.setText(QCoreApplication.translate("mainWindow", u"Session results", None))
 #if QT_CONFIG(tooltip)
         self.deleteDriverButton.setToolTip(QCoreApplication.translate("mainWindow", u"Delete selected driver", None))
@@ -5946,13 +5951,14 @@ class Ui_mainWindow(object):
         self.plot_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot the data in a separated window", None))
 #endif // QT_CONFIG(tooltip)
         self.plot_data_pushButton.setText("")
-        self.tabWidget_4.setTabText(self.tabWidget_4.indexOf(self.tab_7), QCoreApplication.translate("mainWindow", u"Tables", None))
+        self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_7), QCoreApplication.translate("mainWindow", u"Tables", None))
 #if QT_CONFIG(tooltip)
         self.saveResultsLogsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Save the logs to a file", None))
 #endif // QT_CONFIG(tooltip)
         self.saveResultsLogsButton.setText("")
-        self.tabWidget_4.setTabText(self.tabWidget_4.indexOf(self.tab_14), QCoreApplication.translate("mainWindow", u"Logs", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.ResultsTab), QCoreApplication.translate("mainWindow", u"Results", None))
+        self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_14), QCoreApplication.translate("mainWindow", u"Logs", None))
+        self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_6), QCoreApplication.translate("mainWindow", u"Report", None))
+        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.ResultsTab), QCoreApplication.translate("mainWindow", u"Results", None))
 #if QT_CONFIG(tooltip)
         self.clearSourceCodeButton.setToolTip(QCoreApplication.translate("mainWindow", u"New script, will delete the existing code.", None))
 #endif // QT_CONFIG(tooltip)
@@ -5976,7 +5982,7 @@ class Ui_mainWindow(object):
         self.clearConsoleButton.setText("")
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.pythonConsoleTab), QCoreApplication.translate("mainWindow", u"Python console", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.sourceCodeTab), QCoreApplication.translate("mainWindow", u"Source code", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.main_console_tab), QCoreApplication.translate("mainWindow", u"Scripting", None))
+        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.main_console_tab), QCoreApplication.translate("mainWindow", u"Scripting", None))
         self.label_68.setText("")
         self.label_69.setText(QCoreApplication.translate("mainWindow", u"General settings", None))
         self.label_82.setText(QCoreApplication.translate("mainWindow", u"Grid name", None))
@@ -6008,7 +6014,7 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for dynamic simulations.</p></body></html>", None))
+        self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for dynamic simulations.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.pf_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Power flow settings", None))
@@ -6108,9 +6114,9 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.tolerance_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
         self.label_11.setText(QCoreApplication.translate("mainWindow", u"Trust radius", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Pf", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Pf", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Power flow settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Power flow settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.cpf_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Continuation power flow settings", None))
@@ -6130,13 +6136,70 @@ class Ui_mainWindow(object):
         self.label_46.setText(QCoreApplication.translate("mainWindow", u"Continuation power flow", None))
         self.label_67.setText(QCoreApplication.translate("mainWindow", u"Simulation mode", None))
         self.start_vs_from_default_radioButton.setText(QCoreApplication.translate("mainWindow", u"Increase system loading", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.cpf_tab), QCoreApplication.translate("mainWindow", u"Cpf", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.cpf_tab), QCoreApplication.translate("mainWindow", u"Cpf", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.cpf_tab), QCoreApplication.translate("mainWindow", u"Continuation power flow related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.cpf_tab), QCoreApplication.translate("mainWindow", u"Continuation power flow related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.opf_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Optimal power flow settings", None))
 #endif // QT_CONFIG(tooltip)
+        self.groupBox.setTitle(QCoreApplication.translate("mainWindow", u"Linear settings", None))
+#if QT_CONFIG(tooltip)
+        self.opf_time_grouping_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the time grouping to possibly shorten the solution time.</p><p>This splits the time series by week, month, etc. and the subproblems are solved sequentially.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.opfSpinningReserveCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider per-area generation spinning reserve", None))
+#endif // QT_CONFIG(tooltip)
+        self.opfSpinningReserveCheckBox.setText(QCoreApplication.translate("mainWindow", u"Spinning reserve", None))
+#if QT_CONFIG(tooltip)
+        self.useGslkAsCostsOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)", None))
+#endif // QT_CONFIG(tooltip)
+        self.useGslkAsCostsOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Use GSLK as costs", None))
+        self.label_15.setText(QCoreApplication.translate("mainWindow", u"MIP framework", None))
+#if QT_CONFIG(tooltip)
+        self.opfZonalGroupByComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the zonal grouping.<br/>When All (Copper plate) is selected, the branch restrictions are ignored</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.mip_framework_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer framework", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_4.setText(QCoreApplication.translate("mainWindow", u"Time grouping", None))
+        self.label_132.setText("")
+#if QT_CONFIG(tooltip)
+        self.opfConsiderUpDownTimeCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation minimum up/down time", None))
+#endif // QT_CONFIG(tooltip)
+        self.opfConsiderUpDownTimeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider min up/down time", None))
+#if QT_CONFIG(tooltip)
+        self.approximateLossesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"When checked, the branch losses will be aproximated by a factor r * rate / (V^2)", None))
+#endif // QT_CONFIG(tooltip)
+        self.approximateLossesOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Approximate losses", None))
+#if QT_CONFIG(tooltip)
+        self.opfDispatchModeComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Select how the generation dispatch should behave</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_104.setText(QCoreApplication.translate("mainWindow", u"Contingency tolerance", None))
+#if QT_CONFIG(tooltip)
+        self.opfContingencyToleranceSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"LODF matrix tolerance choosing contingencies", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.considerContingenciesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider the contingencies when dispatching", None))
+#endif // QT_CONFIG(tooltip)
+        self.considerContingenciesOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Compute contingencies", None))
+#if QT_CONFIG(tooltip)
+        self.save_mip_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>The program will save the MIP formulation and be displayed in the text tab of the results</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.save_mip_checkBox.setText(QCoreApplication.translate("mainWindow", u"Report MIP formulation", None))
+#if QT_CONFIG(tooltip)
+        self.fixOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC", None))
+#endif // QT_CONFIG(tooltip)
+        self.fixOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Fix infeasibilities and retry", None))
+#if QT_CONFIG(tooltip)
+        self.opfConsiderRampsCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation ramps", None))
+#endif // QT_CONFIG(tooltip)
+        self.opfConsiderRampsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider ramps", None))
+        self.label_9.setText(QCoreApplication.translate("mainWindow", u"Dispatch mode", None))
+#if QT_CONFIG(tooltip)
+        self.mip_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer programming solver", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_103.setText(QCoreApplication.translate("mainWindow", u"Zone grouping", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("mainWindow", u"Nonlinear settings", None))
 #if QT_CONFIG(tooltip)
         self.label_129.setToolTip(QCoreApplication.translate("mainWindow", u"Interior point solver maximum number of iterations", None))
@@ -6173,65 +6236,6 @@ class Ui_mainWindow(object):
         self.ips_control_Qlimits_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for reactive power limits control in the nonlinear optimal power flow", None))
 #endif // QT_CONFIG(tooltip)
         self.ips_control_Qlimits_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control Q limits", None))
-        self.groupBox.setTitle(QCoreApplication.translate("mainWindow", u"Linear settings", None))
-#if QT_CONFIG(tooltip)
-        self.fixOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Fix infeasible problems and rey with the relaxed problem. Applies to OPF and NTC", None))
-#endif // QT_CONFIG(tooltip)
-        self.fixOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Fix infeasibilities and retry", None))
-#if QT_CONFIG(tooltip)
-        self.opfContingencyToleranceSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"LODF matrix tolerance choosing contingencies", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.opfSpinningReserveCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider per-area generation spinning reserve", None))
-#endif // QT_CONFIG(tooltip)
-        self.opfSpinningReserveCheckBox.setText(QCoreApplication.translate("mainWindow", u"Spinning reserve", None))
-#if QT_CONFIG(tooltip)
-        self.opfZonalGroupByComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the zonal grouping.<br/>When All (Copper plate) is selected, the branch restrictions are ignored</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.approximateLossesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"When checked, the branch losses will be aproximated by a factor r * rate / (V^2)", None))
-#endif // QT_CONFIG(tooltip)
-        self.approximateLossesOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Approximate losses", None))
-#if QT_CONFIG(tooltip)
-        self.save_mip_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>The program will save the MIP file in .lp format in the user VeraGrid folder before running a linear optimization study.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.save_mip_checkBox.setText(QCoreApplication.translate("mainWindow", u"Save MIP file", None))
-#if QT_CONFIG(tooltip)
-        self.considerContingenciesOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider the contingencies when dispatching", None))
-#endif // QT_CONFIG(tooltip)
-        self.considerContingenciesOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Compute contingencies", None))
-        self.label_10.setText(QCoreApplication.translate("mainWindow", u"MIP solver", None))
-#if QT_CONFIG(tooltip)
-        self.opfDispatchModeComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Select how the generation dispatch should behave</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.opf_time_grouping_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Choose the time grouping to possibly shorten the solution time.</p><p>This splits the time series by week, month, etc. and the subproblems are solved sequentially.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.label_4.setText(QCoreApplication.translate("mainWindow", u"Time grouping", None))
-#if QT_CONFIG(tooltip)
-        self.useGslkAsCostsOpfCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Instead of using the generation, loads cost for dispatching, use the GLSK (Generation, Load Shift Keys)", None))
-#endif // QT_CONFIG(tooltip)
-        self.useGslkAsCostsOpfCheckBox.setText(QCoreApplication.translate("mainWindow", u"Use GSLK as costs", None))
-        self.label_104.setText(QCoreApplication.translate("mainWindow", u"Contingency tolerance", None))
-        self.label_103.setText(QCoreApplication.translate("mainWindow", u"Zone grouping", None))
-        self.label_9.setText(QCoreApplication.translate("mainWindow", u"Dispatch mode", None))
-        self.label_132.setText("")
-#if QT_CONFIG(tooltip)
-        self.opfConsiderUpDownTimeCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation minimum up/down time", None))
-#endif // QT_CONFIG(tooltip)
-        self.opfConsiderUpDownTimeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider min up/down time", None))
-#if QT_CONFIG(tooltip)
-        self.mip_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer programming solver", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.opfConsiderRampsCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Consider generation ramps", None))
-#endif // QT_CONFIG(tooltip)
-        self.opfConsiderRampsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Consider ramps", None))
-        self.label_15.setText(QCoreApplication.translate("mainWindow", u"MIP framework", None))
-#if QT_CONFIG(tooltip)
-        self.mip_framework_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the external mixed integer programming solver", None))
-#endif // QT_CONFIG(tooltip)
-        self.label_73.setText(QCoreApplication.translate("mainWindow", u"Optimal Power Flow", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("mainWindow", u"General settings", None))
         self.label_128.setText(QCoreApplication.translate("mainWindow", u"Verbose", None))
         self.label_42.setText(QCoreApplication.translate("mainWindow", u"Method", None))
@@ -6249,9 +6253,10 @@ class Ui_mainWindow(object):
         self.opfMaximizeExcahngeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Maximize area exchange", None))
         self.skipOpfGenerationLimitsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Skip generation limits", None))
         self.label_72.setText("")
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Opf", None))
+        self.label_73.setText(QCoreApplication.translate("mainWindow", u"Optimal Power Flow", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Opf", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Optimal power flow settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Optimal power flow settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ntc_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Net transfer capacity settings", None))
@@ -6309,9 +6314,9 @@ class Ui_mainWindow(object):
         self.label_96.setToolTip(QCoreApplication.translate("mainWindow", u"Select the solver in the OPF tab and the areas in the areas tab", None))
 #endif // QT_CONFIG(tooltip)
         self.label_96.setText(QCoreApplication.translate("mainWindow", u"Net transfer capacity", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.ntc_tab), QCoreApplication.translate("mainWindow", u"Ntc", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.ntc_tab), QCoreApplication.translate("mainWindow", u"Ntc", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.ntc_tab), QCoreApplication.translate("mainWindow", u"Network transfer capacity related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.ntc_tab), QCoreApplication.translate("mainWindow", u"Network transfer capacity related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.nodal_capacity_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Nodal capacity hosting options", None))
@@ -6340,9 +6345,9 @@ class Ui_mainWindow(object):
         self.label_140.setToolTip(QCoreApplication.translate("mainWindow", u"Select the solver in the OPF tab and the areas in the areas tab", None))
 #endif // QT_CONFIG(tooltip)
         self.label_140.setText(QCoreApplication.translate("mainWindow", u"Nodal hosting capacity", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.nodal_capacity_tab), QCoreApplication.translate("mainWindow", u"Nhc", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.nodal_capacity_tab), QCoreApplication.translate("mainWindow", u"Nhc", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.nodal_capacity_tab), QCoreApplication.translate("mainWindow", u"Nodal hosting capacity related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.nodal_capacity_tab), QCoreApplication.translate("mainWindow", u"Nodal hosting capacity related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.transfer_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Area transfer settings", None))
@@ -6351,9 +6356,9 @@ class Ui_mainWindow(object):
         self.label_92.setText("")
         self.label_41.setText(QCoreApplication.translate("mainWindow", u"From", None))
         self.label_21.setText(QCoreApplication.translate("mainWindow", u"To", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.transfer_tab), QCoreApplication.translate("mainWindow", u"Txfr", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.transfer_tab), QCoreApplication.translate("mainWindow", u"Txfr", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.transfer_tab), QCoreApplication.translate("mainWindow", u"Area, Zone, etc related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.transfer_tab), QCoreApplication.translate("mainWindow", u"Area, Zone, etc related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.contingencies_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Contingencies settings", None))
@@ -6398,9 +6403,9 @@ class Ui_mainWindow(object):
         self.label_1322.setText(QCoreApplication.translate("mainWindow", u"SRAP top N", None))
         self.label_119.setText(QCoreApplication.translate("mainWindow", u"Contingency engine", None))
         self.srap_deadband_doubleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" %", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.contingencies_tab), QCoreApplication.translate("mainWindow", u"Con", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.contingencies_tab), QCoreApplication.translate("mainWindow", u"Con", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.contingencies_tab), QCoreApplication.translate("mainWindow", u"Contingencies related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.contingencies_tab), QCoreApplication.translate("mainWindow", u"Contingencies related settings", None))
 #endif // QT_CONFIG(tooltip)
         self.label_414.setText("")
         self.label_408.setText(QCoreApplication.translate("mainWindow", u"Rms", None))
@@ -6438,9 +6443,9 @@ class Ui_mainWindow(object):
         self.ss_assessment_time_spinBox_2.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
         self.label_417.setText("")
         self.label_416.setText(QCoreApplication.translate("mainWindow", u"Assessment time", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Dyn", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Dyn", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Rms simulation settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.rms_tab), QCoreApplication.translate("mainWindow", u"Rms simulation settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ml_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Machine-learning related settings", None))
@@ -6520,9 +6525,9 @@ class Ui_mainWindow(object):
         self.tolerance_stochastic_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
         self.label_156.setText("")
         self.label_55.setText(QCoreApplication.translate("mainWindow", u"Method", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.ml_tab), QCoreApplication.translate("mainWindow", u"ML", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.ml_tab), QCoreApplication.translate("mainWindow", u"ML", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.ml_tab), QCoreApplication.translate("mainWindow", u"Machine learning related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.ml_tab), QCoreApplication.translate("mainWindow", u"Machine learning related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.topology_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Topology settings", None))
@@ -6542,9 +6547,9 @@ class Ui_mainWindow(object):
         self.branch_rating_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Factor to aply to the branch calculated power to use as rating</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.rating_override_checkBox.setText(QCoreApplication.translate("mainWindow", u"override values", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.topology_tab), QCoreApplication.translate("mainWindow", u"Tplgy", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.topology_tab), QCoreApplication.translate("mainWindow", u"Tplgy", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.topology_tab), QCoreApplication.translate("mainWindow", u"Topology related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.topology_tab), QCoreApplication.translate("mainWindow", u"Topology related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.file_tab.setToolTip(QCoreApplication.translate("mainWindow", u"File settings", None))
@@ -6587,9 +6592,9 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.cgmes_boundary_set_label.setText(QCoreApplication.translate("mainWindow", u"...", None))
         self.label_137.setText("")
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.file_tab), QCoreApplication.translate("mainWindow", u"File", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.file_tab), QCoreApplication.translate("mainWindow", u"File", None))
 #if QT_CONFIG(tooltip)
-        self.tabWidget_9.setTabToolTip(self.tabWidget_9.indexOf(self.file_tab), QCoreApplication.translate("mainWindow", u"File related settings", None))
+        self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.file_tab), QCoreApplication.translate("mainWindow", u"File related settings", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.server_tableView.setToolTip(QCoreApplication.translate("mainWindow", u"Server jobs currently on cue", None))
@@ -6608,8 +6613,8 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.secureServerConnectionCheckBox.setText(QCoreApplication.translate("mainWindow", u"Secure", None))
         self.server_status_label.setText(QCoreApplication.translate("mainWindow", u"...", None))
-        self.tabWidget_9.setTabText(self.tabWidget_9.indexOf(self.tab_5), QCoreApplication.translate("mainWindow", u"Server", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.SettingsTab), QCoreApplication.translate("mainWindow", u"Settings", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.tab_5), QCoreApplication.translate("mainWindow", u"Server", None))
+        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.SettingsTab), QCoreApplication.translate("mainWindow", u"Settings", None))
         self.menuProject.setTitle(QCoreApplication.translate("mainWindow", u"File", None))
         self.menuAbout.setTitle(QCoreApplication.translate("mainWindow", u"Help", None))
         self.menuActions.setTitle(QCoreApplication.translate("mainWindow", u"Actions", None))

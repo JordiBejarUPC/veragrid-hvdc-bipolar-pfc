@@ -2055,13 +2055,7 @@ class SimulationsMain(TimeEventsMain):
         add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
 
-        if self.ui.save_mip_checkBox.isChecked():
-            folder = opf_file_path()
-            dte_str = str(datetime.datetime.now()).replace(":", "_").replace("/", "-")
-            fname = f'mip_{self.circuit.name}_{dte_str}.lp'
-            export_model_fname = os.path.join(folder, fname)
-        else:
-            export_model_fname = None
+        report_formulation = self.ui.save_mip_checkBox.isChecked()
 
         # available transfer capacity inter areas
         if maximize_flows:
@@ -2114,7 +2108,7 @@ class SimulationsMain(TimeEventsMain):
             consider_ramps=consider_ramps,
             consider_time_up_down=consider_time_up_down,
             area_spinning_reserve=area_spinning_reserve,
-            export_model_fname=export_model_fname,
+            report_formulation=report_formulation,
             generate_report=generate_report,
             use_glsk_as_cost=use_glsk_as_cost,
             add_losses_approximation=add_losses_approximation,

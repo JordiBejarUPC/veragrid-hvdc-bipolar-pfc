@@ -105,7 +105,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         if self.options.solver == SolverType.LINEAR_OPF:
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=self.time_indices,
                 dispatch_mode=self.options.dispatch_mode,
@@ -124,7 +124,6 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 logger=self.logger,
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -181,6 +180,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             # set converged for all t to the value of acceptable solution
             self.results.converged = np.array([opf_vars.acceptable_solution] * opf_vars.nt)
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.NONLINEAR_OPF:
 
@@ -304,7 +306,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 # run an opf for the group interval only if the group is within the start:end boundaries
                 # DC optimal power flow
-                opf_vars = run_linear_opf_ts(
+                opf_vars, model = run_linear_opf_ts(
                     grid=self.grid,
                     time_indices=time_indices,
                     dispatch_mode=self.options.dispatch_mode,
@@ -323,7 +325,6 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                     use_glsk_as_cost=self.options.use_glsk_as_cost,
                     add_losses_approximation=self.options.add_losses_approximation,
                     logger=self.logger,
-                    export_model_fname=self.options.export_model_fname,
                     verbose=self.options.verbose,
                     robust=self.options.robust,
                     mip_framework=self.options.mip_framework

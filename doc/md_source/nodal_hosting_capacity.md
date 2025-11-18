@@ -26,7 +26,7 @@ fname = os.path.join('data', 'grids', 'IEEE 14 zip costs.veragrid')
 grid = gce.FileOpen(fname).open()
 
 # Linear OPF
-res = gce.run_linear_opf_ts(
+res, model = gce.run_linear_opf_ts(
     grid=grid,
     dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
     time_indices=None,
