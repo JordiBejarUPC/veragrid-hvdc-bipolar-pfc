@@ -222,7 +222,7 @@ def compose_system_block(grid: MultiCircuit,
 
         for param in mdl.event_dict.keys():
             if param.uid not in uid2sym_params:
-                uid2sym_params[param.uid] = f"vars[{params_array_index}]"
+                uid2sym_params[param.uid] = f"params[{params_array_index}]"
                 uid2idx_params[param.uid] =params_array_index
                 params_array_index += 1
 
