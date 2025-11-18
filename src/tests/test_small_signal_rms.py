@@ -255,7 +255,7 @@ def stability_kundur_no_shunt():
      conjugate_frequencies,
      state_matrix) = run_small_signal_stability(slv=slv,
                                                 x=x0,
-                                                params=params0,
+                                                time = 0,
                                                 verbose=1)
 
     return Eigenvalues, PFactors
