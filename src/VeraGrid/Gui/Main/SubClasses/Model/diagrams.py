@@ -223,7 +223,6 @@ class DiagramsMain(CompiledArraysMain):
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionTakePicture.triggered.connect(self.take_picture)
         self.ui.actionRecord_video.triggered.connect(self.record_video)
-        self.ui.actionDelete_selected.triggered.connect(self.delete_selected_diagram_widgets)
         self.ui.actionTry_to_fix_buses_location.triggered.connect(self.try_to_fix_buses_location)
         self.ui.actionSet_schematic_positions_from_GPS_coordinates.triggered.connect(self.set_xy_from_lat_lon)
 
@@ -310,7 +309,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         return self.ui.dataStructureTableView.model()
 
-    def get_selected_table_objects(self) -> List[ALL_DEV_TYPES]:
+    def get_selected_db_table_objects(self) -> List[ALL_DEV_TYPES]:
         """
         Get the list of selected objects
         :return: List[ALL_DEV_TYPES]
@@ -1767,7 +1766,7 @@ class DiagramsMain(CompiledArraysMain):
         Add a bus vicinity diagram
         :return:
         """
-        sel = self.get_selected_table_objects()
+        sel = self.get_selected_db_table_objects()
 
         if len(sel) > 0:
 
