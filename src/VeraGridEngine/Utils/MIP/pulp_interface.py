@@ -155,7 +155,8 @@ class PulpLpModel(AbstractLpModel):
         if isinstance(cst, bool):
             return 0
         else:
-            return self.model.addConstraint(constraint=cst, name=name)
+            self.model.addConstraint(constraint=cst, name=name)
+            return cst
 
     @staticmethod
     def sum(cst) -> LpExp:

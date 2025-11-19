@@ -115,7 +115,9 @@ class BusVars:
         data.Va = data.Va.astype(float, copy=False)
         data.Vm = data.Vm.astype(float, copy=False)
         data.Pinj = data.Pinj.astype(float, copy=False)
+        data.Pgen = data.Pgen.astype(float, copy=False)
         data.Pbalance = data.Pbalance.astype(float, copy=False)
+        data.shadow_prices = data.shadow_prices.astype(float, copy=False)
 
         return data
 
