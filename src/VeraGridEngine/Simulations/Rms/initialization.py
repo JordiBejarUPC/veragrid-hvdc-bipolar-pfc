@@ -2,13 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
 import numpy as np
 import copy
-from pygments.lexers.textfmts import TodotxtLexer
 from scipy.optimize import newton_krylov
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
