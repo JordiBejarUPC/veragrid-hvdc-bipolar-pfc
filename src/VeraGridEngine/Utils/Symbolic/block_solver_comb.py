@@ -15,7 +15,7 @@ from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, DiffBlock
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, _compile_parameters_equations, _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_params_eq
 from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar, LagVar
@@ -27,7 +27,6 @@ from scipy.sparse.linalg import gmres, spilu, LinearOperator, MatrixRankWarning
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec
 
-# from VeraGridEngine.Utils.Symbolic.events import EventParam
 
 NUMBER = Union[int, float]
 NAME = 'name'
@@ -395,8 +394,9 @@ class DiffBlockSolver(BlockSolver):
             self._algebraic_eqs.extend(b.algebraic_eqs)
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
-            self._parameters.extend(b.parameters)
-            self._parameters_eqs.extend(b.parameters_eqs)
+            for param, eq in b.event_dict.items():
+                self._parameters.extend([param])
+                self._parameters_eqs.extend([eq])
 
             if isinstance(b, DiffBlock):
                 self._diff_vars.extend(b.diff_vars)
@@ -489,7 +489,7 @@ class DiffBlockSolver(BlockSolver):
                 self._lag_vars_set.add(lag_var)
                 eq = eq.subs({var: approximation})
             self._state_eqs_substituted[iter] = eq
-            ## fidd vars
+            ## find vars
         for iter, eq in enumerate(self._state_eqs_substituted):
             for var in self._diff_vars:
                 deriv = eq.diff(var)
@@ -886,7 +886,7 @@ class DiffBlockSolver(BlockSolver):
             return self._simulate_fixed(t0, t_end, h, x0, params0, stepper="rk4")
         if method == "implicit_euler":
             # print(f'Initialization time is {time_initialization}')
-            return self._simulate_implicit_euler(
+            return self._simulate_implicit_euler_diff(
                 t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, lag0=lag0, params0=params0,
                 tol=newton_tol, max_iter=newton_max_iter, verbose=verbose,
                 followed_vars=followed_vars,
@@ -894,7 +894,7 @@ class DiffBlockSolver(BlockSolver):
         raise ValueError(f"Unknown method '{method}'")
 
     # TODO: this function needs to be updated with current block_solver simulate function
-    def _simulate_implicit_euler(self, t0, t_end, h, x0, dx0, lag0, params0: np.ndarray, time_var: Var, tol=1e-8,
+    def _simulate_implicit_euler_diff(self, t0, t_end, h, x0, dx0, lag0, params0: np.ndarray, time_var: Var, tol=1e-8,
                                  max_iter=1e6, followed_vars=None, verbose=False):
         """
         :param t0:
@@ -1192,12 +1192,12 @@ class DiffBlockSolver(BlockSolver):
                 for child_block in block.get_all_blocks():
                     if not hasattr(child_block, 'external_mapping'):
                         continue
-                    if not DynamicVarType.P in child_block.external_mapping.keys():
+                    if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
                         continue
-                    Pg = child_block.external_mapping[DynamicVarType.P]
-                    Qg = child_block.external_mapping[DynamicVarType.Q]
-                    Vm = child_block.external_mapping[DynamicVarType.Vm]
-                    Va = child_block.external_mapping[DynamicVarType.Va]
+                    Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
+                    Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
+                    Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
+                    Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
                     found = True
                     break
 
