@@ -1184,6 +1184,19 @@ class DiffBlockSolver(BlockSolver):
     def pseudo_transient(self, x0: np.ndarray, init_guess: dict[Var, float], res, grid: MultiCircuit,
                          fix='V', dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                          type: str = None):
+        """
+        :param x0: random init guess
+        :param init_guess: init_guess for power flow vars
+        :param res:
+        :param grid:
+        :param fix:
+        :param dtau0:
+        :param max_iter:
+        :param plot:
+        :param predictor:
+        :param type:
+
+        """
         for block in self.block_system.children:
             found = False
             if getattr(block, 'pseudo_transient', False):
@@ -1203,28 +1216,22 @@ class DiffBlockSolver(BlockSolver):
 
                 if not found:
                     continue
+                bus_block = DiffBlock()
 
                 if fix == 'P':
                     delete_vars_from_block(block, [Pg, Qg])
                     bus_block = DiffBlock(
-                        algebraic_vars=[Vm, Va],
-                        parameters=[Pg, Qg, ],
-                        parameters_eqs=[
-                            Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
-                            Const(float(np.imag(res.Sbus[bus] / grid.Sbase))),
-                        ]
-                    )
+                        algebraic_vars=[Vm, Va])
+                    bus_block.event_dict= {Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
+                                     Qg: Const(float(np.imag(res.Sbus[bus] / grid.Sbase)))}
+
 
                 elif fix == 'V':
                     delete_vars_from_block(block, [Va, Vm])
                     bus_block = DiffBlock(
-                        algebraic_vars=[Pg, Qg],
-                        parameters=[Vm, Va],
-                        parameters_eqs=[
-                            Const(float(np.abs(res.voltage[bus]))),
-                            Const(float(np.angle(res.voltage[bus]))),
-                        ]
-                    )
+                        algebraic_vars=[Pg, Qg])
+                    bus_block.event_dict ={Vm: Const(float(np.abs(res.voltage[bus]))),
+                                           Va: Const(float(np.angle(res.voltage[bus])))}
 
                 elif fix == 'I':
                     Im = Var('Im')
@@ -1243,36 +1250,27 @@ class DiffBlockSolver(BlockSolver):
                             Id - (-Im * sin(Ia - delta)),
                             Iq - Im * cos(Ia - delta),
                         ],
-                        algebraic_vars=[Pg, Qg, Vm, Va],
-                        parameters=[Im, Ia],
-                        parameters_eqs=[
-                            Const(float(np.abs(i))),
-                            Const(float(np.angle(i))),
-                        ]
-                    )
+                        algebraic_vars=[Pg, Qg, Vm, Va])
+                    bus_block.event_dict = {Im: Const(float(np.abs(i))),
+                                               Ia: Const(float(np.angle(i)))}
 
                 elif fix == 'P&V':
                     delete_vars_from_block(block, [Pg, Qg, Vm, Va])
-                    bus_block = DiffBlock(
-                        parameters=[Pg, Qg, Vm, Va],
-                        parameters_eqs=[
-                            Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
-                            Const(float(np.imag(res.Sbus[bus] / grid.Sbase))),
-                            Const(float(np.abs(res.voltage[bus]))),
-                            Const(float(np.angle(res.voltage[bus]))),
-                        ]
-                    )
+                    bus_block = DiffBlock()
+
+                    bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
+                                            Qg: Const(float(np.imag(res.Sbus[bus] / grid.Sbase))),
+                                            Vm: Const(float(np.abs(res.voltage[bus]))),
+                                            Va: Const(float(np.angle(res.voltage[bus])))}
+
 
                 elif fix == 'mixed':
                     delete_vars_from_block(block, [Vm, Va, Pg, Qg])
                     bus_block = DiffBlock(
-                        algebraic_vars=[Va, Qg],
-                        parameters=[Vm, Pg],
-                        parameters_eqs=[
-                            Const(float(np.abs(res.voltage[bus]))),
-                            Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
-                        ]
-                    )
+                        algebraic_vars=[Va, Qg])
+                    bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus]))),
+                                             Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase)))}
+
                 init_block = DiffBlock(
                     children=[block, bus_block]
                 )
@@ -1655,7 +1653,7 @@ class DiffBlockSolver(BlockSolver):
         return x_new, init_guess
 
     def pseudo_transient_daes(self, x0, init_guess={}, plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
-                              predictor=False, max_iter=8e4, max_tries=200, verbose=False):
+                              predictor=False, max_iter: float = 8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
         lag = np.zeros(len(self.uid2idx_lag))
         dtau = dtau0
