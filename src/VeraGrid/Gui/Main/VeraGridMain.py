@@ -43,6 +43,11 @@ class VeraGridMainGUI(ScriptingMain):
         self.setWindowTitle('VeraGrid ' + __VeraGrid_VERSION__)
         self.setAcceptDrops(True)
 
+        self.ui.mainTabWidget.setCurrentIndex(0)
+        self.ui.modelTabWidget.setCurrentIndex(0)
+        self.ui.settingsTabWidget.setCurrentIndex(0)
+        self.ui.resultsTabWidget.setCurrentIndex(0)
+
         ################################################################################################################
         # Set splitters
         ################################################################################################################
@@ -70,7 +75,7 @@ class VeraGridMainGUI(ScriptingMain):
         self.modify_ui_options_according_to_the_engine()
 
         # this is the contingency planner tab, invisible until done
-        self.ui.tabWidget_3.setTabVisible(4, True)
+        self.ui.modelTabWidget.setTabVisible(4, True)
 
         self.clear_results()
 

@@ -19,10 +19,122 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
                                          ContingencyOperationTypes)
-from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
+# from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
 
 
-def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger(),
+def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
+    """
+    creates a dictionary with the types and the circuit objects
+    :return: Dictionary instance
+    """
+
+    # this list must be sorted in dependency order so that the
+    # loading algorithm is able to find the object substitutions
+
+    return {
+        'modelling_authority': dev.ModellingAuthority(),
+
+        'area': dev.Area(),
+        'zone': dev.Zone(),
+
+        'country': dev.Country(),
+        'community': dev.Community(),
+        'region': dev.Region(),
+        'municipality': dev.Municipality(),
+
+        'substation': dev.Substation(),
+        'voltage_level': dev.VoltageLevel(),
+
+        'technology': dev.Technology(),
+
+        'fuel': dev.Fuel(),
+
+        'emission': dev.EmissionGas(),
+
+        'facility': dev.Facility(),
+
+        'rms_model_template': dev.RmsModelTemplate(),
+
+        'bus': dev.Bus(),
+
+        'bus_bar': dev.BusBar(),
+
+        'load': dev.Load(),
+
+        'static_generator': dev.StaticGenerator(),
+
+        'battery': dev.Battery(),
+
+        'generator': dev.Generator(),
+
+        'shunt': dev.Shunt(),
+
+        'linear_shunt': dev.ControllableShunt(),
+
+        'external_grid': dev.ExternalGrid(),
+
+        'current_injection': dev.CurrentInjection(),
+
+        'wires': dev.Wire(),
+        'overhead_line_types': dev.OverheadLineType(),
+        'underground_cable_types': dev.UndergroundLineType(),
+        'sequence_line_types': dev.SequenceLineType(),
+        'transformer_types': dev.TransformerType(),
+
+        'branch_group': dev.BranchGroup(),
+
+        'branch': dev.Branch(),
+        'transformer2w': dev.Transformer2W(),
+
+        'windings': dev.Winding(),
+        'transformer3w': dev.Transformer3W(),
+
+        'line': dev.Line(),
+        'dc_line': dev.DcLine(),
+
+        'hvdc': dev.HvdcLine(),
+
+        'vsc': dev.VSC(),
+        'upfc': dev.UPFC(),
+
+        'series_reactance': dev.SeriesReactance(),
+
+        'switch': dev.Switch(),
+
+        'contingency_group': dev.ContingencyGroup(),
+        'contingency': dev.Contingency(),
+        'short_circuit_definition': dev.ShortCircuitDefinition(),
+
+        'remedial_action_group': dev.RemedialActionGroup(),
+        'remedial_action': dev.RemedialAction(),
+
+        'investments_group': dev.InvestmentsGroup(),
+        'investment': dev.Investment(),
+
+        'fluid_node': dev.FluidNode(),
+        'fluid_path': dev.FluidPath(),
+        'fluid_turbine': dev.FluidTurbine(),
+        'fluid_pump': dev.FluidPump(),
+        'fluid_p2x': dev.FluidP2x(),
+
+        'pi_measurement': dev.PiMeasurement(),
+        'qi_measurement': dev.QiMeasurement(),
+        'pf_measurement': dev.PfMeasurement(),
+        'qf_measurement': dev.QfMeasurement(),
+        'if_measurement': dev.IfMeasurement(),
+        'pt_measurement': dev.PtMeasurement(),
+        'qt_measurement': dev.QtMeasurement(),
+        'it_measurement': dev.ItMeasurement(),
+        'vm_measurement': dev.VmMeasurement(),
+        'va_measurement': dev.VaMeasurement(),
+        'pg_measurement': dev.PgMeasurement(),
+        'qg_measurement': dev.QgMeasurement(),
+
+    }
+
+
+def gather_model_as_data_frames(circuit: MultiCircuit,
+                                logger: Logger = Logger(),
                                 legacy: bool = False) -> Dict[str, pd.DataFrame]:
     """
     Pack the circuit information into tables (DataFrames)
@@ -35,7 +147,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger()
 
     # get the master time profile
     time_profile = circuit.time_profile
-    nt = len(time_profile) if time_profile is not None else 0
+    nt = circuit.get_time_number()
 
     ########################################################################################################
     # declare objects to iterate  name: [sample object, list of objects, headers]
@@ -1398,11 +1510,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                 data_list = model_data.get(object_type_key, None)
 
                 if data_list is not None:
-                    devices, devices_dict = parse_object_type_from_json(template_elm=template_elm,
-                                                                        data_list=data_list,
-                                                                        elements_dict_by_type=elements_dict_by_type,
-                                                                        time_profile=circuit.time_profile,
-                                                                        logger=logger)
+                    devices, devices_dict = parse_object_type_from_json(
+                        template_elm=template_elm,
+                        data_list=data_list,
+                        elements_dict_by_type=elements_dict_by_type,
+                        time_profile=circuit.time_profile,
+                        logger=logger
+                    )
 
                     # set/augment the dictionary per type for later
                     prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())

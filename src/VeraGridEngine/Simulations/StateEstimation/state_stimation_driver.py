@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Union
+from typing import Union, Dict
 
 from VeraGridEngine.Simulations.StateEstimation.observability_analysis import \
     check_for_observability_and_return_unobservable_buses, add_pseudo_measurements_for_unobservable_buses
@@ -158,57 +158,62 @@ class StateEstimation(DriverTemplate):
         se_input = StateEstimationInput()
 
         # bus measurements
-        bus_dict = circuit.get_bus_index_dict()
+        bus_dict = circuit.get_bus_idtag_index_dict()
 
         for elm in circuit.get_p_measurements():
-            se_input.p_idx.append(bus_dict[elm.api_object])
+            se_input.p_idx.append(bus_dict[elm.device_idtag])
             se_input.p_inj.append(elm)
 
         for elm in circuit.get_q_measurements():
-            se_input.q_idx.append(bus_dict[elm.api_object])
+            se_input.q_idx.append(bus_dict[elm.device_idtag])
             se_input.q_inj.append(elm)
 
+        # build gen->bus index dict
+        gen_dict: Dict[str, int] = dict()
+        for gen in circuit.generators:
+            gen_dict[gen.idtag] = bus_dict[gen.bus.idtag]
+
         for elm in circuit.get_pg_measurements():
-            se_input.pg_idx.append(bus_dict[elm.api_object.bus])
+            se_input.pg_idx.append(gen_dict[elm.device_idtag])
             se_input.pg_inj.append(elm)
 
         for elm in circuit.get_qg_measurements():
-            se_input.qg_idx.append(bus_dict[elm.api_object.bus])
+            se_input.qg_idx.append(gen_dict[elm.device_idtag])
             se_input.qg_inj.append(elm)
 
         for elm in circuit.get_vm_measurements():
-            se_input.vm_idx.append(bus_dict[elm.api_object])
+            se_input.vm_idx.append(bus_dict[elm.device_idtag])
             se_input.vm_value.append(elm)
 
         for elm in circuit.get_va_measurements():
-            se_input.va_idx.append(bus_dict[elm.api_object])
+            se_input.va_idx.append(bus_dict[elm.device_idtag])
             se_input.va_value.append(elm)
 
         # branch measurements
-        branch_dict = circuit.get_branches_index_dict(add_vsc=False, add_hvdc=False, add_switch=True)
+        branch_dict = circuit.get_branches_idtag_index_dict(add_vsc=False, add_hvdc=False, add_switch=True)
 
         for elm in circuit.get_pf_measurements():
-            se_input.pf_idx.append(branch_dict[elm.api_object])
+            se_input.pf_idx.append(branch_dict[elm.device_idtag])
             se_input.pf_value.append(elm)
 
         for elm in circuit.get_pt_measurements():
-            se_input.pt_idx.append(branch_dict[elm.api_object])
+            se_input.pt_idx.append(branch_dict[elm.device_idtag])
             se_input.pt_value.append(elm)
 
         for elm in circuit.get_qf_measurements():
-            se_input.qf_idx.append(branch_dict[elm.api_object])
+            se_input.qf_idx.append(branch_dict[elm.device_idtag])
             se_input.qf_value.append(elm)
 
         for elm in circuit.get_qt_measurements():
-            se_input.qt_idx.append(branch_dict[elm.api_object])
+            se_input.qt_idx.append(branch_dict[elm.device_idtag])
             se_input.qt_value.append(elm)
 
         for elm in circuit.get_if_measurements():
-            se_input.if_idx.append(branch_dict[elm.api_object])
+            se_input.if_idx.append(branch_dict[elm.device_idtag])
             se_input.if_value.append(elm)
 
         for elm in circuit.get_it_measurements():
-            se_input.it_idx.append(branch_dict[elm.api_object])
+            se_input.it_idx.append(branch_dict[elm.device_idtag])
             se_input.it_value.append(elm)
 
         return se_input

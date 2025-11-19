@@ -22,6 +22,7 @@ from VeraGridEngine.Devices.Parents.editable_device import get_at
 class Generator(GeneratorParent):
     __slots__ = (
         'enabled_dispatch',
+        '_enabled_dispatch_prof',
         'R1', 'X1', 'R0', 'X0', 'R2', 'X2',
         'Pf',
         '_Pf_prof',
@@ -61,8 +62,8 @@ class Generator(GeneratorParent):
         'init_params',
         'P_g',
         'Q_g',
-        'Vm',
-        'Va'
+        'must_run',
+        '_must_run_prof'
     )
 
     def __init__(self,
@@ -105,11 +106,11 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
-                 # init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
                  init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  ###
-                 build_status: BuildStatus = BuildStatus.Commissioned):
+                 build_status: BuildStatus = BuildStatus.Commissioned,
+                 must_run: bool = False):
         """
-        Generator.
+
         :param name: Name of the generator
         :param idtag: UUID code
         :param code: secondary code
@@ -121,13 +122,15 @@ class Generator(GeneratorParent):
         :param Qmax: Maximum reactive power in MVAr
         :param Snom: Nominal apparent power in MVA
         :param active: Is the generator active?
-        :param Pmin:
-        :param Pmax:
-        :param Cost:
+        :param Pmin: Minimum active power
+        :param Pmax: Maximum active power
+        :param Cost: Proportional cost [e/MWh]
+        :param Cost2: Quadratic cost [e/MWh^2]
+        :param Cost0: Fixed cost [e]
         :param Sbase: Nominal apparent power in MVA
         :param enabled_dispatch: Is the generator enabled for OPF?
-        :param mttf: Mean time to failure in hours
-        :param mttr: Mean time to recovery in hours
+        :param mttf: Mean time to failure [h]
+        :param mttr: Mean time to recovery [h]
         :param q_points: list of reactive capability curve points [(P1, Qmin1, Qmax1), (P2, Qmin2, Qmax2), ...]
         :param use_reactive_power_curve: Use the reactive power curve? otherwise use the plain old limits
         :param r1:
@@ -136,9 +139,20 @@ class Generator(GeneratorParent):
         :param x0:
         :param r2:
         :param x2:
+        :param freq:
+        :param tm0:
+        :param M:
+        :param D:
+        :param omega_ref:
+        :param vf:
+        :param Kp:
+        :param Ki:
         :param capex:
         :param opex:
+        :param srap_enabled:
+        :param init_params:
         :param build_status:
+        :param must_run:
         """
         GeneratorParent.__init__(self,
                                  name=name,
@@ -160,8 +174,11 @@ class Generator(GeneratorParent):
                                  device_type=DeviceType.GeneratorDevice)
 
         # is the device active for active power dispatch?
-
         self.enabled_dispatch = bool(enabled_dispatch)
+        self._enabled_dispatch_prof = Profile(default_value=self.enabled_dispatch, data_type=bool)
+
+        self.must_run = bool(must_run)
+        self._must_run_prof = Profile(default_value=self.must_run, data_type=bool)
 
         # positive sequence resistance
         self.R1 = float(r1)
@@ -248,10 +265,8 @@ class Generator(GeneratorParent):
         self.Kp = Kp
         self.Ki = Ki
         self.init_params = init_params
-        self.Vm = Var('Vm_placeholder')
-        self.Va = Var('Va_placeholder')
-        self.P_g = Var('P_g')
-        self.Q_g = Var('Q_g')
+        self.P_g = Var("P_g")
+        self.Q_g = Var("Q_g")
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 
@@ -293,7 +308,10 @@ class Generator(GeneratorParent):
         self.register(key='RampDown', units='MW/h', tpe=float,
                       definition='Maximum amount of generation decrease per hour.')
 
-        self.register(key='enabled_dispatch', units='', tpe=bool, definition='Enabled for dispatch? Used in OPF.')
+        self.register(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
+                      definition='Enabled for dispatch? Used in OPF.')
+        self.register(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
+                      definition='P >= Pmin constraint. Used in OPF with unit commitment active.')
 
         self.register(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
                       definition='List of emissions', display=False)
@@ -445,6 +463,54 @@ class Generator(GeneratorParent):
         """
         return get_at(self.Cost0, self.Cost0_prof, t)
 
+    @property
+    def enabled_dispatch_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._enabled_dispatch_prof
+
+    @enabled_dispatch_prof.setter
+    def enabled_dispatch_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._enabled_dispatch_prof = val
+        elif isinstance(val, np.ndarray):
+            self._enabled_dispatch_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
+
+    def get_enabled_dispatch_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.enabled_dispatch, self.enabled_dispatch_prof, t)
+
+    @property
+    def must_run_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._must_run_prof
+
+    @must_run_prof.setter
+    def must_run_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._must_run_prof = val
+        elif isinstance(val, np.ndarray):
+            self._must_run_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
+
+    def get_must_run_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.must_run, self.must_run_prof, t)
+
     def plot_profiles(self, time=None, show_fig=True):
         """
         Plot the time series results of this object
@@ -477,10 +543,6 @@ class Generator(GeneratorParent):
 
             if show_fig:
                 plt.show()
-
-    def assign_input_vars_and_params(self):
-        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def fix_inconsistencies(self, logger: Logger, min_vset=0.98, max_vset=1.02):
         """
@@ -595,7 +657,6 @@ class Generator(GeneratorParent):
             Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
             Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
-
             block = Block(
                 state_vars=[delta, omega],
                 state_eqs=[
@@ -658,5 +719,4 @@ class Generator(GeneratorParent):
                                 Kp: Const(self.Kp),
                                 Ki: Const(self.Ki)}
 
-            self.rms_model.model =block
-
+            self.rms_model.model = block

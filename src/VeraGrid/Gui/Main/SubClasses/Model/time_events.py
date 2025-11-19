@@ -264,105 +264,107 @@ class TimeEventsMain(DataBaseTableMain):
         if dev_type_text is not None:
             magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
-            magnitude = magnitudes[idx]
 
-            dev_type = self.circuit.device_type_name_dict[dev_type_text]
-            objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
-            # Assign profiles
-            if len(objects) > 0:
+            if idx > -1:
+                magnitude = magnitudes[idx]
 
-                indices = self.ui.profiles_tableView.selectedIndexes()
+                dev_type = self.circuit.device_type_name_dict[dev_type_text]
+                objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
+                # Assign profiles
+                if len(objects) > 0:
 
-                # attr = objects[0].properties_with_profile[magnitude]
+                    indices = self.ui.profiles_tableView.selectedIndexes()
 
-                model = self.ui.profiles_tableView.model()
+                    # attr = objects[0].properties_with_profile[magnitude]
 
-                mod_cols = list()
+                    model = self.ui.profiles_tableView.model()
 
-                if len(indices) == 0:
-                    # no index was selected
-                    for i, elm in enumerate(objects):
+                    mod_cols = list()
 
-                        # get the property object
-                        gc_prop = elm.registered_properties[magnitude]
+                    if len(indices) == 0:
+                        # no index was selected
+                        for i, elm in enumerate(objects):
 
-                        # get the profile
-                        profile = elm.get_profile_by_prop(prop=gc_prop)
+                            # get the property object
+                            gc_prop = elm.registered_properties[magnitude]
 
-                        # compute the dense array (this is the simple way of doing this)
-                        array = profile.toarray()
+                            # get the profile
+                            profile = elm.get_profile_by_prop(prop=gc_prop)
 
-                        if operation == '+':
-                            mod_array = (array + value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            # compute the dense array (this is the simple way of doing this)
+                            array = profile.toarray()
 
-                        elif operation == '-':
-                            mod_array = (array - value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            if operation == '+':
+                                mod_array = (array + value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == '*':
-                            mod_array = (array * value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '-':
+                                mod_array = (array - value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == '/':
-                            mod_array = (array / value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '*':
+                                mod_array = (array * value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == 'set':
-                            mod_array = (np.ones(len(array)) * value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '/':
+                                mod_array = (array / value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        else:
-                            raise Exception('Operation not supported: ' + str(operation))
+                            elif operation == 'set':
+                                mod_array = (np.ones(len(array)) * value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        # apply the newly computed array
-                        profile.set(arr=mod_array)
+                            else:
+                                raise Exception('Operation not supported: ' + str(operation))
 
-                else:
-                    # indices were selected ...
+                            # apply the newly computed array
+                            profile.set(arr=mod_array)
 
-                    for idx in indices:
+                    else:
+                        # indices were selected ...
 
-                        # get the device
-                        elm = objects[idx.column()]
+                        for idx in indices:
 
-                        # get the property object
-                        gc_prop = elm.registered_properties[magnitude]
+                            # get the device
+                            elm = objects[idx.column()]
 
-                        # get the profile
-                        profile = elm.get_profile_by_prop(prop=gc_prop)
+                            # get the property object
+                            gc_prop = elm.registered_properties[magnitude]
 
-                        # compute the dense array (this is the simple way of doing this)
-                        array = profile.toarray().copy()
+                            # get the profile
+                            profile = elm.get_profile_by_prop(prop=gc_prop)
 
-                        if operation == '+':
-                            array[idx.row()] += value
-                            mod_cols.append(idx.column())
+                            # compute the dense array (this is the simple way of doing this)
+                            array = profile.toarray().copy()
 
-                        elif operation == '-':
-                            array[idx.row()] -= value
-                            mod_cols.append(idx.column())
+                            if operation == '+':
+                                array[idx.row()] += value
+                                mod_cols.append(idx.column())
 
-                        elif operation == '*':
-                            array[idx.row()] *= value
-                            mod_cols.append(idx.column())
+                            elif operation == '-':
+                                array[idx.row()] -= value
+                                mod_cols.append(idx.column())
 
-                        elif operation == '/':
-                            array[idx.row()] /= value
-                            mod_cols.append(idx.column())
+                            elif operation == '*':
+                                array[idx.row()] *= value
+                                mod_cols.append(idx.column())
 
-                        elif operation == 'set':
-                            array[idx.row()] = value
-                            mod_cols.append(idx.column())
+                            elif operation == '/':
+                                array[idx.row()] /= value
+                                mod_cols.append(idx.column())
 
-                        else:
-                            raise Exception('Operation not supported: ' + str(operation))
+                            elif operation == 'set':
+                                array[idx.row()] = value
+                                mod_cols.append(idx.column())
 
-                        # apply the newly computed array
-                        profile.set(arr=array)
+                            else:
+                                raise Exception('Operation not supported: ' + str(operation))
 
-                # update model
-                model.update()
+                            # apply the newly computed array
+                            profile.set(arr=array)
+
+                    # update model
+                    model.update()
 
     def set_profile_as_linear_combination(self):
         """

@@ -105,29 +105,25 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         if self.options.solver == SolverType.LINEAR_OPF:
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=self.time_indices,
+                dispatch_mode=self.options.dispatch_mode,
                 solver_type=self.options.mip_solver,
                 zonal_grouping=self.options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
                 contingency_groups_used=self.grid.contingency_groups,
-                unit_commitment=self.options.unit_commitment,
                 ramp_constraints=self.options.consider_ramps,
                 consider_time_up_down=self.options.consider_time_up_down,
                 area_spinning_reserve=self.options.area_spinning_reserve,
-                generation_expansion_planning=self.options.generation_expansion_planning,
-                all_generators_fixed=False,
                 lodf_threshold=self.options.lodf_tolerance,
-                maximize_inter_area_flow=self.options.maximize_flows,
                 inter_aggregation_info=self.options.inter_aggregation_info,
                 use_glsk_as_cost=self.options.use_glsk_as_cost,
                 add_losses_approximation=self.options.add_losses_approximation,
                 logger=self.logger,
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -184,6 +180,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             # set converged for all t to the value of acceptable solution
             self.results.converged = np.array([opf_vars.acceptable_solution] * opf_vars.nt)
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.NONLINEAR_OPF:
 
@@ -307,29 +306,25 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 # run an opf for the group interval only if the group is within the start:end boundaries
                 # DC optimal power flow
-                opf_vars = run_linear_opf_ts(
+                opf_vars, model = run_linear_opf_ts(
                     grid=self.grid,
                     time_indices=time_indices,
+                    dispatch_mode=self.options.dispatch_mode,
                     solver_type=self.options.mip_solver,
                     zonal_grouping=self.options.zonal_grouping,
                     skip_generation_limits=self.options.skip_generation_limits,
                     consider_contingencies=self.options.consider_contingencies,
                     contingency_groups_used=self.options.contingency_groups_used,
-                    unit_commitment=self.options.unit_commitment,
                     ramp_constraints=self.options.consider_ramps,
                     consider_time_up_down=self.options.consider_time_up_down,
                     area_spinning_reserve=self.options.area_spinning_reserve,
-                    generation_expansion_planning=self.options.generation_expansion_planning,
-                    all_generators_fixed=False,
                     lodf_threshold=self.options.lodf_tolerance,
-                    maximize_inter_area_flow=self.options.maximize_flows,
                     inter_aggregation_info=self.options.inter_aggregation_info,
                     energy_0=energy_0,
                     fluid_level_0=fluid_level_0,
                     use_glsk_as_cost=self.options.use_glsk_as_cost,
                     add_losses_approximation=self.options.add_losses_approximation,
                     logger=self.logger,
-                    export_model_fname=self.options.export_model_fname,
                     verbose=self.options.verbose,
                     robust=self.options.robust,
                     mip_framework=self.options.mip_framework

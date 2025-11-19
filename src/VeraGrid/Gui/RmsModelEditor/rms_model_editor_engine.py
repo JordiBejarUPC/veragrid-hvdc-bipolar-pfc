@@ -5,14 +5,13 @@
 from __future__ import annotations
 
 import uuid
-import pdb
 import sys
 import copy
 
 from enum import Enum, auto
 from typing import List, Dict, Optional, Union, Sequence, Any
 from dataclasses import dataclass
-from functools import partial
+import VeraGrid.Gui.gui_functions as gf
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
@@ -44,7 +43,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
-
+from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType
@@ -57,6 +56,7 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
+
 def change_font_size(obj, font_size: int):
     """
 
@@ -67,6 +67,7 @@ def change_font_size(obj, font_size: int):
     font1 = obj.font()
     font1.setPointSize(font_size)
     obj.setFont(font1)
+
 
 def _get_var_name_from_subsys(subsys, is_input: bool, index: int) -> str:
     """
@@ -133,7 +134,6 @@ def change_model_params(mdl_old, mdl_new):
             change_model_params(submodel_old, submodel_new)
 
 
-
 @dataclass
 class BlockBridge:
     gui: "BlockItem"  # visual node
@@ -143,7 +143,6 @@ class BlockBridge:
 
 
 class BlockType(Enum):
-
     CONST = auto()
     GAIN = auto()
     SUM = auto()
@@ -525,7 +524,6 @@ class BlockItem(QGraphicsRectItem):
 
         list_widget = QListWidget()
         for v in var_list:
-
             list_widget.addItem(v.name)
         layout.addWidget(list_widget)
 
@@ -568,8 +566,10 @@ class BlockItem(QGraphicsRectItem):
 
         return layout
 
+
 class ModelHostItem(QGraphicsRectItem):
-    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, api_object, templates_list, templates_catalogue):
+    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, api_object, templates_list,
+                 templates_catalogue):
         """
 
         :param block_sys: Block
@@ -632,7 +632,9 @@ class ModelHostItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
 
-        editor_window = RmsModelEditorGUI(api_object_model_host=self.model_host, templates_list=self.templates_list, templates_catalogue=self.templates_catalogue, api_object_name = self.api_object_name, api_object= self.api_object)
+        editor_window = RmsModelEditorGUI(api_object_model_host=self.model_host, templates_list=self.templates_list,
+                                          templates_catalogue=self.templates_catalogue,
+                                          api_object_name=self.api_object_name, api_object=self.api_object)
         editor_window.show()
 
         self.editor_window = editor_window
@@ -748,7 +750,6 @@ class ModelHostItem(QGraphicsRectItem):
 
         list_widget = QListWidget()
         for v in var_list:
-
             list_widget.addItem(v.name)
         layout.addWidget(list_widget)
 
@@ -791,6 +792,7 @@ class ModelHostItem(QGraphicsRectItem):
 
         return layout
 
+
 class GenericBlockDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -831,7 +833,6 @@ class GenericBlockDialog(QDialog):
         algeb_ins = self.algeb_inputs_spin.value()
         algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
         return name, state_ins, state_outs, algeb_ins, algeb_outs
-
 
 
 class GraphicsView(QGraphicsView):
@@ -900,7 +901,6 @@ class GraphicsView(QGraphicsView):
             self.setCursor(Qt.CursorShape.ArrowCursor)
         else:
             super().mouseReleaseEvent(event)
-
 
 
 def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str = "") -> Block | None:
@@ -979,7 +979,9 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
     else:
         return None
 
-def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int, algebraic_outputs: Sequence[str]):
+
+def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
+                         algebraic_outputs: Sequence[str]):
     blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
     blk.name = "generic"
     return blk
@@ -997,10 +999,10 @@ class DiagramScene(QGraphicsScene):
     def get_main_block(self):
         return self._main_block
 
-    def change_item_fill_color(self, item:Union[BlockItem, ModelHostItem, ConnectionItem]):
+    def change_item_fill_color(self, item: Union[BlockItem, ModelHostItem, ConnectionItem]):
         new_color = QColorDialog.getColor()
         if new_color.isValid():
-            if isinstance(item,(BlockItem, ModelHostItem)):
+            if isinstance(item, (BlockItem, ModelHostItem)):
                 brush = item.brush()
                 brush.setColor(new_color)
                 item.setBrush(brush)
@@ -1016,7 +1018,6 @@ class DiagramScene(QGraphicsScene):
 
                 # save new color in diagram
                 self.editor.diagram.con_data[item.uid].color = new_color
-
 
     def contextMenuEvent(self, event):
         items = self.items(event.scenePos())
@@ -1103,7 +1104,9 @@ class DiagramScene(QGraphicsScene):
 
                     color = connection.pen().color().name()
                     # save branches in diagram
-                    self.editor.diagram.add_branch(connection.uid, self.source_port.subsystem.subsys.uid, dst_port.subsystem.subsys.uid, self.source_port.index, dst_port.index, color)
+                    self.editor.diagram.add_branch(connection.uid, self.source_port.subsystem.subsys.uid,
+                                                   dst_port.subsystem.subsys.uid, self.source_port.index,
+                                                   dst_port.index, color)
                     break
 
             self.removeItem(self.temp_line)
@@ -1232,18 +1235,17 @@ class TemplateEditor(QtWidgets.QWidget):
         self.params_table = QtWidgets.QTableWidget()
         self.params_table.setColumnCount(2)
         self.params_table.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.params_table.setEditTriggers(QtWidgets.QTableWidget.AllEditTriggers)
+        self.params_table.setEditTriggers(QtWidgets.QTableWidget.EditTrigger.AllEditTriggers)
         main_layout.addWidget(self.params_table)
 
         # --- Apply template button ---
-        self.btn_apply_template = QtWidgets.QPushButton("Apply Template")
-        self.btn_apply_template.setEnabled(False)
-        main_layout.addWidget(self.btn_apply_template)
-        self.btn_apply_template.clicked.connect(self.on_apply_template)
+        # self.btn_apply_template = QtWidgets.QPushButton("Apply Template")
+        # self.btn_apply_template.setEnabled(False)
+        # main_layout.addWidget(self.btn_apply_template)
+        # self.btn_apply_template.clicked.connect(self.on_apply_template)
 
         # edit cells connection
         self.params_table.cellChanged.connect(self.on_cell_changed)
-
 
     def on_select_template(self):
         """uploads the selected template and connects Vm and Va variables with bus variables"""
@@ -1287,10 +1289,14 @@ class TemplateEditor(QtWidgets.QWidget):
         if hasattr(self.selected_template, 'event_dict'):
             if self.selected_template.event_dict:
                 self.load_params_table(self.selected_template)
-        self.btn_apply_template.setEnabled(True)
 
     def load_params_table(self, selected_template):
-        """Fills the parameters table with the template parameters"""
+        """
+        Fills the parameters table with the template parameters
+        :param selected_template:
+        :return:
+        """
+
         event_dict = selected_template.event_dict  # {Var: Const}
 
         self.params_table.blockSignals(True)
@@ -1326,12 +1332,11 @@ class TemplateEditor(QtWidgets.QWidget):
         except ValueError:
             value = value_str  # permitir strings
 
-
         self.selected_template.event_dict[var] = Const(value=value, name=var.name)
 
         self.parametersUpdated.emit(self.selected_template.event_dict)
 
-    def on_apply_template(self):
+    def apply_template(self):
         """Apply template to api_object rms_model.template"""
 
         if self.selected_template is None:
@@ -1563,7 +1568,6 @@ class NameDialog(QDialog):
         return self.edit.text().strip()
 
 
-
 class InspectModel(QWidget):
     def __init__(self, model_host, parent=None):
         super().__init__(parent)
@@ -1679,6 +1683,7 @@ class BlockBoxesEditor(QSplitter):
 
         self.block_counters: dict[BlockType, int] = {}
 
+        self.block_system: Block | None = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Widget creation
@@ -1724,8 +1729,10 @@ class BlockBoxesEditor(QSplitter):
         self.resize(800, 600)
 
     def add_connection_vars(self):
+        """
 
-
+        :return:
+        """
         bus_con_item = None
         tpe = BlockType.BUS_CONNECTION
 
@@ -1737,7 +1744,6 @@ class BlockBoxesEditor(QSplitter):
             bus_from_con_item = BlockItem(name=name)
 
             Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
-
 
             bus_from_con_blk = Block()
             bus_from_con_blk.out_vars[str(0)] = Vmf
@@ -1825,6 +1831,10 @@ class BlockBoxesEditor(QSplitter):
                 )
 
     def open_inspect_dialog(self):
+        """
+
+        :return:
+        """
         # Crear el diálogo
         dialog = QDialog(self)
         dialog.setWindowTitle("Inspect Model")
@@ -1856,7 +1866,11 @@ class BlockBoxesEditor(QSplitter):
         dialog.exec()
 
     def remove_item(self, item: BlockItem | ModelHostItem | ConnectionItem):
+        """
 
+        :param item:
+        :return:
+        """
         # remove connection from scene
         if isinstance(item, ConnectionItem):
 
@@ -1881,8 +1895,6 @@ class BlockBoxesEditor(QSplitter):
             for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
                 new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
                 target_port.subsystem.subsys.state_eqs[i] = new_equ
-
-
 
         # remove item from scene
         if isinstance(item, (BlockItem, ModelHostItem)):
@@ -1959,14 +1971,15 @@ class BlockBoxesEditor(QSplitter):
 
                     model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
                     self.main_block.add(model_host.model)
-                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list, self.templates_catalogue, self.api_object)
+                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
+                                         self.templates_catalogue, self.api_object)
 
 
                     item.setPos(QPointF(x0, y0))
                     self.scene.addItem(item)
                     # save nodes in diagram
                     self.diagram.add_node(
-                        name = name,
+                        name=name,
                         x=x0,
                         y=y0,
                         device_uid=model_host.model.uid,
@@ -1976,7 +1989,7 @@ class BlockBoxesEditor(QSplitter):
                         state_outs=state_outs,
                         algeb_ins=algeb_ins,
                         algeb_outs=algeb_outs,
-                        subdiagram= model_host.diagram
+                        subdiagram=model_host.diagram
                     )
 
             else:
@@ -1987,27 +2000,29 @@ class BlockBoxesEditor(QSplitter):
                 name = f"{tpe.name}_{count}"
                 item = BlockItem(name=name)
 
-                block = create_block_of_type(block_type=tpe, item_name=name, api_object = self.api_object, )
+                block = create_block_of_type(block_type=tpe, item_name=name, api_object=self.api_object, )
                 item.set_subsystem(block)
                 item.build_item()
 
                 if item.subsys is not None:
                     self.main_block.add(item.subsys)
 
-
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
                     self.diagram.add_node(
-                        name = name,
+                        name=name,
                         x=x0,
                         y=y0,
                         tpe=tpe.name,
                         device_uid=item.subsys.uid,
                     )
 
-    def rebuild_scene_from_diagram(self):
-        """Rebuilds the graphical scene from saved diagram data"""
+    def rebuild_scene_from_diagram(self) -> None:
+        """
+        Rebuilds the graphical scene from saved diagram data
+        :return:
+        """
         self.scene.clear()
 
         uid_to_blockitem = {}
@@ -2034,7 +2049,7 @@ class BlockBoxesEditor(QSplitter):
                 item.setPos(QPointF(node.x, node.y))
                 self.scene.addItem(item)
                 brush = item.brush()
-                brush.setColor(node.color)
+                brush.setColor(QColor(node.color))
                 item.setBrush(brush)
 
                 uid_to_blockitem[uid] = item
@@ -2052,8 +2067,9 @@ class BlockBoxesEditor(QSplitter):
                 if bus_con_item.subsys is not None:
                     self.scene.addItem(bus_con_item)
                     bus_con_item.setPos(QPointF(node.x, node.y))
-                uid_to_blockitem[uid] = bus_con_item
+                    bus_con_item.setBrush(QColor(node.color))
 
+                uid_to_blockitem[uid] = bus_con_item
 
             else:
 
@@ -2065,14 +2081,12 @@ class BlockBoxesEditor(QSplitter):
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 if block_item.subsys is not None:
-
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
                     brush = block_item.brush()
-                    brush.setColor(node.color)
+                    brush.setColor(QColor(node.color))
                     block_item.setBrush(brush)
                 uid_to_blockitem[uid] = block_item
-
 
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
@@ -2090,7 +2104,7 @@ class BlockBoxesEditor(QSplitter):
             connection = ConnectionItem(src_port, dst_port)
             connection.uid = uid
             pen = connection.pen()
-            pen.setColor(con.color)
+            pen.setColor(QColor(con.color))
             connection.setPen(pen)
             self.scene.addItem(connection)
 
@@ -2191,7 +2205,6 @@ class EditEquations(QWidget):
 
 
 def add_submodel_vars(model, vars_model, eqns_model, color_map):
-
     for submodel in model.children:
         for var in submodel.state_vars:
             items = [
@@ -2231,8 +2244,8 @@ def add_submodel_vars(model, vars_model, eqns_model, color_map):
         if submodel.children:
             add_submodel_vars(submodel, vars_model, eqns_model, color_map)
 
-def add_vars(model, vars_model, eqns_model, color_map):
 
+def add_vars(model, vars_model, eqns_model, color_map):
     for var in model.state_vars:
         items = [
             QStandardItem(var.name),
@@ -2271,6 +2284,7 @@ def add_vars(model, vars_model, eqns_model, color_map):
     if model.children:
         add_submodel_vars(model, vars_model, eqns_model, color_map)
 
+
 class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the template page in the general editor
     def __init__(self, event_dict: Dict[Var, Const], parent=None):
         super().__init__(parent)
@@ -2301,14 +2315,20 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
         return {param: Const(float(edit.text())) for param, edit in self.inputs.items()}
 
 
-
-
-
-
-
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
+
     def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
-                 api_object=None, main_editor = False,  parent=None):
+                 api_object=None, main_editor=False, parent=None):
+        """
+
+        :param api_object_model_host:
+        :param templates_list:
+        :param templates_catalogue:
+        :param api_object_name:
+        :param api_object:
+        :param main_editor:
+        :param parent:
+        """
         super().__init__(parent)
 
         self.ui = Ui_MainWindow()
@@ -2324,19 +2344,29 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.api_object = api_object
         self.main_editor = main_editor
 
+        self.tempaltes_name = "Templates"
+        self.block_editor_name = "Block Editor"
+        self.equationseditor_name = "Equations editor"
+
+        # set modes
+        self.ui.model_selector_comboBox.setModel(gf.get_list_model([
+            self.tempaltes_name,
+            self.block_editor_name,
+            self.equationseditor_name
+        ]))
+
         # --- templates editor layout ---
         self.template_editor = TemplateEditor(
             self.templates_list, self.templates_catalogue,
             self.api_object
         )
-        self.ui.templatesLayout.addWidget(self.template_editor)
-        self.ui.currently_editing_object_label.setText(self.api_object_name)
+        # self.ui.templatesLayout.addWidget(self.template_editor)
 
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
-            api_object_name= self.api_object_name,
-            block=self.model_host.custom_model,
-            diagram=self.model_host.diagram,
+            api_object_name=self.api_object_name,
+            block=self.model_host.custom_model,  # .copy(),
+            diagram=self.model_host.diagram,  # .copy(),
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
@@ -2351,11 +2381,11 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.blockboxes_editor.view.ensureVisible(0, 0, 100, 100)
         self.blockboxes_editor.view.horizontalScrollBar().setValue(0)
         self.blockboxes_editor.view.verticalScrollBar().setValue(0)
-        self.ui.editorLayout.addWidget(self.blockboxes_editor)
+        # self.ui.editorLayout.addWidget(self.blockboxes_editor)
 
         # --- equations editor layout ---
         self.equations_editor = EditEquations(self.model_host.model)
-        self.ui.equations_editor_layout.addWidget(self.equations_editor)
+        # self.ui.equations_editor_layout.addWidget(self.equations_editor)
 
         # --- status bar setup ---
         self.status_label = QtWidgets.QLabel("🔵 No model applied")
@@ -2365,49 +2395,116 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Ready")
 
         # --- connections ---
-        self.ui.apply_selected_model_pushButton.clicked.connect(self.on_select_model)
+        self.ui.doItButton.clicked.connect(self.do_it)
 
-    def on_select_model(self):
-        """Uploads the selected template and connects Vm and Va variables with bus variables."""
+        # current editor view change
+        self.ui.model_selector_comboBox.currentIndexChanged.connect(self.editor_change)
 
-        choice_model_dict = {
-            "Template model": self.template_editor.model,
-            "Block editor model": self.blockboxes_editor.main_block,
-            "Equations editor model": self.equations_editor.model
-        }
+        # select the template view
+        self.ui.model_selector_comboBox.setCurrentIndex(0)
+        self.editor_change()
 
-        selected_model = self.ui.model_selector_comboBox.currentText()
-        # self.model_host.model = choice_model_dict[selected_model]
+    def editor_change(self):
+        """
+        On change the editor mode
+        """
+        # delete all widgets from the layout
+        for i in reversed(range(self.ui.mainLayout.count())):
+            # get the widget
+            widget_to_remove = self.ui.mainLayout.itemAt(i).widget()
 
-        if selected_model == "Template model":
-            self.model_host.template = self.template_editor.model
+            # delete it from the layout list
+            self.ui.mainLayout.removeWidget(widget_to_remove)
 
-        if selected_model == "Block editor model":
-            self.model_host.template = None
-            self.model_host.diagram =  self.blockboxes_editor.diagram
+            # delete it from the gui
+            widget_to_remove.setParent(None)
 
-        if selected_model == "Template model":
-            source = "Template editor"
-        elif selected_model == "Block editor model":
-            source = "Blockboxes editor"
+        if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
+            self.ui.mainLayout.addWidget(self.template_editor)
+
+        elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
+            self.ui.mainLayout.addWidget(self.blockboxes_editor)
+
+        elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
+            # TODO: add model host logic
+            self.ui.mainLayout.addWidget(self.equations_editor)
+
         else:
-            source = "Equations editor"
+            raise ValueError("Unsupported RMS editor!")
 
-        #---info to the user---
-        QMessageBox.information(
-            self,
-            "Model Applied",
-            f"Model from {source} applied to device."
-        )
+        self.ui.currently_editing_object_label.setText(self.api_object_name)
 
-        # --- Update model applyed ---
-        self.status_label.setText(f"🟢 Current model: {source}")
-        self.model_host.diagram.status = source
-        self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
+    def do_it(self) -> None:
+        """
+        Logic when aplying the window
+        :return:
+        """
+        if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
+            if self.template_editor.selected_template is not None:
+                self.template_editor.apply_template()
+                self.model_host.template = self.template_editor.model
+            else:
+                error_msg("Empty template :(", "Model apply")
+                return
 
-        # --- Activate push button---
-        self.ui.apply_selected_model_pushButton.setEnabled(True)
+        elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
+            if self.blockboxes_editor.block_system is not None:
+                self.model_host.template = None
+                self.model_host.diagram = self.blockboxes_editor.diagram
+                # self.model_host.custom_model = self.blockboxes_editor.block_system
+            else:
+                error_msg("Empty model :(", "Model apply")
+                return
 
+        elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
+            # TODO: add model host logic
+            pass
+
+        else:
+            raise ValueError("Unsupported RMS editor!")
+
+        self.close()
+
+    # def on_select_model(self):
+    #     """Uploads the selected template and connects Vm and Va variables with bus variables."""
+    #
+    #     choice_model_dict = {
+    #         "Template model": self.template_editor.model,
+    #         "Block editor model": self.blockboxes_editor.main_block,
+    #         "Equations editor model": self.equations_editor.model
+    #     }
+    #
+    #     selected_model = self.ui.model_selector_comboBox.currentText()
+    #     # self.model_host.model = choice_model_dict[selected_model]
+    #
+    #     if selected_model == "Template model":
+    #         self.model_host.template = self.template_editor.model
+    #
+    #     if selected_model == "Block editor model":
+    #         self.model_host.template = None
+    #         self.model_host.diagram = self.blockboxes_editor.diagram
+    #
+    #     if selected_model == "Template model":
+    #         source = "Template editor"
+    #     elif selected_model == "Block editor model":
+    #         source = "Blockboxes editor"
+    #     else:
+    #         source = "Equations editor"
+    #
+    #     # ---info to the user---
+    #     QMessageBox.information(
+    #         self,
+    #         "Model Applied",
+    #         f"Model from {source} applied to device."
+    #     )
+    #
+    #     # --- Update model applyed ---
+    #     self.status_label.setText(f"🟢 Current model: {source}")
+    #     self.model_host.diagram.status = source
+    #     self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
+    #
+    #     # --- Activate push button---
+    #     self.ui.apply_selected_model_pushButton.setEnabled(True)
 
 
 if __name__ == "__main__":
