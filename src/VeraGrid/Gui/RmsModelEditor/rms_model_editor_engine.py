@@ -2303,7 +2303,7 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
         # Botones OK/Cancel
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -2464,47 +2464,6 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             raise ValueError("Unsupported RMS editor!")
 
         self.close()
-
-    # def on_select_model(self):
-    #     """Uploads the selected template and connects Vm and Va variables with bus variables."""
-    #
-    #     choice_model_dict = {
-    #         "Template model": self.template_editor.model,
-    #         "Block editor model": self.blockboxes_editor.main_block,
-    #         "Equations editor model": self.equations_editor.model
-    #     }
-    #
-    #     selected_model = self.ui.model_selector_comboBox.currentText()
-    #     # self.model_host.model = choice_model_dict[selected_model]
-    #
-    #     if selected_model == "Template model":
-    #         self.model_host.template = self.template_editor.model
-    #
-    #     if selected_model == "Block editor model":
-    #         self.model_host.template = None
-    #         self.model_host.diagram = self.blockboxes_editor.diagram
-    #
-    #     if selected_model == "Template model":
-    #         source = "Template editor"
-    #     elif selected_model == "Block editor model":
-    #         source = "Blockboxes editor"
-    #     else:
-    #         source = "Equations editor"
-    #
-    #     # ---info to the user---
-    #     QMessageBox.information(
-    #         self,
-    #         "Model Applied",
-    #         f"Model from {source} applied to device."
-    #     )
-    #
-    #     # --- Update model applyed ---
-    #     self.status_label.setText(f"🟢 Current model: {source}")
-    #     self.model_host.diagram.status = source
-    #     self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
-    #
-    #     # --- Activate push button---
-    #     self.ui.apply_selected_model_pushButton.setEnabled(True)
 
 
 if __name__ == "__main__":
