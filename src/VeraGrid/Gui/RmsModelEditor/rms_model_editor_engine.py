@@ -1260,7 +1260,6 @@ class TemplateEditor(QtWidgets.QWidget):
             if self.selected_template.event_dict:
                 self.load_params_table(self.selected_template)
 
-
     def load_params_table(self, selected_template):
         """
         Fills the parameters table with the template parameters
@@ -1458,6 +1457,8 @@ class BlockBoxesEditor(QSplitter):
 
         self.block_counters: dict[BlockType, int] = {}
 
+        self.block_system: Block | None = None
+
         # --------------------------------------------------------------------------------------------------------------
         # Widget creation
         # --------------------------------------------------------------------------------------------------------------
@@ -1502,7 +1503,10 @@ class BlockBoxesEditor(QSplitter):
         self.resize(800, 600)
 
     def add_connection_vars(self):
+        """
 
+        :return:
+        """
         bus_con_item = None
         tpe = BlockType.BUS_CONNECTION
 
@@ -1575,7 +1579,6 @@ class BlockBoxesEditor(QSplitter):
                 # self.nodes_index += 1
                 # self.diagram.index += 1
 
-
         else:
             x0, y0 = 0, 0
             name = "Conn Bus"
@@ -1608,6 +1611,10 @@ class BlockBoxesEditor(QSplitter):
                 # self.diagram.index += 1
 
     def open_inspect_dialog(self):
+        """
+
+        :return:
+        """
         # Crear el diálogo
         dialog = QDialog(self)
         dialog.setWindowTitle("Inspect Model")
@@ -1639,7 +1646,11 @@ class BlockBoxesEditor(QSplitter):
         dialog.exec()
 
     def remove_item(self, item: BlockItem | ModelHostItem | ConnectionItem):
+        """
 
+        :param item:
+        :return:
+        """
         # remove connection from scene
         if isinstance(item, ConnectionItem):
 
@@ -1781,8 +1792,11 @@ class BlockBoxesEditor(QSplitter):
                         device_uid=item.subsys.uid,
                     )
 
-    def rebuild_scene_from_diagram(self):
-        """Rebuilds the graphical scene from saved diagram data"""
+    def rebuild_scene_from_diagram(self) -> None:
+        """
+        Rebuilds the graphical scene from saved diagram data
+        :return:
+        """
         self.scene.clear()
 
         uid_to_blockitem = {}
@@ -1810,7 +1824,7 @@ class BlockBoxesEditor(QSplitter):
                 self.scene.addItem(item)
                 item.setPos(QPointF(node.x, node.y))
                 brush = item.brush()
-                brush.setColor(node.color)
+                brush.setColor(QColor(node.color))
                 item.setBrush(brush)
 
                 uid_to_blockitem[uid] = item
@@ -1828,8 +1842,9 @@ class BlockBoxesEditor(QSplitter):
                 if bus_con_item.subsys is not None:
                     self.scene.addItem(bus_con_item)
                     bus_con_item.setPos(QPointF(node.x, node.y))
-                uid_to_blockitem[uid] = bus_con_item
+                    bus_con_item.setBrush(QColor(node.color))
 
+                uid_to_blockitem[uid] = bus_con_item
 
             else:
 
@@ -1844,7 +1859,7 @@ class BlockBoxesEditor(QSplitter):
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
                     brush = block_item.brush()
-                    brush.setColor(node.color)
+                    brush.setColor(QColor(node.color))
                     block_item.setBrush(brush)
                 uid_to_blockitem[uid] = block_item
 
@@ -1864,7 +1879,7 @@ class BlockBoxesEditor(QSplitter):
             connection = ConnectionItem(src_port, dst_port)
             connection.uid = uid
             pen = connection.pen()
-            pen.setColor(con.color)
+            pen.setColor(QColor(con.color))
             connection.setPen(pen)
             self.scene.addItem(connection)
 
@@ -2079,6 +2094,16 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
     def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
                  api_object=None, main_editor=False, parent=None):
+        """
+
+        :param api_object_model_host:
+        :param templates_list:
+        :param templates_catalogue:
+        :param api_object_name:
+        :param api_object:
+        :param main_editor:
+        :param parent:
+        """
         super().__init__(parent)
 
         self.ui = Ui_MainWindow()
@@ -2115,8 +2140,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
             api_object_name=self.api_object_name,
-            block=self.model_host.custom_model,
-            diagram=self.model_host.diagram,
+            block=self.model_host.custom_model,  # .copy(),
+            diagram=self.model_host.diagram,  # .copy(),
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
@@ -2184,7 +2209,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.currently_editing_object_label.setText(self.api_object_name)
 
-    def do_it(self):
+    def do_it(self) -> None:
         """
         Logic when aplying the window
         :return:
@@ -2198,8 +2223,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 return
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            self.model_host.template = None
-            self.model_host.diagram = self.blockboxes_editor.diagram
+            if self.blockboxes_editor.block_system is not None:
+                self.model_host.template = None
+                self.model_host.diagram = self.blockboxes_editor.diagram
+                # self.model_host.custom_model = self.blockboxes_editor.block_system
+            else:
+                error_msg("Empty model :(", "Model apply")
+                return
 
         elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
             # TODO: add model host logic

@@ -4,11 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import List, Dict, Any, Union, Sequence
+from typing import List, Dict, Any, Sequence
 from dataclasses import dataclass
-
-from PySide6.QtGui import QColor
-
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -17,6 +14,9 @@ from VeraGridEngine.enumerations import DeviceType
 
 @dataclass
 class BlockDiagramNode:
+    """
+    BlockDiagramNode
+    """
     name: str
     x: float
     y: float
@@ -27,10 +27,14 @@ class BlockDiagramNode:
     state_outs: Sequence[str]
     algeb_ins: int
     algeb_outs: Sequence[str]
-    color: QColor
+    color: str
     sub_diagram: "BlockDiagram" = None
 
     def get_node_dict(self) -> Dict[str, Any]:
+        """
+
+        :return:
+        """
         data: Dict[str, Any] = {
             'name': self.name,
             'x': self.x,
@@ -51,9 +55,32 @@ class BlockDiagramNode:
             }
         return data
 
+    def copy(self):
+        """
+        Deep copy
+        :return:
+        """
+        return BlockDiagramNode(
+            name=self.name,
+            x=self.x,
+            y=self.y,
+            tpe=self.tpe,
+            device_uid=self.device_uid,
+            api_object_name=self.api_object_name,
+            state_ins=self.state_ins,
+            state_outs=[e for e in self.state_outs],
+            algeb_ins=self.algeb_ins,
+            algeb_outs=[e for e in self.algeb_outs],
+            color=self.color,
+            sub_diagram=self.sub_diagram  # should not be a copy but a pointer!
+        )
+
 
 @dataclass
 class BlockDiagramConnection:
+    """
+    BlockDiagramConnection
+    """
     from_uid: int
     to_uid: int
     port_number_from: int
@@ -71,23 +98,51 @@ class BlockDiagramConnection:
                 'port_number_to': self.port_number_to,
                 'color': self.color}
 
+    def copy(self):
+
+        return BlockDiagramConnection(
+            from_uid=self.from_uid,
+            to_uid=self.to_uid,
+            port_number_from=self.port_number_from,
+            port_number_to=self.port_number_to,
+            color=self.color
+        )
+
 
 class BlockDiagram:
     """
     Diagram
     """
 
-    def __init__(self, idtag=None, name=''):
+    def __init__(self):
         """
 
-        :param name: Diagram name
         """
         self.status: str | None = None
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
-    def add_node(self, name: str, x: float, y: float, tpe: str, device_uid: int, api_object_name: str = "", state_ins: int = 0,
-                 state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [], color = None,
+    def copy(self):
+        """
+        Deep copy of the block diagram
+        :return:
+        """
+        diag = BlockDiagram()
+
+        diag.status = self.status
+
+        diag.node_data = {key: val.copy() for key, val in self.node_data.items()}
+        diag.con_data = {key: val.copy() for key, val in self.con_data.items()}
+
+        return diag
+
+    def add_node(self, name: str, x: float, y: float,
+                 tpe: str, device_uid: int, api_object_name: str = "",
+                 state_ins: int = 0,
+                 state_outs: Sequence[str] = [],
+                 algeb_ins: int = 0,
+                 algeb_outs: Sequence[str] = [],
+                 color=None,
                  subdiagram: BlockDiagram = None):
         """
         :param api_object_name:
@@ -106,9 +161,9 @@ class BlockDiagram:
         """
 
         if color is None:
-            color = QColor("#C0C0C0")  # light blue
+            color = "#C0C0C0"  # light blue
         self.node_data[device_uid] = BlockDiagramNode(
-            name = name,
+            name=name,
             x=x,
             y=y,
             tpe=tpe,
@@ -135,19 +190,28 @@ class BlockDiagram:
         """
 
         self.con_data[connectionitem_uid] = BlockDiagramConnection(
-                from_uid=device_uid_from,
-                to_uid=device_uid_to,
-                port_number_from=port_number_from,
-                port_number_to=port_number_to,
-                color=color
-            )
+            from_uid=device_uid_from,
+            to_uid=device_uid_to,
+            port_number_from=port_number_from,
+            port_number_to=port_number_to,
+            color=color
+        )
 
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
+        """
+
+        :return:
+        """
         graph_info = {device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
         return graph_info
 
     def get_con_data_dict(self) -> Dict[int, Dict[str, Any]]:
-        graph_info = {connection_uid: connection.get_connection_dict() for connection_uid, connection in self.con_data.items()}
+        """
+
+        :return:
+        """
+        graph_info = {connection_uid: connection.get_connection_dict() for connection_uid, connection in
+                      self.con_data.items()}
         return graph_info
 
     def parse_nodes(self, nodes_data) -> None:
@@ -235,7 +299,6 @@ class DynamicModelHost(EditableDevice):
         else:
             raise ValueError(f"Cannot set template with {val}")
 
-
     @property
     def custom_model(self):
         """
@@ -275,10 +338,12 @@ class DynamicModelHost(EditableDevice):
             raise ValueError(f"Cannot set model with {val}")
         self._custom_model = val
 
-
     @property
     def diagram(self) -> BlockDiagram:
+        """
 
+        :return:
+        """
         return self._diagram
 
     @diagram.setter
