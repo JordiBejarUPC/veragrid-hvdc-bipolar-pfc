@@ -12,6 +12,7 @@ from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.Utils.MultiLinear.differential_var import LagVar
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
     imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -541,7 +542,7 @@ class Block:
 
 class DiffBlock(Block):
     diff_vars: List[DiffVar]
-    lag_vars: List[DiffVar]
+    lag_vars: List[LagVar]
     reformulated_vars: List[DiffVar]
     differential_eqs: List[Expr]
     pseudo_transient: bool = False
