@@ -209,6 +209,7 @@ class ConfigurationMain(ResultsMain):
                     "investment_evaluation_method": self.ui.investment_evaluation_method_ComboBox,
                     "max_investments_evluation_number": self.ui.max_investments_evluation_number_spinBox,
                     "investment_evaluation_obj_func": self.ui.investment_evaluation_objfunc_ComboBox,
+                    "firm_capacity_share": self.ui.firmCapacityShareSpinBox,
                 },
                 "stochastic": {
                     "method": self.ui.stochastic_pf_method_comboBox,
@@ -259,7 +260,7 @@ class ConfigurationMain(ResultsMain):
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
                 "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
-                "unit_commitment": self.ui.opfUnitCommitmentCheckBox,
+                "dispatch_mode": self.ui.opfDispatchModeComboBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,
                 "area_spinning_reserve": self.ui.opfSpinningReserveCheckBox,
@@ -474,10 +475,6 @@ class ConfigurationMain(ResultsMain):
                 self.plugins_investment_evaluation_method_dict[
                     plugin_info.investments_fcn.alias
                 ] = plugin_info.investments_fcn.function_ptr
-
-        # create combobox model for the plugin investments
-        lst = list(self.plugins_investment_evaluation_method_dict.keys())
-        self.ui.plugins_investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
     def launch_plugin(self, fcn: PluginFunction):
         """

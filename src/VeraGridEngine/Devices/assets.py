@@ -92,6 +92,7 @@ class Assets:
         '_contingency_groups',
         '_remedial_actions',
         '_remedial_action_groups',
+        '_short_circuit_definitions',
         '_investments',
         '_investments_groups',
         '_technologies',
@@ -243,6 +244,9 @@ class Assets:
         # remedial actions group
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
+        # Short circuit definition
+        self._short_circuit_definitions: List[dev.ShortCircuitDefinition] = list()
+
         # investments
         self._investments: List[dev.Investment] = list()
 
@@ -295,6 +299,11 @@ class Assets:
                 dev.Area(),
                 dev.Zone(),
             ],
+            "Associations": [
+                dev.Technology(),
+                dev.Fuel(),
+                dev.EmissionGas(),
+            ],
             "Substation": [
                 dev.Substation(),
                 dev.VoltageLevel(),
@@ -331,22 +340,38 @@ class Assets:
                 dev.FluidP2x(),
             ],
             "Groups": [
+                dev.BranchGroup(),
+                dev.ModellingAuthority(),
+                dev.Facility(),
+            ],
+            "Contingencies": [
                 dev.ContingencyGroup(),
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
+                dev.ShortCircuitDefinition()
+            ],
+            "Investments": [
                 dev.InvestmentsGroup(),
                 dev.Investment(),
-                dev.BranchGroup(),
-                dev.ModellingAuthority(),
-                dev.Facility(),
+            ],
+            "Dynamic": [
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
             ],
-            "Associations": [
-                dev.Technology(),
-                dev.Fuel(),
-                dev.EmissionGas(),
+            "Measurements": [
+                dev.PiMeasurement(),
+                dev.QiMeasurement(),
+                dev.PfMeasurement(),
+                dev.QfMeasurement(),
+                dev.IfMeasurement(),
+                dev.PtMeasurement(),
+                dev.QtMeasurement(),
+                dev.ItMeasurement(),
+                dev.VmMeasurement(),
+                dev.VaMeasurement(),
+                dev.PgMeasurement(),
+                dev.QgMeasurement(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -1366,6 +1391,13 @@ class Assets:
         """
         return {b: i for i, b in enumerate(self._buses)}
 
+    def get_bus_idtag_index_dict(self) -> Dict[str, int]:
+        """
+        Return dictionary of buses
+        :return: dictionary of buses {name:object}
+        """
+        return {b.idtag: i for i, b in enumerate(self._buses)}
+
     def get_bus_actives(self, t_idx: int | None = None) -> IntVec:
         """
         get a vector of actives
@@ -1457,28 +1489,28 @@ class Assets:
 
         # Optimized branch removal by creating a set for faster lookups
         branches_to_delete_set = set(branches_to_delete)
-        
+
         # Remove branches directly from lists in one pass
         # This is more efficient than calling delete_branch for each
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             # Use list comprehension to not consider branches to delete 
             # This is faster than the multiple remove() calls we had before
             branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
-        
+
         # Batch process groupings, faster than calling delete_groupings_with_object for each branch
         if branches_to_delete:
             branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
-            
+
             # Process contingencies in batch
             contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
             for elm in contingencies_to_delete:
                 self.delete_contingency(elm, del_group=True)
-            
+
             # Process remedial actions in batch
             remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
             for elm in remedial_actions_to_delete:
                 self.delete_remedial_action(elm, del_group=True)
-            
+
             # Process investments in batch
             investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
             for elm in investments_to_delete:
@@ -4435,7 +4467,7 @@ class Assets:
     def remedial_action_groups(self, value: List[dev.RemedialActionGroup]):
         self._remedial_action_groups = value
 
-    def get_rmedial_action_groups(self) -> List[dev.RemedialActionGroup]:
+    def get_remedial_action_groups(self) -> List[dev.RemedialActionGroup]:
         """
         Get contingency_groups
         :return:List[dev.ContingencyGroup]
@@ -4574,6 +4606,58 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Short Circuit Definition
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def short_circuit_definitions(self) -> List[dev.ShortCircuitDefinition]:
+        """
+        Get list of ShortCircuitDefinition
+        :return:
+        """
+        return self._short_circuit_definitions
+
+    @short_circuit_definitions.setter
+    def short_circuit_definitions(self, value: List[dev.ShortCircuitDefinition]):
+        self._short_circuit_definitions = value
+
+    def add_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+        """
+        Add short_circuit_definitions
+        :param obj: ShortCircuitDefinition
+        """
+        self._short_circuit_definitions.append(obj)
+
+    def delete_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+        """
+        Delete ShortCircuitDefinition
+        :param obj: index
+        """
+
+        try:
+            self._short_circuit_definitions.remove(obj)
+        except ValueError:
+            pass
+
+    def get_short_circuit_definition_names(self) -> StrVec:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return np.array([elm.name for elm in self._short_circuit_definitions])
+
+    def short_circuit_definition_exist(self, scd: dev.ShortCircuitDefinition) -> bool:
+        """
+        Check if a short circuit definition has been added already
+        :param scd: ShortCircuitDefinition
+        :return: Bool
+        """
+        for elm in self._short_circuit_definitions:
+            if elm.device_idtag == scd.device_idtag and elm.fault_type == scd.fault_type:
+                return True
+        return False
 
     # ------------------------------------------------------------------------------------------------------------------
     # Technology
@@ -5517,6 +5601,20 @@ class Assets:
                                                                   add_hvdc=add_hvdc,
                                                                   add_switch=add_switch))}
 
+    def get_branches_idtag_index_dict(self, add_vsc: bool = True,
+                                      add_hvdc: bool = True,
+                                      add_switch: bool = False) -> Dict[str, int]:
+        """
+        Get the branch to index dictionary
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: Branch object to index
+        """
+        return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
+                                                                        add_hvdc=add_hvdc,
+                                                                        add_switch=add_switch))}
+
     def get_branches_index_dict2(self, add_vsc: bool = True,
                                  add_hvdc: bool = True,
                                  add_switch: bool = False) -> Dict[str, int]:
@@ -5979,6 +6077,9 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
+        elif device_type == DeviceType.ShortCircuitDefinition:
+            return self._short_circuit_definitions
+
         elif device_type == DeviceType.Technology:
             return self._technologies
 
@@ -6211,6 +6312,9 @@ class Assets:
 
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
+
+        elif device_type == DeviceType.ShortCircuitDefinition:
+            self._short_circuit_definitions = devices
 
         elif device_type == DeviceType.Technology:
             self._technologies = devices
@@ -7070,6 +7174,9 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
+        elif elm_type == DeviceType.ShortCircuitDefinition:
+            elm = dev.ShortCircuitDefinition()
+
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()
             dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
@@ -7168,6 +7275,54 @@ class Assets:
 
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PMeasurementDevice:
+            elm = dev.PiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QMeasurementDevice:
+            elm = dev.QiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PgMeasurementDevice:
+            elm = dev.PgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QgMeasurementDevice:
+            elm = dev.QgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PfMeasurementDevice:
+            elm = dev.PfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QfMeasurementDevice:
+            elm = dev.QfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PtMeasurementDevice:
+            elm = dev.PtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QtMeasurementDevice:
+            elm = dev.QtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.IfMeasurementDevice:
+            elm = dev.IfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.ItMeasurementDevice:
+            elm = dev.ItMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VmMeasurementDevice:
+            elm = dev.VmMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VaMeasurementDevice:
+            elm = dev.VaMeasurement()
             dictionary_of_lists = dict()
 
         else:

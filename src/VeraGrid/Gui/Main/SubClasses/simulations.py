@@ -11,7 +11,7 @@ from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
 
 # GUI imports
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
@@ -30,7 +30,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
-from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers
+from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -40,7 +40,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
-                                         ReliabilityMode, MIPFramework)
+                                         ReliabilityMode, OpfDispatchMode)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -60,18 +60,16 @@ class SimulationsMain(TimeEventsMain):
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
         # Power Flow Methods
-        self.solvers_dict = OrderedDict()
-        self.solvers_dict[SolverType.NR.value] = SolverType.NR
-        self.solvers_dict[SolverType.IWAMOTO.value] = SolverType.IWAMOTO
-        self.solvers_dict[SolverType.LM.value] = SolverType.LM
-        self.solvers_dict[SolverType.PowellDogLeg.value] = SolverType.PowellDogLeg
-        self.solvers_dict[SolverType.FASTDECOUPLED.value] = SolverType.FASTDECOUPLED
-        self.solvers_dict[SolverType.HELM.value] = SolverType.HELM
-        self.solvers_dict[SolverType.GAUSS.value] = SolverType.GAUSS
-        self.solvers_dict[SolverType.LACPF.value] = SolverType.LACPF
-        self.solvers_dict[SolverType.Linear.value] = SolverType.Linear
-
-        self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
+        self.solvers_dict, solvers_mdl = gf.enums_to_model([SolverType.NR,
+                                                            SolverType.IWAMOTO,
+                                                            SolverType.LM,
+                                                            SolverType.PowellDogLeg,
+                                                            SolverType.FASTDECOUPLED,
+                                                            SolverType.HELM,
+                                                            SolverType.GAUSS,
+                                                            SolverType.LACPF,
+                                                            SolverType.Linear])
+        self.ui.solver_comboBox.setModel(solvers_mdl)
         self.ui.solver_comboBox.setCurrentIndex(0)
 
         # transfer modes
@@ -85,11 +83,24 @@ class SimulationsMain(TimeEventsMain):
         self.ui.transferMethodComboBox.setCurrentIndex(1)
 
         # opf solvers dictionary
-        self.lp_solvers_dict = OrderedDict()
-        self.lp_solvers_dict[SolverType.LINEAR_OPF.value] = SolverType.LINEAR_OPF
-        self.lp_solvers_dict[SolverType.NONLINEAR_OPF.value] = SolverType.NONLINEAR_OPF
-        self.lp_solvers_dict[SolverType.GREEDY_DISPATCH_OPF.value] = SolverType.GREEDY_DISPATCH_OPF
-        self.ui.lpf_solver_comboBox.setModel(gf.get_list_model(list(self.lp_solvers_dict.keys())))
+        self.lp_solvers_dict, lp_solvers_mdl = gf.enums_to_model([SolverType.LINEAR_OPF,
+                                                                  SolverType.NONLINEAR_OPF,
+                                                                  SolverType.GREEDY_DISPATCH_OPF])
+        self.ui.lpf_solver_comboBox.setModel(lp_solvers_mdl)
+
+        # opf dispatch methods
+        self.opf_dispatch_mode_dict, opf_dispatch_mode_mdl = gf.enums_to_model(
+            [OpfDispatchMode.Normal,
+             OpfDispatchMode.UnitCommitment,
+             OpfDispatchMode.InterAreaRedispatch,
+             OpfDispatchMode.GenerationExpansionPlanning]
+        )
+        self.ui.opfDispatchModeComboBox.setModel(opf_dispatch_mode_mdl)
+
+        self.opf_mip_framework_dict, opf_mip_framework_mdl = gf.enums_to_model(
+            get_available_mip_frameworks()
+        )
+        self.ui.mip_framework_comboBox.setModel(opf_mip_framework_mdl)
 
         # reliability modes
         self.reliability_mode_dict = OrderedDict()
@@ -247,6 +258,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.engineComboBox.currentTextChanged.connect(self.modify_ui_options_according_to_the_engine)
         self.ui.contingency_filter_by_comboBox.currentTextChanged.connect(self.modify_contingency_filter_mode)
         self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.changed_study)
+        self.ui.mip_framework_comboBox.currentTextChanged.connect(self.update_available_mip_solvers)
 
         # button
         self.ui.find_automatic_precission_Button.clicked.connect(self.automatic_pf_precision)
@@ -303,7 +315,6 @@ class SimulationsMain(TimeEventsMain):
         eng = self.get_preferred_engine()
 
         if eng == EngineType.GSLV:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # add the AC_OPF option
             self.lp_solvers_dict = OrderedDict()
@@ -325,11 +336,9 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
             self.ui.solver_comboBox.setCurrentIndex(0)
 
-            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
-            self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
+            self.update_available_mip_solvers()
 
         elif eng == EngineType.NewtonPA:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # add the AC_OPF option
             self.lp_solvers_dict = OrderedDict()
@@ -356,7 +365,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.VeraGrid:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(True)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -381,11 +389,9 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setCurrentIndex(0)
 
             # MIP solvers
-            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
-            self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
+            self.update_available_mip_solvers()
 
         elif eng == EngineType.Bentayga:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(False)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -408,7 +414,6 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setCurrentIndex(0)
 
         elif eng == EngineType.PGM:
-            self.ui.opfUnitCommitmentCheckBox.setVisible(False)
 
             # no AC opf option
             self.lp_solvers_dict = OrderedDict()
@@ -511,7 +516,7 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.circuit.valid_for_simulation():
             if self.circuit.time_profile is not None:
-                if len(self.circuit.time_profile) > 0:
+                if self.circuit.get_time_number() > 0:
                     return True
         return False
 
@@ -2031,6 +2036,7 @@ class SimulationsMain(TimeEventsMain):
         """
         # get the power flow options from the GUI
         solver = self.lp_solvers_dict[self.ui.lpf_solver_comboBox.currentText()]
+        dispatch_mode = self.opf_dispatch_mode_dict[self.ui.opfDispatchModeComboBox.currentText()]
         mip_solver = self.mip_solvers_dict.get(self.ui.mip_solver_comboBox.currentText(), MIPSolvers.HIGHS)
         time_grouping = self.opf_time_groups[self.ui.opf_time_grouping_comboBox.currentText()]
         zonal_grouping = self.opf_zonal_groups[self.ui.opfZonalGroupByComboBox.currentText()]
@@ -2040,24 +2046,16 @@ class SimulationsMain(TimeEventsMain):
         skip_generation_limits = self.ui.skipOpfGenerationLimitsCheckBox.isChecked()
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
         maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
-        unit_commitment = self.ui.opfUnitCommitmentCheckBox.isChecked()
         consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
         consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
         area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
-        generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
         use_glsk_as_cost = self.ui.useGslkAsCostsOpfCheckBox.isChecked()
         add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
 
-        if self.ui.save_mip_checkBox.isChecked():
-            folder = opf_file_path()
-            dte_str = str(datetime.datetime.now()).replace(":", "_").replace("/", "-")
-            fname = f'mip_{self.circuit.name}_{dte_str}.lp'
-            export_model_fname = os.path.join(folder, fname)
-        else:
-            export_model_fname = None
+        report_formulation = self.ui.save_mip_checkBox.isChecked()
 
         # available transfer capacity inter areas
         if maximize_flows:
@@ -2093,10 +2091,11 @@ class SimulationsMain(TimeEventsMain):
 
         verbose = self.ui.ips_verbose_spinBox.value()
 
-        mip_framework = MIPFramework.OrTools
+        mip_framework = self.opf_mip_framework_dict[self.ui.mip_framework_comboBox.currentText()]
 
         options = sim.OptimalPowerFlowOptions(
             solver=solver,
+            dispatch_mode=dispatch_mode,
             time_grouping=time_grouping,
             zonal_grouping=zonal_grouping,
             mip_solver=mip_solver,
@@ -2105,14 +2104,11 @@ class SimulationsMain(TimeEventsMain):
             contingency_groups_used=contingency_groups_used,
             skip_generation_limits=skip_generation_limits,
             lodf_tolerance=lodf_tolerance,
-            maximize_flows=maximize_flows,
             inter_aggregation_info=inter_aggregation_info,
-            unit_commitment=unit_commitment,
             consider_ramps=consider_ramps,
             consider_time_up_down=consider_time_up_down,
             area_spinning_reserve=area_spinning_reserve,
-            generation_expansion_planning=generation_expansion_planning,
-            export_model_fname=export_model_fname,
+            report_formulation=report_formulation,
             generate_report=generate_report,
             use_glsk_as_cost=use_glsk_as_cost,
             add_losses_approximation=add_losses_approximation,
@@ -2632,27 +2628,14 @@ class SimulationsMain(TimeEventsMain):
 
                 if not self.session.is_this_running(SimulationTypes.InvestmentsEvaluation_run):
 
-                    if self.ui.internal_investment_methods_radioButton.isChecked():
-                        # evaluation method
-                        method = self.investment_evaluation_method_dict[
-                            self.ui.investment_evaluation_method_ComboBox.currentText()
-                        ]
+                    # evaluation method
+                    method = self.investment_evaluation_method_dict[
+                        self.ui.investment_evaluation_method_ComboBox.currentText()
+                    ]
 
-                        obj_fn_tpe = self.investment_evaluation_objfunc_dict[
-                            self.ui.investment_evaluation_objfunc_ComboBox.currentText()
-                        ]
-
-                        fn_ptr = None
-
-                    elif self.ui.plugins_investment_methods_radioButton.isChecked():
-
-                        method = InvestmentEvaluationMethod.FromPlugin
-                        obj_fn_tpe = InvestmentsEvaluationObjectives.FromPlugin
-                        fn_ptr = self.plugins_investment_evaluation_method_dict[
-                            self.ui.plugins_investment_evaluation_method_ComboBox.currentText()
-                        ]
-                    else:
-                        raise Exception("Unrecognized investment simulation mode")
+                    obj_fn_tpe = self.investment_evaluation_objfunc_dict[
+                        self.ui.investment_evaluation_objfunc_ComboBox.currentText()
+                    ]
 
                     # maximum number of function evaluations as a factor of the number of investments
                     max_eval = self.ui.max_investments_evluation_number_spinBox.value() * len(
@@ -2665,7 +2648,7 @@ class SimulationsMain(TimeEventsMain):
                         pf_options=self.get_selected_power_flow_options(),
                         opf_options=self.get_opf_options(),
                         obj_tpe=obj_fn_tpe,
-                        plugin_fcn_ptr=fn_ptr,
+                        plugin_fcn_ptr=None,
                     )
 
                     if obj_fn_tpe == InvestmentsEvaluationObjectives.PowerFlow:
@@ -2764,7 +2747,6 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
 
     def run_clustering(self):
         """
@@ -3204,3 +3186,12 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
+
+    def update_available_mip_solvers(self):
+        """
+
+        :return:
+        """
+        current_mip_framework = self.opf_mip_framework_dict[self.ui.mip_framework_comboBox.currentText()]
+        mip_solvers = get_available_mip_solvers(tpe=current_mip_framework)
+        self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
