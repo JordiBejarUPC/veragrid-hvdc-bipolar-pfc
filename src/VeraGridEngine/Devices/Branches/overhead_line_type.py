@@ -1092,9 +1092,9 @@ def calc_z_ii(R_int, is_tube, r_outer, r_inner, y_i, f, rho, err_tol=1e-6, use_d
 
         w = 2 * pi * f  # rad
 
-        mu_0 = 4 * pi * 1e-4  # H/Km
+        mu_0 = 4 * pi * 1e-4  # H/km
 
-        mu_0_2pi = 2e-4  # H/Km
+        mu_0_2pi = 2e-4  # H/km
 
         p = sqrt(rho / (1j * w * mu_0))
 
@@ -1140,9 +1140,9 @@ def calc_z_ij(y_i, y_j, x_i, x_j, f, rho, err_tol=1e-6, use_dubanton_aprox: bool
     if use_dubanton_aprox:
         w = 2 * pi * f  # rad
 
-        mu_0 = 4 * pi * 1e-4  # H/Km
+        mu_0 = 4 * pi * 1e-4  # H/km
 
-        mu_0_2pi = 2e-4  # H/Km
+        mu_0_2pi = 2e-4  # H/km
 
         p = sqrt(rho / (1j * w * mu_0))
 
@@ -1268,12 +1268,12 @@ def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
     # dictionary with the wire indices per phase
     phases_set = set()
 
-    # 1 / (2 * pi * e0) in Km/F
+    # 1 / (2 * pi * e0) in km/F
     e_air = 1.00058986
-    e_0 = 8.854187817e-9  # F/Km
+    e_0 = 8.854187817e-9  # F/km
     w = 2 * pi * f  # Nominal angular frequency [rad/s]
     e = e_0  # * e_air
-    one_two_pi_e0 = 1 / (2 * pi * e)  # Km/F
+    one_two_pi_e0 = 1 / (2 * pi * e)  # km/F
 
     phases_abcn = np.zeros(n, dtype=int)
 
