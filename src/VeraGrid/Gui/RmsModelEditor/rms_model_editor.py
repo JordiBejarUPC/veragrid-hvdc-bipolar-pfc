@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'rms_model_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.2
+## Created by: Qt User Interface Compiler version 6.9.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -18,7 +18,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
     QLabel, QMainWindow, QPushButton, QSizePolicy,
-    QSpacerItem, QTabWidget, QVBoxLayout, QWidget)
+    QSpacerItem, QVBoxLayout, QWidget)
 from .icons_rc import *
 
 class Ui_MainWindow(object):
@@ -35,10 +35,12 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.frame = QFrame(self.centralwidget)
         self.frame.setObjectName(u"frame")
+        self.frame.setMaximumSize(QSize(16777215, 40))
         self.frame.setFrameShape(QFrame.Shape.NoFrame)
         self.frame.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.frame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.model_selector_comboBox = QComboBox(self.frame)
         self.model_selector_comboBox.addItem("")
         self.model_selector_comboBox.addItem("")
@@ -46,11 +48,6 @@ class Ui_MainWindow(object):
         self.model_selector_comboBox.setObjectName(u"model_selector_comboBox")
 
         self.horizontalLayout.addWidget(self.model_selector_comboBox)
-
-        self.apply_selected_model_pushButton = QPushButton(self.frame)
-        self.apply_selected_model_pushButton.setObjectName(u"apply_selected_model_pushButton")
-
-        self.horizontalLayout.addWidget(self.apply_selected_model_pushButton)
 
         self.horizontalSpacer = QSpacerItem(856, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -73,48 +70,34 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.frame)
 
-        self.tabWidget = QTabWidget(self.centralwidget)
-        self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setTabPosition(QTabWidget.TabPosition.South)
-        self.tab_3 = QWidget()
-        self.tab_3.setObjectName(u"tab_3")
-        self.verticalLayout_2 = QVBoxLayout(self.tab_3)
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.templatesLayout = QVBoxLayout()
-        self.templatesLayout.setObjectName(u"templatesLayout")
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setObjectName(u"mainLayout")
 
-        self.verticalLayout_2.addLayout(self.templatesLayout)
+        self.verticalLayout.addLayout(self.mainLayout)
 
-        self.tabWidget.addTab(self.tab_3, "")
-        self.tab = QWidget()
-        self.tab.setObjectName(u"tab")
-        self.verticalLayout_4 = QVBoxLayout(self.tab)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.editorLayout = QVBoxLayout()
-        self.editorLayout.setObjectName(u"editorLayout")
-
-        self.verticalLayout_4.addLayout(self.editorLayout)
-
-        self.tabWidget.addTab(self.tab, "")
-        self.tab_edit = QWidget()
-        self.tab_edit.setObjectName(u"tab_edit")
-        self.horizontalLayout_2 = QHBoxLayout(self.tab_edit)
+        self.frame_2 = QFrame(self.centralwidget)
+        self.frame_2.setObjectName(u"frame_2")
+        self.frame_2.setMaximumSize(QSize(16777215, 40))
+        self.frame_2.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.equations_editor_layout = QHBoxLayout()
-        self.equations_editor_layout.setObjectName(u"equations_editor_layout")
+        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.horizontalLayout_2.addLayout(self.equations_editor_layout)
+        self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
 
-        self.tabWidget.addTab(self.tab_edit, "")
+        self.doItButton = QPushButton(self.frame_2)
+        self.doItButton.setObjectName(u"doItButton")
 
-        self.verticalLayout.addWidget(self.tabWidget)
+        self.horizontalLayout_2.addWidget(self.doItButton)
+
+
+        self.verticalLayout.addWidget(self.frame_2)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-
-        self.tabWidget.setCurrentIndex(0)
-
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
@@ -127,11 +110,8 @@ class Ui_MainWindow(object):
         self.model_selector_comboBox.setItemText(2, QCoreApplication.translate("MainWindow", u"Equations editor model", None))
 
         self.model_selector_comboBox.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Select model to apply", None))
-        self.apply_selected_model_pushButton.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
         self.currently_editing_block_label.setText(QCoreApplication.translate("MainWindow", u"Submodel:", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("MainWindow", u"Device:", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Template", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Block editor", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_edit), QCoreApplication.translate("MainWindow", u"Equations editor", None))
+        self.doItButton.setText(QCoreApplication.translate("MainWindow", u"Do it!", None))
     # retranslateUi
 
