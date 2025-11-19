@@ -28,10 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added report text tab in the results&#10;Added the ability to set the MIP formulations in the reports">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed shadow prices in PuLP">
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1896,7 +1894,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="655" />
+    <option name="localTasksCounter" value="656" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1945,7 +1943,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added RmsPlotDialog button in the results" />
     <MESSAGE value="Worked on the RmsEditor" />
     <MESSAGE value="Fixed error with PTDF split correction in trunk" />
     <MESSAGE value="added WMOD recognition in raw parsing" />
@@ -1970,7 +1967,8 @@
     <MESSAGE value="Most opf-related tests passing" />
     <MESSAGE value="Added MIP-Framework as option in the OPF" />
     <MESSAGE value="Added report text tab in the results&#10;Added the ability to set the MIP formulations in the reports" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added report text tab in the results&#10;Added the ability to set the MIP formulations in the reports" />
+    <MESSAGE value="Fixed shadow prices in PuLP" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed shadow prices in PuLP" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2061,53 +2059,8 @@
           <option name="timeStamp" value="82" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py</url>
-          <line>395</line>
-          <option name="timeStamp" value="83" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py</url>
-          <line>392</line>
-          <option name="timeStamp" value="84" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py</url>
-          <line>397</line>
-          <option name="timeStamp" value="85" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py</url>
-          <line>399</line>
-          <option name="timeStamp" value="86" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>121</line>
-          <option name="timeStamp" value="88" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>102</line>
-          <option name="timeStamp" value="89" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>3050</line>
-          <option name="timeStamp" value="90" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>2323</line>
-          <option name="timeStamp" value="91" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>2318</line>
-          <option name="timeStamp" value="92" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py</url>
-          <line>2311</line>
+          <line>2309</line>
           <option name="timeStamp" value="93" />
         </line-breakpoint>
       </breakpoints>

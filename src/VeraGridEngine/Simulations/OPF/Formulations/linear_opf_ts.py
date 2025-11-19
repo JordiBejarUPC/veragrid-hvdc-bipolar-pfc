@@ -100,8 +100,6 @@ class BusVars:
         nt, n_elm = self.Va.shape
         data = BusVars(nt=nt, n_elm=n_elm)
 
-        data.shadow_prices = self.shadow_prices
-
         for t in range(nt):
             for i in range(n_elm):
                 data.Va[t, i] = model.get_value(self.Va[t, i])
