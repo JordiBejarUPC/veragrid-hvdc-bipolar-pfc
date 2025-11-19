@@ -86,7 +86,7 @@ class Line(BranchParent):
                  name='Line',
                  idtag=None,
                  code='',
-                 r=1e-20, x=0.00001, b=4,
+                 r=1e-20, x=0.00001, b=1e-20,
                  rate=1.0,
                  active=True,
                  tolerance=0.0,
