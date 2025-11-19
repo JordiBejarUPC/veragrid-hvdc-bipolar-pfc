@@ -17,8 +17,7 @@ from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block, DiffBlock
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, _compile_parameters_equations, _compile_equations
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_params_eq
-from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar, LagVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, DiffVar, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_params_eq
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 from dataclasses import dataclass, field
