@@ -67,7 +67,9 @@ class Load(LoadParent):
         'Ql',
         'init_params',
         'Vm',
-        'Va'
+        'Va',
+        'Pl_0',
+        'Ql_0'
     )
 
     def __init__(self, name='Load', idtag=None, code='',
@@ -179,6 +181,9 @@ class Load(LoadParent):
 
         self.Pl0 = Pl0
         self.Ql0 = Ql0
+
+        self.Pl_0 = Var('Pl_0')
+        self.Ql_0 = Var('Ql_0')
 
         self.init_params = init_params if init_params is not None else dict()
 
@@ -796,19 +801,19 @@ class Load(LoadParent):
 
             Ql = Var("Ql")
             Pl = Var("Pl")
-            Pl0 = Var("Pl0")
-            Ql0 = Var("Ql0")
+            # Pl_0 = Var("Pl0")
+            # Ql_0 = Var("Ql0")
 
             block = Block(
                 algebraic_vars=[Pl, Ql],
                 algebraic_eqs=[
-                    Pl - Pl0,
-                    Ql - Ql0
+                    Pl - self.Pl_0,
+                    Ql - self.Ql_0
                 ]
             )
 
-            block.event_dict = {Pl0: Const(self.Pl0),
-                                Ql0: Const(self.Ql0)}
+            block.event_dict = {self.Pl_0: Const(self.Pl0),
+                                self.Ql_0: Const(self.Ql0)}
             block.external_mapping = {
                 VarPowerFlowRefferenceType.P: Pl,
                 VarPowerFlowRefferenceType.Q: Ql

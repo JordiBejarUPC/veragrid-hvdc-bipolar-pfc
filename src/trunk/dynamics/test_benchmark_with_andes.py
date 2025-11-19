@@ -142,7 +142,6 @@ def perform_andes_simulation_for_kundur_ieee_no_shunt():
 def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     # Build system
-    t = Var("t")
     grid = gce.MultiCircuit()
 
     # Buses
@@ -247,12 +246,9 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     # load
     load1 = gce.Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
-    load1.time = t
     load1_grid = grid.add_load(bus=bus7, api_obj=load1)
-    # load1 = grid.add_load(bus=bus7, api_obj=gce.Load(P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969))
 
     load2 = gce.Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
-    load2.time = t
     load2_grid = grid.add_load(bus=bus9, api_obj=load2)
 
     # Generators
@@ -342,12 +338,14 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
     # Events
     # ---------------------------------------------------------------------------------------
 
-    event1 = RmsEvent(load1, "Pl0", np.array([2.5, 12.5]), np.array([-9.0, -9.01]))
+    event1 = RmsEvent(load1, load1.Pl_0, 2.5, -9.0)
+    event2 = RmsEvent(load1, load1.Pl_0, 12.5, -9.01)
 
-    event2 = RmsEvent(load1, "Ql0", np.array([16.5]), np.array([-0.8]))
+    event3 = RmsEvent(load1, load1.Ql_0, 16.5, -0.8)
 
     grid.add_rms_event(event1)
     grid.add_rms_event(event2)
+    grid.add_rms_event(event3)
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Power flow
@@ -390,11 +388,11 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
     # TDS initialization
     start_compiling = time.time()
 
-    ss, init_guess = gce.initialize_rms(grid, res)
+    sim_time, ss, init_guess = gce.initialize_rms(grid, res)
 
     params_mapping = {}
 
-    slv = BlockSolver(ss, t)
+    slv = BlockSolver(ss, sim_time)
 
     end_compiling = time.time()
 
@@ -403,6 +401,7 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
+
     vars_in_order = slv.sort_vars_from_uid(init_guess)
 
     start_simulation = time.time()
@@ -413,7 +412,6 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
         h=0.001,
         x0=x0,
         params0=params0,
-        time=t,
         method="implicit_euler"
     )
 

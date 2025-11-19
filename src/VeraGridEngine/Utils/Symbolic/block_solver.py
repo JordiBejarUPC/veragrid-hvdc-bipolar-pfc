@@ -293,7 +293,7 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, glob_time: Vec) -> Vec:
+    def __call__(self, glob_time: float) -> Vec:
         """
         Call the compiled function
         :param glob_time:
@@ -357,8 +357,6 @@ class BlockSolver:
         self.uid2idx_vars: Dict[int, int] = dict()
         self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
-
-
         i = 0
         for v in self._state_vars:
             uid2sym_vars[v.uid] = f"vars[{i}]"
@@ -445,6 +443,14 @@ class BlockSolver:
         end_compiling = time.time()
         compilation_time = end_compiling - start_compiling
         print(f"all compilation time = {compilation_time:.6f} [s]")
+
+    @property
+    def params_fn(self) -> SymbolicParamsVector:
+        """
+        state eq / state var jacobian
+        :return: SymbolicJacobian
+        """
+        return self._params_fn
 
     @property
     def j11(self) -> SymbolicJacobian:
