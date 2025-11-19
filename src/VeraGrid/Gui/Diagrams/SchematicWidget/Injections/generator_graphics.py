@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import pdb
 from typing import TYPE_CHECKING
 import numpy as np
 from PySide6 import QtWidgets, QtCore
