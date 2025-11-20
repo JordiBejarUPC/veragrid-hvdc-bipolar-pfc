@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -50,40 +51,40 @@ def check_for_observability_and_return_unobservable_buses(nc: NumericalCircuit,
 
     for meas in se_input.p_inj:
         measurement_types.append("P")
-        measurement_ids.append(("p_inj", meas.device_idtag))
+        measurement_ids.append(("p_inj", meas.device))
     for meas in se_input.q_inj:
         measurement_types.append("Q")
-        measurement_ids.append(("q_inj", meas.device_idtag))
+        measurement_ids.append(("q_inj", meas.device))
     for meas in se_input.pg_inj:
         measurement_types.append("P")
-        measurement_ids.append(("pg_inj", meas.device_idtag))
+        measurement_ids.append(("pg_inj", meas.device))
     for meas in se_input.qg_inj:
         measurement_types.append("Q")
-        measurement_ids.append(("qg_inj", meas.device_idtag))
+        measurement_ids.append(("qg_inj", meas.device))
     for meas in se_input.pf_value:
         measurement_types.append("P")
-        measurement_ids.append(("pf_value", meas.device_idtag))
+        measurement_ids.append(("pf_value", meas.device))
     for meas in se_input.pt_value:
         measurement_types.append("P")
-        measurement_ids.append(("pt_value", meas.device_idtag))
+        measurement_ids.append(("pt_value", meas.device))
     for meas in se_input.qf_value:
         measurement_types.append("Q")
-        measurement_ids.append(("qf_value", meas.device_idtag))
+        measurement_ids.append(("qf_value", meas.device))
     for meas in se_input.qt_value:
         measurement_types.append("Q")
-        measurement_ids.append(("qt_value", meas.device_idtag))
+        measurement_ids.append(("qt_value", meas.device))
     for meas in se_input.if_value:
         measurement_types.append("I")
-        measurement_ids.append(("if_value", meas.device_idtag))
+        measurement_ids.append(("if_value", meas.device))
     for meas in se_input.it_value:
         measurement_types.append("I")
-        measurement_ids.append(("it_value", meas.device_idtag))
+        measurement_ids.append(("it_value", meas.device))
     for meas in se_input.vm_value:
         measurement_types.append("V")
-        measurement_ids.append(("vm_value", meas.device_idtag))
+        measurement_ids.append(("vm_value", meas.device))
     for meas in se_input.va_value:
         measurement_types.append("V")
-        measurement_ids.append(("va_value", meas.device_idtag))
+        measurement_ids.append(("va_value", meas.device))
 
     measurement_types = np.array(measurement_types)
     measurement_ids = np.array(measurement_ids, dtype=object)

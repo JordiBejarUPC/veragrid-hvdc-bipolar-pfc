@@ -359,6 +359,14 @@ class Assets:
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
             ],
+            "Catalogue": [
+                dev.Wire(),
+                dev.OverheadLineType(),
+                dev.UndergroundLineType(),
+                dev.SequenceLineType(),
+                dev.TransformerType(),
+                dev.RmsModelTemplate()
+            ],
             "Measurements": [
                 dev.PiMeasurement(),
                 dev.QiMeasurement(),
@@ -372,14 +380,6 @@ class Assets:
                 dev.VaMeasurement(),
                 dev.PgMeasurement(),
                 dev.QgMeasurement(),
-            ],
-            "Catalogue": [
-                dev.Wire(),
-                dev.OverheadLineType(),
-                dev.UndergroundLineType(),
-                dev.SequenceLineType(),
-                dev.TransformerType(),
-                dev.RmsModelTemplate()
             ]
 
         }
@@ -6921,7 +6921,7 @@ class Assets:
             self,
             add_locations: bool = False,
             string_keys: bool = True
-    ) -> dict[Union[str, DeviceType], Union[dict[str, ALL_DEV_TYPES], Any]]:
+    ) -> Dict[Union[str, DeviceType], Union[Dict[str, ALL_DEV_TYPES], Any]]:
         """
         Get a dictionary of all elements by type
         :param add_locations: Add locations to dict
