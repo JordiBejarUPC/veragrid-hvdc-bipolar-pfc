@@ -77,8 +77,9 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     return fn
 
 
+
 def compose_system_block(time: Var, grid: MultiCircuit,
-                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Var, Block, Dict[Tuple[int, str], float], np.ndarray]:
+                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
 
     """
     Compose all RMS models
@@ -195,9 +196,6 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # already known variables:
 
-    # initialize array for model variables
-    x = np.zeros(len(sys_vars))
-
     for elm in grid.get_injection_devices_iter():
         bus_rms_mdl = elm.bus.rms_model.model
         mdl = elm.rms_model.model
@@ -229,6 +227,9 @@ def compose_system_block(time: Var, grid: MultiCircuit,
                 params_array_index += 1
 
 
+        # initialize array for model variables
+        x = np.zeros(len(sys_vars))
+
         # assign initial guesses for known variables
         for uid, name in sys_vars:
             key = (uid, name)
@@ -247,23 +248,23 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         # compute and assign missing init_vars
 
-        # for var in mdl.init_eqs.keys():
-        #     key = (var.uid, var.name)
-        #     if key in init_guess:
-        #         x[uid2idx_vars[var.uid]] = init_guess[key]
-        #     else:
-        #         eq = mdl.init_eqs[var]
-        #         eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-        #         init_val = float(eq_fn(x, params_array))
-        #         init_guess[key] = init_val
-        #         x[uid2idx_vars[var.uid]] = init_val
-        # # TODO: change model to generator, exciter and governor separated and remove this
-        # for var in mdl.fix_vars:
-        #     eq = mdl.fix_vars_eqs[var.uid]
-        #     eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-        #     init_val = float(eq_fn(x, params_array))
-        #     var.value = init_val
-        # sys_block.add(mdl)
+        for var in mdl.init_eqs.keys():
+            key = (var.uid, var.name)
+            if key in init_guess:
+                x[uid2idx_vars[var.uid]] = init_guess[key]
+            else:
+                eq = mdl.init_eqs[var]
+                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                init_val = float(eq_fn(x, params_array))
+                init_guess[key] = init_val
+                x[uid2idx_vars[var.uid]] = init_val
+        # TODO: change model to generator, exciter and governor separated and remove this
+        for var in mdl.fix_vars:
+            eq = mdl.fix_vars_eqs[var.uid]
+            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+            init_val = float(eq_fn(x, params_array))
+            var.value = init_val
+        sys_block.add(mdl)
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
@@ -273,7 +274,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
             del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
                         mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-    return time, sys_block, init_guess, x
+    return time, sys_block, init_guess
 
 
 def setP(P: ObjVec, P_used: BoolVec, k: int, val: object):
