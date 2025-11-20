@@ -361,12 +361,12 @@ class NaNError(SolverError):
 
 class DiffBlockSolver(BlockSolver):
 
-    def __init__(self, block_system: Block, time: Var, use_jit: bool = True):
+    def __init__(self, block_system: Block | DiffBlock, time: Var, use_jit: bool = True):
         """
         Constructor
         :param block_system: BlockSystem
         """
-        self.block_system: Block = block_system
+        self.block_system: Block | DiffBlock = block_system
 
         # Flatten the block lists, preserving declaration order
         self._algebraic_vars: List[Var] = list()

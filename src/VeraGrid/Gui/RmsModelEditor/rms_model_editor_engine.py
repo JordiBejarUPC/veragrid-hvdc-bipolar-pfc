@@ -1830,6 +1830,109 @@ class BlockBoxesEditor(QSplitter):
                     device_uid=bus_con_item.subsys.uid,
                 )
 
+    def add_connection_vars(self):
+        """
+
+        :return:
+        """
+        bus_con_item = None
+        tpe = BlockType.BUS_CONNECTION
+
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            # add con bus from
+            x0, y0 = 0, 0
+            name = "Conn From"
+            bus_from_con_item = BlockItem(name=name)
+
+            Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
+
+            bus_from_con_blk = Block()
+            bus_from_con_blk.out_vars[str(0)] = Vmf
+            bus_from_con_blk.out_vars[str(1)] = Vaf
+            bus_from_con_blk.name = name
+
+            self.main_block.add(bus_from_con_blk)
+
+            bus_from_con_item.set_subsystem(bus_from_con_blk)
+            bus_from_con_item.build_item()
+
+            if bus_from_con_item.subsys is not None:
+                self.scene.addItem(bus_from_con_item)
+                bus_from_con_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_from_con_item.subsys.uid,
+                )
+
+            # add con bus to
+            name = "Conn To"
+            x0, y0 = 0, 100
+
+            bus_to_con_item = BlockItem(name=name)
+
+            Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+
+            bus_to_con_blk = Block()
+            bus_to_con_blk.out_vars[str(0)] = Vmt
+            bus_to_con_blk.out_vars[str(1)] = Vat
+            bus_to_con_blk.name = name
+
+            self.main_block.add(bus_to_con_blk)
+
+            bus_to_con_item.set_subsystem(bus_to_con_blk)
+            bus_to_con_item.build_item()
+
+            # Add to scene
+            self.scene.addItem(bus_to_con_item)
+            bus_to_con_item.setPos(QPointF(x0, y0))
+            if bus_to_con_item.subsys is not None:
+                # pdb.set_trace()
+                self.scene.addItem(bus_to_con_item)
+                bus_to_con_item.setPos(QPointF(x0, y0))
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_to_con_item.subsys.uid,
+                )
+
+        else:
+            x0, y0 = 0, 0
+            name = "Conn Bus"
+
+            bus_con_item = BlockItem(name=name)
+            Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+
+            bus_con_blk = Block()
+            bus_con_blk.out_vars[str(0)] = Vm
+            bus_con_blk.out_vars[str(1)] = Va
+            bus_con_blk.name = name
+
+            self.main_block.add(bus_con_blk)
+
+            bus_con_item.set_subsystem(bus_con_blk)
+            bus_con_item.build_item()
+
+            if bus_con_item.subsys is not None:
+                self.scene.addItem(bus_con_item)
+                bus_con_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_con_item.subsys.uid,
+                )
+
+
     def open_inspect_dialog(self):
         """
 
@@ -2374,6 +2477,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # === Add default bus connection block if diagram is empty ===
         if not self.blockboxes_editor.diagram.node_data and main_editor:
             self.blockboxes_editor.add_connection_vars()
+            self.blockboxes_editor.add_external_mapping_block()
         # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
@@ -2448,7 +2552,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 return
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            if self.blockboxes_editor.block_system is not None:
+            if self.blockboxes_editor.main_block is not None:
                 self.model_host.template = None
                 self.model_host.diagram = self.blockboxes_editor.diagram
                 # self.model_host.custom_model = self.blockboxes_editor.block_system

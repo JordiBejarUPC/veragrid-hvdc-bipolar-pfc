@@ -351,12 +351,27 @@ class Block:
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr] = dict()
 
+    def check_empty(self) -> bool:
+        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
+
     def empty(self) -> bool:
         """
 
         :return:
         """
-        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
+        if not self.children:
+            empty = self.check_empty()
+            if empty:
+                return empty
+        else:
+            empty = self.check_empty()
+            if not empty:
+                return empty
+
+            for child in self.children:
+                child.empty()
+
+        return False
 
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
@@ -540,11 +555,13 @@ class Block:
             return False
 
 class DiffBlock(Block):
-    diff_vars: List[DiffVar]
-    lag_vars: List[LagVar]
-    reformulated_vars: List[DiffVar]
-    differential_eqs: List[Expr]
-    pseudo_transient: bool = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.diff_vars: List[DiffVar] = []
+        self.lag_vars: List[LagVar] = []
+        self.reformulated_vars: List[DiffVar] = []
+        self.differential_eqs: List[Expr] = []
 
 
 

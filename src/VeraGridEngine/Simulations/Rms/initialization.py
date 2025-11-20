@@ -11,6 +11,8 @@ import copy
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
+import uuid
+
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic import BlockSolver
 from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one, sin, cos
@@ -21,6 +23,35 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, LagVar
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
+
+
+
+def _compile_equations(eqs: Sequence[Expr],
+                       uid2sym_vars: Dict[int, str],
+                       uid2sym_params: Dict[int, str],
+                       add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    """
+    Compile the array of expressions to a function that returns an array of values for those expressions
+    :param eqs: Iterable of expressions (Expr)
+    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+    :param uid2sym_params:
+    :param add_doc_string: add the docstring?
+    :return: Function pointer that returns an array
+    """
+
+    fname = f"func{uuid.uuid4().hex}"  # random name to avoid collissions
+
+    # Build source
+    # src = f"@nb.njit()\n"
+    src = f"def {fname}(vars, params):\n"
+    src += f"    out = np.zeros({len(eqs)})\n"
+    src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += f"    return out"
+
+    exec(src)
+    compiled_func = locals()[fname]
+
+    return compiled_func
 
 
 def _compile_equation(eqs: Sequence[Expr],
@@ -99,6 +130,7 @@ def find_name_in_block(name: str, block: Block):
 def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarray:
     """
     Helper function to build the initial vector
+    :param uid2idx_vars:
     :param mapping: var->initial value mapping
     :return: array matching with the mapping, matching the solver ordering
     """
@@ -239,11 +271,11 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
                 try:
                     print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
                     if type == 'dae':
-                        x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(
+                        x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(region_solver,
                             x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                             predictor=predictor)
                     else:
-                        x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(
+                        x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(region_solver,
                             x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                             predictor=predictor)
                     solved = True
@@ -334,7 +366,7 @@ def init_pseudo_transient_individual(region_solver: DiffBlockSolver, x0, init_gu
             x_predicted, x_feasible = region_solver.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
             for i in range(0):
                 _ = 0
-                x_corrected, x_feasible = region_solver.corrector(x_predicted, x_old_iter, x_feasible, params_current)
+                x_corrected, x_feasible = region_solver.corrector(region_solver, x_predicted, x_old_iter, x_feasible, params_current)
                 x_predicted = x_corrected
 
             xnew_lags[:len(x_feasible)] = x_feasible
@@ -655,15 +687,15 @@ def pseudo_transient_daes(region_solver, x0, init_guess={}, plot=True, dtau0=1e0
         if verbose:
             print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
         if tries > 1:
-            x_predicted, x_feasible = region_solver.predictor(x_old=xnew_lags, max_step=5e3, params=params_current)
+            x_predicted, x_feasible = region_solver.predictor(region_solver, x_old=xnew_lags, max_step=5e3, params=params_current)
         else:
-            x_predicted, x_feasible = region_solver.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
+            x_predicted, x_feasible = region_solver.predictor(region_solver, x_old=x_old_iter, max_step=5e3, params=params_current)
         for i in range(1):
             _ = 0
             if tries > 1:
-                x_corrected, x_feasible = region_solver.corrector(x_predicted, x_feasible, x_feasible, params_current)
+                x_corrected, x_feasible = region_solver.corrector(region_solver, x_predicted, x_feasible, x_feasible, params_current)
             else:
-                x_corrected, x_feasible = region_solver.corrector(x_predicted, x_old_iter, x_feasible, params_current)
+                x_corrected, x_feasible = region_solver.corrector(region_solver, x_predicted, x_old_iter, x_feasible, params_current)
             x_predicted = x_corrected
         xnew_lags[:len(x_feasible)] = x_feasible
         # 1 Handle first-order derivatives first
@@ -792,33 +824,33 @@ def pseudo_transient_daes(region_solver, x0, init_guess={}, plot=True, dtau0=1e0
 def pseudo_transient_explicit(region_solver, x0, init_guess={}, plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
                               predictor=False, max_iter=8e4, max_tries=200, verbose=False):
     # Init pseudo transient method, Block only has algebraic eqs
-    if self._n_state == 0:
+    if region_solver._n_state == 0:
         raise ('System is not in explicit form')
-    lag = np.zeros(len(self.uid2idx_lag))
+    lag = np.zeros(len(region_solver.uid2idx_lag))
     dtau = dtau0
     init_guess_uid = [var.uid for var in init_guess.keys()]
 
-    for var in self._algebraic_vars:
+    for var in region_solver._algebraic_vars:
         if not var.uid in init_guess_uid:
             continue
-        idx = self.uid2idx_vars[var.uid]
+        idx = region_solver.uid2idx_vars[var.uid]
         x0[idx] = init_guess[var]
     for i in range(len(x0)):
         if x0[i] == 0:
             _ = 0
             x0[i] = 0.1 + 0.5 * np.random.rand()
     for i in range(len(lag)):
-        base_var = self._lag_vars[i].base_var
-        lag[i] = x0[self.uid2idx_vars[base_var.uid]]
+        base_var = region_solver._lag_vars[i].base_var
+        lag[i] = x0[region_solver.uid2idx_vars[base_var.uid]]
         if lag[i] == 0:
             lag[i] += 0.1 + np.random.rand()
 
-    y = np.empty((5, self._n_vars))
+    y = np.empty((5, region_solver._n_vars))
     step_idx = 0
     x_new = x0.copy()
     tries = 0
     current_time = 0
-    params_current = self._params_fn(float(current_time))
+    params_current = region_solver._params_fn(float(current_time))
     params_outer = params_current.copy()
     params_outer[-1] = 1e-3
     dx_error = 1
@@ -840,26 +872,26 @@ def pseudo_transient_explicit(region_solver, x0, init_guess={}, plot=True, dtau0
 
         xn_lags = np.r_[xn, lag]
         xnew_lags = np.r_[x_new, lag]
-        rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
+        rhs = region_solver.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
         if verbose:
             print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
         if tries > 1:
-            x_predicted, x_feasible = self.predictor(x_old=xnew_lags, max_step=5e3, params=params_current)
+            x_predicted, x_feasible = region_solver.predictor(region_solver, x_old=xnew_lags, max_step=5e3, params=params_current)
         else:
-            x_predicted, x_feasible = self.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
+            x_predicted, x_feasible = region_solver.predictor(region_solver, x_old=x_old_iter, max_step=5e3, params=params_current)
         for i in range(1):
             _ = 0
             if tries > 1:
-                x_corrected, x_feasible = self.corrector(x_predicted, x_feasible, x_feasible, params_current)
+                x_corrected, x_feasible = region_solver.corrector(region_solver, x_predicted, x_feasible, x_feasible, params_current)
             else:
-                x_corrected, x_feasible = self.corrector(x_predicted, x_old_iter, x_feasible, params_current)
+                x_corrected, x_feasible = region_solver.corrector(region_solver, x_predicted, x_old_iter, x_feasible, params_current)
             x_predicted = x_corrected
         xnew_lags[:len(x_feasible)] = x_feasible
         # 1 Handle first-order derivatives first
-        for i, var in enumerate(self._diff_vars):
+        for i, var in enumerate(region_solver._diff_vars):
             if var.diff_order != 1:
                 continue
-            base_var_uid = self.uid2idx_vars[var.base_var.uid]
+            base_var_uid = region_solver.uid2idx_vars[var.base_var.uid]
             xnew_lags[base_var_uid] = x_predicted[i]
 
         newton_residual = np.linalg.norm(rhs)
@@ -878,29 +910,29 @@ def pseudo_transient_explicit(region_solver, x0, init_guess={}, plot=True, dtau0
         x_new = y[-1]
 
         # save history
-        rhs = self.rhs_implicit(xnew_lags, xn_lags, params_outer, 1, dtau)
+        rhs = region_solver.rhs_implicit(xnew_lags, xn_lags, params_outer, 1, dtau)
         dtau_hist.append(dtau)
-        dx_hist.append(self.compute_dx(x_new, lag, dtau).copy())
+        dx_hist.append(region_solver.compute_dx(x_new, lag, dtau).copy())
         dx_error_hist.append(np.linalg.norm(dx_hist[-1]))
         residual_hist.append(np.linalg.norm(rhs))
         x_hist.append(x_new.copy())
         print(
             f'Convergence achieved for dtau={dtau:.2e}, ||dx||={dx_error:.2e}, residual={residual:.2e}, step {step_idx}')
 
-        for i, lag_var in enumerate(self._lag_vars):
+        for i, lag_var in enumerate(region_solver._lag_vars):
             if lag_var.lag == 0:
                 uid = lag_var.base_var.uid
-                idx = self.uid2idx_vars[uid]
+                idx = region_solver.uid2idx_vars[uid]
                 lag[i] = x_new[idx]
             elif step_idx + 1 - (lag_var.lag - 1) >= 0:
                 uid = lag_var.base_var.uid
-                idx = self.uid2idx_vars[uid]
+                idx = region_solver.uid2idx_vars[uid]
                 lag[i] = y[-1 - lag_var.lag, idx]
             else:
                 lag_name = lag_var.base_var.name + '_lag_' + str(lag_var.lag - 1)
                 next_lag_var = LagVar.get_or_create(lag_name, base_var=lag_var.base_var, lag=lag_var.lag - 1)
                 uid = next_lag_var.uid
-                idx = self.uid2idx_lag[uid]
+                idx = region_solver.uid2idx_lag[uid]
                 lag[i] = lag[idx]
         old_residual = residual
         x_old_iter = np.r_[x_new, lag]
@@ -910,7 +942,7 @@ def pseudo_transient_explicit(region_solver, x0, init_guess={}, plot=True, dtau0
         elif tries > max_tries:
             raise ConvergenceError(f"Max tries reached at dtau={dtau:.2e}, residual={residual:.2e}")
 
-    init_guess = {var: x_new[self.uid2idx_vars[var.uid]] for var in self._algebraic_vars}
+    init_guess = {var: x_new[region_solver.uid2idx_vars[var.uid]] for var in region_solver._algebraic_vars}
 
     if not plot:
         return x_new, init_guess
@@ -1222,7 +1254,7 @@ def find_feasible_point(region_solver, xn, params, x0=None, max_steps=2e3, tol=1
         if xn[i] == 0:
             xn[i] += 0.2 * np.random.rand()
     if not hasattr(region_solver, 'Jf_feasible'):
-        region_solver.compile_implicit_predictor()
+        region_solver.compile_implicit_predictor(region_solver)
 
     alpha = 1
     step = 0
@@ -1282,26 +1314,26 @@ def build_x_y(region_solver, x, y):
 
     return res
 
-def find_feasible_given_x(self, x, x_old, params, max_steps=5e3, tol=1e-3):
+def find_feasible_given_x(region_solver, x, x_old, params, max_steps=5e3, tol=1e-3):
     residual = 10
     h = 1e-3
     j = 0
-    diff_base_vars = [diff_var.origin_var for diff_var in self._diff_vars]
-    diff_base_vars_uid = [diff_var.base_var.uid for diff_var in self._diff_vars]
-    x_index = [self.uid2idx_vars[var.uid] for var in diff_base_vars]
-    y_index = [i for i in range(self._n_alg) if i not in x_index]
+    diff_base_vars = [diff_var.origin_var for diff_var in region_solver._diff_vars]
+    diff_base_vars_uid = [diff_var.base_var.uid for diff_var in region_solver._diff_vars]
+    x_index = [region_solver.uid2idx_vars[var.uid] for var in diff_base_vars]
+    y_index = [i for i in range(region_solver._n_alg) if i not in x_index]
 
-    y = np.ones(self._n_alg - len(x))
+    y = np.ones(region_solver._n_alg - len(x))
     i_xold = 0
-    for var in self._algebraic_vars:
+    for var in region_solver._algebraic_vars:
         if var.uid in diff_base_vars_uid:
             continue
-        var_id = self.uid2idx_vars[var.uid]
+        var_id = region_solver.uid2idx_vars[var.uid]
         y[i_xold] = x_old[var_id]
         i_xold += 1
 
-    if not hasattr(self, 'Jf_feasible'):
-        self.compile_implicit_predictor()
+    if not hasattr(region_solver, 'Jf_feasible'):
+        region_solver.compile_implicit_predictor()
 
     alpha = 1
     step = 0
@@ -1309,9 +1341,9 @@ def find_feasible_given_x(self, x, x_old, params, max_steps=5e3, tol=1e-3):
     regularize = False
     while residual > tol and step < max_steps:
         j += 1
-        x_y = self.build_x_y(x, y)
-        rhs = self.rhs_feasible(x_y, params)
-        Jf = self.Jf_feasible(x_y, params)
+        x_y = region_solver.build_x_y(region_solver, x, y)
+        rhs = region_solver.rhs_feasible(x_y, params)
+        Jf = region_solver.Jf_feasible(x_y, params)
         delta = sp.linalg.lsmr(Jf, -rhs)[0]
         x += 0.1 * delta[x_index]
         y += delta[y_index]
@@ -1327,55 +1359,55 @@ def find_feasible_given_x(self, x, x_old, params, max_steps=5e3, tol=1e-3):
         print(f'Found feasible y(x)')
     return x_y
 
-def predictor(self, x_old, params, max_step=1e3, tol=1e-4):
-    x_new = np.random.rand(len(self._diff_vars))
+def predictor(region_solver, x_old, params, max_step=1e3, tol=1e-4):
+    x_new = np.random.rand(len(region_solver._diff_vars))
     residual = 10
     step = 0
-    if not hasattr(self, 'rhs_predictor'):
-        self.compile_implicit_predictor()
+    if not hasattr(region_solver, 'rhs_predictor'):
+        region_solver.compile_implicit_predictor()
 
-    x_feasible = self.find_feasible_point(x_old[:self._n_alg], params, x0=x_old[:self._n_alg])
+    x_feasible = region_solver.find_feasible_point(region_solver, x_old[:region_solver._n_alg], params, x0=x_old[:region_solver._n_alg])
     x_old[:len(x_feasible)] = x_feasible
-    for i, var in enumerate(self._diff_vars):
-        id = self.uid2idx_vars[var.origin_var.uid]
+    for i, var in enumerate(region_solver._diff_vars):
+        id = region_solver.uid2idx_vars[var.origin_var.uid]
         x_new[i] = x_feasible[id]
 
-    rhs = self.rhs_predictor(x_new, x_old, params)
+    rhs = region_solver.rhs_predictor(x_new, x_old, params)
     residual = np.linalg.norm(rhs)
     while residual > tol and step < max_step:
         step += 1
-        rhs = self.rhs_predictor(x_new, x_old, params)
-        Jf = self.Jf_predictor(x_new, x_old, params)
+        rhs = region_solver.rhs_predictor(x_new, x_old, params)
+        Jf = region_solver.Jf_predictor(x_new, x_old, params)
         delta = sp.linalg.lsqr(Jf, -rhs)[0]
         x_new += delta
         residual = np.linalg.norm(rhs)
         ##print(f'Loop Predictor residual is {residual} for step {step}')
 
-    lags = np.zeros(len(self._lag_vars))
+    lags = np.zeros(len(region_solver._lag_vars))
     lags1 = lags.copy()
     lags2 = lags.copy()
-    x_aux = x_old.copy()[:self._n_alg]
+    x_aux = x_old.copy()[:region_solver._n_alg]
 
-    for i, var in enumerate(self._diff_vars):
-        id = self.uid2idx_vars[var.origin_var.uid]
+    for i, var in enumerate(region_solver._diff_vars):
+        id = region_solver.uid2idx_vars[var.origin_var.uid]
         x_feasible[id] = x_new[i]
     try:
-        x_y = self.find_feasible_given_x(x_new, x_feasible, params, max_steps=1e4)
+        x_y = region_solver.find_feasible_given_x(region_solver, x_new, x_feasible, params, max_steps=1e4)
         x_y_comp = np.r_[x_y, lags]
-        rhs1 = self.rhs_implicit(x_y_comp, x_y, params, 0, 1e-3)
+        rhs1 = region_solver.rhs_implicit(x_y_comp, x_y, params, 0, 1e-3)
         residual1 = np.linalg.norm(rhs1)
         # print(f'End of predictor residual is {residual1}, x_y is of length {len(x_y_comp)}')
     except:
         # print(f'Find feasible x failed')
         _ = 0
 
-    for var in self._diff_vars:
-        base_var_id = self.uid2idx_vars[var.origin_var.uid]
-        diff_var_id = self.uid2idx_diff[var.uid]
+    for var in region_solver._diff_vars:
+        base_var_id = region_solver.uid2idx_vars[var.origin_var.uid]
+        diff_var_id = region_solver.uid2idx_diff[var.uid]
         x_aux[base_var_id] = x_new[diff_var_id]
-    for lag_var in self._lag_vars:
-        lag_id = self.uid2idx_lag[lag_var.uid]
-        var_id = self.uid2idx_vars[lag_var.base_var.uid]
+    for lag_var in region_solver._lag_vars:
+        lag_id = region_solver.uid2idx_lag[lag_var.uid]
+        var_id = region_solver.uid2idx_vars[lag_var.base_var.uid]
         lags[lag_id] = x_old[var_id]
         lags2[lag_id] = x_aux[var_id]
 
@@ -1384,50 +1416,50 @@ def predictor(self, x_old, params, max_step=1e3, tol=1e-4):
     # print(f'End of predictor residual is {residual2}, x_new_compl is of length {len(x_new_comp)}')
     return x_new, x_feasible
 
-def corrector(self, x_predicted, x_old, x_feasible, params, max_step=10, tol=1e-3):
-    x_new = np.zeros(len(self._diff_vars))
+def corrector(region_solver, x_predicted, x_old, x_feasible, params, max_step=10, tol=1e-3):
+    x_new = np.zeros(len(region_solver._diff_vars))
     residual = 10
-    x_old = x_old[:self._n_alg]
+    x_old = x_old[:region_solver._n_alg]
     step = 0
-    x_old_limited = np.zeros(len(self._diff_vars))
-    for var in self._diff_vars:
-        base_var_id = self.uid2idx_vars[var.origin_var.uid]
-        diff_var_id = self.uid2idx_diff[var.uid]
+    x_old_limited = np.zeros(len(region_solver._diff_vars))
+    for var in region_solver._diff_vars:
+        base_var_id = region_solver.uid2idx_vars[var.origin_var.uid]
+        diff_var_id = region_solver.uid2idx_diff[var.uid]
         x_old_limited[diff_var_id] = x_old[base_var_id]
 
     try:
-        x_predicted = self.find_feasible_given_x(x_predicted, x_feasible, params)
+        x_predicted = region_solver.find_feasible_given_x(region_solver, x_predicted, x_feasible, params)
     except Exception as e:
         msg = str(e)
         print(msg)
         print('given x failed')
-        x_predicted = self.find_feasible_point(x_predicted, params, x0=x_feasible)
+        x_predicted = region_solver.find_feasible_point(region_solver, x_predicted, params, x0=x_feasible)
     try:
-        x_old = self.find_feasible_given_x(x_old_limited, x_feasible, params)
+        x_old = region_solver.find_feasible_given_x(region_solver, x_old_limited, x_feasible, params)
     except:
         print('given x failed')
-        x_old = self.find_feasible_point(x_old_limited, params, x0=x_feasible)
-    for i, var in enumerate(self._diff_vars):
-        id = self.uid2idx_vars[var.base_var.uid]
+        x_old = region_solver.find_feasible_point(region_solver, x_old_limited, params, x0=x_feasible)
+    for i, var in enumerate(region_solver._diff_vars):
+        id = region_solver.uid2idx_vars[var.base_var.uid]
         x_new[i] = x_predicted[id]
 
     alpha = 1.0
     x_mid = alpha * (x_predicted) + (1 - alpha) * x_old
-    lags = np.zeros(len(self._lag_vars))
-    for lag_var in self._lag_vars:
-        lag_id = self.uid2idx_lag[lag_var.uid]
-        var_id = self.uid2idx_vars[lag_var.base_var.uid]
+    lags = np.zeros(len(region_solver._lag_vars))
+    for lag_var in region_solver._lag_vars:
+        lag_id = region_solver.uid2idx_lag[lag_var.uid]
+        var_id = region_solver.uid2idx_vars[lag_var.base_var.uid]
         lags[lag_id] = x_old[var_id]
 
     x_predicted_withlags = np.r_[x_predicted, lags]
-    rhs = self.rhs_implicit(x_predicted_withlags, x_predicted, params, 0, 1e-3)
+    rhs = region_solver.rhs_implicit(x_predicted_withlags, x_predicted, params, 0, 1e-3)
     residual = np.linalg.norm(rhs)
 
     ##print(f'x_predicted of length {len(x_predicted)}')
     # print(f'Initial corrector {residual}, x_new is of length {len(x_new)}')
     while residual > tol and step < max_step:
-        rhs = self.rhs_corrector(x_new, x_mid, x_old, params)
-        Jf = self.Jf_corrector(x_new, x_mid, x_old, params)
+        rhs = region_solver.rhs_corrector(x_new, x_mid, x_old, params)
+        Jf = region_solver.Jf_corrector(x_new, x_mid, x_old, params)
         delta = sp.linalg.lsqr(Jf, -rhs)[0]
         x_new += delta
 
@@ -1442,47 +1474,47 @@ def corrector(self, x_predicted, x_old, x_feasible, params, max_step=10, tol=1e-
     else:
         print('Corrector Succeeded')
 
-    for i, var in enumerate(self._diff_vars):
-        idx = self.uid2idx_vars[var.origin_var.uid]
+    for i, var in enumerate(region_solver._diff_vars):
+        idx = region_solver.uid2idx_vars[var.origin_var.uid]
         x_mid[idx] = x_new[i]
 
     return x_new, x_mid
 
-def fixed_point_finder(self, x0=None, tol=1e-4):
+def fixed_point_finder(region_solver, x0=None, tol=1e-4):
     states = set()
-    states = {var.base_var for var in self._diff_vars}
-    self.states = list(states)
-    self.n_states = len(states)
+    states = {var.base_var for var in region_solver._diff_vars}
+    region_solver.states = list(states)
+    region_solver.n_states = len(states)
     if x0 is None:
-        xstart = np.random.rand(len(self._lag_vars))
+        xstart = np.random.rand(len(region_solver._lag_vars))
     else:
-        xstart = np.zeros(len(self._lag_vars))
-        for lag in self._lag_vars:
+        xstart = np.zeros(len(region_solver._lag_vars))
+        for lag in region_solver._lag_vars:
             base_var = lag.base_var
-            base_var_idx = self.uid2idx_vars[base_var.uid]
-            xstart[self.uid2idx_lag[lag.uid]] = x0[base_var_idx]
+            base_var_idx = region_solver.uid2idx_vars[base_var.uid]
+            xstart[region_solver.uid2idx_lag[lag.uid]] = x0[base_var_idx]
 
-    params_current = self._params_fn(float(0))
-    T_operator = self.T_operator(params_current)
+    params_current = region_solver._params_fn(float(0))
+    T_operator = region_solver.T_operator(region_solver, params_current)
     residual = 10
     alpha = 0.05
     x = xstart.copy()
     while residual > tol:
-        x_new = (alpha) * x + (1 - alpha) * T_operator(x)
+        x_new = (alpha) * x + (1 - alpha) * T_operator(region_solver, x)
         residual = np.linalg.norm(x_new - x)
         x = x_new
     return x
 
-def T_operator(self, params_current):
+def T_operator(region_solver, params_current):
 
     def operator(lags, h=1e-3):
         residual = 10
-        x_n = np.zeros(self._n_vars)
+        x_n = np.zeros(region_solver._n_vars)
         dtau = 1e-6
-        for lag in self._lag_vars:
+        for lag in region_solver._lag_vars:
             base_var = lag.base_var
-            base_var_idx = self.uid2idx_vars[base_var.uid]
-            x_n[base_var_idx] = lags[self.uid2idx_lag[lag.uid]] + 2 * np.random.rand()
+            base_var_idx = region_solver.uid2idx_vars[base_var.uid]
+            x_n[base_var_idx] = lags[region_solver.uid2idx_lag[lag.uid]] + 2 * np.random.rand()
 
         x_new = x_n.copy()
 
@@ -1491,8 +1523,8 @@ def T_operator(self, params_current):
             xnew_lags = np.r_[x_new, lags]
             params_current[-1] = dtau
 
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
-            Jf = self.jacobian_implicit(xnew_lags, params_current, dtau)
+            rhs = region_solver.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
+            Jf = region_solver.jacobian_implicit(xnew_lags, params_current, dtau)
             delta = sp.linalg.spsolve(Jf, -rhs)
 
             if np.isnan(delta).any() or np.isinf(delta).any():
@@ -1501,18 +1533,18 @@ def T_operator(self, params_current):
             x_new += delta
             residual = np.linalg.norm(rhs)
             # print(f'residual is {residual}')
-        x_states = np.zeros(len(self._lag_vars))
+        x_states = np.zeros(len(region_solver._lag_vars))
 
         # We project onto the state variables
         # TODO: return should also be lags
-        for lag in self._lag_vars:
+        for lag in region_solver._lag_vars:
             base_var = lag.base_var
-            base_var_idx = self.uid2idx_vars[base_var.uid]
+            base_var_idx = region_solver.uid2idx_vars[base_var.uid]
             if lag.lag == 1:
-                x_states[self.uid2idx_lag[lag.uid]] = x_new[base_var_idx]
+                x_states[region_solver.uid2idx_lag[lag.uid]] = x_new[base_var_idx]
             else:
                 lag_var = LagVar.get_or_create('name', base_var=base_var, lag=lag.lag - 1)
-                x_states[self.uid2idx_lag[lag.uid]] = lags[self.uid2idx_lag[lag_var.uid]]
+                x_states[region_solver.uid2idx_lag[lag.uid]] = lags[region_solver.uid2idx_lag[lag_var.uid]]
 
         return x_states
 
@@ -1634,7 +1666,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     # injections
 
     # initialize with pseudo_transient
-    ## iterate through buses and constuct local system blocks
+    ## iterate through buses and constuct local system_solver
 
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
 
@@ -1651,16 +1683,16 @@ def compose_system_block(time: Var, grid: MultiCircuit,
                 region_dev_list.append(dev)
         for dev in region_dev_list:
             region_system.children.append(dev.rms_model.model)
-            for var in dev.rms_model.model.state_vars + dev.rms_model.model.algebraic_vars:
+            for var in dev.rms_model.model.state_vars:
                 vars.append(var)
                 init_guess_region[var] = np.random.rand()
             for var in dev.rms_model.model.algebraic_vars:
                 vars.append(var)
                 init_guess_region[var] = np.random.rand()
-        array_index = 0
+        region_array_index = 0
         for var in vars:
             uid2idx_region_vars[var.uid] = array_index
-            array_index += 1
+            region_array_index += 1
         x0 = build_init_vars_vector(uid2idx_region_vars, init_guess_region)
 
         region_solver = DiffBlockSolver(region_system, region_time)
@@ -1668,6 +1700,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         x0_pst, init_guess_pst = pseudo_transient(bus_index, region_solver, x0, init_guess_region, res, grid)
         for var, value in init_guess_pst:
             init_guess.update({[var.uid, var.name], value})
+        sys_block.add(region_system)
 
 
 
