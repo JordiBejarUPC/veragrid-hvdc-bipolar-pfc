@@ -27,22 +27,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 import VeraGridEngine.api as gce
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Power flow
-# ----------------------------------------------------------------------------------------------------------------------
-# Load system
-# In scriptin_gridcal_hardcoded there are also shunt elements!
-# grid_1 = gce.open_file('Two_Areas_PSS_E/IEEE39_1W.gridcal')
-# Run power flow
-# res_1 = gce.power_flow(grid_1)
-#
-# # # Print results
-# print(res_1.get_bus_df())
-# print(res_1.get_branch_df())
-# print(f"Converged: {res_1.converged}")
-
-
 # Build system
-
+# ----------------------------------------------------------------------------------------------------------------------
 
 grid = MultiCircuit()
 
@@ -158,26 +144,7 @@ load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.9999
 
 load2_grid = grid.add_load(bus=bus9, api_obj=load2)
 
-# load2 = grid.add_load(name="load2", bus=bus9, api_obj=gce.Load(P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467))
-#
-# # Shunt at bus 7
-# shunt1 = gce.Shunt(
-#     name="Shunt1",
-#     G=0.0,
-#     B=200.0,   # MVAr at v=1 pu
-#     active=True
-# )
-# grid.add_shunt(bus=bus7, api_obj=shunt1)
-#
-# # Shunt at bus 9
-# shunt2 = gce.Shunt(
-#     name="Shunt2",
-#     G=0.0,
-#     B=350.0,   # MVAr at v=1 pu
-#     active=True
-# )
-# grid.add_shunt(bus=bus9, api_obj=shunt2)
-#
+
 
 # Generators
 fn_1 = 60.0
@@ -274,16 +241,14 @@ grid.add_generator(bus=bus4, api_obj=gen4)
 # Events
 # ---------------------------------------------------------------------------------------
 
-# event1 = RmsEvent(load1, "Pl0", np.array([2.5, 12.5]), np.array([-9.0, -9.01]))
-event1 = RmsEvent(load1, "Pl0", np.array([2.5]), np.array([-9.0]))
 
-# event2 = RmsEvent(load1, "Ql0", np.array([16.5]), np.array([-0.8]))
-
+event1 = RmsEvent(load1, "Pl0", 2.5, -9.0)
 
 grid.add_rms_event(event1)
-# grid.add_rms_event(event2)
 
-# # Run power flow
+# ---------------------------------------------------------------------------------------
+# Run power flow
+# ---------------------------------------------------------------------------------------
 
 pf_options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,

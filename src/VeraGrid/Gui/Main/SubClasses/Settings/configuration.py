@@ -209,6 +209,7 @@ class ConfigurationMain(ResultsMain):
                     "investment_evaluation_method": self.ui.investment_evaluation_method_ComboBox,
                     "max_investments_evluation_number": self.ui.max_investments_evluation_number_spinBox,
                     "investment_evaluation_obj_func": self.ui.investment_evaluation_objfunc_ComboBox,
+                    "firm_capacity_share": self.ui.firmCapacityShareSpinBox,
                 },
                 "stochastic": {
                     "method": self.ui.stochastic_pf_method_comboBox,
@@ -259,7 +260,7 @@ class ConfigurationMain(ResultsMain):
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
                 "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
-                "unit_commitment": self.ui.opfUnitCommitmentCheckBox,
+                "dispatch_mode": self.ui.opfDispatchModeComboBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,
                 "area_spinning_reserve": self.ui.opfSpinningReserveCheckBox,
@@ -330,6 +331,14 @@ class ConfigurationMain(ResultsMain):
                 "map_regions_like_raw": self.ui.cgmes_map_regions_like_raw_checkBox,
                 "raw_selected_version": self.ui.raw_export_version_comboBox,
                 "cgmes_dc_as_hvdclines": self.ui.cgmes_dc_as_hvdclines_checkBox,
+            },
+            "dyn": {
+                "rms_int_method_comboBox": self.ui.rms_int_method_comboBox,
+                "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
+                "sim_time_spinBox": self.ui.sim_time_spinBox,
+                "h_spinBox": self.ui.h_spinBox,
+
+                "ss_assessment_time_spinBox_2": self.ui.ss_assessment_time_spinBox_2
             }
         }
 
@@ -466,10 +475,6 @@ class ConfigurationMain(ResultsMain):
                 self.plugins_investment_evaluation_method_dict[
                     plugin_info.investments_fcn.alias
                 ] = plugin_info.investments_fcn.function_ptr
-
-        # create combobox model for the plugin investments
-        lst = list(self.plugins_investment_evaluation_method_dict.keys())
-        self.ui.plugins_investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
     def launch_plugin(self, fcn: PluginFunction):
         """

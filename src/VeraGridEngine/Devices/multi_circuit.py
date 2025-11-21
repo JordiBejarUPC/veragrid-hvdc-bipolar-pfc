@@ -158,7 +158,6 @@ class MultiCircuit(Assets):
         'user_name',
         'Sbase',
         'fBase',
-        'time',
         'logger',
     )
 
@@ -196,9 +195,6 @@ class MultiCircuit(Assets):
 
         # Base frequency in Hz
         self.fBase: float = fbase
-
-        # grid time
-        self.time: Var = Var("t")
 
         # logger of events
         self.logger: Logger = Logger()
@@ -362,7 +358,7 @@ class MultiCircuit(Assets):
                 'pf_measurements',
                 'qf_measurements',
                 'if_measurements',
-                'modelling_authorities'
+                'modelling_authorities',
                 ]
 
         for pr in ppts:
@@ -532,6 +528,8 @@ class MultiCircuit(Assets):
         batt.P_prof = gen.P_prof
         batt.power_factor_prof = gen.Pf_prof
         batt.vset_prof = gen.Vset_prof
+        batt.enabled_dispatch_prof = gen.enabled_dispatch_prof
+        batt.must_run_prof = gen.must_run_prof
 
         # add device to the circuit
         self.add_battery(bus=gen.bus, api_obj=batt)
@@ -1800,12 +1798,12 @@ class MultiCircuit(Assets):
 
         for elm in self.get_generation_like_devices():
             if elm.bus is not None:
-                if not elm.enabled_dispatch:
-                    k = bus_dict[elm.bus]
-                    if apply_active:
-                        val[:, k] += elm.get_Sprof_with_sign() * elm.active_prof.toarray()
-                    else:
-                        val[:, k] += elm.get_Sprof_with_sign()
+                fixed_val = 1 - elm.enabled_dispatch_prof.toarray()
+                k = bus_dict[elm.bus]
+                if apply_active:
+                    val[:, k] += elm.get_Sprof_with_sign() * elm.active_prof.toarray() * fixed_val
+                else:
+                    val[:, k] += elm.get_Sprof_with_sign() * fixed_val
 
         return val
 
@@ -1821,12 +1819,11 @@ class MultiCircuit(Assets):
 
         for elm in self.get_generation_like_devices():
             if elm.bus is not None:
-                if elm.enabled_dispatch:
-                    k = bus_dict[elm.bus]
-                    if apply_active:
-                        val[:, k] += elm.get_Sprof_with_sign() * elm.active_prof.toarray()
-                    else:
-                        val[:, k] += elm.get_Sprof_with_sign()
+                k = bus_dict[elm.bus]
+                if apply_active:
+                    val[:, k] += elm.get_Sprof_with_sign() * elm.active_prof.toarray() * elm.enabled_dispatch_prof.toarray()
+                else:
+                    val[:, k] += elm.get_Sprof_with_sign() * elm.enabled_dispatch_prof.toarray()
 
         return val
 
@@ -2822,6 +2819,8 @@ class MultiCircuit(Assets):
         self.underground_cable_types += data.underground_cable_types
         self.wire_types += data.wire_types
         self.sequence_line_types += data.sequence_line_types
+        self.rms_models += data.rms_models
+
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """

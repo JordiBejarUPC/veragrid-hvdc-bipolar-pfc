@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 import json
 import math
@@ -15,9 +16,11 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
                                          ContingencyOperationTypes)
+# from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
 
 
 def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
@@ -29,7 +32,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
     # this list must be sorted in dependency order so that the
     # loading algorithm is able to find the object substitutions
 
-    object_types = {
+    return {
         'modelling_authority': dev.ModellingAuthority(),
 
         'area': dev.Area(),
@@ -50,6 +53,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'emission': dev.EmissionGas(),
 
         'facility': dev.Facility(),
+
+        'rms_model_template': dev.RmsModelTemplate(),
 
         'bus': dev.Bus(),
 
@@ -99,6 +104,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'contingency_group': dev.ContingencyGroup(),
         'contingency': dev.Contingency(),
+        'short_circuit_definition': dev.ShortCircuitDefinition(),
 
         'remedial_action_group': dev.RemedialActionGroup(),
         'remedial_action': dev.RemedialAction(),
@@ -112,11 +118,24 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'fluid_pump': dev.FluidPump(),
         'fluid_p2x': dev.FluidP2x(),
 
+        'pi_measurement': dev.PiMeasurement(),
+        'qi_measurement': dev.QiMeasurement(),
+        'pf_measurement': dev.PfMeasurement(),
+        'qf_measurement': dev.QfMeasurement(),
+        'if_measurement': dev.IfMeasurement(),
+        'pt_measurement': dev.PtMeasurement(),
+        'qt_measurement': dev.QtMeasurement(),
+        'it_measurement': dev.ItMeasurement(),
+        'vm_measurement': dev.VmMeasurement(),
+        'va_measurement': dev.VaMeasurement(),
+        'pg_measurement': dev.PgMeasurement(),
+        'qg_measurement': dev.QgMeasurement(),
+
     }
-    return object_types
 
 
-def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger(),
+def gather_model_as_data_frames(circuit: MultiCircuit,
+                                logger: Logger = Logger(),
                                 legacy: bool = False) -> Dict[str, pd.DataFrame]:
     """
     Pack the circuit information into tables (DataFrames)
@@ -129,7 +148,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit, logger: Logger = Logger()
 
     # get the master time profile
     time_profile = circuit.time_profile
-    nt = len(time_profile) if time_profile is not None else 0
+    nt = circuit.get_time_number()
 
     ########################################################################################################
     # declare objects to iterate  name: [sample object, list of objects, headers]
@@ -414,6 +433,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES) -> Dict[str, str]:
             data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.DynamicModelHostType:
+            data[name] = obj.to_dict()
+
+        elif prop.tpe == SubObjectType.DaeBlockType:
             data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.Array:
@@ -1158,7 +1180,12 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                         data=property_value,
                                         models_dict=elements_dict_by_type.get(DeviceType.RmsModelTemplateDevice, {})
                                     )
-                                    pass
+
+                                elif gc_prop.tpe == SubObjectType.DaeBlockType:
+
+                                    # get the line locations object and fill it with the json data
+                                    blk: Block = Block()
+                                    blk.parse(data=property_value)
 
                                 elif gc_prop.tpe == SubObjectType.Associations:
 
@@ -1455,7 +1482,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
         if len(model_data) > 0:
 
             # parse circuit own data
-            circuit_data = model_data.get('circuit', None)
+            circuit_data: Dict[str, str | int | float] | None = model_data.get('circuit', None)
             if circuit_data is not None:
                 circuit.parse(data=circuit_data)
 
@@ -1484,11 +1511,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                 data_list = model_data.get(object_type_key, None)
 
                 if data_list is not None:
-                    devices, devices_dict = parse_object_type_from_json(template_elm=template_elm,
-                                                                        data_list=data_list,
-                                                                        elements_dict_by_type=elements_dict_by_type,
-                                                                        time_profile=circuit.time_profile,
-                                                                        logger=logger)
+                    devices, devices_dict = parse_object_type_from_json(
+                        template_elm=template_elm,
+                        data_list=data_list,
+                        elements_dict_by_type=elements_dict_by_type,
+                        time_profile=circuit.time_profile,
+                        logger=logger
+                    )
 
                     # set/augment the dictionary per type for later
                     prev_dict = elements_dict_by_type.get(template_elm.device_type, dict())
@@ -1514,6 +1543,55 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
             handle_legacy_jsons(model_data=model_data,
                                 elements_dict_by_type=elements_dict_by_type,
                                 logger=logger)
+
+    # fill in device into pointer devices ------------------------------------------------------------------------------
+
+    to_delete: List[ALL_DEV_TYPES] = list()
+    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
+    for dtype in [
+        DeviceType.PMeasurementDevice,
+        DeviceType.QMeasurementDevice,
+        DeviceType.PfMeasurementDevice,
+        DeviceType.QfMeasurementDevice,
+        DeviceType.PtMeasurementDevice,
+        DeviceType.QtMeasurementDevice,
+        DeviceType.PgMeasurementDevice,
+        DeviceType.QgMeasurementDevice,
+        DeviceType.IfMeasurementDevice,
+        DeviceType.ItMeasurementDevice,
+        DeviceType.VaMeasurementDevice,
+        DeviceType.VmMeasurementDevice,
+        DeviceType.ContingencyDevice,
+        DeviceType.InvestmentDevice,
+        DeviceType.RemedialActionDevice,
+        DeviceType.RmsEventDevice,
+        DeviceType.ShortCircuitDefinition
+    ]:
+        elms = circuit.get_elements_by_type(device_type=dtype)
+
+        for elm in elms:
+
+            if elm.tpe != DeviceType.NoDevice:
+                # search in the per-device type dictionary (already created and faster)
+                referenced_dict = elements_dict_by_type[elm.tpe]
+                referenced_elm = referenced_dict.get(elm.device_idtag, None)
+            else:
+                # lazy-creation of the all elements dict, takes time to initialize
+                if len(all_elements_dict) == 0:
+                    all_elements_dict, _ = circuit.get_all_elements_dict()
+                referenced_elm = all_elements_dict.get(elm.device_idtag, None)
+
+            if referenced_elm is None:
+                to_delete.append(elm)
+            else:
+                elm.set_device(elm=referenced_elm)
+
+    # delete pointer elemnts to missing references
+    for elm in to_delete:
+        circuit.delete_element(elm)
+        logger.add_error(msg="Invalid pointer element deleted",
+                         device_class=elm.device_type.value,
+                         device=elm.name)
 
     # fill in wires into towers ----------------------------------------------------------------------------------------
     if text_func is not None:

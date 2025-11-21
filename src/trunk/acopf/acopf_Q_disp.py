@@ -39,7 +39,6 @@ def run_acopf(grid):
     pf_options = gce.PowerFlowOptions(control_q=False,
                                       ignore_single_node_islands=True,
                                       max_iter=50,
-                                      max_outer_loop_iter=1000,
                                       trust_radius=1.0,
                                       tolerance=1e-05)
 

@@ -14,7 +14,7 @@ from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPha
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -853,40 +853,48 @@ class Transformer2W(ControllableBranchParent):
             return zeros, zeros, zeros, zeros
 
         return Yff, Yft, Ytf, Ytt
-    
+
     def initialize_rms(self):
-        # NOTE: accurate model considering phase shift and tap change still need to be implemented!
         if self.rms_model.empty():
-            Qf = Var("Qf" + self.name)
-            Qt = Var("Qt" + self.name)
-            Pf = Var("Pf" + self.name)
-            Pt = Var("Pt" + self.name)
+            Qf = Var("Qf")
+            Qt = Var("Qt")
+            Pf = Var("Pf")
+            Pt = Var("Pt")
 
             ys = 1.0 / complex(self.R, self.X)
-            g = Const(ys.real)
-            b = Const(ys.imag)
-            bsh = Const(self.B)
+            g = Var("g")
+            b = Var("b")
+            bsh = Var("bsh")
 
-            Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
-            Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
-            Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
-            self.rms_model.model = Block(
-                algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + np.pi / 2)),
-                ],
+            block = Block(
                 algebraic_vars=[Pf, Pt, Qf, Qt],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                external_mapping={
-                    DynamicVarType.Pf: Pf,
-                    DynamicVarType.Pt: Pt,
-                    DynamicVarType.Qf: Qf,
-                    DynamicVarType.Qt: Qt,
-                }
-            )
+                algebraic_eqs=[
+                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
+                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
+                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
+                        Vaf - Vat) + b * Vmf * Vmt * sin(
+                        Vaf - Vat + np.pi / 2)),
+                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
+                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
+                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
+                        Vat - Vaf) + b * Vmt * Vmf * sin(
+                        Vat - Vaf + np.pi / 2)),
+                ])
+
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.Pf: Pf,
+                VarPowerFlowRefferenceType.Pt: Pt,
+                VarPowerFlowRefferenceType.Qf: Qf,
+                VarPowerFlowRefferenceType.Qt: Qt,
+            }
+
+            block.event_dict = {g: Const(ys.real),
+                                b: Const(ys.imag),
+                                bsh: Const(self.B)}
+
+            self.rms_model.model = block

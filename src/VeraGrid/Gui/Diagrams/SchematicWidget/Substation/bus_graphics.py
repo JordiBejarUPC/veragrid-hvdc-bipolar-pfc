@@ -31,12 +31,11 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
 
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
+from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_bus_catalogue
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -502,11 +501,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        checkeable=True,
                        checked_value=self.draw_labels)
 
-        add_menu_entry(menu=menu,
-                       text="Rms Editor",
-                       function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/edit.png")
-
         sc = add_sub_menu(menu=menu,
                           text="Short circuit",
                           icon_path=":/Icons/icons/short_circuit.png")
@@ -516,28 +510,28 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_3p,
                        checkeable=True,
-                       checked_value=self.sc_enabled[0])
+                       checked_value=int(self.sc_enabled[0]))
 
         add_menu_entry(menu=sc,
                        text="Line-Ground (x)" if self.sc_enabled[1] else "Line-Ground",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_lg,
                        checkeable=True,
-                       checked_value=self.sc_enabled[1])
+                       checked_value=int(self.sc_enabled[1]))
 
         add_menu_entry(menu=sc,
                        text="Line-Line (x)" if self.sc_enabled[2] else "Line-Line",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_ll,
                        checkeable=True,
-                       checked_value=self.sc_enabled[2])
+                       checked_value=int(self.sc_enabled[2]))
 
         add_menu_entry(menu=sc,
                        text="Line-Line-Ground (x)" if self.sc_enabled[3] else "Line-Line-Ground",
                        icon_path=":/Icons/icons/short_circuit.png",
                        function_ptr=self.enable_disable_sc_llg,
                        checkeable=True,
-                       checked_value=self.sc_enabled[3])
+                       checked_value=int(self.sc_enabled[3]))
 
         add_menu_entry(menu=sc,
                        text="Disable",
@@ -639,20 +633,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        function_ptr=self.add_external_grid)
 
         menu.exec_(event.screenPos())
-
-    def edit_rms(self):
-        templates = [t.name for t in
-                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
-
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
-            if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
-                # TODO: missing finding the template object and apply it to self.api_object
-            elif choice_dialog.choice == "editor":
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
 
     def assign_status_to_profile(self):
         """
@@ -1035,7 +1015,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             vm = format_str.format(Vm)
             vm_kv = format_str.format(Vm * self._api_object.Vnom)
             va = format_str.format(Va)
-            msg += f"V={vm_kv} KV<br>  {vm}&lt;{va}º p.u.<br>"
+            msg += f"V={vm_kv} kV<br>  {vm}&lt;{va}º p.u.<br>"
 
             if P is not None:
                 p = format_str.format(P)
@@ -1087,7 +1067,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                     vm = format_str.format(Vm_i)
                     vm_kv = format_str.format(Vm_i * self._api_object.Vnom)
                     va = format_str.format(Va_i)
-                    msg += f"V{ph}={vm_kv} KV / {vm}&lt;{va}º p.u.<br>"
+                    msg += f"V{ph}={vm_kv} kV / {vm}&lt;{va}º p.u.<br>"
 
             for P_i, Q_i, ph in zip([PA, PB, PC], [QA, QB, QC], ["a", "b", "c"]):
                 if not (P_i == 0.0 and Q_i == 0.0):

@@ -12,7 +12,7 @@ import sys
 import os
 import time
 
-from VeraGridEngine import DynamicVarType
+from VeraGridEngine import VarPowerFlowRefferenceType
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -1139,8 +1139,8 @@ load_7 = Block(
     parameters=[Pl0_7],
     parameters_eqs=[piecewise(t, np.array([2.5]), np.array([0.1174]), Pl0_7_default)],
     external_mapping={
-        DynamicVarType.P: Pl_7,
-        DynamicVarType.Q: Ql_7
+        VarPowerFlowRefferenceType.P: Pl_7,
+        VarPowerFlowRefferenceType.Q: Ql_7
     }
 )
 Ql0_8 = Const(Sb8.imag)
