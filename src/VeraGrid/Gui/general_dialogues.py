@@ -9,8 +9,8 @@ import pandas as pd
 from typing import List, Union, Any
 from datetime import datetime
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout, QWidget,
-                               QLabel, QComboBox)
+from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout,
+                               QLabel, QComboBox, QSpacerItem, QSizePolicy)
 
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from VeraGridEngine.basic_structures import Logger
@@ -1171,8 +1171,12 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         # Phases
         self.cb_phases = QComboBox()
         self.cb_phases.addItems([e.value for e in PhasesShortCircuit])
-        layout.addWidget(QLabel("Phases:"))
+        self.phases_label = QLabel("Phases:")
+        layout.addWidget(self.phases_label)
         layout.addWidget(self.cb_phases)
+
+        # --- VERTICAL SPACER ---
+        layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # Accept button
         self.btn_accept = QPushButton("Accept")
@@ -1188,6 +1192,21 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         self.phases = PhasesShortCircuit(self.cb_phases.currentText())
 
         self.was_accepted = False
+
+        self.cb_method.currentTextChanged.connect(self.update_view)
+
+    def update_view(self):
+        """
+
+        :return:
+        """
+        # -------- UPDATE PHASES --------
+        if self.cb_method.currentText() == MethodShortCircuit.sequences.value:
+            self.cb_phases.setVisible(False)
+            self.phases_label.setVisible(False)
+        else:
+            self.cb_phases.setVisible(True)
+            self.phases_label.setVisible(True)
 
     def update_logic(self):
         """Update available method and phase options based on the fault type."""
@@ -1206,15 +1225,21 @@ class ShortCircuitSelector(QtWidgets.QDialog):
             self.cb_method.setCurrentText(current_method)
 
         # -------- UPDATE PHASES --------
-        allowed_phases = valid_phases_for_fault(fault)
-        current_phase = self.cb_phases.currentText()
+        if current_method == MethodShortCircuit.sequences.value:
+            self.cb_phases.setVisible(False)
+            self.phases_label.setVisible(False)
+        else:
+            self.cb_phases.setVisible(True)
+            self.phases_label.setVisible(True)
+            allowed_phases = valid_phases_for_fault(fault)
+            current_phase = self.cb_phases.currentText()
 
-        self.cb_phases.clear()
-        for p in allowed_phases:
-            self.cb_phases.addItem(p.value)
+            self.cb_phases.clear()
+            for p in allowed_phases:
+                self.cb_phases.addItem(p.value)
 
-        if current_phase in [p.value for p in allowed_phases]:
-            self.cb_phases.setCurrentText(current_phase)
+            if current_phase in [p.value for p in allowed_phases]:
+                self.cb_phases.setCurrentText(current_phase)
 
         self.fault = FaultType(self.cb_fault.currentText())
         self.method = MethodShortCircuit(self.cb_method.currentText())
