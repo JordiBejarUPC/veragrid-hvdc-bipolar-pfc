@@ -1092,30 +1092,9 @@ class SimulationsMain(TimeEventsMain):
 
                 if pf_results is not None:
 
-                    # Since we must run this study in the same conditions as
-                    # the last power flow, no compilation is needed
-
-                    # get the short circuit selected buses
-                    sel_buses = list()
-                    self_short_circuit_types = list()
-
-                    for diagram_widget in self.diagram_widgets_list:
-
-                        if isinstance(diagram_widget, SchematicWidget):
-
-                            for i, bus, graphic_object in diagram_widget.get_buses():
-                                if isinstance(graphic_object, BusGraphicItem):
-                                    if graphic_object.any_short_circuit():
-                                        sel_buses.append(i)
-                                        self_short_circuit_types.append(graphic_object.sc_type)
-
-                    if len(sel_buses) > 1:
-                        error_msg("VeraGrid only supports one short circuit bus at the time", "Short circuit")
-                        return
-
-                    if len(sel_buses) == 0:
-                        warning_msg('You need to enable some buses for short circuit.'
-                                    + '\nEnable them by right click, and selecting on the context menu.')
+                    if self.circuit.get_short_circuit_definition_number() == 0:
+                        warning_msg('You need to define short circuits in the Database.'
+                                    + '\nAdd them by right click on a bus and selecting on the context menu.')
                     else:
                         self.add_simulation(SimulationTypes.ShortCircuit_run)
 
@@ -1127,8 +1106,7 @@ class SimulationsMain(TimeEventsMain):
                             branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
 
                         # get the power flow options from the GUI
-                        sc_options = sim.ShortCircuitOptions(bus_index=sel_buses[0],
-                                                             fault_type=self_short_circuit_types[0])
+                        sc_options = sim.ShortCircuitOptions()
 
                         pf_options = self.get_selected_power_flow_options()
 

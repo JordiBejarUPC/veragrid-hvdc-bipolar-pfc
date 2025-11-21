@@ -769,13 +769,13 @@ class DiagramsMain(CompiledArraysMain):
         hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
         vsc_active = self.circuit.get_vsc_actives(t_idx=None)
 
-        return diagram_widget.colour_results(Sbus=results.Sbus1,
+        return diagram_widget.colour_results(Sbus=results.Sbus1[:, 0],
                                              bus_active=bus_active,
-                                             Sf=results.Sf1,
-                                             St=results.St1,
-                                             voltages=results.voltage1,
+                                             Sf=results.Sf1[:, 0],
+                                             St=results.St1[:, 0],
+                                             voltages=results.voltage1[:, 0],
                                              types=results.bus_types,
-                                             loadings=results.loading1,
+                                             loadings=results.loading1[:, 0],
                                              br_active=br_active,
                                              hvdc_Pf=None,
                                              hvdc_Pt=None,

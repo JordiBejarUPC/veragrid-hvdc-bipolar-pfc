@@ -10,7 +10,8 @@ import numpy as np
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import CxVec
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowResults3Ph, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowResults3Ph, \
+    PowerFlowOptions
 from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_worker import (short_circuit_ph3,
                                                                                  short_circuit_unbalanced,
@@ -55,12 +56,14 @@ class ShortCircuitDriver(DriverTemplate):
         # declare an empty results object
         n = grid.get_bus_number()
         self.results: ShortCircuitResults = ShortCircuitResults(
+            nsc=grid.get_short_circuit_definition_number(),
             n=n,
             m=grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             n_hvdc=grid.get_hvdc_number(),
             bus_names=grid.get_bus_names(),
             branch_names=grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             hvdc_names=grid.get_hvdc_names(),
+            sc_names=grid.get_short_circuit_definition_names(),
             bus_types=np.ones(n),
             area_names=grid.get_area_names()
         )
@@ -144,7 +147,8 @@ class ShortCircuitDriver(DriverTemplate):
                              fault_type: FaultType,
                              method: MethodShortCircuit,
                              phases: PhasesShortCircuit,
-                             Spf: CxVec) -> ShortCircuitResults:
+                             Spf: CxVec,
+                             logger: Logger) -> ShortCircuitResults:
         """
         Run a short circuit simulation for a single island
         :param calculation_inputs:
@@ -152,6 +156,7 @@ class ShortCircuitDriver(DriverTemplate):
         :param Zf: Short circuit impedance vector applicable to the island
         :param island_bus_index: bus index where the fault happens
         :param fault_type: FaultType
+        :param logger: Logger
         @return: short circuit results
         """
         adm = nc.get_admittance_matrices()
@@ -179,46 +184,55 @@ class ShortCircuitDriver(DriverTemplate):
 
                 if fault_type in (FaultType.LLL, FaultType.ph3):
                     if phases != PhasesShortCircuit.abc:
-                        raise Exception(
-                            f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must include all three phases (abc).")
+                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                         value=fault_type.name)
+                        # raise Exception(
+                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must include all three phases (abc).")
 
                 elif fault_type in (FaultType.LL, FaultType.LLG):
                     if phases not in (PhasesShortCircuit.ab, PhasesShortCircuit.bc, PhasesShortCircuit.ca):
-                        raise Exception(
-                            f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be between two valid phases (ab, bc, or ca).")
+                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                         value=fault_type.name)
+                        # raise Exception(
+                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be between two valid phases (ab, bc, or ca).")
 
                 elif fault_type == FaultType.LG:
                     if phases not in (PhasesShortCircuit.a, PhasesShortCircuit.b, PhasesShortCircuit.c):
-                        raise Exception(
-                            f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be on a single valid phase (a, b or c).")
-
-                # Short-circuit simulation:
-                return short_circuit_abc(nc=nc,
-                                          Vpf=Vpf,
-                                          Zf=Zf,
-                                          bus_index=island_bus_index,
-                                          fault_type=fault_type,
-                                          method = method,
-                                          phases = phases,
-                                          Spf=Spf)
+                        # raise Exception(
+                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be on a single valid phase (a, b or c).")
+                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                         value=fault_type.name)
+                else:
+                    # Short-circuit simulation:
+                    return short_circuit_abc(nc=nc,
+                                             Vpf=Vpf,
+                                             Zf=Zf,
+                                             bus_index=island_bus_index,
+                                             fault_type=fault_type,
+                                             method=method,
+                                             phases=phases,
+                                             Spf=Spf)
 
             else:
                 raise Exception('Short-circuit calculation method is unknown!')
-
 
         # if we get here, no short circuit was done, so declare empty results and exit --------------------------------
         nbus = adm.Ybus.shape[0]
         nbr = nc.nbr
 
         # voltage, Sf, loading, losses, error, converged, Qpv
-        results = ShortCircuitResults(n=nc.nbus,
-                                      m=nc.nbr,
-                                      n_hvdc=nc.nhvdc,
-                                      bus_names=nc.bus_data.names,
-                                      branch_names=nc.passive_branch_data.names,
-                                      hvdc_names=nc.hvdc_data.names,
-                                      bus_types=nc.bus_data.bus_types,
-                                      area_names=None)
+        results = ShortCircuitResults(
+            nsc=1,  # we are doing just one short circuit for one island
+            n=nc.nbus,
+            m=nc.nbr,
+            n_hvdc=nc.nhvdc,
+            bus_names=nc.bus_data.names,
+            branch_names=nc.passive_branch_data.names,
+            hvdc_names=nc.hvdc_data.names,
+            sc_names=np.array(["SC"]),
+            bus_types=nc.bus_data.bus_types,
+            area_names=None
+        )
 
         results.Sbus = nc.get_power_injections_pu()
         results.voltage = np.zeros(nbus, dtype=complex)
@@ -283,17 +297,21 @@ class ShortCircuitDriver(DriverTemplate):
             ignore_single_node_islands=self.pf_options.ignore_single_node_islands
         )
 
-        results = ShortCircuitResults(n=nc.nbus,
-                                      m=nc.nbr,
-                                      n_hvdc=nc.nhvdc,
-                                      bus_names=nc.bus_data.names,
-                                      branch_names=nc.passive_branch_data.names,
-                                      hvdc_names=nc.hvdc_data.names,
-                                      bus_types=nc.bus_data.bus_types)
+        results = ShortCircuitResults(
+            nsc=grid.get_short_circuit_definition_number(),
+            n=nc.nbus,
+            m=nc.nbr,
+            n_hvdc=nc.nhvdc,
+            bus_names=nc.bus_data.names,
+            branch_names=nc.passive_branch_data.names,
+            hvdc_names=nc.hvdc_data.names,
+            sc_names=grid.get_short_circuit_definition_names(),
+            bus_types=nc.bus_data.bus_types
+        )
 
         Zf = self.compile_zf(grid)
 
-        if len(calculation_inputs) > 1:  # multi-island
+        for k_sc, sc_definition in enumerate(grid.short_circuit_definitions):
 
             for i, island in enumerate(calculation_inputs):
 
@@ -301,9 +319,12 @@ class ShortCircuitDriver(DriverTemplate):
                 # for the calculation we need the bus index in the island scheme.
                 # Hence, we need to convert it, and if the global bus index is not
                 # in the island, do not perform any calculation
-                reverse_bus_index = {b: i for i, b in enumerate(island.bus_data.original_idx)}
+                # reverse_bus_index = {b: i for i, b in enumerate(island.bus_data.original_idx)}
+                #
+                # island_bus_index = reverse_bus_index.get(self.options.bus_index, None)
 
-                island_bus_index = reverse_bus_index.get(self.options.bus_index, None)
+                bus_dict = island.bus_data.get_idtag_dict()
+                island_bus_index = bus_dict.get(sc_definition.device_idtag)
 
                 if island_bus_index is not None:
                     res = self.single_short_circuit(nc=island,
@@ -313,30 +334,14 @@ class ShortCircuitDriver(DriverTemplate):
                                                     fault_type=self.options.fault_type,
                                                     method=self.options.method,
                                                     phases=self.options.phases,
-                                                    Spf=self.pf_results.Sbus[island.bus_data.original_idx])
+                                                    Spf=self.pf_results.Sbus[island.bus_data.original_idx],
+                                                    logger=self.logger)
 
                     # merge results
-                    results.apply_from_island(res, island.bus_data.original_idx,
+                    results.apply_from_island(k_sc,
+                                              res,
+                                              island.bus_data.original_idx,
                                               island.passive_branch_data.original_idx)
-
-        else:  # single island
-
-            res = self.single_short_circuit(nc=calculation_inputs[0],
-                                            Vpf=self.pf_results.voltage,
-                                            Zf=Zf,
-                                            island_bus_index=self.options.bus_index,
-                                            fault_type=self.options.fault_type,
-                                            method=self.options.method,
-                                            phases=self.options.phases,
-                                            Spf=self.pf_results.Sbus
-                                            )
-
-            # merge results
-            results.apply_from_island(res, calculation_inputs[0].bus_data.original_idx,
-                                      calculation_inputs[0].passive_branch_data.original_idx)
-
-        results.sc_type = self.options.fault_type
-        results.sc_bus_index = self.options.bus_index
 
         # expand voltages if there was a bus topology reduction
         if nc.topology_performed:

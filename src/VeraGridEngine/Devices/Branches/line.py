@@ -695,7 +695,7 @@ class Line(BranchParent):
 
         return self
 
-    def fill_3_phase_from_sequence(self):
+    def fill_3_phase_from_sequence(self) -> None:
         """
         Fill the 3x3 from the sequence values
         """
@@ -707,6 +707,10 @@ class Line(BranchParent):
         self.ysh = obj.get_ysh_abc()
 
     def initialize_rms(self):
+        """
+
+        :return:
+        """
         if self.rms_model.empty():
             Qf = Var("Qf")
             Qt = Var("Qt")

@@ -398,14 +398,17 @@ class Assets:
         """
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
+
+                key = str(elm.device_type.value)
+
+                associated_props, indices = elm.get_association_properties()
+                self.device_type_name_dict[key] = elm.device_type
+                self.device_associations[key] = [prop.name for prop in associated_props]
+
                 if elm.properties_with_profile is not None:
-                    key = str(elm.device_type.value)
                     profile_attr = list(elm.properties_with_profile.keys())
                     profile_types = [elm.registered_properties[attr].tpe for attr in profile_attr]
-                    associated_props, indices = elm.get_association_properties()
                     self.profile_magnitudes[key] = (profile_attr, profile_types)
-                    self.device_type_name_dict[key] = elm.device_type
-                    self.device_associations[key] = [prop.name for prop in associated_props]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Device iterators
@@ -4647,6 +4650,13 @@ class Assets:
         :return: Names
         """
         return np.array([elm.name for elm in self._short_circuit_definitions])
+
+    def get_short_circuit_definition_number(self) -> int:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return len(self._short_circuit_definitions)
 
     def short_circuit_definition_exist(self, scd: dev.ShortCircuitDefinition) -> bool:
         """

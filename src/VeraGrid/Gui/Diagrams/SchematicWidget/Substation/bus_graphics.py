@@ -31,11 +31,10 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
-
-from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
+from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
-from VeraGridEngine.Templates.Rms.rms_templates_catalogue import get_bus_catalogue
+from VeraGridEngine.Devices.Aggregation.short_cirtcuit_definition import ShortCircuitDefinition
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -187,8 +186,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             self.sizer.setFlag(self.GraphicsItemFlag.ItemIsMovable)
 
         # Enabled for short circuit
-        self.sc_enabled = np.zeros(4, dtype=bool)
-        self.sc_type = FaultType.ph3
         self.pen_width = 4
 
         self._terminal.setPen(QPen(TRANSPARENT, self.pen_width, self.style,
@@ -500,42 +497,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        function_ptr=self.enable_disable_label_drawing,
                        checkeable=True,
                        checked_value=self.draw_labels)
+        #
+        # sc = add_sub_menu(menu=menu,
+        #                   text="Short circuit",
+        #                   icon_path=":/Icons/icons/short_circuit.png")
 
-        sc = add_sub_menu(menu=menu,
-                          text="Short circuit",
-                          icon_path=":/Icons/icons/short_circuit.png")
-
-        add_menu_entry(menu=sc,
-                       text="3-phase (x)" if self.sc_enabled[0] else "3-phase",
+        add_menu_entry(menu=menu,
+                       text="add Short circuit",
                        icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_3p,
-                       checkeable=True,
-                       checked_value=int(self.sc_enabled[0]))
-
-        add_menu_entry(menu=sc,
-                       text="Line-Ground (x)" if self.sc_enabled[1] else "Line-Ground",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_lg,
-                       checkeable=True,
-                       checked_value=int(self.sc_enabled[1]))
-
-        add_menu_entry(menu=sc,
-                       text="Line-Line (x)" if self.sc_enabled[2] else "Line-Line",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_ll,
-                       checkeable=True,
-                       checked_value=int(self.sc_enabled[2]))
-
-        add_menu_entry(menu=sc,
-                       text="Line-Line-Ground (x)" if self.sc_enabled[3] else "Line-Line-Ground",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_llg,
-                       checkeable=True,
-                       checked_value=int(self.sc_enabled[3]))
-
-        add_menu_entry(menu=sc,
-                       text="Disable",
-                       function_ptr=self.disable_sc)
+                       function_ptr=self.add_short_circuit)
 
         # types
         # ph3 = '3x'
@@ -734,54 +704,20 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         return np.sum(self.sc_enabled) > 0
 
-    def enable_sc(self) -> None:
-        """
-        Enable the short circuit
-        """
-        self.tile.setPen(QPen(QColor(EMERGENCY['color']), self.pen_width))
-
-    def disable_sc(self):
-        """
-        Disable short circuit
-        """
-        self.tile.setPen(QPen(TRANSPARENT, self.pen_width))
-        self.sc_enabled[:] = 0  # set all to zero
-
-    def enable_disable_sc_3p(self):
+    def add_short_circuit(self):
         """
         Enable 3-phase short circuit
         """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[0] = True
-        self.sc_type = FaultType.ph3
-        self.enable_sc()
+        fault_type = FaultType.ph3
+        sc = ShortCircuitDefinition(
+            name=f"{self.api_object.name} {fault_type.value}",
+            device=self.api_object,
+            fault_type=fault_type,
+            method=MethodShortCircuit.sequences,
+            phases=PhasesShortCircuit.abc
+        )
 
-    def enable_disable_sc_lg(self):
-        """
-        Enable line ground short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[1] = True
-        self.sc_type = FaultType.LG
-        self.enable_sc()
-
-    def enable_disable_sc_ll(self):
-        """
-        Enable line-line short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[2] = True
-        self.sc_type = FaultType.LL
-        self.enable_sc()
-
-    def enable_disable_sc_llg(self):
-        """
-        Enable line-line-ground short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[3] = True
-        self.sc_type = FaultType.LLG
-        self.enable_sc()
+        self.editor.circuit.add_short_circuit_definition(sc)
 
     def enable_disable_dc(self):
         """
