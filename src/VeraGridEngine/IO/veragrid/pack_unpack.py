@@ -715,6 +715,7 @@ def parse_object_type_from_dataframe(
         # create device
         idtag = row.get('idtag', None)
         elm = type(template_elm)(idtag=idtag)
+        elm.disable_auto_updates()
 
         # ensure the profiles existence
         if time_profile is not None:
@@ -899,42 +900,6 @@ def parse_object_type_from_dataframe(
                         if property_name in ['is_controlled', 'Bmin', 'Bmax', 'Vset']:
                             skip = True
 
-                    # if template_elm.device_type == DeviceType.VscDevice:
-                    #     if property_name == 'control_mode':
-                    #         if "Pdc" in property_value:
-                    #             elm.tap_phase_control_mode = TapPhaseControl.Pf
-                    #             skip = True
-                    #         if "Qac" in property_value:
-                    #             elm.tap_phase_module_mode = TapModuleControl.Qf
-                    #             skip = True
-                    #         if "Vac" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.Vm
-                    #             elm.regulation_bus = elm.bus_to
-                    #             skip = True
-                    #         if "Vdc" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.Vm
-                    #             elm.regulation_bus = elm.bus_from
-                    #             skip = True
-                    #
-                    #         if "fixed" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.fixed
-                    #             elm.tap_phase_control_mode = TapPhaseControl.fixed
-                    #             skip = True
-                    #
-                    #     elif property_name == 'Vac_set':
-                    #         if property_value > 0.0:
-                    #             elm.vset = property_value
-                    #         skip = True
-                    #
-                    #     elif property_name == 'Vdc_set':
-                    #         if property_value > 0.0:
-                    #             elm.vset = property_value
-                    #         skip = True
-                    #
-                    #     elif property_name == 'Qac_set':
-                    #         elm.Qset = property_value
-                    #         skip = True
-
                     if template_elm.device_type == DeviceType.Transformer2WDevice:
                         if property_name == 'control_mode':
                             if "Pf" in property_value:
@@ -1059,6 +1024,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     for json_entry in data_list:
         idtag = json_entry['idtag']
         elm: ALL_DEV_TYPES = type(template_elm)(idtag=idtag)
+        elm.disable_auto_updates()
 
         # ensure the profiles existence
         if time_profile is not None:
