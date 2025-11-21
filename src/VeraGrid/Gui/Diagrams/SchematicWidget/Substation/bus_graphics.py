@@ -13,7 +13,8 @@ from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent, QGraphicsItem
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
-from VeraGrid.Gui.gui_functions import add_menu_entry, add_sub_menu
+from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED,
                                                     FONT_SCALE, EMERGENCY, TRANSPARENT)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, HandleItem, RoundTerminalItem
@@ -697,27 +698,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                         if host.api_object is not None:
                             self._editor.set_active_status_to_profile(host.api_object, override_question=True)
 
-    def any_short_circuit(self) -> bool:
-        """
-        Determine if there are short circuits enabled
-        :return:
-        """
-        return np.sum(self.sc_enabled) > 0
-
-    def add_short_circuit(self):
+    def add_short_circuit(self) -> None:
         """
         Enable 3-phase short circuit
         """
-        fault_type = FaultType.ph3
-        sc = ShortCircuitDefinition(
-            name=f"{self.api_object.name} {fault_type.value}",
-            device=self.api_object,
-            fault_type=fault_type,
-            method=MethodShortCircuit.sequences,
-            phases=PhasesShortCircuit.abc
-        )
-
-        self.editor.circuit.add_short_circuit_definition(sc)
+        self.w = ShortCircuitSelector()
+        self.w.exec()
+        
+        if self.w.was_accepted:
+            sc = ShortCircuitDefinition(
+                name=f"{self.api_object.name} {self.w.fault.value}",
+                device=self.api_object,
+                fault_type=self.w.fault,
+                method=self.w.method,
+                phases=self.w.phases
+            )
+    
+            self.editor.circuit.add_short_circuit_definition(sc)
 
     def enable_disable_dc(self):
         """

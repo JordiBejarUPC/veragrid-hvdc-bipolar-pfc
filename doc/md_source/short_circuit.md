@@ -298,7 +298,7 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
 sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.ph3,
+                                     fault_type=FaultType.LLLG,
                                      method=MethodShortCircuit.phases,
                                      phases=PhasesShortCircuit.abc)
 ```

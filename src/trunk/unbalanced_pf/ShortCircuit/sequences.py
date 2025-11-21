@@ -80,7 +80,7 @@ print(res_pf.get_current_df())
 # Run Short-Circuit
 # ----------------------------------------------------------------------------------------------------------------------
 sc_options = gce.ShortCircuitOptions(bus_index=3,
-                                     fault_type=FaultType.ph3,
+                                     fault_type=FaultType.LLLG,
                                      method=MethodShortCircuit.sequences)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,

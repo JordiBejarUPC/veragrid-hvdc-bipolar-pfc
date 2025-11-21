@@ -58,7 +58,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         # Enabled for short circuit
         self.sc_enabled = [False, False, False, False]
-        self.sc_type = FaultType.ph3
+        self.sc_type = FaultType.LLLG
         self.pen_width = 4
 
         # index

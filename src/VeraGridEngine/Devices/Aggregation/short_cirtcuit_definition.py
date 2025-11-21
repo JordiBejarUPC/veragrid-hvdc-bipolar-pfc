@@ -28,7 +28,7 @@ class ShortCircuitDefinition(PointerDeviceParent):
                  name="Fault",
                  code='',
                  active: bool = True,
-                 fault_type: FaultType = FaultType.ph3,
+                 fault_type: FaultType = FaultType.LLLG,
                  method: MethodShortCircuit = MethodShortCircuit.sequences,
                  phases: PhasesShortCircuit = PhasesShortCircuit.abc,
                  comment: str = ""):
@@ -63,7 +63,7 @@ class ShortCircuitDefinition(PointerDeviceParent):
 
     def _check(self):
 
-        if self._fault_type == FaultType.ph3:
+        if self._fault_type == FaultType.LLLG:
             if self._phases != PhasesShortCircuit.abc:
                 self._phases = PhasesShortCircuit.abc
 

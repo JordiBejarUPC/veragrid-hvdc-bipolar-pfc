@@ -607,7 +607,7 @@ def short_circuit_abc(nc: NumericalCircuit,
         Yfault[c, b] = -1 / (Zf[bus_index] + 1e-20)
 
     # Three-Phase-to-Ground (LLLG)
-    elif fault_type == FaultType.ph3:
+    elif fault_type == FaultType.LLLG:
 
         Yfault[a, a] = 1 / (Zf[bus_index] + 1e-20)
         Yfault[b, b] = 1 / (Zf[bus_index] + 1e-20)

@@ -697,7 +697,7 @@ class FaultType(Enum):
     """
     Short circuit type
     """
-    ph3 = '3x'
+    LLLG = 'LLLG'
     LG = 'LG'
     LL = 'LL'
     LLG = 'LLG'

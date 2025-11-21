@@ -164,7 +164,7 @@ class ShortCircuitDriver(DriverTemplate):
         # is dense, so no need to store it as sparse
         if adm.Ybus.shape[0] > 1:
             if method == MethodShortCircuit.sequences:
-                if fault_type == FaultType.ph3:
+                if fault_type == FaultType.LLLG:
                     return short_circuit_ph3(nc=nc,
                                              Vpf=Vpf[nc.bus_data.original_idx],
                                              Zf=Zf,
@@ -182,7 +182,7 @@ class ShortCircuitDriver(DriverTemplate):
 
             elif method == MethodShortCircuit.phases:
 
-                if fault_type in (FaultType.LLL, FaultType.ph3):
+                if fault_type in (FaultType.LLL, FaultType.LLLG):
                     if phases != PhasesShortCircuit.abc:
                         logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
                                          value=fault_type.name)

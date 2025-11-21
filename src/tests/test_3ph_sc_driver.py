@@ -396,7 +396,7 @@ def test_three_phase_to_ground_fault():
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
     sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.ph3,
+                                         fault_type=FaultType.LLLG,
                                          method=MethodShortCircuit.phases,
                                          phases=PhasesShortCircuit.abc)
 
