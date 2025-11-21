@@ -697,11 +697,11 @@ class FaultType(Enum):
     """
     Short circuit type
     """
-    LLLG = 'LLLG'
     LG = 'LG'
     LL = 'LL'
     LLG = 'LLG'
     LLL = 'LLL'
+    LLLG = 'LLLG'
 
     def __str__(self):
         return str(self.value)

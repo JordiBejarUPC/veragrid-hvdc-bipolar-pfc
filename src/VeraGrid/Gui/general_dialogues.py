@@ -1120,13 +1120,9 @@ class ArrayEditor(QDialog):
 
 def valid_methods_for_fault(fault: FaultType):
     """
-
     :param fault:
     :return:
     """
-    if fault in (FaultType.LLLG, FaultType.LLL):
-        return [MethodShortCircuit.sequences]
-
     # all other faults allow both
     return list(MethodShortCircuit)
 
