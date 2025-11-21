@@ -1200,6 +1200,9 @@ class ShortCircuitSelector(QtWidgets.QDialog):
 
         :return:
         """
+
+        fault = FaultType(self.cb_fault.currentText())
+
         # -------- UPDATE PHASES --------
         if self.cb_method.currentText() == MethodShortCircuit.sequences.value:
             self.cb_phases.setVisible(False)
@@ -1207,6 +1210,15 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         else:
             self.cb_phases.setVisible(True)
             self.phases_label.setVisible(True)
+            allowed_phases = valid_phases_for_fault(fault)
+            current_phase = self.cb_phases.currentText()
+
+            self.cb_phases.clear()
+            for p in allowed_phases:
+                self.cb_phases.addItem(p.value)
+
+            if current_phase in [p.value for p in allowed_phases]:
+                self.cb_phases.setCurrentText(current_phase)
 
     def update_logic(self):
         """Update available method and phase options based on the fault type."""
