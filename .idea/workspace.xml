@@ -29,36 +29,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Improved the global behaviour of delete&#10;Removed some prints">
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/12_node_network.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/19700101_0000_FO4_UX1.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/NETWORK_LOOP_FLOW_WITH_COUNTRIES.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/NETWORK_PST_FLOW_WITH_COUNTRIES.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/rao_network.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/simple-eu-xnode.uct" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/ucte/simple-eu.uct" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/pointer_device_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/pointer_device_parent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/all_dev_dict.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/measurement.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/measurement.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/excel_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/excel_interface.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/observability_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/observability_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_estimation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_estimation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/setup.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/index.rst" beforeDir="false" afterPath="$PROJECT_DIR$/doc/index.rst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/results_table.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/results_table.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -725,9 +698,9 @@
     </configuration>
     <list>
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python tests.pytest in test_state_estimation.py" />
-      <item itemvalue="Python tests.pytest in test_state_estimation_from_pandapower_conversion.py" />
       <item itemvalue="Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx" />
+      <item itemvalue="Python tests.pytest in test_state_estimation_from_pandapower_conversion.py" />
+      <item itemvalue="Python tests.pytest in test_state_estimation.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
