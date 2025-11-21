@@ -1118,10 +1118,6 @@ class ArrayEditor(QDialog):
 # ----------------------------------------------------
 
 
-
-# ----------------------------------------------------
-# GUI
-# ----------------------------------------------------
 def valid_methods_for_fault(fault: FaultType):
     """
 
@@ -1157,6 +1153,7 @@ class ShortCircuitSelector(QtWidgets.QDialog):
     """
     ShortCircuitSelector
     """
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Short Circuit Configuration")
