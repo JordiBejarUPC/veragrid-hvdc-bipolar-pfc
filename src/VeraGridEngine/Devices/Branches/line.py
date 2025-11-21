@@ -562,8 +562,8 @@ class Line(BranchParent):
                                          length=self.length,
                                          line_Vnom=self.get_max_bus_nominal_voltage())
 
-            self.ys = obj.get_ys_abc()
-            self.ysh = obj.get_ysh_abc()
+            self.ys = obj.get_ys_nabc()
+            self.ysh = obj.get_ysh_nabc()
 
             self.template = obj
 
@@ -703,8 +703,8 @@ class Line(BranchParent):
             obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0)
         else:
             obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X)
-        self.ys = obj.get_ys_abc()
-        self.ysh = obj.get_ysh_abc()
+        self.ys = obj.get_ys_nabc()
+        self.ysh = obj.get_ysh_nabc()
 
     def initialize_rms(self):
         """
