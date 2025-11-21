@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import pdb
 import uuid
 import sys
 import copy
@@ -950,25 +951,25 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        builder = GenqecBuild()
+        builder = GenqecBuild(item_name)
         blk =builder.genqec()
         return blk
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        builder = GovernorBuild()
+        builder = GovernorBuild(item_name)
         blk = builder.governor()
         return blk
 
     # STABILIZER (stabilizer)
     if block_type == BlockType.STAB:
-        builder = StabilizerBuild()
+        builder = StabilizerBuild(item_name)
         blk = builder.stabilizer()
         return blk
 
     # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        builder = ExciterBuild()
+        builder = ExciterBuild(item_name)
         blk = builder.exciter()
         return blk
 
@@ -1099,6 +1100,9 @@ class DiagramScene(QGraphicsScene):
                     for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
                         dst_port.subsystem.subsys.state_eqs[i] = new_equ
+                    for key, value in self.editor.main_block.external_mapping.items():
+                        if dst_port.subsystem.subsys.in_vars[str(dst_port.index)] is value:
+                            self.editor.main_block.external_mapping[key] = dst_var
                     dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
 
                     self.addItem(connection)

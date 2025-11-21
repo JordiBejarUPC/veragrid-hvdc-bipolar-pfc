@@ -934,11 +934,6 @@ class GenqecBuild:
             Ed_2prime: Vq,
             })
 
-
-        generator_block.external_mapping={
-                VarPowerFlowRefferenceType.P: Pg,
-                VarPowerFlowRefferenceType.Q: Qg,
-            }
         generator_block.name= "genqec"
         generator_block.event_dict = event_dict
         generator_block.in_vars=in_vars_dict

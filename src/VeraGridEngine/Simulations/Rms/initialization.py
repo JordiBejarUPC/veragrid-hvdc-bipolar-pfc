@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+import pdb
 from typing import Tuple, Any, Sequence, Callable, Dict, List
 import math
 import numba as nb
@@ -166,6 +166,7 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
                      fix='V', dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                      type: str = None):
     """
+    :param uid2idx_vars:
     :param bus_index:
     :param region_solver:
     :param x0: random init guess
@@ -1697,7 +1698,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         region_solver = DiffBlockSolver(region_system, region_time)
 
-        x0_pst, init_guess_pst = pseudo_transient(bus_index, region_solver, x0, init_guess_region, res, grid)
+        x0_pst, init_guess_pst = pseudo_transient(bus_index, region_solver, x0, init_guess_region, res, grid, uid2idx_region_vars)
         for var, value in init_guess_pst:
             init_guess.update({[var.uid, var.name], value})
         sys_block.add(region_system)
