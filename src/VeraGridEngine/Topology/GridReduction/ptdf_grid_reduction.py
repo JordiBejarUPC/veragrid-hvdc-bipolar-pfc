@@ -472,13 +472,15 @@ def ptdf_reduction_ree_less_bad(grid: MultiCircuit,
 
 def ptdf_reduction_projected(grid: MultiCircuit,
                              reduction_bus_indices: IntVec,
-                             tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+                             tol=1e-8,
+                             distribute_slack: bool = True) -> Tuple[MultiCircuit, Logger]:
     """
     In-place Grid reduction using the PTDF injection by projecting
     the generation and loads from the removed buses into the PTDF-sensitive buses
     :param grid: MultiCircuit
     :param reduction_bus_indices: Bus indices of the buses to delete
     :param tol: Tolerance, any equivalent power value under this is omitted
+    :param distribute_slack: Distribute the slack?
     """
     logger = Logger()
 
@@ -493,8 +495,9 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         logger.add_info(msg="Nothing to keep (null grid as a result)")
         return grid, logger
 
+    print('Distribute slack: ', distribute_slack)
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
-    lin = LinearAnalysis(nc=nc)
+    lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
     # base flows
     # Pbus0 = grid.get_Pbus(apply_active=True)
@@ -513,7 +516,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Pload_ts = get_Pload_ts(grid)
         Pgen_ts, Pgen_srap_ts = get_Pgen_ts(grid)
 
-        lin_ts = LinearAnalysisTs(grid=grid)
+        lin_ts = LinearAnalysisTs(grid=grid, distributed_slack=distribute_slack)
 
         Flows0_load_ts = lin_ts.get_flows_ts(P=Pload_ts)
         Flows0_gen_ts = lin_ts.get_flows_ts(P=Pgen_ts)
@@ -533,7 +536,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
     # re-make the linear analysis
     nc2 = compile_numerical_circuit_at(grid)
-    lin2 = LinearAnalysis(nc2)
+    lin2 = LinearAnalysis(nc2, distributed_slack=distribute_slack)
 
     # reconstruct injections that should be to keep the flows the same
     b = np.c_[Flow0_load[i_branches], Flow0_gen[i_branches], Flow0_gen_srap[i_branches]]
@@ -549,7 +552,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Pload2_ts = get_Pload_ts(grid)
         Pgen2_ts, Pgen2_srap_ts = get_Pgen_ts(grid)
 
-        lin_ts2 = LinearAnalysisTs(grid=grid)
+        lin_ts2 = LinearAnalysisTs(grid=grid, distributed_slack=distribute_slack)
 
         Pbus3_load_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_load_ts[:, i_branches])
         Pbus3_gen_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_ts[:, i_branches])
