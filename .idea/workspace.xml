@@ -28,10 +28,30 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Improved the global behaviour of delete&#10;Removed some prints">
-      <change beforePath="$PROJECT_DIR$/doc/index.rst" beforeDir="false" afterPath="$PROJECT_DIR$/doc/index.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/results_table.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/results_table.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed discord url">
+      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/state-estimation/test_state_estimation_pandapower.veragrid" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/md_source/state_estimation.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/state_estimation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/state_estimation_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/state_estimation_run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Session/session.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Session/session.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_stimation_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_stimation_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_measurement_profiling.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_measurement_profiling.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_observability_analysis_and_pseudo_meas.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_observability_analysis_and_pseudo_meas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_state_estimation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_state_estimation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/issues/issue_443.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/issues/issue_443.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/pp_check/GC_StateEstimation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/pp_check/GC_StateEstimation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/pp_check/state_estimation.mod.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/pp_check/state_estimation.mod.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/state_estimation/ferran_se_case.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/state_estimation/ferran_se_case.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -530,6 +550,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -628,7 +670,7 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for src.tests.test_load_save_load.test_load_save_load_xlsx" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest for test_state_estimation_from_pandapower_conversion.test_state_estimation_pandapower" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -641,7 +683,7 @@
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;src.tests.test_load_save_load.test_load_save_load_xlsx&quot;" />
+      <option name="_new_target" value="&quot;test_state_estimation_from_pandapower_conversion.test_state_estimation_pandapower&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
@@ -659,23 +701,6 @@
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
-    <configuration name="pytest in test_state_estimation.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_state_estimation.py&quot;" />
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
@@ -697,19 +722,19 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx" />
+      <item itemvalue="Python tests.pytest for test_state_estimation_from_pandapower_conversion.test_state_estimation_pandapower" />
       <item itemvalue="Python tests.pytest in test_state_estimation_from_pandapower_conversion.py" />
-      <item itemvalue="Python tests.pytest in test_state_estimation.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in tests" />
-        <item itemvalue="Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx" />
+        <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python tests.pytest for test_state_estimation_from_pandapower_conversion.test_state_estimation_pandapower" />
         <item itemvalue="Python tests.pytest in test_state_estimation_from_pandapower_conversion.py" />
-        <item itemvalue="Python tests.pytest in test_state_estimation.py" />
+        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -1841,7 +1866,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="651" />
+    <option name="localTasksCounter" value="652" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1887,7 +1912,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed NTC generation limits" />
     <MESSAGE value="Fixed NTC generation limits test" />
     <MESSAGE value="Added anarede examples" />
     <MESSAGE value="minimal fix when transformer templates do not exist" />
@@ -1912,7 +1936,8 @@
     <MESSAGE value="removed pygments and pdb" />
     <MESSAGE value="changed all KV KA and KM by kV kA and km" />
     <MESSAGE value="Improved the global behaviour of delete&#10;Removed some prints" />
-    <option name="LAST_COMMIT_MESSAGE" value="Improved the global behaviour of delete&#10;Removed some prints" />
+    <MESSAGE value="Fixed discord url" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed discord url" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2341,6 +2366,21 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py</url>
           <line>85</line>
           <option name="timeStamp" value="3005" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py</url>
+          <line>41</line>
+          <option name="timeStamp" value="3006" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/StateEstimation/state_stimation_driver.py</url>
+          <line>315</line>
+          <option name="timeStamp" value="3007" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_state_estimation_from_pandapower_conversion.py</url>
+          <line>88</line>
+          <option name="timeStamp" value="3008" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
