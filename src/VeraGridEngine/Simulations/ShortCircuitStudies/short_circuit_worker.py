@@ -6,7 +6,7 @@
 from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
-from scipy.sparse.linalg import inv
+
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit import short_circuit_3p, short_circuit_unbalance
 from VeraGridEngine.Topology.admittance_matrices import compute_admittances
@@ -20,10 +20,6 @@ from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph 
                                                                                         expand_magnitudes,
                                                                                         expand_indices_3ph,
                                                                                         expand3ph)
-from scipy.sparse import diags
-from scipy.sparse.linalg import spsolve
-import pandas as pd
-from scipy.sparse import csc_matrix
 
 
 def short_circuit_post_process(
@@ -595,12 +591,13 @@ def short_circuit_abc(nc: NumericalCircuit,
         raise Exception('Incorrect fault type definition.')
 
     Yfault_masked = Yfault[mask, :][:, mask]
-    Yfault_masked = csc_matrix(Yfault_masked)
+    Yfault_masked = sp.csc_matrix(Yfault_masked)
 
     Ybus_gen_csc, Ybus_gen = compute_ybus_generator(nc=nc)
     Ybus_gen_masked_csc = Ybus_gen_csc[mask, :][:, mask]
 
-    Yloads = diags(Y_power_star_linear) + diags(Y_power_delta_linear) + diags(Y_current_linear)
+    # TODO: add before making diags
+    Yloads = sp.diags(Y_power_star_linear) + sp.diags(Y_power_delta_linear) + sp.diags(Y_current_linear)
     Ylinear = Ybus - Yloads + Yfault_masked + Ybus_gen_masked_csc
 
     Yloads = Y_power_star_linear + Y_power_delta_linear + Y_current_linear
@@ -619,7 +616,7 @@ def short_circuit_abc(nc: NumericalCircuit,
         Inorton_i = Y @ E
         Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
 
-    Usc = spsolve(Ylinear, Inorton)
+    Usc = sp.spsolve(Ylinear, Inorton)
     Usc_expanded = expand_magnitudes(Usc, bus_lookup)
 
     Ik_max = maximum_initial_shortcircuit_current(
