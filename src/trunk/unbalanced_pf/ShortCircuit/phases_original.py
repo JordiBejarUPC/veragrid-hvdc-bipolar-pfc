@@ -370,10 +370,16 @@ res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unba
 # ----------------------------------------------------------------------------------------------------------------------
 # Short-circuit
 # ----------------------------------------------------------------------------------------------------------------------
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.a)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitDefinition(
+        device=grid.buses[4],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,

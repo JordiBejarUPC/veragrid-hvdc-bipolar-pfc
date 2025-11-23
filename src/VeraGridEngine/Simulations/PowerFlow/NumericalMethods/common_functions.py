@@ -47,6 +47,7 @@ def compute_zip_power(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
     """
     return S0 + np.conj(I0 + Y0 * Vm) * Vm
 
+
 def compute_zip_current(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
     """
     Compute the equivalent current injection
@@ -67,6 +68,7 @@ def compute_power(Ybus: csc_matrix, V: CxVec) -> CxVec:
     :return: Calculated power injections
     """
     return V * np.conj(Ybus @ V)
+
 
 def compute_current(Ybus: csc_matrix, V: CxVec) -> CxVec:
     """
@@ -229,12 +231,23 @@ def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
 
 
 def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0):
+    """
+
+    :param Va:
+    :param Vb:
+    :param Vc:
+    :param Istar_a:
+    :param Istar_b:
+    :param Istar_c:
+    :param Vn0:
+    :return:
+    """
     # unknown: Vn (complex). Start from last-iter Vn0 or center of Va,Vb,Vc
     Vn = Vn0
 
     def Iphase(U, Istar):
         Umag = abs(U)
-        if Umag < 1e-12:   # guard
+        if Umag < 1e-12:  # guard
             return 0j
         return np.conj(Istar) * (U / Umag)
 
@@ -243,7 +256,7 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0):
         Ia = Iphase(Ua, Istar_a)
         Ib = Iphase(Ub, Istar_b)
         Ic = Iphase(Uc, Istar_c)
-        F = Ia + Ib + Ic                        # complex residual
+        F = Ia + Ib + Ic  # complex residual
         if abs(F) < 1e-9:
             break
 
@@ -272,18 +285,29 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0):
 
     return Ia, Ib, Ic, Vn
 
+
 def floating_star_powers(Ua,
                          Ub,
                          Uc,
                          Sa,
                          Sb,
                          Sc):
+    """
+
+    :param Ua:
+    :param Ub:
+    :param Uc:
+    :param Sa:
+    :param Sb:
+    :param Sc:
+    :return:
+    """
     # A·x2 + B·x + c = 0
     # x = (-B +- sqrt(B2 - 4·A·C)) / 2·A
 
     A = Sa + Sb + Sc
-    B = -(Sa*(Ub+Uc) + Sb*(Ua+Uc) + Sc*(Ua+Ub))
-    C = Sa*Ub*Uc + Sb*Ua*Uc + Sc*Ua*Ub
+    B = -(Sa * (Ub + Uc) + Sb * (Ua + Uc) + Sc * (Ua + Ub))
+    C = Sa * Ub * Uc + Sb * Ua * Uc + Sc * Ua * Ub
 
     Un_p = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
     Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
@@ -309,9 +333,13 @@ def floating_star_powers(Ua,
 def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
                                           V: CxVec,
                                           Vn_floating: CxVec,
-                                          F: IntVec, T: IntVec,
-                                          pv: IntVec, vd: IntVec,
-                                          Ybus: CscMat, Yf: CscMat, Yt: CscMat,
+                                          F: IntVec,
+                                          T: IntVec,
+                                          pv: IntVec,
+                                          vd: IntVec,
+                                          Ybus: CscMat,
+                                          Yf: CscMat,
+                                          Yt: CscMat,
                                           Yshunt_bus: CxVec,
                                           branch_rates: Vec,
                                           Sbase: float,
@@ -319,8 +347,10 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
                                           branch_lookup: IntVec):
     """
 
+
     :param Sbus:
     :param V:
+    :param Vn_floating:
     :param F:
     :param T:
     :param pv:
@@ -365,8 +395,8 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     Sf_expanded = Vf_expanded * np.conj(If_expanded) * (Sbase / 3)
     St_expanded = Vt_expanded * np.conj(It_expanded) * (Sbase / 3)
 
-    Sf_load_expanded = (Vf_expanded-Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
-    St_load_expanded = (Vt_expanded-Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
+    Sf_load_expanded = (Vf_expanded - Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
+    St_load_expanded = (Vt_expanded - Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
 
     # Branch losses in MVA
     losses = (Sf_expanded + St_expanded)
@@ -380,9 +410,16 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     return Sf_expanded, St_expanded, If_expanded, It_expanded, Vbranch, loading, losses, Sbus_expanded, V_expanded
 
 
-def power_flow_post_process_nonlinear(Sbus: CxVec, V: CxVec, F: IntVec, T: IntVec,
-                                      pv: IntVec, vd: IntVec,
-                                      Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
+def power_flow_post_process_nonlinear(Sbus: CxVec,
+                                      V: CxVec,
+                                      F: IntVec,
+                                      T: IntVec,
+                                      pv: IntVec,
+                                      vd: IntVec,
+                                      Ybus: CscMat,
+                                      Yf: CscMat,
+                                      Yt: CscMat,
+                                      Yshunt_bus: CxVec,
                                       branch_rates: Vec,
                                       Sbase: float):
     """

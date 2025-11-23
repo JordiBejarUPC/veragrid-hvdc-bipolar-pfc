@@ -68,35 +68,6 @@ def short_circuit_post_process(
     return Sfb, Stb, If, It, Vbranch, loading, losses
 
 
-# def expand3ph(x: np.ndarray):
-#     """
-#     Expands a numpy array to 3-pase copying the same values
-#     :param x:
-#     :return:
-#     """
-#     n = len(x)
-#     idx3 = np.array([0, 1, 2])
-#     x3 = np.zeros(3 * n, dtype=x.dtype)
-#
-#     for k in range(n):
-#         x3[3 * k + idx3] = x[k]
-#     return x3
-#
-# def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
-#     """
-#     Expands a numpy array to 3-pase copying the same values
-#     :param x:
-#     :return:
-#     """
-#     n = len(x)
-#     idx3 = np.array([0, 1, 2])
-#     x3 = np.zeros(3 * n, dtype=x.dtype)
-#
-#     for k in range(n):
-#         x3[3 * k + idx3] = 3 * x[k] + idx3
-#
-#     return x3
-
 def short_circuit_post_process_phases_abc(
         calculation_inputs: NumericalCircuit,
         V_expanded: CxVec,
@@ -111,12 +82,14 @@ def short_circuit_post_process_phases_abc(
     """
     Compute the important results for short-circuits
     :param calculation_inputs: instance of Circuit
-    :param V: Voltage solution array for the circuit buses
-    :param branch_rates: Array of branch ratings
+    :param V_expanded: Voltage solution array for the circuit buses
+    :param branch_rates_expanded: Array of branch ratings
     :param Yf: From admittance matrix
     :param Yt: To admittance matrix
     :param F_expanded:
     :param T_expanded:
+    :param mask:
+    :param branch_lookup:
     :return: Sf (MVA), If (p.u.), loading (p.u.), losses (MVA), Sbus(MVA)
     """
 
@@ -465,11 +438,16 @@ def short_circuit_unbalanced(nc: NumericalCircuit,
     return results
 
 
-def maximum_initial_shortcircuit_current(
-        nc: NumericalCircuit,
-        Zf: complex,
-        faulted_bus: int
-):
+def maximum_initial_shortcircuit_current(nc: NumericalCircuit,
+                                         Zf: complex,
+                                         faulted_bus: int):
+    """
+
+    :param nc:
+    :param Zf:
+    :param faulted_bus:
+    :return:
+    """
     c_max = 1.1  # Voltage factor
     Un = nc.bus_data.Vnom[faulted_bus] * 1e3  # Nominal voltage [V]
     Zk = abs(Zf) * Un ** 2 / (nc.Sbase * 1e6)  # Fault impedance [Ohm]
@@ -513,12 +491,12 @@ def short_circuit_abc(nc: NumericalCircuit,
 
     Vpf_masked = Vpf[mask]
 
-    # TODO: fix this
+    # TODO: fix this: we probably need ABC voltages and bus powers
     Sstar, Y_power_star_linear = compute_Sbus_star(nc=nc,
                                                    V=Vpf_masked,
                                                    mask=mask)
 
-    # TODO: fix this
+    # TODO: fix this: we probably need ABC voltages and bus powers
     Sdelta, Y_power_delta_linear = compute_Sbus_delta(bus_idx=nc.load_data.bus_idx,
                                                       Sdelta=nc.load_data.S3_delta,
                                                       Ydelta=nc.load_data.Y3_delta,
@@ -654,54 +632,56 @@ def short_circuit_abc(nc: NumericalCircuit,
     Results
     """
     # voltage, Sf, loading, losses, error, converged, Qpv
-    results = ShortCircuitResults(n=nc.nbus,
-                                  m=nc.nbr,
-                                  n_hvdc=nc.nhvdc,
-                                  bus_names=nc.bus_data.names,
-                                  branch_names=nc.passive_branch_data.names,
-                                  hvdc_names=nc.hvdc_data.names,
-                                  bus_types=nc.bus_data.bus_types,
-                                  area_names=None)
+    results = ShortCircuitResults(
+        nsc=1,
+        n=nc.nbus,
+        m=nc.nbr,
+        n_hvdc=nc.nhvdc,
+        bus_names=nc.bus_data.names,
+        branch_names=nc.passive_branch_data.names,
+        hvdc_names=nc.hvdc_data.names,
+        sc_names=np.array(["SC"]),
+        bus_types=nc.bus_data.bus_types,
+        area_names=None
+    )
 
-    Sfb, Stb, If, It, Vbranch, loading, losses = short_circuit_post_process_phases_abc(calculation_inputs=nc,
-                                                                                       V_expanded=Usc_expanded,
-                                                                                       branch_rates_expanded=expand3ph(
-                                                                                           nc.passive_branch_data.rates),
-                                                                                       Yf=Yf,
-                                                                                       Yt=Yt,
-                                                                                       F_expanded=expand_indices_3ph(
-                                                                                           nc.passive_branch_data.F),
-                                                                                       T_expanded=expand_indices_3ph(
-                                                                                           nc.passive_branch_data.T),
-                                                                                       mask=mask,
-                                                                                       branch_lookup=branch_lookup
-                                                                                       )
+    Sfb, Stb, If, It, Vbranch, loading, losses = short_circuit_post_process_phases_abc(
+        calculation_inputs=nc,
+        V_expanded=Usc_expanded,
+        branch_rates_expanded=expand3ph(nc.passive_branch_data.rates),
+        Yf=Yf,
+        Yt=Yt,
+        F_expanded=expand_indices_3ph(nc.passive_branch_data.F),
+        T_expanded=expand_indices_3ph(nc.passive_branch_data.T),
+        mask=mask,
+        branch_lookup=branch_lookup
+    )
 
-    results.voltageA = Usc_expanded[0::3]
-    results.SfA = Sfb[0::3]  # in MVA already
-    results.StA = Stb[0::3]  # in MVA already
-    results.IfA = If[0::3]  # in p.u.
-    results.ItA = It[0::3]  # in p.u.
-    results.VbranchA = Vbranch[0::3]
-    results.loadingA = loading[0::3]
-    results.lossesA = losses[0::3]
+    results.voltageA[:, 0] = Usc_expanded[0::3]
+    results.SfA[:, 0] = Sfb[0::3]  # in MVA already
+    results.StA[:, 0] = Stb[0::3]  # in MVA already
+    results.IfA[:, 0] = If[0::3]  # in p.u.
+    results.ItA[:, 0] = It[0::3]  # in p.u.
+    results.VbranchA[:, 0] = Vbranch[0::3]
+    results.loadingA[:, 0] = loading[0::3]
+    results.lossesA[:, 0] = losses[0::3]
 
-    results.voltageB = Usc_expanded[1::3]
-    results.SfB = Sfb[1::3]  # in MVA already
-    results.StB = Stb[1::3]  # in MVA already
-    results.IfB = If[1::3]  # in p.u.
-    results.ItB = It[1::3]  # in p.u.
-    results.VbranchB = Vbranch[1::3]
-    results.loadingB = loading[1::3]
-    results.lossesB = losses[1::3]
+    results.voltageB[:, 0] = Usc_expanded[1::3]
+    results.SfB[:, 0] = Sfb[1::3]  # in MVA already
+    results.StB[:, 0] = Stb[1::3]  # in MVA already
+    results.IfB[:, 0] = If[1::3]  # in p.u.
+    results.ItB[:, 0] = It[1::3]  # in p.u.
+    results.VbranchB[:, 0] = Vbranch[1::3]
+    results.loadingB[:, 0] = loading[1::3]
+    results.lossesB[:, 0] = losses[1::3]
 
-    results.voltageC = Usc_expanded[2::3]
-    results.SfC = Sfb[2::3]  # in MVA already
-    results.StC = Stb[2::3]  # in MVA already
-    results.IfC = If[2::3]  # in p.u.
-    results.ItC = It[2::3]  # in p.u.
-    results.VbranchC = Vbranch[2::3]
-    results.loadingC = loading[2::3]
-    results.lossesC = losses[2::3]
+    results.voltageC[:, 0] = Usc_expanded[2::3]
+    results.SfC[:, 0] = Sfb[2::3]  # in MVA already
+    results.StC[:, 0] = Stb[2::3]  # in MVA already
+    results.IfC[:, 0] = If[2::3]  # in p.u.
+    results.ItC[:, 0] = It[2::3]  # in p.u.
+    results.VbranchC[:, 0] = Vbranch[2::3]
+    results.loadingC[:, 0] = loading[2::3]
+    results.lossesC[:, 0] = losses[2::3]
 
     return results

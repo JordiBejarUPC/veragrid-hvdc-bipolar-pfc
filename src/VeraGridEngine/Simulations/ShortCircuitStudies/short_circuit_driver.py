@@ -140,15 +140,11 @@ class ShortCircuitDriver(DriverTemplate):
         return br1, br2, middle_bus
 
     @staticmethod
-    def single_short_circuit(nc: NumericalCircuit,
-                             Vpf: CxVec,
-                             Zf: complex,
-                             island_bus_index: int,
-                             fault_type: FaultType,
-                             method: MethodShortCircuit,
-                             phases: PhasesShortCircuit,
-                             Spf: CxVec,
-                             logger: Logger) -> ShortCircuitResults:
+    def single_short_circuit_sequences(nc: NumericalCircuit,
+                                       Vpf: CxVec,
+                                       Zf: complex,
+                                       island_bus_index: int,
+                                       fault_type: FaultType) -> ShortCircuitResults:
         """
         Run a short circuit simulation for a single island
         :param calculation_inputs:
@@ -163,61 +159,111 @@ class ShortCircuitDriver(DriverTemplate):
         # compute Zbus
         # is dense, so no need to store it as sparse
         if adm.Ybus.shape[0] > 1:
-            if method == MethodShortCircuit.sequences:
-                if fault_type == FaultType.LLLG:
-                    return short_circuit_ph3(nc=nc,
-                                             Vpf=Vpf[nc.bus_data.original_idx],
-                                             Zf=Zf,
-                                             bus_index=island_bus_index)
 
-                elif fault_type in [FaultType.LG, FaultType.LL, FaultType.LLG]:
-                    return short_circuit_unbalanced(nc=nc,
-                                                    Vpf=Vpf[nc.bus_data.original_idx],
-                                                    Zf=Zf,
-                                                    bus_index=island_bus_index,
-                                                    fault_type=fault_type)
+            if fault_type == FaultType.LLLG:
+                return short_circuit_ph3(nc=nc,
+                                         Vpf=Vpf[nc.bus_data.original_idx],
+                                         Zf=Zf,
+                                         bus_index=island_bus_index)
 
-                else:
-                    raise Exception('Unknown fault type!')
-
-            elif method == MethodShortCircuit.phases:
-
-                if fault_type in (FaultType.LLL, FaultType.LLLG):
-                    if phases != PhasesShortCircuit.abc:
-                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
-                                         value=fault_type.name)
-                        # raise Exception(
-                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must include all three phases (abc).")
-
-                elif fault_type in (FaultType.LL, FaultType.LLG):
-                    if phases not in (PhasesShortCircuit.ab, PhasesShortCircuit.bc, PhasesShortCircuit.ca):
-                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
-                                         value=fault_type.name)
-                        # raise Exception(
-                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be between two valid phases (ab, bc, or ca).")
-
-                elif fault_type == FaultType.LG:
-                    if phases not in (PhasesShortCircuit.a, PhasesShortCircuit.b, PhasesShortCircuit.c):
-                        # raise Exception(
-                        #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name} must be on a single valid phase (a, b or c).")
-                        logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
-                                         value=fault_type.name)
-                else:
-                    # Short-circuit simulation:
-                    return short_circuit_abc(nc=nc,
-                                             Vpf=Vpf,
-                                             Zf=Zf,
-                                             bus_index=island_bus_index,
-                                             fault_type=fault_type,
-                                             method=method,
-                                             phases=phases,
-                                             Spf=Spf)
+            elif fault_type in [FaultType.LG, FaultType.LL, FaultType.LLG]:
+                return short_circuit_unbalanced(nc=nc,
+                                                Vpf=Vpf[nc.bus_data.original_idx],
+                                                Zf=Zf,
+                                                bus_index=island_bus_index,
+                                                fault_type=fault_type)
 
             else:
-                raise Exception('Short-circuit calculation method is unknown!')
+                raise Exception('Unknown fault type!')
 
         # if we get here, no short circuit was done, so declare empty results and exit --------------------------------
         nbus = adm.Ybus.shape[0]
+        nbr = nc.nbr
+
+        # voltage, Sf, loading, losses, error, converged, Qpv
+        results = ShortCircuitResults(
+            nsc=1,  # we are doing just one short circuit for one island
+            n=nc.nbus,
+            m=nc.nbr,
+            n_hvdc=nc.nhvdc,
+            bus_names=nc.bus_data.names,
+            branch_names=nc.passive_branch_data.names,
+            hvdc_names=nc.hvdc_data.names,
+            sc_names=np.array(["SC"]),
+            bus_types=nc.bus_data.bus_types,
+            area_names=None
+        )
+
+        results.Sbus = nc.get_power_injections_pu()
+        results.voltage = np.zeros(nbus, dtype=complex)
+        results.Sf = np.zeros(nbr, dtype=complex)
+        results.If = np.zeros(nbr, dtype=complex)
+        results.losses = np.zeros(nbr, dtype=complex)
+        results.SCpower = np.zeros(nbus, dtype=complex)
+
+        return results
+
+    @staticmethod
+    def single_short_circuit_phases(nc: NumericalCircuit,
+                                    Vpf: CxVec,
+                                    Zf: complex,
+                                    island_bus_index: int,
+                                    fault_type: FaultType,
+                                    method: MethodShortCircuit,
+                                    phases: PhasesShortCircuit,
+                                    Spf: CxVec,
+                                    logger: Logger) -> ShortCircuitResults:
+        """
+        Run a short circuit simulation for a single island
+        :param calculation_inputs:
+        :param Vpf: Power flow voltage vector applicable to the island
+        :param Zf: Short circuit impedance vector applicable to the island
+        :param island_bus_index: bus index where the fault happens
+        :param fault_type: FaultType
+        :param logger: Logger
+        @return: short circuit results
+        """
+        adm = nc.get_admittance_matrices()
+        # compute Zbus
+        # is dense, so no need to store it as sparse
+        if adm.Ybus.shape[0] > 1:
+
+            if fault_type in (FaultType.LLL, FaultType.LLLG):
+                if phases != PhasesShortCircuit.abc:
+                    logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                     value=fault_type.name)
+                    # raise Exception(
+                    #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name}
+                    #     must include all three phases (abc).")
+
+            elif fault_type in (FaultType.LL, FaultType.LLG):
+                if phases not in (PhasesShortCircuit.ab, PhasesShortCircuit.bc, PhasesShortCircuit.ca):
+                    logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                     value=fault_type.name)
+                    # raise Exception(
+                    #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name}
+                    #     must be between two valid phases (ab, bc, or ca).")
+
+            elif fault_type == FaultType.LG:
+                if phases not in (PhasesShortCircuit.a, PhasesShortCircuit.b, PhasesShortCircuit.c):
+                    # raise Exception(
+                    #     f"The selected short-circuit type is inconsistent with the phases involved: {fault_type.name}
+                    #     must be on a single valid phase (a, b or c).")
+                    logger.add_error("The selected short-circuit type is inconsistent with the phases involved",
+                                     value=fault_type.name)
+            else:
+                # Short-circuit simulation:
+                return short_circuit_abc(nc=nc,
+                                         Vpf=Vpf,
+                                         Zf=Zf,
+                                         bus_index=island_bus_index,
+                                         fault_type=fault_type,
+                                         method=method,
+                                         phases=phases,
+                                         Spf=Spf)
+
+        # if we get here, no short circuit was done, so declare empty results and exit --------------------------------
+        nbus = nc.bus_data.nbus
         nbr = nc.nbr
 
         # voltage, Sf, loading, losses, error, converged, Qpv
@@ -324,18 +370,34 @@ class ShortCircuitDriver(DriverTemplate):
                 # island_bus_index = reverse_bus_index.get(self.options.bus_index, None)
 
                 bus_dict = island.bus_data.get_idtag_dict()
-                island_bus_index = bus_dict.get(sc_definition.device_idtag)
+                island_bus_index = bus_dict.get(sc_definition.device_idtag, None)
 
                 if island_bus_index is not None:
-                    res = self.single_short_circuit(nc=island,
-                                                    Vpf=self.pf_results.voltage[island.bus_data.original_idx],
-                                                    Zf=Zf[island.bus_data.original_idx],
-                                                    island_bus_index=island_bus_index,
-                                                    fault_type=self.options.fault_type,
-                                                    method=self.options.method,
-                                                    phases=self.options.phases,
-                                                    Spf=self.pf_results.Sbus[island.bus_data.original_idx],
-                                                    logger=self.logger)
+
+                    if sc_definition.method == MethodShortCircuit.sequences:
+                        res = self.single_short_circuit_sequences(
+                            nc=island,
+                            Vpf=self.pf_results.voltage[island.bus_data.original_idx],
+                            Zf=Zf[island.bus_data.original_idx],
+                            island_bus_index=island_bus_index,
+                            fault_type=sc_definition.fault_type
+                        )
+
+                    elif sc_definition.method == MethodShortCircuit.phases:
+                        res = self.single_short_circuit_phases(
+                            nc=island,
+                            Vpf=self.pf_results.voltage[island.bus_data.original_idx],
+                            Zf=Zf[island.bus_data.original_idx],
+                            island_bus_index=island_bus_index,
+                            fault_type=sc_definition.fault_type,
+                            method=sc_definition.method,
+                            phases=sc_definition.phases,
+                            Spf=self.pf_results.Sbus[island.bus_data.original_idx],
+                            logger=self.logger
+                        )
+
+                    else:
+                        raise Exception(f"unknown short circuit method: {sc_definition.method}")
 
                     # merge results
                     results.apply_from_island(k_sc,

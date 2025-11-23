@@ -390,10 +390,16 @@ def test_three_phase_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LLLG,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.abc)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitDefinition(
+            device=grid.buses[4],
+            fault_type=FaultType.LLLG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.abc
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
@@ -792,10 +798,16 @@ def test_single_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LG,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.a)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitDefinition(
+            device=grid.buses[4],
+            fault_type=FaultType.LG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.a
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
@@ -1195,10 +1207,16 @@ def test_double_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LLG,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.ca)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitDefinition(
+            device=grid.buses[4],
+            fault_type=FaultType.LLG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.ca
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
@@ -1598,10 +1616,16 @@ def test_line_to_line_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LL,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.ab)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitDefinition(
+            device=grid.buses[4],
+            fault_type=FaultType.LL,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.ab
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
@@ -2001,10 +2025,16 @@ def test_three_phase_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LLL,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.abc)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitDefinition(
+            device=grid.buses[4],
+            fault_type=FaultType.LLL,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.abc
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
