@@ -134,6 +134,19 @@ def change_model_params(mdl_old, mdl_new):
         for submodel_old, submodel_new in zip(mdl_old.children, mdl_new.children):
             change_model_params(submodel_old, submodel_new)
 
+def update_equations(blk, old, new):
+    for i, eq in enumerate(blk.algebraic_eqs):
+        new_equ = eq.subs({old: new})
+        blk.algebraic_eqs[i] = new_equ
+    for i, eq in enumerate(blk.state_eqs):
+        new_equ = eq.subs({old: new})
+        blk.state_eqs[i] = new_equ
+
+def update_model(model, old, new):
+    update_equations(model, old, new)
+    if model.children:
+        for child in model.children:
+            update_equations(child, old, new)
 
 @dataclass
 class BlockBridge:
@@ -1094,12 +1107,18 @@ class DiagramScene(QGraphicsScene):
 
                     dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
 
-                    for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
-                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
-                        dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
-                    for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
-                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
-                        dst_port.subsystem.subsys.state_eqs[i] = new_equ
+                    # update destiny model
+                    update_model(dst_port.subsystem.subsys, dst_port.subsystem.subsys.in_vars[str(dst_port.index)], dst_var)
+
+                    # for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
+                    #     new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
+                    #     dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                    # for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
+                    #     new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
+                    #     dst_port.subsystem.subsys.state_eqs[i] = new_equ
+                    #
+
+
                     for key, value in self.editor.main_block.external_mapping.items():
                         if dst_port.subsystem.subsys.in_vars[str(dst_port.index)] is value:
                             self.editor.main_block.external_mapping[key] = dst_var

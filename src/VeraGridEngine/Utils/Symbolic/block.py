@@ -1401,7 +1401,7 @@ class ExciterBuild:
         x1 = VfeMaxPu - inputs[0] * self.parameters["Kd"]
         error1 = Efe - (inputs[0] * self.parameters["Kd"] + u_aux)
 
-        tf1, Ve_presat = tf_to_diffblock(
+        tf1_sub, Ve_presat = tf_to_diffblock(
             num=np.array([1]),
             den=np.array([0, self.parameters["tE"]]),
             x=error1,
@@ -1427,7 +1427,7 @@ class ExciterBuild:
             algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
         )
 
-        exciter_submodel = DiffBlock(children=[tf1, aux_model])
+        exciter_submodel = DiffBlock(children=[tf1_sub, aux_model])
 
         linking_block = Block(
             algebraic_eqs=[y6 - Efe],
