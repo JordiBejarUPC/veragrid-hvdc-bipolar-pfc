@@ -2237,8 +2237,8 @@ def add_linear_vsc_formulation(t_idx: int,
                                                                        rate=vsc_data_t.rates[m] / Sbase,
                                                                        P0=P0,
                                                                        droop=droop,
-                                                                       theta_f=bus_vars.Va[t_idx, to],
-                                                                       theta_t=bus_vars.Va[t_idx, control_bus_idx],
+                                                                       theta_f=bus_vars.Va[t_idx, control_bus_idx],
+                                                                       theta_t=bus_vars.Va[t_idx, to],
                                                                        base_name="vsc")
 
                 else:
@@ -2255,7 +2255,7 @@ def add_linear_vsc_formulation(t_idx: int,
                     # flow = P0 + k · (theta_f - theta_t)
                     prob.add_cst(
                         cst=vsc_vars.flows[t_idx, m] == P0 + droop * (
-                                bus_vars.Va[t_idx, fr] - bus_vars.Va[t_idx, control_bus_idx]),
+                                bus_vars.Va[t_idx, control_bus_idx] - bus_vars.Va[t_idx, to]),
                         name=join("vsc_flow_cst_", [t_idx, m], "_")
                     )
 
