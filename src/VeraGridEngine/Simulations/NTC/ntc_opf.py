@@ -142,7 +142,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
     # get values per bus
     gen_per_bus = gen_data_t.get_injections_per_bus() / Sbase
     load_per_bus = load_data_t.get_injections_per_bus() / Sbase
-    pinst_per_bus = gen_data_t.get_installed_power_per_bus() / Sbase
+    pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p * gen_data_t.active) / Sbase
+    # pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p) / Sbase
 
     # Evaluate transfer method
     if transfer_method == AvailableTransferMode.InstalledPower:
@@ -157,7 +158,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Generation:
         p_ref = gen_per_bus
@@ -171,7 +173,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Load:
         p_ref = load_per_bus
