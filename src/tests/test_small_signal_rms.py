@@ -239,11 +239,11 @@ def stability_kundur_no_shunt():
     power_flow.run()
     res = power_flow.results
 
-    ss, init_guess = initialize_rms(grid, res)
+    sim_time, ss, init_guess = initialize_rms(grid, res)
 
     params_mapping = {}
 
-    slv = BlockSolver(ss, grid.time, use_jit=False)
+    slv = BlockSolver(ss, sim_time, use_jit=False)
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 

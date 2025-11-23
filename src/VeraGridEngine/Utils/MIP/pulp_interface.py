@@ -408,7 +408,10 @@ class PulpLpModel(AbstractLpModel):
         return pulp.LpStatus[stat]
 
     def model_as_string(self) -> str:
-
+        """
+        Return the LP representation
+        :return: string
+        """
         lp = self.model
         max_length = 1000000
         mip = True
@@ -491,4 +494,3 @@ class PulpLpModel(AbstractLpModel):
         lp.restoreObjective(wasNone, objectiveDummyVar)
 
         return f
-

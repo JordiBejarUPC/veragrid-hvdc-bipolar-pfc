@@ -158,7 +158,6 @@ class MultiCircuit(Assets):
         'user_name',
         'Sbase',
         'fBase',
-        'time',
         'logger',
     )
 
@@ -196,9 +195,6 @@ class MultiCircuit(Assets):
 
         # Base frequency in Hz
         self.fBase: float = fbase
-
-        # grid time
-        self.time: Var = Var("t")
 
         # logger of events
         self.logger: Logger = Logger()

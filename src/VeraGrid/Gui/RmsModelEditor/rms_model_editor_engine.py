@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QPoint
+
+
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     constant,
@@ -32,9 +34,10 @@ from VeraGridEngine.Utils.Symbolic.block import (
     divide,
     absolut,
     generator,
-    genqec,
-    governor_no_load_control,
-    exciter,
+    GenqecBuild,
+    GovernorBuild,
+    StabilizerBuild,
+    ExciterBuild,
     line,
     generic
 )
@@ -106,6 +109,30 @@ def _get_var_name_from_subsys(subsys, is_input: bool, index: int) -> str:
     except Exception:
         return "<no var>"
 
+def change_model_params(mdl_old, mdl_new):
+    mdl_old.parameters = mdl_new.parameters
+    mdl_old.algebraic_eqs = mdl_new.algebraic_eqs
+    mdl_old.state_eqs = mdl_new.state_eqs
+    for eq in mdl_old.algebraic_eqs:
+        for var, wrong_var in zip(mdl_old.algebraic_vars, mdl_new.algebraic_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.state_vars, mdl_new.state_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.in_vars, mdl_new.in_vars):
+            eq.subs({wrong_var: var})
+
+    for eq in mdl_old.state_eqs:
+        for var, wrong_var in zip(mdl_old.algebraic_vars, mdl_new.algebraic_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.state_vars, mdl_new.state_vars):
+            eq.subs({wrong_var: var})
+        for var, wrong_var in zip(mdl_old.in_vars, mdl_new.in_vars):
+            eq.subs({wrong_var: var})
+
+    if mdl_old.children:
+        for submodel_old, submodel_new in zip(mdl_old.children, mdl_new.children):
+            change_model_params(submodel_old, submodel_new)
+
 
 @dataclass
 class BlockBridge:
@@ -126,6 +153,7 @@ class BlockType(Enum):
     GENERATOR = auto()
     GENQEC = auto()
     GOV = auto()
+    STAB = auto()
     EXCITER = auto()
     LINE = auto()
     GENERIC = auto()
@@ -204,7 +232,7 @@ class PortItem(QGraphicsEllipseItem):
         self.setAcceptHoverEvents(True)
         self.subsystem = subsystem
         self.is_input = is_input
-        self.connection = None
+        self.connections: List[ConnectionItem] | None = None
         self.index = index
         self.total = total
 
@@ -220,7 +248,7 @@ class PortItem(QGraphicsEllipseItem):
         QApplication.restoreOverrideCursor()
 
     def is_connected(self):
-        return self.connection is not None
+        return self.connections is not None
 
 
 class ConnectionItem(QGraphicsPathItem):
@@ -230,8 +258,10 @@ class ConnectionItem(QGraphicsPathItem):
         self.setZValue(-1)
         self.source_port = source_port
         self.target_port = target_port
-        self.source_port.connection = self
-        self.target_port.connection = self
+        self.source_port.connections = list()
+        self.source_port.connections.append(self)
+        self.target_port.connections = list()
+        self.target_port.connections.append(self)
         self.setPen(QPen(Qt.GlobalColor.darkBlue, 2))
         self.setAcceptHoverEvents(True)
 
@@ -252,15 +282,6 @@ class ConnectionItem(QGraphicsPathItem):
 
     def hoverLeaveEvent(self, event):
         QApplication.restoreOverrideCursor()
-
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-        remove_action = QAction("Remove Connection", menu)
-        menu.addAction(remove_action)
-        if menu.exec(event.screenPos()) == remove_action:
-            self.scene().removeItem(self)
-            self.source_port.connection = None
-            self.target_port.connection = None
 
 
 class ResizeHandle(QGraphicsRectItem):
@@ -349,8 +370,11 @@ class BlockItem(QGraphicsRectItem):
 
         self._resizing_from_handle = False
 
+
+
     def mouseDoubleClickEvent(self, event):
         # --- Constant editing ---
+        print(self.subsys.name)
         if self.subsys.name.lower().startswith("const") or self.subsys.name == "CONSTANT":
             dlg = QDialog()
             dlg.setWindowTitle("Edit Constant Value")
@@ -399,6 +423,19 @@ class BlockItem(QGraphicsRectItem):
                 self.name_item.setPlainText(f"Gain({new_val})")
             return
 
+        if self.subsys.name.lower().startswith("gov") or self.subsys.name.startswith == "GOV":
+            dialog = ParameterEditorDialog(self.subsys.parameters, self.subsys.event_dict)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                new_params, new_events = dialog.get_updated_data()
+                self.subsys.event_dict = new_events
+                constructor = GovernorBuild()
+                constructor.parameters = new_params
+                blk = constructor.governor()
+
+                change_model_params(self.subsys, blk)
+
+            return
+
         super().mouseDoubleClickEvent(event)
 
     def resize_block(self, width, height):
@@ -433,8 +470,9 @@ class BlockItem(QGraphicsRectItem):
         self.update_handle_position()
         # Also update connections
         for port in self.inputs + self.outputs:
-            if port.connection:
-                port.connection.update_path()
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -445,36 +483,10 @@ class BlockItem(QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             for port in self.inputs + self.outputs:
-                if port.connection:
-                    port.connection.update_path()
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
         return super().itemChange(change, value)
-
-    # def contextMenuEvent(self, event):
-    #     menu = QMenu()
-    #
-    #     delete_action = QAction("Remove Block", menu)
-    #     menu.addAction(delete_action)
-    #
-    #     edit_action = None
-    #     if self.subsys.name == "generic":
-    #         edit_action = QAction("Edit Block", menu)
-    #         menu.addAction(edit_action)
-    #
-    #     chosen = menu.exec(event.screenPos())
-    #
-    #     if chosen == delete_action:
-    #         for port in self.inputs + self.outputs:
-    #             if port.connection:
-    #                 self.scene().removeItem(port.connection)
-    #                 if port.connection.source_port:
-    #                     port.connection.source_port.connection = None
-    #                 if port.connection.target_port:
-    #                     port.connection.target_port.connection = None
-    #         self.scene().removeItem(self)
-    #         pdb.set_trace()
-    #
-    #     elif chosen == edit_action:
-    #         self.open_generic_editor()
 
     def open_generic_editor(self):
         dlg = QDialog()
@@ -659,8 +671,9 @@ class ModelHostItem(QGraphicsRectItem):
         self.update_handle_position()
         # Also update connections
         for port in self.inputs + self.outputs:
-            if port.connection:
-                port.connection.update_path()
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
 
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
@@ -671,33 +684,35 @@ class ModelHostItem(QGraphicsRectItem):
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             for port in self.inputs + self.outputs:
-                if port.connection:
-                    port.connection.update_path()
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
         return super().itemChange(change, value)
 
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-
-        delete_action = QAction("Remove Block", menu)
-        menu.addAction(delete_action)
-
-        edit_action = QAction("Edit Block", menu)
-        menu.addAction(edit_action)
-
-        chosen = menu.exec(event.screenPos())
-
-        if chosen == delete_action:
-            for port in self.inputs + self.outputs:
-                if port.connection:
-                    self.scene().removeItem(port.connection)
-                    if port.connection.source_port:
-                        port.connection.source_port.connection = None
-                    if port.connection.target_port:
-                        port.connection.target_port.connection = None
-            self.scene().removeItem(self)
-
-        elif chosen == edit_action:
-            self.open_generic_editor()
+    # def contextMenuEvent(self, event):
+    #     menu = QMenu()
+    #
+    #     delete_action = QAction("Remove Block", menu)
+    #     menu.addAction(delete_action)
+    #
+    #
+    #     edit_action = QAction("Edit Block", menu)
+    #     menu.addAction(edit_action)
+    #
+    #     chosen = menu.exec(event.screenPos())
+    #
+    #     if chosen == delete_action:
+    #         for port in self.inputs + self.outputs:
+    #             if port.connection:
+    #                 self.scene().removeItem(port.connection)
+    #                 if port.connection.source_port:
+    #                     port.connection.source_port.connection = None
+    #                 if port.connection.target_port:
+    #                     port.connection.target_port.connection = None
+    #         self.scene().removeItem(self)
+    #
+    #     elif chosen == edit_action:
+    #         self.open_generic_editor()
 
     def open_generic_editor(self):
         dlg = QDialog()
@@ -934,17 +949,26 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        blk = genqec(item_name)
+        builder = GenqecBuild()
+        blk =builder.genqec()
         return blk
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        blk = governor_no_load_control(item_name)
+        builder = GovernorBuild()
+        blk = builder.governor()
         return blk
 
-    # GOVERNOR (governor with control)
+    # STABILIZER (stabilizer)
+    if block_type == BlockType.STAB:
+        builder = StabilizerBuild()
+        blk = builder.stabilizer()
+        return blk
+
+    # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        blk = exciter(item_name)
+        builder = ExciterBuild()
+        blk = builder.exciter()
         return blk
 
     # LINE (line)
@@ -1019,7 +1043,7 @@ class DiagramScene(QGraphicsScene):
 
     def mousePressEvent(self, event):
         for item in self.items(event.scenePos()):
-            if isinstance(item, PortItem) and not item.is_input and not item.is_connected():
+            if isinstance(item, PortItem) and not item.is_input:
                 self.source_port = item
                 path = QPainterPath(item.scenePos())
                 self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
@@ -1056,8 +1080,15 @@ class DiagramScene(QGraphicsScene):
                 if isinstance(item, PortItem) and item.is_input and not item.is_connected():
                     dst_port: PortItem = item
                     connection = ConnectionItem(self.source_port, dst_port)
-                    dst_port.connection = connection
-                    self.source_port.connection = connection
+
+                    dst_port.connections = list()
+                    dst_port.connections.append(connection)
+
+                    if self.source_port.connections is None:
+                        self.source_port.connections = list()
+                        self.source_port.connections.append(connection)
+                    else:
+                        self.source_port.connections.append(connection)
 
                     dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
 
@@ -1067,8 +1098,7 @@ class DiagramScene(QGraphicsScene):
                     for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
                         new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
                         dst_port.subsystem.subsys.state_eqs[i] = new_equ
-                    # dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
-                    # dst_port.subsystem.subsys.active_in_vars.append(dst_port.subsystem.subsys.in_vars[dst_port.index])
+                    dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
 
                     self.addItem(connection)
 
@@ -1324,6 +1354,195 @@ class TemplateEditor(QtWidgets.QWidget):
             return self.selected_template.event_dict
         return {}
 
+class ParameterEditorDialog(QDialog):
+    """
+    A dialog that edits BOTH:
+        - parameters: Dict[str, Const]
+        - event_dict: Dict[Var, Const]
+
+    The user only sees a 2-column table:  Name | Value
+    Internally we store metadata to reconstruct the updated dicts.
+    """
+
+    def __init__(self, parameters: dict, event_dict: dict, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Model Parameters")
+        self.resize(450, 350)
+
+        self.parameters = parameters
+        self.event_dict = event_dict
+
+        # Output (filled when OK is pressed)
+        self.new_parameters = {}
+        self.new_event_dict = {}
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Edit the values:"))
+
+        # ---------------------------
+        # Table (two columns only)
+        # ---------------------------
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["Name", "Value"])
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+        layout.addWidget(self.table)
+
+        self.populate_table()
+
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    # --------------------------------------------------------
+
+    def populate_table(self):
+        """Put both dictionaries into the table."""
+        total = len(self.parameters) + len(self.event_dict)
+        self.table.setRowCount(total)
+
+        row = 0
+
+        # --- parameters ---
+        for name, const in self.parameters.items():
+            self.add_row(row, name, getattr(const, "value", const))
+            # store metadata
+            self.table.item(row, 0).setData(Qt.UserRole, ("parameter", name))
+            row += 1
+
+        # --- event_dict ---
+        for var, const in self.event_dict.items():
+            name = getattr(var, "name", str(var))
+            self.add_row(row, name, getattr(const, "value", const))
+            # store metadata
+            self.table.item(row, 0).setData(Qt.UserRole, ("event", var))
+            row += 1
+
+    # --------------------------------------------------------
+
+    def add_row(self, row, name, value):
+        name_item = QTableWidgetItem(name)
+        name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        self.table.setItem(row, 0, name_item)
+
+        value_item = QTableWidgetItem(str(value))
+        self.table.setItem(row, 1, value_item)
+
+    # --------------------------------------------------------
+
+    def accept(self):
+        """Reads table values and rebuilds parameters + event_dict."""
+        for row in range(self.table.rowCount()):
+            meta = self.table.item(row, 0).data(Qt.UserRole)
+            value_str = self.table.item(row, 1).text()
+
+            # convert to float if possible
+            try:
+                value = float(value_str)
+            except ValueError:
+                value = value_str
+
+            if meta is None:
+                continue
+
+            origin, key = meta
+
+            if origin == "parameter":
+
+                self.new_parameters[key] = Const(value)
+
+            elif origin == "event":
+
+                self.new_event_dict[key] = Const(value)
+
+        super().accept()
+
+    # --------------------------------------------------------
+
+    def get_updated_data(self):
+        """Return updated (parameters, event_dict)."""
+        return self.new_parameters, self.new_event_dict
+
+# class ParameterEditorDialog(QDialog):
+#     """
+#     Dialogue to edit parameters of a block.
+#     """
+#
+#     def __init__(self, parameters: dict, event_dict: dict, parent=None):
+#         super().__init__(parent)
+#         self.setWindowTitle("Edit Parameters")
+#         self.resize(400, 300)
+#
+#         self.parameters = parameters  # {str: Const}
+#         self.new_parameters = {}
+#
+#         layout = QVBoxLayout(self)
+#         layout.addWidget(QLabel("Edit the parameters of this block:"))
+#
+#         # --- Crear la tabla ---
+#         self.table = QTableWidget()
+#         self.table.setColumnCount(2)
+#         self.table.setHorizontalHeaderLabels(["Parameter", "Value"])
+#         self.table.horizontalHeader().setStretchLastSection(True)
+#         self.table.verticalHeader().setVisible(False)
+#         self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+#
+#         self.populate_table()
+#         layout.addWidget(self.table)
+#
+#         # ---  OK / Cancel ---
+#         buttons = QDialogButtonBox(
+#             QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+#             Qt.Horizontal,
+#             self,
+#         )
+#         buttons.accepted.connect(self.accept)
+#         buttons.rejected.connect(self.reject)
+#         layout.addWidget(buttons)
+#
+#     # ------------------------------------------------------
+#
+#     def populate_table(self):
+#         """Llena la tabla con los parámetros actuales."""
+#         self.table.setRowCount(len(self.parameters))
+#         for row, (name, const) in enumerate(self.parameters.items()):
+#             # parameter value
+#             name_item = QTableWidgetItem(name)
+#             name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+#             self.table.setItem(row, 0, name_item)
+#
+#             # parameter name
+#             value = getattr(const, "value", const)
+#             value_item = QTableWidgetItem(str(value))
+#             self.table.setItem(row, 1, value_item)
+#
+#     # ------------------------------------------------------
+#
+#     def accept(self):
+#         """update dictionary"""
+#         for row in range(self.table.rowCount()):
+#             name = self.table.item(row, 0).text()
+#             value_text = self.table.item(row, 1).text()
+#
+#             try:
+#                 value = float(value_text)
+#             except ValueError:
+#                 value = value_text
+#             self.new_parameters[name] = Const(value)
+#
+#         super().accept()
+#
+#     # ------------------------------------------------------
+#
+#     def get_parameters(self) -> dict:
+#         """Devuelve el diccionario actualizado."""
+#         return self.new_parameters
 
 class NameDialog(QDialog):
     def __init__(self, parent=None):
@@ -1412,10 +1631,17 @@ class InspectModel(QWidget):
 
         # --- Variables ---
         for var in model.state_vars + model.algebraic_vars:
-            item = QListWidgetItem(f"{var.name} ({'state' if var in model.state_vars else 'algebraic'})")
+            item = QListWidgetItem(f"{var.name} ")
+            # ({'state' if var in model.state_vars else 'algebraic'})
             self.list_vars.addItem(item)
 
         # --- Parameters ---
+        for param, value in model.parameters.items():
+            row = self.table_params.rowCount()
+            self.table_params.insertRow(row)
+            self.table_params.setItem(row, 0, QTableWidgetItem(param))
+            self.table_params.setItem(row, 1, QTableWidgetItem(str(model.parameters[param])))
+
         for param, value in model.event_dict.items():
             row = self.table_params.rowCount()
             self.table_params.insertRow(row)
@@ -1540,8 +1766,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_from_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
 
             # add con bus to
             name = "Conn To"
@@ -1576,8 +1800,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_to_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
 
         else:
             x0, y0 = 0, 0
@@ -1607,8 +1829,6 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_con_item.subsys.uid,
                 )
-                # self.nodes_index += 1
-                # self.diagram.index += 1
 
     def open_inspect_dialog(self):
         """
@@ -1655,13 +1875,17 @@ class BlockBoxesEditor(QSplitter):
         if isinstance(item, ConnectionItem):
 
             del self.diagram.con_data[item.uid]
-            self.scene.removeItem(item)
+
 
             source_port = item.source_port
             target_port = item.target_port
 
-            source_port.connection = None
-            target_port.connection = None
+            # source_port.connection = None
+            # target_port.connection = None
+
+            source_port.connections.remove(item)
+            target_port.connections = None
+            self.scene.removeItem(item)
 
             dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
@@ -1676,24 +1900,25 @@ class BlockBoxesEditor(QSplitter):
         if isinstance(item, (BlockItem, ModelHostItem)):
             for port in item.inputs + item.outputs:
 
-                if port.connection:
-                    del self.diagram.con_data[port.connection.uid]
-                    self.scene.removeItem(port.connection)
+                if port.connections:
+                    for conn in port.connections:
+                        del self.diagram.con_data[conn.uid]
+                        self.scene.removeItem(conn)
 
-                    source_port = port.connection.source_port
-                    target_port = port.connection.target_port
+                        source_port = conn.source_port
+                        target_port = conn.target_port
 
-                    source_port.connection = None
-                    target_port.connection = None
+                        source_port.connections.remove(conn)
+                        target_port.connections = None
 
-                    dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+                        dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
 
-                    for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                        new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                        target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
-                    for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                        new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
-                        target_port.subsystem.subsys.state_eqs[i] = new_equ
+                        for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
+                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                        for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
+                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            target_port.subsystem.subsys.state_eqs[i] = new_equ
 
             self.scene.removeItem(item)
 
@@ -1749,8 +1974,9 @@ class BlockBoxesEditor(QSplitter):
                     item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
                                          self.templates_catalogue, self.api_object)
 
-                    self.scene.addItem(item)
+
                     item.setPos(QPointF(x0, y0))
+                    self.scene.addItem(item)
                     # save nodes in diagram
                     self.diagram.add_node(
                         name=name,
@@ -1818,11 +2044,10 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host_sys=model_host, api_object_name=node.api_object_name,
-                                     api_object=self.api_object, templates_list=self.templates_list,
-                                     templates_catalogue=self.templates_catalogue)
-                self.scene.addItem(item)
+                item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, api_object= self.api_object, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
+
                 item.setPos(QPointF(node.x, node.y))
+                self.scene.addItem(item)
                 brush = item.brush()
                 brush.setColor(QColor(node.color))
                 item.setBrush(brush)
@@ -2078,7 +2303,7 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
 
         # Botones OK/Cancel
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -2239,47 +2464,6 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             raise ValueError("Unsupported RMS editor!")
 
         self.close()
-
-    # def on_select_model(self):
-    #     """Uploads the selected template and connects Vm and Va variables with bus variables."""
-    #
-    #     choice_model_dict = {
-    #         "Template model": self.template_editor.model,
-    #         "Block editor model": self.blockboxes_editor.main_block,
-    #         "Equations editor model": self.equations_editor.model
-    #     }
-    #
-    #     selected_model = self.ui.model_selector_comboBox.currentText()
-    #     # self.model_host.model = choice_model_dict[selected_model]
-    #
-    #     if selected_model == "Template model":
-    #         self.model_host.template = self.template_editor.model
-    #
-    #     if selected_model == "Block editor model":
-    #         self.model_host.template = None
-    #         self.model_host.diagram = self.blockboxes_editor.diagram
-    #
-    #     if selected_model == "Template model":
-    #         source = "Template editor"
-    #     elif selected_model == "Block editor model":
-    #         source = "Blockboxes editor"
-    #     else:
-    #         source = "Equations editor"
-    #
-    #     # ---info to the user---
-    #     QMessageBox.information(
-    #         self,
-    #         "Model Applied",
-    #         f"Model from {source} applied to device."
-    #     )
-    #
-    #     # --- Update model applyed ---
-    #     self.status_label.setText(f"🟢 Current model: {source}")
-    #     self.model_host.diagram.status = source
-    #     self.statusBar().showMessage(f"Model from {source} applied successfully.", 3000)
-    #
-    #     # --- Activate push button---
-    #     self.ui.apply_selected_model_pushButton.setEnabled(True)
 
 
 if __name__ == "__main__":

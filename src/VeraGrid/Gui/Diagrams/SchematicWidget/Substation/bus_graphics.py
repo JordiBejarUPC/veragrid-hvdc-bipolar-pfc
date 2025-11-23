@@ -1015,7 +1015,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             vm = format_str.format(Vm)
             vm_kv = format_str.format(Vm * self._api_object.Vnom)
             va = format_str.format(Va)
-            msg += f"V={vm_kv} KV<br>  {vm}&lt;{va}º p.u.<br>"
+            msg += f"V={vm_kv} kV<br>  {vm}&lt;{va}º p.u.<br>"
 
             if P is not None:
                 p = format_str.format(P)
@@ -1067,7 +1067,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                     vm = format_str.format(Vm_i)
                     vm_kv = format_str.format(Vm_i * self._api_object.Vnom)
                     va = format_str.format(Va_i)
-                    msg += f"V{ph}={vm_kv} KV / {vm}&lt;{va}º p.u.<br>"
+                    msg += f"V{ph}={vm_kv} kV / {vm}&lt;{va}º p.u.<br>"
 
             for P_i, Q_i, ph in zip([PA, PB, PC], [QA, QB, QC], ["a", "b", "c"]):
                 if not (P_i == 0.0 and Q_i == 0.0):

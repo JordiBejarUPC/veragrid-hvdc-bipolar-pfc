@@ -388,11 +388,11 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
     # TDS initialization
     start_compiling = time.time()
 
-    ss, init_guess = gce.initialize_rms(grid, res)
+    sim_time, ss, init_guess = gce.initialize_rms(grid, res)
 
     params_mapping = {}
 
-    slv = BlockSolver(ss, grid.time)
+    slv = BlockSolver(ss, sim_time)
 
     end_compiling = time.time()
 
@@ -401,7 +401,7 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
-    print(x0)
+
     vars_in_order = slv.sort_vars_from_uid(init_guess)
 
     start_simulation = time.time()

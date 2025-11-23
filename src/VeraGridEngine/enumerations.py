@@ -2022,6 +2022,7 @@ class SimulationTypes(Enum):
     DesignView = 'Design View'
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
+    StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'
     PowerFlowTimeSeries_run = 'Power flow time series'

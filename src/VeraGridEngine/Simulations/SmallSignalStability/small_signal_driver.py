@@ -292,8 +292,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         params_mapping: Dict = dict()
 
-        ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        slv = BlockSolver(ss, self.grid.time)
+        time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
+        slv = BlockSolver(ss, time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)

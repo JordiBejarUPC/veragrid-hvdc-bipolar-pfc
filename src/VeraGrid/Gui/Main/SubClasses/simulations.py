@@ -249,7 +249,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionInvestments_evaluation.triggered.connect(self.run_investments_evaluation)
         self.ui.actionReliability.triggered.connect(self.reliability_dispatcher)
         self.ui.actionRun_Dynamic_RMS_Simulation.triggered.connect(self.rms_dispatcher)
-        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.ss_dispatcher)
+        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.small_signal_dispatcher)
 
         self.ui.actionUse_clustering.triggered.connect(self.activate_clustering)
         self.ui.actionNodal_capacity.triggered.connect(self.run_nodal_capacity)
@@ -690,6 +690,7 @@ class SimulationsMain(TimeEventsMain):
             SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
             SimulationTypes.SmallSignal_run.value: ':/Icons/icons/ss_icon.png',
             SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
+            SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
         }
 
         self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))
@@ -1002,7 +1003,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             self.run_rms()
 
-    def ss_dispatcher(self):
+    def small_signal_dispatcher(self):
         """
         Dispatch the reliability action
         :return:
@@ -1074,6 +1075,69 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             warning_msg('There are no power flow results.\nIs there any slack bus or generator?', 'Power flow')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+    def run_state_estimation(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.StateEstimation_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.StateEstimation_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                pf_options = self.get_selected_power_flow_options()
+                options = sim.StateEstimationOptions()
+
+                self.ui.progress_label.setText('Running state estimation...')
+                QtGui.QGuiApplication.processEvents()
+
+                drv = sim.StateEstimationDriver(self.circuit, options)
+
+                self.session.run(drv,
+                                 post_func=self.post_state_estimation,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def post_state_estimation(self):
+        """
+        Action performed after the power flow.
+        Returns:
+
+        """
+        # update the results in the circuit structures
+
+        _, results = self.session.state_estimation
+
+        if results is not None:
+            self.ui.progress_label.setText('Colouring state estimation results in the grid...')
+            self.remove_simulation(SimulationTypes.StateEstimation_run)
+            self.update_available_results()
+            self.colour_diagrams()
+
+            if results.converged:
+                self.show_info_toast("State estimation converged :)")
+            else:
+                self.show_warning_toast("State estimation not converged :/")
+
+        else:
+            warning_msg('There are no state estimation results.\nIs there any slack bus or generator?',
+                        'State estimation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

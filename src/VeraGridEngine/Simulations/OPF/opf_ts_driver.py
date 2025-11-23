@@ -298,7 +298,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 time_indices = np.arange(start_, end_)
 
             # show progress message
-            print(start_, ':', end_, ' [', end_ - start_, ']')
+            msg = f"Group {i} -> {start_} : {end_} [{end_ - start_}]"
+            if self.options.verbose > 0:
+                print(msg)
+
             self.report_text('Running OPF for the time group {0} '
                              'start {1} - end {2} in external solver...'.format(i, start_, end_))
 
@@ -383,6 +386,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 energy_0 = self.results.battery_energy[end_ - 1, :]
                 fluid_level_0 = self.results.fluid_node_current_level[end_ - 1, :]
+
+                if self.options.report_formulation:
+                    self.results.report_text = f"## {msg}\n\n" + model.model_as_string()
 
             elif self.options.solver == SolverType.NONLINEAR_OPF:
 

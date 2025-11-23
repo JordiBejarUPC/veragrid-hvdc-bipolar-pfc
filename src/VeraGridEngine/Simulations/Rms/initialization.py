@@ -78,11 +78,13 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     return fn
 
 
-def compose_system_block(grid: MultiCircuit,
-                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Block, Dict[Tuple[int, str], float]]:
+
+def compose_system_block(time: Var, grid: MultiCircuit,
+                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
 
     """
     Compose all RMS models
+    :param time: time of the simulation
     :param grid:
     :param power_flow_results:
     :param vars2device: dictionary relating uid of vars with the device they belong to
@@ -113,8 +115,8 @@ def compose_system_block(grid: MultiCircuit,
 
     # fill uid2sym_t and uid2idx_t dicts
     array_index_t = 0
-    uid2sym_t[grid.time.uid] = f"glob_time"
-    uid2idx_t[grid.time.uid] = array_index_t
+    uid2sym_t[time.uid] = f"glob_time"
+    uid2idx_t[time.uid] = array_index_t
 
 
 
@@ -247,6 +249,9 @@ def compose_system_block(grid: MultiCircuit,
 
         # compute and assign missing init_vars
 
+        init_guess = init_guess.copy()
+
+
         for var in mdl.init_eqs.keys():
             key = (var.uid, var.name)
             if key in init_guess:
@@ -273,7 +278,7 @@ def compose_system_block(grid: MultiCircuit,
             del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
                         mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-    return sys_block, init_guess
+    return time, sys_block, init_guess
 
 
 def setP(P: ObjVec, P_used: BoolVec, k: int, val: object):
@@ -296,6 +301,10 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
     """
     Initialize all RMS models
     """
+
+    # create time variable
+
+    time = Var("time")
 
     # instantiate vars2device  and vars_glob_name2uid dicts
 
@@ -366,7 +375,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
                     default_value = copy.deepcopy(elm.rms_model.model.event_dict[param])
-                    elm.rms_model.model.event_dict[param] = piecewise(grid.time, np.array(events_info["times"]),
+                    elm.rms_model.model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
                                                                   np.array(events_info["values"]), default_value)
 
 
@@ -394,4 +403,4 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                 mdl.algebraic_eqs.append(P[i])
                 mdl.algebraic_eqs.append(Q[i])
 
-    return compose_system_block(grid, power_flow_results, vars2device, vars_glob_name2uid)
+    return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid)

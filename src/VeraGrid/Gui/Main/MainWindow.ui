@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1433</width>
-    <height>800</height>
+    <width>1230</width>
+    <height>762</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -11253,7 +11253,7 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1433</width>
+     <width>1230</width>
      <height>23</height>
     </rect>
    </property>
@@ -11470,6 +11470,7 @@ QProgressBar::chunk{
    <addaction name="actionShort_Circuit"/>
    <addaction name="actionVoltage_stability"/>
    <addaction name="actionContingency_analysis"/>
+   <addaction name="actionState_estimation"/>
    <addaction name="actionRun_Dynamic_RMS_Simulation"/>
    <addaction name="actionRun_Small_Signal_RMS_Simulation"/>
    <addaction name="separator"/>
@@ -13032,6 +13033,21 @@ QProgressBar::chunk{
    </property>
    <property name="font">
     <font/>
+   </property>
+  </action>
+  <action name="actionState_estimation">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/SE.png</normaloff>:/Icons/icons/SE.png</iconset>
+   </property>
+   <property name="text">
+    <string>State estimation</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;State estimation&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run a state estimation analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
