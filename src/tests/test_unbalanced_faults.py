@@ -30,6 +30,15 @@ def test_unbalanced_short_circuit():
     sc_options = ShortCircuitOptions(bus_index=2,
                                      fault_type=FaultType.LG)
 
+    grid.add_short_circuit_definition(
+        ShortCircuitDefinition(
+            device=grid.buses[2],
+            fault_type=FaultType.LG,
+            method=MethodShortCircuit.sequences,
+            phases=PhasesShortCircuit.a
+        )
+    )
+
     sc = ShortCircuitDriver(grid,
                             options=sc_options,
                             pf_options=pf_options,
@@ -40,9 +49,9 @@ def test_unbalanced_short_circuit():
     print('\t|V1|:', np.abs(sc.results.voltage1))
     print('\t|V2|:', np.abs(sc.results.voltage2))
 
-    vm0 = np.abs(sc.results.voltage0)
-    vm1 = np.abs(sc.results.voltage1)
-    vm2 = np.abs(sc.results.voltage2)
+    vm0 = np.abs(sc.results.voltage0[:, 0])
+    vm1 = np.abs(sc.results.voltage1[:, 0])
+    vm2 = np.abs(sc.results.voltage2[:, 0])
 
     vm0_book = [0.12844037, 0.05963303, 0.32110092, 0.09633028, 0.0]
     vm1_book = [0.88073394, 0.88990826, 0.79816514, 0.92844037, 0.93394495]
@@ -59,4 +68,3 @@ def test_unbalanced_short_circuit():
 
 if __name__ == '__main__':
     test_unbalanced_short_circuit()
-
