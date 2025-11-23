@@ -2205,21 +2205,38 @@ def add_linear_vsc_formulation(t_idx: int,
                 P0 = vsc_data_t.control2_val[m] / Sbase
 
                 # convert MW/deg to pu/rad
-                droop = vsc_data_t.control1_val * 57.295779513 / Sbase  # MW/deg -> p.u./rad
+                droop = vsc_data_t.control1_val[m] * 57.295779513 / Sbase  # MW/deg -> p.u./rad
 
                 if saturate:
 
-                    vsc_vars.flows[t_idx, m] = pmode3_formulation2(
-                        prob=prob,
-                        t_idx=t_idx,
-                        m=m,
-                        rate=vsc_data_t.rates[m] / Sbase,
-                        P0=P0,
-                        droop=droop,
-                        theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
-                        theta_t=bus_vars.Va[t_idx, to],  # ac bus
-                        base_name="vsc"
-                    )
+                    # vsc_vars.flows[t_idx, m] = pmode3_formulation2(
+                    #     prob=prob,
+                    #     t_idx=t_idx,
+                    #     m=m,
+                    #     rate=vsc_data_t.rates[m] / Sbase,
+                    #     P0=P0,
+                    #     droop=droop,
+                    #     theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
+                    #     theta_t=bus_vars.Va[t_idx, to],  # ac bus
+                    #     base_name="vsc"
+                    # )
+
+                    # On the selection of the angles:
+                    # The VSC connects an AC bus (to) to a DC bus (from)
+                    # On the other end of the DC connection, there is a second VSC
+                    # The AC bus of this second VSC is the control_bus_idx
+                    # Hence, if P = P0 + k · (theta_f - theta_t), then:
+                    # theta_f = Va at to, theta_t = Va at control_bus_idx
+
+                    vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=vsc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=bus_vars.Va[t_idx, to],
+                                                                       theta_t=bus_vars.Va[t_idx, control_bus_idx],
+                                                                       base_name="vsc")
 
                 else:
 
@@ -2235,7 +2252,7 @@ def add_linear_vsc_formulation(t_idx: int,
                     # flow = P0 + k · (theta_f - theta_t)
                     prob.add_cst(
                         cst=vsc_vars.flows[t_idx, m] == P0 + droop * (
-                                bus_vars.Va[t_idx, fr] - bus_vars.Va[control_bus_idx, to]),
+                                bus_vars.Va[t_idx, fr] - bus_vars.Va[t_idx, control_bus_idx]),
                         name=join("vsc_flow_cst_", [t_idx, m], "_")
                     )
 
