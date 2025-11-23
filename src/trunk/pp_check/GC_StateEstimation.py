@@ -87,7 +87,7 @@ m_circuit2.add_pf_measurement(gce.Devices.PfMeasurement(1.173, 0.008, m_circuit2
 m_circuit2.add_qf_measurement(gce.Devices.QfMeasurement(0.568, 0.008, m_circuit2.lines[0]))
 m_circuit2.add_qf_measurement(gce.Devices.QfMeasurement(0.663, 0.008, m_circuit2.lines[1]))
 # Declare the simulation driver and run
-se = gce.StateEstimation(circuit=m_circuit2)
+se = gce.StateEstimationDriver(circuit=m_circuit2)
 se.run()
 print('Converged:', se.results.converged, 'error:', se.results.error)
 print(se.results.get_bus_df())

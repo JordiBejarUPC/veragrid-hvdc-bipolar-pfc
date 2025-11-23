@@ -8,7 +8,7 @@ import VeraGridEngine as vg
 from VeraGridEngine import power_flow, SolverType
 from VeraGridEngine.IO.file_handler import FileOpen
 from VeraGridEngine.IO.others.pandapower_parser import Panda2VeraGrid, PANDAPOWER_AVAILABLE
-from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimation, StateEstimationOptions
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimationDriver, StateEstimationOptions
 
 
 def test_state_estimation_pandapower():
@@ -59,7 +59,7 @@ def test_state_estimation_pandapower():
                 tol=1e-04,
                 add_pseudo_measurements=True
             )
-            se = StateEstimation(circuit=grid, options=se_opt)
+            se = StateEstimationDriver(circuit=grid, options=se_opt)
             se.run()
 
             se_res = se.results
@@ -107,7 +107,7 @@ def test_network_objects_consistency():
         print(pf_res.get_bus_df())
         print(pf_res.get_branch_df())
 
-        se = StateEstimation(circuit=grid)
+        se = StateEstimationDriver(circuit=grid)
         se.run()
 
         se_res = se.results
@@ -124,7 +124,7 @@ def test_network_objects_consistency():
         print(pf_res_cim.get_bus_df())
         print(pf_res_cim.get_branch_df())
 
-        se_cim = StateEstimation(circuit=circuit_cim)
+        se_cim = StateEstimationDriver(circuit=circuit_cim)
         se_cim.run()
 
         se_res_cim = se_cim.results

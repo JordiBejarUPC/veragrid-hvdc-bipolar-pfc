@@ -23,6 +23,7 @@ from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelection
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations import PowerFlowResults, ContinuationPowerFlowResults, PowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import SimulationTypes, Colormaps
@@ -608,6 +609,62 @@ class DiagramsMain(CompiledArraysMain):
                 max_bus_width=max_bus_width,
                 cmap=cmap
             )
+
+    def se_colouring(self, diagram_widget: ALL_EDITORS,
+                     results: StateEstimationResults,
+                     cmap: Colormaps,
+                     use_flow_based_width: bool = False,
+                     min_branch_width: int = 2,
+                     max_branch_width: int = 5,
+                     min_bus_width: int = 2,
+                     max_bus_width: int = 5):
+        """
+
+        :param diagram_widget:
+        :param results:
+        :param cmap:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param min_bus_width:
+        :param max_bus_width:
+        :return:
+        """
+        bus_active = self.circuit.get_bus_actives(t_idx=None)
+        br_active = self.circuit.get_branch_actives(t_idx=None, add_vsc=False, add_hvdc=False, add_switch=True)
+        hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
+        vsc_active = self.circuit.get_vsc_actives(t_idx=None)
+
+        return diagram_widget.colour_results(
+            Sbus=results.Sbus,
+            bus_active=bus_active,
+            Sf=results.Sf,
+            St=results.St,
+            voltages=results.voltage,
+            loadings=np.abs(results.loading),
+            types=results.bus_types,
+            losses=results.losses,
+            br_active=br_active,
+            hvdc_Pf=results.Pf_hvdc,
+            hvdc_Pt=results.Pt_hvdc,
+            hvdc_losses=results.losses_hvdc,
+            hvdc_loading=results.loading_hvdc,
+            hvdc_active=hvdc_active,
+            vsc_Pf=results.Pf_vsc,
+            vsc_Pt=results.St_vsc.real,
+            vsc_Qt=results.St_vsc.imag,
+            vsc_losses=results.losses_vsc,
+            vsc_loading=results.loading_vsc,
+            vsc_active=vsc_active,
+            ma=results.tap_module,
+            tau=results.tap_angle,
+            use_flow_based_width=use_flow_based_width,
+            min_branch_width=min_branch_width,
+            max_branch_width=max_branch_width,
+            min_bus_width=min_bus_width,
+            max_bus_width=max_bus_width,
+            cmap=cmap
+        )
 
     def pf_ts_colouring(self, t_idx: int,
                         diagram_widget: ALL_EDITORS,
@@ -1320,6 +1377,22 @@ class DiagramsMain(CompiledArraysMain):
             else:
                 if allow_popups:
                     info_msg(f"{current_study} does not have values for the snapshot")
+
+        elif current_study == sim.StateEstimationDriver.tpe.value:
+            if t_idx is None:
+                results: sim.StateEstimationResults = self.session.get_results(SimulationTypes.StateEstimation_run)
+                self.se_colouring(diagram_widget=diagram_widget,
+                                  results=results,
+                                  cmap=cmap,
+                                  use_flow_based_width=use_flow_based_width,
+                                  min_branch_width=min_branch_width,
+                                  max_branch_width=max_branch_width,
+                                  min_bus_width=min_bus_width,
+                                  max_bus_width=max_bus_width)
+
+            else:
+                if allow_popups:
+                    info_msg(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.ContinuationPowerFlowDriver.tpe.value:
             if t_idx is None:
