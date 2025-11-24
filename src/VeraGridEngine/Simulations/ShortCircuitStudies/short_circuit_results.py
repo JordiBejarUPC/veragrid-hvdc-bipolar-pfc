@@ -186,6 +186,16 @@ class ShortCircuitResults(ResultsTemplate):
         self.loading2 = np.zeros((m, nsc), dtype=complex)
         self.losses2 = np.zeros((m, nsc), dtype=complex)
 
+        self.SbusN = np.zeros((n, nsc), dtype=complex)
+        self.voltageN = np.zeros((n, nsc), dtype=complex)
+        self.SfN = np.zeros((m, nsc), dtype=complex)
+        self.StN = np.zeros((m, nsc), dtype=complex)
+        self.IfN = np.zeros((m, nsc), dtype=complex)
+        self.ItN = np.zeros((m, nsc), dtype=complex)
+        self.VbranchN = np.zeros((m, nsc), dtype=complex)
+        self.loadingN = np.zeros((m, nsc), dtype=complex)
+        self.lossesN = np.zeros((m, nsc), dtype=complex)
+
         self.SbusA = np.zeros((n, nsc), dtype=complex)
         self.voltageA = np.zeros((n, nsc), dtype=complex)
         self.SfA = np.zeros((m, nsc), dtype=complex)
@@ -274,6 +284,16 @@ class ShortCircuitResults(ResultsTemplate):
         self.register(name='Vbranch2', tpe=CxVec)
         self.register(name='loading2', tpe=CxVec)
         self.register(name='losses2', tpe=CxVec)
+
+        self.register(name='SbusN', tpe=CxVec)
+        self.register(name='voltageN', tpe=CxVec)
+        self.register(name='SfN', tpe=CxVec)
+        self.register(name='StN', tpe=CxVec)
+        self.register(name='IfN', tpe=CxVec)
+        self.register(name='ItN', tpe=CxVec)
+        self.register(name='VbranchN', tpe=CxVec)
+        self.register(name='loadingN', tpe=CxVec)
+        self.register(name='lossesN', tpe=CxVec)
 
         self.register(name='SbusA', tpe=CxVec)
         self.register(name='voltageA', tpe=CxVec)
@@ -374,6 +394,16 @@ class ShortCircuitResults(ResultsTemplate):
         self.Vbranch2[br_idx, sc_idx] = results.Vbranch2[:, 0]
         self.loading2[br_idx, sc_idx] = results.loading2[:, 0]
         self.losses2[br_idx, sc_idx] = results.losses2[:, 0]
+
+        self.SbusN[b_idx, sc_idx] = results.SbusN[:, 0]
+        self.voltageN[b_idx, sc_idx] = results.voltageN[:, 0]
+        self.SfN[br_idx, sc_idx] = results.SfN[:, 0]
+        self.StN[br_idx, sc_idx] = results.StN[:, 0]
+        self.IfN[br_idx, sc_idx] = results.IfN[:, 0]
+        self.ItN[br_idx, sc_idx] = results.ItN[:, 0]
+        self.VbranchN[br_idx, sc_idx] = results.VbranchN[:, 0]
+        self.loadingN[br_idx, sc_idx] = results.loadingN[:, 0]
+        self.lossesN[br_idx, sc_idx] = results.lossesN[:, 0]
 
         self.SbusA[b_idx, sc_idx] = results.SbusA[:, 0]
         self.voltageA[b_idx, sc_idx] = results.voltageA[:, 0]
@@ -1412,34 +1442,34 @@ class ShortCircuitResults(ResultsTemplate):
         else:
             raise Exception('Unsupported result type: ' + str(result_type))
 
-    def get_voltage_df(self):
+    def get_voltage_df(self, sc_idx=0):
 
-        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0),
-                                  'Ua 0 [º]': np.angle(self.voltage0, deg=True),
-                                  'Um 1 [p.u.]': np.abs(self.voltage1),
-                                  'Ua 1 [º]': np.angle(self.voltage1, deg=True),
-                                  'Um 2 [p.u.]': np.abs(self.voltage2),
-                                  'Ua 2 [º]': np.angle(self.voltage2, deg=True)},
+        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0[:,sc_idx]),
+                                  'Ua 0 [º]': np.angle(self.voltage0[:,sc_idx], deg=True),
+                                  'Um 1 [p.u.]': np.abs(self.voltage1[:,sc_idx]),
+                                  'Ua 1 [º]': np.angle(self.voltage1[:,sc_idx], deg=True),
+                                  'Um 2 [p.u.]': np.abs(self.voltage2[:,sc_idx]),
+                                  'Ua 2 [º]': np.angle(self.voltage2[:,sc_idx], deg=True)},
                             index=self.bus_names)
 
-    def get_current_df(self):
+    def get_current_df(self, sc_idx=0):
 
-        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0),
-                                  'Ia 0 [º]': np.angle(self.If0, deg=True),
-                                  'Im 1 [p.u.]': np.abs(self.If1),
-                                  'Ia 1 [º]': np.angle(self.If1, deg=True),
-                                  'Im 2 [p.u.]': np.abs(self.If2),
-                                  'Ia 2 [º]': np.angle(self.If2, deg=True)},
+        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0[:,sc_idx]),
+                                  'Ia 0 [º]': np.angle(self.If0[:,sc_idx], deg=True),
+                                  'Im 1 [p.u.]': np.abs(self.If1[:,sc_idx]),
+                                  'Ia 1 [º]': np.angle(self.If1[:,sc_idx], deg=True),
+                                  'Im 2 [p.u.]': np.abs(self.If2[:,sc_idx]),
+                                  'Ia 2 [º]': np.angle(self.If2[:,sc_idx], deg=True)},
                             index=self.branch_names)
 
-    def get_voltage_3ph_df(self):
+    def get_voltage_3ph_df(self, sc_idx=0):
 
-        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA).round(4),
-                                  'Ua A [º]': np.angle(self.voltageA, deg=True).round(1),
-                                  'Um B [p.u.]': np.abs(self.voltageB).round(4),
-                                  'Ua B [º]': np.angle(self.voltageB, deg=True).round(1),
-                                  'Um C [p.u.]': np.abs(self.voltageC).round(4),
-                                  'Ua C [º]': np.angle(self.voltageC, deg=True).round(1)},
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:,sc_idx]).round(4),
+                                  'Ua A [º]': np.angle(self.voltageA[:,sc_idx], deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltageB[:,sc_idx]).round(4),
+                                  'Ua B [º]': np.angle(self.voltageB[:,sc_idx], deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltageC[:,sc_idx]).round(4),
+                                  'Ua C [º]': np.angle(self.voltageC[:,sc_idx], deg=True).round(1)},
                             index=self.bus_names)
 
     def export_all(self):

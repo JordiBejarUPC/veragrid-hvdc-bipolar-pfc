@@ -6,7 +6,7 @@
 from typing import Tuple
 import numpy as np
 import scipy.sparse as sp
-
+from scipy.sparse.linalg import spsolve
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit import short_circuit_3p, short_circuit_unbalance
 from VeraGridEngine.Topology.admittance_matrices import compute_admittances
@@ -16,6 +16,7 @@ from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesSho
 from VeraGridEngine.basic_structures import CxVec, Vec, IntVec
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (compute_ybus,
                                                                                         compute_current_loads,
+                                                                                        compute_power_loads,
                                                                                         compute_ybus_generator,
                                                                                         expand_magnitudes,
                                                                                         expand_indices_3ph,
@@ -463,13 +464,19 @@ def maximum_initial_shortcircuit_current(nc: NumericalCircuit,
 
 
 def short_circuit_abc(nc: NumericalCircuit,
-                      Vpf: CxVec,
+                      voltage_N: CxVec,
+                      voltage_A: CxVec,
+                      voltage_B: CxVec,
+                      voltage_C: CxVec,
                       Zf: CxVec,
                       bus_index: int,
                       fault_type: FaultType,
-                      method: MethodShortCircuit,
                       phases: PhasesShortCircuit,
-                      Spf: CxVec) -> ShortCircuitResults:
+                      Sbus_N: CxVec,
+                      Sbus_A: CxVec,
+                      Sbus_B: CxVec,
+                      Sbus_C: CxVec,
+                      ) -> ShortCircuitResults:
     """
     Run a short circuit simulation in the phase domain
     :param nc:
@@ -485,34 +492,41 @@ def short_circuit_abc(nc: NumericalCircuit,
 
     Ybus, Yf, Yt, Yshunt_bus, mask, bus_lookup, branch_lookup = compute_ybus(nc)
 
+    Vpf = np.zeros(nc.nbus*4, dtype=complex)
+    Vpf[0::4] = voltage_N
+    Vpf[1::4] = voltage_A
+    Vpf[2::4] = voltage_B
+    Vpf[3::4] = voltage_C
+
+    Spf = np.zeros(nc.nbus * 4, dtype=complex)
+    Spf[0::4] = Sbus_N
+    Spf[1::4] = Sbus_A
+    Spf[2::4] = Sbus_B
+    Spf[3::4] = Sbus_C
+
     Vpf_masked = Vpf[mask]
 
-    # TODO: fix this: we probably need ABC voltages and bus powers
-    Sstar, Y_power_star_linear = compute_Sbus_star(nc=nc,
+    _, Y_power_linear, _ = compute_power_loads(bus_idx=nc.load_data.bus_idx,
+                                               bus_lookup=bus_lookup,
+                                               V=Vpf_masked,
+                                               Sstar=nc.load_data.S3_star,
+                                               Sfloating=nc.load_data.S3_floatingstar,
+                                               Sdelta=nc.load_data.S3_delta)
+
+    _, Y_current_linear, _ = compute_current_loads(bus_idx=nc.load_data.bus_idx,
+                                                   bus_lookup=bus_lookup,
                                                    V=Vpf_masked,
-                                                   mask=mask)
+                                                   Istar=nc.load_data.I3_star,
+                                                   Ifloating=nc.load_data.I3_floatingstar,
+                                                   Idelta=nc.load_data.I3_delta)
 
-    # TODO: fix this: we probably need ABC voltages and bus powers
-    Sdelta, Y_power_delta_linear = compute_Sbus_delta(bus_idx=nc.load_data.bus_idx,
-                                                      Sdelta=nc.load_data.S3_delta,
-                                                      Ydelta=nc.load_data.Y3_delta,
-                                                      V=Vpf_masked,
-                                                      bus_lookup=bus_lookup)
-
-    I_star_delta, Y_current_linear = compute_current_loads(bus_idx=nc.load_data.bus_idx,
-                                                           bus_lookup=bus_lookup,
-                                                           V=Vpf_masked,
-                                                           Istar=nc.load_data.I3_star,
-                                                           Idelta=nc.load_data.I3_delta)
-
-    Y_power_star_linear /= (nc.Sbase / 3)
-    Y_power_delta_linear /= (nc.Sbase / 3)
+    Y_power_linear /= (nc.Sbase / 3)
     Y_current_linear /= (nc.Sbase / 3)
 
     Yfault = np.zeros((len(Vpf), len(Vpf)), dtype=complex)
-    a = 3 * bus_index + 0
-    b = 3 * bus_index + 1
-    c = 3 * bus_index + 2
+    a = 4 * bus_index + 1
+    b = 4 * bus_index + 2
+    c = 4 * bus_index + 3
 
     # Single Line-to-Ground (SLG)
     if fault_type == FaultType.LG:
@@ -597,26 +611,26 @@ def short_circuit_abc(nc: NumericalCircuit,
     Ybus_gen_masked_csc = Ybus_gen_csc[mask, :][:, mask]
 
     # TODO: add before making diags
-    Yloads = sp.diags(Y_power_star_linear) + sp.diags(Y_power_delta_linear) + sp.diags(Y_current_linear)
+    Yloads = sp.diags(Y_power_linear) + sp.diags(Y_current_linear)
     Ylinear = Ybus - Yloads + Yfault_masked + Ybus_gen_masked_csc
 
-    Yloads = Y_power_star_linear + Y_power_delta_linear + Y_current_linear
+    Yloads = Y_power_linear + Y_current_linear
     Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
     Spf_expanded = expand_magnitudes(Spf, bus_lookup)
     S = (Spf_expanded / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
-    idx3 = np.array([0, 1, 2])
+    idx4 = np.array([0, 1, 2, 4])
     gen_idx = nc.generator_data.bus_idx
     n_buses = len(nc.generator_data.bus_idx)
     Inorton = np.zeros(shape=len(Vpf_masked), dtype=complex)
     for i in range(n_buses):
-        U = Vpf[gen_idx[i] + idx3]
-        Y = Ybus_gen[np.ix_(gen_idx[i] + idx3, gen_idx[i] + idx3)]
-        I = np.conj(S[np.ix_(gen_idx[i] + idx3)] / U)
+        U = Vpf[gen_idx[i] + idx4]
+        Y = Ybus_gen[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
+        I = np.conj(S[np.ix_(gen_idx[i] + idx4)] / U)
         E = U + np.linalg.inv(Y) @ I
         Inorton_i = Y @ E
-        Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
+        Inorton[np.ix_(gen_idx[i] + idx4)] = Inorton_i
 
-    Usc = sp.spsolve(Ylinear, Inorton)
+    Usc = spsolve(Ylinear, Inorton)
     Usc_expanded = expand_magnitudes(Usc, bus_lookup)
 
     Ik_max = maximum_initial_shortcircuit_current(
@@ -654,31 +668,40 @@ def short_circuit_abc(nc: NumericalCircuit,
         branch_lookup=branch_lookup
     )
 
-    results.voltageA[:, 0] = Usc_expanded[0::3]
-    results.SfA[:, 0] = Sfb[0::3]  # in MVA already
-    results.StA[:, 0] = Stb[0::3]  # in MVA already
-    results.IfA[:, 0] = If[0::3]  # in p.u.
-    results.ItA[:, 0] = It[0::3]  # in p.u.
-    results.VbranchA[:, 0] = Vbranch[0::3]
-    results.loadingA[:, 0] = loading[0::3]
-    results.lossesA[:, 0] = losses[0::3]
+    results.voltageN[:, 0] = Usc_expanded[0::4]
+    results.SfA[:, 0] = Sfb[0::4]  # in MVA already
+    results.StA[:, 0] = Stb[0::4]  # in MVA already
+    results.IfA[:, 0] = If[0::4]  # in p.u.
+    results.ItA[:, 0] = It[0::4]  # in p.u.
+    results.VbranchA[:, 0] = Vbranch[0::4]
+    results.loadingA[:, 0] = loading[0::4]
+    results.lossesA[:, 0] = losses[0::4]
 
-    results.voltageB[:, 0] = Usc_expanded[1::3]
-    results.SfB[:, 0] = Sfb[1::3]  # in MVA already
-    results.StB[:, 0] = Stb[1::3]  # in MVA already
-    results.IfB[:, 0] = If[1::3]  # in p.u.
-    results.ItB[:, 0] = It[1::3]  # in p.u.
-    results.VbranchB[:, 0] = Vbranch[1::3]
-    results.loadingB[:, 0] = loading[1::3]
-    results.lossesB[:, 0] = losses[1::3]
+    results.voltageA[:, 0] = Usc_expanded[1::4]
+    results.SfA[:, 0] = Sfb[1::4]  # in MVA already
+    results.StA[:, 0] = Stb[1::4]  # in MVA already
+    results.IfA[:, 0] = If[1::4]  # in p.u.
+    results.ItA[:, 0] = It[1::4]  # in p.u.
+    results.VbranchA[:, 0] = Vbranch[1::4]
+    results.loadingA[:, 0] = loading[1::4]
+    results.lossesA[:, 0] = losses[1::4]
 
-    results.voltageC[:, 0] = Usc_expanded[2::3]
-    results.SfC[:, 0] = Sfb[2::3]  # in MVA already
-    results.StC[:, 0] = Stb[2::3]  # in MVA already
-    results.IfC[:, 0] = If[2::3]  # in p.u.
-    results.ItC[:, 0] = It[2::3]  # in p.u.
-    results.VbranchC[:, 0] = Vbranch[2::3]
-    results.loadingC[:, 0] = loading[2::3]
-    results.lossesC[:, 0] = losses[2::3]
+    results.voltageB[:, 0] = Usc_expanded[2::4]
+    results.SfB[:, 0] = Sfb[2::4]  # in MVA already
+    results.StB[:, 0] = Stb[2::4]  # in MVA already
+    results.IfB[:, 0] = If[2::4]  # in p.u.
+    results.ItB[:, 0] = It[2::4]  # in p.u.
+    results.VbranchB[:, 0] = Vbranch[2::4]
+    results.loadingB[:, 0] = loading[2::4]
+    results.lossesB[:, 0] = losses[2::4]
+
+    results.voltageC[:, 0] = Usc_expanded[3::4]
+    results.SfC[:, 0] = Sfb[3::4]  # in MVA already
+    results.StC[:, 0] = Stb[3::4]  # in MVA already
+    results.IfC[:, 0] = If[3::4]  # in p.u.
+    results.ItC[:, 0] = It[3::4]  # in p.u.
+    results.VbranchC[:, 0] = Vbranch[3::4]
+    results.loadingC[:, 0] = loading[3::4]
+    results.lossesC[:, 0] = losses[3::4]
 
     return results

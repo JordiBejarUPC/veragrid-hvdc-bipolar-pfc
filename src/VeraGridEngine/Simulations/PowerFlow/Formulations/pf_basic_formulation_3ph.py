@@ -371,8 +371,7 @@ def compute_current_loads(bus_idx: IntVec,
         else:
             pass
 
-    # Y_current_linear = I / V
-    Y_current_linear = 0
+    Y_current_linear = I / V
 
     return I, Y_current_linear, Un_floating
 
@@ -520,8 +519,7 @@ def compute_power_loads(bus_idx: IntVec,
         else:
             pass
 
-    # Y_current_linear = I / V
-    Y_power_linear = 0
+    Y_power_linear = I / V
 
     return I, Y_power_linear, Un_floating
 

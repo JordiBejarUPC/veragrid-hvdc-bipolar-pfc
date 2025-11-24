@@ -223,6 +223,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.load_names = load_names
         self.bus_types: IntVec = bus_types
 
+        self.Sbus_N: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_A: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_B: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_C: CxVec = np.zeros(n, dtype=complex)
@@ -330,10 +331,12 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.register(name='bus_area_indices', tpe=IntVec)
         self.register(name='area_names', tpe=IntVec)
 
+        self.register(name='Sbus_N', tpe=CxVec)
         self.register(name='Sbus_A', tpe=CxVec)
         self.register(name='Sbus_B', tpe=CxVec)
         self.register(name='Sbus_C', tpe=CxVec)
 
+        self.register(name='voltage_N', tpe=CxVec)
         self.register(name='voltage_A', tpe=CxVec)
         self.register(name='voltage_B', tpe=CxVec)
         self.register(name='voltage_C', tpe=CxVec)
@@ -481,6 +484,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.voltage_B[b_idx] = results.V[i_b]
         self.voltage_C[b_idx] = results.V[i_c]
 
+        self.Sbus_N[b_idx] = results.Scalc[i_n]
         self.Sbus_A[b_idx] = results.Scalc[i_a]
         self.Sbus_B[b_idx] = results.Scalc[i_b]
         self.Sbus_C[b_idx] = results.Scalc[i_c]
