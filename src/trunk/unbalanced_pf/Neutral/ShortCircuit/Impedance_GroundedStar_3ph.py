@@ -13,10 +13,10 @@ grid.fBase = 60
 bus_632 = gce.Bus(name='Bus632', Vnom=4.16, xpos=0, ypos=0)
 bus_632.is_slack = True
 grid.add_bus(obj=bus_632)
-gen = gce.Generator(vset = 1.0)
-grid.add_generator(bus = bus_632, api_obj = gen)
+gen = gce.Generator(vset=1.0, r0=0.1, r1=0.2, r2=0.1)
+grid.add_generator(bus=bus_632, api_obj=gen)
 
-bus_634 = gce.Bus(name='Bus634', Vnom=0.48, xpos=200*5, ypos=0)
+bus_634 = gce.Bus(name='Bus634', Vnom=0.48, xpos=200 * 5, ypos=0, x_fault=0.01)
 grid.add_bus(obj=bus_634)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -41,8 +41,8 @@ XFM_1 = gce.Transformer2W(name='XFM-1',
                           LV=0.48,
                           nominal_power=0.5,
                           rate=0.5,
-                          r=1.1*2,
-                          x=2*2)
+                          r=1.1 * 2,
+                          x=2 * 2)
 XFM_1.conn_f = WindingType.GroundedStar
 XFM_1.conn_t = WindingType.GroundedStar
 grid.add_transformer2w(XFM_1)
@@ -51,8 +51,8 @@ grid.add_transformer2w(XFM_1)
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
 res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                             solver_type=SolverType.NR,
-                                                             retry_with_other_methods=False))
+                                                                solver_type=SolverType.NR,
+                                                                retry_with_other_methods=False))
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Run short-circuit

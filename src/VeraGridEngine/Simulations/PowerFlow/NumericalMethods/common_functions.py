@@ -368,17 +368,20 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     V_expanded = expand_magnitudes(V, bus_lookup)
     Vn_floating_expanded = expand_magnitudes(Vn_floating, bus_lookup)
 
-    # power at the slack nodes
-    Sbus[vd] = V[vd] * np.conj(Ybus[vd, :] @ V)
-
-    # Reactive power at the pv nodes
-    P_pv = Sbus[pv].real
-    Q_pv = (V[pv] * np.conj(Ybus[pv, :] @ V)).imag
-    Sbus[pv] = P_pv + 1j * Q_pv  # keep the original P injection and set the calculated reactive power for PV nodes
-
     # Add the shunt power V^2 x Y^*
     Vm = np.abs(V)
     Sbus = np.conj(Yshunt_bus) @ (Vm * Vm)
+
+    # power at the slack nodes
+    if len(vd) > 0:
+        Sbus[vd] = V[vd] * np.conj(Ybus[vd, :] @ V)
+
+    # Reactive power at the pv nodes
+    if len(pv) > 0:
+        P_pv = Sbus[pv].real
+        Q_pv = (V[pv] * np.conj(Ybus[pv, :] @ V)).imag
+        Sbus[pv] = P_pv + 1j * Q_pv  # keep the original P injection and set the calculated reactive power for PV nodes
+
     Sbus_expanded = expand_magnitudes(Sbus, bus_lookup)
 
     # Branches current, loading, etc

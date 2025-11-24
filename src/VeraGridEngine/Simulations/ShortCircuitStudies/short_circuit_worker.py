@@ -607,26 +607,26 @@ def short_circuit_abc(nc: NumericalCircuit,
     Yfault_masked = Yfault[mask, :][:, mask]
     Yfault_masked = sp.csc_matrix(Yfault_masked)
 
-    Ybus_gen_csc, Ybus_gen = compute_ybus_generator(nc=nc)
+    Ybus_gen_csc = compute_ybus_generator(nc=nc)
     Ybus_gen_masked_csc = Ybus_gen_csc[mask, :][:, mask]
 
     # TODO: add before making diags
-    Yloads = sp.diags(Y_power_linear) + sp.diags(Y_current_linear)
+    Yloads = sp.diags(Y_power_linear + Y_current_linear)
     Ylinear = Ybus - Yloads + Yfault_masked + Ybus_gen_masked_csc
 
     Yloads = Y_power_linear + Y_current_linear
     Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
-    Spf_expanded = expand_magnitudes(Spf, bus_lookup)
-    S = (Spf_expanded / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
-    idx4 = np.array([0, 1, 2, 4])
+    # Spf_expanded = expand_magnitudes(Spf, bus_lookup)
+    S = (Spf / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
+    idx4 = np.array([1, 2, 3])  # we deliberite
     gen_idx = nc.generator_data.bus_idx
     n_buses = len(nc.generator_data.bus_idx)
     Inorton = np.zeros(shape=len(Vpf_masked), dtype=complex)
     for i in range(n_buses):
         U = Vpf[gen_idx[i] + idx4]
-        Y = Ybus_gen[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
+        Y = Ybus_gen_csc[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
         I = np.conj(S[np.ix_(gen_idx[i] + idx4)] / U)
-        E = U + np.linalg.inv(Y) @ I
+        E = U + np.linalg.solve(Y.toarray(), I)
         Inorton_i = Y @ E
         Inorton[np.ix_(gen_idx[i] + idx4)] = Inorton_i
 

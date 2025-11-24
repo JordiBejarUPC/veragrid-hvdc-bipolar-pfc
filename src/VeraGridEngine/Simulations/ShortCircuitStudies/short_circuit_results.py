@@ -1442,34 +1442,48 @@ class ShortCircuitResults(ResultsTemplate):
         else:
             raise Exception('Unsupported result type: ' + str(result_type))
 
-    def get_voltage_df(self, sc_idx=0):
+    def get_voltage_df(self, sc_idx=0) -> pd.DataFrame:
+        """
 
-        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0[:,sc_idx]),
-                                  'Ua 0 [º]': np.angle(self.voltage0[:,sc_idx], deg=True),
-                                  'Um 1 [p.u.]': np.abs(self.voltage1[:,sc_idx]),
-                                  'Ua 1 [º]': np.angle(self.voltage1[:,sc_idx], deg=True),
-                                  'Um 2 [p.u.]': np.abs(self.voltage2[:,sc_idx]),
-                                  'Ua 2 [º]': np.angle(self.voltage2[:,sc_idx], deg=True)},
+        :param sc_idx:
+        :return:
+        """
+
+        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0[:, sc_idx]),
+                                  'Ua 0 [º]': np.angle(self.voltage0[:, sc_idx], deg=True),
+                                  'Um 1 [p.u.]': np.abs(self.voltage1[:, sc_idx]),
+                                  'Ua 1 [º]': np.angle(self.voltage1[:, sc_idx], deg=True),
+                                  'Um 2 [p.u.]': np.abs(self.voltage2[:, sc_idx]),
+                                  'Ua 2 [º]': np.angle(self.voltage2[:, sc_idx], deg=True)},
                             index=self.bus_names)
 
-    def get_current_df(self, sc_idx=0):
+    def get_current_df(self, sc_idx=0) -> pd.DataFrame:
+        """
 
-        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0[:,sc_idx]),
-                                  'Ia 0 [º]': np.angle(self.If0[:,sc_idx], deg=True),
-                                  'Im 1 [p.u.]': np.abs(self.If1[:,sc_idx]),
-                                  'Ia 1 [º]': np.angle(self.If1[:,sc_idx], deg=True),
-                                  'Im 2 [p.u.]': np.abs(self.If2[:,sc_idx]),
-                                  'Ia 2 [º]': np.angle(self.If2[:,sc_idx], deg=True)},
+        :param sc_idx:
+        :return:
+        """
+
+        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0[:, sc_idx]),
+                                  'Ia 0 [º]': np.angle(self.If0[:, sc_idx], deg=True),
+                                  'Im 1 [p.u.]': np.abs(self.If1[:, sc_idx]),
+                                  'Ia 1 [º]': np.angle(self.If1[:, sc_idx], deg=True),
+                                  'Im 2 [p.u.]': np.abs(self.If2[:, sc_idx]),
+                                  'Ia 2 [º]': np.angle(self.If2[:, sc_idx], deg=True)},
                             index=self.branch_names)
 
-    def get_voltage_3ph_df(self, sc_idx=0):
+    def get_voltage_3ph_df(self, sc_idx: int = 0) -> pd.DataFrame:
+        """
 
-        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:,sc_idx]).round(4),
-                                  'Ua A [º]': np.angle(self.voltageA[:,sc_idx], deg=True).round(1),
-                                  'Um B [p.u.]': np.abs(self.voltageB[:,sc_idx]).round(4),
-                                  'Ua B [º]': np.angle(self.voltageB[:,sc_idx], deg=True).round(1),
-                                  'Um C [p.u.]': np.abs(self.voltageC[:,sc_idx]).round(4),
-                                  'Ua C [º]': np.angle(self.voltageC[:,sc_idx], deg=True).round(1)},
+        :param sc_idx:
+        :return:
+        """
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:, sc_idx]).round(4),
+                                  'Ua A [º]': np.angle(self.voltageA[:, sc_idx], deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltageB[:, sc_idx]).round(4),
+                                  'Ua B [º]': np.angle(self.voltageB[:, sc_idx], deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltageC[:, sc_idx]).round(4),
+                                  'Ua C [º]': np.angle(self.voltageC[:, sc_idx], deg=True).round(1)},
                             index=self.bus_names)
 
     def export_all(self):

@@ -56,7 +56,7 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
     Ybus_gen = lil_matrix((4 * n, 4 * n), dtype=complex)
     idx4 = np.array([0, 1, 2, 3])
-    Yzeros = np.zeros((4 * n, 4 * n), dtype=complex)
+    # Yzeros = np.zeros((4 * n, 4 * n), dtype=complex)
 
     for k in range(m):
         f = nc.generator_data.bus_idx[k]
@@ -70,12 +70,13 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
         x2 = nc.generator_data.x2[k]
 
         # Fortescue
-        Zabc = fortescue_012_to_abc(r0 + 1j * x0, r1 + 1j * x1, r2 + 1j * x2)
-        Yabc = np.linalg.inv(Zabc)
-        Ybus_gen[np.ix_(f4, f4)] = Yabc
-        Yzeros[np.ix_(f4, f4)] = Yabc
+        Zabc = fortescue_012_to_abc(complex(r0, x0), complex(r1, x1), complex(r2, x2))
+        Ynabc = np.zeros((4, 4), dtype=complex)
+        Ynabc[1:4, 1:4] = np.linalg.inv(Zabc)
+        Ybus_gen[np.ix_(f4, f4)] = Ynabc
+        # Yzeros[np.ix_(f4, f4)] = Ynabc
 
-    return Ybus_gen.tocsc(), Yzeros
+    return Ybus_gen.tocsc()
 
 
 # --- normalización de tipos auxiliares ---
@@ -86,6 +87,7 @@ def is_yg(x) -> bool:
     if hasattr(x, "value"):  # Enum
         return x.value == "Yg"
     return str(x) == "Yg"  # str u objeto que imprime 'Yg'
+
 
 def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matrix, CxVec, BoolVec, IntVec, IntVec]:
     """
@@ -507,7 +509,7 @@ def compute_power_loads(bus_idx: IntVec,
         elif floating:
 
             Ia, Ib, Ic, Un = floating_star_powers(V[a2], V[b2], V[c2],
-                                                           Sfloating[ab], Sfloating[bc], Sfloating[ca])
+                                                  Sfloating[ab], Sfloating[bc], Sfloating[ca])
             I[a2] -= Ia
             I[b2] -= Ib
             I[c2] -= Ic
@@ -1134,7 +1136,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         Sf, St, If, It, Vbranch, loading, losses, Sbus, V_expanded = power_flow_post_process_nonlinear_3ph(
             Sbus=self.Scalc,
             V=self.V,
-            Vn_floating=(self.Un_floating_current+self.Un_floating_power),
+            Vn_floating=(self.Un_floating_current + self.Un_floating_power),
             F=expand_indices_3ph(self.nc.passive_branch_data.F),
             T=expand_indices_3ph(self.nc.passive_branch_data.T),
             pv=self.pv,
