@@ -11814,9 +11814,6 @@ QProgressBar::chunk{
    <addaction name="actionEdit_simulation_time_limits"/>
    <addaction name="actionactivate_time_series"/>
    <addaction name="separator"/>
-   <addaction name="actionAdd_selected_to_contingency"/>
-   <addaction name="actionAdd_selected_as_new_investment"/>
-   <addaction name="separator"/>
    <addaction name="actionBigger_nodes"/>
    <addaction name="actionSmaller_nodes"/>
    <addaction name="actionCenter_view"/>
