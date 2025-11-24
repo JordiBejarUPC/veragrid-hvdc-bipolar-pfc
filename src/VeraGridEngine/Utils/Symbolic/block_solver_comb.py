@@ -579,50 +579,154 @@ class DiffBlockSolver(BlockSolver):
         # for uid in duplicates:
         #     idx = self.uid2idx_vars[uid]
         #     # print(self._algebraic_vars[idx])
-        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
+        self._rhs_algeb_fn = _compile_equations(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
                                                 uid2sym_params=self.uid2sym_params, use_jit=use_jit)
 
-        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs, uid2sym_t=self.uid2sym_t)
+        self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs, uid2sym_t=self.uid2sym_t)
 
         if len(self._state_eqs) != 0:
-            self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
+            self._rhs_state_fn = self._get_jacobian(eqs=self._state_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
                                                     uid2sym_params=self.uid2sym_params, use_jit=use_jit)
 
 
 
 
-            self._j11_fn = SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._state_vars, diff_variables= self._diff_vars,
+            self._j11_fn =  self._get_jacobian(eqs=self._state_eqs_substituted, variables=self._state_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
-            self._j12_fn = SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars, diff_variables= self._diff_vars,
+            self._j12_fn =  self._get_jacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
-            self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,diff_variables= self._diff_vars,
+            self._j21_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+            self._j22_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
         else:
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+            self._j22_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
 
         # stability equations for initialization
-        self._j_stable = SymbolicJacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+        self._j_stable =  self._get_jacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
         print(
             f"Model compiled with {self._n_vars} variables, {len(self._lag_vars)} lags, {len(self._algebraic_eqs_substituted)}  algebraic eqs and {len(self._state_eqs_substituted)} state eqs")
+
+
+    def _get_jacobian(self,
+                      eqs: List[Expr],
+                      variables: List[Var],
+                      uid2sym_vars: Dict[int, str],
+                      uid2sym_params: Dict[int, str],
+                      dt: Const = Const(0.001),
+                      substitute:bool = True,
+                      add_delta:bool =True):
+        """
+        JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
+        :param eqs: Array of equations
+        :param variables: Array of variables to differentiate against
+        :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :param uid2sym_params:
+        :return:
+                jac_fn : callable(values: np.ndarray) -> scipy.sparse.csc_matrix
+                    Fast evaluator in which *values* is a 1‑D NumPy vector of length
+                    ``len(variables)``.
+                sparsity_pattern : tuple(np.ndarray, np.ndarray)
+                    Row/col indices of structurally non‑zero entries.
+        """
+
+        # Ensure deterministic variable order
+        diff_vars = self._diff_vars
+        if not substitute:
+            _ = 0
+            #diff_vars = []
+        check_set = set()
+        for v in variables:
+            if v in check_set:
+                raise ValueError(f"Repeated var {v.name} in the variables' list :(")
+            else:
+                check_set.add(v)
+
+        # Cache compiled partials by UID so duplicates are reused
+        fn_cache: Dict[str, Callable] = {}
+        triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
+
+        for row, eq in enumerate(eqs):
+            for lag_var in self._lag_vars:
+                if lag_var.lag == 0:
+                    eq = eq.subs({lag_var: lag_var.base_var})
+
+            for col, var in enumerate(variables):
+                diff_var = DiffVar.get_or_create(var.name + '_diff', base_var=var)
+                #d_expression = eq.diff(var).simplify() + (1/self.dt)*eq.diff(diff_var).simplify()
+                d_expression = eq.diff(var).simplify()
+                for diff_var in diff_vars:
+                    deriv = eq.diff(diff_var)
+                    continue
+                #We substitute the remaining diff vars in d_expression
+                for diff_var in diff_vars:
+                    deriv = d_expression.diff(diff_var)
+                    if getattr(deriv, 'value', 1) != 0:
+                        if not substitute:
+                            d_expression = d_expression.subs({diff_var: diff_var/self.delta})
+                        else:
+                            dx_dt, lag = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)
+                            d_expression = d_expression.subs({diff_var: dx_dt/self.delta})
+                            new_lag = LagVar.get_or_create(diff_var.origin_var.name+ '_lag_' + str(lag),
+                                                    base_var = diff_var.origin_var, lag = lag)
+                            i = len(self.uid2idx_vars)
+                            l = len(self.uid2idx_lag)
+                            if new_lag not in self._lag_vars_set:
+                                uid2sym_vars[new_lag.uid] = f"vars[{i}]"
+                                self.uid2idx_vars[new_lag.uid] = i
+                                self.uid2idx_lag[new_lag.uid] = l
+                                self._lag_vars.append(new_lag)
+                                self._lag_vars_set.add(new_lag)
+                                i += 1
+                                l += 1
+
+                if isinstance(d_expression, Const) and d_expression.value == 0:
+                    continue  # structural zero
+
+                triplets.append((col, row, d_expression))
+                if not substitute:
+                    _ = 0
+        # Sort by column, then row for CSC layout
+        triplets.sort(key=lambda t: (t[0], t[1]))
+        cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
+        functions_ptr = _compile_equations(eqs=equations_sorted, uid2sym_vars=uid2sym_vars,
+                                                  uid2sym_params=uid2sym_params)
+
+        nnz = len(cols_sorted)
+        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
+
+        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
+        for c in cols_sorted:
+            indptr[c + 1] += 1
+        np.cumsum(indptr, out=indptr)
+
+        def jac_fn(values: np.ndarray, params: np.ndarray) -> sp.csc_matrix:  # noqa: D401 – simple
+            assert len(values) >= len(variables)
+            ##print(f'Signtures are {functions_ptr.signatures}')
+
+            jac_values = functions_ptr(values, params)
+            data = np.array(jac_values, dtype=np.float64)
+
+            return sp.csc_matrix((data, indices, indptr), shape=(len(eqs), len(variables)))
+
+        return jac_fn
 
 
     def rhs_pseudo_transient(self, x: np.ndarray, xn: np.ndarray, params: np.ndarray, sim_step, h: float) -> np.ndarray:
