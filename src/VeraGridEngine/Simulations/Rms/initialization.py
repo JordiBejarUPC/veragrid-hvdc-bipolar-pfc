@@ -161,7 +161,7 @@ class SingularJacobianError(SolverError):
     pass
 
 
-def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[Var, float], res, grid: MultiCircuit, uid2idx_vars: Dict[int, int],
+def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res, grid: MultiCircuit, uid2idx_vars: Dict[int, int],
                      fix='V', dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                      type: str = None):
     """
@@ -181,7 +181,7 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
 
     """
 
-    for block in region_solver.block_system.children:
+    for block in region_system.children:
         found = False
         for child_block in block.get_all_blocks():
             if not hasattr(child_block, 'external_mapping'):
@@ -202,15 +202,15 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
         if fix == 'P':
             delete_vars_from_block(block, [Pg, Qg])
             bus_block = DiffBlock()
-            # bus_block = DiffBlock(
-            #     algebraic_vars=[Vm, Va])
+            bus_block = DiffBlock(
+                algebraic_vars=[Vm, Va])
             bus_block.event_dict= {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
                              Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase)))}
 
 
 
         elif fix == 'V':
-            delete_vars_from_block(block, [Va, Vm])
+            # delete_vars_from_block(block, [Va, Vm])
             bus_block = DiffBlock()
             # bus_block = DiffBlock(
             #     algebraic_vars=[Pg, Qg])
@@ -263,13 +263,13 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
             children=[block, bus_block]
         )
         # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
-        solver = DiffBlockSolver(init_block, region_solver.time)
+        solver = DiffBlockSolver(init_block, region_time)
 
         init_guess_copy = init_guess.copy()
 
-        init_guess_copy.update(
-            {Vm: float(np.real(res.Sbus[bus_index] / grid.Sbase)), Va: float(np.imag(res.Sbus[bus_index] / grid.Sbase))})
-        x0_init_guess = build_init_vars_vector(uid2idx_vars, init_guess_copy, permissive=True)
+        # init_guess_copy.update(
+        #     {Vm: float(np.real(res.Sbus[bus_index] / grid.Sbase)), Va: float(np.imag(res.Sbus[bus_index] / grid.Sbase))})
+        x0_init_guess = build_init_vars_vector(uid2idx_vars, init_guess_copy)
 
         solved = False
         alpha = 0.9
@@ -277,12 +277,10 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
             try:
                 print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
                 if type == 'dae':
-                    x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(region_solver,
-                        x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
+                    x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                         predictor=predictor)
                 else:
-                    x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(region_solver,
-                        x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
+                    x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                         predictor=predictor)
                 solved = True
             except NaNError as e:
@@ -1672,6 +1670,25 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     # injections
 
     # initialize with pseudo_transient
+
+    # # already known variables:
+    #
+    # for elm in grid.get_injection_devices_iter():
+    #     bus_rms_mdl = elm.bus.rms_model.model
+    #     mdl = elm.rms_model.model
+    #
+    #
+    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+    #
+    #     mdl_vars = mdl.state_vars + mdl.algebraic_vars
+    #
+    #     for v in mdl_vars:
+    #         if v.uid not in uid2sym_vars:
+    #             uid2sym_vars[v.uid] = f"vars[{array_index}]"
+    #             uid2idx_vars[v.uid] = array_index
+    #             array_index += 1
+
     ## iterate through buses and constuct local system_solver
 
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
@@ -1684,6 +1701,10 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         bus_index = grid.buses.index(bus)
         region_system = DiffBlock()
         region_dev_list = list()
+        # add bus variables to init_guess_region
+        Vm, Va = bus.get_rms_algebraic_vars()
+        init_guess_region.update({Vm: float(np.abs(res.voltage[bus_index]))})
+        init_guess_region.update({Va: float(np.angle(res.voltage[bus_index]))})
         for dev_type, dev_list in region.items():
             for dev in dev_list:
                 region_dev_list.append(dev)
@@ -1695,15 +1716,18 @@ def compose_system_block(time: Var, grid: MultiCircuit,
             for var in dev.rms_model.model.algebraic_vars:
                 vars.append(var)
                 init_guess_region[var] = np.random.rand()
-        region_array_index = 0
+        uid2idx_region_vars[Vm.uid] = 0
+        uid2idx_region_vars[Va.uid] = 1
+        region_array_index = 2
         for var in vars:
             uid2idx_region_vars[var.uid] = array_index
             region_array_index += 1
+
         x0 = build_init_vars_vector(uid2idx_region_vars, init_guess_region)
 
-        region_solver = DiffBlockSolver(region_system, region_time)
+        # region_solver = DiffBlockSolver(region_system, region_time)
 
-        x0_pst, init_guess_pst = pseudo_transient(bus_index, region_solver, x0, init_guess_region, res, grid, uid2idx_region_vars)
+        x0_pst, init_guess_pst = pseudo_transient(bus_index, region_system, region_time, x0, init_guess_region, res, grid, uid2idx_region_vars)
         for var, value in init_guess_pst:
             init_guess.update({[var.uid, var.name], value})
         sys_block.add(region_system)

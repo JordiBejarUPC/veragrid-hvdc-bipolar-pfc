@@ -1848,8 +1848,8 @@ class BlockBoxesEditor(QSplitter):
             bus_con_blk = Block()
             bus_con_blk.out_vars[str(0)] = Vm
             bus_con_blk.out_vars[str(1)] = Va
-            bus_con_blk.algebraic_vars.append(Vm)
-            bus_con_blk.algebraic_vars.append(Va)
+            # bus_con_blk.algebraic_vars.append(Vm)
+            # bus_con_blk.algebraic_vars.append(Va)
             bus_con_blk.name = name
 
             self.main_block.add(bus_con_blk)
