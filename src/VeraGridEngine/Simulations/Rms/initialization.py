@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
 from typing import Tuple, Any, Sequence, Callable, Dict, List
 import math
 import numba as nb
@@ -184,117 +183,123 @@ def pseudo_transient(bus_index, region_solver, x0: np.ndarray, init_guess: dict[
 
     for block in region_solver.block_system.children:
         found = False
-        if getattr(block, 'pseudo_transient', False):
-            for child_block in block.get_all_blocks():
-                if not hasattr(child_block, 'external_mapping'):
-                    continue
-                if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
-                    continue
-                Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
-                Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
-                Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-                Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
-                found = True
-                break
-
-            if not found:
+        for child_block in block.get_all_blocks():
+            if not hasattr(child_block, 'external_mapping'):
                 continue
+            if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
+                continue
+            Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
+            Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
+            Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
+            Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
+            found = True
+            break
+
+        if not found:
+            continue
+        bus_block = DiffBlock()
+
+        if fix == 'P':
+            delete_vars_from_block(block, [Pg, Qg])
+            bus_block = DiffBlock()
+            # bus_block = DiffBlock(
+            #     algebraic_vars=[Vm, Va])
+            bus_block.event_dict= {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
+                             Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase)))}
+
+
+
+        elif fix == 'V':
+            delete_vars_from_block(block, [Va, Vm])
+            bus_block = DiffBlock()
+            # bus_block = DiffBlock(
+            #     algebraic_vars=[Pg, Qg])
+            bus_block.event_dict ={Vm: Const(float(np.abs(res.voltage[bus_index]))),
+                                   Va: Const(float(np.angle(res.voltage[bus_index])))}
+
+
+        elif fix == 'I':
+            Im = Var('Im')
+            Ia = Var('Ia')
+            delta = find_name_in_block('delta', block)
+            Id = find_name_in_block('Id', block)
+            Iq = find_name_in_block('Iq', block)
+            v = res.voltage[bus_index]
+            Sb = res.Sbus[bus_index] / grid.Sbase
+
+
+            # Current from power and voltage
+            i = np.conj(Sb / v)  # ī = (p - jq) / v̄*
+
+            bus_block = DiffBlock(
+                algebraic_eqs=[
+                    Id - (-Im * sin(Ia - delta)),
+                    Iq - Im * cos(Ia - delta),
+                ],
+                algebraic_vars=[Pg, Qg, Vm, Va])
+            bus_block.event_dict = {Im: Const(float(np.abs(i))),
+                                       Ia: Const(float(np.angle(i)))}
+
+        elif fix == 'P&V':
+            delete_vars_from_block(block, [Pg, Qg, Vm, Va])
             bus_block = DiffBlock()
 
-            if fix == 'P':
-                delete_vars_from_block(block, [Pg, Qg])
-                bus_block = DiffBlock(
-                    algebraic_vars=[Vm, Va])
-                bus_block.event_dict= {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
-                                 Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase)))}
+            bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
+                                    Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
+                                    Vm: Const(float(np.abs(res.voltage[bus_index]))),
+                                    Va: Const(float(np.angle(res.voltage[bus_index])))}
 
 
-            elif fix == 'V':
-                delete_vars_from_block(block, [Va, Vm])
-                bus_block = DiffBlock(
-                    algebraic_vars=[Pg, Qg])
-                bus_block.event_dict ={Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                       Va: Const(float(np.angle(res.voltage[bus_index])))}
 
-            elif fix == 'I':
-                Im = Var('Im')
-                Ia = Var('Ia')
-                delta = find_name_in_block('delta', block)
-                Id = find_name_in_block('Id', block)
-                Iq = find_name_in_block('Iq', block)
-                v = res.voltage[bus_index]
-                Sb = res.Sbus[bus_index] / grid.Sbase
-
-                # Current from power and voltage
-                i = np.conj(Sb / v)  # ī = (p - jq) / v̄*
-
-                bus_block = DiffBlock(
-                    algebraic_eqs=[
-                        Id - (-Im * sin(Ia - delta)),
-                        Iq - Im * cos(Ia - delta),
-                    ],
-                    algebraic_vars=[Pg, Qg, Vm, Va])
-                bus_block.event_dict = {Im: Const(float(np.abs(i))),
-                                           Ia: Const(float(np.angle(i)))}
-
-            elif fix == 'P&V':
-                delete_vars_from_block(block, [Pg, Qg, Vm, Va])
-                bus_block = DiffBlock()
-
-                bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
-                                        Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
-                                        Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                        Va: Const(float(np.angle(res.voltage[bus_index])))}
+        elif fix == 'mixed':
+            delete_vars_from_block(block, [Vm, Va, Pg, Qg])
+            bus_block = DiffBlock(
+                algebraic_vars=[Va, Qg])
+            bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
+                                     Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase)))}
 
 
-            elif fix == 'mixed':
-                delete_vars_from_block(block, [Vm, Va, Pg, Qg])
-                bus_block = DiffBlock(
-                    algebraic_vars=[Va, Qg])
-                bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                         Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase)))}
+        init_block = DiffBlock(
+            children=[block, bus_block]
+        )
+        # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
+        solver = DiffBlockSolver(init_block, region_solver.time)
 
-            init_block = DiffBlock(
-                children=[block, bus_block]
-            )
-            # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
-            solver = DiffBlockSolver(init_block, region_solver.time)
+        init_guess_copy = init_guess.copy()
 
-            init_guess_copy = init_guess.copy()
+        init_guess_copy.update(
+            {Vm: float(np.real(res.Sbus[bus_index] / grid.Sbase)), Va: float(np.imag(res.Sbus[bus_index] / grid.Sbase))})
+        x0_init_guess = build_init_vars_vector(uid2idx_vars, init_guess_copy, permissive=True)
 
-            init_guess_copy.update(
-                {Vm: float(np.real(res.Sbus[bus_index] / grid.Sbase)), Va: float(np.imag(res.Sbus[bus_index] / grid.Sbase))})
-            x0_init_guess = build_init_vars_vector(uid2idx_vars, init_guess_copy, permissive=True)
+        solved = False
+        alpha = 0.9
+        while not solved:
+            try:
+                print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
+                if type == 'dae':
+                    x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(region_solver,
+                        x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
+                        predictor=predictor)
+                else:
+                    x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(region_solver,
+                        x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
+                        predictor=predictor)
+                solved = True
+            except NaNError as e:
+                msg = str(e).lower()
+                # print(msg)
+                dtau0 /= alpha
+            except ConvergenceError as e:
+                msg = str(e).lower()
+                # print(msg)
+                dtau0 *= alpha
+            except Exception as e:
+                # print(f"❌ Unexpected error: {e}")
+                raise
+        for i, var in enumerate(solver._algebraic_vars):
+            x0[uid2idx_vars[var.uid]] = x0_mdl[uid2idx_vars[var.uid]]
 
-            solved = False
-            alpha = 0.9
-            while not solved:
-                try:
-                    print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
-                    if type == 'dae':
-                        x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(region_solver,
-                            x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
-                            predictor=predictor)
-                    else:
-                        x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(region_solver,
-                            x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
-                            predictor=predictor)
-                    solved = True
-                except NaNError as e:
-                    msg = str(e).lower()
-                    # print(msg)
-                    dtau0 /= alpha
-                except ConvergenceError as e:
-                    msg = str(e).lower()
-                    # print(msg)
-                    dtau0 *= alpha
-                except Exception as e:
-                    # print(f"❌ Unexpected error: {e}")
-                    raise
-            for i, var in enumerate(solver._algebraic_vars):
-                x0[uid2idx_vars[var.uid]] = x0_mdl[uid2idx_vars[var.uid]]
-
-            init_guess.update(init_guess_mdl)
+        init_guess.update(init_guess_mdl)
 
     # print('Pseudo-Transient ended')
     return x0, init_guess

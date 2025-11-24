@@ -901,7 +901,7 @@ class GenqecBuild:
                 Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
                 IRPu - Eq1 * (1 + Sa)
                 ],
-            algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
+            algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
                             #saturated resistance
                            Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
                             #flux
@@ -1438,6 +1438,7 @@ class ExciterBuild:
         exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
         exciter_model.out_vars[str(0)] = Vf
         exciter_model.in_vars = in_vars_dict
+        exciter_model.event_dict = events_dict
 
         return exciter_model
 

@@ -383,7 +383,7 @@ class DiffBlockSolver(BlockSolver):
         self._parameters: List[Var] = list()
         self._parameters_eqs: List[Expr] = list()
         self._stability_eqs: List[Expr] = list()
-        self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
+        # self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
 
         self.time = time
         self.substitute = True
@@ -502,6 +502,9 @@ class DiffBlockSolver(BlockSolver):
             self._state_eqs_substituted[iter] = eq
 
         ## Substitute in algebraic eqs
+
+        self._stability_eqs = []
+        self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
         for iter, eq in enumerate(self._algebraic_eqs_substituted):
 
             ## vars

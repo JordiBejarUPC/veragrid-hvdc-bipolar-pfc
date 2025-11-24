@@ -146,7 +146,7 @@ def update_model(model, old, new):
     update_equations(model, old, new)
     if model.children:
         for child in model.children:
-            update_equations(child, old, new)
+            update_model(child, old, new)
 
 @dataclass
 class BlockBridge:
@@ -1772,6 +1772,8 @@ class BlockBoxesEditor(QSplitter):
             bus_from_con_blk = Block()
             bus_from_con_blk.out_vars[str(0)] = Vmf
             bus_from_con_blk.out_vars[str(1)] = Vaf
+            bus_from_con_blk.algebraic_vars.append(Vmf)
+            bus_from_con_blk.algebraic_vars.append(Vaf)
             bus_from_con_blk.name = name
 
             self.main_block.add(bus_from_con_blk)
@@ -1790,6 +1792,10 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_from_con_item.subsys.uid,
                 )
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmf: Vmf})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vaf: Vaf})
 
             # add con bus to
             name = "Conn To"
@@ -1802,6 +1808,8 @@ class BlockBoxesEditor(QSplitter):
             bus_to_con_blk = Block()
             bus_to_con_blk.out_vars[str(0)] = Vmt
             bus_to_con_blk.out_vars[str(1)] = Vat
+            bus_to_con_blk.algebraic_vars.append(Vmt)
+            bus_to_con_blk.algebraic_vars.append(Vat)
             bus_to_con_blk.name = name
 
             self.main_block.add(bus_to_con_blk)
@@ -1825,6 +1833,11 @@ class BlockBoxesEditor(QSplitter):
                     device_uid=bus_to_con_item.subsys.uid,
                 )
 
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmt: Vmt})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vat: Vat})
+
         else:
             x0, y0 = 0, 0
             name = "Conn Bus"
@@ -1835,6 +1848,8 @@ class BlockBoxesEditor(QSplitter):
             bus_con_blk = Block()
             bus_con_blk.out_vars[str(0)] = Vm
             bus_con_blk.out_vars[str(1)] = Va
+            bus_con_blk.algebraic_vars.append(Vm)
+            bus_con_blk.algebraic_vars.append(Va)
             bus_con_blk.name = name
 
             self.main_block.add(bus_con_blk)
@@ -1853,6 +1868,11 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_con_item.subsys.uid,
                 )
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Va: Va})
 
     def add_external_mapping_block(self):
         """
