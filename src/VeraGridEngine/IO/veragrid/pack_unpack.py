@@ -104,7 +104,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'contingency_group': dev.ContingencyGroup(),
         'contingency': dev.Contingency(),
-        'short_circuit_definition': dev.ShortCircuitDefinition(),
+        'short_circuit_definition': dev.ShortCircuitEvent(),
 
         'remedial_action_group': dev.RemedialActionGroup(),
         'remedial_action': dev.RemedialAction(),
@@ -1531,7 +1531,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
         DeviceType.InvestmentDevice,
         DeviceType.RemedialActionDevice,
         DeviceType.RmsEventDevice,
-        DeviceType.ShortCircuitDefinition
+        DeviceType.ShortCircuitEvent
     ]:
         elms = circuit.get_elements_by_type(device_type=dtype)
 

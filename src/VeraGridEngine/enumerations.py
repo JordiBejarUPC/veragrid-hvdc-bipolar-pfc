@@ -1106,7 +1106,7 @@ class DeviceType(Enum):
     RemedialActionDevice = 'Remedial action'
     RemedialActionGroupDevice = 'Remedial action Group'
 
-    ShortCircuitDefinition = 'Short circuit definition'
+    ShortCircuitEvent = 'Short circuit event'
 
     InvestmentDevice = 'Investment'
     InvestmentsGroupDevice = 'Investments Group'

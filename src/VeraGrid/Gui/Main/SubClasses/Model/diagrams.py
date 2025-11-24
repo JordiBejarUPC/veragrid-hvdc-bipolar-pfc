@@ -2686,7 +2686,7 @@ class DiagramsMain(CompiledArraysMain):
                 if self.sc_selector_dialogue.was_accepted:
 
                     for _, bus, _ in selected:
-                        sc = dev.ShortCircuitDefinition(
+                        sc = dev.ShortCircuitEvent(
                             name=f"{bus.name} {self.sc_selector_dialogue.fault.value}",
                             device=bus,
                             fault_type=self.sc_selector_dialogue.fault,

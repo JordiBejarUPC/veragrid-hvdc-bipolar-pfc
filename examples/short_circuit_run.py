@@ -14,7 +14,7 @@ fault_index = 2
 sc_options = gce.ShortCircuitOptions()
 
 grid.add_short_circuit_definition(
-    gce.ShortCircuitDefinition(
+    gce.ShortCircuitEvent(
         device=grid.buses[fault_index],
         fault_type=gce.FaultType.LG,
         method=gce.MethodShortCircuit.phases,

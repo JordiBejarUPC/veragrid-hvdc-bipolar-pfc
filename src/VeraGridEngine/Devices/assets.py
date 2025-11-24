@@ -245,7 +245,7 @@ class Assets:
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
         # Short circuit definition
-        self._short_circuit_definitions: List[dev.ShortCircuitDefinition] = list()
+        self._short_circuit_definitions: List[dev.ShortCircuitEvent] = list()
 
         # investments
         self._investments: List[dev.Investment] = list()
@@ -349,7 +349,7 @@ class Assets:
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
-                dev.ShortCircuitDefinition()
+                dev.ShortCircuitEvent()
             ],
             "Investments": [
                 dev.InvestmentsGroup(),
@@ -4615,7 +4615,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def short_circuit_definitions(self) -> List[dev.ShortCircuitDefinition]:
+    def short_circuit_definitions(self) -> List[dev.ShortCircuitEvent]:
         """
         Get list of ShortCircuitDefinition
         :return:
@@ -4623,17 +4623,17 @@ class Assets:
         return self._short_circuit_definitions
 
     @short_circuit_definitions.setter
-    def short_circuit_definitions(self, value: List[dev.ShortCircuitDefinition]):
+    def short_circuit_definitions(self, value: List[dev.ShortCircuitEvent]):
         self._short_circuit_definitions = value
 
-    def add_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+    def add_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
         """
         Add short_circuit_definitions
         :param obj: ShortCircuitDefinition
         """
         self._short_circuit_definitions.append(obj)
 
-    def delete_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+    def delete_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
         """
         Delete ShortCircuitDefinition
         :param obj: index
@@ -4658,7 +4658,7 @@ class Assets:
         """
         return len(self._short_circuit_definitions)
 
-    def short_circuit_definition_exist(self, scd: dev.ShortCircuitDefinition) -> bool:
+    def short_circuit_definition_exist(self, scd: dev.ShortCircuitEvent) -> bool:
         """
         Check if a short circuit definition has been added already
         :param scd: ShortCircuitDefinition
@@ -6087,7 +6087,7 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
-        elif device_type == DeviceType.ShortCircuitDefinition:
+        elif device_type == DeviceType.ShortCircuitEvent:
             return self._short_circuit_definitions
 
         elif device_type == DeviceType.Technology:
@@ -6323,7 +6323,7 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
 
-        elif device_type == DeviceType.ShortCircuitDefinition:
+        elif device_type == DeviceType.ShortCircuitEvent:
             self._short_circuit_definitions = devices
 
         elif device_type == DeviceType.Technology:
@@ -7184,8 +7184,8 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
-        elif elm_type == DeviceType.ShortCircuitDefinition:
-            elm = dev.ShortCircuitDefinition()
+        elif elm_type == DeviceType.ShortCircuitEvent:
+            elm = dev.ShortCircuitEvent()
 
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()

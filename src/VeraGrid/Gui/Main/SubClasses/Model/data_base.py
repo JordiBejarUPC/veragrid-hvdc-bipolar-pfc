@@ -160,7 +160,7 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.ContingencyDevice.value: ":/Icons/icons/contingency.png",
             DeviceType.RemedialActionGroupDevice.value: ":/Icons/icons/remedial_action_group.png",
             DeviceType.RemedialActionDevice.value: ":/Icons/icons/remedial_action.png",
-            DeviceType.ShortCircuitDefinition.value: ":/Icons/icons/contingency.png",
+            DeviceType.ShortCircuitEvent.value: ":/Icons/icons/contingency.png",
 
             "Investments": ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentsGroupDevice.value: ":/Icons/icons/investment_group.png",

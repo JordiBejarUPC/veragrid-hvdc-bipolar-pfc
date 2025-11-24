@@ -373,7 +373,7 @@ res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unba
 sc_options = gce.ShortCircuitOptions()
 
 grid.add_short_circuit_definition(
-    gce.ShortCircuitDefinition(
+    gce.ShortCircuitEvent(
         device=grid.buses[4],
         fault_type=FaultType.LG,
         method=MethodShortCircuit.phases,

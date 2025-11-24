@@ -393,7 +393,7 @@ def test_three_phase_to_ground_fault():
     sc_options = gce.ShortCircuitOptions()
 
     grid.add_short_circuit_definition(
-        gce.ShortCircuitDefinition(
+        gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LLLG,
             method=MethodShortCircuit.phases,
@@ -802,7 +802,7 @@ def test_single_line_to_ground_fault():
     sc_options = gce.ShortCircuitOptions()
 
     grid.add_short_circuit_definition(
-        gce.ShortCircuitDefinition(
+        gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LG,
             method=MethodShortCircuit.phases,
@@ -1211,7 +1211,7 @@ def test_double_line_to_ground_fault():
     sc_options = gce.ShortCircuitOptions()
 
     grid.add_short_circuit_definition(
-        gce.ShortCircuitDefinition(
+        gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LLG,
             method=MethodShortCircuit.phases,
@@ -1620,7 +1620,7 @@ def test_line_to_line_fault():
     sc_options = gce.ShortCircuitOptions()
 
     grid.add_short_circuit_definition(
-        gce.ShortCircuitDefinition(
+        gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LL,
             method=MethodShortCircuit.phases,
@@ -2029,7 +2029,7 @@ def test_three_phase_fault():
     sc_options = gce.ShortCircuitOptions()
 
     grid.add_short_circuit_definition(
-        gce.ShortCircuitDefinition(
+        gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LLL,
             method=MethodShortCircuit.phases,

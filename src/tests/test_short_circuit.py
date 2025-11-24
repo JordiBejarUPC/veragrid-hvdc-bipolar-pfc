@@ -35,7 +35,7 @@ def test_short_circuit():
     sc_options = ShortCircuitOptions()
 
     main_circuit.add_short_circuit_definition(
-        ShortCircuitDefinition(
+        ShortCircuitEvent(
             device=main_circuit.buses[16],
             fault_type=FaultType.LLLG,
             method=MethodShortCircuit.sequences,

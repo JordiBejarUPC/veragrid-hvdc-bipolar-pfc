@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDevicePa
 from VeraGridEngine.enumerations import DeviceType, FaultType, MethodShortCircuit, PhasesShortCircuit
 
 
-class ShortCircuitDefinition(PointerDeviceParent):
+class ShortCircuitEvent(PointerDeviceParent):
     """
     Investment
     """
@@ -47,7 +47,7 @@ class ShortCircuitDefinition(PointerDeviceParent):
                                      device=device,
                                      code=code,
                                      name=name,
-                                     device_type=DeviceType.ShortCircuitDefinition,
+                                     device_type=DeviceType.ShortCircuitEvent,
                                      comment=comment)
 
         self._fault_type: FaultType = fault_type

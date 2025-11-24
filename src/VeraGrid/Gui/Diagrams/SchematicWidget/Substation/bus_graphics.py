@@ -35,7 +35,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphic
 from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_definition import ShortCircuitDefinition
+from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -706,7 +706,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.w.exec()
         
         if self.w.was_accepted:
-            sc = ShortCircuitDefinition(
+            sc = ShortCircuitEvent(
                 name=f"{self.api_object.name} {self.w.fault.value}",
                 device=self.api_object,
                 fault_type=self.w.fault,

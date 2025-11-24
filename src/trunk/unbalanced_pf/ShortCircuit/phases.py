@@ -102,7 +102,7 @@ print(res_pf.get_voltage_3ph_df())
 sc_options = gce.ShortCircuitOptions()
 
 grid.add_short_circuit_definition(
-    gce.ShortCircuitDefinition(
+    gce.ShortCircuitEvent(
         device=grid.buses[2],
         fault_type=FaultType.LG,
         method=MethodShortCircuit.phases,
