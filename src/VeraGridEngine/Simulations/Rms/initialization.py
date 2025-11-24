@@ -1670,25 +1670,6 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     # injections
 
     # initialize with pseudo_transient
-
-    # # already known variables:
-    #
-    # for elm in grid.get_injection_devices_iter():
-    #     bus_rms_mdl = elm.bus.rms_model.model
-    #     mdl = elm.rms_model.model
-    #
-    #
-    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
-    #
-    #     mdl_vars = mdl.state_vars + mdl.algebraic_vars
-    #
-    #     for v in mdl_vars:
-    #         if v.uid not in uid2sym_vars:
-    #             uid2sym_vars[v.uid] = f"vars[{array_index}]"
-    #             uid2idx_vars[v.uid] = array_index
-    #             array_index += 1
-
     ## iterate through buses and constuct local system_solver
 
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()

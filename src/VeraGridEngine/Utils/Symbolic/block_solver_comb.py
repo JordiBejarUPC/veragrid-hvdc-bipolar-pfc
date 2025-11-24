@@ -178,7 +178,7 @@ class SymbolicJacobian:
         :param params:
         :return: Updated jacobian structure
         """
-        assert len(values) >= self.nvar
+        # assert len(values) >= self.nvar
 
         # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
         self.func(values, params, self.J.data)
@@ -467,7 +467,7 @@ class DiffBlockSolver(BlockSolver):
         ## define parameters
         self.alpha = 1
         alpha = self.alpha
-        lag_can_be_0 = False
+        lag_can_be_0 = False  # TODO: will this allways be False??
         if lag_can_be_0:
             lag_init = 0
         else:
@@ -579,45 +579,45 @@ class DiffBlockSolver(BlockSolver):
         # for uid in duplicates:
         #     idx = self.uid2idx_vars[uid]
         #     # print(self._algebraic_vars[idx])
-        self._rhs_algeb_fn = _compile_equations(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
-                                                uid2sym_params=self.uid2sym_params, use_jit=use_jit)
+        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
+                                                uid2sym_params=self.uid2sym_params)
 
-        self._params_fn = _compile_parameters_equations(eqs=self._parameters_eqs, uid2sym_t=self.uid2sym_t)
+        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs, uid2sym_t=self.uid2sym_t)
 
         if len(self._state_eqs) != 0:
-            self._rhs_state_fn = self._get_jacobian(eqs=self._state_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
-                                                    uid2sym_params=self.uid2sym_params, use_jit=use_jit)
+            self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
+                                                    uid2sym_params=self.uid2sym_params)
 
 
 
 
-            self._j11_fn =  self._get_jacobian(eqs=self._state_eqs_substituted, variables=self._state_vars, diff_variables= self._diff_vars,
+            self._j11_fn =  SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._state_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
-            self._j12_fn =  self._get_jacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars, diff_variables= self._diff_vars,
+            self._j12_fn =  SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
-            self._j21_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,diff_variables= self._diff_vars,
+            self._j21_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
-            self._j22_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+            self._j22_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
         else:
-            self._j22_fn =  self._get_jacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+            self._j22_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
 
         # stability equations for initialization
-        self._j_stable =  self._get_jacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,diff_variables= self._diff_vars,
+        self._j_stable =  SymbolicJacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
                                                     uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
@@ -1422,7 +1422,7 @@ class DiffBlockSolver(BlockSolver):
         # print('Pseudo-Transient ended')
         return x0, init_guess
 
-    def init_pseudo_transient_individual(self, x0, init_guess={}, plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
+    def init_pseudo_transient_individual(self, x0, init_guess= dict(), plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
                                          predictor=False, max_iter=8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
 
@@ -1482,7 +1482,7 @@ class DiffBlockSolver(BlockSolver):
 
             xn_lags = np.r_[xn, lag]
             xnew_lags = np.r_[x_new, lag]
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
+            # rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
             # if (tries == 1 or (tries < 10 and predictor)) and False:
