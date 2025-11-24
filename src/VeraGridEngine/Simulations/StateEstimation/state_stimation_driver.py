@@ -32,7 +32,7 @@ class StateEstimationOptions:
                  max_iter: int = 100,
                  verbose: int = 0,
                  prefer_correct: bool = True,
-                 c_threshold: int = 4.0,
+                 c_threshold: float = 4.0,
                  fixed_slack: bool = False,
                  run_observability_analyis: bool = False,
                  add_pseudo_measurements: bool = False,

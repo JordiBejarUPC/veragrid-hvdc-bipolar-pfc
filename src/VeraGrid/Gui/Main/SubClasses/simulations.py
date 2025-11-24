@@ -60,6 +60,13 @@ class SimulationsMain(TimeEventsMain):
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
         # Power Flow Methods
+        self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model([SolverType.NR,
+                                                                  SolverType.LM,
+                                                                  SolverType.GN])
+        self.ui.se_solver_comboBox.setModel(se_solvers_mdl)
+        self.ui.se_solver_comboBox.setCurrentIndex(0)
+
+        # SE Methods
         self.solvers_dict, solvers_mdl = gf.enums_to_model([SolverType.NR,
                                                             SolverType.IWAMOTO,
                                                             SolverType.LM,
@@ -1079,6 +1086,26 @@ class SimulationsMain(TimeEventsMain):
         if not self.session.is_anything_running():
             self.UNLOCK()
 
+    def get_se_options(self) -> sim.StateEstimationOptions:
+        """
+
+        :return:
+        """
+        return sim.StateEstimationOptions(
+            solver=self.se_solvers_dict.get(self.ui.se_solver_comboBox.currentText()),
+            tol=self.ui.se_tolerance_spinBox.value(),
+            max_iter=self.ui.se_max_iterations_spinBox.value(),
+            verbose=0,
+            prefer_correct=self.ui.se_prefer_correct_checkBox.isChecked(),
+            c_threshold=4.0,
+            fixed_slack=self.ui.se_fixed_slack_checkBox.isChecked(),
+            run_observability_analyis=self.ui.se_observability_analysis_checkBox.isChecked(),
+            add_pseudo_measurements=self.ui.se_add_pseudo_measurements_checkBox.isChecked(),
+            run_measurement_profiling=self.ui.se_measurements_profiling_checkBox.isChecked(),
+            include_line_measurements_on_both_ends=True,
+            pseudo_meas_std=1.0
+        )
+
     def run_state_estimation(self):
         """
         Run a power flow simulation
@@ -1096,8 +1123,7 @@ class SimulationsMain(TimeEventsMain):
                 QtGui.QGuiApplication.processEvents()
 
                 # get the power flow options from the GUI
-                pf_options = self.get_selected_power_flow_options()
-                options = sim.StateEstimationOptions()
+                options = self.get_se_options()
 
                 self.ui.progress_label.setText('Running state estimation...')
                 QtGui.QGuiApplication.processEvents()
