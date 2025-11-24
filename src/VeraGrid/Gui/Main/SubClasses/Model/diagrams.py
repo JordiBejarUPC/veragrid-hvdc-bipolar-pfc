@@ -13,13 +13,10 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from matplotlib import pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 
-import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 
+import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine import ContingencyOperationTypes
 from VeraGridEngine.IO.file_system import tiles_path
-from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
-                                            InputNumberDialogue, LogsDialogue)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations import PowerFlowResults, ContinuationPowerFlowResults, PowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
@@ -46,6 +43,10 @@ from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelec
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue
+from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
+from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
+from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
+                                            InputNumberDialogue, LogsDialogue)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -221,6 +222,8 @@ class DiagramsMain(CompiledArraysMain):
         # task watcher for video export
         self.video_thread: VideoExportWorker | None = None
 
+        self.sc_selector_dialogue: ShortCircuitSelector | None = None
+
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionTakePicture.triggered.connect(self.take_picture)
         self.ui.actionRecord_video.triggered.connect(self.record_video)
@@ -239,6 +242,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
         self.ui.actionAdd_rms_event_to_selected.triggered.connect(self.add_rms_event_to_selected)
+        self.ui.actionAdd_short_circuit_events.triggered.connect(self.add_short_circuit_events)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out)
@@ -2637,22 +2641,26 @@ class DiagramsMain(CompiledArraysMain):
                 # launch rms event editor dialogue
 
                 target_device_name = target_device.type_name + ": " + target_device.name
-                device_params = [var for var in target_device.rms_model.model.event_dict.keys()] # list of device parameters
+                device_params = [var for var in
+                                 target_device.rms_model.model.event_dict.keys()]  # list of device parameters
                 device_params_str = [var.name for var in device_params]  # list of device parameters
                 rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
-                                       target_device_name=target_device_name)
+                                                     target_device_name=target_device_name)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                     # create a new events group
                     group = dev.RmsEventsGroup(idtag=None,
-                                                 name='Rms Events Group 1',
-                                                 category="single" if len(target_devices) == 1 else "multiple")
+                                               name='Rms Events Group 1',
+                                               category="single" if len(target_devices) == 1 else "multiple")
                     self.circuit.add_rms_events_group(group)
 
-                    events_data = rms_events_dialog.get_data() # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
+                    events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
                     events_list = []
                     for i, event in enumerate(events_data["parameters"]):
-                        events_list.append(dev.RmsEvent(target_device, device_params[device_params_str.index(events_data["parameters"][i])], float(events_data["target_times"][i]), float(events_data["values"][i]), group=group))
+                        events_list.append(dev.RmsEvent(target_device, device_params[
+                            device_params_str.index(events_data["parameters"][i])],
+                                                        float(events_data["target_times"][i]),
+                                                        float(events_data["values"][i]), group=group))
 
                     for event in events_list:
                         self.circuit.add_rms_event(event)
@@ -2660,10 +2668,37 @@ class DiagramsMain(CompiledArraysMain):
             else:
                 raise ValueError(f"Select one and only one device to add event to")
 
+    def add_short_circuit_events(self):
+        """
 
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
 
+            # get the selected investment devices
+            selected: List[Tuple[int, dev.Bus, BusGraphicItem | None]] = self.get_selected_buses()
 
+            if len(selected) > 0:
 
+                self.sc_selector_dialogue = ShortCircuitSelector()
+                self.sc_selector_dialogue.exec()
+
+                if self.sc_selector_dialogue.was_accepted:
+
+                    for _, bus, _ in selected:
+                        sc = dev.ShortCircuitDefinition(
+                            name=f"{bus.name} {self.sc_selector_dialogue.fault.value}",
+                            device=bus,
+                            fault_type=self.sc_selector_dialogue.fault,
+                            method=self.sc_selector_dialogue.method,
+                            phases=self.sc_selector_dialogue.phases
+                        )
+
+                        self.circuit.add_short_circuit_definition(sc)
+
+                    self.show_info_toast(f"{len(selected)} short circuit events added!")
+            else:
+                self.show_warning_toast("Select some buses in the diagram!")
 
     def select_buses_by_property(self, prop: str):
         """

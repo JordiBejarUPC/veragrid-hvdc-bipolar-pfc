@@ -412,9 +412,10 @@ def test_three_phase_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.019603, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.019424, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.019356, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.019603, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.019424, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.019356, atol=1e-4)
+
 
 def test_single_line_to_ground_fault():
     """
@@ -820,9 +821,9 @@ def test_single_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.018601, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 1.0069, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.99489, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.018601, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 1.0069, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.99489, atol=1e-4)
 
 
 def test_double_line_to_ground_fault():
@@ -1229,9 +1230,9 @@ def test_double_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.019314, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 1.0196, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.018918, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.019314, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 1.0196, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.018918, atol=1e-4)
 
 
 def test_line_to_line_fault():
@@ -1638,9 +1639,9 @@ def test_line_to_line_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.4943, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.4798, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.97352, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.4943, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.4798, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.97352, atol=1e-4)
 
 
 def test_three_phase_fault():
@@ -2047,6 +2048,6 @@ def test_three_phase_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.009069, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.007444, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.003969, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.009069, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.007444, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.003969, atol=1e-4)
