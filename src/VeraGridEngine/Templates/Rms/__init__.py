@@ -5,6 +5,7 @@
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
 from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 from VeraGridEngine.Templates.Rms.line_0_rms_template import Line_0_RmsTemplate
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecExcGovSat
 from VeraGridEngine.Templates.Rms.generator_0_rms_template import Generator_0_RmsTemplate
 from VeraGridEngine.Templates.Rms.line_1_rms_template import Line_1_RmsTemplate
 from VeraGridEngine.Templates.Rms.generator_1_rms_template import Generator_1_RmsTemplate

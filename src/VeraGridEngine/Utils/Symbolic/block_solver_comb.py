@@ -1558,7 +1558,9 @@ class DiffBlockSolver(BlockSolver):
                     delta = sp.linalg.spsolve(Jf, -rhs)
                 except Exception as e:
                     raise SingularJacobianError(f"Linear solver failed at try {tries}: {e}")
-                if not np.all(np.isfinite(delta)) or not np.all(np.isfinite(delta)):
+                if not np.all(np.isfinite(delta)): #or not np.all(np.isfinite(delta)):
+                    print(f'jacobian is {Jf.toarray()}')
+                    print(f'delta is {delta}')
                     print(f'x_new is {x_new}')
                     print(f'rhs is {rhs}')
                     print(f'residual is {np.linalg.norm(rhs)} try is {tries} and step is {step_idx}')

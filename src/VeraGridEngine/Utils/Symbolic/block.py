@@ -750,7 +750,7 @@ class GenqecBuild:
         Sat_d = Var('Sat_d' + self.name)
         Sat_q = Var('Sat_q' + self.name)
 
-        # States
+        # State variables
         delta = Var("delta"+ self.name)  # rotor angle
         omega = Var("omega"+ self.name)  # rotor electrical speed
         Eq1 = Var("Eq1"+ self.name)  # internal emf behind Xd'
@@ -763,6 +763,8 @@ class GenqecBuild:
         Ed_2prime = Var("Ed_2prime"+ self.name)  # subtransient voltage d-axis
 
         # Algebraic variables
+        Pg = Var('Pg' + self.name)
+        Qg = Var('Qg' + self.name)
         Id = Var("Id"+ self.name)
         Iq = Var("Iq"+ self.name)
         Vd = Var("Vd"+ self.name)
@@ -770,8 +772,7 @@ class GenqecBuild:
         Psid = Var("Psid"+ self.name)
         Psiq = Var("Psiq"+ self.name)
         Te = Var("Te"+ self.name)
-
-        IRPu = Var("IRPu")
+        IRPu = Var("IRPu"+ self.name)
 
         # Saturated resistances
         Xd_sat = Var('Xd_sat'+ self.name)
@@ -782,12 +783,6 @@ class GenqecBuild:
         Xq_2prime_sat = Var('Xq_2prime_sat'+ self.name)
         Ed2_coef = Var('Ed2_coef'+ self.name)
         Eq2_coef = Var('Eq2_coef'+ self.name)
-
-        # Vg = Var('Vg')
-        # dg = Var('dg')
-        Pg = Var('Pg'+ self.name)
-        Qg = Var('Qg'+ self.name)
-
         Sa = Var('Sa')
         V_qag = Var('V_qag')
         V_dag = Var('V_dag')
@@ -974,7 +969,7 @@ class GovernorBuild:
     def governor(self) -> Block:
 
         """
-            governor model with no load control and with no free reference
+            governor model with no load control and with free reference
         """
 
         # Inputs
@@ -993,31 +988,15 @@ class GovernorBuild:
 
         Tm = Var("Tm")  # Mechanical power input (pu
         et = Var("et")
+
+        # reference
+        Pm_ref = Var('Pm_ref')
         algebraic_eqs = []
         algebraic_vars = []
 
         # ______________________________________________________________________________________
         #                                    parameters
         # ______________________________________________________________________________________
-
-        # Time constants
-        T1 = Const(1.0)  # governor time constant (s)
-        T2 = Const(1.0)  # reheater time constant (s)
-        T3 = Const(10.0)  # crossover time constant (s)
-        T4 = Const(0.2)  # lead/lag constant (s)
-        T5 = Const(0.5)  # lead/lag constant (s)
-        T6 = Const(0.1)  # lead/lag constant (s)
-        T7 = Const(0.05)  # lead/lag constant (s)
-
-        # Steam fractions (distribution factors)
-        K1 = Const(0.5)
-        K2 = Const(0.5)
-        K3 = Const(0.0)
-        K4 = Const(0.0)
-        K5 = Const(0.0)
-        K6 = Const(0.0)
-        K7 = Const(0.0)
-        K8 = Const(0.0)
 
         # Gains and limits
         K = Var("K")  # governor gain (inverse droop)
@@ -1034,8 +1013,6 @@ class GovernorBuild:
         p0 = Var('p0')
         P0 = Var('P0')
 
-        # reference
-        Pm_ref = Var('Pm_ref')
 
         events_dict = {
             # control parameters
@@ -1053,9 +1030,6 @@ class GovernorBuild:
             Uo: Const(0.1),  # max valve opening rate (pu/s)
             T_aux: Const(0.0),
 
-
-            # reference
-            Pm_ref: Const(0.0963287180659294)
         }
         controller_block = Block(
             state_eqs=[
@@ -1122,7 +1096,7 @@ class GovernorBuild:
         u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + self.parameters["K4"] * y3_4 + T_aux
         aux_block = Block(
             algebraic_eqs=[u - Tm] + algebraic_eqs,
-            algebraic_vars=[Tm] + algebraic_vars,
+            algebraic_vars=[Tm, Pm_ref] + algebraic_vars,
         )
 
         governor_block = Block(
@@ -1296,6 +1270,7 @@ class ExciterBuild:
 
         Vf = Var("Vf")
         Efe = Var('Efe')
+        UsRefPu = Var("UsRefPu")  # reference voltage (pu)
 
         # Exciter internal variables
         VeMaxPu = Var('VeMaxPu')
@@ -1306,7 +1281,6 @@ class ExciterBuild:
         # ______________________________________________________________________________________
 
         # ---- Exciter (AVR) parameters ----
-        UsRefPu = Var("UsRefPu")  # reference voltage (pu)
         AEz = Var("AEz")  # saturation gain
         BEz = Var("BEz")  # saturation exponential coefficient
         EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
@@ -1331,7 +1305,6 @@ class ExciterBuild:
 
         events_dict = {
             # Exciter (AVR) parameters
-            UsRefPu: Const(1.0),  # reference voltage (pu)
             AEz: Const(0.02),  # saturation gain
             BEz: Const(1.5),  # saturation exponential coefficient
             EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
@@ -1431,7 +1404,7 @@ class ExciterBuild:
 
         linking_block = Block(
             algebraic_eqs=[y6 - Efe],
-            algebraic_vars=[Efe] + algebraic_vars,
+            algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
 
         )
 
