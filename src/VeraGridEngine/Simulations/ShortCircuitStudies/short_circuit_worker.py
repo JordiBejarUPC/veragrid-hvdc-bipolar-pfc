@@ -490,21 +490,21 @@ def short_circuit_abc(nc: NumericalCircuit,
     :return: short circuit results
     """
 
-    Ybus, Yf, Yt, Yshunt_bus, mask, bus_lookup, branch_lookup = compute_ybus(nc)
+    Ybus_masked, Yf, Yt, Yshunt_bus, mask, bus_lookup, branch_lookup = compute_ybus(nc)
 
-    Vpf = np.zeros(nc.nbus*4, dtype=complex)
+    Vpf = np.zeros(nc.nbus * 4, dtype=complex)
     Vpf[0::4] = voltage_N
     Vpf[1::4] = voltage_A
     Vpf[2::4] = voltage_B
     Vpf[3::4] = voltage_C
+    Vpf_masked = Vpf[mask]
 
     Spf = np.zeros(nc.nbus * 4, dtype=complex)
     Spf[0::4] = Sbus_N
     Spf[1::4] = Sbus_A
     Spf[2::4] = Sbus_B
     Spf[3::4] = Sbus_C
-
-    Vpf_masked = Vpf[mask]
+    Spf_masked = Spf[mask]
 
     _, Y_power_linear, _ = compute_power_loads(bus_idx=nc.load_data.bus_idx,
                                                bus_lookup=bus_lookup,
@@ -607,30 +607,35 @@ def short_circuit_abc(nc: NumericalCircuit,
     Yfault_masked = Yfault[mask, :][:, mask]
     Yfault_masked = sp.csc_matrix(Yfault_masked)
 
-    Ybus_gen_csc = compute_ybus_generator(nc=nc)
-    Ybus_gen_masked_csc = Ybus_gen_csc[mask, :][:, mask]
+    Ygen_csc = compute_ybus_generator(nc=nc)
+    Ygen_masked_csc = Ygen_csc[mask, :][:, mask]
 
     # TODO: add before making diags
     Yloads = sp.diags(Y_power_linear + Y_current_linear)
-    Ylinear = Ybus - Yloads + Yfault_masked + Ybus_gen_masked_csc
+    Ylinear_masked = Ybus_masked - Yloads + Yfault_masked + Ygen_masked_csc
 
     Yloads = Y_power_linear + Y_current_linear
     Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
-    # Spf_expanded = expand_magnitudes(Spf, bus_lookup)
+
     S = (Spf / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
-    idx4 = np.array([1, 2, 3])  # we deliberite
+
+    idx4 = np.array([1, 2, 3]) # we deliberite
+    idx3 = np.array([0, 1, 2])
+
     gen_idx = nc.generator_data.bus_idx
     n_buses = len(nc.generator_data.bus_idx)
+
     Inorton = np.zeros(shape=len(Vpf_masked), dtype=complex)
+
     for i in range(n_buses):
         U = Vpf[gen_idx[i] + idx4]
-        Y = Ybus_gen_csc[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
+        Y = Ygen_csc[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
         I = np.conj(S[np.ix_(gen_idx[i] + idx4)] / U)
         E = U + np.linalg.solve(Y.toarray(), I)
         Inorton_i = Y @ E
-        Inorton[np.ix_(gen_idx[i] + idx4)] = Inorton_i
+        Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
 
-    Usc = spsolve(Ylinear, Inorton)
+    Usc = spsolve(Ylinear_masked, Inorton)
     Usc_expanded = expand_magnitudes(Usc, bus_lookup)
 
     Ik_max = maximum_initial_shortcircuit_current(
