@@ -1062,6 +1062,11 @@ def fill_generator_parent(
         else:
             bus_data.q_fixed[i] += data.get_q_at(k)
 
+    if elm.tech_list:
+        data.technologies[k] = elm.tech_list[0].name
+    else:
+        data.technologies[k] = 'Unknown'
+
 
 def get_generator_data(
         data: GeneratorData,

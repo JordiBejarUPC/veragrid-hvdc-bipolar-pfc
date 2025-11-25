@@ -83,6 +83,8 @@ class GeneratorData:
 
         self.original_idx = np.zeros(nelm, dtype=int)
 
+        self.technologies = np.array(['Unknown'] * nelm, dtype=str)
+
         self.name_to_idx: dict = dict()
         self.is_at_dc_bus: BoolVec = np.zeros(nelm, dtype=bool)  # purpose? why not for VSC?
 
@@ -156,6 +158,8 @@ class GeneratorData:
         data.capex = self.capex[elm_idx]
         data.discount_rate = self.discount_rate[elm_idx]
         data.is_candidate = self.is_candidate[elm_idx]
+
+        data.technologies = self.technologies[elm_idx]
 
         data.shift_key = self.shift_key[elm_idx]
         data.scalable = self.scalable[elm_idx]
@@ -238,6 +242,8 @@ class GeneratorData:
         data.capex = self.capex.copy()
         data.discount_rate = self.discount_rate.copy()
         data.is_candidate = self.is_candidate.copy()
+
+        data.technologies = self.technologies.copy()
 
         data.shift_key = self.shift_key.copy()
         data.scalable = self.scalable.copy()
