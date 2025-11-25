@@ -251,6 +251,16 @@ class ConfigurationMain(ResultsMain):
                 "add_pf_report": self.ui.addPowerFlowReportCheckBox,
                 "initialize_angles": self.ui.initialize_pf_angles_checkBox,
             },
+            "state_estimation": {
+                "solver": self.ui.se_solver_comboBox,
+                "tolerance": self.ui.se_tolerance_spinBox,
+                "max_iter": self.ui.se_max_iterations_spinBox,
+                "prefer_correct": self.ui.se_prefer_correct_checkBox,
+                "fixed_slack": self.ui.se_fixed_slack_checkBox,
+                "run_observability_analyis": self.ui.se_observability_analysis_checkBox,
+                "add_pseudo_measurements": self.ui.se_add_pseudo_measurements_checkBox,
+                "run_measurement_profiling": self.ui.se_measurements_profiling_checkBox
+            },
             "optimal_power_flow": {
                 "method": self.ui.lpf_solver_comboBox,
                 "time_grouping": self.ui.opf_time_grouping_comboBox,

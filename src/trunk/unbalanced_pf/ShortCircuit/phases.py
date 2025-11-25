@@ -99,10 +99,16 @@ print(res_pf.get_voltage_3ph_df())
 # ----------------------------------------------------------------------------------------------------------------------
 # Run Short-Circuit
 # ----------------------------------------------------------------------------------------------------------------------
-sc_options = gce.ShortCircuitOptions(bus_index=2,
-                                     fault_type=FaultType.LG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.a)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[2],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,

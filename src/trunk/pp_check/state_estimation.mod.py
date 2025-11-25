@@ -8,7 +8,7 @@ import pandapower as pp
 from pandapower.estimation import estimate
 from pandapower.estimation import remove_bad_data
 from VeraGridEngine.IO.others.pandapower_parser import Panda2VeraGrid
-from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimation
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimationDriver
 
 # Example Network
 # 
@@ -59,7 +59,7 @@ grid = converter.get_multicircuit()
 # grid.Sbase = 1.0
 # grid.change_base(100)
 
-se_driver = StateEstimation(circuit=grid)
+se_driver = StateEstimationDriver(circuit=grid)
 se_driver.run()
 
 print(se_driver.results.get_bus_df())

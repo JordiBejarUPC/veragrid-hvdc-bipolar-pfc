@@ -711,7 +711,7 @@ class Load(LoadParent):
             if val2 > 0:
                 self._n_customers = val2
             else:
-                print("There must be at least one customer right?")
+                pass
         except ValueError as e:
             print(e)
 
@@ -733,7 +733,7 @@ class Load(LoadParent):
             if val2 > 0:
                 self._contract_power = val2
             else:
-                print("Do they contract negative power?")
+                pass
         except ValueError as e:
             print(e)
 

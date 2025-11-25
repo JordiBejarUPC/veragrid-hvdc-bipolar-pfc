@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 import json
 import math
@@ -103,7 +104,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'contingency_group': dev.ContingencyGroup(),
         'contingency': dev.Contingency(),
-        'short_circuit_definition': dev.ShortCircuitDefinition(),
+        'short_circuit_definition': dev.ShortCircuitEvent(),
 
         'remedial_action_group': dev.RemedialActionGroup(),
         'remedial_action': dev.RemedialAction(),
@@ -714,6 +715,7 @@ def parse_object_type_from_dataframe(
         # create device
         idtag = row.get('idtag', None)
         elm = type(template_elm)(idtag=idtag)
+        elm.disable_auto_updates()
 
         # ensure the profiles existence
         if time_profile is not None:
@@ -898,42 +900,6 @@ def parse_object_type_from_dataframe(
                         if property_name in ['is_controlled', 'Bmin', 'Bmax', 'Vset']:
                             skip = True
 
-                    # if template_elm.device_type == DeviceType.VscDevice:
-                    #     if property_name == 'control_mode':
-                    #         if "Pdc" in property_value:
-                    #             elm.tap_phase_control_mode = TapPhaseControl.Pf
-                    #             skip = True
-                    #         if "Qac" in property_value:
-                    #             elm.tap_phase_module_mode = TapModuleControl.Qf
-                    #             skip = True
-                    #         if "Vac" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.Vm
-                    #             elm.regulation_bus = elm.bus_to
-                    #             skip = True
-                    #         if "Vdc" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.Vm
-                    #             elm.regulation_bus = elm.bus_from
-                    #             skip = True
-                    #
-                    #         if "fixed" in property_value:
-                    #             elm.tap_module_control_mode = TapModuleControl.fixed
-                    #             elm.tap_phase_control_mode = TapPhaseControl.fixed
-                    #             skip = True
-                    #
-                    #     elif property_name == 'Vac_set':
-                    #         if property_value > 0.0:
-                    #             elm.vset = property_value
-                    #         skip = True
-                    #
-                    #     elif property_name == 'Vdc_set':
-                    #         if property_value > 0.0:
-                    #             elm.vset = property_value
-                    #         skip = True
-                    #
-                    #     elif property_name == 'Qac_set':
-                    #         elm.Qset = property_value
-                    #         skip = True
-
                     if template_elm.device_type == DeviceType.Transformer2WDevice:
                         if property_name == 'control_mode':
                             if "Pf" in property_value:
@@ -1058,6 +1024,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     for json_entry in data_list:
         idtag = json_entry['idtag']
         elm: ALL_DEV_TYPES = type(template_elm)(idtag=idtag)
+        elm.disable_auto_updates()
 
         # ensure the profiles existence
         if time_profile is not None:
@@ -1269,7 +1236,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                      comment=str(e))
 
                             else:
-                                raise Exception(f'Unsupported property type: {gc_prop.tpe}')
+                                raise Exception(f'Unsupported property type: {gc_prop.tpe} for {gc_prop.name}')
 
                         else:
                             # invalid property value
@@ -1481,7 +1448,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
         if len(model_data) > 0:
 
             # parse circuit own data
-            circuit_data = model_data.get('circuit', None)
+            circuit_data: Dict[str, str | int | float] | None = model_data.get('circuit', None)
             if circuit_data is not None:
                 circuit.parse(data=circuit_data)
 
@@ -1542,6 +1509,55 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
             handle_legacy_jsons(model_data=model_data,
                                 elements_dict_by_type=elements_dict_by_type,
                                 logger=logger)
+
+    # fill in device into pointer devices ------------------------------------------------------------------------------
+
+    to_delete: List[ALL_DEV_TYPES] = list()
+    all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
+    for dtype in [
+        DeviceType.PMeasurementDevice,
+        DeviceType.QMeasurementDevice,
+        DeviceType.PfMeasurementDevice,
+        DeviceType.QfMeasurementDevice,
+        DeviceType.PtMeasurementDevice,
+        DeviceType.QtMeasurementDevice,
+        DeviceType.PgMeasurementDevice,
+        DeviceType.QgMeasurementDevice,
+        DeviceType.IfMeasurementDevice,
+        DeviceType.ItMeasurementDevice,
+        DeviceType.VaMeasurementDevice,
+        DeviceType.VmMeasurementDevice,
+        DeviceType.ContingencyDevice,
+        DeviceType.InvestmentDevice,
+        DeviceType.RemedialActionDevice,
+        DeviceType.RmsEventDevice,
+        DeviceType.ShortCircuitEvent
+    ]:
+        elms = circuit.get_elements_by_type(device_type=dtype)
+
+        for elm in elms:
+
+            if elm.tpe != DeviceType.NoDevice:
+                # search in the per-device type dictionary (already created and faster)
+                referenced_dict = elements_dict_by_type[elm.tpe]
+                referenced_elm = referenced_dict.get(elm.device_idtag, None)
+            else:
+                # lazy-creation of the all elements dict, takes time to initialize
+                if len(all_elements_dict) == 0:
+                    all_elements_dict, _ = circuit.get_all_elements_dict()
+                referenced_elm = all_elements_dict.get(elm.device_idtag, None)
+
+            if referenced_elm is None:
+                to_delete.append(elm)
+            else:
+                elm.set_device(elm=referenced_elm)
+
+    # delete pointer elemnts to missing references
+    for elm in to_delete:
+        circuit.delete_element(elm)
+        logger.add_error(msg="Invalid pointer element deleted",
+                         device_class=elm.device_type.value,
+                         device=elm.name)
 
     # fill in wires into towers ----------------------------------------------------------------------------------------
     if text_func is not None:

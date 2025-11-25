@@ -245,7 +245,7 @@ class Assets:
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
         # Short circuit definition
-        self._short_circuit_definitions: List[dev.ShortCircuitDefinition] = list()
+        self._short_circuit_definitions: List[dev.ShortCircuitEvent] = list()
 
         # investments
         self._investments: List[dev.Investment] = list()
@@ -349,7 +349,7 @@ class Assets:
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
-                dev.ShortCircuitDefinition()
+                dev.ShortCircuitEvent()
             ],
             "Investments": [
                 dev.InvestmentsGroup(),
@@ -358,6 +358,14 @@ class Assets:
             "Dynamic": [
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
+            ],
+            "Catalogue": [
+                dev.Wire(),
+                dev.OverheadLineType(),
+                dev.UndergroundLineType(),
+                dev.SequenceLineType(),
+                dev.TransformerType(),
+                dev.RmsModelTemplate()
             ],
             "Measurements": [
                 dev.PiMeasurement(),
@@ -372,14 +380,6 @@ class Assets:
                 dev.VaMeasurement(),
                 dev.PgMeasurement(),
                 dev.QgMeasurement(),
-            ],
-            "Catalogue": [
-                dev.Wire(),
-                dev.OverheadLineType(),
-                dev.UndergroundLineType(),
-                dev.SequenceLineType(),
-                dev.TransformerType(),
-                dev.RmsModelTemplate()
             ]
 
         }
@@ -398,14 +398,17 @@ class Assets:
         """
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
+
+                key = str(elm.device_type.value)
+
+                associated_props, indices = elm.get_association_properties()
+                self.device_type_name_dict[key] = elm.device_type
+                self.device_associations[key] = [prop.name for prop in associated_props]
+
                 if elm.properties_with_profile is not None:
-                    key = str(elm.device_type.value)
                     profile_attr = list(elm.properties_with_profile.keys())
                     profile_types = [elm.registered_properties[attr].tpe for attr in profile_attr]
-                    associated_props, indices = elm.get_association_properties()
                     self.profile_magnitudes[key] = (profile_attr, profile_types)
-                    self.device_type_name_dict[key] = elm.device_type
-                    self.device_associations[key] = [prop.name for prop in associated_props]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Device iterators
@@ -4612,7 +4615,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def short_circuit_definitions(self) -> List[dev.ShortCircuitDefinition]:
+    def short_circuit_definitions(self) -> List[dev.ShortCircuitEvent]:
         """
         Get list of ShortCircuitDefinition
         :return:
@@ -4620,17 +4623,17 @@ class Assets:
         return self._short_circuit_definitions
 
     @short_circuit_definitions.setter
-    def short_circuit_definitions(self, value: List[dev.ShortCircuitDefinition]):
+    def short_circuit_definitions(self, value: List[dev.ShortCircuitEvent]):
         self._short_circuit_definitions = value
 
-    def add_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+    def add_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
         """
         Add short_circuit_definitions
         :param obj: ShortCircuitDefinition
         """
         self._short_circuit_definitions.append(obj)
 
-    def delete_short_circuit_definition(self, obj: dev.ShortCircuitDefinition):
+    def delete_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
         """
         Delete ShortCircuitDefinition
         :param obj: index
@@ -4648,7 +4651,14 @@ class Assets:
         """
         return np.array([elm.name for elm in self._short_circuit_definitions])
 
-    def short_circuit_definition_exist(self, scd: dev.ShortCircuitDefinition) -> bool:
+    def get_short_circuit_definition_number(self) -> int:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return len(self._short_circuit_definitions)
+
+    def short_circuit_definition_exist(self, scd: dev.ShortCircuitEvent) -> bool:
         """
         Check if a short circuit definition has been added already
         :param scd: ShortCircuitDefinition
@@ -6077,7 +6087,7 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
-        elif device_type == DeviceType.ShortCircuitDefinition:
+        elif device_type == DeviceType.ShortCircuitEvent:
             return self._short_circuit_definitions
 
         elif device_type == DeviceType.Technology:
@@ -6313,7 +6323,7 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
 
-        elif device_type == DeviceType.ShortCircuitDefinition:
+        elif device_type == DeviceType.ShortCircuitEvent:
             self._short_circuit_definitions = devices
 
         elif device_type == DeviceType.Technology:
@@ -6921,7 +6931,7 @@ class Assets:
             self,
             add_locations: bool = False,
             string_keys: bool = True
-    ) -> dict[Union[str, DeviceType], Union[dict[str, ALL_DEV_TYPES], Any]]:
+    ) -> Dict[Union[str, DeviceType], Union[Dict[str, ALL_DEV_TYPES], Any]]:
         """
         Get a dictionary of all elements by type
         :param add_locations: Add locations to dict
@@ -7174,8 +7184,8 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
-        elif elm_type == DeviceType.ShortCircuitDefinition:
-            elm = dev.ShortCircuitDefinition()
+        elif elm_type == DeviceType.ShortCircuitEvent:
+            elm = dev.ShortCircuitEvent()
 
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()

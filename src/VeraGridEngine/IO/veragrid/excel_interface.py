@@ -13,8 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames
-from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
+from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, get_objects_dictionary
 
 
 def check_names(names: List[str], logger: Logger) -> None:
@@ -82,8 +81,8 @@ def get_allowed_sheets() -> Dict[str, Any]:
 
             if profile_property not in allowed_data_sheets.keys():
                 # create the profile
-                allowed_data_sheets[object_type_name + '_' + profile_property] = object_sample.registered_properties[
-                    main_property].tpe
+                key = object_type_name + '_' + profile_property
+                allowed_data_sheets[key] = object_sample.registered_properties[main_property].tpe
 
         # declare the DataFrames for the normal data
         allowed_data_sheets[object_type_name] = None

@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from typing import Union
 import numpy as np
@@ -130,9 +131,21 @@ class MeasurementTemplate(PointerDeviceParent):
         return get_at(self.sigma, self.sigma_prof, t)
 
     def get_value_pu_at(self, t: int | None, Sbase: float):
+        """
+        Get measurement per-unit value at a given point
+        :param t: None for snapshot, integer for time point
+        :param Sbase: Base power (100 MVA)
+        :return: value in p.u.
+        """
         return self.get_value_at(t) / Sbase
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
+        """
+        Get measurement per-unit standard deviation at a given point
+        :param t: None for snapshot, integer for time point
+        :param Sbase: Base power (100 MVA)
+        :return: value in p.u.
+        """
         return self.get_sigma_at(t) / Sbase
 
 
@@ -465,8 +478,16 @@ class ItMeasurement(MeasurementTemplate):
                                      idtag=idtag,
                                      device_type=DeviceType.ItMeasurementDevice)
 
+    @property
+    def device(self) -> SE_BRANCH_TYPES:
+        """
+        device getter
+        :return:
+        """
+        return self._device
+
     def get_value_pu_at(self, t: int | None, Sbase: float):
-        return self.value / get_i_base(Sbase, Vbase=self.api_object.bus_to.Vnom)
+        return self.value / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
-        return self.sigma / get_i_base(Sbase, Vbase=self.api_object.bus_to.Vnom)
+        return self.sigma / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)

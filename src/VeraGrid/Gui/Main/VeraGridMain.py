@@ -89,6 +89,26 @@ class VeraGridMainGUI(ScriptingMain):
         self.ui.actionRun_Dynamic_RMS_Simulation.setVisible(True)
         self.ui.actionRun_Small_Signal_RMS_Simulation.setVisible(True)
 
+        # global delete function
+        self.ui.actionDelete_selected.triggered.connect(self.global_delete)
+
+    def global_delete(self):
+        """
+        Function to dispatch what to do when [supr] is pressed
+        :return:
+        """
+        if self.ui.mainTabWidget.currentIndex() == 0:  # Model
+            if self.ui.modelTabWidget.currentIndex() == 0:  # Diagrams
+                self.delete_selected_diagram_widgets()
+
+            elif self.ui.modelTabWidget.currentIndex() == 1:  # Database
+                self.delete_selected_db_table_objects()
+
+            else:
+                self.show_warning_toast("No effect, select diagrams or database")
+        else:
+            self.show_warning_toast("No effect, select diagrams or database")
+
     def save_all_config(self) -> None:
         """
         Save all configuration files needed
