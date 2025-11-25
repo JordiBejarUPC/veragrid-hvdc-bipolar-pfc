@@ -1045,9 +1045,13 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText('Running power flow...')
                 QtGui.QGuiApplication.processEvents()
+
                 # set power flow object instance
                 engine = self.get_preferred_engine()
-                drv = sim.PowerFlowDriver(self.circuit, options, opf_results, engine=engine)
+                drv = sim.PowerFlowDriver(grid=self.circuit,
+                                          options=options,
+                                          opf_results=opf_results,
+                                          engine=engine)
 
                 self.session.run(drv,
                                  post_func=self.post_power_flow,
@@ -1406,9 +1410,12 @@ class SimulationsMain(TimeEventsMain):
 
                     self.LOCK()
 
+                    opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                     drv = sim.ContingencyAnalysisDriver(grid=self.circuit,
                                                         options=self.get_contingency_options(),
                                                         linear_multiple_contingencies=None,  # it initializes inside
+                                                        opf_results=opf_results,
                                                         engine=self.get_preferred_engine())
 
                     self.session.run(drv,
@@ -1463,10 +1470,13 @@ class SimulationsMain(TimeEventsMain):
 
                         self.LOCK()
 
+                        opf_ts_results = self.get_opf_ts_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                         drv = sim.ContingencyAnalysisTimeSeriesDriver(grid=self.circuit,
                                                                       options=self.get_contingency_options(),
                                                                       time_indices=self.get_time_indices(),
                                                                       clustering_results=self.get_clustering_results(),
+                                                                      opf_time_series_results=opf_ts_results,
                                                                       engine=self.get_preferred_engine())
 
                         self.session.run(drv,
