@@ -49,6 +49,13 @@ threshold = 0.05
 available_margin = nc.generator_data.pmax - nc.generator_data.p
 arbitrary_generators_providing_support = np.where(available_margin > 10)[0]  # These will be the ones with reserve capacity that will be offered in the tertiary market
 
+# create technologies list
+technologies = np.array(['Unknown'] * grid.get_generators_number(), dtype=str)
+for k, elm in enumerate(grid.generators):
+    if elm.tech_list:
+        technologies[k] = elm.tech_list[0].name
+    else:
+        technologies[k] = 'Unknown'
 
 # First, remedial actions are applied to the base overloaded branches.
 for k in range(nbr):
@@ -85,7 +92,7 @@ for k in range(nbr):
 
                         selected_generators.append(gen)
                         generator_weights.append(val)
-                        generator_technologies.append(nc.generator_data.technologies[gen])
+                        generator_technologies.append(technologies[gen])
 
                         marginP += available_reduction
                         total_marginP += available_reduction
@@ -116,7 +123,7 @@ for k in range(nbr):
             else:
                 compensating_generators.append(gen)
                 compensating_weights.append(lin.PTDF[k, :][nc.generator_data.bus_idx[gen]])
-                compensating_technologies.append(nc.generator_data.technologies[gen])
+                compensating_technologies.append(technologies[gen])
                 correction_P += available_margin[gen]
         print('')
 
