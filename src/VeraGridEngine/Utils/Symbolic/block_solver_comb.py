@@ -551,6 +551,7 @@ class DiffBlockSolver(BlockSolver):
 
         i = len(self.uid2idx_vars)
         l = 0
+        #create dict for lag vars
         self._lag_vars = sorted(self._lag_vars_set, key=lambda x: (x.base_var.uid, x.lag))
         for v in self._lag_vars:  # deterministic
             self.uid2sym_vars[v.uid] = f"vars[{i}]"
