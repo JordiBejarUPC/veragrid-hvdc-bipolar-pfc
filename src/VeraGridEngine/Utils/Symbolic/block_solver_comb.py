@@ -1759,7 +1759,7 @@ class DiffBlockSolver(BlockSolver):
 
         return x_new, init_guess
 
-    def pseudo_transient_daes(self, x0, init_guess= dict(), plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
+    def pseudo_transient_daes(self, x0, init_guess= dict(), plot=True, dtau0=1e-3, h=1e-3, beta=0.8, tol=1e-5,
                               predictor=False, max_iter: float = 8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
         lag = np.zeros(len(self.uid2idx_lag))
