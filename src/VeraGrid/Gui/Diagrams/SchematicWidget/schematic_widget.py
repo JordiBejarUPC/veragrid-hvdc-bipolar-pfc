@@ -3676,8 +3676,12 @@ class SchematicWidget(BaseDiagramWidget):
             lnormC[lnormC == np.inf] = 0
             SfC_abs = np.abs(SfC)
 
-            max_flow = np.max([SfA_abs.max(), SfB_abs.max(), SfC_abs.max(),
-                               np.abs(hvdc_PfA).max(), np.abs(hvdc_PfB).max(), np.abs(hvdc_PfC).max()])
+            max_flow = np.max([SfA_abs.max() if len(SfA_abs) > 0 else 0,
+                               SfB_abs.max() if len(SfB_abs) > 0 else 0,
+                               SfC_abs.max() if len(SfC_abs) > 0 else 0,
+                               np.abs(hvdc_PfA).max() if len(hvdc_PfA) > 0 else 0,
+                               np.abs(hvdc_PfB).max() if len(hvdc_PfB) > 0 else 0,
+                               np.abs(hvdc_PfC).max() if len(hvdc_PfC) > 0 else 0])
 
             if max_flow != 0:
                 Sfnorm = np.maximum(np.maximum(SfA_abs, SfB_abs), SfC_abs) / max_flow

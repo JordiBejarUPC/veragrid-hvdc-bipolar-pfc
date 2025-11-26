@@ -530,7 +530,7 @@ def get_nominal_voltage(topological_node: CGMES_TOPOLOGICAL_NODE, logger: DataLo
                              device=topological_node.rdfid,
                              device_class=topological_node.tpe,
                              device_property="BaseVoltage",
-                             value=topological_node.BaseVoltage,
+                             value=topological_node.parsed_properties.get("BaseVoltage", "not provided"),
                              expected_value='object')
             return 0.0
     else:
@@ -538,7 +538,7 @@ def get_nominal_voltage(topological_node: CGMES_TOPOLOGICAL_NODE, logger: DataLo
                          device=topological_node.rdfid,
                          device_class=topological_node.tpe,
                          device_property="BaseVoltage",
-                         value=topological_node.BaseVoltage,
+                         value=topological_node.parsed_properties.get("BaseVoltage", "not provided"),
                          expected_value='object')
         return 0.0
 
@@ -558,7 +558,7 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                         logger.add_error(msg='Missing reference',
                                          device=cn.rdfid,
                                          device_class=cn.tpe,
-                                         device_property="nominalVoltage",
+                                         device_property="BaseVoltage",
                                          value=cn.ConnectivityNodeContainer.VoltageLevel.BaseVoltage,
                                          expected_value='object')
                         return 0.0
@@ -566,16 +566,16 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                     logger.add_error(msg='Missing reference',
                                      device=cn.rdfid,
                                      device_class=cn.tpe,
-                                     device_property="nominalVoltage",
-                                     value=cn.ConnectivityNodeContainer,
+                                     device_property="ConnectivityNodeContainer",
+                                     value=cn.parsed_properties.get("ConnectivityNodeContainer", "not provided"),
                                      expected_value='object')
                     return 0.0
             else:
                 logger.add_error(msg='Missing reference',
                                  device=cn.rdfid,
                                  device_class=cn.tpe,
-                                 device_property="BaseVoltage",
-                                 value=cn.ConnectivityNodeContainer,
+                                 device_property="ConnectivityNodeContainer",
+                                 value=cn.parsed_properties.get("ConnectivityNodeContainer", "not provided"),
                                  expected_value='object')
                 return 0.0
         else:
@@ -587,16 +587,18 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                         logger.add_error(msg='Missing reference',
                                          device=cn.rdfid,
                                          device_class=cn.tpe,
-                                         device_property="nominalVoltage",
-                                         value=cn.ConnectivityNodeContainer.BaseVoltage,
+                                         device_property="BaseVoltage",
+                                         value=cn.ConnectivityNodeContainer.parsed_properties.get("BaseVoltage",
+                                                                                                  "not provided"),
                                          expected_value='object')
                         return 0.0
                 else:
                     logger.add_error(msg='Missing reference',
                                      device=cn.rdfid,
                                      device_class=cn.tpe,
-                                     device_property="nominalVoltage",
-                                     value=cn.ConnectivityNodeContainer,
+                                     device_property="BaseVoltage",
+                                     value=cn.ConnectivityNodeContainer.parsed_properties("BaseVoltage",
+                                                                                          "not provided"),
                                      expected_value='object')
                     return 0.0
             else:
@@ -779,7 +781,10 @@ def get_regulating_control_params(cgmes_elm,
 
             base_voltage = 0  # default
             if controlled_terminal.TopologicalNode:
-                base_voltage = controlled_terminal.TopologicalNode.BaseVoltage.nominalVoltage
+                if controlled_terminal.TopologicalNode.BaseVoltage is not None:
+                    base_voltage = controlled_terminal.TopologicalNode.BaseVoltage.nominalVoltage
+                else:
+                    pass
             else:
                 if controlled_terminal.ConnectivityNode:
                     tn = controlled_terminal.ConnectivityNode.TopologicalNode

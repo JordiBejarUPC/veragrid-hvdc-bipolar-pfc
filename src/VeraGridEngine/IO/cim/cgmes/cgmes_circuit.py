@@ -20,6 +20,13 @@ from VeraGridEngine.enumerations import CGMESVersions
 def find_attribute(obj: CGMES_ASSETS,
                    property_name: str,
                    association_inverse_dict: Dict[Tuple[str, str], str]):
+    """
+
+    :param obj:
+    :param property_name:
+    :param association_inverse_dict:
+    :return:
+    """
     return association_inverse_dict.get((obj.tpe, property_name))
 
 
@@ -78,7 +85,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                     elif isinstance(cim_prop.class_type, Enum) or isinstance(cim_prop.class_type, EnumMeta):
 
-                        if type(value) == str:
+                        if isinstance(value, str):
                             chunks = value.split('.')
                             value2 = chunks[-1]
                             try:
@@ -125,6 +132,9 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                                 # I want to know that it was not found
                                 element.missing_references[property_name] = value
+
+                                # set the referencing property to None:
+                                setattr(element, property_name, None)
 
                                 if hasattr(element, 'rdfid'):
                                     logger.add_error(msg='Reference not found',
@@ -175,6 +185,9 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                                     # I want to know that it was not found
                                     element.missing_references[property_name] = v
+
+                                    # set the referencing property to None:
+                                    setattr(element, property_name, None)
 
                                     if hasattr(element, 'rdfid'):
                                         logger.add_error(msg='Reference not found',

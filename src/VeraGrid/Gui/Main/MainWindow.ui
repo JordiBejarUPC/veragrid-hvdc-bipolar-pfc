@@ -4482,6 +4482,9 @@ QProgressBar::chunk{
                    <pointsize>9</pointsize>
                   </font>
                  </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Theoretically PTDF and LODF values should be in the range (-1, 1)&lt;br/&gt;However, this is not true in general for any grid due to the existence of antennas.&lt;br/&gt;With this option the values are truncated to the range (-1, 1)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
                  <property name="text">
                   <string>Correct nonsense values</string>
                  </property>
@@ -4514,6 +4517,9 @@ QProgressBar::chunk{
                   <font>
                    <pointsize>9</pointsize>
                   </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;With this option, the PTDF is computed such that the slack effects are distributed&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="text">
                   <string>Distributed slack</string>
@@ -4722,7 +4728,7 @@ QProgressBar::chunk{
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the power flow is run using the three-pahse unbalanced formulation composing 4x4 impedance matrices form the available database data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
-                     <string>3-phase</string>
+                     <string>Unbalanced formulation</string>
                     </property>
                    </widget>
                   </item>
@@ -13281,7 +13287,7 @@ QProgressBar::chunk{
   <action name="actionAdd_rms_event_to_selected">
    <property name="icon">
     <iconset resource="icons.qrc">
-     <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
+     <normaloff>:/Icons/icons/dyn_add.png</normaloff>:/Icons/icons/dyn_add.png</iconset>
    </property>
    <property name="text">
     <string>Add rms event to selected</string>
@@ -13326,7 +13332,7 @@ QProgressBar::chunk{
   <action name="actionAdd_short_circuit_events">
    <property name="icon">
     <iconset resource="icons.qrc">
-     <normaloff>:/Icons/icons/short_circuit.png</normaloff>:/Icons/icons/short_circuit.png</iconset>
+     <normaloff>:/Icons/icons/short_circuit_plus.png</normaloff>:/Icons/icons/short_circuit_plus.png</iconset>
    </property>
    <property name="text">
     <string>Add short circuit events</string>

@@ -1290,14 +1290,16 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
                 # min PATL rate in MW/MVA
                 cont_rate_mva = tatl_900_dict.get(cgmes_elm.uuid, 9999.0)
                 # min TATL900 rate in MW/MVA
+
                 if cont_rate_mva != 9999.0:
-                    cont_factor = cont_rate_mva / normal_rate_mva
+                    cont_factor = cont_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.0
                 else:
                     cont_factor = 1.0
+
                 prot_rate_mva = tatl_60_dict.get(cgmes_elm.uuid, 9999.0)
                 # min TATL60 rate in MW/MVA
                 if prot_rate_mva != 9999.0:
-                    prot_factor = prot_rate_mva / normal_rate_mva
+                    prot_factor = prot_rate_mva / normal_rate_mva if normal_rate_mva != 0.0 else 1.4
                 else:
                     prot_factor = 1.4
 
@@ -1465,12 +1467,12 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
             normal_rate_mva = patl_dict.get(cgmes_elm.uuid, 9999.0)  # min PATL rate in MW/MVA
             cont_rate_mva = tatl_900_dict.get(cgmes_elm.uuid, 9999.0)  # min TATL900 rate in MW/MVA
             if cont_rate_mva != 9999.0:
-                cont_factor = cont_rate_mva / normal_rate_mva
+                cont_factor = cont_rate_mva / normal_rate_mva if normal_rate_mva != 0 else 1.4
             else:
                 cont_factor = 1.0
             prot_rate_mva = tatl_60_dict.get(cgmes_elm.uuid, 9999.0)  # min TATL60 rate in MW/MVA
             if prot_rate_mva != 9999.0:
-                prot_factor = prot_rate_mva / normal_rate_mva
+                prot_factor = prot_rate_mva / normal_rate_mva if normal_rate_mva != 0 else 1.4
             else:
                 prot_factor = 1.4
 
@@ -2282,24 +2284,28 @@ def get_gcdev_voltage_levels(cgmes_model: CgmesCircuit,
 
         if not isinstance(cgmes_elm.BaseVoltage, str):  # if it is a string it was not substituted...
 
-            gcdev_elm = gcdev.VoltageLevel(
-                idtag=cgmes_elm.uuid,
-                name=cgmes_elm.name,
-                Vnom=cgmes_elm.BaseVoltage.nominalVoltage
-            )
-
-            if cgmes_elm.Substation is not None:
-                subs = find_object_by_idtag(
-                    object_list=gcdev_model.substations,
-                    target_idtag=cgmes_elm.Substation.uuid  # gcdev_elm.idtag
+            if cgmes_elm.BaseVoltage is not None:
+                gcdev_elm = gcdev.VoltageLevel(
+                    idtag=cgmes_elm.uuid,
+                    name=cgmes_elm.name,
+                    Vnom=cgmes_elm.BaseVoltage.nominalVoltage
                 )
 
-                if subs:
-                    gcdev_elm.substation = subs
+                if cgmes_elm.Substation is not None:
+                    subs = find_object_by_idtag(
+                        object_list=gcdev_model.substations,
+                        target_idtag=cgmes_elm.Substation.uuid  # gcdev_elm.idtag
+                    )
 
-            gcdev_model.add_voltage_level(gcdev_elm)
-            volt_lev_dict[gcdev_elm.idtag] = gcdev_elm
+                    if subs:
+                        gcdev_elm.substation = subs
 
+                gcdev_model.add_voltage_level(gcdev_elm)
+                volt_lev_dict[gcdev_elm.idtag] = gcdev_elm
+            else:
+                logger.add_error(msg='Base voltage not found for VoltageLevel',
+                                 device=cgmes_elm.parsed_properties.get("BaseVoltage", "not provided"),
+                                 comment="get_gcdev_voltage_levels")
         else:
             logger.add_error(msg='Base voltage not found for VoltageLevel',
                              device=str(cgmes_elm.BaseVoltage),
