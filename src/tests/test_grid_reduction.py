@@ -322,8 +322,8 @@ def test_ptdf_projected_gb():
     :return:
     """
 
-    # fname = os.path.join('data', 'grids', 'gb_t0.veragrid')
-    fname = os.path.join('src', 'tests', 'data', 'grids', 'gb_t0.veragrid')
+    fname = os.path.join('data', 'grids', 'gb_t0.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'gb_t0.veragrid')
     grid = gce.open_file(filename=fname)
 
     P_original_gen = 0.0
@@ -368,6 +368,14 @@ def test_ptdf_projected_gb():
     
     # assert np.allclose(flows_branches[[1, 2, 3, 4, 5]], flows_branches_red, atol=1e-4)
     
+    print('Net original: ', net_original)
+    print('Net reduced: ', net_reduced)
+    print('P original gen: ', P_original_gen)
+    print('P reduced gen: ', P_reduced_gen)
+    print('P original load: ', P_original_load)
+    print('P reduced load: ', P_reduced_load)
+    print('P original gen - P reduced gen: ', P_original_gen - P_reduced_gen)
+    print('P original load - P reduced load: ', P_original_load - P_reduced_load)
     assert abs(net_reduced) < 1e-4
     assert abs(P_original_gen - P_reduced_gen) < 1e-4
     assert abs(P_original_load - P_reduced_load) < 1e-4

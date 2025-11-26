@@ -1505,24 +1505,41 @@ class Assets:
         if branches_to_delete:
             branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
 
-            # Process contingencies in batch
+            # Process contingencies in batch. Remove all at once, then check for empty groups
             contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
-            for elm in contingencies_to_delete:
-                self.delete_contingency(elm, del_group=True)
+            if contingencies_to_delete:
+                contingencies_to_delete_set = set(contingencies_to_delete)
+                # Remove all contingencies in one pass
+                self._contingencies = [c for c in self._contingencies if c not in contingencies_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {c.group for c in self._contingencies}
+                groups_to_delete = [g for g in self._contingency_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_contingency_group(grp)
 
-            # Process remedial actions in batch
+            # Process remedial actions in batch. Remove all at once, then check for empty groups
             remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
-            for elm in remedial_actions_to_delete:
-                self.delete_remedial_action(elm, del_group=True)
+            if remedial_actions_to_delete:
+                remedial_actions_to_delete_set = set(remedial_actions_to_delete)
+                # Remove all remedial actions in one pass
+                self._remedial_actions = [r for r in self._remedial_actions if r not in remedial_actions_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {r.group for r in self._remedial_actions}
+                groups_to_delete = [g for g in self._remedial_action_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_remedial_action_group(grp)
 
-            # Process investments in batch
+            # Process investments in batch. Remove all at once, then check for empty groups
             investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
-            for elm in investments_to_delete:
-                self.delete_investment(elm, del_group=True)
-
-        else:
-            # No branches to delete, so nothing to be done
-            pass
+            if investments_to_delete:
+                investments_to_delete_set = set(investments_to_delete)
+                # Remove all investments in one pass
+                self._investments = [i for i in self._investments if i not in investments_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {i.group for i in self._investments}
+                groups_to_delete = [g for g in self._investments_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_investment_groups(grp)
 
         return None
 
@@ -5793,6 +5810,7 @@ class Assets:
         """
         for elm in self.contingencies:
             if elm.device_idtag == obj.idtag:
+                print(elm)
                 self.delete_contingency(elm, del_group=delete_groups)
 
         for elm in self.remedial_actions:
