@@ -1461,10 +1461,8 @@ class Assets:
                         inj_list[i].bus = None
 
         # delete the bus itself
-        try:
-            self._buses.remove(obj)
-        except ValueError:
-            print(f"Could not delete {obj.name}")
+        # Use list comprehension for faster removal (avoids ValueError if already removed)
+        self._buses = [b for b in self._buses if b != obj]
 
     def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
@@ -1575,12 +1573,9 @@ class Assets:
             pass
 
         # delete the bus itself - use set difference for faster removal
-        buses_to_remove_list = list(buses_to_remove)
-        for elm in buses_to_remove_list:
-            try:
-                self._buses.remove(elm)
-            except ValueError:
-                print(f"Could not delete {elm.name}")
+        # Remove all buses in one pass using list comprehension (faster and avoids ValueError)
+        buses_to_remove_set = buses_to_remove
+        self._buses = [b for b in self._buses if b not in buses_to_remove_set]
 
     def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
         """

@@ -895,7 +895,8 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object.scene() is not None:
                 self.diagram_scene.removeItem(graphic_object)
             else:
-                self.gui.show_warning_toast(f"Null scene for {graphic_object}, was it deleted already?")
+                # self.gui.show_warning_toast(f"Null scene for {graphic_object}, was it deleted already?")
+                pass
 
     def set_selected_buses(self, buses: List[Bus]):
         """
