@@ -2123,7 +2123,6 @@ class SimulationsMain(TimeEventsMain):
         contingency_groups_used = self.get_contingency_groups_matching_the_filter()
         skip_generation_limits = self.ui.skipOpfGenerationLimitsCheckBox.isChecked()
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
-        maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
         consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
         area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
@@ -2136,18 +2135,15 @@ class SimulationsMain(TimeEventsMain):
         report_formulation = self.ui.save_mip_checkBox.isChecked()
 
         # available transfer capacity inter areas
-        if maximize_flows:
-            inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
+        inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
 
-            if len(inter_aggregation_info.lst_from) == 0:
-                self.show_error_toast('The area "from" has no buses!', 5000)
-                return None
+        if len(inter_aggregation_info.lst_from) == 0:
+            self.show_error_toast('The area "from" has no buses!', 5000)
+            return None
 
-            if len(inter_aggregation_info.lst_to) == 0:
-                self.show_error_toast('The area "to" has no buses!', 5000)
-                return None
-        else:
-            inter_aggregation_info = None
+        if len(inter_aggregation_info.lst_to) == 0:
+            self.show_error_toast('The area "to" has no buses!', 5000)
+            return None
 
         ips_method = self.ips_solvers_dict[self.ui.ips_method_comboBox.currentText()]
         ips_tolerance = 1.0 / (10.0 ** self.ui.ips_tolerance_spinBox.value())
