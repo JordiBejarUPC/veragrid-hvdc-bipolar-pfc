@@ -489,9 +489,14 @@ def short_circuit_abc(nc: NumericalCircuit,
     :param phases: Phases where the short-circuit occurs
     :return: short circuit results
     """
-
+    # -----------------------------------------------------------------------------------------------------------------
+    # Compute Ybus
+    # -----------------------------------------------------------------------------------------------------------------
     Ybus_masked, Yf, Yt, Yshunt_bus, mask, bus_lookup, branch_lookup = compute_ybus(nc)
 
+    # -----------------------------------------------------------------------------------------------------------------
+    # Voltage and power results from the power flow simulation
+    # -----------------------------------------------------------------------------------------------------------------
     Vpf = np.zeros(nc.nbus * 4, dtype=complex)
     Vpf[0::4] = voltage_N
     Vpf[1::4] = voltage_A
@@ -504,8 +509,10 @@ def short_circuit_abc(nc: NumericalCircuit,
     Spf[1::4] = Sbus_A
     Spf[2::4] = Sbus_B
     Spf[3::4] = Sbus_C
-    Spf_masked = Spf[mask]
 
+    # -----------------------------------------------------------------------------------------------------------------
+    # Linearised admittances of constant power and current loads
+    # -----------------------------------------------------------------------------------------------------------------
     _, Y_power_linear, _ = compute_power_loads(bus_idx=nc.load_data.bus_idx,
                                                bus_lookup=bus_lookup,
                                                V=Vpf_masked,
@@ -523,6 +530,14 @@ def short_circuit_abc(nc: NumericalCircuit,
     Y_power_linear /= (nc.Sbase / 3)
     Y_current_linear /= (nc.Sbase / 3)
 
+    Yloads_diags = sp.diags(Y_power_linear + Y_current_linear)
+
+    Yloads = Y_power_linear + Y_current_linear
+    Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
+
+    # -----------------------------------------------------------------------------------------------------------------
+    # Building the fault admittance matrix, depending on the short-circuit type and the phases involved
+    # -----------------------------------------------------------------------------------------------------------------
     Yfault = np.zeros((len(Vpf), len(Vpf)), dtype=complex)
     a = 4 * bus_index + 1
     b = 4 * bus_index + 2
@@ -607,19 +622,23 @@ def short_circuit_abc(nc: NumericalCircuit,
     Yfault_masked = Yfault[mask, :][:, mask]
     Yfault_masked = sp.csc_matrix(Yfault_masked)
 
-    Ygen_csc = compute_ybus_generator(nc=nc)
-    Ygen_masked_csc = Ygen_csc[mask, :][:, mask]
+    # -----------------------------------------------------------------------------------------------------------------
+    # Generators admittance matrix
+    # -----------------------------------------------------------------------------------------------------------------
+    Ygen = compute_ybus_generator(nc=nc)
+    Ygen_masked = Ygen[mask, :][:, mask]
 
-    # TODO: add before making diags
-    Yloads = sp.diags(Y_power_linear + Y_current_linear)
-    Ylinear_masked = Ybus_masked - Yloads + Yfault_masked + Ygen_masked_csc
+    # -----------------------------------------------------------------------------------------------------------------
+    # Full linear admittance matrix
+    # -----------------------------------------------------------------------------------------------------------------
+    Ylinear_masked = Ybus_masked - Yloads_diags + Yfault_masked + Ygen_masked
 
-    Yloads = Y_power_linear + Y_current_linear
-    Yloads_expanded = expand_magnitudes(Yloads, bus_lookup)
-
+    # -----------------------------------------------------------------------------------------------------------------
+    # Generators Norton's current
+    # -----------------------------------------------------------------------------------------------------------------
     S = (Spf / (nc.Sbase / 3)) - Vpf * np.conj(Yloads_expanded * Vpf)
 
-    idx4 = np.array([1, 2, 3]) # we deliberite
+    idx4 = np.array([1, 2, 3])
     idx3 = np.array([0, 1, 2])
 
     gen_idx = nc.generator_data.bus_idx
@@ -629,24 +648,31 @@ def short_circuit_abc(nc: NumericalCircuit,
 
     for i in range(n_buses):
         U = Vpf[gen_idx[i] + idx4]
-        Y = Ygen_csc[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
+        Y = Ygen[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
         I = np.conj(S[np.ix_(gen_idx[i] + idx4)] / U)
         E = U + np.linalg.solve(Y.toarray(), I)
         Inorton_i = Y @ E
         Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
 
+    # -----------------------------------------------------------------------------------------------------------------
+    # Short-circuit voltage
+    # -----------------------------------------------------------------------------------------------------------------
     Usc = spsolve(Ylinear_masked, Inorton)
     Usc_expanded = expand_magnitudes(Usc, bus_lookup)
 
+    # -----------------------------------------------------------------------------------------------------------------
+    # Load-Flow-Based Calculation of Initial Short-Circuit Currents for Converter-Based Power System
+    # -----------------------------------------------------------------------------------------------------------------
     Ik_max = maximum_initial_shortcircuit_current(
         nc=nc,
         Zf=Zf[bus_index],
         faulted_bus=bus_index
     )
 
-    """
-    Results
-    """
+    # -----------------------------------------------------------------------------------------------------------------
+    # Saving Results
+    # -----------------------------------------------------------------------------------------------------------------
+
     # voltage, Sf, loading, losses, error, converged, Qpv
     results = ShortCircuitResults(
         nsc=1,

@@ -201,10 +201,11 @@ class SimulationsMain(TimeEventsMain):
         self.ui.investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
         # contingency filtering modes
-        con_filters = [ContingencyFilteringMethods.All,
+        con_filters = [ContingencyFilteringMethods.AllActive,
                        ContingencyFilteringMethods.Country,
                        ContingencyFilteringMethods.Area,
-                       ContingencyFilteringMethods.Zone]
+                       ContingencyFilteringMethods.Zone,
+                       ContingencyFilteringMethods.SensitiveToMonitored]
         self.contingency_filter_modes_dict = OrderedDict()
         con_filter_vals = list()
         for con_filter in con_filters:
@@ -447,7 +448,7 @@ class SimulationsMain(TimeEventsMain):
         """
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             mdl = None
 
         elif filter_mode == ContingencyFilteringMethods.Country:
@@ -465,6 +466,18 @@ class SimulationsMain(TimeEventsMain):
                                     checks=True,
                                     check_value=True)
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+
+            drv, res = self.session.linear_power_flow
+            if res is None:
+                self.show_warning_toast("Run a linear analysis to enable filter contingencies by sensitivity")
+                mdl = None
+                self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
+            else:
+                threshold = self.ui.lodf_threshold_doubleSpinBox.value()
+                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_moitoring(LODF=res.LODF,
+                                                                                           threshold=threshold)
+                mdl = gf.get_elm_chck_list_model(self.circuit.contingency_groups, sensitive_idx)
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -479,9 +492,9 @@ class SimulationsMain(TimeEventsMain):
         # get the filter mode
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             # no filtering, we're safe
-            return self.circuit.get_contingency_groups()
+            return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Country:
 
@@ -514,6 +527,9 @@ class SimulationsMain(TimeEventsMain):
                 # default to returning all groups, since it's safer
                 return self.circuit.get_contingency_groups()
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+            idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+            return [self.circuit.contingency_groups[i] for i in idx]
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -606,6 +622,22 @@ class SimulationsMain(TimeEventsMain):
 
         return model
 
+    @staticmethod
+    def get_short_circuits_combination_tree_model(drv: sim.ShortCircuitDriver) -> QtGui.QStandardItemModel:
+        """
+        Get the investments combination tree model
+        :param drv:
+        :return:
+        """
+        model = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Short circuits"])
+
+        for i, sc_name in enumerate(drv.results.sc_names):
+            row_items = [QtGui.QStandardItem(sc_name)]
+            model.appendRow(row_items)
+
+        return model
+
     def fill_combinations_tree(self, drv: DRIVER_OBJECTS | None):
         """
         Fill the tree driver
@@ -616,6 +648,10 @@ class SimulationsMain(TimeEventsMain):
         else:
             if drv.tpe == SimulationTypes.InvestmentsEvaluation_run:
                 model = self.get_investments_combination_tree_model(drv=drv)
+                self.ui.combinationsTreeView.setModel(model)
+
+            elif drv.tpe == SimulationTypes.ShortCircuit_run:
+                model = self.get_short_circuits_combination_tree_model(drv=drv)
                 self.ui.combinationsTreeView.setModel(model)
                 # self.ui.combinationsTreeView.expandAll()
 
@@ -1045,9 +1081,13 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText('Running power flow...')
                 QtGui.QGuiApplication.processEvents()
+
                 # set power flow object instance
                 engine = self.get_preferred_engine()
-                drv = sim.PowerFlowDriver(self.circuit, options, opf_results, engine=engine)
+                drv = sim.PowerFlowDriver(grid=self.circuit,
+                                          options=options,
+                                          opf_results=opf_results,
+                                          engine=engine)
 
                 self.session.run(drv,
                                  post_func=self.post_power_flow,
@@ -1406,9 +1446,12 @@ class SimulationsMain(TimeEventsMain):
 
                     self.LOCK()
 
+                    opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                     drv = sim.ContingencyAnalysisDriver(grid=self.circuit,
                                                         options=self.get_contingency_options(),
                                                         linear_multiple_contingencies=None,  # it initializes inside
+                                                        opf_results=opf_results,
                                                         engine=self.get_preferred_engine())
 
                     self.session.run(drv,
@@ -1463,10 +1506,13 @@ class SimulationsMain(TimeEventsMain):
 
                         self.LOCK()
 
+                        opf_ts_results = self.get_opf_ts_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                         drv = sim.ContingencyAnalysisTimeSeriesDriver(grid=self.circuit,
                                                                       options=self.get_contingency_options(),
                                                                       time_indices=self.get_time_indices(),
                                                                       clustering_results=self.get_clustering_results(),
+                                                                      opf_time_series_results=opf_ts_results,
                                                                       engine=self.get_preferred_engine())
 
                         self.session.run(drv,
@@ -2113,7 +2159,6 @@ class SimulationsMain(TimeEventsMain):
         contingency_groups_used = self.get_contingency_groups_matching_the_filter()
         skip_generation_limits = self.ui.skipOpfGenerationLimitsCheckBox.isChecked()
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
-        maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
         consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
         area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
@@ -2126,18 +2171,15 @@ class SimulationsMain(TimeEventsMain):
         report_formulation = self.ui.save_mip_checkBox.isChecked()
 
         # available transfer capacity inter areas
-        if maximize_flows:
-            inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
+        inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
 
-            if len(inter_aggregation_info.lst_from) == 0:
-                self.show_error_toast('The area "from" has no buses!', 5000)
-                return None
+        if len(inter_aggregation_info.lst_from) == 0:
+            self.show_error_toast('The area "from" has no buses!', 5000)
+            return None
 
-            if len(inter_aggregation_info.lst_to) == 0:
-                self.show_error_toast('The area "to" has no buses!', 5000)
-                return None
-        else:
-            inter_aggregation_info = None
+        if len(inter_aggregation_info.lst_to) == 0:
+            self.show_error_toast('The area "to" has no buses!', 5000)
+            return None
 
         ips_method = self.ips_solvers_dict[self.ui.ips_method_comboBox.currentText()]
         ips_tolerance = 1.0 / (10.0 ** self.ui.ips_tolerance_spinBox.value())
@@ -2779,7 +2821,7 @@ class SimulationsMain(TimeEventsMain):
 
                     self.session.run(
                         drv,
-                        post_func=self.post_run_investments_evaluation,
+                        post_func=self.post_investments_evaluation,
                         prog_func=self.ui.progressBar.setValue,
                         text_func=self.ui.progress_label.setText
                     )
@@ -2795,7 +2837,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_run_investments_evaluation(self) -> None:
+    def post_investments_evaluation(self) -> None:
         """
         Post investments evaluation
         """
