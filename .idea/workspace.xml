@@ -28,15 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed active type">
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/abur_exposito_se_example.veragrid" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="some bug fixes&#10;Connected the SE event&#10;Rearranged the power flow checks in the GUI">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/pointer_device_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/pointer_device_parent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_state_estimation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_state_estimation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/basic_structures.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/basic_structures.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1842,7 +1837,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="654" />
+    <option name="localTasksCounter" value="655" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1888,7 +1883,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added anarede examples" />
     <MESSAGE value="minimal fix when transformer templates do not exist" />
     <MESSAGE value="Added missing bus highlight clearing action" />
     <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
@@ -1913,7 +1907,8 @@
     <MESSAGE value="Triggered recalculation of ys and ysh in lines if the AdmittanceMatrix size is not 4" />
     <MESSAGE value="Added filtering contingencies by sensitivity" />
     <MESSAGE value="Fixed active type" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed active type" />
+    <MESSAGE value="some bug fixes&#10;Connected the SE event&#10;Rearranged the power flow checks in the GUI" />
+    <option name="LAST_COMMIT_MESSAGE" value="some bug fixes&#10;Connected the SE event&#10;Rearranged the power flow checks in the GUI" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
