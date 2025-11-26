@@ -201,10 +201,11 @@ class SimulationsMain(TimeEventsMain):
         self.ui.investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
         # contingency filtering modes
-        con_filters = [ContingencyFilteringMethods.All,
+        con_filters = [ContingencyFilteringMethods.AllActive,
                        ContingencyFilteringMethods.Country,
                        ContingencyFilteringMethods.Area,
-                       ContingencyFilteringMethods.Zone]
+                       ContingencyFilteringMethods.Zone,
+                       ContingencyFilteringMethods.SensitiveToMonitored]
         self.contingency_filter_modes_dict = OrderedDict()
         con_filter_vals = list()
         for con_filter in con_filters:
@@ -447,7 +448,7 @@ class SimulationsMain(TimeEventsMain):
         """
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             mdl = None
 
         elif filter_mode == ContingencyFilteringMethods.Country:
@@ -465,6 +466,18 @@ class SimulationsMain(TimeEventsMain):
                                     checks=True,
                                     check_value=True)
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+
+            drv, res = self.session.linear_power_flow
+            if res is None:
+                self.show_warning_toast("Run a linear analysis to enable filter contingencies by sensitivity")
+                mdl = None
+                self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
+            else:
+                threshold = self.ui.lodf_threshold_doubleSpinBox.value()
+                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_moitoring(LODF=res.LODF,
+                                                                                           threshold=threshold)
+                mdl = gf.get_elm_chck_list_model(self.circuit.contingency_groups, sensitive_idx)
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -479,9 +492,9 @@ class SimulationsMain(TimeEventsMain):
         # get the filter mode
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             # no filtering, we're safe
-            return self.circuit.get_contingency_groups()
+            return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Country:
 
@@ -514,6 +527,9 @@ class SimulationsMain(TimeEventsMain):
                 # default to returning all groups, since it's safer
                 return self.circuit.get_contingency_groups()
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+            idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+            return [self.circuit.contingency_groups[i] for i in idx]
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 

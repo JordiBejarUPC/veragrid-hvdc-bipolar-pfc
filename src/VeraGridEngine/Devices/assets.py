@@ -2,14 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import warnings
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
-from VeraGridEngine.Devices.Dynamic.events import RmsEvent
-from VeraGridEngine.basic_structures import IntVec, StrVec, Vec
+from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
@@ -3950,6 +3951,55 @@ class Assets:
             for grp in to_del:
                 self.delete_contingency_group(grp)
 
+    def get_contingencies_by_group(self) -> Dict[dev.ContingencyGroup, List[dev.Contingency]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[dev.Contingency]] = dict()
+
+        for con in self.contingencies:
+            lst = d.get(con.group, None)
+
+            if lst is None:
+                d[con.group] = [con]
+            else:
+                lst.append(con)
+
+        return d
+
+    def get_contingency_branch_indices_by_group(
+            self,
+            add_vsc: bool = True,
+            add_hvdc: bool = True,
+            add_switch: bool = False) -> Dict[dev.ContingencyGroup, List[int]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[int]] = dict()
+
+        br_idtag_dict = self.get_branches_idtag_index_dict(add_vsc=add_vsc,
+                                                           add_hvdc=add_hvdc,
+                                                           add_switch=add_switch)
+
+        for con in self.contingencies:
+
+            idx = br_idtag_dict.get(con.device_idtag, None)
+
+            if idx is not None:
+                lst = d.get(con.group, None)
+
+                if lst is None:
+                    d[con.group] = [idx]
+                else:
+                    lst.append(idx)
+
+        return d
+
     # ------------------------------------------------------------------------------------------------------------------
     # Contingency group
     # ------------------------------------------------------------------------------------------------------------------
@@ -3972,6 +4022,13 @@ class Assets:
         :return:List[dev.ContingencyGroup]
         """
         return self._contingency_groups
+
+    def get_contingency_groups_active(self) -> List[dev.ContingencyGroup]:
+        """
+        Get contingency_groups
+        :return:List[dev.ContingencyGroup]
+        """
+        return [e for e in self._contingency_groups if e.active]
 
     def get_contingency_groups_number(self) -> int:
         """
@@ -4108,6 +4165,40 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
+
+    def get_contingency_groups_sensitive_to_moitoring(self, LODF: Mat, threshold: float) -> IntVec:
+        """
+        Get a list of contingency groups that are sensitive to the monitoring rule
+        :param LODF: LODF matrix (nbr, nbr)
+        :param threshold: LODF threshold
+        :return: vector of sensitive status
+        """
+
+        d = self.get_contingency_branch_indices_by_group()
+        sensitive = np.zeros(self.get_contingency_groups_number(), dtype=bool)
+
+        for cg_idx, con_group in enumerate(self.contingency_groups):  # for every contingency group
+
+            # get the branch indices of this contingency group
+            branch_indices = d[con_group]
+
+            sensitive[cg_idx] = False
+
+            if con_group.active:
+                i = 0
+                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True):  # for every branch
+
+                    if elm.monitor_loading:  # if monitored
+
+                        # check if any contingency branch is sensitive to the monitored branch
+
+                        for j in branch_indices:
+                            if abs(LODF[i, j]) >= threshold:
+                                sensitive[cg_idx] = True
+
+                    i += 1
+
+        return sensitive
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment group
@@ -5672,6 +5763,26 @@ class Assets:
             F[i] = bus_dict[elm.bus_from]
             T[i] = bus_dict[elm.bus_to]
         return F, T
+
+    def get_branches_monitored_indices(self,
+                                       add_vsc: bool = True,
+                                       add_hvdc: bool = True,
+                                       add_switch: bool = False) -> IntVec:
+        """
+         Get the indices of the monitored branche
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: numpy array with the indices of the branches
+        """
+        lst = list()
+        i = 0
+        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+            if elm.monitor_loading:
+                lst.append(i)
+            i += 1
+
+        return np.array(lst, dtype=int)
 
     def delete_groupings_with_object(self, obj: BRANCH_TYPES, delete_groups: bool = True):
         """
