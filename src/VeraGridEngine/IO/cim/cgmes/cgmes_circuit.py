@@ -256,44 +256,53 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
     :param logger:DataLogger
     :return: None
     """
-    for class_name, objects_dict in data.items():
+    if not isinstance(data, dict):
+        logger.add_error("Data is garbage",
+                         value=data)
+    else:
 
-        objects_list = list()
-        for rdfid, object_data in objects_dict.items():
+        for class_name, objects_dict in data.items():
 
-            object_template = class_dict.get(class_name, None)
-
-            if object_template is not None:
-
-                parsed_object = object_template(rdfid=rdfid, tpe=class_name)
-
-                if all_objects_dict_boundary is None:
-                    parsed_object.boundary_set = True
-
-                parsed_object.parse_dict(data=object_data, logger=logger)
-
-                found = all_objects_dict.get(parsed_object.rdfid, None)
-
-                if found is None:
-                    all_objects_dict[parsed_object.rdfid] = parsed_object
-                else:
-                    if "Sv" not in class_name:
-                        logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
-
-                objects_list.append(parsed_object)
-
+            if not isinstance(objects_dict, dict):
+                logger.add_error("Data is garbage",
+                                 value=objects_dict)
             else:
-                logger.add_error("Class not recognized", device_class=class_name)
+                objects_list = list()
+                for rdfid, object_data in objects_dict.items():
 
-        elements_by_type[class_name] = objects_list
+                    object_template = class_dict.get(class_name, None)
 
-    # replace references by actual objects
-    find_references(elements_by_type=elements_by_type,
-                    all_objects_dict=all_objects_dict,
-                    all_objects_dict_boundary=all_objects_dict_boundary,
-                    association_inverse_dict=association_inverse_dict,
-                    logger=logger,
-                    mark_used=True)
+                    if object_template is not None:
+
+                        parsed_object = object_template(rdfid=rdfid, tpe=class_name)
+
+                        if all_objects_dict_boundary is None:
+                            parsed_object.boundary_set = True
+
+                        parsed_object.parse_dict(data=object_data, logger=logger)
+
+                        found = all_objects_dict.get(parsed_object.rdfid, None)
+
+                        if found is None:
+                            all_objects_dict[parsed_object.rdfid] = parsed_object
+                        else:
+                            if "Sv" not in class_name:
+                                logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
+
+                        objects_list.append(parsed_object)
+
+                    else:
+                        logger.add_error("Class not recognized", device_class=class_name)
+
+                elements_by_type[class_name] = objects_list
+
+        # replace references by actual objects
+        find_references(elements_by_type=elements_by_type,
+                        all_objects_dict=all_objects_dict,
+                        all_objects_dict_boundary=all_objects_dict_boundary,
+                        association_inverse_dict=association_inverse_dict,
+                        logger=logger,
+                        mark_used=True)
 
 
 def is_valid_cgmes(cgmes_version) -> bool:

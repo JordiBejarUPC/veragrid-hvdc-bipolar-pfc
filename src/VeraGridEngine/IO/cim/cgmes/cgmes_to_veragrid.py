@@ -1628,7 +1628,15 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                     gcdev_elm.winding3.B0 = b03
                     gcdev_elm.winding3.rate = float(windings[2].ratedS)
 
-                    gcdev_elm.fill_from_star(r1=r1, r2=r2, r3=r3, x1=x1, x2=x2, x3=x3)
+                    try:
+                        gcdev_elm.fill_from_star(r1=r1, r2=r2, r3=r3, x1=x1, x2=x2, x3=x3)
+                    except ZeroDivisionError:
+                        logger.add_error(msg='Zero division when trying to create a 3W transformer',
+                                         device=cgmes_elm.rdfid,
+                                         device_class=cgmes_elm.tpe,
+                                         device_property="",
+                                         value=f"r1:{r1}, r2:{r2}, r3:{r3}, x1:{x1}, x2:{x2}, x3:{x3}",
+                                         expected_value="")
 
                     gcdev_model.add_transformer3w(gcdev_elm, add_middle_bus=True)
 

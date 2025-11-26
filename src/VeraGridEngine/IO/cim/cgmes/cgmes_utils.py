@@ -144,7 +144,7 @@ def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
 
             volt: float | None = get_voltage_terminal(op_lim_set.Terminal, logger)
 
-            if volt is not None:
+            if volt is not None and cl.value is not None:
                 rate_mva = np.round(cl.value * volt * sqrt_3 / 1e3, 4)
 
                 if isinstance(op_lim_set.Terminal.ConductingEquipment, device_type):
@@ -315,10 +315,10 @@ def get_pu_values_power_transformer_end(power_transformer_end: CGMES_POWER_TRANS
         # X0 = power_transformer_end.x0 / Zbase
         # G0 = power_transformer_end.g0 / Ybase
         # B0 = power_transformer_end.b0 / Ybase
-        R = power_transformer_end.r / Zbase * machine_to_sys
-        X = power_transformer_end.x / Zbase * machine_to_sys
-        G = power_transformer_end.g / Ybase * machine_to_sys
-        B = power_transformer_end.b / Ybase * machine_to_sys
+        R = power_transformer_end.r / Zbase * machine_to_sys if power_transformer_end.r is not None else 0.0
+        X = power_transformer_end.x / Zbase * machine_to_sys if power_transformer_end.x is not None else 0.00001
+        G = power_transformer_end.g / Ybase * machine_to_sys if power_transformer_end.g is not None else 0.0
+        B = power_transformer_end.b / Ybase * machine_to_sys if power_transformer_end.b is not None else 0.0
         if hasattr(power_transformer_end, "r0"):
             R0 = power_transformer_end.r0 / Zbase * machine_to_sys if power_transformer_end.r0 is not None else 1e-20
             X0 = power_transformer_end.x0 / Zbase * machine_to_sys if power_transformer_end.x0 is not None else 1e-20
@@ -597,8 +597,8 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                                      device=cn.rdfid,
                                      device_class=cn.tpe,
                                      device_property="BaseVoltage",
-                                     value=cn.ConnectivityNodeContainer.parsed_properties("BaseVoltage",
-                                                                                          "not provided"),
+                                     value=cn.ConnectivityNodeContainer.parsed_properties.get("BaseVoltage",
+                                                                                              "not provided"),
                                      expected_value='object')
                     return 0.0
             else:

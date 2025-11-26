@@ -73,6 +73,14 @@ def uuid2idtag(val: str):
     return val.replace('_', '').replace('-', '')
 
 
+def hashable_or_rnd(val: str):
+    try:
+        int(val, 16)
+        return val  # this is probably a proper UUID
+    except ValueError:
+        return uuid.uuid4().hex  # generate a proper UUIDv4 string
+
+
 def parse_idtag(val: Union[str, None]) -> str:
     """
     idtag setter
@@ -80,19 +88,20 @@ def parse_idtag(val: Union[str, None]) -> str:
     """
     if val is None:
         return uuid.uuid4().hex  # generate a proper UUIDv4 string
+
     elif isinstance(val, str):
         if len(val) == 32:
-            return val  # this is probably a proper UUID
+            return hashable_or_rnd(val)
         elif len(val) == 0:
             return uuid.uuid4().hex  # generate a proper UUIDv4 string
         else:
             candidate_val = uuid2idtag(val)
             if len(candidate_val) == 32:
-                return candidate_val  # if the string passed can be a UUID, set it
+                return hashable_or_rnd(candidate_val)
             else:
-                return val  # otherwise this is just a plain string, that we hope is valid...
+                return hashable_or_rnd(candidate_val)
     else:
-        return str(val)
+        return hashable_or_rnd(str(val))
 
 
 def smart_compare(a, b, atol=1.e-10):

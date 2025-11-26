@@ -28,26 +28,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added list set to bus setters">
-      <change afterPath="$PROJECT_DIR$/examples/CA_Script.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons/dyn_add.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons/dyn_add.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons/short_circuit_plus.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons/short_circuit_plus.svg" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Further improvement of the cgmes parsing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/dc_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/dc_line.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_circuit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_to_veragrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_to_veragrid.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_v2_4_15/devices/topological_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_v2_4_15/devices/topological_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/helm_power_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/helm_power_flow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_driver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1858,7 +1845,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="656" />
+    <option name="localTasksCounter" value="657" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1904,7 +1891,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added missing bus highlight clearing action" />
     <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
     <MESSAGE value="minimal type change" />
     <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
@@ -1929,7 +1915,8 @@
     <MESSAGE value="Fixed active type" />
     <MESSAGE value="some bug fixes&#10;Connected the SE event&#10;Rearranged the power flow checks in the GUI" />
     <MESSAGE value="Added list set to bus setters" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added list set to bus setters" />
+    <MESSAGE value="Further improvement of the cgmes parsing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Further improvement of the cgmes parsing" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2412,11 +2399,6 @@
           <url>file://$PROJECT_DIR$/examples/CA_Script.py</url>
           <line>106</line>
           <option name="timeStamp" value="3048" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_circuit.py</url>
-          <line>189</line>
-          <option name="timeStamp" value="3053" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
