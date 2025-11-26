@@ -697,11 +697,11 @@ class FaultType(Enum):
     """
     Short circuit type
     """
-    ph3 = '3x'
     LG = 'LG'
     LL = 'LL'
     LLG = 'LLG'
     LLL = 'LLL'
+    LLLG = 'LLLG'
 
     def __str__(self):
         return str(self.value)
@@ -884,8 +884,9 @@ class WindingType(Enum):
     """
     Transformer windings connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
     ZigZag = "Z"
 
@@ -920,8 +921,9 @@ class ShuntConnectionType(Enum):
     """
     Loads, shunts, etc.. connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
 
     def __str__(self) -> str:
@@ -1104,7 +1106,7 @@ class DeviceType(Enum):
     RemedialActionDevice = 'Remedial action'
     RemedialActionGroupDevice = 'Remedial action Group'
 
-    ShortCircuitDefinition = 'Short circuit definition'
+    ShortCircuitEvent = 'Short circuit event'
 
     InvestmentDevice = 'Investment'
     InvestmentsGroupDevice = 'Investments Group'
@@ -1687,6 +1689,7 @@ class ResultTypes(Enum):
     LoadPower = 'Load power'
     LoadShedding = 'Load shedding'
     LoadSheddingCost = "Load shedding cost"
+    LoadNeutralVoltage = 'Load neutral voltage'
 
     GeneratorShedding = 'Generator shedding'
     GeneratorPower = 'Generator power'
@@ -1715,6 +1718,7 @@ class ResultTypes(Enum):
     ShuntReactivePowerA = 'Shunt reactive power A'
     ShuntReactivePowerB = 'Shunt reactive power B'
     ShuntReactivePowerC = 'Shunt reactive power C'
+    ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
     BusNodalCapacity = "Nodal capacity"
@@ -2022,6 +2026,7 @@ class SimulationTypes(Enum):
     DesignView = 'Design View'
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
+    StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'
     PowerFlowTimeSeries_run = 'Power flow time series'

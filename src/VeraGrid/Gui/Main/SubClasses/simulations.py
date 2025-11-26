@@ -60,6 +60,13 @@ class SimulationsMain(TimeEventsMain):
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
         # Power Flow Methods
+        self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model([SolverType.NR,
+                                                                  SolverType.LM,
+                                                                  SolverType.GN])
+        self.ui.se_solver_comboBox.setModel(se_solvers_mdl)
+        self.ui.se_solver_comboBox.setCurrentIndex(0)
+
+        # SE Methods
         self.solvers_dict, solvers_mdl = gf.enums_to_model([SolverType.NR,
                                                             SolverType.IWAMOTO,
                                                             SolverType.LM,
@@ -249,7 +256,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionInvestments_evaluation.triggered.connect(self.run_investments_evaluation)
         self.ui.actionReliability.triggered.connect(self.reliability_dispatcher)
         self.ui.actionRun_Dynamic_RMS_Simulation.triggered.connect(self.rms_dispatcher)
-        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.ss_dispatcher)
+        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.small_signal_dispatcher)
 
         self.ui.actionUse_clustering.triggered.connect(self.activate_clustering)
         self.ui.actionNodal_capacity.triggered.connect(self.run_nodal_capacity)
@@ -690,6 +697,7 @@ class SimulationsMain(TimeEventsMain):
             SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
             SimulationTypes.SmallSignal_run.value: ':/Icons/icons/ss_icon.png',
             SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
+            SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
         }
 
         self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))
@@ -1002,7 +1010,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             self.run_rms()
 
-    def ss_dispatcher(self):
+    def small_signal_dispatcher(self):
         """
         Dispatch the reliability action
         :return:
@@ -1078,6 +1086,88 @@ class SimulationsMain(TimeEventsMain):
         if not self.session.is_anything_running():
             self.UNLOCK()
 
+    def get_se_options(self) -> sim.StateEstimationOptions:
+        """
+
+        :return:
+        """
+        return sim.StateEstimationOptions(
+            solver=self.se_solvers_dict.get(self.ui.se_solver_comboBox.currentText()),
+            tol=self.ui.se_tolerance_spinBox.value(),
+            max_iter=self.ui.se_max_iterations_spinBox.value(),
+            verbose=0,
+            prefer_correct=self.ui.se_prefer_correct_checkBox.isChecked(),
+            c_threshold=4.0,
+            fixed_slack=self.ui.se_fixed_slack_checkBox.isChecked(),
+            run_observability_analyis=self.ui.se_observability_analysis_checkBox.isChecked(),
+            add_pseudo_measurements=self.ui.se_add_pseudo_measurements_checkBox.isChecked(),
+            run_measurement_profiling=self.ui.se_measurements_profiling_checkBox.isChecked(),
+            include_line_measurements_on_both_ends=True,
+            pseudo_meas_std=1.0
+        )
+
+    def run_state_estimation(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.StateEstimation_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.StateEstimation_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                options = self.get_se_options()
+
+                self.ui.progress_label.setText('Running state estimation...')
+                QtGui.QGuiApplication.processEvents()
+
+                drv = sim.StateEstimationDriver(self.circuit, options)
+
+                self.session.run(drv,
+                                 post_func=self.post_state_estimation,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def post_state_estimation(self):
+        """
+        Action performed after the power flow.
+        Returns:
+
+        """
+        # update the results in the circuit structures
+
+        _, results = self.session.state_estimation
+
+        if results is not None:
+            self.ui.progress_label.setText('Colouring state estimation results in the grid...')
+            self.remove_simulation(SimulationTypes.StateEstimation_run)
+            self.update_available_results()
+            self.colour_diagrams()
+
+            if results.converged:
+                self.show_info_toast("State estimation converged :)")
+            else:
+                self.show_warning_toast("State estimation not converged :/")
+
+        else:
+            warning_msg('There are no state estimation results.\nIs there any slack bus or generator?',
+                        'State estimation')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
     def run_short_circuit(self):
         """
         Run a short circuit simulation
@@ -1092,30 +1182,9 @@ class SimulationsMain(TimeEventsMain):
 
                 if pf_results is not None:
 
-                    # Since we must run this study in the same conditions as
-                    # the last power flow, no compilation is needed
-
-                    # get the short circuit selected buses
-                    sel_buses = list()
-                    self_short_circuit_types = list()
-
-                    for diagram_widget in self.diagram_widgets_list:
-
-                        if isinstance(diagram_widget, SchematicWidget):
-
-                            for i, bus, graphic_object in diagram_widget.get_buses():
-                                if isinstance(graphic_object, BusGraphicItem):
-                                    if graphic_object.any_short_circuit():
-                                        sel_buses.append(i)
-                                        self_short_circuit_types.append(graphic_object.sc_type)
-
-                    if len(sel_buses) > 1:
-                        error_msg("VeraGrid only supports one short circuit bus at the time", "Short circuit")
-                        return
-
-                    if len(sel_buses) == 0:
-                        warning_msg('You need to enable some buses for short circuit.'
-                                    + '\nEnable them by right click, and selecting on the context menu.')
+                    if self.circuit.get_short_circuit_definition_number() == 0:
+                        warning_msg('You need to define short circuits in the Database.'
+                                    + '\nAdd them by right click on a bus and selecting on the context menu.')
                     else:
                         self.add_simulation(SimulationTypes.ShortCircuit_run)
 
@@ -1127,8 +1196,7 @@ class SimulationsMain(TimeEventsMain):
                             branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
 
                         # get the power flow options from the GUI
-                        sc_options = sim.ShortCircuitOptions(bus_index=sel_buses[0],
-                                                             fault_type=self_short_circuit_types[0])
+                        sc_options = sim.ShortCircuitOptions()
 
                         pf_options = self.get_selected_power_flow_options()
 
