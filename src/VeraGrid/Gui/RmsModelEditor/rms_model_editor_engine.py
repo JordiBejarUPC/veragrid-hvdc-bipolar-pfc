@@ -40,7 +40,9 @@ from VeraGridEngine.Utils.Symbolic.block import (
     StabilizerBuild,
     ExciterBuild,
     line,
-    generic
+    generic,
+    exciter_fake,
+    governor_fake
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
@@ -173,6 +175,8 @@ class BlockType(Enum):
     GENERIC = auto()
     BUS_CONNECTION = auto()
     EXTERNAL_MAPPING = auto()
+    EXCITER_FAKE = auto()
+    GOVERNOR_FAKE = auto()
 
 
 class BlockTypeDialog(QDialog):
@@ -989,6 +993,16 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
     # LINE (line)
     if block_type == BlockType.LINE:
         blk = line(item_name, api_object)
+        return blk
+
+    # EXCITER FAKE (line)
+    if block_type == BlockType.EXCITER_FAKE:
+        blk = exciter_fake(item_name)
+        return blk
+
+    # GOVERNOR FAKE (line)
+    if block_type == BlockType.GOVERNOR_FAKE:
+        blk = governor_fake(item_name)
         return blk
 
     else:

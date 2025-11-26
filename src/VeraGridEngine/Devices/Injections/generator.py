@@ -626,6 +626,8 @@ class Generator(GeneratorParent):
         """
         Initialize the RMS model
         """
+
+
         empty = self.rms_model.empty()
         if self.rms_model.empty():
             empty = True

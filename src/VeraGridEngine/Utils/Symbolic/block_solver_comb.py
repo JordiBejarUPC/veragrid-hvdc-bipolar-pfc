@@ -1566,6 +1566,8 @@ class DiffBlockSolver(BlockSolver):
                     print(f'residual is {np.linalg.norm(rhs)} try is {tries} and step is {step_idx}')
                     raise NaNError(
                         f"Newton step failed at try {tries} and step {step_idx}: delta has NaN/Inf values with dtau {dtau}")
+                print(f'delta shape is {delta.shape}')
+                print(f'x_new shape is {x_new.shape}')
                 x_new += delta
                 xnew_lags = np.r_[x_new, lag]
                 rhs = self.rhs_pseudo_transient(xnew_lags, xn_lags, params_current, 1, dtau)

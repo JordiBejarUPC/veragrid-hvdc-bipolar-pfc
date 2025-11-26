@@ -818,6 +818,8 @@ class GenqecBuild:
         B = Var("B")
 
 
+
+
         event_dict = {
             fn: Const(50.0),
             ws: Const(1.0),
@@ -1387,13 +1389,15 @@ class ExciterBuild:
         algebraic_eqs_submodel.append(u_aux - aux_expr)
         algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
 
-
         f_input = Var('f_input')
-        f_output = f_exc(f_input)
+        f_output = Var('f_output')
+        f_output_res = f_exc(f_input)
         algebraic_vars_submodel.append(f_input)
+        algebraic_vars_submodel.append(f_output)
         algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * self.parameters["Kc"])
 
         algebraic_eqs_submodel.append(Vf - f_output * Ve)
+        algebraic_eqs_submodel.append(f_output_res - f_output)
 
         aux_model = DiffBlock(
             algebraic_eqs=algebraic_eqs_submodel,
@@ -1416,12 +1420,31 @@ class ExciterBuild:
         return exciter_model
 
 
-def exciter(item_name:str = "") -> Block:
+def exciter_fake(item_name:str = "") -> Block:
 
     vf = Var("vf" + item_name)
+    vf_fixed = Var("vf_fixed")
+    # event_dict = {vf_fixed: Const(1.2028205849036708)}
     blk = Block()
+    blk.algebraic_vars.append(vf)
+    # blk.algebraic_eqs.append(vf-vf_fixed)
+    # blk.event_dict = event_dict
     blk.in_vars = dict()
     blk.out_vars[str(0)] = vf
+    blk.name = "const"
+    return blk
+
+def governor_fake(item_name:str = "") -> Block:
+
+    tm = Var("tm" + item_name)
+    tm_fixed = Var("tm_fixed")
+    # event_dict = {tm_fixed: Const(6.99999999999765)}
+    blk = Block()
+    blk.algebraic_vars.append(tm)
+    # blk.algebraic_eqs.append(tm-tm_fixed)
+    # blk.event_dict = event_dict
+    blk.in_vars = dict()
+    blk.out_vars[str(0)] = tm
     blk.name = "const"
     return blk
 

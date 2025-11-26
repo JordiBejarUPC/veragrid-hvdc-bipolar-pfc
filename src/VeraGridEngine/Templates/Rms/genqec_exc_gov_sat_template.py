@@ -97,7 +97,7 @@ class GenqecExcGovSat(RmsModelTemplate):
         # ______________________________________________________________________________________
 
         ## generator
-        self.fn = Var('fn')  # system frequency [Hz]
+        self.fn = Var('fn')  # system frequency [Hz] # not specified in the generator, must be specified in multicircuit, like Sbase...
         self.ws = Var('ws')  # synchronous speed [rad/s]
         self.M = Var('M')  # inertia constant
         self.D = Var('D')  # damping (optional)
@@ -119,8 +119,8 @@ class GenqecExcGovSat(RmsModelTemplate):
         self.Td0_2prime = Var('Td0_2prime')
         self.Tq0_2prime = Var('Tq0_2prime')
 
-        self.A = Var('A')
-        self.B = Var("B")
+        self.A = Var('A') # saturation speed RMS/EMT
+        self.B = Var("B") # saturation threshold RMS/EMT
 
         # governor
         # Gains and limits
@@ -406,8 +406,8 @@ class GenqecExcGovSat(RmsModelTemplate):
             })
 
         # governor_blocks:
-        algebraic_eqs = []
-        algebraic_vars = []
+        algebraic_eqs_gov = []
+        algebraic_vars_gov = []
 
         u1 = self.omega - self.omega_ref
         lead_lag_block, y1 = tf_to_diffblock(
@@ -420,7 +420,7 @@ class GenqecExcGovSat(RmsModelTemplate):
         # ==============================
         # First Feed back Loop
         y2_3 = Var('y2_3_gov')
-        algebraic_vars.append(y2_3)
+        algebraic_vars_gov.append(y2_3)
         x2 = self.Pm_ref - self.K * y1 - y2_3
 
         y2 = x2 * (1 / self.parameters["T3"])
@@ -431,7 +431,7 @@ class GenqecExcGovSat(RmsModelTemplate):
             x=y2_1,
             name='gov1',
         )
-        algebraic_eqs.append(y2_3 - hard_sat(y2_2, self.Pmin, self.Pmax))
+        algebraic_eqs_gov.append(y2_3 - hard_sat(y2_2, self.Pmin, self.Pmax))
 
         # ==============================
         # We compute different outputs for every tf
@@ -463,8 +463,8 @@ class GenqecExcGovSat(RmsModelTemplate):
         u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + \
             self.parameters["K4"] * y3_4 + self.T_aux
         aux_block = Block(
-            algebraic_eqs=[u - self.Tm] + algebraic_eqs,
-            algebraic_vars=[self.Tm, self.Pm_ref] + algebraic_vars,
+            algebraic_eqs=[u - self.Tm] + algebraic_eqs_gov,
+            algebraic_vars=[self.Tm, self.Pm_ref] + algebraic_vars_gov,
         )
 
         governor_block = Block(
@@ -509,13 +509,13 @@ class GenqecExcGovSat(RmsModelTemplate):
             name='stabilizer5',
         )
 
-        algebraic_eqs = list()
-        algebraic_eqs.append(hard_sat(y5, self.VPssMinPu, self.VPssMaxPu) - self.Vpss)
+        algebraic_eqs_stabil = list()
+        algebraic_eqs_stabil.append(hard_sat(y5, self.VPssMinPu, self.VPssMaxPu) - self.Vpss)
         block_1 = Block()
 
         stabilizer_block = Block(
             children=[tf, tf2, tf3, tf4, tf5],
-            algebraic_eqs=algebraic_eqs,
+            algebraic_eqs=algebraic_eqs_stabil,
             algebraic_vars=[self.Vpss],
         )
 
@@ -580,14 +580,17 @@ class GenqecExcGovSat(RmsModelTemplate):
         Ve = hard_sat(Ve_presat, self.VeMinPu, Const(1000))
         aux_expr = self.parameters["Ke"] * Ve + self.AEx * Ve * exp(self.BEx * Ve)
         algebraic_eqs_submodel.append(self.u_aux - aux_expr)
-        algebraic_eqs_submodel.append(self.VeMaxPu * self.u_aux - x1)
+        algebraic_eqs_submodel.append(sqrt((self.VeMaxPu * self.u_aux) ** 2 + Const(1e-5)) - x1)
 
         f_input = Var('f_input')
-        f_output = f_exc(f_input)
+        f_output = Var('f_output')
+        f_output_res = f_exc(f_input)
         algebraic_vars_submodel.append(f_input)
+        algebraic_vars_submodel.append(f_output)
         algebraic_eqs_submodel.append(f_input * Ve - self.IRPu * self.parameters["Kc"])
 
         algebraic_eqs_submodel.append(self.Vf - f_output * Ve)
+        algebraic_eqs_submodel.append(f_output_res - f_output)
 
         aux_model = DiffBlock(
             algebraic_eqs=algebraic_eqs_submodel,
@@ -598,7 +601,7 @@ class GenqecExcGovSat(RmsModelTemplate):
 
         linking_block = Block(
             algebraic_eqs=[y6 - self.Efe],
-            algebraic_vars=[self.Efe, self.UsRefPu] + algebraic_vars,
+            algebraic_vars=[self.Efe, self.UsRefPu],
 
         )
 

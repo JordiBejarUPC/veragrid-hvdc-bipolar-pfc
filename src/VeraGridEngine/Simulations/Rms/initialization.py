@@ -23,6 +23,22 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emi
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
 
+class SolverError(Exception):
+    """Base class for all solver-related errors."""
+    pass
+
+class NaNError(SolverError):
+    """Raised when NaNs or Infs appear in the solution."""
+    pass
+
+class ConvergenceError(SolverError):
+    """Raised when solver fails to converge within max iterations."""
+    pass
+
+class SingularJacobianError(SolverError):
+    """Raised when Jacobian is singular or ill-conditioned."""
+    pass
+
 def _compile_equations(eqs: Sequence[Expr],
                        uid2sym_vars: Dict[int, str],
                        uid2sym_params: Dict[int, str],
@@ -149,31 +165,143 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
     for var in dev_mdl.algebraic_vars:
         vars_list.append(var)
         init_guess_dict.update({var: np.random.rand()})
-    if hasattr(dev_mdl, 'diff_vars'):
-        for var in dev_mdl.diff_vars:
-            vars_list.append(var)
-            init_guess_dict.update({var: np.random.rand()})
+    # if hasattr(dev_mdl, 'diff_vars'):
+    #     for var in dev_mdl.diff_vars:
+    #         vars_list.append(var)
+    #         init_guess_dict.update({var: np.random.rand()})
     if dev_mdl.children:
         for child in dev_mdl.children:
             parse_vars(child, init_guess_dict, vars_list)
 
     return init_guess_dict, vars_list
 
-class SolverError(Exception):
-    """Base class for all solver-related errors."""
-    pass
+def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index):
+    uid2sym_params: Dict[int, str] = {}
+    uid2idx_params: Dict[int, int] = {}
 
-class NaNError(SolverError):
-    """Raised when NaNs or Infs appear in the solution."""
-    pass
+    # already known variables:
 
-class ConvergenceError(SolverError):
-    """Raised when solver fails to converge within max iterations."""
-    pass
+    for dev_type, dev_list in region.items():
+        for elm in dev_list:
+            bus_rms_mdl = elm.bus.rms_model.model
+            mdl = elm.rms_model.model
 
-class SingularJacobianError(SolverError):
-    """Raised when Jacobian is singular or ill-conditioned."""
-    pass
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+
+            mdl_vars = mdl.state_vars + mdl.algebraic_vars
+
+            for var in mdl_vars:
+                key = (var.uid, var.name)
+                if key not in seen_vars:
+                    sys_vars.append(key)
+                    seen_vars.add(key)
+
+            for v in mdl_vars:
+                if v.uid not in uid2sym_vars:
+                    uid2sym_vars[v.uid] = f"vars[{array_index}]"
+                    uid2idx_vars[v.uid] = array_index
+                    array_index += 1
+
+            params_array_index = 0
+
+            for param in mdl.event_dict.keys():
+                if param.uid not in uid2sym_params:
+                    uid2sym_params[param.uid] = f"params[{params_array_index}]"
+                    uid2idx_params[param.uid] = params_array_index
+                    params_array_index += 1
+
+            # initialize array for model variables
+            x = np.zeros(len(sys_vars))
+
+            # assign initial guesses for known variables
+            for uid, name in sys_vars:
+                key = (uid, name)
+                if key in init_guess:
+                    x[uid2idx_vars[uid]] = init_guess[key]
+
+            # initialize array for model params
+            params_array = np.zeros(len(mdl.event_dict.keys()))
+
+            # compute and assign parameters value
+            for param in mdl.event_dict.keys():
+                eq = mdl.event_dict[param]
+                eq_fn = _compile_parameters_equations([eq], uid2sym_t)
+                param_val = float(eq_fn(0.0))
+                params_array[uid2idx_params[param.uid]] = param_val
+
+            # compute and assign missing init_vars
+
+            for var in mdl.init_eqs.keys():
+                key = (var.uid, var.name)
+                if key in init_guess:
+                    x[uid2idx_vars[var.uid]] = init_guess[key]
+                else:
+                    eq = mdl.init_eqs[var]
+                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                    init_val = float(eq_fn(x, params_array))
+                    init_guess[key] = init_val
+                    x[uid2idx_vars[var.uid]] = init_val
+            # TODO: change model to generator, exciter and governor separated and remove this
+            for var in mdl.fix_vars:
+                eq = mdl.fix_vars_eqs[var.uid]
+                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                init_val = float(eq_fn(x, params_array))
+                var.value = init_val
+            sys_block.add(mdl)
+
+
+def init_pseudo_transient(bus, region, grid, sys_block, init_guess, time):
+    region_time = Var('region_time')
+    uid2idx_region_vars: Dict[int, int] = dict()
+    init_guess_region: Dict[Var, float] = dict()
+    vars_list: List[Var] = list()
+    bus_index = grid.buses.index(bus)
+    region_system = DiffBlock()
+    region_dev_list = list()
+    # add bus variables to init_guess_region
+    # Vm, Va = bus.get_rms_algebraic_vars()
+    # init_guess_region.update({: float(np.abs(res.voltage[bus_index]))})
+    # init_guess_region.update({Va: float(np.angle(res.voltage[bus_index]))})
+    # init_guess_region.update({Vm: 1})
+    # init_guess_region.update({Va: 1})
+    for dev_type, dev_list in region.items():
+        for dev in dev_list:
+            region_dev_list.append(dev)
+    for dev in region_dev_list:
+        region_system.children.append(dev.rms_model.model)
+        init_guess_region, vars_list = parse_vars(dev.rms_model.model, init_guess_region, vars_list)
+
+    # uid2idx_region_vars[Vm.uid] = 0
+    # uid2idx_region_vars[Va.uid] = 1
+    region_array_index = 0
+    for var in vars_list:
+        uid2idx_region_vars[var.uid] = region_array_index
+        region_array_index += 1
+    ## if only generator
+    # for var in vars_list:
+    #     if "tm" in var.name :
+    #         init_guess_region[var] = 6.99999999999765
+    #     elif "vf" in var.name:
+    #         init_guess_region[var] = 1.2028205849036708
+
+    x0_region = build_init_vars_vector(uid2idx_region_vars, init_guess_region)
+
+    # region_solver = DiffBlockSolver(region_system, region_time)
+
+    x0_pst, init_guess_pst = pseudo_transient(bus_index, region_system, region_time, x0_region, init_guess_region, res,
+                                              grid, uid2idx_region_vars)
+    for var, value in init_guess_pst:
+        init_guess.update({[var.uid, var.name], value})
+    sys_block.add(region_system)
+
+    return time, sys_block, init_guess
 
 
 def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res, grid: MultiCircuit, uid2idx_vars: Dict[int, int],
@@ -428,133 +556,17 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         sys_block.add(mdl)
 
     # injections
-
-    # initialize with pseudo_transient
-    ## iterate through buses and constuct local system_solver
-
+    # get injection devices grouped by buses
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
 
     for bus, region in bus_regions_dict.items():
-        region_time  = Var('region_time')
-        uid2idx_region_vars: Dict[int, int] = dict()
-        init_guess_region: Dict[Var, float] = dict()
-        vars_list: List[Var] = list()
-        bus_index = grid.buses.index(bus)
-        region_system = DiffBlock()
-        region_dev_list = list()
-        # add bus variables to init_guess_region
-        Vm, Va = bus.get_rms_algebraic_vars()
-        # init_guess_region.update({Vm: float(np.abs(res.voltage[bus_index]))})
-        # init_guess_region.update({Va: float(np.angle(res.voltage[bus_index]))})
-        init_guess_region.update({Vm: 1})
-        init_guess_region.update({Va: 1})
-        for dev_type, dev_list in region.items():
-            for dev in dev_list:
-                region_dev_list.append(dev)
-        for dev in region_dev_list:
-            region_system.children.append(dev.rms_model.model)
-            init_guess_region, vars_list = parse_vars(dev.rms_model.model, init_guess_region, vars_list)
-        uid2idx_region_vars[Vm.uid] = 0
-        uid2idx_region_vars[Va.uid] = 1
-        region_array_index = 2
-        for var in vars_list:
-            uid2idx_region_vars[var.uid] = region_array_index
-            region_array_index += 1
 
-        x0_region = build_init_vars_vector(uid2idx_region_vars, init_guess_region)
-
-        # region_solver = DiffBlockSolver(region_system, region_time)
-
-        x0_pst, init_guess_pst = pseudo_transient(bus_index, region_system, region_time, x0_region, init_guess_region, res, grid, uid2idx_region_vars)
-        for var, value in init_guess_pst:
-            init_guess.update({[var.uid, var.name], value})
-        sys_block.add(region_system)
-
-
-
-
-
-
-
-    # initialize uid2sym_params dict
-
-    # uid2sym_params: Dict[int, str] = {}
-    # uid2idx_params: Dict[int, int] = {}
-    #
-    # # already known variables:
-    #
-    # for elm in grid.get_injection_devices_iter():
-    #     bus_rms_mdl = elm.bus.rms_model.model
-    #     mdl = elm.rms_model.model
-    #
-    #
-    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-    #     init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid, bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
-    #
-    #     mdl_vars = mdl.state_vars + mdl.algebraic_vars
-    #
-    #     for var in mdl_vars:
-    #         key = (var.uid, var.name)
-    #         if key not in seen_vars:
-    #             sys_vars.append(key)
-    #             seen_vars.add(key)
-    #
-    #     for v in mdl_vars:
-    #         if v.uid not in uid2sym_vars:
-    #             uid2sym_vars[v.uid] = f"vars[{array_index}]"
-    #             uid2idx_vars[v.uid] = array_index
-    #             array_index += 1
-    #
-    #     params_array_index = 0
-    #
-    #     for param in mdl.event_dict.keys():
-    #         if param.uid not in uid2sym_params:
-    #             uid2sym_params[param.uid] = f"params[{params_array_index}]"
-    #             uid2idx_params[param.uid] =params_array_index
-    #             params_array_index += 1
-    #
-    #
-    #     # initialize array for model variables
-    #     x = np.zeros(len(sys_vars))
-    #
-    #     # assign initial guesses for known variables
-    #     for uid, name in sys_vars:
-    #         key = (uid, name)
-    #         if key in init_guess:
-    #             x[uid2idx_vars[uid]] = init_guess[key]
-    #
-    #     # initialize array for model params
-    #     params_array = np.zeros(len(mdl.event_dict.keys()))
-    #
-    #     # compute and assign parameters value
-    #     for param in mdl.event_dict.keys():
-    #         eq = mdl.event_dict[param]
-    #         eq_fn = _compile_parameters_equations([eq], uid2sym_t)
-    #         param_val = float(eq_fn(0.0))
-    #         params_array[uid2idx_params[param.uid]] = param_val
-
-        # initialize missing values with pseudo transient method
+        # try:
+        #     init_pseudo_transient(bus, region, grid, sys_block, init_guess, time)
         #
-
-        # compute and assign missing init_vars
-        #
-        # for var in mdl.init_eqs.keys():
-        #     key = (var.uid, var.name)
-        #     if key in init_guess:
-        #         x[uid2idx_vars[var.uid]] = init_guess[key]
-        #     else:
-        #         eq = mdl.init_eqs[var]
-        #         eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-        #         init_val = float(eq_fn(x, params_array))
-        #         init_guess[key] = init_val
-        #         x[uid2idx_vars[var.uid]] = init_val
-        # # TODO: change model to generator, exciter and governor separated and remove this
-        # for var in mdl.fix_vars:
-        #     eq = mdl.fix_vars_eqs[var.uid]
-        #     eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-        #     init_val = float(eq_fn(x, params_array))
-        #     var.value = init_val
-        # sys_block.add(mdl)
+        # except ValueError:
+        #     print(f"Error when initializing with pseudo_transient method")
+        init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index)
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
@@ -690,3 +702,4 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                 mdl.algebraic_eqs.append(Q[i])
 
     return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid)
+
