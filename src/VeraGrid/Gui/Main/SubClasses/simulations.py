@@ -606,6 +606,22 @@ class SimulationsMain(TimeEventsMain):
 
         return model
 
+    @staticmethod
+    def get_short_circuits_combination_tree_model(drv: sim.ShortCircuitDriver) -> QtGui.QStandardItemModel:
+        """
+        Get the investments combination tree model
+        :param drv:
+        :return:
+        """
+        model = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Short circuits"])
+
+        for i, sc_name in enumerate(drv.results.sc_names):
+            row_items = [QtGui.QStandardItem(sc_name)]
+            model.appendRow(row_items)
+
+        return model
+
     def fill_combinations_tree(self, drv: DRIVER_OBJECTS | None):
         """
         Fill the tree driver
@@ -616,6 +632,10 @@ class SimulationsMain(TimeEventsMain):
         else:
             if drv.tpe == SimulationTypes.InvestmentsEvaluation_run:
                 model = self.get_investments_combination_tree_model(drv=drv)
+                self.ui.combinationsTreeView.setModel(model)
+
+            elif drv.tpe == SimulationTypes.ShortCircuit_run:
+                model = self.get_short_circuits_combination_tree_model(drv=drv)
                 self.ui.combinationsTreeView.setModel(model)
                 # self.ui.combinationsTreeView.expandAll()
 
@@ -2785,7 +2805,7 @@ class SimulationsMain(TimeEventsMain):
 
                     self.session.run(
                         drv,
-                        post_func=self.post_run_investments_evaluation,
+                        post_func=self.post_investments_evaluation,
                         prog_func=self.ui.progressBar.setValue,
                         text_func=self.ui.progress_label.setText
                     )
@@ -2801,7 +2821,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_run_investments_evaluation(self) -> None:
+    def post_investments_evaluation(self) -> None:
         """
         Post investments evaluation
         """

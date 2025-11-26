@@ -28,12 +28,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added logger to the NTC">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed issue with redispatching OPF">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/shunt_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/shunt_parent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/admittance_matrix.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/admittance_matrix.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1844,7 +1845,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="650" />
+    <option name="localTasksCounter" value="651" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1890,7 +1891,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="some changes" />
     <MESSAGE value="some improvements in the zoom on laptops" />
     <MESSAGE value="Fixed NTC generation limits" />
     <MESSAGE value="Fixed NTC generation limits test" />
@@ -1915,7 +1915,8 @@
     <MESSAGE value="removed technologies but kept the example running" />
     <MESSAGE value="added opf feed-in to the contingency analysis" />
     <MESSAGE value="added logger to the NTC" />
-    <option name="LAST_COMMIT_MESSAGE" value="added logger to the NTC" />
+    <MESSAGE value="Fixed issue with redispatching OPF" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed issue with redispatching OPF" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2374,11 +2375,30 @@
           <line>78</line>
           <option name="timeStamp" value="3035" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="val.size != 4" language="Python" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py</url>
+          <line>462</line>
+          <option name="timeStamp" value="3040" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="self._ys.size != 4" language="Python" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py</url>
+          <line>457</line>
+          <option name="timeStamp" value="3041" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="value.shape[0] != 4" language="Python" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/admittance_matrix.py</url>
+          <line>129</line>
+          <option name="timeStamp" value="3042" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="__exception__" language="Python" />
+        <watch expression="self._ys" />
       </configuration>
     </watches-manager>
   </component>
