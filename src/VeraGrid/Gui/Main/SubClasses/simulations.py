@@ -238,6 +238,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionVoltage_stability.triggered.connect(self.run_continuation_power_flow)
         self.ui.actionPower_Flow_Time_series.triggered.connect(self.run_power_flow_time_series)
         self.ui.actionPower_flow_Stochastic.triggered.connect(self.run_stochastic)
+        self.ui.actionState_estimation.triggered.connect(self.run_state_estimation)
         self.ui.actionOPF.triggered.connect(self.optimal_power_flow_dispatcher)
         self.ui.actionOPF_time_series.triggered.connect(self.run_opf_time_series)
         self.ui.actionOptimal_Net_Transfer_Capacity.triggered.connect(self.optimal_ntc_opf_dispatcher)
