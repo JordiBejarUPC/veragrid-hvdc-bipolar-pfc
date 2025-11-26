@@ -73,14 +73,6 @@ def uuid2idtag(val: str):
     return val.replace('_', '').replace('-', '')
 
 
-def hashable_or_rnd(val: str):
-    try:
-        int(val, 16)
-        return val  # this is probably a proper UUID
-    except ValueError:
-        return uuid.uuid4().hex  # generate a proper UUIDv4 string
-
-
 def parse_idtag(val: Union[str, None]) -> str:
     """
     idtag setter
@@ -88,20 +80,19 @@ def parse_idtag(val: Union[str, None]) -> str:
     """
     if val is None:
         return uuid.uuid4().hex  # generate a proper UUIDv4 string
-
     elif isinstance(val, str):
         if len(val) == 32:
-            return hashable_or_rnd(val)
+            return val  # this is probably a proper UUID
         elif len(val) == 0:
             return uuid.uuid4().hex  # generate a proper UUIDv4 string
         else:
             candidate_val = uuid2idtag(val)
             if len(candidate_val) == 32:
-                return hashable_or_rnd(candidate_val)
+                return candidate_val  # if the string passed can be a UUID, set it
             else:
-                return hashable_or_rnd(candidate_val)
+                return val  # otherwise this is just a plain string, that we hope is valid...
     else:
-        return hashable_or_rnd(str(val))
+        return str(val)
 
 
 def smart_compare(a, b, atol=1.e-10):
@@ -377,7 +368,8 @@ class EditableDevice:
 
     def __hash__(self) -> int:
         # alternatively, return hash(repr(self))
-        return int(self.idtag, 16)  # hex string to int
+        # return int(self.idtag, 16)  # hex string to int
+        return hash(repr(self))
 
     def __lt__(self, other) -> bool:
         return self.__hash__() < other.__hash__()
