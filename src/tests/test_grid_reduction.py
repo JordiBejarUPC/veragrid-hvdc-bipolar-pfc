@@ -349,6 +349,9 @@ def test_ptdf_projected_gb():
 
     bus_to_remove = np.array(bus_to_remove)
 
+    # Determine internal branches before reduction
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+
     red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
     flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr_red.run()
@@ -366,16 +369,9 @@ def test_ptdf_projected_gb():
     net_original = P_original_gen - P_original_load
     net_reduced = P_reduced_gen - P_reduced_load
     
-    # assert np.allclose(flows_branches[[1, 2, 3, 4, 5]], flows_branches_red, atol=1e-4)
-    
-    print('Net original: ', net_original)
-    print('Net reduced: ', net_reduced)
-    print('P original gen: ', P_original_gen)
-    print('P reduced gen: ', P_reduced_gen)
-    print('P original load: ', P_original_load)
-    print('P reduced load: ', P_reduced_load)
-    print('P original gen - P reduced gen: ', P_original_gen - P_reduced_gen)
-    print('P original load - P reduced load: ', P_original_load - P_reduced_load)
+    # Check that flows on remaining branches match
+    assert np.allclose(flows_branches[internal_branches], flows_branches_red, atol=1e-4)
+
     assert abs(net_reduced) < 1e-4
     assert abs(P_original_gen - P_reduced_gen) < 1e-4
     assert abs(P_original_load - P_reduced_load) < 1e-4
@@ -390,4 +386,4 @@ if __name__ == '__main__':
     test_ptdf_projected()
     # test_ptdf_projected_balances()
     # test_ptdf_projected_antena()
-    # test_ptdf_projected_gb()
+    test_ptdf_projected_gb()

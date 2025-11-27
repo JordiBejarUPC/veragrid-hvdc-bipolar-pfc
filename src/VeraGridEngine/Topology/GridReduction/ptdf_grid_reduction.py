@@ -494,7 +494,6 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         logger.add_info(msg="Nothing to keep (null grid as a result)")
         return grid, logger
 
-    print('Distribute slack: ', distribute_slack)
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
     lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
