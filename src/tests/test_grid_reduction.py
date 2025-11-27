@@ -151,14 +151,14 @@ def test_ptdf_projected():
     grid = gce.open_file(filename=fname)
 
     # First run basic linear analysis
-    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=True))
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr.run()
     flows_branches = flows_dr.results.Sf
 
     # Then reduce the network
     bus_to_remove = np.array([1])
-    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove)
-    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=True))
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr_red.run()
     flows_branches_red = flows_dr_red.results.Sf
 
@@ -387,7 +387,7 @@ if __name__ == '__main__':
     # test_ptdf_projected_14_complex_reduction()
     # test_ptdf_projected_14_complex_inactive_reduction()
     # test_reduction_flows()
-    # test_ptdf_projected()
+    test_ptdf_projected()
     # test_ptdf_projected_balances()
     # test_ptdf_projected_antena()
-    test_ptdf_projected_gb()
+    # test_ptdf_projected_gb()
