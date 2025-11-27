@@ -28,12 +28,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="small signal tests passing">
-      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/test_benchmark_with_andes_diff_block_solver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="implemented DiffBLock solver fro modles with differential vars">
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/block_data_dialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/block_data_dialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/icons_rc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1882,7 +1882,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="657" />
+    <option name="localTasksCounter" value="658" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1928,7 +1928,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="minimal fix when transformer templates do not exist" />
     <MESSAGE value="Added missing bus highlight clearing action" />
     <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
     <MESSAGE value="minimal type change" />
@@ -1953,7 +1952,8 @@
     <MESSAGE value="added external mapping to editor models" />
     <MESSAGE value="Initialization 2" />
     <MESSAGE value="small signal tests passing" />
-    <option name="LAST_COMMIT_MESSAGE" value="small signal tests passing" />
+    <MESSAGE value="implemented DiffBLock solver fro modles with differential vars" />
+    <option name="LAST_COMMIT_MESSAGE" value="implemented DiffBLock solver fro modles with differential vars" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

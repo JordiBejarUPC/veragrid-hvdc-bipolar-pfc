@@ -8,6 +8,7 @@ import pdb
 import uuid
 import sys
 import copy
+from typing import cast
 
 from enum import Enum, auto
 from typing import List, Dict, Optional, Union, Sequence, Any
@@ -2504,6 +2505,59 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
         """Devuelve un diccionario con los valores ingresados por el usuario."""
         return {param: Const(float(edit.text())) for param, edit in self.inputs.items()}
 
+class InitialValuesDialog(QDialog):
+    """
+    Dialog to insert init guess values
+    """
+
+    def __init__(self, variables: List[Var], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Initial Values")
+        self.variables = variables
+
+        layout = QVBoxLayout(self)
+
+        # Table
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["Variable name", "Initial Value"])
+        self.table.setRowCount(len(variables))
+        self.table.horizontalHeader().setStretchLastSection(True)
+
+        # Fill table
+        for row, var in enumerate(variables):
+
+            # Nombre de la variable (no editable)
+            name_item = QTableWidgetItem(var.name)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 0, name_item)
+
+            # Editor numérico para el valor
+            spin = QDoubleSpinBox()
+            spin.setDecimals(6)
+            spin.setRange(-1e12, 1e12)
+            spin.setValue(0.0)
+            self.table.setCellWidget(row, 1, spin)
+
+        layout.addWidget(self.table)
+
+        # OK/Cancel
+        btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btn_box.accepted.connect(self.accept)
+        btn_box.rejected.connect(self.reject)
+
+        layout.addWidget(btn_box)
+
+    def get_values_dict(self) -> Dict[Var, float]:
+        result: Dict[Var, float] = {}
+
+        for row, var in enumerate(self.variables):
+            spin = cast(QDoubleSpinBox, self.table.cellWidget(row, 1))
+            result[var] = float(spin.value())  # Guarda la variable real Var → float
+
+        return result
+
+
 
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
@@ -2534,6 +2588,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.api_object = api_object
         self.main_editor = main_editor
 
+        self.current_editor = None
+
         self.tempaltes_name = "Templates"
         self.block_editor_name = "Block Editor"
         self.equationseditor_name = "Equations editor"
@@ -2561,8 +2617,12 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
         )
+
+        # _____ Add user init guess dialog ______
+
+
         # === Add default bus connection block if diagram is empty ===
-        if not self.blockboxes_editor.diagram.node_data and main_editor:
+        if not self.blockboxes_editor.diagram.node_data and self.main_editor:
             self.blockboxes_editor.add_connection_vars()
             self.blockboxes_editor.add_external_mapping_block()
         # === Add pf parameters ===
@@ -2587,6 +2647,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # --- connections ---
         self.ui.doItButton.clicked.connect(self.do_it)
+        self.ui.InitGuessButton.clicked.connect(self.add_init_guess)
 
         # current editor view change
         self.ui.model_selector_comboBox.currentIndexChanged.connect(self.editor_change)
@@ -2594,6 +2655,11 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # select the template view
         self.ui.model_selector_comboBox.setCurrentIndex(0)
         self.editor_change()
+
+        # innit guess button
+
+        if not self.main_editor:
+            self.ui.InitGuessButton.setVisible(False)
 
     def editor_change(self):
         """
@@ -2612,13 +2678,16 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
             self.ui.mainLayout.addWidget(self.template_editor)
+            self.current_editor = self.template_editor
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
             self.ui.mainLayout.addWidget(self.blockboxes_editor)
+            self.current_editor = self.blockboxes_editor
 
         elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
             # TODO: add model host logic
             self.ui.mainLayout.addWidget(self.equations_editor)
+            self.current_editor = self.equations_editor
 
         else:
             raise ValueError("Unsupported RMS editor!")
@@ -2655,6 +2724,29 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             raise ValueError("Unsupported RMS editor!")
 
         self.close()
+
+    def add_init_guess(self):
+        if isinstance(self.current_editor, TemplateEditor):
+            if self.current_editor.selected_template is None:
+                QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
+                return
+            try:
+                model = self.current_editor.selected_template.get_block()
+
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(self, "Error", f"Failed get variables from template:\n{e}")
+                return
+        elif isinstance(self.current_editor, BlockBoxesEditor):
+            model = self.current_editor.main_block
+
+        elif isinstance(self.current_editor, EditEquations):
+            # TODO: add logic for this case
+            pass
+
+        # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
+
+        init_guess_editor = InitialValuesDialog(self.current_editor.)
+
 
 
 if __name__ == "__main__":
