@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import pdb
+
 import numpy as np
 import uuid
 import numba as nb
@@ -361,7 +363,7 @@ class NaNError(SolverError):
 
 class DiffBlockSolver(BlockSolver):
 
-    def __init__(self, block_system: Block | DiffBlock, time: Var, use_jit: bool = True):
+    def __init__(self, block_system: Block | DiffBlock, glob_time: Var, use_jit: bool = True):
         """
         Constructor
         :param block_system: BlockSystem
@@ -383,9 +385,8 @@ class DiffBlockSolver(BlockSolver):
         self._parameters: List[Var] = list()
         self._parameters_eqs: List[Expr] = list()
         self._stability_eqs: List[Expr] = list()
-        # self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
 
-        self.time = time
+        self.glob_time: Var = glob_time
         self.substitute = True
 
         for b in self.block_system.get_all_blocks():
@@ -459,8 +460,8 @@ class DiffBlockSolver(BlockSolver):
             k += 1
 
         k = 0
-        self.uid2sym_t[self.time.uid] = f"time"
-        self.uid2idx_t[self.time.uid] = k
+        self.uid2sym_t[self.glob_time.uid] = f"glob_time"
+        self.uid2idx_t[self.glob_time.uid] = k
 
         # We substitute the differential variable by the Forward Approximation:
 
@@ -572,14 +573,6 @@ class DiffBlockSolver(BlockSolver):
         """
         print("Compiling...")
 
-        # TODO: is this used?
-        # lst = [var.uid for var in self._diff_vars]
-        # lst = [var.uid for var in self._algebraic_vars]
-        # duplicates = [x for x in set(lst) if lst.count(x) > 1]
-        # # print("Duplicates are", duplicates)
-        # for uid in duplicates:
-        #     idx = self.uid2idx_vars[uid]
-        #     # print(self._algebraic_vars[idx])
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
                                                 uid2sym_params=self.uid2sym_params)
 
@@ -821,6 +814,53 @@ class DiffBlockSolver(BlockSolver):
         J = J.tocsr()
         return J
 
+    def build_init_params_vector(self, mapping: dict[Var, float]) -> np.ndarray:
+        """
+        Helper function to build the initial vector
+        :param mapping: var->initial value mapping
+        :return: array matching with the mapping, matching the solver ordering
+        """
+        x = np.zeros(self._n_params)
+
+        for key, val in mapping.items():
+            i = self.uid2idx_event_params[key.uid]
+
+            x[i] = val
+
+        return x
+
+    def build_init_vars_vector_from_uid(self, mapping: dict[tuple[int, str], float]) -> np.ndarray:
+        """
+        Helper function to build the initial vector
+        :param mapping: var->initial value mapping
+        :return: array matching with the mapping, matching the solver ordering
+        """
+        x = np.zeros(len(self._state_vars) + len(self._algebraic_vars))
+
+        for key, val in mapping.items():
+            uid, name = key
+            if uid in self.uid2idx_vars.keys():
+                i = self.uid2idx_vars[uid]
+                x[i] = val
+            else:
+                raise ValueError(f"Missing uid {key} definition")
+
+        return x
+
+    def sort_vars_from_uid(self, mapping: dict[tuple[int, str], float]) -> np.ndarray:
+        """
+        Helper function to build the initial vector
+        :param mapping: var->initial value mapping
+        :return: array matching with the mapping, matching the solver ordering
+        """
+        x = np.zeros(len(self._state_vars) + len(self._algebraic_vars), dtype=object)
+
+        for key, val in mapping.items():
+            uid, name = key
+            i = self.uid2idx_vars[uid]
+            x[i] = uid
+
+        return x
 
     def warm_up_start(self):
         dummy_vals = np.zeros(len(self._algebraic_vars) + len(self._state_vars) + len(self._lag_vars), dtype=np.float64)
@@ -884,6 +924,8 @@ class DiffBlockSolver(BlockSolver):
             return np.array([])
 
         x_lag = np.zeros(len(self._lag_vars), dtype=np.float64)
+        pdb.set_trace()
+
 
         lag_registry = self._lag_vars[0]._registry
         diff_registry = self._diff_vars[0]._absolute_registry
@@ -1308,7 +1350,7 @@ class DiffBlockSolver(BlockSolver):
             found = False
             if getattr(block, 'pseudo_transient', False):
                 bus = block.bus
-                t = self.time
+                t = self.glob_time
                 for child_block in block.get_all_blocks():
                     if not hasattr(child_block, 'external_mapping'):
                         continue

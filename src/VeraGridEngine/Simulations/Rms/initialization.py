@@ -257,7 +257,7 @@ def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_va
             sys_block.add(mdl)
 
 
-def init_pseudo_transient(bus, region, grid, sys_block, init_guess, time):
+def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
     region_time = Var('region_time')
     uid2idx_region_vars: Dict[int, int] = dict()
     init_guess_region: Dict[Var, float] = dict()
@@ -562,7 +562,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     for bus, region in bus_regions_dict.items():
 
         # try:
-        #     init_pseudo_transient(bus, region, grid, sys_block, init_guess, time)
+        #     init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
         #
         # except ValueError:
         #     print(f"Error when initializing with pseudo_transient method")
