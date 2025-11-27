@@ -639,27 +639,53 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     APgen_yes_srap = total_gen_yes_srap_orig - total_gen_yes_srap_new
     APload = total_load_orig - total_load_new  # both are probably negative
     
-    # Distribute uniformly this extra power among boundary buses
-    if len(boundary_indices_new) > 0:
-        extra_Pgen_no_srap_per_bus = APgen_no_srap / len(boundary_indices_new)
-        extra_Pgen_yes_srap_per_bus = APgen_yes_srap / len(boundary_indices_new)
-        extra_Pload_per_bus = APload / len(boundary_indices_new)
+    # Determine where to put the extra power
+    n2 = grid.get_bus_number()
+    extra_power_allocation = np.zeros(n2, dtype=bool) 
+
+    if not distribute_slack:
+        # Find slack bus index
+        slack_idx = -1
+        for i in range(n2):
+            if grid.buses[i].is_slack:
+                slack_idx = i
+                break
+        
+        if slack_idx != -1:
+            # Put everything on slack bus
+            extra_power_allocation[slack_idx] = True
+            denom = 1.0
+        else:
+            # Fallback to boundary if no slack bus found (weird but possible)
+            extra_power_allocation[boundary_indices_new] = True
+            denom = float(len(boundary_indices_new))
+    else:
+        # Distribute uniformly among boundary buses
+        if len(boundary_indices_new) > 0:
+            extra_power_allocation[boundary_indices_new] = True
+            denom = float(len(boundary_indices_new))
+        else:
+            denom = 0.0 
+
+    if denom > 0:
+        extra_Pgen_no_srap_per_bus = APgen_no_srap / denom
+        extra_Pgen_yes_srap_per_bus = APgen_yes_srap / denom
+        extra_Pload_per_bus = APload / denom
     else:
         extra_Pgen_no_srap_per_bus = 0.0
         extra_Pgen_yes_srap_per_bus = 0.0
         extra_Pload_per_bus = 0.0
 
-    n2 = grid.get_bus_number()
     for i in range(n2):
 
         bus = grid.buses[i]
         
-        # Check if the bus is part of the boundary
-        is_boundary = i in boundary_indices_new
+        # Check allocation
+        alloc = extra_power_allocation[i]
         
-        extra_gen = extra_Pgen_no_srap_per_bus if is_boundary else 0.0
-        extra_gen_srap = extra_Pgen_yes_srap_per_bus if is_boundary else 0.0
-        extra_load = -extra_Pload_per_bus if is_boundary else 0.0
+        extra_gen = extra_Pgen_no_srap_per_bus if alloc else 0.0
+        extra_gen_srap = extra_Pgen_yes_srap_per_bus if alloc else 0.0
+        extra_load = -extra_Pload_per_bus if alloc else 0.0
 
         P_gen_no_srap_to_add = dP_gen[i] + extra_gen
         P_gen_yes_srap_to_add = dP_gen_srap[i] + extra_gen_srap
