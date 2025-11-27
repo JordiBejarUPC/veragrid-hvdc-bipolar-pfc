@@ -2171,16 +2171,20 @@ class SimulationsMain(TimeEventsMain):
 
         report_formulation = self.ui.save_mip_checkBox.isChecked()
 
-        # available transfer capacity inter areas
-        inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
+        if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
 
-        if len(inter_aggregation_info.lst_from) == 0:
-            self.show_error_toast('The area "from" has no buses!', 5000)
-            return None
+            # available transfer capacity inter areas
+            inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
 
-        if len(inter_aggregation_info.lst_to) == 0:
-            self.show_error_toast('The area "to" has no buses!', 5000)
-            return None
+            if len(inter_aggregation_info.lst_from) == 0:
+                self.show_error_toast('The area "from" has no buses!', 5000)
+                return None
+
+            if len(inter_aggregation_info.lst_to) == 0:
+                self.show_error_toast('The area "to" has no buses!', 5000)
+                return None
+        else:
+            inter_aggregation_info = None
 
         ips_method = self.ips_solvers_dict[self.ui.ips_method_comboBox.currentText()]
         ips_tolerance = 1.0 / (10.0 ** self.ui.ips_tolerance_spinBox.value())
