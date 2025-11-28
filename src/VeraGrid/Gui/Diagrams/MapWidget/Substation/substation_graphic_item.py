@@ -4,12 +4,18 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import webbrowser
-from typing import List, TYPE_CHECKING, Tuple
+from typing import List, TYPE_CHECKING, Tuple, Union
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMenu, QGraphicsSceneContextMenuEvent, QGraphicsSceneMouseEvent, QGraphicsRectItem
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QColor
-
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import (MapStaticGeneratorGraphicItem,
+                                                                                      StaticGenerator)
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics import (MapExternalGridGraphicItem,
+                                                                                   ExternalGrid)
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_battery_graphics import MapBatteryGraphicItem, Battery
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_generator_graphics import MapGeneratorGraphicItem, Generator
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_load_graphics import MapLoadGraphicItem, Load
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
@@ -110,6 +116,10 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
     @property
     def hover_color(self) -> QColor:
+        """
+
+        :return:
+        """
         return self._hoover_color
 
     @hover_color.setter
@@ -118,6 +128,10 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
     @property
     def border_color(self) -> QColor:
+        """
+
+        :return:
+        """
         return self._border_color
 
     @border_color.setter
@@ -126,6 +140,10 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
     @property
     def api_object(self) -> Substation:
+        """
+
+        :return:
+        """
         return self._api_object
 
     def merge(self, se: "SubstationGraphicItem"):
@@ -395,6 +413,30 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
                        text="Consolidate selected objects coordinates",
                        function_ptr=self.editor.consolidate_object_coordinates,
                        icon_path=":/Icons/icons/assign_to_profile.png")
+
+        menu.addSection("Add")
+
+        # Actions under the "Add" section
+        add_menu_entry(menu, text='Load',
+                       icon_path=":/Icons/icons/add_load.png",
+                       function_ptr=self.add_load)
+
+        add_menu_entry(menu, text='Generator',
+                       icon_path=":/Icons/icons/add_gen.png",
+                       function_ptr=self.add_generator)
+
+        add_menu_entry(menu, text='Static generator',
+                       icon_path=":/Icons/icons/add_stagen.png",
+                       function_ptr=self.add_static_generator)
+
+        add_menu_entry(menu, text='Battery',
+                       icon_path=":/Icons/icons/add_batt.png",
+                       function_ptr=self.add_battery)
+
+        add_menu_entry(menu,
+                       text='External grid',
+                       icon_path=":/Icons/icons/add_external_grid.png",
+                       function_ptr=self.add_external_grid)
 
         menu.exec_(event.screenPos())
 
@@ -817,14 +859,6 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
             if line.bus_to in associated_buses or line.bus_from in associated_buses:
                 associated_lines_graphics.append(self.editor.graphics_manager.query(elm=line))
 
-        # TODO: Connectivity nodes / busbars? Probably this is only when dealing with the schematic
-
-        # for bus in associated_buses:
-        #     associated_buses_graphics.append(self.editor.graphics_manager.query(elm=bus))
-
-        # for segment in self.get_hosting_line_segments():
-        #     associated_lines_graphics.append(segment.container)
-
         return self.voltage_level_graphics + associated_lines_graphics
 
     def get_associated_devices(self) -> List[ALL_DEV_TYPES]:
@@ -845,14 +879,6 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
             if inj.bus in associated_buses:
                 associated_shunts.append(inj)
 
-        # TODO: Connectivity nodes / busbars? Probably this is only when dealing with the schematic
-
-        # for bus in associated_buses:
-        #     associated_buses_graphics.append(self.editor.graphics_manager.query(elm=bus))
-
-        # for segment in self.get_hosting_line_segments():
-        #     associated_lines_graphics.append(segment.container)
-
         return associated_vl + associated_branches + associated_shunts + associated_buses
 
     def delete(self):
@@ -862,3 +888,73 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
 
         self.editor.delete_with_dialogue(selected=[self], delete_from_db=False)
+
+    def add_load(self, api_obj: Union[Load, None] = None):
+        """
+        Add load object to bus
+        :param api_obj:
+        :return:
+        """
+        if api_obj is None or type(api_obj) is bool:
+
+            # TODO, launch diagram to select the bus
+            api_obj = self._editor.circuit.add_load(bus=self._api_object)
+
+        _grph = MapLoadGraphicItem(api_obj=api_obj, editor=self._editor)
+
+        return _grph
+
+    def add_generator(self, api_obj: Union[Generator, None] = None):
+        """
+        Add generator
+        :param api_obj: if None, a new generator is created
+        """
+        if api_obj is None or type(api_obj) is bool:
+            # TODO, launch diagram to select the bus
+            api_obj = self._editor.circuit.add_generator(bus=self._api_object)
+
+        _grph = MapGeneratorGraphicItem(api_obj=api_obj, editor=self._editor)
+
+        return _grph
+
+    def add_static_generator(self, api_obj: Union[StaticGenerator, None] = None):
+        """
+        Add static generator
+        :param api_obj: If none, a new static generator is created
+        :return:
+        """
+        if api_obj is None or type(api_obj) is bool:
+            # TODO, launch diagram to select the bus
+            api_obj = self._editor.circuit.add_static_generator(bus=self._api_object)
+
+        _grph = MapStaticGeneratorGraphicItem(api_obj=api_obj, editor=self._editor)
+
+        return _grph
+
+    def add_battery(self, api_obj: Union[Battery, None] = None):
+        """
+
+        :param api_obj:
+        :return:
+        """
+        if api_obj is None or type(api_obj) is bool:
+            # TODO, launch diagram to select the bus
+            api_obj = self._editor.circuit.add_battery(bus=self._api_object)
+
+        _grph = MapBatteryGraphicItem(api_obj=api_obj, editor=self._editor)
+
+        return _grph
+
+    def add_external_grid(self, api_obj: Union[ExternalGrid, None] = None):
+        """
+
+        :param api_obj:
+        :return:
+        """
+        if api_obj is None or type(api_obj) is bool:
+            # TODO, launch diagram to select the bus
+            api_obj = self._editor.circuit.add_external_grid(bus=self._api_object)
+
+        _grph = MapExternalGridGraphicItem(api_obj=api_obj, editor=self._editor)
+
+        return _grph
