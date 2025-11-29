@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import Union, List, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING, Tuple
 import numpy as np
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
@@ -361,3 +361,20 @@ class InjectionParent(PhysicalDevice):
         :return: bus_pos
         """
         return self.bus_pos
+
+    def try_to_find_coordinates(self) -> Tuple[float, float]:
+        """
+        Get the latitude and
+        :return: longitude, latitude
+        """
+        if self.latitude == 0.0 and self.longitude == 0.0:
+            lon, lat = self.bus.get_coordinates()
+
+            if lon == 0.0 and lat == 0.0:
+                lon, lat = self.bus.try_to_find_coordinates()
+
+                return lon, lat
+            else:
+                return lon, lat
+        else:
+            return self.longitude, self.latitude

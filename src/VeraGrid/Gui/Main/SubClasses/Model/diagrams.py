@@ -13,7 +13,6 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from matplotlib import pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 
-
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine import ContingencyOperationTypes
 from VeraGridEngine.IO.file_system import tiles_path
@@ -23,7 +22,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import SimulationTypes, Colormaps
+from VeraGridEngine.enumerations import SimulationTypes, Colormaps, DeviceType
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 
 import VeraGridEngine.Devices as dev
@@ -45,9 +44,8 @@ from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbT
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
-from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
-                                            InputNumberDialogue, LogsDialogue)
+                                            InputNumberDialogue, LogsDialogue, ShortCircuitSelector)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -2072,42 +2070,64 @@ class DiagramsMain(CompiledArraysMain):
         """
         Adds a Map diagram
         """
-        if ask:
-            ok = yes_no_question(text=f"Do you want to add all substations to the map?\nYou can add them later.",
-                                 title="New map")
+
+        tpes = [
+            DeviceType.SubstationDevice,
+            DeviceType.LineDevice,
+            DeviceType.DCLineDevice,
+            DeviceType.HVDCLineDevice,
+            DeviceType.GeneratorDevice,
+            DeviceType.BatteryDevice,
+            DeviceType.LoadDevice,
+            DeviceType.StaticGeneratorDevice,
+            DeviceType.ExternalGridDevice
+        ]
+
+        self.new_se_dlg = CheckListDialogue(
+            objects_list=[e.value for e in tpes]
+        )
+
+        if self.circuit.get_substation_number() > 0:
+            # showing this menu only makes sense if there is anything there
+            self.new_se_dlg.exec()
         else:
-            ok = True
+            self.show_warning_toast("No substations to draw...")
 
-        if ok:
-            cmap_text = self.ui.palette_comboBox.currentText()
-            cmap = self.cmap_dict[cmap_text]
+        # if ok:
+        cmap_text = self.ui.palette_comboBox.currentText()
+        cmap = self.cmap_dict[cmap_text]
 
-            diagram = generate_map_diagram(
-                substations=self.circuit.get_substations(),
-                voltage_levels=self.circuit.get_voltage_levels(),
-                lines=self.circuit.get_lines(),
-                dc_lines=self.circuit.get_dc_lines(),
-                hvdc_lines=self.circuit.get_hvdc(),
-                fluid_nodes=self.circuit.get_fluid_nodes(),
-                fluid_paths=self.circuit.get_fluid_paths(),
-                prog_func=None,
-                text_func=None,
-                name='Map diagram',
-                use_flow_based_width=self.ui.branch_width_based_on_flow_checkBox.isChecked(),
-                min_branch_width=self.ui.min_branch_size_spinBox.value(),
-                max_branch_width=self.ui.max_branch_size_spinBox.value(),
-                min_bus_width=self.ui.min_node_size_spinBox.value(),
-                max_bus_width=self.ui.max_node_size_spinBox.value(),
-                arrow_size=self.ui.arrow_size_size_spinBox.value(),
-                palette=cmap,
-                default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value()
-            )
+        diagram = generate_map_diagram(
+            substations=self.circuit.get_substations() if self.new_se_dlg.selected(DeviceType.SubstationDevice.value) else list(),
+            voltage_levels=self.circuit.get_voltage_levels() if self.new_se_dlg.selected(DeviceType.SubstationDevice.value) else list(),
+            lines=self.circuit.get_lines() if self.new_se_dlg.selected(DeviceType.LineDevice.value) else list(),
+            dc_lines=self.circuit.get_dc_lines() if self.new_se_dlg.selected(DeviceType.DCLineDevice.value) else list(),
+            hvdc_lines=self.circuit.get_hvdc() if self.new_se_dlg.selected(DeviceType.HVDCLineDevice.value) else list(),
+            fluid_nodes=self.circuit.get_fluid_nodes(),
+            fluid_paths=self.circuit.get_fluid_paths(),
+            external_grids=self.circuit.external_grids if self.new_se_dlg.selected(DeviceType.ExternalGridDevice.value) else list(),
+            static_generators=self.circuit.static_generators if self.new_se_dlg.selected(DeviceType.StaticGeneratorDevice.value) else list(),
+            loads=self.circuit.loads if self.new_se_dlg.selected(DeviceType.LoadDevice.value) else list(),
+            batteries=self.circuit.batteries if self.new_se_dlg.selected(DeviceType.BatteryDevice.value) else list(),
+            generators=self.circuit.generators if self.new_se_dlg.selected(DeviceType.GeneratorDevice.value) else list(),
+            prog_func=None,
+            text_func=None,
+            name='Map diagram',
+            use_flow_based_width=self.ui.branch_width_based_on_flow_checkBox.isChecked(),
+            min_branch_width=self.ui.min_branch_size_spinBox.value(),
+            max_branch_width=self.ui.max_branch_size_spinBox.value(),
+            min_bus_width=self.ui.min_node_size_spinBox.value(),
+            max_bus_width=self.ui.max_node_size_spinBox.value(),
+            arrow_size=self.ui.arrow_size_size_spinBox.value(),
+            palette=cmap,
+            default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value()
+        )
 
-            # set other default properties of the diagram
-            diagram.tile_source = self.ui.tile_provider_comboBox.currentText()
-            diagram.start_level = 5
-        else:
-            diagram = dev.MapDiagram(name='Map diagram')
+        # set other default properties of the diagram
+        diagram.tile_source = self.ui.tile_provider_comboBox.currentText()
+        diagram.start_level = 5
+        # else:
+        # diagram = dev.MapDiagram(name='Map diagram')
 
         # select the tile source
         tile_source = self.tile_name_dict[self.ui.tile_provider_comboBox.currentText()]

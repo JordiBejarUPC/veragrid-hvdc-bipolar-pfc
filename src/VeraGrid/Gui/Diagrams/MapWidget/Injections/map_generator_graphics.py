@@ -10,7 +10,7 @@ import numpy as np
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGrid.Gui.Diagrams.generic_graphics import Circle
+from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
@@ -60,12 +60,12 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         menu = QMenu()
         menu.addSection("Generator")
 
-        add_menu_entry(menu=menu,
-                       text="Active",
-                       icon_path="",
-                       function_ptr=self.enable_disable_toggle,
-                       checkeable=True,
-                       checked_value=self.api_object.active)
+        # add_menu_entry(menu=menu,
+        #                text="Active",
+        #                icon_path="",
+        #                function_ptr=self.enable_disable_toggle,
+        #                checkeable=True,
+        #                checked_value=self.api_object.active)
 
         add_menu_entry(menu=menu,
                        text="Voltage control",

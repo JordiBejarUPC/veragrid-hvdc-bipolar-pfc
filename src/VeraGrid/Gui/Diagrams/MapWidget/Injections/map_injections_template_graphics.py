@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, List, Union
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPen, QCursor, QColor, QBrush
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
-                               QGraphicsSceneContextMenuEvent)
+                               QGraphicsSceneContextMenuEvent,
+                               QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 
@@ -99,6 +100,21 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
 
         return color
 
+    def update_position_at_the_diagram(self) -> None:
+        """
+        Updates the element position in the diagram (to save)
+        :return:
+        """
+        lat, long = self.editor.to_lat_lon(self.rect().x(), self.rect().y())
+
+        self.lat = lat
+        self.lon = long
+
+        self.editor.update_diagram_element(device=self.api_object,
+                                           latitude=lat,
+                                           longitude=long,
+                                           graphic_object=self)
+
     def recolour_mode(self):
         """
         Change the colour according to the system theme
@@ -125,13 +141,22 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         # plot the profiles
         self.api_object.plot_profiles(time=ts)
 
-    def mousePressEvent(self, QGraphicsSceneMouseEvent):
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """
         mouse press: display the editor
-        :param QGraphicsSceneMouseEvent:
+        :param event:
         :return:
         """
+        super().mousePressEvent(event)
         self._editor.set_editor_model(api_object=self.api_object)
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
+        """
+        Event handler for mouse release events.
+        """
+        super().mouseReleaseEvent(event)
+        # self.editor.disableMove = True
+        self.update_position_at_the_diagram()  # always update
 
     def mouseDoubleClickEvent(self, event, /):
         """
@@ -154,6 +179,11 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                        function_ptr=self.plot,
                        icon_path=":/Icons/icons/plot.png")
 
+        add_menu_entry(menu=menu,
+                       text="Consolidate coordinates",
+                       function_ptr=self.consolidate_coordinates,
+                       icon_path=":/Icons/icons/delete_schematic.png")
+
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
@@ -172,3 +202,12 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         menu = self.get_base_context_menu()
 
         menu.exec(event.screenPos())
+
+    def consolidate_coordinates(self):
+        """
+        Consolidate coordinates in to the DB
+        """
+        lat, long = self.editor.to_lat_lon(self.rect().x(), self.rect().y())
+        self.api_object.latitude = lat
+        self.api_object.longitude = long
+        self.editor.gui.show_info_toast("Coordinates consolidated!")

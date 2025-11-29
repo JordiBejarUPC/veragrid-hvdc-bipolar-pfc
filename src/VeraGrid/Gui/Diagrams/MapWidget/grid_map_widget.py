@@ -936,6 +936,36 @@ class GridMapWidget(BaseDiagramWidget):
                                             lon=location.longitude,
                                             lat=location.latitude)
 
+            elif category == DeviceType.GeneratorDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_generator(api_object=location.api_object,
+                                           lon=location.longitude,
+                                           lat=location.latitude)
+
+            elif category == DeviceType.BatteryDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_battery(api_object=location.api_object,
+                                         lon=location.longitude,
+                                         lat=location.latitude)
+
+            elif category == DeviceType.LoadDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_load(api_object=location.api_object,
+                                      lon=location.longitude,
+                                      lat=location.latitude)
+
+            elif category == DeviceType.StaticGeneratorDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_static_generator(api_object=location.api_object,
+                                                  lon=location.longitude,
+                                                  lat=location.latitude)
+
+            elif category == DeviceType.ExternalGridDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_external_grid(api_object=location.api_object,
+                                               lon=location.longitude,
+                                               lat=location.latitude)
+
         # second pass: create the rest of devices
         for category, points_group in diagram.data.items():
 
@@ -2825,6 +2855,11 @@ def generate_map_diagram(
         hvdc_lines: List[HvdcLine],
         fluid_nodes: List[FluidNode],
         fluid_paths: List[FluidPath],
+        generators: List[Generator],
+        batteries: List[Battery],
+        loads: List[Load],
+        static_generators: List[StaticGenerator],
+        external_grids: List[ExternalGrid],
         prog_func: Union[Callable, None] = None,
         text_func: Union[Callable, None] = None,
         name='Map diagram',
@@ -2846,6 +2881,11 @@ def generate_map_diagram(
     :param hvdc_lines: list of HvdcLine objects
     :param fluid_nodes: list of FluidNode objects
     :param fluid_paths: list of FluidPath objects
+    :param external_grids:
+    :param static_generators:
+    :param loads:
+    :param batteries:
+    :param generators:
     :param prog_func: progress report function
     :param text_func: Text report function
     :param name: name of the diagram
@@ -2876,16 +2916,34 @@ def generate_map_diagram(
         text_func('Creating schematic buses')
 
     nn = len(substations)
-    for i, substation in enumerate(substations):
+    for i, elm in enumerate(substations):
 
         if prog_func is not None:
             prog_func((i + 1) / nn * 100.0)
 
-        diagram.set_point(device=substation, location=MapLocation(latitude=substation.latitude,
-                                                                  longitude=substation.longitude,
-                                                                  api_object=substation))
+        diagram.set_point(device=elm, location=MapLocation(latitude=elm.latitude,
+                                                           longitude=elm.longitude,
+                                                           api_object=elm))
 
     # --------------------------------------------------------------------------------------------------------------
+
+    if text_func is not None:
+        text_func('Creating schematic injections')
+
+    for lst in [generators, batteries, loads, static_generators, external_grids]:
+        nn = len(lst)
+        for i, elm in enumerate(lst):
+
+            if prog_func is not None:
+                prog_func((i + 1) / nn * 100.0)
+
+            lon, lat = elm.try_to_find_coordinates()
+            diagram.set_point(device=elm, location=MapLocation(latitude=lat,
+                                                               longitude=lon,
+                                                               api_object=elm))
+
+    # --------------------------------------------------------------------------------------------------------------
+
     if text_func is not None:
         text_func('Creating schematic buses')
 
@@ -3122,6 +3180,11 @@ def make_diagram_from_substations(circuit: MultiCircuit,
         hvdc_lines=hvdc_lines,
         fluid_nodes=list(),
         fluid_paths=list(),
+        external_grids=list(),
+        static_generators=list(),
+        loads=list(),
+        batteries=list(),
+        generators=list(),
         prog_func=prog_func,
         text_func=text_func,
         name=name,

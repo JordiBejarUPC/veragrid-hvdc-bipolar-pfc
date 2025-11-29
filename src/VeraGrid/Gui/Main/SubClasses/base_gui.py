@@ -187,6 +187,7 @@ class BaseMainGui(QMainWindow):
         self.rms_model_Editor_window: Union[RmsModelEditorGUI, None] = None
         self.rms_events_Editor_window: Union[RmsEventEditor, None] = None
         self.investment_checks_diag: Union[CheckListDialogue, None] = None
+        self.new_se_dlg: Union[CheckListDialogue, None] = None
         self.contingency_checks_diag: Union[CheckListDialogue, None] = None
         self.ra_checks_diag: Union[CheckListDialogue, None] = None
         self.start_end_dialogue_window: Union[StartEndSelectionDialogue, None] = None
