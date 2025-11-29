@@ -6,11 +6,10 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPen, QCursor
-from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QMenu,
+from PySide6.QtGui import QPen, QCursor, QColor, QBrush
+from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneContextMenuEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget)
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -19,7 +18,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 
 
-class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
+class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
     """
     InjectionTemplateGraphicItem
     """
@@ -44,7 +43,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
         super().__init__()
 
         # Explicitly call QGraphicsRectItem initialization
-        QGraphicsRectItem.__init__(self)
+        QGraphicsEllipseItem.__init__(self)
 
         # Explicitly call NodeTemplate initialization
         NodeTemplate.__init__(self,
@@ -63,6 +62,8 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
+        self.set_the_api_object_color()
+
     @property
     def api_object(self) -> INJECTION_DEVICE_TYPES:
         """
@@ -79,19 +80,24 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
         return self._editor
 
-    def get_associated_widgets(self) -> List[GenericDiagramWidget | QGraphicsLineItem]:
+    def set_the_api_object_color(self) -> QColor:
         """
-        Get a list of all associated graphics
-        :return:
+        Sets whatever colour is in the API object property
         """
-        return list()
 
-    def get_extra_graphics(self):
-        """
-        Get a list of all QGraphicsItem that are not GenericDiagramWidget elements associated with this widget.
-        :return:
-        """
-        return [self.nexus, self.glyph]
+        color = QColor(self.api_object.color)
+        color.setAlpha(128)
+        self.color = color
+
+        brush = QBrush(color)
+        self.setBrush(brush)
+
+        pen = self.pen()
+        pen.setColor(color)
+        pen.setWidth(0)  # set the pen width to 0
+        self.setPen(pen)
+
+        return color
 
     def recolour_mode(self):
         """
@@ -99,11 +105,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
         super().recolour_mode()
 
-        pen = QPen(self.color, self.width, self.style)
-        self.nexus.setPen(pen)
-        self.glyph.setPen(pen)
-
-        return pen
+        return self.set_the_api_object_color()
 
     def delete(self):
         """
@@ -130,6 +132,15 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         self._editor.set_editor_model(api_object=self.api_object)
+
+    def mouseDoubleClickEvent(self, event, /):
+        """
+
+        :param event:
+        :return:
+        """
+        super().mouseDoubleClickEvent(event)
+        self.set_the_api_object_color()
 
     def get_base_context_menu(self) -> QMenu:
         """

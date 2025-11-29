@@ -47,7 +47,8 @@ class InjectionParent(PhysicalDevice):
         'bus_pos',
         '_conn',
         '_rms_model',
-        'time'
+        'time',
+        'color'
     )
 
     def __init__(self,
@@ -64,7 +65,8 @@ class InjectionParent(PhysicalDevice):
                  build_status: BuildStatus,
                  device_type: DeviceType,
                  longitude=0.0,
-                 latitude=0.0):
+                 latitude=0.0,
+                 color: str | None = None):
         """
         InjectionTemplate
         :param name: Name of the device
@@ -125,9 +127,14 @@ class InjectionParent(PhysicalDevice):
 
         self.bus_pos: int = 0
 
+        self.color = color if color is not None else "#909090"  # light gray
+
         self.register(key='bus', units='', tpe=DeviceType.BusDevice, definition='Connection bus', editable=False)
 
         self.register(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof')
+
+        self.register(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
+                      is_color=True)
 
         self.register(key='mttf', units='h', tpe=float, definition='Mean time to failure')
         self.register(key='mttr', units='h', tpe=float, definition='Mean time to recovery')

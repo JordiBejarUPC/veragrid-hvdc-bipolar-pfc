@@ -899,16 +899,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
         :return:
         """
-        from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
-        self.select_bus_dlg = DiagramBusSelectorDialogue(
-            gui=self.editor.gui,
-            grid=self.editor.circuit,
-            substation=self.api_object
-        )
-
-        self.select_bus_dlg.exec()
-
-        return self.select_bus_dlg.get_selected_buses()
+        return self.editor.gui.select_buses_from_substation(substation=self.api_object)
 
     def add_load(self, api_obj: Union[Load, None] = None):
         """

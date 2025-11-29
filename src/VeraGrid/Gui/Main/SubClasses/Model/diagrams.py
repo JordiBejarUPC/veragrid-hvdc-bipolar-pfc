@@ -36,6 +36,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (SchematicWid
                                                                     make_diagram_from_buses)
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
+from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.Diagrams.diagrams_model import DiagramsModel
 from VeraGrid.Gui.messages import yes_no_question, error_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMain
@@ -3079,6 +3080,22 @@ class DiagramsMain(CompiledArraysMain):
                                  title="Consolidate diagram coordinates into the DB")
             if ok:
                 diagram_widget.consolidate_coordinates()
+
+    def select_buses_from_substation(self, substation: dev.Substation) -> List[dev.Bus]:
+        """
+
+        :param substation:
+        :return:
+        """
+        self.select_bus_dlg = DiagramBusSelectorDialogue(
+            gui=self,
+            grid=self.circuit,
+            substation=substation
+        )
+
+        self.select_bus_dlg.exec()
+
+        return self.select_bus_dlg.get_selected_buses()
 
     def reset_diagram_coordinates(self):
         """
