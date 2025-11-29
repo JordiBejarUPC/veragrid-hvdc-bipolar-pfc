@@ -79,7 +79,6 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
             raise ValueError(f"Unknown variable type {d['type']}")
     return result
 
-
 def block2diffblock(block: Block):
     diff_block = DiffBlock.from_block(block)
 
@@ -329,6 +328,7 @@ class Block:
         # initialization
         self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
 
+
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
 
@@ -338,6 +338,9 @@ class Block:
         self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
 
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
+
+        # initialization
+        self.init_values: Dict[Var, Const] = dict()
 
         # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
@@ -429,6 +432,14 @@ class Block:
         :return: List[Var]
         """
         return self.algebraic_vars + self.state_vars
+
+    def get_all_vars(self):
+        variables: List[Var] = list()
+        all_blocks = self.get_all_blocks()
+        for blk in all_blocks:
+            variables.extend(blk.get_vars())
+        return variables
+
 
     def to_dict(self) -> Dict[str, Any]:
         return {

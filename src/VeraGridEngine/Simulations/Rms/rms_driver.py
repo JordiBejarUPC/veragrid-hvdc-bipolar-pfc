@@ -110,7 +110,7 @@ class RmsSimulationDriver(DriverTemplate):
 
         params_mapping: Dict = dict()
 
-        sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
+        sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
 
         diff_vars = check_if_diff_vars(ss)
 

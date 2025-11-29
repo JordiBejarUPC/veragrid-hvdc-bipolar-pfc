@@ -175,7 +175,10 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
 
     return init_guess_dict, vars_list
 
-def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index):
+def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index, use_init_values: bool):
+    """
+
+    """
     uid2sym_params: Dict[int, str] = {}
     uid2idx_params: Dict[int, int] = {}
 
@@ -243,11 +246,15 @@ def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_va
                 if key in init_guess:
                     x[uid2idx_vars[var.uid]] = init_guess[key]
                 else:
-                    eq = mdl.init_eqs[var]
-                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                    init_val = float(eq_fn(x, params_array))
-                    init_guess[key] = init_val
-                    x[uid2idx_vars[var.uid]] = init_val
+                    if var in mdl.init_values and use_init_values:
+                        init_guess[key] = mdl.init_values[var].value
+                        x[uid2idx_vars[var.uid]] = mdl.init_values[var].value
+                    else:
+                        eq = mdl.init_eqs[var]
+                        eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                        init_val = float(eq_fn(x, params_array))
+                        init_guess[key] = init_val
+                        x[uid2idx_vars[var.uid]] = init_val
             # TODO: change model to generator, exciter and governor separated and remove this
             for var in mdl.fix_vars:
                 eq = mdl.fix_vars_eqs[var.uid]
@@ -447,7 +454,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
     return x0, init_guess
 
 def compose_system_block(time: Var, grid: MultiCircuit,
-                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
+                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int], use_init_values: bool) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
 
     """
     Compose all RMS models
@@ -456,6 +463,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     :param power_flow_results:
     :param vars2device: dictionary relating uid of vars with the device they belong to
     :param vars_glob_name2uid: dictionary relating global name of the variable and uid (used when showing results)
+    :param use_init_values:
     :return: System block and initial guess dictionary
     """
     # already computed grid power flow
@@ -566,7 +574,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         #
         # except ValueError:
         #     print(f"Error when initializing with pseudo_transient method")
-        init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index)
+        init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t, array_index, use_init_values)
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
@@ -595,7 +603,7 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
-def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logger()):
+def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool, logger: Logger = Logger()):
     """
     Initialize all RMS models
     """
@@ -701,5 +709,5 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
                 mdl.algebraic_eqs.append(P[i])
                 mdl.algebraic_eqs.append(Q[i])
 
-    return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid)
+    return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid, use_init_values)
 

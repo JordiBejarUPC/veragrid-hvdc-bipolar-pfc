@@ -619,6 +619,8 @@ class GenqecExcGovSat(RmsModelTemplate):
 
 
         main_block.event_dict = self.event_dict
+        main_block.init_values = self.init_values
+
         main_block.children.append(governor_block)
         main_block.children.append(stabilizer_block)
         main_block.children.append(exciter_model)

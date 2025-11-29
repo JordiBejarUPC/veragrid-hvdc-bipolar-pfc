@@ -6,6 +6,8 @@
 from typing import List
 import numpy as np
 
+from typing import Dict
+
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
@@ -118,5 +120,6 @@ class Generator_0_RmsTemplate(RmsModelTemplate):
         }
 
         block.event_dict = self.event_dict
+        block.init_values = self.init_values
 
         return block

@@ -57,4 +57,6 @@ class Line_0_RmsTemplate(RmsModelTemplate):
                 VarPowerFlowRefferenceType.Qt: self.Qt,
             }
 
+        block.init_values = self.init_values
+
         return block

@@ -120,5 +120,6 @@ class Generator_1_RmsTemplate(RmsModelTemplate):
         }
 
         block.event_dict = self.event_dict
+        block.init_values = self.init_values
 
         return block

@@ -46,6 +46,7 @@ class LoadRmsTemplate(RmsModelTemplate):
         )
 
         block.event_dict = self.event_dict
+        block.init_values = self.init_values
         block.external_mapping={
                 VarPowerFlowRefferenceType.P: self.Pl,
                 VarPowerFlowRefferenceType.Q: self.Ql
