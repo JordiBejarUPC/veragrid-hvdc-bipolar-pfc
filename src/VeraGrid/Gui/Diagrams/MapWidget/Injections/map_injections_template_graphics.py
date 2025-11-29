@@ -63,7 +63,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.set_the_api_object_color()
+        self.set_api_object_color()
 
     @property
     def api_object(self) -> INJECTION_DEVICE_TYPES:
@@ -81,7 +81,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         """
         return self._editor
 
-    def set_the_api_object_color(self) -> QColor:
+    def set_api_object_color(self) -> QColor:
         """
         Sets whatever colour is in the API object property
         """
@@ -115,13 +115,34 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                                            longitude=long,
                                            graphic_object=self)
 
+    def set_size(self, r: float):
+        """
+
+        :param r: radius in pixels
+        :return:
+        """
+        if r != self.size:
+            rect = self.rect()
+            rect.setWidth(r)
+            rect.setHeight(r)
+
+            # change the width and height while keeping the same center
+            r2 = (self.size - r) / 2
+            new_x = rect.x() + r2
+            new_y = rect.y() + r2
+
+            self.size = r
+
+            # Set the new rectangle with the updated dimensions
+            self.setRect(new_x, new_y, r, r)
+
     def recolour_mode(self):
         """
         Change the colour according to the system theme
         """
         super().recolour_mode()
 
-        return self.set_the_api_object_color()
+        return self.set_api_object_color()
 
     def delete(self):
         """
@@ -165,7 +186,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         :return:
         """
         super().mouseDoubleClickEvent(event)
-        self.set_the_api_object_color()
+        self.set_api_object_color()
 
     def get_base_context_menu(self) -> QMenu:
         """

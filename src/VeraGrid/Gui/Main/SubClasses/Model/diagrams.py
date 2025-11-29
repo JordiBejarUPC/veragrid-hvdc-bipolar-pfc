@@ -215,6 +215,8 @@ class DiagramsMain(CompiledArraysMain):
         if 'fivethirtyeight' in plt.style.available:
             self.ui.plt_style_comboBox.setCurrentText('fivethirtyeight')
 
+        self.ui.diagramSearchLineEdit.setPlaceholderText("Type to search in the current diagram")
+
         # configure matplotlib for pandas time series
         register_matplotlib_converters()
 
@@ -253,7 +255,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionSmaller_nodes.triggered.connect(self.smaller_nodes)
         self.ui.actionCenter_view.triggered.connect(self.center_nodes)
         self.ui.actionAutoatic_layout.triggered.connect(self.auto_layout)
-        self.ui.actionSearchDiagram.triggered.connect(self.search_diagram)
+
         self.ui.actionEdit_simulation_time_limits.triggered.connect(self.edit_time_interval)
         self.ui.actionDisable_all_results_tags.triggered.connect(self.disable_all_results_tags)
         self.ui.actionEnable_all_results_tags.triggered.connect(self.enable_all_results_tags)
@@ -265,6 +267,7 @@ class DiagramsMain(CompiledArraysMain):
         # Buttons
         self.ui.colour_results_pushButton.clicked.connect(self.colour_diagrams)
         self.ui.redraw_pushButton.clicked.connect(self.redraw_current_diagram)
+        self.ui.diagramSearchButton.clicked.connect(self.search_diagram)
 
         self.ui.preset1_pushButton.clicked.connect(self.preset_1)
         self.ui.preset2_pushButton.clicked.connect(self.preset_2)
@@ -2950,18 +2953,13 @@ class DiagramsMain(CompiledArraysMain):
         """
         Search elements by name, code or idtag and center them in the screen
         """
-
-        dlg = InputSearchDialogue(deafault_value="",
-                                  title="Search",
-                                  prompt="Search object by name, code or idtag in the diagram")
-        if dlg.exec():
-
-            if dlg.is_accepted:
-                diagram = self.get_selected_diagram_widget()
-
-                if diagram is not None:
-                    if isinstance(diagram, SchematicWidget):
-                        diagram.graphical_search(search_text=dlg.searchText.lower())
+        diagram = self.get_selected_diagram_widget()
+        search_text = self.ui.diagramSearchLineEdit.text().lower()
+        if diagram is not None:
+            if isinstance(diagram, SchematicWidget):
+                diagram.graphical_search(search_text=search_text)
+            elif isinstance(diagram, GridMapWidget):
+                diagram.graphical_search(search_text=search_text)
 
     def show_diagrams_context_menu(self, pos: QtCore.QPoint):
         """

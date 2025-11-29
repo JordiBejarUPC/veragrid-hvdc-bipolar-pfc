@@ -322,6 +322,9 @@ class GridMapWidget(BaseDiagramWidget):
 
     @property
     def diagram_scene(self) -> MapDiagramScene:
+        """
+        :return: MapDiagramScene
+        """
         return self.map.diagram_scene
 
     def _get_selected(self) -> List[ALL_MAP_GRAPHICS | QGraphicsItem]:
@@ -1215,15 +1218,21 @@ class GridMapWidget(BaseDiagramWidget):
             elm_graphics.resize(new_radius=branch_width)
 
         # rescale substations (this is super-fast)
-        data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(DeviceType.SubstationDevice)
-        for se_key, elm_graphics in data.items():
-            # elm_graphics.set_api_object_color()
-            elm_graphics.set_size(r=se_width)
+        for dev_tpe in [DeviceType.SubstationDevice,
+                        DeviceType.GeneratorDevice,
+                        DeviceType.BatteryDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.ExternalGridDevice,
+                        DeviceType.StaticGeneratorDevice]:
+            data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(dev_tpe)
+            for se_key, elm_graphics in data.items():
+                elm_graphics.set_api_object_color()
+                elm_graphics.set_size(r=se_width)
 
         self.diagram_scene.blockSignals(False)
         self.diagram_scene.update(self.diagram_scene.sceneRect())
 
-    def center(self):
+    def center(self) -> None:
         """
         Center the diagram
         """
@@ -1234,32 +1243,86 @@ class GridMapWidget(BaseDiagramWidget):
         lon_max = -1e20
         lon_min = 1e20
         n = 0
-        for graphic_obj in self.graphics_manager.get_device_type_list(DeviceType.SubstationDevice):
-            lat += graphic_obj.lat
-            lon += graphic_obj.lon
+        for dev_tpe in [DeviceType.SubstationDevice,
+                        DeviceType.GeneratorDevice,
+                        DeviceType.BatteryDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.ExternalGridDevice,
+                        DeviceType.StaticGeneratorDevice]:
+            for graphic_obj in self.graphics_manager.get_device_type_list(dev_tpe):
+                lat += graphic_obj.lat
+                lon += graphic_obj.lon
 
-            lat_max = max(lat_max, graphic_obj.lat)
-            lat_min = min(lat_min, graphic_obj.lat)
-            lon_max = max(lon_max, graphic_obj.lon)
-            lon_min = min(lon_min, graphic_obj.lon)
-            n += 1
+                lat_max = max(lat_max, graphic_obj.lat)
+                lat_min = min(lat_min, graphic_obj.lat)
+                lon_max = max(lon_max, graphic_obj.lon)
+                lon_min = min(lon_min, graphic_obj.lon)
+                n += 1
 
         if n > 0:
             lat /= n
             lon /= n
-            self.map.pan_position(latitude=lat, longitude=lon)
 
-            # this is to also move the diagram layer according to the map
-            # z = self.map.best_zoom_from_bbox(min_lat=lat_min,
-            #                                  max_lat=lat_max,
-            #                                  min_lon=lon_min,
-            #                                  max_lon=lon_max)
-
-            self.map.set_zoom_level(level=self.map.level)
-            # self.map.set_zoom_level(level=z)
+            self.map.go_to_position(latitude=lat, longitude=lon)
+            # self.map.set_zoom_level(level=10)
+            # level = self.map.best_zoom_from_bbox(min_lat=lat_min,
+            #                                      max_lat=lat_max,
+            #                                      min_lon=lon_min,
+            #                                      max_lon=lon_max)
+            # self.map.set_zoom_level(level=level)
 
         else:
             self.gui.show_warning_toast("No points to center :/")
+
+    def graphical_search(self, search_text: str):
+        """
+        Search object in the diagram and center around it
+        :param search_text: object name, object code or object idtag
+        """
+        # Initialize boundaries
+        min_lat = min_lon = max_lat = max_lon = None
+
+        n = 0
+        for key, points_group in self.diagram.data.items():
+            for idTag, location in points_group.locations.items():
+                if location.api_object is not None:
+
+                    # Check if searchText is in the name, code, or idtag of the api_object
+                    if (search_text in location.api_object.name.lower() or
+                            search_text in location.api_object.code.lower() or
+                            search_text in str(location.api_object.idtag).lower()):
+
+                        # Calculate boundaries (x: latitude, y: longitude)
+                        left = location.latitude
+                        right = location.latitude + location.w
+                        top = location.longitude
+                        bottom = location.longitude + location.h
+
+                        if min_lat is None or left < min_lat:
+                            min_lat = left
+                        if min_lon is None or top < min_lon:
+                            min_lon = top
+                        if max_lat is None or right > max_lat:
+                            max_lat = right
+                        if max_lon is None or bottom > max_lon:
+                            max_lon = bottom
+
+                        n += 1
+
+        # After all matching elements have been processed
+
+        if None not in (min_lat, min_lon, max_lat, max_lon):
+            lat = (min_lat + max_lat) / 2.0
+            lon = (min_lon + max_lon) / 2.0
+
+            # Fit the view
+            level = self.map.best_zoom_from_bbox(min_lat=min_lat,
+                                                 max_lat=max_lat,
+                                                 min_lon=min_lon,
+                                                 max_lon=max_lon)
+
+            self.map.set_zoom_level(level=level)
+            # self.map.go_to_position(latitude=lat, longitude=lon)
 
     def colour_results(self,
                        Sbus: CxVec,

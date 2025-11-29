@@ -28,17 +28,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed brush issue">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Basic functionality of showing injections">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_generator_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_generator_graphics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_injections_template_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_injections_template_graphics.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/general_dialogues.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/general_dialogues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/gui_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/gui_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/messages.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/messages.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/injection_parent.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/injection_parent.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -719,10 +719,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python.update_gui_file" />
         <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.CA_Script" />
-        <item itemvalue="Python.update_gui_file" />
       </list>
     </recent_temporary>
   </component>
@@ -1854,7 +1854,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="665" />
+    <option name="localTasksCounter" value="666" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1900,7 +1900,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added opf video link" />
     <MESSAGE value="added contract power to the load objects" />
     <MESSAGE value="implemented colors to blocks and lines and fixed some bugs found" />
     <MESSAGE value="Implemented two new buttons in the time series to crop profiles to range or clustering" />
@@ -1925,7 +1924,8 @@
     <MESSAGE value="WIP" />
     <MESSAGE value="Early adding injections from the map" />
     <MESSAGE value="Fixed brush issue" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed brush issue" />
+    <MESSAGE value="Basic functionality of showing injections" />
+    <option name="LAST_COMMIT_MESSAGE" value="Basic functionality of showing injections" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2325,11 +2325,6 @@
           <option name="timeStamp" value="2980" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py</url>
-          <line>1687</line>
-          <option name="timeStamp" value="2985" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/tests/test_gslv_contingencies.py</url>
           <line>44</line>
           <option name="timeStamp" value="2986" />
@@ -2463,6 +2458,16 @@
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
           <line>779</line>
           <option name="timeStamp" value="3060" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py</url>
+          <line>1547</line>
+          <option name="timeStamp" value="3061" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py</url>
+          <line>1902</line>
+          <option name="timeStamp" value="3064" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

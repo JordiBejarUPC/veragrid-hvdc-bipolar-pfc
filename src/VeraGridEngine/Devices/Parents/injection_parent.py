@@ -378,3 +378,14 @@ class InjectionParent(PhysicalDevice):
                 return lon, lat
         else:
             return self.longitude, self.latitude
+
+    def color_by_main_technology(self):
+        """
+        Set the color of the dominant technology
+        """
+        mx = 0.0
+        col = self.color
+        for _, val in self.technologies.data.items():
+            if val.value > mx:
+                col = val.api_object.color
+        self.color = col
