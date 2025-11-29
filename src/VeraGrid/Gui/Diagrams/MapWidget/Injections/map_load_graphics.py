@@ -17,33 +17,29 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
-    from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
+    from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 
 
 class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
 
-    def __init__(self, api_obj: Load, editor: SchematicWidget):
+    def __init__(self, api_object: Load,
+                 editor: GridMapWidget,
+                 lat: float,
+                 lon: float,
+                 size: float = 0.8,
+                 draw_labels: bool = True):
         """
 
-        :param parent:
-        :param api_obj:
+        :param api_object:
         :param editor:
         """
         MapInjectionTemplateGraphicItem.__init__(self,
-                                              api_obj=api_obj,
-                                              editor=editor,
-                                              device_type_name='load',
-                                              w=20,
-                                              h=20)
-
-        # triangle
-        self.set_glyph(glyph=Polygon(
-            self,
-            polygon=QPolygonF([QPointF(0, 0),
-                               QPointF(self.w, 0),
-                               QPointF(self.w / 2, self.h)]),
-            update_nexus_fcn=self.update_nexus)
-        )
+                                                 api_object=api_object,
+                                                 editor=editor,
+                                                 lat=lat,
+                                                 lon=lon,
+                                                 size=size,
+                                                 draw_labels=draw_labels)
 
     @property
     def api_object(self) -> Load:

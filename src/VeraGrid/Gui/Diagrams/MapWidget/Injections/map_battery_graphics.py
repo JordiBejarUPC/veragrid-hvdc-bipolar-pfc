@@ -14,18 +14,24 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 class MapBatteryGraphicItem(MapInjectionTemplateGraphicItem):
 
-    def __init__(self, api_obj: Battery, editor: GridMapWidget):
+    def __init__(self, api_object: Battery,
+                 editor: GridMapWidget,
+                 lat: float,
+                 lon: float,
+                 size: float = 0.8,
+                 draw_labels: bool = True):
         """
 
-        :param api_obj:
+        :param api_object:
         :param editor:
         """
         MapInjectionTemplateGraphicItem.__init__(self,
-                                                 api_obj=api_obj,
+                                                 api_object=api_object,
                                                  editor=editor,
-                                                 device_type_name='generator',
-                                                 w=40,
-                                                 h=40)
+                                                 lat=lat,
+                                                 lon=lon,
+                                                 size=size,
+                                                 draw_labels=draw_labels)
 
     @property
     def api_object(self) -> Battery:

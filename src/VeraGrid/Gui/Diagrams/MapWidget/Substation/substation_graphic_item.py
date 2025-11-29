@@ -25,7 +25,6 @@ from VeraGrid.Gui.general_dialogues import InputNumberDialogue, CheckListDialogu
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item import VoltageLevelGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget import schematic_widget
-
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, BRANCH_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices import VoltageLevel
@@ -106,8 +105,14 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         # list of voltage levels graphics
         self.voltage_level_graphics: List[VoltageLevelGraphicItem] = list()
 
+        self.select_bus_dlg = None
+
     @property
     def color(self) -> QColor:
+        """
+
+        :return: 
+        """
         return self._color
 
     @color.setter
@@ -889,6 +894,22 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
         self.editor.delete_with_dialogue(selected=[self], delete_from_db=False)
 
+    def show_and_select_buses(self) -> List[Bus]:
+        """
+
+        :return:
+        """
+        from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
+        self.select_bus_dlg = DiagramBusSelectorDialogue(
+            gui=self.editor.gui,
+            grid=self.editor.circuit,
+            substation=self.api_object
+        )
+
+        self.select_bus_dlg.exec()
+
+        return self.select_bus_dlg.get_selected_buses()
+
     def add_load(self, api_obj: Union[Load, None] = None):
         """
         Add load object to bus
@@ -896,13 +917,17 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if api_obj is None or type(api_obj) is bool:
+            buses = self.show_and_select_buses()
+            if len(buses) == 1:
+                api_obj = self._editor.circuit.add_load(bus=buses[0])
 
-            # TODO, launch diagram to select the bus
-            api_obj = self._editor.circuit.add_load(bus=self._api_object)
-
-        _grph = MapLoadGraphicItem(api_obj=api_obj, editor=self._editor)
-
-        return _grph
+                self.editor.add_api_load(
+                    api_object=api_obj,
+                    lat=self.lat,
+                    lon=self.lon
+                )
+            else:
+                self.editor.gui.show_error_toast("Select only one bus")
 
     def add_generator(self, api_obj: Union[Generator, None] = None):
         """
@@ -910,12 +935,17 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :param api_obj: if None, a new generator is created
         """
         if api_obj is None or type(api_obj) is bool:
-            # TODO, launch diagram to select the bus
-            api_obj = self._editor.circuit.add_generator(bus=self._api_object)
+            buses = self.show_and_select_buses()
+            if len(buses) == 1:
+                api_obj = self._editor.circuit.add_generator(bus=buses[0])
 
-        _grph = MapGeneratorGraphicItem(api_obj=api_obj, editor=self._editor)
-
-        return _grph
+                self.editor.add_api_generator(
+                    api_object=api_obj,
+                    lat=self.lat,
+                    lon=self.lon
+                )
+            else:
+                self.editor.gui.show_error_toast("Select only one bus")
 
     def add_static_generator(self, api_obj: Union[StaticGenerator, None] = None):
         """
@@ -924,12 +954,17 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if api_obj is None or type(api_obj) is bool:
-            # TODO, launch diagram to select the bus
-            api_obj = self._editor.circuit.add_static_generator(bus=self._api_object)
+            buses = self.show_and_select_buses()
+            if len(buses) == 1:
+                api_obj = self._editor.circuit.add_static_generator(bus=buses[0])
 
-        _grph = MapStaticGeneratorGraphicItem(api_obj=api_obj, editor=self._editor)
-
-        return _grph
+                self.editor.add_api_static_generator(
+                    api_object=api_obj,
+                    lat=self.lat,
+                    lon=self.lon
+                )
+            else:
+                self.editor.gui.show_error_toast("Select only one bus")
 
     def add_battery(self, api_obj: Union[Battery, None] = None):
         """
@@ -938,12 +973,17 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if api_obj is None or type(api_obj) is bool:
-            # TODO, launch diagram to select the bus
-            api_obj = self._editor.circuit.add_battery(bus=self._api_object)
+            buses = self.show_and_select_buses()
+            if len(buses) == 1:
+                api_obj = self._editor.circuit.add_battery(bus=buses[0])
 
-        _grph = MapBatteryGraphicItem(api_obj=api_obj, editor=self._editor)
-
-        return _grph
+                self.editor.add_api_battery(
+                    api_object=api_obj,
+                    lat=self.lat,
+                    lon=self.lon
+                )
+            else:
+                self.editor.gui.show_error_toast("Select only one bus")
 
     def add_external_grid(self, api_obj: Union[ExternalGrid, None] = None):
         """
@@ -952,9 +992,14 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if api_obj is None or type(api_obj) is bool:
-            # TODO, launch diagram to select the bus
-            api_obj = self._editor.circuit.add_external_grid(bus=self._api_object)
+            buses = self.show_and_select_buses()
+            if len(buses) == 1:
+                api_obj = self._editor.circuit.add_external_grid(bus=buses[0])
 
-        _grph = MapExternalGridGraphicItem(api_obj=api_obj, editor=self._editor)
-
-        return _grph
+                self.editor.add_api_external_grid(
+                    api_object=api_obj,
+                    lat=self.lat,
+                    lon=self.lon
+                )
+            else:
+                self.editor.gui.show_error_toast("Select only one bus")

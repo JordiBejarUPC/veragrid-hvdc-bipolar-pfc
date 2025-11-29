@@ -28,6 +28,11 @@ from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.Devices.Branches.line import Line, accept_line_connection
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
+from VeraGridEngine.Devices.Injections.battery import Battery
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
+from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Diagrams.map_diagram import MapDiagram
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec
@@ -51,6 +56,11 @@ from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_fluid_path import MapFluidPath
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.line_location_graphic_item import LineLocationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item import VoltageLevelGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_battery_graphics import MapBatteryGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_generator_graphics import MapGeneratorGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_load_graphics import MapLoadGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics import MapExternalGridGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import MapStaticGeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.map_widget import MapWidget, MapDiagramScene
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
@@ -778,6 +788,136 @@ class GridMapWidget(BaseDiagramWidget):
                                                  api_object=api_object)
 
         self.graphics_manager.add_device(elm=api_object, graphic=graphic_object)
+
+        return graphic_object
+
+    def add_api_battery(self,
+                        api_object: Battery,
+                        lat: float,
+                        lon: float) -> MapBatteryGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapBatteryGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_generator(self,
+                          api_object: Generator,
+                          lat: float,
+                          lon: float) -> MapGeneratorGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapGeneratorGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_load(self,
+                     api_object: Load,
+                     lat: float,
+                     lon: float) -> MapLoadGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapLoadGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_external_grid(self,
+                              api_object: ExternalGrid,
+                              lat: float,
+                              lon: float) -> MapExternalGridGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapExternalGridGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_static_generator(self,
+                                 api_object: StaticGenerator,
+                                 lat: float,
+                                 lon: float) -> MapStaticGeneratorGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapStaticGeneratorGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
 
         return graphic_object
 

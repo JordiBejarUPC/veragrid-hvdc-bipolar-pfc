@@ -13,23 +13,29 @@ from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics
 from VeraGrid.Gui.messages import yes_no_question
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
-    from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
+    from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 
 
 class MapStaticGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
-    def __init__(self, api_obj: StaticGenerator, editor: "SchematicWidget"):
+    def __init__(self, api_object: StaticGenerator,
+                 editor: GridMapWidget,
+                 lat: float,
+                 lon: float,
+                 size: float = 0.8,
+                 draw_labels: bool = True):
         """
 
-        :param api_obj:
+        :param api_object:
+        :param editor:
         """
         MapInjectionTemplateGraphicItem.__init__(self,
-                                                 api_obj=api_obj,
+                                                 api_object=api_object,
                                                  editor=editor,
-                                                 device_type_name='static_generator',
-                                                 w=40,
-                                                 h=40)
-
+                                                 lat=lat,
+                                                 lon=lon,
+                                                 size=size,
+                                                 draw_labels=draw_labels)
     @property
     def api_object(self) -> StaticGenerator:
         return self._api_object

@@ -7,10 +7,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPen, QCursor
-from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsItemGroup, QMenu,
+from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QMenu,
                                QGraphicsSceneContextMenuEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget)
+from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
@@ -18,28 +19,45 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 
 
-class MapInjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
+class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsRectItem):
     """
     InjectionTemplateGraphicItem
     """
 
     def __init__(self,
-                 api_obj: INJECTION_DEVICE_TYPES,
-                 device_type_name: str,
-                 w: int,
-                 h: int,
-                 editor: GridMapWidget):
+                 api_object: INJECTION_DEVICE_TYPES,
+                 editor: GridMapWidget,
+                 lat: float,
+                 lon: float,
+                 size: float = 0.8,
+                 draw_labels: bool = True):
         """
 
-        :param api_obj:
-        :param device_type_name:
-        :param w:
-        :param h:
+        :param api_object:
+        :param editor:
+        :param lat:
+        :param lon:
+        :param size:
+        :param draw_labels:
         """
-        GenericDiagramWidget.__init__(self, parent=None, api_object=api_obj, editor=editor, draw_labels=True)
-        QGraphicsItemGroup.__init__(self, None)
+        # Correct way to call multiple inheritance
+        super().__init__()
 
-        self.device_type_name = device_type_name
+        # Explicitly call QGraphicsRectItem initialization
+        QGraphicsRectItem.__init__(self)
+
+        # Explicitly call NodeTemplate initialization
+        NodeTemplate.__init__(self,
+                              api_object=api_object,
+                              editor=editor,
+                              draw_labels=draw_labels,
+                              lat=lat,
+                              lon=lon)
+
+        r2 = size / 2.0
+        x, y = editor.to_x_y(lat=lat, lon=lon)  # upper left corner
+        self.size = size
+        self.setRect(x - r2, y - r2, self.size, self.size)
 
         # Properties of the container:
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
