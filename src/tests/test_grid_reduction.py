@@ -385,8 +385,8 @@ def test_ptdf_projected_ts():
     :return:
     """
 
-    fname = os.path.join('src', 'tests', 'data', 'grids', 'ptdf_ts.veragrid')
-    # fname = os.path.join('data', 'grids', 'ptdf_ts.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'ptdf_ts.veragrid')
+    fname = os.path.join('data', 'grids', 'ptdf_ts.veragrid')
         
     grid = gce.open_file(filename=fname)
 
