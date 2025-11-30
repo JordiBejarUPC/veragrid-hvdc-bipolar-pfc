@@ -366,7 +366,10 @@ def _store_voltage_level_data(
     bars = [bus for bus in all_buses if bus.graphic_type == BusGraphicType.BusBar]
     if voltage not in bars_by_voltage:
         bars_by_voltage[voltage] = []
-    bars_by_voltage[voltage].extend(bars)
+    # Only add bars that are not already in the list (avoid duplicates)
+    existing_bar_ids = {b.idtag for b in bars_by_voltage[voltage]}
+    new_bars = [b for b in bars if b.idtag not in existing_bar_ids]
+    bars_by_voltage[voltage].extend(new_bars)
     
     # Store voltage level type
     vl_type_by_voltage[voltage] = vl_type
