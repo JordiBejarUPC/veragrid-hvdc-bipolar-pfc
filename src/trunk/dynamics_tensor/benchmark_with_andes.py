@@ -384,7 +384,6 @@ def perform_diffblock_simulation_for_kundur_ieee_no_shunt():
         use_stored_guess=False,
         initialize_angles=False,
         generate_report=False,
-        three_phase_unbalanced=False
     )
     if run_powerflow := False:
         res = gce.power_flow(grid, options=options)

@@ -208,7 +208,7 @@ grid.add_line(obj=line_632_633)
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
 
-res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
 print(res.get_bus_df())
 

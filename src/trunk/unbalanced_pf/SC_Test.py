@@ -454,7 +454,8 @@ def short_circuit_3ph(grid, t_idx=None):
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
                                        pf_options=pf_options,
-                                       pf_results=pf_res)
+                                       pf_results=pf_res,
+                                       pf_results3ph=None)
     sc_driver.run()
 
     return None

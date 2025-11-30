@@ -365,7 +365,7 @@ grid.add_line(obj=line_671_680)
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
-res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Short-circuit
@@ -383,8 +383,9 @@ grid.add_short_circuit_definition(
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,
-                                   pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                   pf_results=res_pf)
+                                   pf_options=gce.PowerFlowOptions(),
+                                   pf_results=None,
+                                   pf_results3ph=res_pf)
 sc_driver.run()
 
 res_sc = sc_driver.results

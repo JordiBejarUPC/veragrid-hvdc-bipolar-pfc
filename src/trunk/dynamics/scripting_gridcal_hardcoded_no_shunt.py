@@ -239,7 +239,6 @@ options = gce.PowerFlowOptions(
     use_stored_guess=False,
     initialize_angles=False,
     generate_report=False,
-    three_phase_unbalanced=False
 )
 res = gce.power_flow(grid, options=options)
 
