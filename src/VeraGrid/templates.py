@@ -88,9 +88,6 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
     Here the list of all rms templates must be returned in a list
     :return:
     """
-    return [BusRmsTemplate(),
-            get_generator_rms_template(),
-            Generator_1_RmsTemplate(),
+    return [get_generator_rms_template(),
             get_line_rms_template(),
-            Line_1_RmsTemplate(),
             LoadRmsTemplate()]
