@@ -454,6 +454,14 @@ class Block:
                 {"var": var.to_dict(), "expr": expr.to_dict()}
                 for var, expr in self.init_eqs.items()
             ],
+            "init_values": [
+                {"var": var.to_dict(), "value": value.value}
+                for var, value in self.init_values.items()
+            ],
+            "parameters": [
+                {"name": name, "value": value.value}
+                for name, value in self.parameters.items()
+            ],
             "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
             "fix_vars_eqs": [
                 {"uid": undef.uid, "expr": expr.to_dict()}
@@ -499,6 +507,21 @@ class Block:
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr
+
+        block.init_values = {}
+        for pair in data.get("init_values", []):
+            var_dict = pair["var"]
+            value = pair["value"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+            const_value = Const(value)
+            block.init_values[var] = const_value
+
+        block.parameters = {}
+        for pair in data.get("parameters", []):
+            name = pair["name"]
+            value = pair["value"]
+            const_value = Const(value)
+            block.init_values[name] = const_value
 
         fv_list = _deserialize_var_list(data.get("fix_vars", []))
         block.fix_vars = [v for v in fv_list if isinstance(v, UndefinedConst)]
