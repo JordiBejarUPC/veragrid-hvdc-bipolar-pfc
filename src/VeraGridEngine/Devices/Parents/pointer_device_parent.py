@@ -51,7 +51,7 @@ class PointerDeviceParent(EditableDevice):
 
         self.register(key='device_idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='tpe', units='', tpe=DeviceType, definition='Device type', editable=False)
-        self.register(key='device_name', units='', tpe=DeviceType, definition='Device name', editable=False)
+        self.register(key='device_name', units='', tpe=str, definition='Device name', editable=False)
 
     @property
     def device_idtag(self) -> str:

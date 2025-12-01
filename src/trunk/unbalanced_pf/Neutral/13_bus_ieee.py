@@ -357,9 +357,8 @@ grid.add_transformer2w(XFM_1)
 # ------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ------------------------------------------------------------------------------------------------------------------
-res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                             solver_type=SolverType.NR,
-                                                             retry_with_other_methods=False))
+res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                retry_with_other_methods=False))
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Results

@@ -50,9 +50,8 @@ grid.add_transformer2w(XFM_1)
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
-res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                solver_type=SolverType.NR,
-                                                                retry_with_other_methods=False))
+res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                   retry_with_other_methods=False))
 # print(res_pf.get_voltage_3ph_df())
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -71,8 +70,9 @@ grid.add_short_circuit_definition(
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,
-                                   pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                   pf_results=res_pf)
+                                   pf_options=gce.PowerFlowOptions(),
+                                   pf_results=None,
+                                   pf_results3ph=res_pf)
 sc_driver.run()
 
 res_sc = sc_driver.results

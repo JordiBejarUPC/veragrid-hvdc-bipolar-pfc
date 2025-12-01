@@ -34,4 +34,4 @@ class ContingencyGroup(EditableDevice):
         self.active = bool(active)
 
         self.register(key='category', units='', tpe=str, definition='Some tag to category the contingency group')
-        self.register(key='active', units='', tpe=str, definition='Is the contingency group active for consideration?')
+        self.register(key='active', units='', tpe=bool, definition='Is the contingency group active for consideration?')
