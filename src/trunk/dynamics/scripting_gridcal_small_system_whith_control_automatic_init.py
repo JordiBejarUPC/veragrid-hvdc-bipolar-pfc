@@ -156,7 +156,6 @@ options = PowerFlowOptions(
     use_stored_guess=False,
     initialize_angles=False,
     generate_report=False,
-    three_phase_unbalanced=False
 )
 res = power_flow(grid, options=options)
 

@@ -60,8 +60,7 @@ grid.add_line(obj=line)
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
-res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                             solver_type=SolverType.NR,
+res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                              retry_with_other_methods=False))
 
 # ----------------------------------------------------------------------------------------------------------------------
