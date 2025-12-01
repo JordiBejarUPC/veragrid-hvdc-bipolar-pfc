@@ -104,7 +104,7 @@ for _, row_meters in df_meters.iterrows():
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
-res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True, solver_type=SolverType.HELM))
+res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions( solver_type=SolverType.HELM))
 print("\n", res.get_voltage_3ph_df())
 print("\nConverged? ", res.converged)
 print("\nIterations: ", res.iterations)

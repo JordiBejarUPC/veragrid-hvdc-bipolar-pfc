@@ -310,7 +310,7 @@ class EditableDevice:
 
         # some devices have an auto update of a property when another property changes
         # (i.e. Line's R, X, B when the length changes) this controls that behaviour and disables it during loading
-        self.__auto_update_enabled = False
+        self.__auto_update_enabled = True
 
         self.register(key='idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='name', units='', tpe=str, definition='Name of the device.')
@@ -368,7 +368,8 @@ class EditableDevice:
 
     def __hash__(self) -> int:
         # alternatively, return hash(repr(self))
-        return int(self.idtag, 16)  # hex string to int
+        # return int(self.idtag, 16)  # hex string to int
+        return hash(repr(self))
 
     def __lt__(self, other) -> bool:
         return self.__hash__() < other.__hash__()

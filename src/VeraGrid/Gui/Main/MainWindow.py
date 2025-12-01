@@ -31,7 +31,7 @@ class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1433, 800)
+        mainWindow.resize(1230, 762)
         mainWindow.setMinimumSize(QSize(1198, 742))
         mainWindow.setBaseSize(QSize(0, 0))
         font = QFont()
@@ -639,6 +639,18 @@ class Ui_mainWindow(object):
         icon82.addFile(u":/Icons/icons/highlight2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.actionClear_highlights.setIcon(icon82)
         self.actionClear_highlights.setFont(font1)
+        self.actionState_estimation = QAction(mainWindow)
+        self.actionState_estimation.setObjectName(u"actionState_estimation")
+        icon83 = QIcon()
+        icon83.addFile(u":/Icons/icons/SE.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionState_estimation.setIcon(icon83)
+        self.actionState_estimation.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionAdd_short_circuit_events = QAction(mainWindow)
+        self.actionAdd_short_circuit_events.setObjectName(u"actionAdd_short_circuit_events")
+        icon84 = QIcon()
+        icon84.addFile(u":/Icons/icons/short_circuit_plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionAdd_short_circuit_events.setIcon(icon84)
+        self.actionAdd_short_circuit_events.setMenuRole(QAction.MenuRole.NoRole)
         self.centralwidget = QWidget(mainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_3 = QGridLayout(self.centralwidget)
@@ -751,6 +763,29 @@ class Ui_mainWindow(object):
         self.verticalLayout_37 = QVBoxLayout(self.tab_3)
         self.verticalLayout_37.setObjectName(u"verticalLayout_37")
         self.verticalLayout_37.setContentsMargins(0, 0, 0, 1)
+        self.frame_36 = QFrame(self.tab_3)
+        self.frame_36.setObjectName(u"frame_36")
+        self.frame_36.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_36.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_26 = QHBoxLayout(self.frame_36)
+        self.horizontalLayout_26.setObjectName(u"horizontalLayout_26")
+        self.horizontalLayout_26.setContentsMargins(0, 3, 4, 3)
+        self.diagramSearchLineEdit = QLineEdit(self.frame_36)
+        self.diagramSearchLineEdit.setObjectName(u"diagramSearchLineEdit")
+
+        self.horizontalLayout_26.addWidget(self.diagramSearchLineEdit)
+
+        self.diagramSearchButton = QPushButton(self.frame_36)
+        self.diagramSearchButton.setObjectName(u"diagramSearchButton")
+        icon85 = QIcon()
+        icon85.addFile(u":/Icons/icons/magnifying_glass2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.diagramSearchButton.setIcon(icon85)
+
+        self.horizontalLayout_26.addWidget(self.diagramSearchButton)
+
+
+        self.verticalLayout_37.addWidget(self.frame_36)
+
         self.diagramsListView = QListView(self.tab_3)
         self.diagramsListView.setObjectName(u"diagramsListView")
         self.diagramsListView.setFont(font2)
@@ -758,9 +793,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_37.addWidget(self.diagramsListView)
 
-        icon83 = QIcon()
-        icon83.addFile(u":/Icons/icons/show_color_controls.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_6.addTab(self.tab_3, icon83, "")
+        icon86 = QIcon()
+        icon86.addFile(u":/Icons/icons/show_color_controls.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_6.addTab(self.tab_3, icon86, "")
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.verticalLayout = QVBoxLayout(self.tab)
@@ -1151,9 +1186,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_38.addWidget(self.frame_58)
 
-        icon84 = QIcon()
-        icon84.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_6.addTab(self.tab_4, icon84, "")
+        icon87 = QIcon()
+        icon87.addFile(u":/Icons/icons/gear.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_6.addTab(self.tab_4, icon87, "")
 
         self.verticalLayout_2.addWidget(self.tabWidget_6)
 
@@ -1164,34 +1199,34 @@ class Ui_mainWindow(object):
         self.gridLayout_31 = QGridLayout(self.grid_colouring_frame)
         self.gridLayout_31.setObjectName(u"gridLayout_31")
         self.gridLayout_31.setContentsMargins(0, 0, 4, 0)
+        self.colour_results_pushButton = QPushButton(self.grid_colouring_frame)
+        self.colour_results_pushButton.setObjectName(u"colour_results_pushButton")
+        self.colour_results_pushButton.setMaximumSize(QSize(32, 16777215))
+        icon88 = QIcon()
+        icon88.addFile(u":/Icons/icons/color_grid.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.colour_results_pushButton.setIcon(icon88)
+
+        self.gridLayout_31.addWidget(self.colour_results_pushButton, 2, 2, 2, 1)
+
         self.schematic_step_label = QLabel(self.grid_colouring_frame)
         self.schematic_step_label.setObjectName(u"schematic_step_label")
         self.schematic_step_label.setFont(font2)
         self.schematic_step_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.gridLayout_31.addWidget(self.schematic_step_label, 2, 0, 1, 3)
+        self.gridLayout_31.addWidget(self.schematic_step_label, 4, 0, 1, 3)
+
+        self.diagram_step_slider = QSlider(self.grid_colouring_frame)
+        self.diagram_step_slider.setObjectName(u"diagram_step_slider")
+        self.diagram_step_slider.setOrientation(Qt.Orientation.Horizontal)
+
+        self.gridLayout_31.addWidget(self.diagram_step_slider, 5, 0, 1, 3)
 
         self.available_results_to_color_comboBox = QComboBox(self.grid_colouring_frame)
         self.available_results_to_color_comboBox.setObjectName(u"available_results_to_color_comboBox")
         self.available_results_to_color_comboBox.setMinimumSize(QSize(164, 0))
         self.available_results_to_color_comboBox.setFont(font2)
 
-        self.gridLayout_31.addWidget(self.available_results_to_color_comboBox, 0, 0, 2, 2)
-
-        self.colour_results_pushButton = QPushButton(self.grid_colouring_frame)
-        self.colour_results_pushButton.setObjectName(u"colour_results_pushButton")
-        self.colour_results_pushButton.setMaximumSize(QSize(32, 16777215))
-        icon85 = QIcon()
-        icon85.addFile(u":/Icons/icons/color_grid.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.colour_results_pushButton.setIcon(icon85)
-
-        self.gridLayout_31.addWidget(self.colour_results_pushButton, 0, 2, 2, 1)
-
-        self.diagram_step_slider = QSlider(self.grid_colouring_frame)
-        self.diagram_step_slider.setObjectName(u"diagram_step_slider")
-        self.diagram_step_slider.setOrientation(Qt.Orientation.Horizontal)
-
-        self.gridLayout_31.addWidget(self.diagram_step_slider, 3, 0, 1, 3)
+        self.gridLayout_31.addWidget(self.available_results_to_color_comboBox, 2, 0, 2, 2)
 
 
         self.verticalLayout_2.addWidget(self.grid_colouring_frame)
@@ -1268,9 +1303,9 @@ class Ui_mainWindow(object):
 
         self.structure_analysis_pushButton = QPushButton(self.frame_54)
         self.structure_analysis_pushButton.setObjectName(u"structure_analysis_pushButton")
-        icon86 = QIcon()
-        icon86.addFile(u":/Icons/icons/histogram.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.structure_analysis_pushButton.setIcon(icon86)
+        icon89 = QIcon()
+        icon89.addFile(u":/Icons/icons/histogram.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.structure_analysis_pushButton.setIcon(icon89)
 
         self.horizontalLayout_28.addWidget(self.structure_analysis_pushButton)
 
@@ -1292,9 +1327,9 @@ class Ui_mainWindow(object):
         self.horizontalLayout_25.setContentsMargins(0, 0, 0, 0)
         self.set_profile_state_button = QPushButton(self.frame_9)
         self.set_profile_state_button.setObjectName(u"set_profile_state_button")
-        icon87 = QIcon()
-        icon87.addFile(u":/Icons/icons/copy2left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_profile_state_button.setIcon(icon87)
+        icon90 = QIcon()
+        icon90.addFile(u":/Icons/icons/copy2left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_profile_state_button.setIcon(icon90)
 
         self.horizontalLayout_25.addWidget(self.set_profile_state_button)
 
@@ -1318,17 +1353,17 @@ class Ui_mainWindow(object):
 
         self.add_object_pushButton = QPushButton(self.frame_9)
         self.add_object_pushButton.setObjectName(u"add_object_pushButton")
-        icon88 = QIcon()
-        icon88.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.add_object_pushButton.setIcon(icon88)
+        icon91 = QIcon()
+        icon91.addFile(u":/Icons/icons/plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.add_object_pushButton.setIcon(icon91)
 
         self.horizontalLayout_25.addWidget(self.add_object_pushButton)
 
         self.delete_selected_objects_pushButton = QPushButton(self.frame_9)
         self.delete_selected_objects_pushButton.setObjectName(u"delete_selected_objects_pushButton")
-        icon89 = QIcon()
-        icon89.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.delete_selected_objects_pushButton.setIcon(icon89)
+        icon92 = QIcon()
+        icon92.addFile(u":/Icons/icons/minus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.delete_selected_objects_pushButton.setIcon(icon92)
 
         self.horizontalLayout_25.addWidget(self.delete_selected_objects_pushButton)
 
@@ -1383,9 +1418,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_11.addWidget(self.frame_20)
 
-        icon90 = QIcon()
-        icon90.addFile(u":/Icons/icons/area_transfer.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_5.addTab(self.tab_2, icon90, "")
+        icon93 = QIcon()
+        icon93.addFile(u":/Icons/icons/area_transfer.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_5.addTab(self.tab_2, icon93, "")
         self.tab_16 = QWidget()
         self.tab_16.setObjectName(u"tab_16")
         self.verticalLayout_42 = QVBoxLayout(self.tab_16)
@@ -1412,44 +1447,44 @@ class Ui_mainWindow(object):
 
         self.delete_profiles_structure_pushButton = QPushButton(self.frame)
         self.delete_profiles_structure_pushButton.setObjectName(u"delete_profiles_structure_pushButton")
-        icon91 = QIcon()
-        icon91.addFile(u":/Icons/icons/new (delete).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.delete_profiles_structure_pushButton.setIcon(icon91)
+        icon94 = QIcon()
+        icon94.addFile(u":/Icons/icons/new (delete).png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.delete_profiles_structure_pushButton.setIcon(icon94)
 
         self.horizontalLayout.addWidget(self.delete_profiles_structure_pushButton)
 
         self.edit_profiles_pushButton = QPushButton(self.frame)
         self.edit_profiles_pushButton.setObjectName(u"edit_profiles_pushButton")
-        icon92 = QIcon()
-        icon92.addFile(u":/Icons/icons/import_profiles.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.edit_profiles_pushButton.setIcon(icon92)
+        icon95 = QIcon()
+        icon95.addFile(u":/Icons/icons/import_profiles.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.edit_profiles_pushButton.setIcon(icon95)
         self.edit_profiles_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.edit_profiles_pushButton)
 
         self.edit_profiles_from_models_pushButton = QPushButton(self.frame)
         self.edit_profiles_from_models_pushButton.setObjectName(u"edit_profiles_from_models_pushButton")
-        icon93 = QIcon()
-        icon93.addFile(u":/Icons/icons/import_models.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.edit_profiles_from_models_pushButton.setIcon(icon93)
+        icon96 = QIcon()
+        icon96.addFile(u":/Icons/icons/import_models.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.edit_profiles_from_models_pushButton.setIcon(icon96)
         self.edit_profiles_from_models_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.edit_profiles_from_models_pushButton)
 
         self.crop_profiles_pushButton = QPushButton(self.frame)
         self.crop_profiles_pushButton.setObjectName(u"crop_profiles_pushButton")
-        icon94 = QIcon()
-        icon94.addFile(u":/Icons/icons/time_series_crop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.crop_profiles_pushButton.setIcon(icon94)
+        icon97 = QIcon()
+        icon97.addFile(u":/Icons/icons/time_series_crop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.crop_profiles_pushButton.setIcon(icon97)
         self.crop_profiles_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.crop_profiles_pushButton)
 
         self.crop_cluster_profiles_pushButton = QPushButton(self.frame)
         self.crop_cluster_profiles_pushButton.setObjectName(u"crop_cluster_profiles_pushButton")
-        icon95 = QIcon()
-        icon95.addFile(u":/Icons/icons/time_series_crop_cluster.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.crop_cluster_profiles_pushButton.setIcon(icon95)
+        icon98 = QIcon()
+        icon98.addFile(u":/Icons/icons/time_series_crop_cluster.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.crop_cluster_profiles_pushButton.setIcon(icon98)
         self.crop_cluster_profiles_pushButton.setFlat(False)
 
         self.horizontalLayout.addWidget(self.crop_cluster_profiles_pushButton)
@@ -1460,9 +1495,9 @@ class Ui_mainWindow(object):
 
         self.plot_time_series_pushButton = QPushButton(self.frame)
         self.plot_time_series_pushButton.setObjectName(u"plot_time_series_pushButton")
-        icon96 = QIcon()
-        icon96.addFile(u":/Icons/icons/plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.plot_time_series_pushButton.setIcon(icon96)
+        icon99 = QIcon()
+        icon99.addFile(u":/Icons/icons/plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.plot_time_series_pushButton.setIcon(icon99)
 
         self.horizontalLayout.addWidget(self.plot_time_series_pushButton)
 
@@ -1487,25 +1522,25 @@ class Ui_mainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.copy_profile_pushButton = QPushButton(self.frame_12)
         self.copy_profile_pushButton.setObjectName(u"copy_profile_pushButton")
-        icon97 = QIcon()
-        icon97.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.copy_profile_pushButton.setIcon(icon97)
+        icon100 = QIcon()
+        icon100.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copy_profile_pushButton.setIcon(icon100)
 
         self.horizontalLayout_4.addWidget(self.copy_profile_pushButton)
 
         self.paste_profiles_pushButton = QPushButton(self.frame_12)
         self.paste_profiles_pushButton.setObjectName(u"paste_profiles_pushButton")
-        icon98 = QIcon()
-        icon98.addFile(u":/Icons/icons/paste.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.paste_profiles_pushButton.setIcon(icon98)
+        icon101 = QIcon()
+        icon101.addFile(u":/Icons/icons/paste.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.paste_profiles_pushButton.setIcon(icon101)
 
         self.horizontalLayout_4.addWidget(self.paste_profiles_pushButton)
 
         self.set_linear_combination_profile_pushButton = QPushButton(self.frame_12)
         self.set_linear_combination_profile_pushButton.setObjectName(u"set_linear_combination_profile_pushButton")
-        icon99 = QIcon()
-        icon99.addFile(u":/Icons/icons/copy2right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_linear_combination_profile_pushButton.setIcon(icon99)
+        icon102 = QIcon()
+        icon102.addFile(u":/Icons/icons/copy2right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_linear_combination_profile_pushButton.setIcon(icon102)
 
         self.horizontalLayout_4.addWidget(self.set_linear_combination_profile_pushButton)
 
@@ -1521,37 +1556,37 @@ class Ui_mainWindow(object):
 
         self.profile_add_pushButton = QPushButton(self.frame_12)
         self.profile_add_pushButton.setObjectName(u"profile_add_pushButton")
-        self.profile_add_pushButton.setIcon(icon88)
+        self.profile_add_pushButton.setIcon(icon91)
 
         self.horizontalLayout_4.addWidget(self.profile_add_pushButton)
 
         self.profile_subtract_pushButton = QPushButton(self.frame_12)
         self.profile_subtract_pushButton.setObjectName(u"profile_subtract_pushButton")
-        self.profile_subtract_pushButton.setIcon(icon89)
+        self.profile_subtract_pushButton.setIcon(icon92)
 
         self.horizontalLayout_4.addWidget(self.profile_subtract_pushButton)
 
         self.profile_multiply_pushButton = QPushButton(self.frame_12)
         self.profile_multiply_pushButton.setObjectName(u"profile_multiply_pushButton")
-        icon100 = QIcon()
-        icon100.addFile(u":/Icons/icons/multiply.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.profile_multiply_pushButton.setIcon(icon100)
+        icon103 = QIcon()
+        icon103.addFile(u":/Icons/icons/multiply.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.profile_multiply_pushButton.setIcon(icon103)
 
         self.horizontalLayout_4.addWidget(self.profile_multiply_pushButton)
 
         self.profile_divide_pushButton = QPushButton(self.frame_12)
         self.profile_divide_pushButton.setObjectName(u"profile_divide_pushButton")
-        icon101 = QIcon()
-        icon101.addFile(u":/Icons/icons/divide.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.profile_divide_pushButton.setIcon(icon101)
+        icon104 = QIcon()
+        icon104.addFile(u":/Icons/icons/divide.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.profile_divide_pushButton.setIcon(icon104)
 
         self.horizontalLayout_4.addWidget(self.profile_divide_pushButton)
 
         self.set_profile_value_pushButton = QPushButton(self.frame_12)
         self.set_profile_value_pushButton.setObjectName(u"set_profile_value_pushButton")
-        icon102 = QIcon()
-        icon102.addFile(u":/Icons/icons/copy2up.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.set_profile_value_pushButton.setIcon(icon102)
+        icon105 = QIcon()
+        icon105.addFile(u":/Icons/icons/copy2up.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.set_profile_value_pushButton.setIcon(icon105)
 
         self.horizontalLayout_4.addWidget(self.set_profile_value_pushButton)
 
@@ -1566,9 +1601,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_42.addWidget(self.frame_12)
 
-        icon103 = QIcon()
-        icon103.addFile(u":/Icons/icons/time_series.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_5.addTab(self.tab_16, icon103, "")
+        icon106 = QIcon()
+        icon106.addFile(u":/Icons/icons/time_series.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_5.addTab(self.tab_16, icon106, "")
 
         self.verticalLayout_26.addWidget(self.tabWidget_5)
 
@@ -1608,9 +1643,9 @@ class Ui_mainWindow(object):
         self.compute_simulation_data_pushButton = QPushButton(self.frame_28)
         self.compute_simulation_data_pushButton.setObjectName(u"compute_simulation_data_pushButton")
         self.compute_simulation_data_pushButton.setMaximumSize(QSize(32, 16777215))
-        icon104 = QIcon()
-        icon104.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.compute_simulation_data_pushButton.setIcon(icon104)
+        icon107 = QIcon()
+        icon107.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.compute_simulation_data_pushButton.setIcon(icon107)
 
         self.gridLayout_19.addWidget(self.compute_simulation_data_pushButton, 0, 5, 1, 1)
 
@@ -1631,9 +1666,9 @@ class Ui_mainWindow(object):
         self.gridLayout_23.setContentsMargins(0, 8, -1, -1)
         self.copyArraysToNumpyButton = QPushButton(self.frame_29)
         self.copyArraysToNumpyButton.setObjectName(u"copyArraysToNumpyButton")
-        icon105 = QIcon()
-        icon105.addFile(u":/Icons/icons/array.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.copyArraysToNumpyButton.setIcon(icon105)
+        icon108 = QIcon()
+        icon108.addFile(u":/Icons/icons/array.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copyArraysToNumpyButton.setIcon(icon108)
 
         self.gridLayout_23.addWidget(self.copyArraysToNumpyButton, 0, 3, 1, 1)
 
@@ -1650,7 +1685,7 @@ class Ui_mainWindow(object):
         self.plotArraysButton = QPushButton(self.frame_29)
         self.plotArraysButton.setObjectName(u"plotArraysButton")
         self.plotArraysButton.setMinimumSize(QSize(32, 0))
-        self.plotArraysButton.setIcon(icon96)
+        self.plotArraysButton.setIcon(icon99)
 
         self.gridLayout_23.addWidget(self.plotArraysButton, 0, 8, 1, 1)
 
@@ -1662,7 +1697,7 @@ class Ui_mainWindow(object):
         self.copyArraysButton = QPushButton(self.frame_29)
         self.copyArraysButton.setObjectName(u"copyArraysButton")
         self.copyArraysButton.setMinimumSize(QSize(32, 0))
-        self.copyArraysButton.setIcon(icon97)
+        self.copyArraysButton.setIcon(icon100)
 
         self.gridLayout_23.addWidget(self.copyArraysButton, 0, 4, 1, 1)
 
@@ -1682,9 +1717,9 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_7.addWidget(self.simulationDataSplitter)
 
-        icon106 = QIcon()
-        icon106.addFile(u":/Icons/icons/spmat.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.modelTabWidget.addTab(self.compiledArraysTab, icon106, "")
+        icon109 = QIcon()
+        icon109.addFile(u":/Icons/icons/spmat.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.modelTabWidget.addTab(self.compiledArraysTab, icon109, "")
         self.commentsTab = QWidget()
         self.commentsTab.setObjectName(u"commentsTab")
         self.verticalLayout_18 = QVBoxLayout(self.commentsTab)
@@ -1694,9 +1729,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_18.addWidget(self.comments_textEdit)
 
-        icon107 = QIcon()
-        icon107.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.modelTabWidget.addTab(self.commentsTab, icon107, "")
+        icon110 = QIcon()
+        icon110.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.modelTabWidget.addTab(self.commentsTab, icon110, "")
 
         self.verticalLayout_9.addWidget(self.modelTabWidget)
 
@@ -1758,7 +1793,7 @@ class Ui_mainWindow(object):
 
         self.deleteDriverButton = QPushButton(self.frame_62)
         self.deleteDriverButton.setObjectName(u"deleteDriverButton")
-        self.deleteDriverButton.setIcon(icon89)
+        self.deleteDriverButton.setIcon(icon92)
 
         self.horizontalLayout_34.addWidget(self.deleteDriverButton)
 
@@ -1875,45 +1910,45 @@ class Ui_mainWindow(object):
 
         self.results_traspose_checkBox = QCheckBox(self.frame_8)
         self.results_traspose_checkBox.setObjectName(u"results_traspose_checkBox")
-        icon108 = QIcon()
-        icon108.addFile(u":/Icons/icons/transpose.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_traspose_checkBox.setIcon(icon108)
+        icon111 = QIcon()
+        icon111.addFile(u":/Icons/icons/transpose.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_traspose_checkBox.setIcon(icon111)
 
         self.horizontalLayout_2.addWidget(self.results_traspose_checkBox)
 
         self.results_as_cdf_checkBox = QCheckBox(self.frame_8)
         self.results_as_cdf_checkBox.setObjectName(u"results_as_cdf_checkBox")
-        icon109 = QIcon()
-        icon109.addFile(u":/Icons/icons/cdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_as_cdf_checkBox.setIcon(icon109)
+        icon112 = QIcon()
+        icon112.addFile(u":/Icons/icons/cdf.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_as_cdf_checkBox.setIcon(icon112)
 
         self.horizontalLayout_2.addWidget(self.results_as_cdf_checkBox)
 
         self.results_as_abs_checkBox = QCheckBox(self.frame_8)
         self.results_as_abs_checkBox.setObjectName(u"results_as_abs_checkBox")
-        icon110 = QIcon()
-        icon110.addFile(u":/Icons/icons/abs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.results_as_abs_checkBox.setIcon(icon110)
+        icon113 = QIcon()
+        icon113.addFile(u":/Icons/icons/abs.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.results_as_abs_checkBox.setIcon(icon113)
 
         self.horizontalLayout_2.addWidget(self.results_as_abs_checkBox)
 
         self.stacked_plot_checkBox = QCheckBox(self.frame_8)
         self.stacked_plot_checkBox.setObjectName(u"stacked_plot_checkBox")
-        icon111 = QIcon()
-        icon111.addFile(u":/Icons/icons/stacked_plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.stacked_plot_checkBox.setIcon(icon111)
+        icon114 = QIcon()
+        icon114.addFile(u":/Icons/icons/stacked_plot.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.stacked_plot_checkBox.setIcon(icon114)
 
         self.horizontalLayout_2.addWidget(self.stacked_plot_checkBox)
 
         self.copy_results_pushButton = QPushButton(self.frame_8)
         self.copy_results_pushButton.setObjectName(u"copy_results_pushButton")
-        self.copy_results_pushButton.setIcon(icon97)
+        self.copy_results_pushButton.setIcon(icon100)
 
         self.horizontalLayout_2.addWidget(self.copy_results_pushButton)
 
         self.copy_numpy_button = QPushButton(self.frame_8)
         self.copy_numpy_button.setObjectName(u"copy_numpy_button")
-        self.copy_numpy_button.setIcon(icon105)
+        self.copy_numpy_button.setIcon(icon108)
 
         self.horizontalLayout_2.addWidget(self.copy_numpy_button)
 
@@ -1931,7 +1966,7 @@ class Ui_mainWindow(object):
 
         self.plot_data_pushButton = QPushButton(self.frame_8)
         self.plot_data_pushButton.setObjectName(u"plot_data_pushButton")
-        self.plot_data_pushButton.setIcon(icon96)
+        self.plot_data_pushButton.setIcon(icon99)
 
         self.horizontalLayout_2.addWidget(self.plot_data_pushButton)
 
@@ -1941,7 +1976,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_40.addWidget(self.frame_5)
 
-        self.resultsTabWidget.addTab(self.tab_7, icon105, "")
+        self.resultsTabWidget.addTab(self.tab_7, icon108, "")
         self.tab_14 = QWidget()
         self.tab_14.setObjectName(u"tab_14")
         self.verticalLayout_41 = QVBoxLayout(self.tab_14)
@@ -1985,7 +2020,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_19.addWidget(self.resultsReportTextEdit)
 
-        self.resultsTabWidget.addTab(self.tab_6, icon107, "")
+        self.resultsTabWidget.addTab(self.tab_6, icon110, "")
         self.results_splitter.addWidget(self.resultsTabWidget)
 
         self.verticalLayout_28.addWidget(self.results_splitter)
@@ -1993,7 +2028,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_13.addWidget(self.frame_33)
 
-        self.mainTabWidget.addTab(self.ResultsTab, icon96, "")
+        self.mainTabWidget.addTab(self.ResultsTab, icon99, "")
         self.main_console_tab = QWidget()
         self.main_console_tab.setObjectName(u"main_console_tab")
         self.verticalLayout_22 = QVBoxLayout(self.main_console_tab)
@@ -2052,9 +2087,9 @@ class Ui_mainWindow(object):
 
         self.runSourceCodeButton = QPushButton(self.frame_55)
         self.runSourceCodeButton.setObjectName(u"runSourceCodeButton")
-        icon112 = QIcon()
-        icon112.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.runSourceCodeButton.setIcon(icon112)
+        icon115 = QIcon()
+        icon115.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.runSourceCodeButton.setIcon(icon115)
 
         self.horizontalLayout_3.addWidget(self.runSourceCodeButton)
 
@@ -2124,9 +2159,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_33.addWidget(self.consoleFrame)
 
-        icon113 = QIcon()
-        icon113.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_2.addTab(self.pythonConsoleTab, icon113, "")
+        icon116 = QIcon()
+        icon116.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_2.addTab(self.pythonConsoleTab, icon116, "")
         self.sourceCodeTab = QWidget()
         self.sourceCodeTab.setObjectName(u"sourceCodeTab")
         self.verticalLayout_39 = QVBoxLayout(self.sourceCodeTab)
@@ -2150,7 +2185,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_22.addWidget(self.frame_10)
 
-        self.mainTabWidget.addTab(self.main_console_tab, icon113, "")
+        self.mainTabWidget.addTab(self.main_console_tab, icon116, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -2547,141 +2582,151 @@ class Ui_mainWindow(object):
 
         self.gridLayout_24.addWidget(self.frame_32, 2, 4, 1, 2)
 
-        self.frame_36 = QFrame(self.pf_tab)
-        self.frame_36.setObjectName(u"frame_36")
-        self.frame_36.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_36.setFrameShadow(QFrame.Shadow.Plain)
-        self.verticalLayout_4 = QVBoxLayout(self.frame_36)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.helm_retry_checkBox = QCheckBox(self.frame_36)
-        self.helm_retry_checkBox.setObjectName(u"helm_retry_checkBox")
-        self.helm_retry_checkBox.setFont(font2)
-        self.helm_retry_checkBox.setChecked(True)
-
-        self.verticalLayout_4.addWidget(self.helm_retry_checkBox)
-
-        self.use_voltage_guess_checkBox = QCheckBox(self.frame_36)
-        self.use_voltage_guess_checkBox.setObjectName(u"use_voltage_guess_checkBox")
-        self.use_voltage_guess_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.use_voltage_guess_checkBox)
-
-        self.ignore_single_node_islands_checkBox = QCheckBox(self.frame_36)
-        self.ignore_single_node_islands_checkBox.setObjectName(u"ignore_single_node_islands_checkBox")
-        self.ignore_single_node_islands_checkBox.setFont(font2)
-        self.ignore_single_node_islands_checkBox.setChecked(True)
-
-        self.verticalLayout_4.addWidget(self.ignore_single_node_islands_checkBox)
-
-        self.label_50 = QLabel(self.frame_36)
-        self.label_50.setObjectName(u"label_50")
-
-        self.verticalLayout_4.addWidget(self.label_50)
-
-        self.pf_three_phase_checkBox = QCheckBox(self.frame_36)
-        self.pf_three_phase_checkBox.setObjectName(u"pf_three_phase_checkBox")
-        self.pf_three_phase_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.pf_three_phase_checkBox)
-
-        self.distributed_slack_checkBox = QCheckBox(self.frame_36)
-        self.distributed_slack_checkBox.setObjectName(u"distributed_slack_checkBox")
-        self.distributed_slack_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.distributed_slack_checkBox)
-
-        self.control_q_checkBox = QCheckBox(self.frame_36)
-        self.control_q_checkBox.setObjectName(u"control_q_checkBox")
-        self.control_q_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.control_q_checkBox)
-
-        self.control_tap_modules_checkBox = QCheckBox(self.frame_36)
-        self.control_tap_modules_checkBox.setObjectName(u"control_tap_modules_checkBox")
-        self.control_tap_modules_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.control_tap_modules_checkBox)
-
-        self.control_tap_phase_checkBox = QCheckBox(self.frame_36)
-        self.control_tap_phase_checkBox.setObjectName(u"control_tap_phase_checkBox")
-        self.control_tap_phase_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.control_tap_phase_checkBox)
-
-        self.control_remote_voltage_checkBox = QCheckBox(self.frame_36)
-        self.control_remote_voltage_checkBox.setObjectName(u"control_remote_voltage_checkBox")
-        self.control_remote_voltage_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.control_remote_voltage_checkBox)
-
-        self.orthogonalize_pf_controls_checkBox = QCheckBox(self.frame_36)
-        self.orthogonalize_pf_controls_checkBox.setObjectName(u"orthogonalize_pf_controls_checkBox")
-        self.orthogonalize_pf_controls_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.orthogonalize_pf_controls_checkBox)
-
-        self.initialize_pf_angles_checkBox = QCheckBox(self.frame_36)
-        self.initialize_pf_angles_checkBox.setObjectName(u"initialize_pf_angles_checkBox")
-        self.initialize_pf_angles_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.initialize_pf_angles_checkBox)
-
-        self.label_54 = QLabel(self.frame_36)
-        self.label_54.setObjectName(u"label_54")
-
-        self.verticalLayout_4.addWidget(self.label_54)
-
-        self.temperature_correction_checkBox = QCheckBox(self.frame_36)
-        self.temperature_correction_checkBox.setObjectName(u"temperature_correction_checkBox")
-        self.temperature_correction_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.temperature_correction_checkBox)
-
-        self.apply_impedance_tolerances_checkBox = QCheckBox(self.frame_36)
-        self.apply_impedance_tolerances_checkBox.setObjectName(u"apply_impedance_tolerances_checkBox")
-        self.apply_impedance_tolerances_checkBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.apply_impedance_tolerances_checkBox)
-
-        self.label_56 = QLabel(self.frame_36)
-        self.label_56.setObjectName(u"label_56")
-
-        self.verticalLayout_4.addWidget(self.label_56)
-
-        self.addPowerFlowReportCheckBox = QCheckBox(self.frame_36)
-        self.addPowerFlowReportCheckBox.setObjectName(u"addPowerFlowReportCheckBox")
-        self.addPowerFlowReportCheckBox.setFont(font2)
-
-        self.verticalLayout_4.addWidget(self.addPowerFlowReportCheckBox)
-
-        self.verticalSpacer_14 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.verticalLayout_4.addItem(self.verticalSpacer_14)
-
-
-        self.gridLayout_24.addWidget(self.frame_36, 2, 3, 1, 1)
-
         self.frame_19 = QFrame(self.pf_tab)
         self.frame_19.setObjectName(u"frame_19")
         self.frame_19.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_19.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_22 = QGridLayout(self.frame_19)
         self.gridLayout_22.setObjectName(u"gridLayout_22")
+        self.max_iterations_spinBox = QSpinBox(self.frame_19)
+        self.max_iterations_spinBox.setObjectName(u"max_iterations_spinBox")
+        self.max_iterations_spinBox.setFont(font2)
+        self.max_iterations_spinBox.setMinimum(1)
+        self.max_iterations_spinBox.setMaximum(1000)
+        self.max_iterations_spinBox.setValue(40)
+
+        self.gridLayout_22.addWidget(self.max_iterations_spinBox, 10, 1, 1, 2)
+
+        self.frame_47 = QFrame(self.frame_19)
+        self.frame_47.setObjectName(u"frame_47")
+        self.frame_47.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_47.setFrameShadow(QFrame.Shadow.Raised)
+        self.gridLayout_38 = QGridLayout(self.frame_47)
+        self.gridLayout_38.setObjectName(u"gridLayout_38")
+        self.control_q_checkBox = QCheckBox(self.frame_47)
+        self.control_q_checkBox.setObjectName(u"control_q_checkBox")
+        self.control_q_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.control_q_checkBox, 3, 0, 1, 1)
+
+        self.control_remote_voltage_checkBox = QCheckBox(self.frame_47)
+        self.control_remote_voltage_checkBox.setObjectName(u"control_remote_voltage_checkBox")
+        self.control_remote_voltage_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.control_remote_voltage_checkBox, 4, 1, 1, 1)
+
+        self.pf_three_phase_checkBox = QCheckBox(self.frame_47)
+        self.pf_three_phase_checkBox.setObjectName(u"pf_three_phase_checkBox")
+        self.pf_three_phase_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.pf_three_phase_checkBox, 2, 0, 1, 1)
+
+        self.helm_retry_checkBox = QCheckBox(self.frame_47)
+        self.helm_retry_checkBox.setObjectName(u"helm_retry_checkBox")
+        self.helm_retry_checkBox.setFont(font2)
+        self.helm_retry_checkBox.setChecked(True)
+
+        self.gridLayout_38.addWidget(self.helm_retry_checkBox, 0, 1, 1, 1)
+
+        self.control_tap_modules_checkBox = QCheckBox(self.frame_47)
+        self.control_tap_modules_checkBox.setObjectName(u"control_tap_modules_checkBox")
+        self.control_tap_modules_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.control_tap_modules_checkBox, 3, 1, 1, 1)
+
+        self.apply_impedance_tolerances_checkBox = QCheckBox(self.frame_47)
+        self.apply_impedance_tolerances_checkBox.setObjectName(u"apply_impedance_tolerances_checkBox")
+        self.apply_impedance_tolerances_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.apply_impedance_tolerances_checkBox, 6, 1, 1, 1)
+
+        self.temperature_correction_checkBox = QCheckBox(self.frame_47)
+        self.temperature_correction_checkBox.setObjectName(u"temperature_correction_checkBox")
+        self.temperature_correction_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.temperature_correction_checkBox, 6, 0, 1, 1)
+
+        self.orthogonalize_pf_controls_checkBox = QCheckBox(self.frame_47)
+        self.orthogonalize_pf_controls_checkBox.setObjectName(u"orthogonalize_pf_controls_checkBox")
+        self.orthogonalize_pf_controls_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.orthogonalize_pf_controls_checkBox, 5, 0, 1, 1)
+
+        self.distributed_slack_checkBox = QCheckBox(self.frame_47)
+        self.distributed_slack_checkBox.setObjectName(u"distributed_slack_checkBox")
+        self.distributed_slack_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.distributed_slack_checkBox, 2, 1, 1, 1)
+
+        self.control_tap_phase_checkBox = QCheckBox(self.frame_47)
+        self.control_tap_phase_checkBox.setObjectName(u"control_tap_phase_checkBox")
+        self.control_tap_phase_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.control_tap_phase_checkBox, 4, 0, 1, 1)
+
+        self.initialize_pf_angles_checkBox = QCheckBox(self.frame_47)
+        self.initialize_pf_angles_checkBox.setObjectName(u"initialize_pf_angles_checkBox")
+        self.initialize_pf_angles_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.initialize_pf_angles_checkBox, 5, 1, 1, 1)
+
+        self.ignore_single_node_islands_checkBox = QCheckBox(self.frame_47)
+        self.ignore_single_node_islands_checkBox.setObjectName(u"ignore_single_node_islands_checkBox")
+        self.ignore_single_node_islands_checkBox.setFont(font2)
+        self.ignore_single_node_islands_checkBox.setChecked(True)
+
+        self.gridLayout_38.addWidget(self.ignore_single_node_islands_checkBox, 0, 0, 1, 1)
+
+        self.use_voltage_guess_checkBox = QCheckBox(self.frame_47)
+        self.use_voltage_guess_checkBox.setObjectName(u"use_voltage_guess_checkBox")
+        self.use_voltage_guess_checkBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.use_voltage_guess_checkBox, 1, 0, 1, 1)
+
+        self.addPowerFlowReportCheckBox = QCheckBox(self.frame_47)
+        self.addPowerFlowReportCheckBox.setObjectName(u"addPowerFlowReportCheckBox")
+        self.addPowerFlowReportCheckBox.setFont(font2)
+
+        self.gridLayout_38.addWidget(self.addPowerFlowReportCheckBox, 1, 1, 1, 1)
+
+
+        self.gridLayout_22.addWidget(self.frame_47, 12, 0, 1, 3)
+
+        self.solver_comboBox = QComboBox(self.frame_19)
+        self.solver_comboBox.setObjectName(u"solver_comboBox")
+        self.solver_comboBox.setMinimumSize(QSize(200, 0))
+        self.solver_comboBox.setFont(font2)
+
+        self.gridLayout_22.addWidget(self.solver_comboBox, 0, 1, 1, 2)
+
+        self.verbositySpinBox = QSpinBox(self.frame_19)
+        self.verbositySpinBox.setObjectName(u"verbositySpinBox")
+        self.verbositySpinBox.setFont(font2)
+        self.verbositySpinBox.setMaximum(2)
+
+        self.gridLayout_22.addWidget(self.verbositySpinBox, 11, 1, 1, 2)
+
+        self.find_automatic_precission_Button = QPushButton(self.frame_19)
+        self.find_automatic_precission_Button.setObjectName(u"find_automatic_precission_Button")
+        self.find_automatic_precission_Button.setMaximumSize(QSize(50, 16777215))
+        self.find_automatic_precission_Button.setFont(font2)
+
+        self.gridLayout_22.addWidget(self.find_automatic_precission_Button, 8, 2, 1, 1)
+
         self.label_23 = QLabel(self.frame_19)
         self.label_23.setObjectName(u"label_23")
         self.label_23.setFont(font2)
 
         self.gridLayout_22.addWidget(self.label_23, 11, 0, 1, 1)
 
-        self.verticalSpacer_10 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.tolerance_spinBox = QSpinBox(self.frame_19)
+        self.tolerance_spinBox.setObjectName(u"tolerance_spinBox")
+        self.tolerance_spinBox.setFont(font2)
+        self.tolerance_spinBox.setMinimum(1)
+        self.tolerance_spinBox.setMaximum(15)
+        self.tolerance_spinBox.setValue(4)
 
-        self.gridLayout_22.addItem(self.verticalSpacer_10, 14, 0, 1, 1)
-
-        self.label_6 = QLabel(self.frame_19)
-        self.label_6.setObjectName(u"label_6")
-        self.label_6.setFont(font2)
-
-        self.gridLayout_22.addWidget(self.label_6, 10, 0, 1, 1)
+        self.gridLayout_22.addWidget(self.tolerance_spinBox, 8, 1, 1, 1)
 
         self.muSpinBox = QDoubleSpinBox(self.frame_19)
         self.muSpinBox.setObjectName(u"muSpinBox")
@@ -2694,17 +2739,11 @@ class Ui_mainWindow(object):
 
         self.gridLayout_22.addWidget(self.muSpinBox, 9, 1, 1, 2)
 
-        self.verbositySpinBox = QSpinBox(self.frame_19)
-        self.verbositySpinBox.setObjectName(u"verbositySpinBox")
-        self.verbositySpinBox.setFont(font2)
-        self.verbositySpinBox.setMaximum(2)
+        self.label_6 = QLabel(self.frame_19)
+        self.label_6.setObjectName(u"label_6")
+        self.label_6.setFont(font2)
 
-        self.gridLayout_22.addWidget(self.verbositySpinBox, 11, 1, 1, 2)
-
-        self.label_22 = QLabel(self.frame_19)
-        self.label_22.setObjectName(u"label_22")
-
-        self.gridLayout_22.addWidget(self.label_22, 13, 0, 1, 2)
+        self.gridLayout_22.addWidget(self.label_6, 10, 0, 1, 1)
 
         self.label_5 = QLabel(self.frame_19)
         self.label_5.setObjectName(u"label_5")
@@ -2712,49 +2751,21 @@ class Ui_mainWindow(object):
 
         self.gridLayout_22.addWidget(self.label_5, 8, 0, 1, 1)
 
-        self.find_automatic_precission_Button = QPushButton(self.frame_19)
-        self.find_automatic_precission_Button.setObjectName(u"find_automatic_precission_Button")
-        self.find_automatic_precission_Button.setMaximumSize(QSize(50, 16777215))
-        self.find_automatic_precission_Button.setFont(font2)
+        self.verticalSpacer_10 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_22.addWidget(self.find_automatic_precission_Button, 8, 2, 1, 1)
-
-        self.max_iterations_spinBox = QSpinBox(self.frame_19)
-        self.max_iterations_spinBox.setObjectName(u"max_iterations_spinBox")
-        self.max_iterations_spinBox.setFont(font2)
-        self.max_iterations_spinBox.setMinimum(1)
-        self.max_iterations_spinBox.setMaximum(1000)
-        self.max_iterations_spinBox.setValue(40)
-
-        self.gridLayout_22.addWidget(self.max_iterations_spinBox, 10, 1, 1, 2)
-
-        self.label_2 = QLabel(self.frame_19)
-        self.label_2.setObjectName(u"label_2")
-        self.label_2.setFont(font2)
-
-        self.gridLayout_22.addWidget(self.label_2, 0, 0, 1, 1)
-
-        self.tolerance_spinBox = QSpinBox(self.frame_19)
-        self.tolerance_spinBox.setObjectName(u"tolerance_spinBox")
-        self.tolerance_spinBox.setFont(font2)
-        self.tolerance_spinBox.setMinimum(1)
-        self.tolerance_spinBox.setMaximum(15)
-        self.tolerance_spinBox.setValue(4)
-
-        self.gridLayout_22.addWidget(self.tolerance_spinBox, 8, 1, 1, 1)
-
-        self.solver_comboBox = QComboBox(self.frame_19)
-        self.solver_comboBox.setObjectName(u"solver_comboBox")
-        self.solver_comboBox.setMinimumSize(QSize(200, 0))
-        self.solver_comboBox.setFont(font2)
-
-        self.gridLayout_22.addWidget(self.solver_comboBox, 0, 1, 1, 2)
+        self.gridLayout_22.addItem(self.verticalSpacer_10, 13, 0, 1, 1)
 
         self.label_11 = QLabel(self.frame_19)
         self.label_11.setObjectName(u"label_11")
         self.label_11.setFont(font2)
 
         self.gridLayout_22.addWidget(self.label_11, 9, 0, 1, 1)
+
+        self.label_2 = QLabel(self.frame_19)
+        self.label_2.setObjectName(u"label_2")
+        self.label_2.setFont(font2)
+
+        self.gridLayout_22.addWidget(self.label_2, 0, 0, 1, 1)
 
 
         self.gridLayout_24.addWidget(self.frame_19, 2, 0, 1, 3)
@@ -2938,6 +2949,140 @@ class Ui_mainWindow(object):
         self.horizontalLayout_10.addItem(self.horizontalSpacer_24)
 
         self.settingsTabWidget.addTab(self.cpf_tab, icon10, "")
+        self.tab_8 = QWidget()
+        self.tab_8.setObjectName(u"tab_8")
+        self.horizontalLayout_24 = QHBoxLayout(self.tab_8)
+        self.horizontalLayout_24.setObjectName(u"horizontalLayout_24")
+        self.frame_45 = QFrame(self.tab_8)
+        self.frame_45.setObjectName(u"frame_45")
+        self.frame_45.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_45.setFrameShadow(QFrame.Shadow.Raised)
+        self.gridLayout_37 = QGridLayout(self.frame_45)
+        self.gridLayout_37.setObjectName(u"gridLayout_37")
+        self.gridLayout_37.setContentsMargins(-1, 0, -1, -1)
+        self.label_162 = QLabel(self.frame_45)
+        self.label_162.setObjectName(u"label_162")
+        self.label_162.setFont(font2)
+
+        self.gridLayout_37.addWidget(self.label_162, 4, 0, 1, 1)
+
+        self.se_solver_comboBox = QComboBox(self.frame_45)
+        self.se_solver_comboBox.setObjectName(u"se_solver_comboBox")
+        self.se_solver_comboBox.setFont(font2)
+
+        self.gridLayout_37.addWidget(self.se_solver_comboBox, 2, 1, 1, 2)
+
+        self.se_observability_analysis_checkBox = QCheckBox(self.frame_45)
+        self.se_observability_analysis_checkBox.setObjectName(u"se_observability_analysis_checkBox")
+
+        self.gridLayout_37.addWidget(self.se_observability_analysis_checkBox, 7, 0, 1, 3)
+
+        self.line_18 = QFrame(self.frame_45)
+        self.line_18.setObjectName(u"line_18")
+        palette15 = QPalette()
+        palette15.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette15.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette15.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_18.setPalette(palette15)
+        self.line_18.setFrameShadow(QFrame.Shadow.Plain)
+        self.line_18.setLineWidth(4)
+        self.line_18.setFrameShape(QFrame.Shape.HLine)
+
+        self.gridLayout_37.addWidget(self.line_18, 1, 0, 1, 3)
+
+        self.se_max_iterations_spinBox = QSpinBox(self.frame_45)
+        self.se_max_iterations_spinBox.setObjectName(u"se_max_iterations_spinBox")
+        self.se_max_iterations_spinBox.setFont(font2)
+        self.se_max_iterations_spinBox.setMinimum(1)
+        self.se_max_iterations_spinBox.setMaximum(300)
+        self.se_max_iterations_spinBox.setValue(20)
+
+        self.gridLayout_37.addWidget(self.se_max_iterations_spinBox, 4, 1, 1, 2)
+
+        self.se_fixed_slack_checkBox = QCheckBox(self.frame_45)
+        self.se_fixed_slack_checkBox.setObjectName(u"se_fixed_slack_checkBox")
+
+        self.gridLayout_37.addWidget(self.se_fixed_slack_checkBox, 6, 0, 1, 3)
+
+        self.label_10 = QLabel(self.frame_45)
+        self.label_10.setObjectName(u"label_10")
+        self.label_10.setFont(font2)
+
+        self.gridLayout_37.addWidget(self.label_10, 2, 0, 1, 1)
+
+        self.frame_46 = QFrame(self.frame_45)
+        self.frame_46.setObjectName(u"frame_46")
+        self.frame_46.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_46.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_17 = QHBoxLayout(self.frame_46)
+        self.horizontalLayout_17.setObjectName(u"horizontalLayout_17")
+        self.horizontalLayout_17.setContentsMargins(0, 0, 0, 0)
+        self.label_165 = QLabel(self.frame_46)
+        self.label_165.setObjectName(u"label_165")
+        self.label_165.setMinimumSize(QSize(24, 24))
+        self.label_165.setMaximumSize(QSize(24, 24))
+        self.label_165.setPixmap(QPixmap(u":/Icons/icons/SE.png"))
+        self.label_165.setScaledContents(True)
+
+        self.horizontalLayout_17.addWidget(self.label_165)
+
+        self.label_166 = QLabel(self.frame_46)
+        self.label_166.setObjectName(u"label_166")
+        palette16 = QPalette()
+        palette16.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette16.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette16.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_166.setPalette(palette16)
+        self.label_166.setFont(font5)
+        self.label_166.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
+
+        self.horizontalLayout_17.addWidget(self.label_166)
+
+
+        self.gridLayout_37.addWidget(self.frame_46, 0, 0, 1, 3)
+
+        self.label_163 = QLabel(self.frame_45)
+        self.label_163.setObjectName(u"label_163")
+        self.label_163.setFont(font2)
+
+        self.gridLayout_37.addWidget(self.label_163, 3, 0, 1, 1)
+
+        self.verticalSpacer_9 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_37.addItem(self.verticalSpacer_9, 10, 0, 1, 3)
+
+        self.se_tolerance_spinBox = QSpinBox(self.frame_45)
+        self.se_tolerance_spinBox.setObjectName(u"se_tolerance_spinBox")
+        self.se_tolerance_spinBox.setFont(font2)
+        self.se_tolerance_spinBox.setMinimum(1)
+        self.se_tolerance_spinBox.setMaximum(15)
+        self.se_tolerance_spinBox.setValue(4)
+
+        self.gridLayout_37.addWidget(self.se_tolerance_spinBox, 3, 1, 1, 2)
+
+        self.se_prefer_correct_checkBox = QCheckBox(self.frame_45)
+        self.se_prefer_correct_checkBox.setObjectName(u"se_prefer_correct_checkBox")
+
+        self.gridLayout_37.addWidget(self.se_prefer_correct_checkBox, 5, 0, 1, 3)
+
+        self.se_add_pseudo_measurements_checkBox = QCheckBox(self.frame_45)
+        self.se_add_pseudo_measurements_checkBox.setObjectName(u"se_add_pseudo_measurements_checkBox")
+
+        self.gridLayout_37.addWidget(self.se_add_pseudo_measurements_checkBox, 8, 0, 1, 3)
+
+        self.se_measurements_profiling_checkBox = QCheckBox(self.frame_45)
+        self.se_measurements_profiling_checkBox.setObjectName(u"se_measurements_profiling_checkBox")
+
+        self.gridLayout_37.addWidget(self.se_measurements_profiling_checkBox, 9, 0, 1, 3)
+
+
+        self.horizontalLayout_24.addWidget(self.frame_45)
+
+        self.horizontalSpacer_14 = QSpacerItem(743, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_24.addItem(self.horizontalSpacer_14)
+
+        self.settingsTabWidget.addTab(self.tab_8, icon83, "")
         self.opf_tab = QWidget()
         self.opf_tab.setObjectName(u"opf_tab")
         self.gridLayout_10 = QGridLayout(self.opf_tab)
@@ -3173,50 +3318,11 @@ class Ui_mainWindow(object):
         self.groupBox_2.setFont(font7)
         self.gridLayout_26 = QGridLayout(self.groupBox_2)
         self.gridLayout_26.setObjectName(u"gridLayout_26")
-        self.label_128 = QLabel(self.groupBox_2)
-        self.label_128.setObjectName(u"label_128")
-        self.label_128.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.label_128, 1, 0, 1, 1)
-
-        self.label_42 = QLabel(self.groupBox_2)
-        self.label_42.setObjectName(u"label_42")
-        self.label_42.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.label_42, 0, 0, 1, 1)
-
-        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_26.addItem(self.verticalSpacer_5, 7, 0, 1, 1)
-
-        self.lpf_solver_comboBox = QComboBox(self.groupBox_2)
-        self.lpf_solver_comboBox.setObjectName(u"lpf_solver_comboBox")
-        self.lpf_solver_comboBox.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.lpf_solver_comboBox, 0, 1, 1, 1)
-
         self.ips_verbose_spinBox = QSpinBox(self.groupBox_2)
         self.ips_verbose_spinBox.setObjectName(u"ips_verbose_spinBox")
         self.ips_verbose_spinBox.setFont(font8)
 
         self.gridLayout_26.addWidget(self.ips_verbose_spinBox, 1, 1, 1, 1)
-
-        self.addOptimalPowerFlowReportCheckBox = QCheckBox(self.groupBox_2)
-        self.addOptimalPowerFlowReportCheckBox.setObjectName(u"addOptimalPowerFlowReportCheckBox")
-        self.addOptimalPowerFlowReportCheckBox.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.addOptimalPowerFlowReportCheckBox, 6, 0, 1, 2)
-
-        self.label_133 = QLabel(self.groupBox_2)
-        self.label_133.setObjectName(u"label_133")
-
-        self.gridLayout_26.addWidget(self.label_133, 2, 0, 1, 1)
-
-        self.opfMaximizeExcahngeCheckBox = QCheckBox(self.groupBox_2)
-        self.opfMaximizeExcahngeCheckBox.setObjectName(u"opfMaximizeExcahngeCheckBox")
-        self.opfMaximizeExcahngeCheckBox.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.opfMaximizeExcahngeCheckBox, 5, 0, 1, 2)
 
         self.skipOpfGenerationLimitsCheckBox = QCheckBox(self.groupBox_2)
         self.skipOpfGenerationLimitsCheckBox.setObjectName(u"skipOpfGenerationLimitsCheckBox")
@@ -3224,16 +3330,49 @@ class Ui_mainWindow(object):
 
         self.gridLayout_26.addWidget(self.skipOpfGenerationLimitsCheckBox, 3, 0, 1, 2)
 
+        self.label_128 = QLabel(self.groupBox_2)
+        self.label_128.setObjectName(u"label_128")
+        self.label_128.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.label_128, 1, 0, 1, 1)
+
+        self.label_133 = QLabel(self.groupBox_2)
+        self.label_133.setObjectName(u"label_133")
+
+        self.gridLayout_26.addWidget(self.label_133, 2, 0, 1, 1)
+
+        self.lpf_solver_comboBox = QComboBox(self.groupBox_2)
+        self.lpf_solver_comboBox.setObjectName(u"lpf_solver_comboBox")
+        self.lpf_solver_comboBox.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.lpf_solver_comboBox, 0, 1, 1, 1)
+
+        self.label_42 = QLabel(self.groupBox_2)
+        self.label_42.setObjectName(u"label_42")
+        self.label_42.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.label_42, 0, 0, 1, 1)
+
+        self.addOptimalPowerFlowReportCheckBox = QCheckBox(self.groupBox_2)
+        self.addOptimalPowerFlowReportCheckBox.setObjectName(u"addOptimalPowerFlowReportCheckBox")
+        self.addOptimalPowerFlowReportCheckBox.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.addOptimalPowerFlowReportCheckBox, 5, 0, 1, 2)
+
+        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_26.addItem(self.verticalSpacer_5, 6, 0, 1, 1)
+
 
         self.gridLayout_10.addWidget(self.groupBox_2, 3, 0, 1, 3)
 
         self.line_16 = QFrame(self.opf_tab)
         self.line_16.setObjectName(u"line_16")
-        palette15 = QPalette()
-        palette15.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette15.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette15.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_16.setPalette(palette15)
+        palette17 = QPalette()
+        palette17.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette17.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette17.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_16.setPalette(palette17)
         self.line_16.setFrameShadow(QFrame.Shadow.Plain)
         self.line_16.setLineWidth(4)
         self.line_16.setFrameShape(QFrame.Shape.HLine)
@@ -3255,11 +3394,11 @@ class Ui_mainWindow(object):
 
         self.label_73 = QLabel(self.opf_tab)
         self.label_73.setObjectName(u"label_73")
-        palette16 = QPalette()
-        palette16.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette16.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette16.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_73.setPalette(palette16)
+        palette18 = QPalette()
+        palette18.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette18.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette18.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_73.setPalette(palette18)
         self.label_73.setFont(font5)
         self.label_73.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -3335,26 +3474,26 @@ class Ui_mainWindow(object):
 
         self.label_64 = QLabel(self.groupBox_5)
         self.label_64.setObjectName(u"label_64")
-        palette17 = QPalette()
+        palette19 = QPalette()
         brush4 = QBrush(QColor(36, 31, 49, 255))
         brush4.setStyle(Qt.BrushStyle.SolidPattern)
-        palette17.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush4)
+        palette19.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush4)
         brush5 = QBrush(QColor(0, 0, 0, 255))
         brush5.setStyle(Qt.BrushStyle.SolidPattern)
-        palette17.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
-        palette17.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_64.setPalette(palette17)
+        palette19.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
+        palette19.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_64.setPalette(palette19)
         self.label_64.setFont(font7)
 
         self.gridLayout_15.addWidget(self.label_64, 4, 0, 1, 2)
 
         self.label_105 = QLabel(self.groupBox_5)
         self.label_105.setObjectName(u"label_105")
-        palette18 = QPalette()
-        palette18.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush4)
-        palette18.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
-        palette18.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_105.setPalette(palette18)
+        palette20 = QPalette()
+        palette20.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush4)
+        palette20.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
+        palette20.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_105.setPalette(palette20)
         self.label_105.setFont(font7)
 
         self.gridLayout_15.addWidget(self.label_105, 10, 0, 1, 2)
@@ -3422,11 +3561,11 @@ class Ui_mainWindow(object):
 
         self.line_27 = QFrame(self.ntc_tab)
         self.line_27.setObjectName(u"line_27")
-        palette19 = QPalette()
-        palette19.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette19.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette19.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_27.setPalette(palette19)
+        palette21 = QPalette()
+        palette21.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette21.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette21.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_27.setPalette(palette21)
         self.line_27.setFrameShadow(QFrame.Shadow.Plain)
         self.line_27.setLineWidth(4)
         self.line_27.setFrameShape(QFrame.Shape.HLine)
@@ -3485,11 +3624,11 @@ class Ui_mainWindow(object):
 
         self.label_96 = QLabel(self.ntc_tab)
         self.label_96.setObjectName(u"label_96")
-        palette20 = QPalette()
-        palette20.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette20.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette20.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_96.setPalette(palette20)
+        palette22 = QPalette()
+        palette22.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette22.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette22.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_96.setPalette(palette22)
         self.label_96.setFont(font5)
 
         self.gridLayout_13.addWidget(self.label_96, 0, 1, 1, 1)
@@ -3554,11 +3693,11 @@ class Ui_mainWindow(object):
 
         self.line_32 = QFrame(self.nodal_capacity_tab)
         self.line_32.setObjectName(u"line_32")
-        palette21 = QPalette()
-        palette21.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette21.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette21.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_32.setPalette(palette21)
+        palette23 = QPalette()
+        palette23.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette23.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette23.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_32.setPalette(palette23)
         self.line_32.setFrameShadow(QFrame.Shadow.Plain)
         self.line_32.setLineWidth(4)
         self.line_32.setFrameShape(QFrame.Shape.HLine)
@@ -3567,11 +3706,11 @@ class Ui_mainWindow(object):
 
         self.label_140 = QLabel(self.nodal_capacity_tab)
         self.label_140.setObjectName(u"label_140")
-        palette22 = QPalette()
-        palette22.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette22.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette22.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_140.setPalette(palette22)
+        palette24 = QPalette()
+        palette24.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette24.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette24.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_140.setPalette(palette24)
         self.label_140.setFont(font5)
 
         self.gridLayout_16.addWidget(self.label_140, 0, 1, 1, 1)
@@ -3593,11 +3732,11 @@ class Ui_mainWindow(object):
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.line_26 = QFrame(self.frame_40)
         self.line_26.setObjectName(u"line_26")
-        palette23 = QPalette()
-        palette23.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette23.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette23.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_26.setPalette(palette23)
+        palette25 = QPalette()
+        palette25.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette25.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette25.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_26.setPalette(palette25)
         self.line_26.setFrameShadow(QFrame.Shadow.Plain)
         self.line_26.setLineWidth(4)
         self.line_26.setFrameShape(QFrame.Shape.HLine)
@@ -3606,11 +3745,11 @@ class Ui_mainWindow(object):
 
         self.label_95 = QLabel(self.frame_40)
         self.label_95.setObjectName(u"label_95")
-        palette24 = QPalette()
-        palette24.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette24.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette24.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_95.setPalette(palette24)
+        palette26 = QPalette()
+        palette26.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette26.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette26.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_95.setPalette(palette26)
         self.label_95.setFont(font5)
 
         self.gridLayout_4.addWidget(self.label_95, 0, 1, 1, 1)
@@ -3681,7 +3820,7 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.frame_40)
 
-        self.settingsTabWidget.addTab(self.transfer_tab, icon90, "")
+        self.settingsTabWidget.addTab(self.transfer_tab, icon93, "")
         self.contingencies_tab = QWidget()
         self.contingencies_tab.setObjectName(u"contingencies_tab")
         self.horizontalLayout_42 = QHBoxLayout(self.contingencies_tab)
@@ -3730,11 +3869,11 @@ class Ui_mainWindow(object):
 
         self.line_25 = QFrame(self.frame_76)
         self.line_25.setObjectName(u"line_25")
-        palette25 = QPalette()
-        palette25.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette25.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette25.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_25.setPalette(palette25)
+        palette27 = QPalette()
+        palette27.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette27.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette27.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_25.setPalette(palette27)
         self.line_25.setFrameShadow(QFrame.Shadow.Plain)
         self.line_25.setLineWidth(4)
         self.line_25.setFrameShape(QFrame.Shape.HLine)
@@ -3763,11 +3902,11 @@ class Ui_mainWindow(object):
 
         self.label_117 = QLabel(self.frame_78)
         self.label_117.setObjectName(u"label_117")
-        palette26 = QPalette()
-        palette26.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette26.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette26.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_117.setPalette(palette26)
+        palette28 = QPalette()
+        palette28.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette28.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette28.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_117.setPalette(palette28)
         self.label_117.setFont(font5)
         self.label_117.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -3914,11 +4053,11 @@ class Ui_mainWindow(object):
         self.horizontalLayout_52.setContentsMargins(0, 0, 0, 0)
         self.label_408 = QLabel(self.frame_111)
         self.label_408.setObjectName(u"label_408")
-        palette27 = QPalette()
-        palette27.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette27.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette27.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_408.setPalette(palette27)
+        palette29 = QPalette()
+        palette29.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette29.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette29.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_408.setPalette(palette29)
         self.label_408.setFont(font5)
         self.label_408.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4012,11 +4151,11 @@ class Ui_mainWindow(object):
 
         self.line_62 = QFrame(self.frame_109)
         self.line_62.setObjectName(u"line_62")
-        palette28 = QPalette()
-        palette28.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette28.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette28.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_62.setPalette(palette28)
+        palette30 = QPalette()
+        palette30.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette30.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette30.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_62.setPalette(palette30)
         self.line_62.setFrameShadow(QFrame.Shadow.Plain)
         self.line_62.setLineWidth(4)
         self.line_62.setFrameShape(QFrame.Shape.HLine)
@@ -4046,11 +4185,11 @@ class Ui_mainWindow(object):
 
         self.label_418 = QLabel(self.frame_110)
         self.label_418.setObjectName(u"label_418")
-        palette29 = QPalette()
-        palette29.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette29.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette29.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_418.setPalette(palette29)
+        palette31 = QPalette()
+        palette31.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette31.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette31.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_418.setPalette(palette31)
         self.label_418.setFont(font5)
         self.label_418.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4058,11 +4197,11 @@ class Ui_mainWindow(object):
 
         self.line_63 = QFrame(self.frame_110)
         self.line_63.setObjectName(u"line_63")
-        palette30 = QPalette()
-        palette30.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette30.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette30.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_63.setPalette(palette30)
+        palette32 = QPalette()
+        palette32.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette32.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette32.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_63.setPalette(palette32)
         self.line_63.setFrameShadow(QFrame.Shadow.Plain)
         self.line_63.setLineWidth(4)
         self.line_63.setFrameShape(QFrame.Shape.HLine)
@@ -4141,11 +4280,11 @@ class Ui_mainWindow(object):
 
         self.line_24 = QFrame(self.frame_18)
         self.line_24.setObjectName(u"line_24")
-        palette31 = QPalette()
-        palette31.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette31.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette31.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_24.setPalette(palette31)
+        palette33 = QPalette()
+        palette33.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette33.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette33.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_24.setPalette(palette33)
         self.line_24.setFrameShadow(QFrame.Shadow.Plain)
         self.line_24.setLineWidth(4)
         self.line_24.setFrameShape(QFrame.Shape.HLine)
@@ -4172,11 +4311,11 @@ class Ui_mainWindow(object):
 
         self.line_29 = QFrame(self.frame_18)
         self.line_29.setObjectName(u"line_29")
-        palette32 = QPalette()
-        palette32.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette32.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette32.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_29.setPalette(palette32)
+        palette34 = QPalette()
+        palette34.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette34.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette34.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_29.setPalette(palette34)
         self.line_29.setFrameShadow(QFrame.Shadow.Plain)
         self.line_29.setLineWidth(4)
         self.line_29.setFrameShape(QFrame.Shape.HLine)
@@ -4197,11 +4336,11 @@ class Ui_mainWindow(object):
 
         self.label_89 = QLabel(self.frame_18)
         self.label_89.setObjectName(u"label_89")
-        palette33 = QPalette()
-        palette33.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette33.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette33.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_89.setPalette(palette33)
+        palette35 = QPalette()
+        palette35.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette35.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette35.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_89.setPalette(palette35)
         self.label_89.setFont(font5)
         self.label_89.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4234,11 +4373,11 @@ class Ui_mainWindow(object):
         self.horizontalLayout_32.setContentsMargins(0, 0, 0, 0)
         self.label_93 = QLabel(self.frame_59)
         self.label_93.setObjectName(u"label_93")
-        palette34 = QPalette()
-        palette34.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette34.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette34.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_93.setPalette(palette34)
+        palette36 = QPalette()
+        palette36.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette36.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette36.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_93.setPalette(palette36)
         self.label_93.setFont(font5)
         self.label_93.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4314,11 +4453,11 @@ class Ui_mainWindow(object):
 
         self.label_121 = QLabel(self.frame_18)
         self.label_121.setObjectName(u"label_121")
-        palette35 = QPalette()
-        palette35.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette35.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette35.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_121.setPalette(palette35)
+        palette37 = QPalette()
+        palette37.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette37.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette37.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_121.setPalette(palette37)
         self.label_121.setFont(font5)
         self.label_121.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4332,11 +4471,11 @@ class Ui_mainWindow(object):
 
         self.line_30 = QFrame(self.frame_18)
         self.line_30.setObjectName(u"line_30")
-        palette36 = QPalette()
-        palette36.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette36.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette36.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_30.setPalette(palette36)
+        palette38 = QPalette()
+        palette38.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette38.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette38.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_30.setPalette(palette38)
         self.line_30.setFrameShadow(QFrame.Shadow.Plain)
         self.line_30.setLineWidth(4)
         self.line_30.setFrameShape(QFrame.Shape.HLine)
@@ -4404,11 +4543,11 @@ class Ui_mainWindow(object):
 
         self.label_100 = QLabel(self.frame_15)
         self.label_100.setObjectName(u"label_100")
-        palette37 = QPalette()
-        palette37.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette37.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette37.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_100.setPalette(palette37)
+        palette39 = QPalette()
+        palette39.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette39.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette39.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_100.setPalette(palette39)
         self.label_100.setFont(font5)
         self.label_100.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4422,11 +4561,11 @@ class Ui_mainWindow(object):
 
         self.label_79 = QLabel(self.frame_15)
         self.label_79.setObjectName(u"label_79")
-        palette38 = QPalette()
-        palette38.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette38.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette38.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_79.setPalette(palette38)
+        palette40 = QPalette()
+        palette40.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette40.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette40.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_79.setPalette(palette40)
         self.label_79.setFont(font5)
         self.label_79.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4438,11 +4577,11 @@ class Ui_mainWindow(object):
 
         self.line_4 = QFrame(self.frame_15)
         self.line_4.setObjectName(u"line_4")
-        palette39 = QPalette()
-        palette39.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette39.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette39.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_4.setPalette(palette39)
+        palette41 = QPalette()
+        palette41.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette41.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette41.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_4.setPalette(palette41)
         self.line_4.setFrameShadow(QFrame.Shadow.Plain)
         self.line_4.setLineWidth(4)
         self.line_4.setFrameShape(QFrame.Shape.HLine)
@@ -4456,11 +4595,11 @@ class Ui_mainWindow(object):
 
         self.line_6 = QFrame(self.frame_15)
         self.line_6.setObjectName(u"line_6")
-        palette40 = QPalette()
-        palette40.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette40.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette40.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_6.setPalette(palette40)
+        palette42 = QPalette()
+        palette42.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette42.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette42.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_6.setPalette(palette42)
         self.line_6.setFrameShadow(QFrame.Shadow.Plain)
         self.line_6.setLineWidth(4)
         self.line_6.setFrameShape(QFrame.Shape.HLine)
@@ -4478,11 +4617,11 @@ class Ui_mainWindow(object):
 
         self.label_47 = QLabel(self.frame_15)
         self.label_47.setObjectName(u"label_47")
-        palette41 = QPalette()
-        palette41.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette41.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette41.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_47.setPalette(palette41)
+        palette43 = QPalette()
+        palette43.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette43.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette43.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_47.setPalette(palette43)
         self.label_47.setFont(font5)
         self.label_47.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4511,11 +4650,11 @@ class Ui_mainWindow(object):
 
         self.line_10 = QFrame(self.frame_15)
         self.line_10.setObjectName(u"line_10")
-        palette42 = QPalette()
-        palette42.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette42.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette42.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_10.setPalette(palette42)
+        palette44 = QPalette()
+        palette44.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette44.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette44.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_10.setPalette(palette44)
         self.line_10.setFrameShadow(QFrame.Shadow.Plain)
         self.line_10.setLineWidth(4)
         self.line_10.setFrameShape(QFrame.Shape.HLine)
@@ -4610,11 +4749,11 @@ class Ui_mainWindow(object):
 
         self.label_81 = QLabel(self.frame_48)
         self.label_81.setObjectName(u"label_81")
-        palette43 = QPalette()
-        palette43.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette43.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette43.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_81.setPalette(palette43)
+        palette45 = QPalette()
+        palette45.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette45.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette45.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_81.setPalette(palette45)
         self.label_81.setFont(font5)
         self.label_81.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4625,11 +4764,11 @@ class Ui_mainWindow(object):
 
         self.line_20 = QFrame(self.frame_27)
         self.line_20.setObjectName(u"line_20")
-        palette44 = QPalette()
-        palette44.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette44.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette44.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_20.setPalette(palette44)
+        palette46 = QPalette()
+        palette46.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette46.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette46.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_20.setPalette(palette46)
         self.line_20.setFrameShadow(QFrame.Shadow.Plain)
         self.line_20.setLineWidth(4)
         self.line_20.setFrameShape(QFrame.Shape.HLine)
@@ -4694,11 +4833,11 @@ class Ui_mainWindow(object):
 
         self.label_85 = QLabel(self.frame_50)
         self.label_85.setObjectName(u"label_85")
-        palette45 = QPalette()
-        palette45.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette45.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
-        palette45.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_85.setPalette(palette45)
+        palette47 = QPalette()
+        palette47.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette47.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette47.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_85.setPalette(palette47)
         self.label_85.setFont(font5)
         self.label_85.setAlignment(Qt.AlignmentFlag.AlignBottom|Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft)
 
@@ -4709,11 +4848,11 @@ class Ui_mainWindow(object):
 
         self.line_8 = QFrame(self.frame_31)
         self.line_8.setObjectName(u"line_8")
-        palette46 = QPalette()
-        palette46.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette46.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette46.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_8.setPalette(palette46)
+        palette48 = QPalette()
+        palette48.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette48.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette48.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_8.setPalette(palette48)
         self.line_8.setFrameShadow(QFrame.Shadow.Plain)
         self.line_8.setLineWidth(4)
         self.line_8.setFrameShape(QFrame.Shape.HLine)
@@ -4777,11 +4916,11 @@ class Ui_mainWindow(object):
 
         self.line_28 = QFrame(self.frame_77)
         self.line_28.setObjectName(u"line_28")
-        palette47 = QPalette()
-        palette47.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette47.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette47.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_28.setPalette(palette47)
+        palette49 = QPalette()
+        palette49.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette49.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette49.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_28.setPalette(palette49)
         self.line_28.setFrameShadow(QFrame.Shadow.Plain)
         self.line_28.setLineWidth(4)
         self.line_28.setFrameShape(QFrame.Shape.HLine)
@@ -4802,11 +4941,11 @@ class Ui_mainWindow(object):
 
         self.label_131 = QLabel(self.frame_77)
         self.label_131.setObjectName(u"label_131")
-        palette48 = QPalette()
-        palette48.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette48.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
-        palette48.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_131.setPalette(palette48)
+        palette50 = QPalette()
+        palette50.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette50.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
+        palette50.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_131.setPalette(palette50)
         self.label_131.setFont(font5)
 
         self.gridLayout_11.addWidget(self.label_131, 9, 1, 1, 1)
@@ -4839,11 +4978,11 @@ class Ui_mainWindow(object):
 
         self.line_33 = QFrame(self.frame_77)
         self.line_33.setObjectName(u"line_33")
-        palette49 = QPalette()
-        palette49.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette49.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette49.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_33.setPalette(palette49)
+        palette51 = QPalette()
+        palette51.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette51.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette51.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_33.setPalette(palette51)
         self.line_33.setFrameShadow(QFrame.Shadow.Plain)
         self.line_33.setLineWidth(4)
         self.line_33.setFrameShape(QFrame.Shape.HLine)
@@ -4864,11 +5003,11 @@ class Ui_mainWindow(object):
 
         self.label_115 = QLabel(self.frame_77)
         self.label_115.setObjectName(u"label_115")
-        palette50 = QPalette()
-        palette50.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette50.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
-        palette50.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_115.setPalette(palette50)
+        palette52 = QPalette()
+        palette52.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette52.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
+        palette52.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_115.setPalette(palette52)
         self.label_115.setFont(font5)
 
         self.gridLayout_11.addWidget(self.label_115, 0, 1, 1, 1)
@@ -4906,11 +5045,11 @@ class Ui_mainWindow(object):
         self.gridLayout_5.setObjectName(u"gridLayout_5")
         self.line_31 = QFrame(self.frame_79)
         self.line_31.setObjectName(u"line_31")
-        palette51 = QPalette()
-        palette51.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
-        palette51.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
-        palette51.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.line_31.setPalette(palette51)
+        palette53 = QPalette()
+        palette53.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush3)
+        palette53.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush3)
+        palette53.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.line_31.setPalette(palette53)
         self.line_31.setFrameShadow(QFrame.Shadow.Plain)
         self.line_31.setLineWidth(4)
         self.line_31.setFrameShape(QFrame.Shape.HLine)
@@ -4919,11 +5058,11 @@ class Ui_mainWindow(object):
 
         self.label_134 = QLabel(self.frame_79)
         self.label_134.setObjectName(u"label_134")
-        palette52 = QPalette()
-        palette52.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
-        palette52.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
-        palette52.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
-        self.label_134.setPalette(palette52)
+        palette54 = QPalette()
+        palette54.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette54.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush5)
+        palette54.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush1)
+        self.label_134.setPalette(palette54)
         self.label_134.setFont(font5)
 
         self.gridLayout_5.addWidget(self.label_134, 0, 1, 1, 2)
@@ -5089,14 +5228,14 @@ class Ui_mainWindow(object):
 
         self.gridLayout_8.addWidget(self.settingsTabWidget, 0, 1, 1, 1)
 
-        self.mainTabWidget.addTab(self.SettingsTab, icon84, "")
+        self.mainTabWidget.addTab(self.SettingsTab, icon87, "")
 
         self.gridLayout_3.addWidget(self.mainTabWidget, 0, 0, 1, 1)
 
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1433, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1230, 23))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
@@ -5167,6 +5306,7 @@ class Ui_mainWindow(object):
         self.menuSimulations.addSeparator()
         self.menuSimulations.addAction(self.actionShort_Circuit)
         self.menuSimulations.addAction(self.actionVoltage_stability)
+        self.menuSimulations.addAction(self.actionState_estimation)
         self.menuSimulations.addAction(self.actionContingency_analysis)
         self.menuSimulations.addAction(self.actionRun_Dynamic_RMS_Simulation)
         self.menuSimulations.addAction(self.actionRun_Small_Signal_RMS_Simulation)
@@ -5231,7 +5371,6 @@ class Ui_mainWindow(object):
         self.menuDiagrams.addAction(self.actionZoom_out)
         self.menuDiagrams.addAction(self.actionCenter_view)
         self.menuDiagrams.addAction(self.actionConsolidate_diagram_coordinates)
-        self.menuDiagrams.addAction(self.actionSearchDiagram)
         self.menuDiagrams.addAction(self.actionDelete_selected)
         self.menuDiagrams.addSeparator()
         self.menuDiagrams.addAction(self.actionTakePicture)
@@ -5241,6 +5380,7 @@ class Ui_mainWindow(object):
         self.menuEvents.addAction(self.actionAdd_selected_as_new_investment)
         self.menuEvents.addAction(self.actionAdd_selected_as_remedial_action)
         self.menuEvents.addAction(self.actionAdd_rms_event_to_selected)
+        self.menuEvents.addAction(self.actionAdd_short_circuit_events)
         self.toolBar.addAction(self.actionNew_project)
         self.toolBar.addAction(self.actionOpen_file)
         self.toolBar.addAction(self.actionSave)
@@ -5252,6 +5392,7 @@ class Ui_mainWindow(object):
         self.toolBar.addAction(self.actionSigma_analysis)
         self.toolBar.addAction(self.actionShort_Circuit)
         self.toolBar.addAction(self.actionVoltage_stability)
+        self.toolBar.addAction(self.actionState_estimation)
         self.toolBar.addAction(self.actionContingency_analysis)
         self.toolBar.addAction(self.actionRun_Dynamic_RMS_Simulation)
         self.toolBar.addAction(self.actionRun_Small_Signal_RMS_Simulation)
@@ -5269,9 +5410,6 @@ class Ui_mainWindow(object):
         self.toolBar.addAction(self.actionEdit_simulation_time_limits)
         self.toolBar.addAction(self.actionactivate_time_series)
         self.toolBar.addSeparator()
-        self.toolBar.addAction(self.actionAdd_selected_to_contingency)
-        self.toolBar.addAction(self.actionAdd_selected_as_new_investment)
-        self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionBigger_nodes)
         self.toolBar.addAction(self.actionSmaller_nodes)
         self.toolBar.addAction(self.actionCenter_view)
@@ -5283,13 +5421,13 @@ class Ui_mainWindow(object):
 
         self.retranslateUi(mainWindow)
 
-        self.mainTabWidget.setCurrentIndex(3)
+        self.mainTabWidget.setCurrentIndex(0)
         self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_5.setCurrentIndex(0)
         self.resultsTabWidget.setCurrentIndex(2)
         self.tabWidget_2.setCurrentIndex(0)
-        self.settingsTabWidget.setCurrentIndex(2)
+        self.settingsTabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(mainWindow)
@@ -5653,11 +5791,17 @@ class Ui_mainWindow(object):
         self.actionAdd_rms_event_to_selected.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Add RMS event</span></p><p>Create a new RMS event to the schematic selection</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.actionClear_highlights.setText(QCoreApplication.translate("mainWindow", u"Clear highlights", None))
+        self.actionState_estimation.setText(QCoreApplication.translate("mainWindow", u"State estimation", None))
+#if QT_CONFIG(tooltip)
+        self.actionState_estimation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">State estimation</span></p><p>Run a state estimation analysis</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.actionAdd_short_circuit_events.setText(QCoreApplication.translate("mainWindow", u"Add short circuit events", None))
         self.progress_label.setText("")
 #if QT_CONFIG(tooltip)
         self.cancelButton.setToolTip(QCoreApplication.translate("mainWindow", u"Cancel process", None))
 #endif // QT_CONFIG(tooltip)
         self.cancelButton.setText("")
+        self.diagramSearchButton.setText("")
 #if QT_CONFIG(tooltip)
         self.diagramsListView.setToolTip(QCoreApplication.translate("mainWindow", u"List of available diagrams", None))
 #endif // QT_CONFIG(tooltip)
@@ -5754,16 +5898,16 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.use_schematic_objects_color_checkBox.setText(QCoreApplication.translate("mainWindow", u"Use the objects' color", None))
         self.tabWidget_6.setTabText(self.tabWidget_6.indexOf(self.tab_4), QCoreApplication.translate("mainWindow", u"Settings", None))
-        self.schematic_step_label.setText(QCoreApplication.translate("mainWindow", u"Snapshot", None))
-#if QT_CONFIG(tooltip)
-        self.available_results_to_color_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Available results", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.colour_results_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Color the grid with the selected study", None))
 #endif // QT_CONFIG(tooltip)
         self.colour_results_pushButton.setText("")
+        self.schematic_step_label.setText(QCoreApplication.translate("mainWindow", u"Snapshot", None))
 #if QT_CONFIG(tooltip)
         self.diagram_step_slider.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Time slider</span></p><p>Move this time slider to select the appropriate time slot to view.</p><p>The first position sets the snapshot values, the rest attend to the time series values.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.available_results_to_color_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Available results", None))
 #endif // QT_CONFIG(tooltip)
         self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.GridSectionTab), QCoreApplication.translate("mainWindow", u"Diagrams", None))
 #if QT_CONFIG(tooltip)
@@ -6024,7 +6168,7 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
 #if QT_CONFIG(tooltip)
-        self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for dynamic simulations.</p></body></html>", None))
+        self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for state estimation.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.pf_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Power flow settings", None))
@@ -6033,11 +6177,17 @@ class Ui_mainWindow(object):
         self.label_17.setText(QCoreApplication.translate("mainWindow", u"Power flow", None))
         self.label_70.setText("")
         self.label_71.setText(QCoreApplication.translate("mainWindow", u"PTDF / LODF", None))
+#if QT_CONFIG(tooltip)
+        self.ptdf_correct_nonsense_values_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Theoretically PTDF and LODF values should be in the range (-1, 1)<br/>However, this is not true in general for any grid due to the existence of antennas.<br/>With this option the values are truncated to the range (-1, 1)</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
         self.ptdf_correct_nonsense_values_checkBox.setText(QCoreApplication.translate("mainWindow", u"Correct nonsense values", None))
 #if QT_CONFIG(tooltip)
         self.usePfValuesForAtcCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Use existing power flow values for the contingency initialization in the net transfer capacity and contingency simulations", None))
 #endif // QT_CONFIG(tooltip)
         self.usePfValuesForAtcCheckBox.setText(QCoreApplication.translate("mainWindow", u"Use power flow values for initialization", None))
+#if QT_CONFIG(tooltip)
+        self.ptdf_distributed_slack_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>With this option, the PTDF is computed such that the slack effects are distributed</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
         self.ptdf_distributed_slack_checkBox.setText(QCoreApplication.translate("mainWindow", u"Distributed slack", None))
 #if QT_CONFIG(tooltip)
         self.ptdf_threshold_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Threshold under which sensitivities are ignored when the PTDF is converted to sparse", None))
@@ -6049,81 +6199,80 @@ class Ui_mainWindow(object):
         self.label_116.setText(QCoreApplication.translate("mainWindow", u"PTDF threshold", None))
         self.label_124.setText("")
 #if QT_CONFIG(tooltip)
-        self.helm_retry_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If the selected method does not converge, try a list of methods that may help</p></body></html>", None))
+        self.max_iterations_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Maximum numberof iterations to use.</p><p><br/></p><p>Tipical values: </p><p>Newton Raphson: 5</p><p>Levenberg-Marquards: 20</p><p>Fast decoupled: 10</p><p>Others: 20</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.helm_retry_checkBox.setText(QCoreApplication.translate("mainWindow", u"Retry with other methods if failed", None))
-        self.use_voltage_guess_checkBox.setText(QCoreApplication.translate("mainWindow", u"Use voltage guess", None))
-#if QT_CONFIG(tooltip)
-        self.ignore_single_node_islands_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"If active, the islands of a single node are ignored.", None))
-#endif // QT_CONFIG(tooltip)
-        self.ignore_single_node_islands_checkBox.setText(QCoreApplication.translate("mainWindow", u"Ignore single node islands", None))
-        self.label_50.setText("")
-#if QT_CONFIG(tooltip)
-        self.pf_three_phase_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If active, the power flow is run using the three-pahse unbalanced formulation composing 3x3 impedance matrices form the available database data.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.pf_three_phase_checkBox.setText(QCoreApplication.translate("mainWindow", u"3-phase", None))
-#if QT_CONFIG(tooltip)
-        self.distributed_slack_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If active, the slack power is distributed among the generators according to their installed power &quot;Snom&quot;</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.distributed_slack_checkBox.setText(QCoreApplication.translate("mainWindow", u"Distributed slack", None))
 #if QT_CONFIG(tooltip)
         self.control_q_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for reactive power limits control", None))
 #endif // QT_CONFIG(tooltip)
         self.control_q_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control Q limits", None))
 #if QT_CONFIG(tooltip)
-        self.control_tap_modules_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for branches tap module control", None))
-#endif // QT_CONFIG(tooltip)
-        self.control_tap_modules_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control tap module", None))
-#if QT_CONFIG(tooltip)
-        self.control_tap_phase_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for branches tap phase control", None))
-#endif // QT_CONFIG(tooltip)
-        self.control_tap_phase_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control tap phase", None))
-#if QT_CONFIG(tooltip)
         self.control_remote_voltage_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for generators remote voltage control", None))
 #endif // QT_CONFIG(tooltip)
         self.control_remote_voltage_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control remote voltage", None))
+#if QT_CONFIG(tooltip)
+        self.pf_three_phase_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If active, the power flow is run using the three-pahse unbalanced formulation composing 4x4 impedance matrices form the available database data.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.pf_three_phase_checkBox.setText(QCoreApplication.translate("mainWindow", u"Unbalanced formulation", None))
+#if QT_CONFIG(tooltip)
+        self.helm_retry_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If the selected method does not converge, try a list of methods that may help</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.helm_retry_checkBox.setText(QCoreApplication.translate("mainWindow", u"Retry with other methods", None))
+#if QT_CONFIG(tooltip)
+        self.control_tap_modules_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for branches tap module control", None))
+#endif // QT_CONFIG(tooltip)
+        self.control_tap_modules_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control tap module", None))
+        self.apply_impedance_tolerances_checkBox.setText(QCoreApplication.translate("mainWindow", u"Apply impedance tolerances", None))
+#if QT_CONFIG(tooltip)
+        self.temperature_correction_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"Correct the branches resistance using the temperature", None))
+#endif // QT_CONFIG(tooltip)
+        self.temperature_correction_checkBox.setText(QCoreApplication.translate("mainWindow", u"Apply temperature correction", None))
 #if QT_CONFIG(tooltip)
         self.orthogonalize_pf_controls_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"If checked, the controls are adjusted to their closest tap", None))
 #endif // QT_CONFIG(tooltip)
         self.orthogonalize_pf_controls_checkBox.setText(QCoreApplication.translate("mainWindow", u"Orthogonalize controls", None))
 #if QT_CONFIG(tooltip)
+        self.distributed_slack_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If active, the slack power is distributed among the generators according to their installed power &quot;Snom&quot;</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.distributed_slack_checkBox.setText(QCoreApplication.translate("mainWindow", u"Distributed slack", None))
+#if QT_CONFIG(tooltip)
+        self.control_tap_phase_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"General switch for branches tap phase control", None))
+#endif // QT_CONFIG(tooltip)
+        self.control_tap_phase_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control tap phase", None))
+#if QT_CONFIG(tooltip)
         self.initialize_pf_angles_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"If checked, the power flow solution is initialized with a linear (so called DC) power flow first", None))
 #endif // QT_CONFIG(tooltip)
         self.initialize_pf_angles_checkBox.setText(QCoreApplication.translate("mainWindow", u"Initialize angles", None))
-        self.label_54.setText("")
 #if QT_CONFIG(tooltip)
-        self.temperature_correction_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"Correct the branches resistance using the temperature", None))
+        self.ignore_single_node_islands_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"If active, the islands of a single node are ignored.", None))
 #endif // QT_CONFIG(tooltip)
-        self.temperature_correction_checkBox.setText(QCoreApplication.translate("mainWindow", u"Apply temperature correction", None))
-        self.apply_impedance_tolerances_checkBox.setText(QCoreApplication.translate("mainWindow", u"Apply impedance tolerances", None))
-        self.label_56.setText("")
+        self.ignore_single_node_islands_checkBox.setText(QCoreApplication.translate("mainWindow", u"Ignore single node islands", None))
+#if QT_CONFIG(tooltip)
+        self.use_voltage_guess_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>If active, the Vm0 and Va0 properties of the bus objects are used to initialize the power flow simulation.</p><p>If you need this it is a sign of grid ill conditioning by something else like incorrect impedances of too much loading, specially reactive power that cannot be transported.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.use_voltage_guess_checkBox.setText(QCoreApplication.translate("mainWindow", u"Use voltage guess", None))
 #if QT_CONFIG(tooltip)
         self.addPowerFlowReportCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Add a results report in the logs", None))
 #endif // QT_CONFIG(tooltip)
         self.addPowerFlowReportCheckBox.setText(QCoreApplication.translate("mainWindow", u"Add report", None))
-        self.label_23.setText(QCoreApplication.translate("mainWindow", u"Verbosity", None))
-        self.label_6.setText(QCoreApplication.translate("mainWindow", u"Max. iterations", None))
-#if QT_CONFIG(tooltip)
-        self.muSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Factor that multiplies each increment solution. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.verbositySpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Level of console information. 0: None, 1: some information, 2: all the information", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_22.setText("")
-        self.label_5.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
 #if QT_CONFIG(tooltip)
         self.find_automatic_precission_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Find the tolerance that best represents the load values for power flow", None))
 #endif // QT_CONFIG(tooltip)
         self.find_automatic_precission_Button.setText(QCoreApplication.translate("mainWindow", u"Find", None))
-#if QT_CONFIG(tooltip)
-        self.max_iterations_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Maximum numberof iterations to use.</p><p><br/></p><p>Tipical values: </p><p>Newton Raphson: 5</p><p>Levenberg-Marquards: 20</p><p>Fast decoupled: 10</p><p>Others: 20</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.label_2.setText(QCoreApplication.translate("mainWindow", u"Solver", None))
+        self.label_23.setText(QCoreApplication.translate("mainWindow", u"Verbosity", None))
 #if QT_CONFIG(tooltip)
         self.tolerance_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.tolerance_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
+#if QT_CONFIG(tooltip)
+        self.muSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Factor that multiplies each increment solution. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_6.setText(QCoreApplication.translate("mainWindow", u"Max. iterations", None))
+        self.label_5.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
         self.label_11.setText(QCoreApplication.translate("mainWindow", u"Trust radius", None))
+        self.label_2.setText(QCoreApplication.translate("mainWindow", u"Solver", None))
         self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Pf", None))
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.pf_tab), QCoreApplication.translate("mainWindow", u"Power flow settings", None))
@@ -6150,6 +6299,21 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.cpf_tab), QCoreApplication.translate("mainWindow", u"Continuation power flow related settings", None))
 #endif // QT_CONFIG(tooltip)
+        self.label_162.setText(QCoreApplication.translate("mainWindow", u"Max. Iterations", None))
+        self.se_observability_analysis_checkBox.setText(QCoreApplication.translate("mainWindow", u"Observability analysis", None))
+        self.se_fixed_slack_checkBox.setText(QCoreApplication.translate("mainWindow", u"Fixed slack", None))
+        self.label_10.setText(QCoreApplication.translate("mainWindow", u"Solver", None))
+        self.label_165.setText("")
+        self.label_166.setText(QCoreApplication.translate("mainWindow", u"State estimation", None))
+        self.label_163.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
+#if QT_CONFIG(tooltip)
+        self.se_tolerance_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.se_tolerance_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
+        self.se_prefer_correct_checkBox.setText(QCoreApplication.translate("mainWindow", u"Prefer correct", None))
+        self.se_add_pseudo_measurements_checkBox.setText(QCoreApplication.translate("mainWindow", u"Add pseudo measurements", None))
+        self.se_measurements_profiling_checkBox.setText(QCoreApplication.translate("mainWindow", u"Measurements profiling", None))
+        self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.tab_8), QCoreApplication.translate("mainWindow", u"SE", None))
 #if QT_CONFIG(tooltip)
         self.opf_tab.setToolTip(QCoreApplication.translate("mainWindow", u"Optimal power flow settings", None))
 #endif // QT_CONFIG(tooltip)
@@ -6247,21 +6411,20 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.ips_control_Qlimits_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control Q limits", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("mainWindow", u"General settings", None))
-        self.label_128.setText(QCoreApplication.translate("mainWindow", u"Verbose", None))
-        self.label_42.setText(QCoreApplication.translate("mainWindow", u"Method", None))
-#if QT_CONFIG(tooltip)
-        self.lpf_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the optimal power flow method", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ips_verbose_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Verbosity level", None))
 #endif // QT_CONFIG(tooltip)
+        self.skipOpfGenerationLimitsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Skip generation limits", None))
+        self.label_128.setText(QCoreApplication.translate("mainWindow", u"Verbose", None))
+        self.label_133.setText("")
+#if QT_CONFIG(tooltip)
+        self.lpf_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the optimal power flow method", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_42.setText(QCoreApplication.translate("mainWindow", u"Method", None))
 #if QT_CONFIG(tooltip)
         self.addOptimalPowerFlowReportCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Add a results report in the logs", None))
 #endif // QT_CONFIG(tooltip)
         self.addOptimalPowerFlowReportCheckBox.setText(QCoreApplication.translate("mainWindow", u"Add report", None))
-        self.label_133.setText("")
-        self.opfMaximizeExcahngeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Maximize area exchange", None))
-        self.skipOpfGenerationLimitsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Skip generation limits", None))
         self.label_72.setText("")
         self.label_73.setText(QCoreApplication.translate("mainWindow", u"Optimal Power Flow", None))
         self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Opf", None))

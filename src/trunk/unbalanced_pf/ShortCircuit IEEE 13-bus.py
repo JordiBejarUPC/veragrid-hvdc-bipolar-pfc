@@ -378,6 +378,7 @@ Save Grid
 """
 gce.save_file(grid=grid, filename='IEEE 13-bus.gridcal')
 
+
 def power_flow_3ph(grid: gce.MultiCircuit, V0_3ph: Vec):
     """
 
@@ -405,6 +406,7 @@ def power_flow_3ph(grid: gce.MultiCircuit, V0_3ph: Vec):
     res = newton_raphson_fx(problem=problem, verbose=1, max_iter=1000)
 
     return res
+
 
 def short_circuit_3ph(grid, t_idx=None) -> ShortCircuitResults:
     """
@@ -443,25 +445,28 @@ def short_circuit_3ph(grid, t_idx=None) -> ShortCircuitResults:
     pf_res.voltage = res_3ph.V
     pf_res.Sbus = res_3ph.Scalc
 
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LG,
-                                         mid_line_fault=False,
-                                         branch_index=0,
-                                         branch_fault_locations=0.5,
-                                         verbose=0,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.a)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.a
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=pf_res)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=pf_res)
     sc_driver.run()
 
     return sc_driver.results
+
 
 res_SC = short_circuit_3ph(grid)
 
 dataframe = res_SC.get_voltage_3ph_df()
 print(dataframe)
-

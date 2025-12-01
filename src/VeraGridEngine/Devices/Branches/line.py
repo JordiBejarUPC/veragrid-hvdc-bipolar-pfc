@@ -338,6 +338,10 @@ class Line(BranchParent):
 
     @property
     def circuit_idx(self):
+        """
+
+        :return:
+        """
         return self._circuit_idx
 
     @circuit_idx.setter
@@ -448,7 +452,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ys.size == 0:
+        if self._ys.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ys
@@ -466,7 +470,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ysh.size == 0:
+        if self._ysh.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ysh
@@ -562,8 +566,8 @@ class Line(BranchParent):
                                          length=self.length,
                                          line_Vnom=self.get_max_bus_nominal_voltage())
 
-            self.ys = obj.get_ys_abc()
-            self.ysh = obj.get_ysh_abc()
+            self.ys = obj.get_ys_nabc()
+            self.ysh = obj.get_ysh_nabc()
 
             self.template = obj
 
@@ -695,7 +699,7 @@ class Line(BranchParent):
 
         return self
 
-    def fill_3_phase_from_sequence(self):
+    def fill_3_phase_from_sequence(self) -> None:
         """
         Fill the 3x3 from the sequence values
         """
@@ -703,10 +707,14 @@ class Line(BranchParent):
             obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0)
         else:
             obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X)
-        self.ys = obj.get_ys_abc()
-        self.ysh = obj.get_ysh_abc()
+        self.ys = obj.get_ys_nabc()
+        self.ysh = obj.get_ysh_nabc()
 
-    def initialize_rms(self):
+    def initialize_rms(self) -> None:
+        """
+
+        :return:
+        """
         if self.rms_model.empty():
             Qf = Var("Qf")
             Qt = Var("Qt")

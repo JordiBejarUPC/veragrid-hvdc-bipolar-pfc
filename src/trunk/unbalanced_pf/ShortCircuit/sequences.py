@@ -1,5 +1,5 @@
 import VeraGridEngine.api as gce
-from VeraGridEngine.enumerations import FaultType, MethodShortCircuit
+from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
 logger = gce.Logger()
 grid = gce.MultiCircuit()
@@ -79,14 +79,22 @@ print(res_pf.get_current_df())
 # ----------------------------------------------------------------------------------------------------------------------
 # Run Short-Circuit
 # ----------------------------------------------------------------------------------------------------------------------
-sc_options = gce.ShortCircuitOptions(bus_index=3,
-                                     fault_type=FaultType.ph3,
-                                     method=MethodShortCircuit.sequences)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[3],
+        fault_type=FaultType.LLLG,
+        method=MethodShortCircuit.sequences,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,
                                    pf_options=gce.PowerFlowOptions(),
-                                   pf_results=res_pf)
+                                   pf_results=res_pf,
+                                   pf_results3ph=None)
 sc_driver.run()
 
 # ----------------------------------------------------------------------------------------------------------------------

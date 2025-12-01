@@ -69,7 +69,7 @@ class DataBaseTableMain(DiagramsMain):
 
         # Buttons
         self.ui.filter_pushButton.clicked.connect(self.objects_smart_search)
-        self.ui.delete_selected_objects_pushButton.clicked.connect(self.delete_selected_objects)
+        self.ui.delete_selected_objects_pushButton.clicked.connect(self.delete_selected_db_table_objects)
         self.ui.add_object_pushButton.clicked.connect(self.add_objects)
         self.ui.structure_analysis_pushButton.clicked.connect(self.objects_histogram_analysis_plot)
 
@@ -160,7 +160,7 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.ContingencyDevice.value: ":/Icons/icons/contingency.png",
             DeviceType.RemedialActionGroupDevice.value: ":/Icons/icons/remedial_action_group.png",
             DeviceType.RemedialActionDevice.value: ":/Icons/icons/remedial_action.png",
-            DeviceType.ShortCircuitDefinition.value: ":/Icons/icons/contingency.png",
+            DeviceType.ShortCircuitEvent.value: ":/Icons/icons/contingency.png",
 
             "Investments": ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentsGroupDevice.value: ":/Icons/icons/investment_group.png",
@@ -428,7 +428,7 @@ class DataBaseTableMain(DiagramsMain):
         Get the substations matching the table selection
         :return:  set of substations, list of selected objects originating the substation set
         """
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         elm2se: Dict[ALL_DEV_TYPES, List[dev.Substation]] = dict()
 
@@ -460,12 +460,12 @@ class DataBaseTableMain(DiagramsMain):
 
         return substations, selected_objects
 
-    def delete_selected_objects(self):
+    def delete_selected_db_table_objects(self):
         """
-        Delete selection
+        Delete selection from the database main table
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -487,12 +487,12 @@ class DataBaseTableMain(DiagramsMain):
 
                 self.show_info_toast(f"{len(selected_objects)} objects deleted")
 
-    def duplicate_selected_objects(self):
+    def duplicate_selected_db_table_objects(self):
         """
         Delete selection
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -509,12 +509,12 @@ class DataBaseTableMain(DiagramsMain):
                 self.update_from_to_list_views()
                 self.update_date_dependent_combos()
 
-    def fuse_selected(self):
+    def fuse_selected_db_table_objects(self):
         """
         Fuse selection
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -541,7 +541,7 @@ class DataBaseTableMain(DiagramsMain):
         Copy selected idtags
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
             # copy to clipboard
@@ -556,7 +556,7 @@ class DataBaseTableMain(DiagramsMain):
         Add selected DB objects to current diagram
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -1417,17 +1417,17 @@ class DataBaseTableMain(DiagramsMain):
             gf.add_menu_entry(menu=context_menu,
                               text="Delete",
                               icon_path=":/Icons/icons/minus.png",
-                              function_ptr=self.delete_selected_objects)
+                              function_ptr=self.delete_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Duplicate object",
                               icon_path=":/Icons/icons/copy.png",
-                              function_ptr=self.duplicate_selected_objects)
+                              function_ptr=self.duplicate_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Merge",
                               icon_path=":/Icons/icons/fusion.png",
-                              function_ptr=self.fuse_selected)
+                              function_ptr=self.fuse_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Copy idtag",
@@ -1512,6 +1512,10 @@ class DataBaseTableMain(DiagramsMain):
         :return:
         """
 
+        # Get selected buses from the current diagram if any
+        selected_buses_tuples = self.get_selected_buses()
+        buses_to_replace = [bus for _, bus, _ in selected_buses_tuples] if selected_buses_tuples else None
+
         kv = self.get_default_voltage()
         dlg = SubstationDesigner(grid=self.circuit, default_voltage=kv)
         dlg.exec()
@@ -1523,7 +1527,8 @@ class DataBaseTableMain(DiagramsMain):
                 se_code=dlg.get_code(),
                 lat=dlg.get_latitude(),
                 lon=dlg.get_longitude(),
-                vl_templates=dlg.get_voltage_levels()
+                vl_templates=dlg.get_voltage_levels(),
+                buses_to_replace=buses_to_replace
             )
 
             dlg3 = CustomQuestionDialogue(title="New substation",

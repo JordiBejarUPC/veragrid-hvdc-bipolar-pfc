@@ -8,6 +8,7 @@ import math
 import numba as nb
 import numpy as np
 import copy
+from scipy.optimize import newton_krylov
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic import BlockSolver

@@ -31,8 +31,8 @@ trafo_b2_b3 = gce.Transformer2W(name='Trafo_B2_B3',
                                 LV=0.48,
                                 nominal_power=0.250,
                                 rate=0.250,
-                                r=1*4,
-                                x=3*4)
+                                r=1 * 4,
+                                x=3 * 4)
 trafo_b2_b3.conn_f = WindingType.GroundedStar
 trafo_b2_b3.conn_t = WindingType.GroundedStar
 grid.add_transformer2w(trafo_b2_b3)
@@ -53,11 +53,11 @@ ysh_line = np.array([
 ], dtype=complex) / 10 ** 6 / 1.60934
 
 config_line = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                    z_abc=zs_line,
-                                                    ysh_abc=ysh_line,
-                                                    phases=np.array([1, 2, 3]),
-                                                    Vnom=4.16,
-                                                    frequency=60)
+                                                     z_abc=zs_line,
+                                                     ysh_abc=ysh_line,
+                                                     phases=np.array([1, 2, 3]),
+                                                     Vnom=4.16,
+                                                     frequency=60)
 grid.add_overhead_line(config_line)
 
 line_b1_b2 = gce.Line(name='Line_B1_B2',
@@ -91,7 +91,7 @@ grid.add_load(bus=bus_3, api_obj=load_b3)
 # ----------------------------------------------------------------------------------------------------------------------
 # Run Power Flow
 # ----------------------------------------------------------------------------------------------------------------------
-res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
 print('\n --- Power Flow Results --- \n')
 print(res_pf.get_voltage_3ph_df())
@@ -99,15 +99,22 @@ print(res_pf.get_voltage_3ph_df())
 # ----------------------------------------------------------------------------------------------------------------------
 # Run Short-Circuit
 # ----------------------------------------------------------------------------------------------------------------------
-sc_options = gce.ShortCircuitOptions(bus_index=2,
-                                     fault_type=FaultType.LG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.a)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[2],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
                                    options=sc_options,
-                                   pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                   pf_results=res_pf)
+                                   pf_options=gce.PowerFlowOptions(),
+                                   pf_results=None,
+                                   pf_results3ph=res_pf)
 sc_driver.run()
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -440,19 +440,22 @@ def short_circuit_3ph(grid, t_idx=None):
     pf_res.voltage = num_pf_res.V
     pf_res.Sbus = num_pf_res.Scalc
 
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LG,
-                                         mid_line_fault=False,
-                                         branch_index=0,
-                                         branch_fault_locations=0.5,
-                                         verbose=0,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.a)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.a
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
                                        pf_options=pf_options,
-                                       pf_results=pf_res)
+                                       pf_results=pf_res,
+                                       pf_results3ph=None)
     sc_driver.run()
 
     return None

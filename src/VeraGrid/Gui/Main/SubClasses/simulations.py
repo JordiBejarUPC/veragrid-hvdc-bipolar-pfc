@@ -60,6 +60,13 @@ class SimulationsMain(TimeEventsMain):
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
         # Power Flow Methods
+        self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model([SolverType.NR,
+                                                                  SolverType.LM,
+                                                                  SolverType.GN])
+        self.ui.se_solver_comboBox.setModel(se_solvers_mdl)
+        self.ui.se_solver_comboBox.setCurrentIndex(0)
+
+        # SE Methods
         self.solvers_dict, solvers_mdl = gf.enums_to_model([SolverType.NR,
                                                             SolverType.IWAMOTO,
                                                             SolverType.LM,
@@ -194,10 +201,11 @@ class SimulationsMain(TimeEventsMain):
         self.ui.investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
         # contingency filtering modes
-        con_filters = [ContingencyFilteringMethods.All,
+        con_filters = [ContingencyFilteringMethods.AllActive,
                        ContingencyFilteringMethods.Country,
                        ContingencyFilteringMethods.Area,
-                       ContingencyFilteringMethods.Zone]
+                       ContingencyFilteringMethods.Zone,
+                       ContingencyFilteringMethods.SensitiveToMonitored]
         self.contingency_filter_modes_dict = OrderedDict()
         con_filter_vals = list()
         for con_filter in con_filters:
@@ -230,6 +238,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionVoltage_stability.triggered.connect(self.run_continuation_power_flow)
         self.ui.actionPower_Flow_Time_series.triggered.connect(self.run_power_flow_time_series)
         self.ui.actionPower_flow_Stochastic.triggered.connect(self.run_stochastic)
+        self.ui.actionState_estimation.triggered.connect(self.run_state_estimation)
         self.ui.actionOPF.triggered.connect(self.optimal_power_flow_dispatcher)
         self.ui.actionOPF_time_series.triggered.connect(self.run_opf_time_series)
         self.ui.actionOptimal_Net_Transfer_Capacity.triggered.connect(self.optimal_ntc_opf_dispatcher)
@@ -249,7 +258,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionInvestments_evaluation.triggered.connect(self.run_investments_evaluation)
         self.ui.actionReliability.triggered.connect(self.reliability_dispatcher)
         self.ui.actionRun_Dynamic_RMS_Simulation.triggered.connect(self.rms_dispatcher)
-        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.ss_dispatcher)
+        self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.small_signal_dispatcher)
 
         self.ui.actionUse_clustering.triggered.connect(self.activate_clustering)
         self.ui.actionNodal_capacity.triggered.connect(self.run_nodal_capacity)
@@ -440,7 +449,7 @@ class SimulationsMain(TimeEventsMain):
         """
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             mdl = None
 
         elif filter_mode == ContingencyFilteringMethods.Country:
@@ -458,6 +467,18 @@ class SimulationsMain(TimeEventsMain):
                                     checks=True,
                                     check_value=True)
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+
+            drv, res = self.session.linear_power_flow
+            if res is None:
+                self.show_warning_toast("Run a linear analysis to enable filter contingencies by sensitivity")
+                mdl = None
+                self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
+            else:
+                threshold = self.ui.lodf_threshold_doubleSpinBox.value()
+                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_moitoring(LODF=res.LODF,
+                                                                                           threshold=threshold)
+                mdl = gf.get_elm_chck_list_model(self.circuit.contingency_groups, sensitive_idx)
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -472,9 +493,9 @@ class SimulationsMain(TimeEventsMain):
         # get the filter mode
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             # no filtering, we're safe
-            return self.circuit.get_contingency_groups()
+            return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Country:
 
@@ -507,6 +528,9 @@ class SimulationsMain(TimeEventsMain):
                 # default to returning all groups, since it's safer
                 return self.circuit.get_contingency_groups()
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+            idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+            return [self.circuit.contingency_groups[i] for i in idx]
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -599,6 +623,22 @@ class SimulationsMain(TimeEventsMain):
 
         return model
 
+    @staticmethod
+    def get_short_circuits_combination_tree_model(drv: sim.ShortCircuitDriver) -> QtGui.QStandardItemModel:
+        """
+        Get the investments combination tree model
+        :param drv:
+        :return:
+        """
+        model = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Short circuits"])
+
+        for i, sc_name in enumerate(drv.results.sc_names):
+            row_items = [QtGui.QStandardItem(sc_name)]
+            model.appendRow(row_items)
+
+        return model
+
     def fill_combinations_tree(self, drv: DRIVER_OBJECTS | None):
         """
         Fill the tree driver
@@ -609,6 +649,10 @@ class SimulationsMain(TimeEventsMain):
         else:
             if drv.tpe == SimulationTypes.InvestmentsEvaluation_run:
                 model = self.get_investments_combination_tree_model(drv=drv)
+                self.ui.combinationsTreeView.setModel(model)
+
+            elif drv.tpe == SimulationTypes.ShortCircuit_run:
+                model = self.get_short_circuits_combination_tree_model(drv=drv)
                 self.ui.combinationsTreeView.setModel(model)
                 # self.ui.combinationsTreeView.expandAll()
 
@@ -690,6 +734,7 @@ class SimulationsMain(TimeEventsMain):
             SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
             SimulationTypes.SmallSignal_run.value: ':/Icons/icons/ss_icon.png',
             SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
+            SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
         }
 
         self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))
@@ -766,7 +811,6 @@ class SimulationsMain(TimeEventsMain):
             use_stored_guess=self.ui.use_voltage_guess_checkBox.isChecked(),
             initialize_angles=self.ui.initialize_pf_angles_checkBox.isChecked(),
             generate_report=self.ui.addPowerFlowReportCheckBox.isChecked(),
-            three_phase_unbalanced=self.ui.pf_three_phase_checkBox.isChecked()
         )
 
         return ops
@@ -882,10 +926,16 @@ class SimulationsMain(TimeEventsMain):
             self.run_remote(instruction=instruction)
 
         else:
-            if self.ts_flag():
-                self.run_power_flow_time_series()
+            if self.ui.pf_three_phase_checkBox.isChecked():
+                if self.ts_flag():
+                    self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
+                else:
+                    self.run_power_flow3ph()
             else:
-                self.run_power_flow()
+                if self.ts_flag():
+                    self.run_power_flow_time_series()
+                else:
+                    self.run_power_flow()
 
     def optimal_power_flow_dispatcher(self):
         """
@@ -1002,7 +1052,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             self.run_rms()
 
-    def ss_dispatcher(self):
+    def small_signal_dispatcher(self):
         """
         Dispatch the reliability action
         :return:
@@ -1037,9 +1087,19 @@ class SimulationsMain(TimeEventsMain):
 
                 self.ui.progress_label.setText('Running power flow...')
                 QtGui.QGuiApplication.processEvents()
+
                 # set power flow object instance
                 engine = self.get_preferred_engine()
-                drv = sim.PowerFlowDriver(self.circuit, options, opf_results, engine=engine)
+                if self.ui.pf_three_phase_checkBox.isChecked():
+                    drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
+                                                 options=options,
+                                                 opf_results=opf_results,
+                                                 engine=engine)
+                else:
+                    drv = sim.PowerFlowDriver(grid=self.circuit,
+                                              options=options,
+                                              opf_results=opf_results,
+                                              engine=engine)
 
                 self.session.run(drv,
                                  post_func=self.post_power_flow,
@@ -1078,6 +1138,158 @@ class SimulationsMain(TimeEventsMain):
         if not self.session.is_anything_running():
             self.UNLOCK()
 
+
+    def run_power_flow3ph(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.PowerFlow3ph_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.PowerFlow3ph_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                options = self.get_selected_power_flow_options()
+
+                opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
+                self.ui.progress_label.setText('Running power flow...')
+                QtGui.QGuiApplication.processEvents()
+
+                # set power flow object instance
+                engine = self.get_preferred_engine()
+                drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
+                                             options=options,
+                                             opf_results=opf_results,
+                                             engine=engine)
+
+                self.session.run(drv,
+                                 post_func=self.post_power_flow3ph,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def post_power_flow3ph(self):
+        """
+        Action performed after the power flow.
+        Returns:
+
+        """
+        # update the results in the circuit structures
+
+        _, results = self.session.power_flow_3ph
+
+        if results is not None:
+            self.ui.progress_label.setText('Colouring power flow results in the grid...')
+            self.remove_simulation(SimulationTypes.PowerFlow3ph_run)
+            self.update_available_results()
+            self.colour_diagrams()
+
+            if results.converged:
+                self.show_info_toast("Power flow 3ph converged :)")
+            else:
+                self.show_warning_toast("Power flow 3ph not converged :/")
+
+        else:
+            warning_msg('There are no power flow results.\nIs there any slack bus or generator?',
+                        'Power flow')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+    def get_se_options(self) -> sim.StateEstimationOptions:
+        """
+
+        :return:
+        """
+        return sim.StateEstimationOptions(
+            solver=self.se_solvers_dict.get(self.ui.se_solver_comboBox.currentText()),
+            tol=self.ui.se_tolerance_spinBox.value(),
+            max_iter=self.ui.se_max_iterations_spinBox.value(),
+            verbose=0,
+            prefer_correct=self.ui.se_prefer_correct_checkBox.isChecked(),
+            c_threshold=4.0,
+            fixed_slack=self.ui.se_fixed_slack_checkBox.isChecked(),
+            run_observability_analyis=self.ui.se_observability_analysis_checkBox.isChecked(),
+            add_pseudo_measurements=self.ui.se_add_pseudo_measurements_checkBox.isChecked(),
+            run_measurement_profiling=self.ui.se_measurements_profiling_checkBox.isChecked(),
+            include_line_measurements_on_both_ends=True,
+            pseudo_meas_std=1.0
+        )
+
+    def run_state_estimation(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.StateEstimation_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.StateEstimation_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                options = self.get_se_options()
+
+                self.ui.progress_label.setText('Running state estimation...')
+                QtGui.QGuiApplication.processEvents()
+
+                drv = sim.StateEstimationDriver(self.circuit, options)
+
+                self.session.run(drv,
+                                 post_func=self.post_state_estimation,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def post_state_estimation(self):
+        """
+        Action performed after the power flow.
+        Returns:
+
+        """
+        # update the results in the circuit structures
+
+        _, results = self.session.state_estimation
+
+        if results is not None:
+            self.ui.progress_label.setText('Colouring state estimation results in the grid...')
+            self.remove_simulation(SimulationTypes.StateEstimation_run)
+            self.update_available_results()
+            self.colour_diagrams()
+
+            if results.converged:
+                self.show_info_toast("State estimation converged :)")
+            else:
+                self.show_warning_toast("State estimation not converged :/")
+
+        else:
+            warning_msg('There are no state estimation results.\nIs there any slack bus or generator?',
+                        'State estimation')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
     def run_short_circuit(self):
         """
         Run a short circuit simulation
@@ -1089,33 +1301,13 @@ class SimulationsMain(TimeEventsMain):
             if not self.session.is_this_running(SimulationTypes.ShortCircuit_run):
 
                 _, pf_results = self.session.power_flow
+                _, pf_results3ph = self.session.power_flow_3ph
 
                 if pf_results is not None:
 
-                    # Since we must run this study in the same conditions as
-                    # the last power flow, no compilation is needed
-
-                    # get the short circuit selected buses
-                    sel_buses = list()
-                    self_short_circuit_types = list()
-
-                    for diagram_widget in self.diagram_widgets_list:
-
-                        if isinstance(diagram_widget, SchematicWidget):
-
-                            for i, bus, graphic_object in diagram_widget.get_buses():
-                                if isinstance(graphic_object, BusGraphicItem):
-                                    if graphic_object.any_short_circuit():
-                                        sel_buses.append(i)
-                                        self_short_circuit_types.append(graphic_object.sc_type)
-
-                    if len(sel_buses) > 1:
-                        error_msg("VeraGrid only supports one short circuit bus at the time", "Short circuit")
-                        return
-
-                    if len(sel_buses) == 0:
-                        warning_msg('You need to enable some buses for short circuit.'
-                                    + '\nEnable them by right click, and selecting on the context menu.')
+                    if self.circuit.get_short_circuit_definition_number() == 0:
+                        warning_msg('You need to define short circuits in the Database.'
+                                    + '\nAdd them by right click on a bus and selecting on the context menu.')
                     else:
                         self.add_simulation(SimulationTypes.ShortCircuit_run)
 
@@ -1127,15 +1319,15 @@ class SimulationsMain(TimeEventsMain):
                             branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
 
                         # get the power flow options from the GUI
-                        sc_options = sim.ShortCircuitOptions(bus_index=sel_buses[0],
-                                                             fault_type=self_short_circuit_types[0])
+                        sc_options = sim.ShortCircuitOptions()
 
                         pf_options = self.get_selected_power_flow_options()
 
                         drv = sim.ShortCircuitDriver(grid=self.circuit,
                                                      options=sc_options,
                                                      pf_options=pf_options,
-                                                     pf_results=pf_results)
+                                                     pf_results=pf_results,
+                                                     pf_results3ph=pf_results3ph)
                         self.session.run(drv,
                                          post_func=self.post_short_circuit,
                                          prog_func=self.ui.progressBar.setValue,
@@ -1338,9 +1530,12 @@ class SimulationsMain(TimeEventsMain):
 
                     self.LOCK()
 
+                    opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                     drv = sim.ContingencyAnalysisDriver(grid=self.circuit,
                                                         options=self.get_contingency_options(),
                                                         linear_multiple_contingencies=None,  # it initializes inside
+                                                        opf_results=opf_results,
                                                         engine=self.get_preferred_engine())
 
                     self.session.run(drv,
@@ -1395,10 +1590,13 @@ class SimulationsMain(TimeEventsMain):
 
                         self.LOCK()
 
+                        opf_ts_results = self.get_opf_ts_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
                         drv = sim.ContingencyAnalysisTimeSeriesDriver(grid=self.circuit,
                                                                       options=self.get_contingency_options(),
                                                                       time_indices=self.get_time_indices(),
                                                                       clustering_results=self.get_clustering_results(),
+                                                                      opf_time_series_results=opf_ts_results,
                                                                       engine=self.get_preferred_engine())
 
                         self.session.run(drv,
@@ -2045,7 +2243,6 @@ class SimulationsMain(TimeEventsMain):
         contingency_groups_used = self.get_contingency_groups_matching_the_filter()
         skip_generation_limits = self.ui.skipOpfGenerationLimitsCheckBox.isChecked()
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
-        maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
         consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
         area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
@@ -2057,8 +2254,9 @@ class SimulationsMain(TimeEventsMain):
 
         report_formulation = self.ui.save_mip_checkBox.isChecked()
 
-        # available transfer capacity inter areas
-        if maximize_flows:
+        if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
+
+            # available transfer capacity inter areas
             inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
 
             if len(inter_aggregation_info.lst_from) == 0:
@@ -2711,7 +2909,7 @@ class SimulationsMain(TimeEventsMain):
 
                     self.session.run(
                         drv,
-                        post_func=self.post_run_investments_evaluation,
+                        post_func=self.post_investments_evaluation,
                         prog_func=self.ui.progressBar.setValue,
                         text_func=self.ui.progress_label.setText
                     )
@@ -2727,7 +2925,7 @@ class SimulationsMain(TimeEventsMain):
         else:
             pass
 
-    def post_run_investments_evaluation(self) -> None:
+    def post_investments_evaluation(self) -> None:
         """
         Post investments evaluation
         """
