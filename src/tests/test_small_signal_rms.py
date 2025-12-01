@@ -238,7 +238,7 @@ def stability_kundur_no_shunt():
     power_flow.run()
     res = power_flow.results
 
-    sim_time, ss, init_guess = initialize_rms(grid, res)
+    sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values= False)
 
     params_mapping = {}
 
