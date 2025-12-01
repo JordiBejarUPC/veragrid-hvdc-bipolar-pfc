@@ -299,9 +299,6 @@ class Block:
                  event_dict: Dict[Var, Expr] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
                  name: str = ""):
-
-        # ,
-        # external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None
         """
         This represents a group of equations or a group of blocks
 
@@ -313,6 +310,9 @@ class Block:
         :param in_vars: List of variables from other blocks that we use here
         :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
+        :param event_dict: Dictionary of parameters that can change during the simulations
+        :param external_mapping: Dictionary of vars that are related to the Power flow initialization
+        :param name: name of the block
         """
 
         self.name: str = name
@@ -321,11 +321,9 @@ class Block:
         self.vars2device: Dict[int, PhysicalDevice] = dict()
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
-        # TODO: Change to dictionary of Var : Expr
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
         self.state_eqs: List[Expr] = list() if state_eqs is None else state_eqs
 
-        # TODO: Change to dictionary of Var : Expr
         self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
@@ -440,6 +438,10 @@ class Block:
         return self.algebraic_vars + self.state_vars
 
     def get_all_vars(self):
+        """
+
+        :return:
+        """
         variables: List[Var] = list()
         all_blocks = self.get_all_blocks()
         for blk in all_blocks:
@@ -447,9 +449,13 @@ class Block:
         return variables
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+
+        :return:
+        """
         return {
             "uid": self.uid,
-            "vars2device": {var_uid: dev.uid for var_uid, dev in self.vars2device.items()},
+            "vars2device": {var_uid: dev.idtag for var_uid, dev in self.vars2device.items()},
             "vars_glob_name2uid": self.vars_glob_name2uid,
             "state_vars": _serialize_var_list(self.state_vars),
             "state_eqs": _serialize_expr_list(self.state_eqs),
@@ -479,17 +485,24 @@ class Block:
             ],
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
-            "in_vars": [{"number": number, "var": var.to_dict()} for number, var in self.in_vars.items()],
-            "out_vars": [{"number": number, "var": var.to_dict()} for number, var in self.out_vars.items()]
+            "in_vars": [var.to_dict() for var in self.in_vars],
+            "out_vars": [var.uid for var in self.out_vars]
         }
 
     @staticmethod
     def parse(data: Dict[str, Any]) -> "Block":
+        """
+
+        :param data:
+        :return:
+        """
         state_vars = _deserialize_var_list(data.get("state_vars", []))
         state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
         children = [Block.parse(child) for child in data.get("children", [])]
+
+        algebraic_vars_dict = {v.uid: v for v in algebraic_vars}
 
         block = Block(
             state_vars=state_vars,
@@ -498,14 +511,13 @@ class Block:
             algebraic_eqs=algebraic_eqs,
             init_eqs={},
             children=children,
+            name=data.get("name", "")
         )
 
         block.uid = int(data.get("uid", block.uid))
-        block.name = data.get("name", "")
         block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
         block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
 
-        block.init_eqs = {}
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
@@ -513,7 +525,6 @@ class Block:
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr
 
-        block.init_values = {}
         for pair in data.get("init_values", []):
             var_dict = pair["var"]
             value = pair["value"]
@@ -521,7 +532,6 @@ class Block:
             const_value = Const(value)
             block.init_values[var] = const_value
 
-        block.parameters = {}
         for pair in data.get("parameters", []):
             name = pair["name"]
             value = pair["value"]
@@ -531,7 +541,6 @@ class Block:
         fv_list = _deserialize_var_list(data.get("fix_vars", []))
         block.fix_vars = [v for v in fv_list if isinstance(v, UndefinedConst)]
 
-        block.fix_vars_eqs = {}
         undef_by_uid = {getattr(u, "uid", None): u for u in block.fix_vars}
         for item in data.get("fix_vars_eqs", []):
             uid = item.get("uid")
@@ -544,18 +553,11 @@ class Block:
                 block.fix_vars_eqs[new_undef] = expr
                 block.fix_vars.append(new_undef)
 
-        block.external_mapping = {}
         for key_str, var_dict in data.get("external_mapping", {}).items():
-            try:
-                key = VarPowerFlowRefferenceType[
-                    key_str] if key_str in VarPowerFlowRefferenceType.__members__ else VarPowerFlowRefferenceType(
-                    key_str)
-            except Exception:
-                key = key_str
+            key = VarPowerFlowRefferenceType(key_str)
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             block.external_mapping[key] = var
 
-        block.event_dict = {}
         for pair in data.get("event_dict", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
@@ -563,19 +565,16 @@ class Block:
             expr = Expr.from_dict(expr_dict)
             block.event_dict[var] = expr
 
-        block.in_vars = {}
         for pair in data.get("in_vars", []):
-            number = pair["number"]
-            var_dict = pair["var"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.in_vars[number] = var
 
-        block.out_vars = {}
-        for pair in data.get("out_vars", []):
-            number = pair["number"]
             var_dict = pair["var"]
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.out_vars[number] = var
+            block.in_vars.append(var)
+
+        for pair in data.get("out_vars", []):
+            var_dict = pair["var"]
+            uid = var_dict.get("uid")
+            block.out_vars.append(algebraic_vars_dict[uid])
 
         block.var_mapping = {v.name: v for v in block.algebraic_vars}
         return block
@@ -587,7 +586,12 @@ class Block:
         """
         return Block.parse(data=self.to_dict())
 
-    def __eq__(self, other):
+    def __eq__(self, other: "Block") -> bool:
+        """
+        Equality check
+        :param other: another block
+        :return: True / False
+        """
         if isinstance(other, Block):
             return self.to_dict() == other.to_dict()
         else:
