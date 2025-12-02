@@ -626,7 +626,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             self.set_tile_color(QBrush(DEACTIVATED['color']))
 
-    def convert_to_voltage_level(self):
+    def convert_to_voltage_level(self) -> None:
         """
         Open the voltage level conversion wizard
         """

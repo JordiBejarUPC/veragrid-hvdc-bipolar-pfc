@@ -4730,19 +4730,46 @@ class SchematicWidget(BaseDiagramWidget):
         vl_wizard.exec()  # waits until closed
 
         if vl_wizard.closed_ok is not None:
-            new_buses = substation_wizards.transform_bus_into_voltage_level(
+            (new_buses,
+             conn_buses,
+             associated_branches,
+             associated_injections,
+             reconnection_list) = substation_wizards.transform_bus_into_voltage_level(
                 grid=self.circuit,
                 bus=bus_graphics.api_object,
                 vl_type=vl_wizard.get_vl_type(),
                 add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
-                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
+                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked(),
+                skip_injections_reconnection=True
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
+            #
             self.add_buses(buses=new_buses)
 
             # reconnect graphics
-            self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+            # self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=conn_buses)
+            # Note: graphical shunts have been added already
+            # the order of the buses matches the order of the branches because the
+            # transformation function already works like that
+            for element, old_bus, new_bus in reconnection_list:
+
+                new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
+                branch_graphic = self.graphics_manager.query(element)
+
+                # At this point the API branch has been ressigned already
+
+                new_bus_graphic.terminal.reassign_terminal(
+                    graphic_obj=branch_graphic,
+                    another_terminal=bus_graphics.terminal
+                )
+
+                branch_graphic.api_object.reassign_bus(
+                    old_bus=bus_graphics.api_object,
+                    new_bus=new_bus_graphic.api_object
+                )
+
+                new_bus_graphic.get_terminal().update()
 
             # Finally delete the old bus
             self.delete_element_utility_function(device=bus_graphics.api_object)
