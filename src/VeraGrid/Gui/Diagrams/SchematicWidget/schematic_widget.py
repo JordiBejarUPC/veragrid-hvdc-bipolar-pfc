@@ -43,11 +43,11 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
-from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
+from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
 from VeraGridEngine.enumerations import TerminalType
 
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
@@ -4744,7 +4744,6 @@ class SchematicWidget(BaseDiagramWidget):
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
-            #
             self.add_buses(buses=new_buses)
 
             # reconnect graphics

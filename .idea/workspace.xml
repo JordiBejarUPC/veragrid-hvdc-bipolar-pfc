@@ -28,12 +28,15 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="updated GUI">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixing convert_busbar_to_voltage_level">
+      <change beforePath="$PROJECT_DIR$/examples/substations_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/substations_types.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/graphics_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/graphics_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/common_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/common_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/breaker_and_a_half.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/breaker_and_a_half.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/common_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/vl_creation_common_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/double_bar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/double_bar.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/single_bar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/single_bar.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1827,7 +1830,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="663" />
+    <option name="localTasksCounter" value="664" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1873,7 +1876,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved the pf initialization in pf grids" />
     <MESSAGE value="Improved OPF" />
     <MESSAGE value="Fixed missing params" />
     <MESSAGE value="Fixed template behaviour&#10;5.5.14" />
@@ -1898,7 +1900,8 @@
     <MESSAGE value="Refactored some block templates" />
     <MESSAGE value="some more refactor to the block save and parse logic" />
     <MESSAGE value="Fixed minor error in the small signal test" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed minor error in the small signal test" />
+    <MESSAGE value="fixing convert_busbar_to_voltage_level" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixing convert_busbar_to_voltage_level" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

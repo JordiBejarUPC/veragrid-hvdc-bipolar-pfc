@@ -113,8 +113,13 @@ def transform_bus_into_voltage_level(
         add_disconnectors: bool = False,
         bar_by_segments: bool = False,
         skip_injections_reconnection: bool = True
-) -> Tuple[List[dev.Bus], List[dev.Bus], List[BRANCH_TYPES], List[INJECTION_DEVICE_TYPES],
-List[Tuple[BRANCH_TYPES | INJECTION_DEVICE_TYPES, dev.Bus, dev.Bus]]]:
+) -> Tuple[
+    List[dev.Bus],
+    List[dev.Bus],
+    List[BRANCH_TYPES],
+    List[INJECTION_DEVICE_TYPES],
+    List[Tuple[BRANCH_TYPES | INJECTION_DEVICE_TYPES, dev.Bus, dev.Bus]]
+]:
     """
     Transform a bus into a voltage level
     :param grid: MultiCircuit to add devices to
