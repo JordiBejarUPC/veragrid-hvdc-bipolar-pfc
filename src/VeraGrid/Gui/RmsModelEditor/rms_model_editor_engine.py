@@ -1326,6 +1326,7 @@ class TemplateEditor(QtWidgets.QWidget):
         if self.api_object is not None:
             if self.selected_template.tpe == DeviceType.GeneratorDevice:
                 Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+                # substituir las variables del template por estas
                 self.selected_template.Vm = Vm
                 self.selected_template.Va = Va
 
