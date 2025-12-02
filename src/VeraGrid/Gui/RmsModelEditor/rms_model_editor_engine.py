@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import pdb
 import uuid
 import sys
 import copy
@@ -38,11 +37,11 @@ from VeraGridEngine.Utils.Symbolic.block import (
     divide,
     absolut,
     generator,
-
     line,
     generic,
     exciter_fake,
-    governor_fake
+    governor_fake,
+    BlockType
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
@@ -181,28 +180,6 @@ class BlockBridge:
     outs: List[Var]  # exactly len(gui.outputs)
     ins: List[Var]  # exactly len(gui.inputs) – placeholders
     api_blocks: List[Block]  # usually length 1, but e.g. PI returns 4
-
-
-class BlockType(Enum):
-    CONST = auto()
-    GAIN = auto()
-    SUM = auto()
-    SUBSTR = auto()
-    PRODUCT = auto()
-    DIVIDE = auto()
-    ABS = auto()
-    GENERATOR = auto()
-    GENQEC = auto()
-    GOV = auto()
-    STAB = auto()
-    EXCITER = auto()
-    LINE = auto()
-    GENERIC = auto()
-    BUS_CONNECTION = auto()
-    EXTERNAL_MAPPING = auto()
-    EXCITER_FAKE = auto()
-    GOVERNOR_FAKE = auto()
-
 
 class BlockTypeDialog(QDialog):
     def __init__(self, parent=None):
@@ -2260,6 +2237,7 @@ class BlockBoxesEditor(QSplitter):
         :return:
         """
         self.scene.clear()
+        self.block_counters = self.diagram.block_counters
 
         uid_to_blockitem = {}
 

@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from typing import List, Dict, Any, Sequence
 from dataclasses import dataclass
+
+
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, BlockType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.enumerations import DeviceType
 
@@ -119,6 +121,7 @@ class BlockDiagram:
 
         """
         self.status: str | None = None
+        self.block_counters: Dict[BlockType, int] = dict()
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
@@ -130,6 +133,7 @@ class BlockDiagram:
         diag = BlockDiagram()
 
         diag.status = self.status
+        diag.dblock_counters = self.block_counters
 
         diag.node_data = {key: val.copy() for key, val in self.node_data.items()}
         diag.con_data = {key: val.copy() for key, val in self.con_data.items()}
@@ -197,6 +201,14 @@ class BlockDiagram:
             color=color
         )
 
+    def get_block_counters_dict(self) -> Dict[BlockType, int]:
+        """
+
+        :return:
+        """
+        block_counters_info = self.block_counters
+        return block_counters_info
+
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
         """
 
@@ -213,6 +225,10 @@ class BlockDiagram:
         graph_info = {connection_uid: connection.get_connection_dict() for connection_uid, connection in
                       self.con_data.items()}
         return graph_info
+
+    def parse_block_counters(self, block_counters_data):
+
+       self.block_counters = block_counters_data
 
     def parse_nodes(self, nodes_data) -> None:
         """

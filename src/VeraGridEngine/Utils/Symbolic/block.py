@@ -10,6 +10,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any, Optional
 
+from enum import Enum, auto
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
@@ -625,6 +626,26 @@ class DiffBlock(Block):
         obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
         return obj
 
+
+class BlockType(Enum):
+    CONST = auto()
+    GAIN = auto()
+    SUM = auto()
+    SUBSTR = auto()
+    PRODUCT = auto()
+    DIVIDE = auto()
+    ABS = auto()
+    GENERATOR = auto()
+    GENQEC = auto()
+    GOV = auto()
+    STAB = auto()
+    EXCITER = auto()
+    LINE = auto()
+    GENERIC = auto()
+    BUS_CONNECTION = auto()
+    EXTERNAL_MAPPING = auto()
+    EXCITER_FAKE = auto()
+    GOVERNOR_FAKE = auto()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Pre defined blocks
