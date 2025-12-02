@@ -4697,10 +4697,11 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
-    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem, x_offset=80):
         """
         Transform the bus into a grid of buses to be able to compute the bus currents
         :param bus_graphics: BusGraphicItem
+        :param x_offset: x offset of the new connectivity buses
         """
 
         # convert a bus into many small buses connected by impedances
@@ -4709,6 +4710,11 @@ class SchematicWidget(BaseDiagramWidget):
 
         # add the new buses
         self.add_buses(buses=new_buses)
+
+        # correct the new buses position
+        for i, bus in enumerate(new_buses):
+            new_bus_graphic: BusGraphicItem = self.graphics_manager.query(bus)
+            new_bus_graphic.setPos(bus_graphics.x() + (i * x_offset), bus_graphics.y() + 20)
 
         # connected branches
         self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
@@ -4752,7 +4758,6 @@ class SchematicWidget(BaseDiagramWidget):
             # the order of the buses matches the order of the branches because the
             # transformation function already works like that
             for element, old_bus, new_bus in reconnection_list:
-
                 new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
                 branch_graphic = self.graphics_manager.query(element)
 

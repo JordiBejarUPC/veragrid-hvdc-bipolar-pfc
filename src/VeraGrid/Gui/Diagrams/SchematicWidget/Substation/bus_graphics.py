@@ -186,6 +186,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             self.sizer.setPos(self.w, self.h)
             self.sizer.setFlag(self.GraphicsItemFlag.ItemIsMovable)
 
+        self.y0 = self.h + 40  # y position of the shunt element icons
+
         # Enabled for short circuit
         self.pen_width = 4
 
@@ -266,8 +268,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         (connection points for loads, shunts, generators, etc.)
         :return: QPointF
         """
-        return QPointF(self.x() + self.rect().width() / 2.0,
-                       self.y() + self.rect().height() + self._terminal.h / 2.0)
+        if self.connectivity_graph:
+            return QPointF(self.x() + self.rect().width() / 2.0,
+                           self.y() + self.rect().height() - self._terminal.h)
+        else:
+            return QPointF(self.x() + self.rect().width() / 2.0,
+                           self.y() + self.rect().height() + self._terminal.h / 2.0)
 
     def recolour_mode(self) -> None:
         """
@@ -418,13 +424,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         positions = [e.api_object.get_bus_pos(self.api_object) for e in self._child_graphics]
         positions_sorted = np.argsort(positions)
 
-        y0 = self.h + 40
+        # y0 = self.h + 40
         n = len(self._child_graphics)
         inc_x = self.w / (n + 1)
         x = inc_x
         for i in positions_sorted:
             elm = self._child_graphics[i]
-            elm.setPos(x - elm.w / 2, y0)
+            elm.setPos(x - elm.w / 2, self.y0)
             x += inc_x
 
         # Arrange line positions

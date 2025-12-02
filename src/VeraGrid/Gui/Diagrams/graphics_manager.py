@@ -105,7 +105,7 @@ class GraphicsManager:
                 else:
                     # the element existed, and maybe we're going to replace it with something else
                     if graphic_0 != graphic:
-                        warn(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
+                        print(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
                     elm_dict[elm.idtag] = graphic
 
         else:
