@@ -551,7 +551,8 @@ class Bus(PhysicalDevice):
             Q = Var("Q")
 
             block = Block(
-                algebraic_vars=[Vm, Va])
+                algebraic_vars=[Vm, Va],
+                out_vars = [Vm, Va])
 
             block.external_mapping = {
                 VarPowerFlowRefferenceType.Vm: Vm,
