@@ -2382,6 +2382,32 @@ class GridReductionMethod(Enum):
             return s
 
 
+class BusReductionMethod(Enum):
+    """
+    GridReductionMethod
+    """
+    Reduce = "Reduce"
+    Keep = "Keep"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return BusReductionMethod[s]
+        except KeyError:
+            return s
+
+
 class VarPowerFlowRefferenceType(Enum):
     """
     GridReductionMethod
