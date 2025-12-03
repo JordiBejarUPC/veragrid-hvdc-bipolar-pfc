@@ -12,8 +12,9 @@ from VeraGridEngine.Devices.Branches.transformer import TransformerType
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
 from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template, GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.IO.veragrid.catalogue import (parse_transformer_types, parse_cable_types, parse_wire_types,
                                                   parse_sequence_line_types)
@@ -88,9 +89,12 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
     Here the list of all rms templates must be returned in a list
     :return:
     """
-    return [BusRmsTemplate(),
+    return [
             get_generator_rms_template(),
-            Generator_1_RmsTemplate(),
+            GenqecBuild(),
+            GovernorBuild(),
+            StabilizerBuild(),
+            ExciterBuild(),
+            get_complete_generator_template(),
             get_line_rms_template(),
-            Line_1_RmsTemplate(),
-            LoadRmsTemplate()]
+            get_load_rms_template()]

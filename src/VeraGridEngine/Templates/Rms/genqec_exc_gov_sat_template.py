@@ -191,35 +191,35 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                         IRPu],
         init_eqs={
-            omega: Const(0),
-            V_dag: inputs[0] * sin(inputs[1]) + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            V_qag: inputs[0] * cos(inputs[1]) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-            Sa: A * (Psi_ag - B) ** 2,
-            delta: atan(
-                (inputs[0] * sin(inputs[1]) + imag(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
-                (inputs[0] * cos(inputs[1]) + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            Vd: (inputs[0] * sin(delta - inputs[1])),
-            Vq: (inputs[0] * cos(delta - inputs[1])),
-            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-                    Iq / (Const(1) + Sa)),
-            Eq_2prime: Vd,
-            Ed_2prime: Vq,
+            # omega: Const(0),
+            # V_dag: inputs[0] * sin(inputs[1]) + imag(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            # V_qag: inputs[0] * cos(inputs[1]) + real(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            # Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+            # Sa: A * (Psi_ag - B) ** 2,
+            # delta: atan(
+            #     (inputs[0] * sin(inputs[1]) + imag(
+            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+            #      ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
+            #     (inputs[0] * cos(inputs[1]) + real(
+            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+            #      ((Xq - Xl) / (Const(1) + Sa) + Xl))),
+            # Vd: (inputs[0] * sin(delta - inputs[1])),
+            # Vq: (inputs[0] * cos(delta - inputs[1])),
+            # Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
+            # Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
+            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
+            # Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+            # Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
+            #         Iq / (Const(1) + Sa)),
+            # Eq_2prime: Vd,
+            # Ed_2prime: Vq,
         },
         out_vars=[Pg, Qg, omega, IRPu],
         in_vars=inputs,
@@ -230,7 +230,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def GovernorBuild(self, name: str = "") -> RmsModelTemplate:
+def GovernorBuild(name: str = "") -> RmsModelTemplate:
     
     templ = RmsModelTemplate()
     
@@ -386,7 +386,7 @@ def GovernorBuild(self, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def StabilizerBuild(self, name: str = "") -> RmsModelTemplate:
+def StabilizerBuild(name: str = "") -> RmsModelTemplate:
    
     templ = RmsModelTemplate()
 
@@ -482,7 +482,7 @@ def StabilizerBuild(self, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def ExciterBuild(self, name: str = "") -> RmsModelTemplate:
+def ExciterBuild(name: str = "") -> RmsModelTemplate:
     """
     
     :param self: 
@@ -673,13 +673,14 @@ def ExciterBuild(self, name: str = "") -> RmsModelTemplate:
 
     return templ
 
-
-def get_complete_generator_template() -> RmsModelTemplate:
+def get_complete_generator_template(name = "complete generator rms template") -> RmsModelTemplate:
     """
     
     :return: 
     """
     templ = RmsModelTemplate()
+    templ.tpe = DeviceType.GeneratorDevice
+    templ.name = name
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 import uuid
 import numpy as np
 from dataclasses import dataclass, field
@@ -345,15 +346,23 @@ class Block:
         # initialization
         self.init_values: Dict[Var, Const] = dict()
 
-        # fix vars will disappear when the exciter and governor models are decoupled from generator
-        self.fix_vars: List[UndefinedConst] = list()
-        self.fix_vars_eqs: Dict[Any, Expr] = dict()
-
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr] = dict() if event_dict is None else event_dict
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        # copy all attributes manually
+        for attr in self.__dict__:
+            value = getattr(self, attr)
+            setattr(result, attr, copy.deepcopy(value, memo))
+
+        return result
 
     def check_empty(self) -> bool:
         """
@@ -449,6 +458,42 @@ class Block:
             variables.extend(blk.get_vars())
         return variables
 
+    def update_equations(self, old, new):
+        """
+
+        :param blk:
+        :param old:
+        :param new:
+        :return:
+        """
+        for i, eq in enumerate(self.algebraic_eqs):
+            new_equ = eq.subs({old: new})
+            self.algebraic_eqs[i] = new_equ
+        for i, eq in enumerate(self.state_eqs):
+            new_equ = eq.subs({old: new})
+            self.state_eqs[i] = new_equ
+
+    def update_model(self, old, new):
+        """
+        :param old:
+        :param new:
+        :return:
+        """
+        self.update_equations(old, new)
+        if self.children:
+            for child in self.children:
+                child.update_model(old, new)
+
+    def connect(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
+        """
+        Function to connect two blocks by variables share
+        """
+
+        for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
+            self.update_model(var_to_subs, incoming_var)
+            self.in_vars.remove(var_to_subs)
+            self.in_vars.append(incoming_var)
+
     def to_dict(self) -> Dict[str, Any]:
         """
 
@@ -474,11 +519,6 @@ class Block:
                 {"name": name, "value": value.value}
                 for name, value in self.parameters.items()
             ],
-            "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
-            "fix_vars_eqs": [
-                {"uid": undef.uid, "expr": expr.to_dict()}
-                for undef, expr in self.fix_vars_eqs.items()
-            ],
             "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
             "event_dict": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
@@ -501,6 +541,8 @@ class Block:
         state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
+        in_vars = _deserialize_var_list(data.get("in_vars", []))
+        out_vars = [var for var in algebraic_vars+state_vars if var.uid in data.get("out_vars", [])]
         children = [Block.parse(child) for child in data.get("children", [])]
 
         algebraic_vars_dict = {v.uid: v for v in algebraic_vars}
@@ -510,6 +552,8 @@ class Block:
             state_eqs=state_eqs,
             algebraic_vars=algebraic_vars,
             algebraic_eqs=algebraic_eqs,
+            in_vars=in_vars,
+            out_vars=out_vars,
             init_eqs={},
             children=children,
             name=data.get("name", "")
@@ -539,21 +583,6 @@ class Block:
             const_value = Const(value)
             block.init_values[name] = const_value
 
-        fv_list = _deserialize_var_list(data.get("fix_vars", []))
-        block.fix_vars = [v for v in fv_list if isinstance(v, UndefinedConst)]
-
-        undef_by_uid = {getattr(u, "uid", None): u for u in block.fix_vars}
-        for item in data.get("fix_vars_eqs", []):
-            uid = item.get("uid")
-            expr = Expr.from_dict(item["expr"])
-            undef = undef_by_uid.get(uid)
-            if undef is not None:
-                block.fix_vars_eqs[undef] = expr
-            else:
-                new_undef = UndefinedConst()
-                block.fix_vars_eqs[new_undef] = expr
-                block.fix_vars.append(new_undef)
-
         for key_str, var_dict in data.get("external_mapping", {}).items():
             key = VarPowerFlowRefferenceType(key_str)
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
@@ -565,17 +594,6 @@ class Block:
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.event_dict[var] = expr
-
-        for pair in data.get("in_vars", []):
-
-            var_dict = pair["var"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.in_vars.append(var)
-
-        for pair in data.get("out_vars", []):
-            var_dict = pair["var"]
-            uid = var_dict.get("uid")
-            block.out_vars.append(algebraic_vars_dict[uid])
 
         block.var_mapping = {v.name: v for v in block.algebraic_vars}
         return block

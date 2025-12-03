@@ -25,15 +25,22 @@ from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 
 
 def check_if_diff_vars(system):
+
     if isinstance(system, DiffBlock):
         diff_vars = system.diff_vars
-        if diff_vars:
-            return diff_vars
+        if len(diff_vars) != 0:
+            return True
         else:
-            if system.children:
-                for child in system.children:
-                    diff_vars = check_if_diff_vars(child)
-        return diff_vars
+            return False
+
+    if system.children:
+        for child in system.children:
+            if  check_if_diff_vars(child):
+                return True
+            else:
+                continue
+        return False
+
     else:
         return False
 

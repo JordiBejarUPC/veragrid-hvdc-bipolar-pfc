@@ -115,15 +115,27 @@ class BlockDiagram:
     """
     Diagram
     """
+    # Todo: add parse and to_dict functions
 
     def __init__(self):
         """
 
         """
         self.status: str | None = None
-        self.block_counters: Dict[BlockType, int] = dict()
+        # self.block_counters: Dict[BlockType, int] = dict()
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
+
+    def to_dict(self):
+        """
+        to dictionary function
+        """
+        return {
+            "status": self.status,
+            # "block_counters": self.block_counters,
+            "nodes_data": self.get_node_data_dict(),
+            "cons_data": self.get_con_data_dict()
+        }
 
     def copy(self):
         """
@@ -133,7 +145,7 @@ class BlockDiagram:
         diag = BlockDiagram()
 
         diag.status = self.status
-        diag.dblock_counters = self.block_counters
+        # diag.block_counters = self.block_counters
 
         diag.node_data = {key: val.copy() for key, val in self.node_data.items()}
         diag.con_data = {key: val.copy() for key, val in self.con_data.items()}
@@ -201,13 +213,13 @@ class BlockDiagram:
             color=color
         )
 
-    def get_block_counters_dict(self) -> Dict[BlockType, int]:
-        """
-
-        :return:
-        """
-        block_counters_info = self.block_counters
-        return block_counters_info
+    # def get_block_counters_dict(self) -> Dict[BlockType, int]:
+    #     """
+    #
+    #     :return:
+    #     """
+    #     block_counters_info = self.block_counters
+    #     return block_counters_info
 
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
         """
@@ -226,9 +238,20 @@ class BlockDiagram:
                       self.con_data.items()}
         return graph_info
 
-    def parse_block_counters(self, block_counters_data):
+    # def parse_block_counters(self, block_counters_data):
+    #
+    #    self.block_counters = block_counters_data
 
-       self.block_counters = block_counters_data
+    @staticmethod
+    def parse(data: Dict[str, Any]):
+        diagram = BlockDiagram()
+        diagram.parse_nodes(data["nodes_data"])
+        diagram.parse_branches(data["cons_data"])
+        # diagram.block_counters = data["block_counters"]
+        diagram.status = data["status"]
+        return diagram
+
+
 
     def parse_nodes(self, nodes_data) -> None:
         """
@@ -373,6 +396,8 @@ class DynamicModelHost(EditableDevice):
                 diagram.parse_nodes(val["nodes"])
             if "connections" in val:
                 diagram.parse_branches(val["connections"])
+            if "block_counters" in val:
+                diagram.parse_block_counters(val["block_counters"])
             self._diagram = diagram
         else:
             raise ValueError(f"Cannot set diagram with {val}")
@@ -384,7 +409,8 @@ class DynamicModelHost(EditableDevice):
         """
         return {
             "template": self.template.uid if self.template is not None else None,
-            "custom_model": self.custom_model.to_dict()
+            "custom_model": self.custom_model.to_dict(),
+            "diagram": self.diagram.to_dict()
         }
 
     def parse(self, data: Dict[str, str | Dict[str, List[Dict[str, Any]]]],
@@ -400,6 +426,9 @@ class DynamicModelHost(EditableDevice):
 
         custom_data = data.get("custom_model", None)
         self._custom_model = Block.parse(data=custom_data)
+
+        diagram_data = data.get("diagram", None)
+        self.diagram = BlockDiagram.parse(data=diagram_data)
 
     def empty(self):
         if self._template is None:

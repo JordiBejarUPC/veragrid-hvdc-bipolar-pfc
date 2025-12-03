@@ -8,6 +8,8 @@ from typing import Union, List
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
@@ -798,26 +800,8 @@ class Load(LoadParent):
         :return:
         """
         if self.rms_model.empty():
+            load_template = get_load_rms_template()
+            self.rms_model.model = load_template.block
 
-            Ql = Var("Ql")
-            Pl = Var("Pl")
-            # Pl_0 = Var("Pl0")
-            # Ql_0 = Var("Ql0")
 
-            block = Block(
-                algebraic_vars=[Pl, Ql],
-                algebraic_eqs=[
-                    Pl - self.Pl_0,
-                    Ql - self.Ql_0
-                ]
-            )
-
-            block.event_dict = {self.Pl_0: Const(self.Pl0),
-                                self.Ql_0: Const(self.Ql0)}
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.P: Pl,
-                VarPowerFlowRefferenceType.Q: Ql
-            }
-
-            self.rms_model.model = block
 

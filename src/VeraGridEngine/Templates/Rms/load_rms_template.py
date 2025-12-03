@@ -13,43 +13,38 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowe
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 
 
-class LoadRmsTemplate(RmsModelTemplate):
+def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
+    """
+    Get the RMS template model of the Load
+    :return: RmsModelTemplate
+    """
+    templ = RmsModelTemplate()
+    templ.tpe = DeviceType.LoadDevice
+    templ.name = name
 
-    def __init__(self, name: str = "rms_load_template"):
-        super().__init__(name=name)
+    Vm: Var = Var('')
+    Va: Var = Var('')
 
-        self.tpe: DeviceType = DeviceType.LoadDevice
+    Pl0 = Var("Pl0")
+    Ql0 = Var("Ql0")
 
-        self.Vm: Var = Var('')
-        self.Va: Var = Var('')
+    Ql = Var("Ql")
+    Pl = Var("Pl")
 
-        self.Pl0 = Var("Pl0")
-        self.Ql0 = Var("Ql0")
+    templ.block.event_dict[Pl0] = Const(-0.075000000001172)
+    templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
 
-        self.Ql = Var("Ql")
-        self.Pl = Var("Pl")
+    templ.block.algebraic_vars = [Pl, Ql]
 
-        self.event_dict = {self.Pl0: Const(-0.075000000001172),
-                                  self.Ql0: Const(-0.009999999862208533)}
+    templ.block.algebraic_eqs = [
+                Pl - Pl0,
+                Ql - Ql0]
 
-    def get_block(self):
-        """
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Va: Va,
+        VarPowerFlowRefferenceType.Vm: Vm,
+        VarPowerFlowRefferenceType.P: Pl,
+        VarPowerFlowRefferenceType.Q: Ql
+    }
 
-        :return:
-        """
-        block = Block(
-            algebraic_vars=[self.Pl, self.Ql],
-            algebraic_eqs=[
-                self.Pl - self.Pl0,
-                self.Ql - self.Ql0
-            ]
-        )
-
-        block.event_dict = self.event_dict
-        block.init_values = self.init_values
-        block.external_mapping={
-                VarPowerFlowRefferenceType.P: self.Pl,
-                VarPowerFlowRefferenceType.Q: self.Ql
-            }
-
-        return block
+    return templ

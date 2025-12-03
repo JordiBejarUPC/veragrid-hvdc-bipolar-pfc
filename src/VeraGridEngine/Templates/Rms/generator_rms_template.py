@@ -8,19 +8,23 @@ import numpy as np
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, exp, log, abs, UndefinedConst
+from VeraGridEngine.enumerations import DeviceType
 
 
-
-def get_generator_rms_template() -> RmsModelTemplate():
+def get_generator_rms_template(name = "generator_template") -> RmsModelTemplate():
     """
-    Get the RMS template of a grnerator
+    Get the RMS template of a generator
     :return: RmsModelTemplate
     """
 
     templ = RmsModelTemplate()
+    templ.tpe = DeviceType.GeneratorDevice
+    templ.name = name
 
     Vm: Var = Var('Vm_placeholder')
     Va: Var = Var('Va_placeholder')
+    vf: Var = Var('vf_placeholder')
+    tm0: Var = Var('tm0_placeholder')
 
     P_g: Var = Var('P_g')
     Q_g: Var = Var('Q_g')
@@ -46,8 +50,7 @@ def get_generator_rms_template() -> RmsModelTemplate():
     Kp = Var("Kp")
     Ki = Var("Ki")
 
-    vf = UndefinedConst()  # this will disappear when the generator and the exciter model are decoupled
-    tm0 = UndefinedConst()
+
 
     templ.block = Block(
         state_vars=[delta, omega],
@@ -89,24 +92,20 @@ def get_generator_rms_template() -> RmsModelTemplate():
             te: psid * i_q - psiq * i_d,
             tm: te,
             et: Const(0),
-        })
-
-    templ.block.fix_vars = [tm0, vf]
-    templ.block.fix_vars_eqs = {tm0.uid: tm,
-                                vf.uid: psid + X1 * i_d}
-
-    templ.block.external_mapping = {
+        },
+        external_mapping={
+        VarPowerFlowRefferenceType.Vm: Vm,
+        VarPowerFlowRefferenceType.Va: Va,
         VarPowerFlowRefferenceType.P: P_g,
         VarPowerFlowRefferenceType.Q: Q_g
-    }
-
-    templ.block.event_dict = {R1: Const(0.0),
+        },
+        in_vars = [Vm, Va, vf, tm0],
+        event_dict={R1: Const(0.0),
                               X1: Const(0.3),
                               freq: Const(60.0),
                               M: Const(4.0),
                               D: Const(1.0),
                               omega_ref: Const(1.0),
                               Kp: Const(0.0),
-                              Ki: Const(0.0)}
-
+                              Ki: Const(0.0)})
     return templ

@@ -200,10 +200,6 @@ def test_block_save_to_disk():
             et: Const(0),
         })
 
-    block.fix_vars = [tm0, vf]
-    block.fix_vars_eqs = {tm0.uid: tm,
-                          vf.uid: psid + X1 * i_d}
-
     block.external_mapping = {
         VarPowerFlowRefferenceType.P: P_g,
         VarPowerFlowRefferenceType.Q: Q_g

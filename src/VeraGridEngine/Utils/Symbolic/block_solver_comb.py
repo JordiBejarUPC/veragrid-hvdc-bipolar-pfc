@@ -924,8 +924,6 @@ class DiffBlockSolver(BlockSolver):
             return np.array([])
 
         x_lag = np.zeros(len(self._lag_vars), dtype=np.float64)
-        pdb.set_trace()
-
 
         lag_registry = self._lag_vars[0]._registry
         diff_registry = self._diff_vars[0]._absolute_registry

@@ -259,6 +259,9 @@ class Const(Expr):
     name: str = 'name'
     uid: int = field(default_factory=_new_uid)
 
+    def __deepcopy__(self, memo):
+        return type(self)(self.uid, self.name)
+
     def eval(self, **bindings: NUMBER) -> NUMBER:
         return self.value
 
@@ -293,6 +296,9 @@ class Var(Expr):
     # this reference tell me if this var should be replaced by another variable at the block compilation time
     # i.e DynamicVarType.P tells me that this var is actually the bus active power var.
     pf_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.NOTHING
+
+    def __deepcopy__(self, memo):
+        return type(self)(self.uid, self.name)
 
     def eval(self, **bindings: NUMBER) -> NUMBER:
         try:

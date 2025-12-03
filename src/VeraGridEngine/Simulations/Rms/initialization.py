@@ -189,7 +189,7 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
 def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                   array_index, use_init_values: bool):
     """
-
+    Initialize using explicitequation
     """
     uid2sym_params: Dict[int, str] = {}
     uid2idx_params: Dict[int, int] = {}
@@ -252,27 +252,17 @@ def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_va
                 params_array[uid2idx_params[param.uid]] = param_val
 
             # compute and assign missing init_vars
-
             for var in mdl.init_eqs.keys():
                 key = (var.uid, var.name)
                 if key in init_guess:
                     x[uid2idx_vars[var.uid]] = init_guess[key]
                 else:
-                    if var in mdl.init_values and use_init_values:
-                        init_guess[key] = mdl.init_values[var].value
-                        x[uid2idx_vars[var.uid]] = mdl.init_values[var].value
-                    else:
-                        eq = mdl.init_eqs[var]
-                        eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                        init_val = float(eq_fn(x, params_array))
-                        init_guess[key] = init_val
-                        x[uid2idx_vars[var.uid]] = init_val
-            # TODO: change model to generator, exciter and governor separated and remove this
-            for var in mdl.fix_vars:
-                eq = mdl.fix_vars_eqs[var.uid]
-                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                init_val = float(eq_fn(x, params_array))
-                var.value = init_val
+                    eq = mdl.init_eqs[var]
+                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                    init_val = float(eq_fn(x, params_array))
+                    init_guess[key] = init_val
+                    x[uid2idx_vars[var.uid]] = init_val
+
             sys_block.add(mdl)
 
 
@@ -578,13 +568,15 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
 
     for bus, region in bus_regions_dict.items():
-        # try:
-        #     init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
-        #
-        # except ValueError:
-        #     print(f"Error when initializing with pseudo_transient method")
-        init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-                      array_index, use_init_values)
+        try:
+            init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+                          array_index, use_init_values)
+
+
+        except ValueError:
+            print(f"Couldn't initialize system with explicit method")
+            init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
+
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):

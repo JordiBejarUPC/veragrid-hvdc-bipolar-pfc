@@ -144,36 +144,6 @@ def change_model_params(mdl_old, mdl_new):
             change_model_params(submodel_old, submodel_new)
 
 
-def update_equations(blk, old, new):
-    """
-
-    :param blk:
-    :param old:
-    :param new:
-    :return:
-    """
-    for i, eq in enumerate(blk.algebraic_eqs):
-        new_equ = eq.subs({old: new})
-        blk.algebraic_eqs[i] = new_equ
-    for i, eq in enumerate(blk.state_eqs):
-        new_equ = eq.subs({old: new})
-        blk.state_eqs[i] = new_equ
-
-
-def update_model(model, old, new):
-    """
-
-    :param model:
-    :param old:
-    :param new:
-    :return:
-    """
-    update_equations(model, old, new)
-    if model.children:
-        for child in model.children:
-            update_model(child, old, new)
-
-
 @dataclass
 class BlockBridge:
     gui: "BlockItem"  # visual node
@@ -1147,7 +1117,7 @@ class DiagramScene(QGraphicsScene):
                     dst_var = self.source_port.subsystem.subsys.out_vars[self.source_port.index]
 
                     # update destiny model
-                    update_model(dst_port.subsystem.subsys, dst_port.subsystem.subsys.in_vars[dst_port.index], dst_var)
+                    dst_port.subsystem.subsys.update_model(dst_port.subsystem.subsys.in_vars[dst_port.index], dst_var)
 
                     # for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
                     #     new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[dst_port.index]: dst_var})
@@ -1322,32 +1292,36 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", f"Template '{template_name}' not found.")
             return
 
+        print(self.templates_catalogue[template_name])
         self.selected_template = copy.deepcopy(self.templates_catalogue[template_name])
         if self.api_object is not None:
             if self.selected_template.tpe == DeviceType.GeneratorDevice:
                 Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-                # substituir las variables del template por estas
-                self.selected_template.Vm = Vm
-                self.selected_template.Va = Va
+                # substitute variables in block equations
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if self.selected_template.tpe == DeviceType.LoadDevice:
                 Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
-                self.selected_template.Vm = Vm
-                self.selected_template.Va = Va
+                # substitute variables in block equations
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
                 Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
-                self.selected_template.Vmf = Vmf
-                self.selected_template.Vaf = Vaf
-                self.selected_template.Vmt = Vmt
-                self.selected_template.Vat = Vat
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
                 # power flow parameters
-                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
-                self.selected_template.R = R
-                self.selected_template.X = X
-                self.selected_template.B = B
+                #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters.
+
+                # R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
+                # self.selected_template.R
+                # self.selected_template.X = X
+                # self.selected_template.B = B
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
@@ -1355,18 +1329,18 @@ class TemplateEditor(QtWidgets.QWidget):
         self.template_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # call editable parameters dialog
-        if hasattr(self.selected_template, 'event_dict'):
-            if self.selected_template.event_dict:
-                self.load_params_table(self.selected_template)
+        if hasattr(self.selected_template.block, 'event_dict'):
+            if self.selected_template.block.event_dict:
+                self.load_params_table()
 
-    def load_params_table(self, selected_template):
+    def load_params_table(self):
         """
         Fills the parameters table with the template parameters
         :param selected_template:
         :return:
         """
 
-        event_dict = selected_template.event_dict  # {Var: Const}
+        event_dict = self.selected_template.block.event_dict  # {Var: Const}
 
         self.params_table.blockSignals(True)
         self.params_table.setRowCount(0)
@@ -1401,9 +1375,9 @@ class TemplateEditor(QtWidgets.QWidget):
         except ValueError:
             value = value_str  # permitir strings
 
-        self.selected_template.event_dict[var] = Const(value=value, name=var.name)
+        self.selected_template.block.event_dict[var] = Const(value=value, name=var.name)
 
-        self.parametersUpdated.emit(self.selected_template.event_dict)
+        self.parametersUpdated.emit(self.selected_template.block.event_dict)
 
     def apply_template(self):
         """Apply template to api_object rms_model.template"""
@@ -1412,7 +1386,7 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
             return
         try:
-            self.model = self.selected_template.get_block()
+            self.model = self.selected_template.block
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to apply template:\n{e}")
             return
@@ -1848,8 +1822,9 @@ class BlockBoxesEditor(QSplitter):
             bus_from_con_item.build_item()
 
             if bus_from_con_item.subsys is not None:
-                self.scene.addItem(bus_from_con_item)
                 bus_from_con_item.setPos(x0, y0)
+                self.scene.addItem(bus_from_con_item)
+
                 # save nodes in diagram
                 self.diagram.add_node(
                     name=name,
@@ -1883,12 +1858,10 @@ class BlockBoxesEditor(QSplitter):
             bus_to_con_item.build_item()
 
             # Add to scene
-            self.scene.addItem(bus_to_con_item)
-            bus_to_con_item.setPos(QPointF(x0, y0))
             if bus_to_con_item.subsys is not None:
-                # pdb.set_trace()
-                self.scene.addItem(bus_to_con_item)
                 bus_to_con_item.setPos(QPointF(x0, y0))
+                self.scene.addItem(bus_to_con_item)
+
                 # save nodes in diagram
                 self.diagram.add_node(
                     name=name,
@@ -1921,8 +1894,9 @@ class BlockBoxesEditor(QSplitter):
             bus_con_item.build_item()
 
             if bus_con_item.subsys is not None:
-                self.scene.addItem(bus_con_item)
                 bus_con_item.setPos(x0, y0)
+                self.scene.addItem(bus_con_item)
+
                 # save nodes in diagram
                 self.diagram.add_node(
                     name=name,
@@ -1998,7 +1972,6 @@ class BlockBoxesEditor(QSplitter):
             bus_to_mapping_item.build_item()
 
             # Add to scene
-            self.scene.addItem(bus_from_mapping_item)
             bus_to_mapping_item.setPos(QPointF(x0, y0))
             if bus_to_mapping_item.subsys is not None:
                 self.scene.addItem(bus_to_mapping_item)
@@ -2238,7 +2211,7 @@ class BlockBoxesEditor(QSplitter):
         :return:
         """
         self.scene.clear()
-        self.block_counters = self.diagram.block_counters
+        # self.block_counters = self.diagram.block_counters
 
         uid_to_blockitem = {}
 
@@ -2825,22 +2798,20 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 return
             try:
                 template = self.current_editor.selected_template
-                if template.init_values:
-                    values_dict = template.init_values.copy()
+                if template.block.init_values:
+                    values_dict = template.block.init_values.copy()
                 else:
-                    model = template.get_block()
+                    model = template.block
                     values_dict: Dict[Var, Const] = dict()
                     variables = model.get_all_vars()
                     for var in variables:
                         values_dict.update({var: Const(0)})
 
-                # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
-
                 init_guess_editor = InitialValuesDialog(values_dict)
                 result = init_guess_editor.exec()
                 if result == QDialog.DialogCode.Accepted:
                     init_values_dict = init_guess_editor.get_values_dict()
-                    template.init_values = init_values_dict
+                    template.block.init_values = init_values_dict
 
             except Exception as e:
                 QtWidgets.QMessageBox.warning(self, "Error", f"Failed get variables from template:\n{e}")

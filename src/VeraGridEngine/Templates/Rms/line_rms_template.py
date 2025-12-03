@@ -4,17 +4,20 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
-def get_line_rms_template() -> RmsModelTemplate:
+def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Line
     :return: RmsModelTemplate
     """
     templ = RmsModelTemplate()
+    templ.tpe = DeviceType.LineDevice
+    templ.name = name
 
     Vmf: Var = Var('Vmf')
     Vaf: Var = Var('Vaf')
@@ -46,6 +49,10 @@ def get_line_rms_template() -> RmsModelTemplate:
     ]
 
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Vaf: Vaf,
+        VarPowerFlowRefferenceType.Vat: Vat,
+        VarPowerFlowRefferenceType.Vmf: Vmf,
+        VarPowerFlowRefferenceType.Vmt: Vmt,
         VarPowerFlowRefferenceType.Pf: Pf,
         VarPowerFlowRefferenceType.Pt: Pt,
         VarPowerFlowRefferenceType.Qf: Qf,

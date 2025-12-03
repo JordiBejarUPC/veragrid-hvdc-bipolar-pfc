@@ -9,14 +9,13 @@ from VeraGridEngine.enumerations import DeviceType
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecExcGovSat
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 
 templ_bus = BusRmsTemplate()
 
-templ_genqec = GenqecExcGovSat()
 
 templ_gen_0 = get_generator_rms_template()
 templ_gen_1 = get_generator_rms_template()
@@ -24,7 +23,6 @@ templ_gen_1 = get_generator_rms_template()
 templ_line_0 = get_line_rms_template()
 templ_line_1 = get_line_rms_template()
 
-templ_load = LoadRmsTemplate()
 
 Templates: List[RmsModelTemplate] = [templ_bus, templ_genqec, templ_gen_0, templ_gen_1, templ_line_0, templ_line_1,
                                      templ_load]
