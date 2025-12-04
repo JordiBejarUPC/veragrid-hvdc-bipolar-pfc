@@ -191,35 +191,35 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                         IRPu],
         init_eqs={
-            # omega: Const(0),
-            # V_dag: inputs[0] * sin(inputs[1]) + imag(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            # V_qag: inputs[0] * cos(inputs[1]) + real(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            # Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-            # Sa: A * (Psi_ag - B) ** 2,
-            # delta: atan(
-            #     (inputs[0] * sin(inputs[1]) + imag(
-            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-            #      ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
-            #     (inputs[0] * cos(inputs[1]) + real(
-            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-            #         conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-            #      ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            # Vd: (inputs[0] * sin(delta - inputs[1])),
-            # Vq: (inputs[0] * cos(delta - inputs[1])),
-            # Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-            # Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-            #     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            # Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            # Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-            #         Iq / (Const(1) + Sa)),
-            # Eq_2prime: Vd,
-            # Ed_2prime: Vq,
+            omega: Const(0),
+            V_dag: inputs[0] * sin(inputs[1]) + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            V_qag: inputs[0] * cos(inputs[1]) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+            Sa: A * (Psi_ag - B) ** 2,
+            delta: atan(
+                (inputs[0] * sin(inputs[1]) + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                 ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
+                (inputs[0] * cos(inputs[1]) + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                 ((Xq - Xl) / (Const(1) + Sa) + Xl))),
+            Vd: (inputs[0] * sin(delta - inputs[1])),
+            Vq: (inputs[0] * cos(delta - inputs[1])),
+            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
+            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
+            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
+                    Iq / (Const(1) + Sa)),
+            Eq_2prime: Vd,
+            Ed_2prime: Vq,
         },
         out_vars=[Pg, Qg, omega, IRPu],
         in_vars=inputs,
@@ -231,9 +231,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
 
 
 def GovernorBuild(name: str = "") -> RmsModelTemplate:
-    
     templ = RmsModelTemplate()
-    
+
     parameters = {
         # Time constants
         "T1": Const(1.0),  # governor time constant (s)
@@ -387,7 +386,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
 
 def StabilizerBuild(name: str = "") -> RmsModelTemplate:
-   
     templ = RmsModelTemplate()
 
     parameters = {
@@ -587,7 +585,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # ---Internal Blocks---
     tf1, y1 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["tR"]]),
+        den=np.array([1, parameters["tR"].value]),
         x=inputs[1],
         name='exciter1',
     )  # filtered stator voltage
@@ -595,30 +593,30 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # error1 = UPssPu - y + UsRefPu
     error1 = (- y1 + UsRefPu) + inputs[2]
     tf2, y2 = tf_to_diffblock(
-        num=np.array([0, parameters["Kf"]]),
-        den=np.array([1, parameters["tF"]]),
+        num=np.array([0, parameters["Kf"].value]),
+        den=np.array([1, parameters["tF"].value]),
         x=Vf,
         name='exciter2',
     )
     error2 = error1 - y2
 
     tf3, y3 = tf_to_diffblock(
-        num=np.array([1, parameters["tC"]]),
-        den=np.array([1, parameters["tB"]]),
+        num=np.array([1, parameters["tC"].value]),
+        den=np.array([1, parameters["tB"].value]),
         x=error2,
         name='exciter3',
     )
     tf4, y4 = tf_to_diffblock(
-        num=np.array([parameters["Ka"]]),
-        den=np.array([1, parameters["tA"]]),
+        num=np.array([parameters["Ka"].value]),
+        den=np.array([1, parameters["tA"].value]),
         x=y3,
         name='exciter4',
     )
 
     y5 = hard_sat(y4, VaMinPu, VaMaxPu)
 
-    min_const = Const(max(events_dict[VaMinPu], events_dict[EfeMinPu]))
-    max_const = Const(min(events_dict[VaMaxPu], events_dict[EfeMaxPu]))
+    min_const = max(events_dict[VaMinPu].value, events_dict[EfeMinPu].value)
+    max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
     y6 = hard_sat(y4, min_const, max_const)
 
     # exciter submodel
@@ -631,7 +629,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     tf1_sub, Ve_presat = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([0, parameters["tE"]]),
+        den=np.array([0, parameters["tE"].value]),
         x=error1,
         name='subexciter1',
     )
@@ -673,7 +671,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     return templ
 
-def get_complete_generator_template(name = "complete generator rms template") -> RmsModelTemplate:
+
+def get_complete_generator_template(name="complete generator rms template") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1071,8 +1070,8 @@ def get_complete_generator_template(name = "complete generator rms template") ->
 
     u1 = omega - omega_ref
     lead_lag_block, y1 = tf_to_diffblock(
-        num=np.array([1, parameters["T2"]]),
-        den=np.array([1, parameters["T1"]]),
+        num=np.array([1, parameters["T2"].value]),
+        den=np.array([1, parameters["T1"].value]),
         x=u1,
         name='gov0',
     )
@@ -1097,25 +1096,25 @@ def get_complete_generator_template(name = "complete generator rms template") ->
     # We compute different outputs for every tf
     tf2, y3_1 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T4"]]),
+        den=np.array([1, parameters["T4"].value]),
         x=y2_3,
         name='gov2',
     )
     tf3, y3_2 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T5"]]),
+        den=np.array([1, parameters["T5"].value]),
         x=y3_1,
         name='gov3',
     )
     tf4, y3_3 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T6"]]),
+        den=np.array([1, parameters["T6"].value]),
         x=y3_2,
         name='gov4',
     )
     tf5, y3_4 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T7"]]),
+        den=np.array([1, parameters["T7"].value]),
         x=y3_3,
         name='gov5',
     )
@@ -1139,32 +1138,32 @@ def get_complete_generator_template(name = "complete generator rms template") ->
 
     tf, y = tf_to_diffblock_with_states(
         num=np.array([1.0]),
-        den=np.array([1, parameters["t6"]]),
+        den=np.array([1, parameters["t6"].value]),
         x=omega,
         name='stabilizer1',
     )
 
     tf2, y2 = tf_to_diffblock_with_states(
-        num=np.array([0, parameters["t5"]]),
-        den=np.array([1, parameters["t5"]]),
+        num=np.array([0, parameters["t5"].value]),
+        den=np.array([1, parameters["t5"].value]),
         x=Ks * y,
         name='stabilizer2',
     )
     tf3, y3 = tf_to_diffblock_with_states(
         num=np.array([1]),
-        den=np.array([1, parameters["A1"], parameters["A2"]]),
+        den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
         x=y2,
         name='stabilizer3',
     )
     tf4, y4 = tf_to_diffblock_with_states(
-        num=np.array([1, parameters["t1"]]),
-        den=np.array([1, parameters["t2"]]),
+        num=np.array([1, parameters["t1"].value]),
+        den=np.array([1, parameters["t2"].value]),
         x=y3,
         name='stabilizer4',
     )
     tf5, y5 = tf_to_diffblock_with_states(
-        num=np.array([1, parameters["t3"]]),
-        den=np.array([1, parameters["t4"]]),
+        num=np.array([1, parameters["t3"].value]),
+        den=np.array([1, parameters["t4"].value]),
         x=y4,
         name='stabilizer5',
     )
@@ -1188,7 +1187,7 @@ def get_complete_generator_template(name = "complete generator rms template") ->
     # ---Internal Blocks---
     tf1, y1 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["tR"]]),
+        den=np.array([1, parameters["tR"].value]),
         x=Va,
         name='exciter1',
     )  # filtered stator voltage
@@ -1196,30 +1195,30 @@ def get_complete_generator_template(name = "complete generator rms template") ->
     # error1 = UPssPu - y + UsRefPu
     error1 = (- y1 + UsRefPu) + Vpss
     tf2, y2 = tf_to_diffblock(
-        num=np.array([0, parameters["Kf"]]),
-        den=np.array([1, parameters["tF"]]),
+        num=np.array([0, parameters["Kf"].value]),
+        den=np.array([1, parameters["tF"].value]),
         x=Vf,
         name='exciter2',
     )
     error2 = error1 - y2
 
     tf3, y3 = tf_to_diffblock(
-        num=np.array([1, parameters["tC"]]),
-        den=np.array([1, parameters["tB"]]),
+        num=np.array([1, parameters["tC"].value]),
+        den=np.array([1, parameters["tB"].value]),
         x=error2,
         name='exciter3',
     )
     tf4, y4 = tf_to_diffblock(
-        num=np.array([parameters["Ka"]]),
-        den=np.array([1, parameters["tA"]]),
+        num=np.array([parameters["Ka"].value]),
+        den=np.array([1, parameters["tA"].value]),
         x=y3,
         name='exciter4',
     )
 
     y5 = hard_sat(y4, VaMinPu, VaMaxPu)
 
-    min_const = Const(max(event_dict[VaMinPu], event_dict[EfeMinPu]))
-    max_const = Const(min(event_dict[VaMaxPu], event_dict[EfeMaxPu]))
+    min_const = max(event_dict[VaMinPu], event_dict[EfeMinPu])
+    max_const = min(event_dict[VaMaxPu], event_dict[EfeMaxPu])
     y6 = hard_sat(y4, min_const, max_const)
 
     # exciter submodel
@@ -1232,7 +1231,7 @@ def get_complete_generator_template(name = "complete generator rms template") ->
 
     tf1_sub, Ve_presat = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([0, parameters["tE"]]),
+        den=np.array([0, parameters["tE"].value]),
         x=error1,
         name='subexciter1',
     )

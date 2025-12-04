@@ -28,10 +28,16 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactores initialization, adapted gui to new templates format, saving models working (not complex numbers)">
-      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactores initialization, test for scripting and saving">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Substation/bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/templates.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Injections/generator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Injections/generator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/generator_rms_template.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/rms_templates_catalogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/rms_templates_catalogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1880,7 +1886,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="660" />
+    <option name="localTasksCounter" value="661" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1926,7 +1932,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
     <MESSAGE value="minimal type change" />
     <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
     <MESSAGE value="Improved the pf initialization in pf grids" />
@@ -1951,7 +1956,8 @@
     <MESSAGE value="small signal tests passing" />
     <MESSAGE value="implemented DiffBLock solver fro modles with differential vars" />
     <MESSAGE value="refactores initialization, adapted gui to new templates format, saving models working (not complex numbers)" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactores initialization, adapted gui to new templates format, saving models working (not complex numbers)" />
+    <MESSAGE value="refactores initialization, test for scripting and saving" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactores initialization, test for scripting and saving" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

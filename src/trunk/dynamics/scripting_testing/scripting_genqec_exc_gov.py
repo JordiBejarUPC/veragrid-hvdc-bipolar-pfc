@@ -46,13 +46,15 @@ grid.add_bus(bus1)
 grid.add_bus(bus2)
 
 # Lines
-line0 = grid.add_line(gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0))
-line1 = grid.add_line(gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0))
-
+line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
+line1 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
+grid.add_line(line0)
+grid.add_line(line1)
 
 
 # load
-load_grid = grid.add_load(bus=bus2, api_obj=gce.Load(P= 10, Q= 10))
+load = gce.Load(P= 10, Q= 10)
+grid.add_load(bus=bus2, api_obj=load)
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom = 900,
@@ -94,8 +96,8 @@ stabil2_mdl = StabilizerBuild().block.copy()
 
 
 #line
+line0_mdl = get_line_rms_template().block.copy()
 line1_mdl = get_line_rms_template().block.copy()
-line2_mdl = get_line_rms_template().block.copy()
 
 #load
 load_mdl = get_load_rms_template().block.copy()
@@ -138,7 +140,10 @@ big_gen2 = Block(children = [genqec2_mdl, exc2_mdl, gov2_mdl, stabil2_mdl])
 gen0.rms_model.model = big_gen1
 gen1.rms_model.model = big_gen2
 
-load_grid
+line0.rms_model.model = line0_mdl
+line1.rms_model.model = line1_mdl
+
+load.rms_model.model = load_mdl
 
 
 options = gce.PowerFlowOptions(

@@ -69,7 +69,7 @@ def max(x: Expr, y: Expr) -> Expr:
 def min(x: Expr, y: Expr) -> Expr:
     return x*heaviside(y - x) + y*(Const(1)-heaviside(y - x))
 
-def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
+def hard_sat(x: Expr, x_min: Expr | float, x_max: Expr| float) -> Expr:
     return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
 
 def f_exc(In: Expr) -> Expr:
@@ -848,6 +848,10 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
     # Atomic nodes
     # ------------------------------------------------------------------
     if isinstance(expr, Const):
+        val = expr.value
+        if isinstance(val, complex):
+            return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
+
         return {"type": "Const", "value": expr.value, "uid": expr.uid}
 
     if isinstance(expr, Var):
@@ -898,7 +902,10 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
     """
     t = data["type"]
     if t == "Const":
-        obj: Expr = Const(data["value"])
+        if data.get("kind") == "complex":
+            obj = Const(complex(*data["value"]))
+        else:
+            obj = Const(data["value"])
     elif t == "Var":
         obj = Var(data["name"])
     elif t == "BinOp":

@@ -363,7 +363,6 @@ class BlockItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
         # --- Constant editing ---
-        print(self.subsys.name)
         if self.subsys.name.lower().startswith("const") or self.subsys.name == "CONSTANT":
             dlg = QDialog()
             dlg.setWindowTitle("Edit Constant Value")
@@ -1292,7 +1291,6 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", f"Template '{template_name}' not found.")
             return
 
-        print(self.templates_catalogue[template_name])
         self.selected_template = copy.deepcopy(self.templates_catalogue[template_name])
         if self.api_object is not None:
             if self.selected_template.tpe == DeviceType.GeneratorDevice:

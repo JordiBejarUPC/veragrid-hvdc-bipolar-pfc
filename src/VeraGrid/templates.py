@@ -11,7 +11,6 @@ from VeraGridEngine.Devices.Branches.line import SequenceLineType, UndergroundLi
 from VeraGridEngine.Devices.Branches.transformer import TransformerType
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template, GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -90,7 +89,6 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
     :return:
     """
     return [
-            get_generator_rms_template(),
             GenqecBuild(),
             GovernorBuild(),
             StabilizerBuild(),

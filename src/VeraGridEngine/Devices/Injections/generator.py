@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from typing import Union
 from matplotlib import pyplot as plt
-from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Associations.association import Associations
@@ -18,6 +17,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
 class Generator(GeneratorParent):
@@ -628,5 +628,5 @@ class Generator(GeneratorParent):
         Initialize the RMS model
         """
         if self.rms_model.empty():
-            generator_template = get_generator_rms_template()
+            generator_template = get_complete_generator_template()
             self.rms_model.model = generator_template.block
