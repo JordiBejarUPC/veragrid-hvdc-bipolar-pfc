@@ -14,7 +14,7 @@ from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays_model import CompiledArraysModule
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
 import VeraGridEngine.basic_structures as bs
 import VeraGridEngine.Devices as dev
 import VeraGrid.Gui.gui_functions as gf
@@ -407,7 +407,7 @@ class DataBaseTableMain(DiagramsMain):
             source_model = proxy_model.sourceModel()
 
             sel_idx = self.ui.dataStructureTableView.selectedIndexes()
-            objects = source_model.objects if hasattr(source_model, 'objects') else []
+            objects: List[ALL_DEV_TYPES] = source_model.objects if hasattr(source_model, 'objects') else []
 
             if len(objects) > 0:
 
@@ -419,7 +419,8 @@ class DataBaseTableMain(DiagramsMain):
                         sel_obj: ALL_DEV_TYPES = source_model.objects[idx]
                         selected_objects.append(sel_obj)
 
-                    buses = self.circuit.get_buses_from_objects(elements=selected_objects)
+                    buses = self.circuit.get_buses_from_objects(elements=selected_objects,
+                                                                dtype=objects[0].device_type)
 
         return buses, selected_objects
 
@@ -699,7 +700,18 @@ class DataBaseTableMain(DiagramsMain):
             self.grid_reduction_dialogue.exec()
 
             if self.grid_reduction_dialogue.did_reduce:
+
+                # delete from the diagrams
                 self.delete_from_all_diagrams(elements=list(selected_buses))
+
+                # update the view
+                self.view_objects_data()
+                self.update_from_to_list_views()
+                self.update_date_dependent_combos()
+            else:
+                self.show_warning_toast("No reduction done")
+        else:
+            self.show_warning_toast("Select some elements first")
 
     def grid_reduction_from_schematic_selection(self):
         """
@@ -1010,8 +1022,6 @@ class DataBaseTableMain(DiagramsMain):
                         # if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                         #     # update event
                         #     self.circuit.rms_events[idx] = self.rms_events_Editor_window.get_updated_event()
-
-
 
                     else:
 
