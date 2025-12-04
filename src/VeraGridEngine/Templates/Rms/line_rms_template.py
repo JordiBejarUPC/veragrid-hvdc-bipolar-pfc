@@ -40,7 +40,6 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
     templ.block.algebraic_vars = [Pf, Pt, Qf, Qt]
 
     pi2 = np.pi / 2
-
     templ.block.algebraic_eqs = [
         Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + pi2)),
         Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + pi2)),

@@ -677,31 +677,6 @@ class ModelHostItem(QGraphicsRectItem):
                         conn.update_path()
         return super().itemChange(change, value)
 
-    # def contextMenuEvent(self, event):
-    #     menu = QMenu()
-    #
-    #     delete_action = QAction("Remove Block", menu)
-    #     menu.addAction(delete_action)
-    #
-    #
-    #     edit_action = QAction("Edit Block", menu)
-    #     menu.addAction(edit_action)
-    #
-    #     chosen = menu.exec(event.screenPos())
-    #
-    #     if chosen == delete_action:
-    #         for port in self.inputs + self.outputs:
-    #             if port.connection:
-    #                 self.scene().removeItem(port.connection)
-    #                 if port.connection.source_port:
-    #                     port.connection.source_port.connection = None
-    #                 if port.connection.target_port:
-    #                     port.connection.target_port.connection = None
-    #         self.scene().removeItem(self)
-    #
-    #     elif chosen == edit_action:
-    #         self.open_generic_editor()
-
     def open_generic_editor(self):
         dlg = QDialog()
         dlg.setWindowTitle(f"Edit Generic Block ({self.model_host.model.uid})")
@@ -2191,7 +2166,6 @@ class BlockBoxesEditor(QSplitter):
 
                 if item.subsys is not None:
                     self.main_block.add(item.subsys)
-
                     self.scene.addItem(item)
                     item.setPos(QPointF(x0, y0))
                     # save nodes in diagram
@@ -2224,9 +2198,12 @@ class BlockBoxesEditor(QSplitter):
                 model_host = DynamicModelHost()
 
                 model_host.model = Block()
-                for model in self.main_block.children:
+                model_found = False
+                for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
                         model_host.model = model
+                        model_found = True
+                print(f'{model_found} for {model.name}')
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
@@ -2245,9 +2222,14 @@ class BlockBoxesEditor(QSplitter):
             elif block_type == BlockType.BUS_CONNECTION:
                 bus_con_item = BlockItem(name=node.name)
                 bus_con_blk = Block()
-                for model in self.main_block.children:
+                model_found = False
+                for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
                         bus_con_blk = model
+                        model_found = True
+                print(f'{model_found} for {model.name}')
+
+
 
                 bus_con_item.set_subsystem(bus_con_blk)
                 bus_con_item.build_item()
@@ -2262,9 +2244,13 @@ class BlockBoxesEditor(QSplitter):
             elif block_type == BlockType.EXTERNAL_MAPPING:
                 bus_mapping_item = BlockItem(name=node.name)
                 bus_mapping_blk = Block()
-                for model in self.main_block.children:
+                model_found = False
+                for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
                         bus_mapping_blk = model
+                        model_found = True
+                print(f'{model_found} for {model.name}')
+
 
                 bus_mapping_item.set_subsystem(bus_mapping_blk)
                 bus_mapping_item.build_item()
@@ -2280,9 +2266,13 @@ class BlockBoxesEditor(QSplitter):
 
                 block_item = BlockItem(name=node.name)
                 block = Block()
-                for model in self.main_block.children:
+                model_found = False
+                for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
                         block = model
+                        model_found = True
+                print(f'{model_found} for {model.name}')
+
                 block_item.set_subsystem(block)
                 block_item.build_item()
                 if block_item.subsys is not None:

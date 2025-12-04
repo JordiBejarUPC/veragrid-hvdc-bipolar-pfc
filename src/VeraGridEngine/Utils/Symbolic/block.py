@@ -527,7 +527,7 @@ class Block:
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
             "in_vars": [var.to_dict() for var in self.in_vars],
-            "out_vars": [var.uid for var in self.out_vars]
+            "out_vars": [var.to_dict() for var in self.out_vars]
         }
 
     @staticmethod
@@ -542,7 +542,7 @@ class Block:
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
         in_vars = _deserialize_var_list(data.get("in_vars", []))
-        out_vars = [var for var in algebraic_vars+state_vars if var.uid in data.get("out_vars", [])]
+        out_vars = _deserialize_var_list(data.get("out_vars", []))
         children = [Block.parse(child) for child in data.get("children", [])]
 
         algebraic_vars_dict = {v.uid: v for v in algebraic_vars}

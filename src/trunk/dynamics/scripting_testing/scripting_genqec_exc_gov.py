@@ -32,7 +32,7 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
-# Build VeraGrid
+# Build VeraGrid object
 ###########################################################################################################################
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
@@ -102,7 +102,7 @@ line1_mdl = get_line_rms_template().block.copy()
 #load
 load_mdl = get_load_rms_template().block.copy()
 
-## Build big generators
+## Build big generators by connecting elements
 
 genqec1_mdl.connect(genqec1_mdl.in_vars[3], exc1_mdl.out_vars[0])
 exc1_mdl.connect(exc1_mdl.in_vars[0], genqec1_mdl.out_vars[3])
