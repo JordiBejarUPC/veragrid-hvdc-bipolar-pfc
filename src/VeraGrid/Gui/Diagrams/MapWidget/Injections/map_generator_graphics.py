@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 import numpy as np
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QMenu
+
+from PySide6.QtWidgets import QGraphicsSceneContextMenuEvent
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.messages import yes_no_question, info_msg
@@ -51,16 +51,22 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
     def api_object(self) -> Generator:
         return self._api_object
 
-    def extend_menu(self, menu: QMenu):
+    def contextMenuEvent(self, event: QGraphicsSceneContextMenuEvent):
+        """
+        Display context menu
+        @param event:
+        @return:
+        """
+        menu = self.get_base_context_menu()
 
         menu.addSection("Generator")
 
         add_menu_entry(menu=menu,
-                           text="Voltage control",
-                           icon_path="",
-                           function_ptr=self.enable_disable_control_toggle,
-                           checkeable=True,
-                           checked_value=self.api_object.is_controlled)
+                       text="Voltage control",
+                       icon_path="",
+                       function_ptr=self.enable_disable_control_toggle,
+                       checkeable=True,
+                       checked_value=self.api_object.is_controlled)
 
         add_menu_entry(menu=menu,
                        text="Rms Editor",
@@ -90,6 +96,8 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        text="Convert to battery",
                        icon_path=":/Icons/icons/add_batt.png",
                        function_ptr=self.to_battery)
+
+        menu.exec(event.screenPos())
 
     def edit_rms(self):
         """

@@ -221,15 +221,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         @return:
         """
         menu = self.get_base_context_menu()
-        self.extend_menu(menu)
         menu.exec(event.screenPos())
-
-    def extend_menu(self, menu: QMenu):
-        """
-        Subclasses override this method to add their own context entries.
-        The base method does nothing.
-        """
-        pass
 
     def consolidate_coordinates(self):
         """
