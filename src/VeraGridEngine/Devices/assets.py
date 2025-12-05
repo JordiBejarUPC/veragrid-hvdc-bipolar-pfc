@@ -607,7 +607,7 @@ class Assets:
         for key, tpe in self.device_type_name_dict.items():
             elements = self.get_elements_by_type(device_type=tpe)
             for elm in elements:
-                elm.ensure_profiles_exist(index)
+                elm.ensure_profiles_exist(index, set_profile_default_as_snapshot=True)
 
     def set_time_profile(self, unix_data: IntVec):
         """

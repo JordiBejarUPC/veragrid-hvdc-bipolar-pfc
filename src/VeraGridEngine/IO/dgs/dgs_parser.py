@@ -137,9 +137,6 @@ def read_DGS(filename):
     types_dict2: Dict[str, List[Tuple[str, str]]] = dict()
 
     current_type = None
-    data_types = None
-    header = None
-
     Headers = dict()
     # parse the file lines
     for line in lines:
@@ -149,7 +146,6 @@ def read_DGS(filename):
             chnks = line.split(";")
             current_type = chnks[0]
             data[current_type] = list()
-            # print(current_type)
 
             # analyze types
             data_types = list()
@@ -177,10 +173,6 @@ def read_DGS(filename):
 
     # format keys
     for key in data.keys():
-        # print("Converting " + str(key))
-        # df = pd.DataFrame(data)
-        # table = np.array([tuple(x) for x in data[key]], dtype=types_dict2[key])
-        # table = np.array([list(x) for x in table], dtype=object)
         header = Headers[key]
         df = pd.DataFrame(data=data[key], columns=header)
 
@@ -205,12 +197,15 @@ def read_DGS(filename):
     return data, pos_dict
 
 
-def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
+def data_to_grid_object(data: Dict[str, pd.DataFrame],
+                        pos_dict: Dict[str, Tuple[float, float]],
+                        codification: str = "utf-8") -> MultiCircuit:
     """
     Turns the read data dictionary into a VeraGrid MultiCircuit object
     Args:
         data: Dictionary of data read from a DGS file
         pos_dict: Dictionary of objects and their positions read from a DGS file
+        codification: codification type
     Returns: VeraGrid MultiCircuit object
     """
     ###############################################################################
@@ -581,10 +576,6 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     terminals_dict = dict()  # dictionary to store the terminals ID associated with an object ID
     cub_obj_idx = cubicles['obj_id'].values
     cub_term_idx = cubicles['fold_id'].values
-
-    # for i, elm_id in enumerate(cub_obj_idx):
-    #     elm_idx = cub_term_idx[i]
-    #     terminals_dict[elm_id] = elm_idx
 
     ID_idx = 0
     for cla in classes:
@@ -1124,7 +1115,12 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     return circuit
 
 
-def dgs_to_circuit(filename) -> MultiCircuit:
+def dgs_to_circuit(filename: str) -> MultiCircuit:
+    """
+
+    :param filename:
+    :return:
+    """
     data, pos_dict = read_DGS(filename)
 
     return data_to_grid_object(data, pos_dict)

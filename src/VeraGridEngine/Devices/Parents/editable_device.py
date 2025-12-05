@@ -5,6 +5,7 @@
 import random
 import uuid
 import numpy as np
+import pandas as pd
 
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
@@ -815,11 +816,12 @@ class EditableDevice:
         # set the profile variable associated with the magnitude
         # setattr(self, self.properties_with_profile[magnitude], prof)
 
-    def ensure_profiles_exist(self, index):
+    def ensure_profiles_exist(self, index: pd.DatetimeIndex, set_profile_default_as_snapshot: bool = False):
         """
         It might be that when loading the VeraGrid Model has properties that the file has not.
         Those properties must be initialized as well
         :param index: Time series index (timestamps)
+        :param set_profile_default_as_snapshot: set the bool default profile value as the snapshot
         """
         if index is not None:
             for magnitude, prof_attr in self.properties_with_profile.items():
@@ -840,8 +842,15 @@ class EditableDevice:
                     # print(self.name, ': created profile for ' + prof_attr)
                     self.create_profile(magnitude=magnitude, index=index)
 
+                if set_profile_default_as_snapshot:
+                    prop = self.registered_properties[magnitude]
+                    if prop.tpe == bool:
+                        val = getattr(self, magnitude)
+                        profile.default_value = val
+
         else:
             raise Exception("ensure_profiles_exist: No index provided")
+
 
     def delete_profiles(self):
         """
