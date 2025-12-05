@@ -28,17 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Custom models are now saved in a file and reloaded correctly, even output vars">
-      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/load_save_load_rms.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/rms_2_bus_gen_load_2.veragrid" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="spaces deleted">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_load_save_load.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_load_save_load.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="devel" />
+        <entry key="$PROJECT_DIR$" value="43-devel-EMT" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -172,10 +164,6 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
-    "Python tests.pytest for tests.test_load_save_load.test_load_save_load.executor": "Run",
-    "Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor": "Run",
-    "Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms.executor": "Run",
-    "Python tests.pytest in load_save_load_rms.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
@@ -202,9 +190,10 @@
     "Python.demo_code2.executor": "Run",
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
+    "Python.emt_solver_generator_diffblock.executor": "Run",
+    "Python.generator_equations_diffblock.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
-    "Python.load_save_load_rms.executor": "Debug",
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
@@ -244,13 +233,13 @@
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics/scripting_testing",
+    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "preferences.sourceCode.Python",
+    "settings.editor.selected.configurable": "project.propDebugger",
     "two.files.diff.last.used.file": "C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py",
     "vue.rearranger.settings.migration": "true"
   }
@@ -262,11 +251,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
       <recent name="$PROJECT_DIR$/src/trunk/anarede" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
+      <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -741,10 +730,10 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
         <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
@@ -1877,7 +1866,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="663" />
+    <option name="localTasksCounter" value="675" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1923,17 +1912,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved the pf initialization in pf grids" />
-    <MESSAGE value="Improved OPF" />
-    <MESSAGE value="Fixed missing params" />
-    <MESSAGE value="Fixed template behaviour&#10;5.5.14" />
-    <MESSAGE value="added opf video link" />
-    <MESSAGE value="added contract power to the load objects" />
-    <MESSAGE value="implemented colors to blocks and lines and fixed some bugs found" />
-    <MESSAGE value="parameters from api object in rms model (line)" />
-    <MESSAGE value="templated editor and block editor working" />
-    <MESSAGE value="implemented devices default names when adding them" />
-    <MESSAGE value="Governor updated" />
     <MESSAGE value="exciter model" />
     <MESSAGE value="added functionality to connect output port to several input ports" />
     <MESSAGE value="solver bug with connections when rebuilding scene" />
@@ -1944,11 +1922,22 @@
     <MESSAGE value="Initialization 2" />
     <MESSAGE value="small signal tests passing" />
     <MESSAGE value="implemented DiffBLock solver fro modles with differential vars" />
-    <MESSAGE value="refactores initialization, adapted gui to new templates format, saving models working (not complex numbers)" />
-    <MESSAGE value="refactores initialization, test for scripting and saving" />
-    <MESSAGE value="Custom models are now saved in a file and reloaded correctly" />
-    <MESSAGE value="Custom models are now saved in a file and reloaded correctly, even output vars" />
-    <option name="LAST_COMMIT_MESSAGE" value="Custom models are now saved in a file and reloaded correctly, even output vars" />
+    <MESSAGE value="merged devel and removed templates from __init__.py" />
+    <MESSAGE value="Refactored some block templates" />
+    <MESSAGE value="some more refactor to the block save and parse logic" />
+    <MESSAGE value="Fixed minor error in the small signal test" />
+    <MESSAGE value="fixing convert_busbar_to_voltage_level" />
+    <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
+    <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
+    <MESSAGE value="Added more ContingencyFilteringMethods" />
+    <MESSAGE value="Several fixes when selecting by country, community, etc" />
+    <MESSAGE value="5.6.3" />
+    <MESSAGE value="function compose_bus_blocks created to get a block for each bus with the injection blocks connected to that bus" />
+    <MESSAGE value="initialization divided in 1st create region_blocks and then initialize them." />
+    <MESSAGE value="lines don't initialize twice (before in initialize_emt and in adapt_h)" />
+    <MESSAGE value="v_a, v_b, v_c as parameters in events_dict in generator_emt_type_template.py" />
+    <MESSAGE value="spaces deleted" />
+    <option name="LAST_COMMIT_MESSAGE" value="spaces deleted" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

@@ -186,84 +186,83 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
     return init_guess_dict, vars_list
 
 
-def init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                   array_index, use_init_values: bool):
     """
-    Initialize using explicitequation
+    Initialize using explicit equations
     """
     uid2sym_params: Dict[int, str] = {}
     uid2idx_params: Dict[int, int] = {}
 
     # already known variables:
 
-    for dev_type, dev_list in region.items():
-        for elm in dev_list:
-            bus_rms_mdl = elm.bus.rms_model.model
-            mdl = elm.rms_model.model
+    for mdl in region.children:
+        bus_rms_mdl = bus.rms_model.model
 
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+        # fill general init guess
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
+            (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+             bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[
+            (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+             bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-            mdl_vars = mdl.state_vars + mdl.algebraic_vars
+        mdl_vars = mdl.state_vars + mdl.algebraic_vars
 
-            for var in mdl_vars:
-                key = (var.uid, var.name)
-                if key not in seen_vars:
-                    sys_vars.append(key)
-                    seen_vars.add(key)
+        for var in mdl_vars:
+            key = (var.uid, var.name)
+            if key not in seen_vars:
+                sys_vars.append(key)
+                seen_vars.add(key)
 
-            for v in mdl_vars:
-                if v.uid not in uid2sym_vars:
-                    uid2sym_vars[v.uid] = f"vars[{array_index}]"
-                    uid2idx_vars[v.uid] = array_index
-                    array_index += 1
+        for v in mdl_vars:
+            if v.uid not in uid2sym_vars:
+                uid2sym_vars[v.uid] = f"vars[{array_index}]"
+                uid2idx_vars[v.uid] = array_index
+                array_index += 1
 
-            params_array_index = 0
+        params_array_index = 0
 
-            for param in mdl.event_dict.keys():
-                if param.uid not in uid2sym_params:
-                    uid2sym_params[param.uid] = f"params[{params_array_index}]"
-                    uid2idx_params[param.uid] = params_array_index
-                    params_array_index += 1
+        for param in mdl.event_dict.keys():
+            if param.uid not in uid2sym_params:
+                uid2sym_params[param.uid] = f"params[{params_array_index}]"
+                uid2idx_params[param.uid] = params_array_index
+                params_array_index += 1
 
-            # initialize array for model variables
-            x = np.zeros(len(sys_vars))
+        # initialize array for model variables
+        x = np.zeros(len(sys_vars))
 
-            # assign initial guesses for known variables
-            for uid, name in sys_vars:
-                key = (uid, name)
-                if key in init_guess:
-                    x[uid2idx_vars[uid]] = init_guess[key]
+        # assign initial guesses for known variables
+        for uid, name in sys_vars:
+            key = (uid, name)
+            if key in init_guess:
+                x[uid2idx_vars[uid]] = init_guess[key]
 
-            # initialize array for model params
-            params_array = np.zeros(len(mdl.event_dict.keys()))
+        # initialize array for model params
+        params_array = np.zeros(len(mdl.event_dict.keys()))
 
-            # compute and assign parameters value
-            for param in mdl.event_dict.keys():
-                eq = mdl.event_dict[param]
-                eq_fn = _compile_parameters_equations([eq], uid2sym_t)
-                param_val = float(eq_fn(0.0))
-                params_array[uid2idx_params[param.uid]] = param_val
+        # compute and assign parameters value
+        for param in mdl.event_dict.keys():
+            eq = mdl.event_dict[param]
+            eq_fn = _compile_parameters_equations([eq], uid2sym_t)
+            param_val = float(eq_fn(0.0))
+            params_array[uid2idx_params[param.uid]] = param_val
 
-            # compute and assign missing init_vars
-            for var in mdl.init_eqs.keys():
-                key = (var.uid, var.name)
-                if key in init_guess:
-                    x[uid2idx_vars[var.uid]] = init_guess[key]
-                else:
-                    eq = mdl.init_eqs[var]
-                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                    init_val = float(eq_fn(x, params_array))
-                    init_guess[key] = init_val
-                    x[uid2idx_vars[var.uid]] = init_val
+        # compute and assign missing init_vars
+        for var in mdl.init_eqs.keys():
+            key = (var.uid, var.name)
+            if key in init_guess:
+                x[uid2idx_vars[var.uid]] = init_guess[key]
+            else:
+                eq = mdl.init_eqs[var]
+                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                init_val = float(eq_fn(x, params_array))
+                init_guess[key] = init_val
+                x[uid2idx_vars[var.uid]] = init_val
 
-            sys_block.add(mdl)
+        sys_block.add(mdl)
 
 
 def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
@@ -280,12 +279,10 @@ def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
     # init_guess_region.update({Va: float(np.angle(res.voltage[bus_index]))})
     # init_guess_region.update({Vm: 1})
     # init_guess_region.update({Va: 1})
-    for dev_type, dev_list in region.items():
-        for dev in dev_list:
-            region_dev_list.append(dev)
-    for dev in region_dev_list:
-        region_system.children.append(dev.rms_model.model)
-        init_guess_region, vars_list = parse_vars(dev.rms_model.model, init_guess_region, vars_list)
+
+    region_system.children.extend(region.children)
+    for mdl in region_system:
+        init_guess_region, vars_list = parse_vars(mdl, init_guess_region, vars_list)
 
     # uid2idx_region_vars[Vm.uid] = 0
     # uid2idx_region_vars[Va.uid] = 1
@@ -481,7 +478,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     sys_block.vars_glob_name2uid = vars_glob_name2uid
 
     # initialize containers
-    init_guess: Dict[Tuple[int, str], float] = {}
+    init_guess: Dict[Tuple[int, str], float] = {} # this is the general init guess that will contain all the variables init value
     sys_vars: list[Tuple[int, str]] = []
     seen_vars: set[Tuple[int, str]] = set()
 
@@ -495,7 +492,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     uid2sym_t[time.uid] = f"glob_time"
     uid2idx_t[time.uid] = array_index_t
 
-    array_index = 0
+    vars_array_index = 0
 
     # buses
     for i, elm in enumerate(grid.buses):
@@ -513,9 +510,9 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         # fill uid2sym and uid2idx dicts
         for v in mdl_vars:
-            uid2sym_vars[v.uid] = f"vars[{array_index}]"
-            uid2idx_vars[v.uid] = array_index
-            array_index += 1
+            uid2sym_vars[v.uid] = f"vars[{vars_array_index}]"
+            uid2idx_vars[v.uid] = vars_array_index
+            vars_array_index += 1
 
         # fill init_guess
         # TODO: initialization from power injections of PFlows results needs
@@ -546,10 +543,10 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         # fill uid2sym and uid2idx dicts
         for v in mdl_vars:
-            uid2sym_vars[v.uid] = f"vars[{array_index}]"
-            uid2idx_vars[v.uid] = array_index
+            uid2sym_vars[v.uid] = f"vars[{vars_array_index}]"
+            uid2idx_vars[v.uid] = vars_array_index
 
-            array_index += 1
+            vars_array_index += 1
 
         # fill init_guess
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
@@ -565,12 +562,16 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # injections
     # get injection devices grouped by buses
-    bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
-
-    for bus, region in bus_regions_dict.items():
+    # bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
+    #
+    # for bus, region in bus_regions_dict.items():
+    bus_blocks_dict = grid.compose_bus_blocks()
+    for bus, region in bus_blocks_dict.items():
         try:
-            init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-                          array_index, use_init_values)
+            # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+            #               array_index, use_init_values)
+            init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+                         vars_array_index, use_init_values)
 
 
         except ValueError:
