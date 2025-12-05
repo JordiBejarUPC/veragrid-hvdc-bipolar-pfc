@@ -22,6 +22,8 @@ Usage:
     grid2.rebuild()               # Create devices back in PF
 """
 
+pfdir = r'C:\Program Files\DIgSILENT\PowerFactory 2025 SP1\Python\3.11'
+
 import json
 import powerfactory as pf
 

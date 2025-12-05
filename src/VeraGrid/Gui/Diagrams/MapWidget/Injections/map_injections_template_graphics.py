@@ -203,7 +203,7 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         add_menu_entry(menu=menu,
                        text="Consolidate coordinates",
                        function_ptr=self.consolidate_coordinates,
-                       icon_path=":/Icons/icons/delete_schematic.png")
+                       icon_path=":/Icons/icons/assign_to_profile.png")
 
         menu.addSeparator()
 
@@ -221,8 +221,15 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         @return:
         """
         menu = self.get_base_context_menu()
-
+        self.extend_menu(menu)
         menu.exec(event.screenPos())
+
+    def extend_menu(self, menu: QMenu):
+        """
+        Subclasses override this method to add their own context entries.
+        The base method does nothing.
+        """
+        pass
 
     def consolidate_coordinates(self):
         """
