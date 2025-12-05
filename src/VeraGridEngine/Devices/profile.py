@@ -180,14 +180,14 @@ class Profile:
             return 0
 
     @default_value.setter
-    def default_value(self, val):
+    def default_value(self, val: Union[bool, int, float, DeviceType]):
         """
 
         :param val:
         :return:
         """
         if self.sparse_array is not None:
-            self.sparse_array.default_value = self.default_value
+            self.sparse_array.default_value = val
 
     @property
     def is_sparse(self) -> bool:
