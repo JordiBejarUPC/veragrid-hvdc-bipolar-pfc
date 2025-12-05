@@ -226,6 +226,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         event_dict=event_dict,
         name="genqec"
     )
+    templ.block.uid = 111
 
     return templ
 
@@ -381,7 +382,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         name="governor"
     )
-
+    templ.block.uid = 222
     return templ
 
 
@@ -476,6 +477,8 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
 
     templ.block.add(vars_block)
     templ.block.add(block_1)
+
+    templ.block.uid = 333
 
     return templ
 
@@ -668,7 +671,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         event_dict=events_dict
     )
-
+    templ.block.uid = 444
     return templ
 
 
@@ -1280,5 +1283,7 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     templ.block.children.append(stabilizer_block)
     templ.block.children.append(exciter_model)
     templ.block.children.append(generator_model)
+
+    templ.block.uid = 555
 
     return templ

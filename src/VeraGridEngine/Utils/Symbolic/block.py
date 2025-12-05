@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from enum import Enum, auto
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
@@ -282,6 +283,27 @@ def tf_to_block_with_states(num: np.ndarray, den: np.ndarray, x):
     )
     return block, y_states[0]
 
+def compare_blocks_dict(dict1, dict2):
+    logger = Logger()
+
+
+    for (prp_name1, prp1), (prp_name2, prp2) in zip(dict1.items(), dict2.items()):
+        if prp_name1 == prp_name2 and prp_name1 == "children":
+            for child_dict1, child_dict2 in zip(prp1, prp2):
+                if len(child_dict1) == len(child_dict2):
+                    compare_blocks_dict(child_dict1, child_dict2)
+                else:
+                    logger.add_error(msg="children number differs",
+                                     value=len(child_dict1),
+                                     expected_value=len(child_dict2))
+        else:
+            if prp1 != prp2:
+                logger.add_error(msg=f'different {prp_name1}',
+                                 value=prp1,
+                                 expected_value=prp2)
+
+    return logger.error_count() == 0, logger
+
 
 class Block:
     """
@@ -293,6 +315,7 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
+                 diff_vars: List[DiffVar] | None = None,
                  parameters: Dict[str, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
@@ -328,6 +351,8 @@ class Block:
 
         self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
+
+        self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
 
         # initialization
         self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
@@ -507,6 +532,7 @@ class Block:
             "state_eqs": _serialize_expr_list(self.state_eqs),
             "algebraic_vars": _serialize_var_list(self.algebraic_vars),
             "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
+            "diff_vars":  _serialize_var_list(self.diff_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
                 for var, expr in self.init_eqs.items()
@@ -541,6 +567,7 @@ class Block:
         state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
+        diff_vars = _deserialize_expr_list(data.get("diff_vars", []))
         in_vars = _deserialize_var_list(data.get("in_vars", []))
         out_vars = _deserialize_var_list(data.get("out_vars", []))
         children = [Block.parse(child) for child in data.get("children", [])]
@@ -552,6 +579,7 @@ class Block:
             state_eqs=state_eqs,
             algebraic_vars=algebraic_vars,
             algebraic_eqs=algebraic_eqs,
+            diff_vars = diff_vars,
             in_vars=in_vars,
             out_vars=out_vars,
             init_eqs={},
@@ -559,7 +587,7 @@ class Block:
             name=data.get("name", "")
         )
 
-        block.uid = int(data.get("uid", block.uid))
+        block.uid = int(data.get("uid"))
         block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
         block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
 
@@ -581,7 +609,7 @@ class Block:
             name = pair["name"]
             value = pair["value"]
             const_value = Const(value)
-            block.init_values[name] = const_value
+            block.parameters[name] = const_value
 
         for key_str, var_dict in data.get("external_mapping", {}).items():
             key = VarPowerFlowRefferenceType(key_str)
@@ -615,6 +643,9 @@ class Block:
             return self.to_dict() == other.to_dict()
         else:
             return False
+
+
+
 
 
 class DiffBlock(Block):

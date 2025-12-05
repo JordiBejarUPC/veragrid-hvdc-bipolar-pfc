@@ -58,4 +58,6 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
         VarPowerFlowRefferenceType.Qt: Qt,
     }
 
+    templ.block.uit = 666
+
     return templ

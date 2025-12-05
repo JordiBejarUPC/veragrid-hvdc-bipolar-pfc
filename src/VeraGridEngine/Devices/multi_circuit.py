@@ -25,6 +25,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, 
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
 from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
+from VeraGridEngine.Utils.Symbolic.block import Block
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
@@ -1446,6 +1447,8 @@ class MultiCircuit(Assets):
 
         return groups
 
+
+
     def get_injection_devices_grouped_by_bus(self) -> Dict[dev.Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]:
         """
         Get the injection devices grouped by bus and by device type
@@ -1585,6 +1588,25 @@ class MultiCircuit(Assets):
             result.append(devices_by_type)
 
         return result
+
+    def compose_bus_blocks(self) -> Dict[dev.bus, Block]:
+        syst_blocks: Dict[dev.bus, Block] = dict()
+
+        bus_regions_dict = self.get_injection_devices_grouped_by_bus()
+
+        for bus, region in bus_regions_dict.items():
+            bus_block = Block(children=[], in_vars=[])
+            # add bus block
+            bus_mdl = bus.rms_model.model
+            bus_block.add(bus_mdl)
+            # add injection in the bus blocks
+            for dev_type, dev_list in region.items():
+                for elm in dev_list:
+                    elm_mdl = elm.rms_model.model
+                    bus_block.add(elm_mdl)
+            syst_blocks[bus] = bus_block
+
+        return syst_blocks
 
     def get_batteries_by_bus(self) -> Dict[dev.Bus, List[dev.Battery]]:
         """

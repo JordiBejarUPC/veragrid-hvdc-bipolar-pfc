@@ -28,12 +28,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Custom models are now saved in a file and reloaded correctly">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Custom models are now saved in a file and reloaded correctly, even output vars">
+      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/load_save_load_rms.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/rms_2_bus_gen_load_2.veragrid" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_load_save_load.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_load_save_load.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -167,6 +172,10 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest for tests.test_load_save_load.test_load_save_load.executor": "Run",
+    "Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor": "Run",
+    "Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms.executor": "Run",
+    "Python tests.pytest in load_save_load_rms.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
@@ -195,6 +204,7 @@
     "Python.demo_code4.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
+    "Python.load_save_load_rms.executor": "Debug",
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
@@ -499,29 +509,6 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -537,52 +524,6 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -718,6 +659,60 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for tests.test_load_save_load.test_load_save_load" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;tests.test_load_save_load.test_load_save_load&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for tests.test_load_save_load.test_load_save_load_rms" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;tests.test_load_save_load.test_load_save_load_rms&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="ENV_FILES" value="" />
@@ -738,19 +733,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python.pyside6-designer" />
-      <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.upload_to_pypi" />
+      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
+      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
+      <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.upload_to_pypi" />
-        <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.pyside6-designer" />
-        <item itemvalue="Python.ExecuteVeraGrid" />
       </list>
     </recent_temporary>
   </component>
@@ -1882,7 +1877,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="662" />
+    <option name="localTasksCounter" value="663" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1928,7 +1923,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
     <MESSAGE value="Improved the pf initialization in pf grids" />
     <MESSAGE value="Improved OPF" />
     <MESSAGE value="Fixed missing params" />
@@ -1953,7 +1947,8 @@
     <MESSAGE value="refactores initialization, adapted gui to new templates format, saving models working (not complex numbers)" />
     <MESSAGE value="refactores initialization, test for scripting and saving" />
     <MESSAGE value="Custom models are now saved in a file and reloaded correctly" />
-    <option name="LAST_COMMIT_MESSAGE" value="Custom models are now saved in a file and reloaded correctly" />
+    <MESSAGE value="Custom models are now saved in a file and reloaded correctly, even output vars" />
+    <option name="LAST_COMMIT_MESSAGE" value="Custom models are now saved in a file and reloaded correctly, even output vars" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2313,11 +2308,6 @@
           <option name="timeStamp" value="3107" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py</url>
-          <line>524</line>
-          <option name="timeStamp" value="3108" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/json_parser.py</url>
           <line>1355</line>
           <option name="timeStamp" value="3109" />
@@ -2333,11 +2323,6 @@
           <option name="timeStamp" value="3116" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py</url>
-          <line>589</line>
-          <option name="timeStamp" value="3122" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
           <line>2205</line>
           <option name="timeStamp" value="3123" />
@@ -2351,6 +2336,11 @@
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
           <line>2273</line>
           <option name="timeStamp" value="3126" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py</url>
+          <line>21</line>
+          <option name="timeStamp" value="3133" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

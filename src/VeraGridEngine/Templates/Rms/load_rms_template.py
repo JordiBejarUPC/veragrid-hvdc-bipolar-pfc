@@ -47,4 +47,6 @@ def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
         VarPowerFlowRefferenceType.Q: Ql
     }
 
+    templ.block.uid = 777
+
     return templ

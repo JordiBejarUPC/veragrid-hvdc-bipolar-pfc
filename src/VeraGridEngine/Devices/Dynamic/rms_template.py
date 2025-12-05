@@ -19,8 +19,8 @@ class RmsModelTemplate(PointerDeviceParent):
 
     __slots__ = (
         '_block',
-        '_device_type',
-        '_init_values')
+        '_device_type'
+    )
 
     def __init__(self, idtag="", name: str = ""):
         super().__init__(name=name,
@@ -32,7 +32,7 @@ class RmsModelTemplate(PointerDeviceParent):
 
         self._tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
-        self._init_values: Dict[Var, Const] = dict()
+
 
         self.register('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
                       definition='DAE block', editable=False, display=False)
@@ -47,10 +47,6 @@ class RmsModelTemplate(PointerDeviceParent):
 
         # deepcopy block safely
         result._block = self._block
-
-        # init_values is a dict Var → Const
-        result._init_values = {k: v
-                               for k, v in self._init_values.items()}
 
         return result
 
