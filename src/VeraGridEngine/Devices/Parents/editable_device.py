@@ -844,13 +844,11 @@ class EditableDevice:
 
                 if set_profile_default_as_snapshot:
                     prop = self.registered_properties[magnitude]
-                    if prop.tpe == bool:
-                        val = getattr(self, magnitude)
-                        profile.default_value = val
+                    val = getattr(self, magnitude)
+                    profile.default_value = val
 
         else:
             raise Exception("ensure_profiles_exist: No index provided")
-
 
     def delete_profiles(self):
         """
