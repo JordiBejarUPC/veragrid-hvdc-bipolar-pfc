@@ -191,7 +191,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                         IRPu],
         init_eqs={
-            omega: Const(0),
+            omega: Const(1),
             V_dag: inputs[0] * sin(inputs[1]) + imag(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
