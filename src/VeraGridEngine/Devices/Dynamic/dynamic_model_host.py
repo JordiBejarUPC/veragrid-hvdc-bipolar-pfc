@@ -297,14 +297,18 @@ class DynamicModelHost(EditableDevice):
     This class serves to give flexible access to either a template or a custom model
     """
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self, name: str = "",
+                 idtag: str | None = None,
+                 code: str = "") -> None:
         """
 
         :param name:
+        :param idtag:
+        :param code:
         """
         super().__init__(name=name,
-                         idtag=None,
-                         code="",
+                         idtag=idtag,
+                         code=code,
                          device_type=DeviceType.DynamicModelHostDevice)
 
         self._template: Block | None = None
@@ -466,9 +470,11 @@ class DynamicModelHost(EditableDevice):
         Deep copy of DynamicModelHost
         :return: DynamicModelHost
         """
-        obj = DynamicModelHost(name=self.name)
-        obj.idtag = uuid.uuid4().hex if forced_new_idtag else self.idtag
-        obj.code = self.code
+        obj = DynamicModelHost(
+            name=self.name,
+            idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
+            code=self.code
+        )
         obj._custom_model = self._custom_model.copy()
         obj._template = self._template
         return obj
