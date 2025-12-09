@@ -5054,7 +5054,9 @@ List[FluidPath]]:
             for i, br in enumerate(all_branches):
 
                 if isinstance(br, Winding):
-                    max_level_offset = 1  # we need to add 1 extra connectivity level to represent thr whole tr3w
+                    # if we find a winding, we need to add 1 extra search level
+                    # to be able to represent the whole 3-winding transformer
+                    max_level_offset = 1
 
                 if br.bus_from == bus:
                     if br.bus_to not in visited:
