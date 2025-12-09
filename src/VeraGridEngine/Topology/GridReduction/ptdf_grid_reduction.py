@@ -102,7 +102,7 @@ def get_Pload_ts(grid: MultiCircuit) -> Mat:
 def relocate_injections(grid: MultiCircuit,
                         reduction_bus_indices: Sequence[int]):
     """
-    Relocate generators
+    Relocate injection devices (generators, loads, etc.) from external buses to internal buses
     :param grid: MultiCircuit
     :param reduction_bus_indices: array of bus indices to reduce (external set)
     :return: None
@@ -114,11 +114,11 @@ def relocate_injections(grid: MultiCircuit,
     external_gen_data = list()
     internal_set = set()
 
-    # loop through the generators in the external set
+    # loop through all injection devices in the external set
+    # Note: we don't remove from external_set here because multiple devices can be at the same bus
     for k, elm in enumerate(grid.get_injection_devices_iter()):
         i = bus_idx_dict[elm.bus]
         if i in external_set:
-            external_set.remove(i)
             external_gen_set.add(i)
             external_gen_data.append((k, i, elm, 'injection'))
             G.add_node(i)
