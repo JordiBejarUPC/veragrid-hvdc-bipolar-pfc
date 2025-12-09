@@ -494,6 +494,16 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         logger.add_info(msg="Nothing to keep (null grid as a result)")
         return grid, logger
 
+    # Check if slack bus is being removed
+    original_slack_indices = [i for i, bus in enumerate(grid.buses) if bus.is_slack]
+    external_set = set(e_buses)
+    slack_is_removed = any(idx in external_set for idx in original_slack_indices)
+    
+    # If the slack is being removed, we need to relocate injections from the slack
+    # to boundary buses, so the power is not lost when we delete the slack bus
+    if slack_is_removed:
+        relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
     lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
@@ -539,6 +549,27 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # Eliminate the external buses (but not relocating injections)
     # We rely on solving for the necessary compensation on the boundary buses
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
+    
+    # If the slack was removed, assign a new slack bus
+    if slack_is_removed:
+        # Find the best candidate for the new slack among boundary buses
+        # Prefer a boundary bus that has a generator
+        new_slack_assigned = False
+        bus_idx_dict_new = grid.get_bus_index_dict()
+        
+        # First try to find a boundary bus with a generator
+        for gen in grid.generators:
+            if gen.bus is not None:
+                gen_bus_idx = bus_idx_dict_new.get(gen.bus, -1)
+                if gen_bus_idx != -1:
+                    # This bus has a generator, make it slack
+                    gen.bus.is_slack = True
+                    new_slack_assigned = True
+                    break
+        
+        # If no generator found, just pick the first remaining bus
+        if not new_slack_assigned and grid.get_bus_number() > 0:
+            grid.buses[0].is_slack = True
 
     # Injections that remain (internal only, since external are gone)
     Pload2 = get_Pload(grid)
