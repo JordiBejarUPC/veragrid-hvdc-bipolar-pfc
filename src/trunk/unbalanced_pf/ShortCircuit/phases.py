@@ -53,8 +53,8 @@ ysh_line = np.array([
 ], dtype=complex) / 10 ** 6 / 1.60934
 
 config_line = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                     z_abc=zs_line,
-                                                     ysh_abc=ysh_line,
+                                                     z_nabc=zs_line,
+                                                     ysh_nabc=ysh_line,
                                                      phases=np.array([1, 2, 3]),
                                                      Vnom=4.16,
                                                      frequency=60)

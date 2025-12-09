@@ -1040,7 +1040,7 @@ class LinearAnalysisTs:
         self.time_indices = grid.get_all_time_indices() if time_indices is None else time_indices
 
         # get the states matrix
-        mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, None]
+        mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, :]
 
         # analyze how many PTDF's we need to get
         self.groups, self.mapping = find_different_states(mat)
