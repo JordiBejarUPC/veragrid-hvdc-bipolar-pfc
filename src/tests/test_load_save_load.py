@@ -108,6 +108,7 @@ def test_load_save_load2() -> None:
 
     os.remove(o_file)
 
+
 def test_load_save_load_xlsx() -> None:
     """
     This test checks if the saving and load process is correct
@@ -129,7 +130,6 @@ def test_load_save_load_xlsx() -> None:
                  'IEEE57.gridcal',
                  'fubm_caseHVDC_vt.gridcal',
                  'Test_SRAP.gridcal']:
-
         fname = os.path.join(folder, name)
 
         grid1 = gce.open_file(fname)
@@ -143,9 +143,9 @@ def test_load_save_load_xlsx() -> None:
         # open the main grid again
         grid2 = gce.open_file(fname2)
 
-def test_load_save_load_rms() -> None:
 
-    # Todo: this test fails because the grid property rms_templates contains all the existing rms templates. These templates are added with the action "add default catalogue". It seems that the .block inside these templates changes its uid. This must be investigated.
+def test_load_save_load_rms() -> None:
+    # Todo: this test fails because the grid property rms_templates contains all the existing rms templates. These templates are added whith the action "add default catalogue". It seems that the .block inside these templates changes its uid. This must be investigated.
     """
         This test checks if the saving and load process is correct when the grid contains rms models
 
@@ -200,11 +200,10 @@ def test_load_save_load_rms() -> None:
 
     for block1, block2 in zip(blocks_grid1, blocks_grid2):
         # compare the blocks
-        equal, logger  = compare_blocks_dict(block1.to_dict(), block2.to_dict())
+        equal, logger = compare_blocks_dict(block1.to_dict(), block2.to_dict())
 
         if not equal:
             logger.print()
-
 
     # asset for failing
     assert equal
