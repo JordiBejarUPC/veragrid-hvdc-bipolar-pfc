@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from typing import List, Dict, Any, Sequence
 from dataclasses import dataclass
-
-
+import uuid
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block, BlockType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -101,7 +100,6 @@ class BlockDiagramConnection:
                 'color': self.color}
 
     def copy(self):
-
         return BlockDiagramConnection(
             from_uid=self.from_uid,
             to_uid=self.to_uid,
@@ -115,14 +113,14 @@ class BlockDiagram:
     """
     Diagram
     """
+
     # Todo: add parse and to_dict functions
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
 
         """
         self.status: str | None = None
-        # self.block_counters: Dict[BlockType, int] = dict()
         self.node_data: Dict[int, BlockDiagramNode] = dict()
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
@@ -152,14 +150,19 @@ class BlockDiagram:
 
         return diag
 
-    def add_node(self, name: str, x: float, y: float,
-                 tpe: str, device_uid: int, api_object_name: str = "",
+    def add_node(self,
+                 name: str,
+                 x: float,
+                 y: float,
+                 tpe: str,
+                 device_uid: int,
+                 api_object_name: str = "",
                  state_ins: int = 0,
-                 state_outs: Sequence[str] = [],
+                 state_outs: Sequence[str] | None = None,
                  algeb_ins: int = 0,
-                 algeb_outs: Sequence[str] = [],
+                 algeb_outs: Sequence[str] | None = None,
                  color=None,
-                 subdiagram: BlockDiagram = None):
+                 subdiagram: BlockDiagram | None = None):
         """
         :param api_object_name:
         :param state_ins:
@@ -176,8 +179,6 @@ class BlockDiagram:
         :return:
         """
 
-        if color is None:
-            color = "#C0C0C0"  # light blue
         self.node_data[device_uid] = BlockDiagramNode(
             name=name,
             x=x,
@@ -186,15 +187,20 @@ class BlockDiagram:
             device_uid=device_uid,
             api_object_name=api_object_name,
             state_ins=state_ins,
-            state_outs=state_outs,
+            state_outs=list() if state_outs is None else state_outs,
             algeb_ins=algeb_ins,
-            algeb_outs=algeb_outs,
-            color=color,
+            algeb_outs=list() if algeb_outs is None else algeb_outs,
+            color="#C0C0C0" if color is None else color,  # light blue as default
             sub_diagram=subdiagram
         )
 
-    def add_branch(self, connectionitem_uid: int, device_uid_from: int, device_uid_to: int,
-                   port_number_from: int, port_number_to: int, color: str):
+    def add_branch(self,
+                   connectionitem_uid: int,
+                   device_uid_from: int,
+                   device_uid_to: int,
+                   port_number_from: int,
+                   port_number_to: int,
+                   color: str):
         """
         :param connectionitem_uid:
         :param device_uid_from:
@@ -213,14 +219,6 @@ class BlockDiagram:
             color=color
         )
 
-    # def get_block_counters_dict(self) -> Dict[BlockType, int]:
-    #     """
-    #
-    #     :return:
-    #     """
-    #     block_counters_info = self.block_counters
-    #     return block_counters_info
-
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
         """
 
@@ -238,20 +236,19 @@ class BlockDiagram:
                       self.con_data.items()}
         return graph_info
 
-    # def parse_block_counters(self, block_counters_data):
-    #
-    #    self.block_counters = block_counters_data
-
     @staticmethod
-    def parse(data: Dict[str, Any]):
+    def parse(data: Dict[str, Any]) -> "BlockDiagram":
+        """
+
+        :param data:
+        :return:
+        """
         diagram = BlockDiagram()
         diagram.parse_nodes(data["nodes_data"])
         diagram.parse_branches(data["cons_data"])
         # diagram.block_counters = data["block_counters"]
         diagram.status = data["status"]
         return diagram
-
-
 
     def parse_nodes(self, nodes_data) -> None:
         """
@@ -300,7 +297,7 @@ class DynamicModelHost(EditableDevice):
     This class serves to give flexible access to either a template or a custom model
     """
 
-    def __init__(self, name=""):
+    def __init__(self, name: str = "") -> None:
         """
 
         :param name:
@@ -425,18 +422,30 @@ class DynamicModelHost(EditableDevice):
             self.template = models_dict.get(template_id, None)
 
         custom_data = data.get("custom_model", None)
-        self._custom_model = Block.parse(data=custom_data)
+
+        if custom_data is not None:
+            self._custom_model = Block.parse(data=custom_data)
 
         diagram_data = data.get("diagram", None)
-        self.diagram = BlockDiagram.parse(data=diagram_data)
+        if diagram_data is not None:
+            self.diagram = BlockDiagram.parse(data=diagram_data)
 
-    def empty(self):
+    def empty(self) -> bool:
+        """
+
+        :return:
+        """
         if self._template is None:
             return self._custom_model.empty()
         else:
             return self._template.empty()
 
-    def __eq__(self, other):
+    def __eq__(self, other: "DynamicModelHost") -> bool:
+        """
+
+        :param other:
+        :return:
+        """
         if isinstance(other, DynamicModelHost):
 
             if self.template is None:
@@ -452,12 +461,14 @@ class DynamicModelHost(EditableDevice):
         else:
             return False
 
-    def copy(self) -> "DynamicModelHost":
+    def copy(self, forced_new_idtag: bool = False) -> "DynamicModelHost":
         """
         Deep copy of DynamicModelHost
         :return: DynamicModelHost
         """
-        obj = DynamicModelHost()
+        obj = DynamicModelHost(name=self.name)
+        obj.idtag = uuid.uuid4().hex if forced_new_idtag else self.idtag
+        obj.code = self.code
         obj._custom_model = self._custom_model.copy()
         obj._template = self._template
         return obj
