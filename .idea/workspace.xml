@@ -28,11 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed important bug">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_opf.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="minimal changes">
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -735,9 +733,9 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python.add_time_series" />
       <item itemvalue="Python.test_linear_time_series" />
+      <item itemvalue="Python.add_time_series" />
+      <item itemvalue="Python.ExecuteVeraGrid" />
       <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python tests.pytest for test_opf.test_opf_hvdc_controls" />
       <item itemvalue="Python tests.pytest in tests" />
@@ -1880,7 +1878,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="674" />
+    <option name="localTasksCounter" value="675" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1926,7 +1924,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Governor updated" />
     <MESSAGE value="exciter model" />
     <MESSAGE value="added functionality to connect output port to several input ports" />
     <MESSAGE value="solver bug with connections when rebuilding scene" />
@@ -1951,7 +1948,8 @@
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
     <MESSAGE value="Fixed important bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed important bug" />
+    <MESSAGE value="minimal changes" />
+    <option name="LAST_COMMIT_MESSAGE" value="minimal changes" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2489,6 +2487,11 @@
           <url>file://$PROJECT_DIR$/src/tests/test_opf.py</url>
           <line>308</line>
           <option name="timeStamp" value="3099" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
+          <line>5073</line>
+          <option name="timeStamp" value="3102" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

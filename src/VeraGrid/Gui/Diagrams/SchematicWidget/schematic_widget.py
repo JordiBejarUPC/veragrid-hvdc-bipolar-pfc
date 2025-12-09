@@ -5036,6 +5036,7 @@ List[FluidPath]]:
     fluid_nodes = set()
     selected_branches = set()
     visited = set()
+    max_level_offset = 0
 
     while len(bus_pool) > 0:
 
@@ -5048,12 +5049,12 @@ List[FluidPath]]:
         if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type.Connectivity:
             buses.add(bus)
 
-        if level < max_level:
+        if level < (max_level + max_level_offset):
 
             for i, br in enumerate(all_branches):
 
                 if isinstance(br, Winding):
-                    max_level += 1  # we need to add 1 extra connectivity level to represent thr whole tr3w
+                    max_level_offset = 1  # we need to add 1 extra connectivity level to represent thr whole tr3w
 
                 if br.bus_from == bus:
                     if br.bus_to not in visited:
@@ -5095,9 +5096,6 @@ List[FluidPath]]:
 
         elif obj.device_type == DeviceType.Transformer2WDevice:
             transformers2w.append(obj)
-
-        # elif obj.device_type == DeviceType.Transformer3WDevice:
-        #     transformers3w.append(obj)  # TODO: think about this, because indeed a TR3 is never found this way
 
         elif obj.device_type == DeviceType.WindingDevice:
             windings.append(obj)
