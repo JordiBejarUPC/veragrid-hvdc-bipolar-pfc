@@ -171,6 +171,7 @@ def read_DGS(filename):
                 chnks = ["0" if x == "" else x for x in chnks]
                 data[current_type].append(np.array(tuple(chnks)))
 
+    '''
     # format keys
     for key in data.keys():
         header = Headers[key]
@@ -184,6 +185,42 @@ def read_DGS(filename):
                 df[col_name] = df[col_name].str.replace(',', '.').astype(int)
             else:
                 pass
+        data[key] = df
+    '''
+    for key in data.keys():
+        header = Headers[key]
+        rows = data[key]
+
+        fixed_rows = []
+        n_cols = len(header)
+
+        for row in rows:
+
+            # --- skip empty rows safely ---
+            if row is None or len(row) == 0:
+                continue
+
+            # convert np.array rows to list (safe)
+            if not isinstance(row, list):
+                row = list(row)
+
+            if len(row) > n_cols:
+                row = row[:n_cols]
+
+            elif len(row) < n_cols:
+                row = row + [None] * (n_cols - len(row))
+
+            fixed_rows.append(row)
+
+        df = pd.DataFrame(fixed_rows, columns=header)
+
+        # parse numbers with commas
+        for col_name, tpe in types_dict2[key]:
+            if tpe == float:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(float)
+            elif tpe == int:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(int)
+
         data[key] = df
 
     # positions dictionary
