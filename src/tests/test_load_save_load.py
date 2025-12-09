@@ -162,7 +162,7 @@ def test_load_save_load_rms() -> None:
     if not os.path.exists("output"):
         os.makedirs("output")
 
-    for name in ['rms_2_bus_gen_load.veragrid']:
+    for name in ['rms_1_bus_gen.veragrid']:
         fname = os.path.join(folder, name)
 
         # open the main grid
@@ -178,11 +178,11 @@ def test_load_save_load_rms() -> None:
         grid2 = gce.open_file(fname2)
 
     # compare the original grid with the saved one to check that they are equal
-    # equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
-    # if not equal:
-    #     logger.print()
+    equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
+    if not equal:
+        logger.print()
     # asset for failing
-    # assert equal
+    assert equal
 
     # compare the rms models inside the elements of the grid
     grid1_rms_system_dict = grid1.compose_bus_blocks()
