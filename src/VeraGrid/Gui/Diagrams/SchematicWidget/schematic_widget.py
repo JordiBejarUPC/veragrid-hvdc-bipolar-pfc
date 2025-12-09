@@ -5024,9 +5024,18 @@ List[FluidPath]]:
     # create a pool of buses
     bus_pool = [(b, 0) for b in buses]  # store the bus objects and their level from the root
 
+    # create a map of the tr3 that own the windings
+    windings2tr3 = dict()
+    for tr3 in circuit.transformers3w:
+        windings2tr3[tr3.winding1] = tr3
+        windings2tr3[tr3.winding2] = tr3
+        windings2tr3[tr3.winding3] = tr3
+        tr3.bus0.graphic_type = BusGraphicType.Internal  # make sure these don't show up
+
     buses = set()
     fluid_nodes = set()
     selected_branches = set()
+    visited = set()
 
     while len(bus_pool) > 0:
 
@@ -5036,19 +5045,27 @@ List[FluidPath]]:
         bus_idx.append(bus_dict[bus])
 
         # add searched bus
-        buses.add(bus)
+        if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type.Connectivity:
+            buses.add(bus)
 
         if level < max_level:
 
             for i, br in enumerate(all_branches):
 
+                if isinstance(br, Winding):
+                    max_level += 1  # we need to add 1 extra connectivity level to represent thr whole tr3w
+
                 if br.bus_from == bus:
-                    bus_pool.append((br.bus_to, level + 1))
-                    selected_branches.add(br)
+                    if br.bus_to not in visited:
+                        bus_pool.append((br.bus_to, level + 1))
+                        selected_branches.add(br)
+                        visited.add(br.bus_to)
 
                 elif br.bus_to == bus:
-                    bus_pool.append((br.bus_from, level + 1))
-                    selected_branches.add(br)
+                    if br.bus_from not in visited:
+                        bus_pool.append((br.bus_from, level + 1))
+                        selected_branches.add(br)
+                        visited.add(br.bus_from)
 
                 else:
                     pass
@@ -5057,7 +5074,7 @@ List[FluidPath]]:
     lines: List[Line] = list()
     dc_lines: List[DcLine] = list()
     transformers2w: List[Transformer2W] = list()
-    transformers3w: List[Transformer3W] = list()
+    transformers3w: Set[Transformer3W] = set()
     windings: List[Winding] = list()
     hvdc_lines: List[HvdcLine] = list()
     vsc_converters: List[VSC] = list()
@@ -5079,11 +5096,16 @@ List[FluidPath]]:
         elif obj.device_type == DeviceType.Transformer2WDevice:
             transformers2w.append(obj)
 
-        elif obj.device_type == DeviceType.Transformer3WDevice:
-            transformers3w.append(obj)  # TODO: think about this, because indeed a TR3 is never found this way
+        # elif obj.device_type == DeviceType.Transformer3WDevice:
+        #     transformers3w.append(obj)  # TODO: think about this, because indeed a TR3 is never found this way
 
         elif obj.device_type == DeviceType.WindingDevice:
             windings.append(obj)
+
+            # for each winding, we add the tr3
+            tr3 = windings2tr3.get(obj, None)
+            if tr3 is not None:
+                transformers3w.add(tr3)
 
         elif obj.device_type == DeviceType.HVDCLineDevice:
             hvdc_lines.append(obj)
@@ -5103,7 +5125,7 @@ List[FluidPath]]:
         else:
             raise Exception(f'Unrecognized branch type {obj.device_type.value}')
 
-    return (list(buses), lines, dc_lines, transformers2w, transformers3w,
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 

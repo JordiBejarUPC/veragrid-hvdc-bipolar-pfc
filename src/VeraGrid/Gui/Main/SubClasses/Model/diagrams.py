@@ -1872,6 +1872,12 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(sel_obj, dev.Transformer2W):
                 root_bus = sel_obj.bus_from
 
+            elif isinstance(sel_obj, dev.Winding):
+                root_bus = sel_obj.bus_from
+
+            elif isinstance(sel_obj, dev.Transformer3W):
+                root_bus = sel_obj.bus1
+
             elif isinstance(sel_obj, dev.DcLine):
                 root_bus = sel_obj.bus_from
 
