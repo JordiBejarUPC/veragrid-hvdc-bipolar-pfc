@@ -1470,6 +1470,8 @@ class SchematicWidget(BaseDiagramWidget):
         min_y = sys.maxsize
         max_x = -sys.maxsize
         max_y = -sys.maxsize
+        max_w = -sys.maxsize
+
         if elements is None:
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
@@ -1482,13 +1484,15 @@ class SchematicWidget(BaseDiagramWidget):
                     min_x = min(min_x, x)
                     max_y = max(max_y, y)
                     min_y = min(min_y, y)
+                    max_w = max(max_w, item.rect().width())
         else:
+            elements_s = set(elements)
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
                                      Transformer3WGraphicItem)):
 
-                    if item.api_object in elements:
+                    if item.api_object in elements_s:
                         x = item.pos().x()
                         y = item.pos().y()
 
@@ -1496,14 +1500,15 @@ class SchematicWidget(BaseDiagramWidget):
                         min_x = min(min_x, x)
                         max_y = max(max_y, y)
                         min_y = min(min_y, y)
+                        max_w = max(max_w, item.rect().width())
 
         # set the limits of the view
         dx = max_x - min_x
         dy = max_y - min_y
         mx = margin_factor * dx
         my = margin_factor * dy
-        h = dy + 2 * my + 80
-        w = dx + 2 * mx + 80
+        h = dy + 2 * my + max_w
+        w = dx + 2 * mx + max_w
         boundaries = QRectF(min_x - mx, min_y - my, w, h)
 
         self.diagram_scene.setSceneRect(boundaries)
@@ -1555,40 +1560,6 @@ class SchematicWidget(BaseDiagramWidget):
             # Fit the view
             self.set_boundaries(min_x, min_y, width, height)
 
-    def get_graph(self):
-        """
-        Get graph of the diagram (Not the circuit)
-        """
-        graph = nx.DiGraph()
-
-        bus_dictionary = dict()
-
-        for i, bus, graphic_object in self.get_buses():
-            graph.add_node(i)
-            bus_dictionary[bus.idtag] = i
-
-        tuples = list()
-
-        for dev_type in BRANCH_TYPES:
-
-            points_group = self.diagram.data.get(dev_type.value, None)
-
-            if points_group:
-
-                for idtag, point in points_group.locations.items():
-                    branch = point.api_object
-                    f = bus_dictionary[branch.bus_from.idtag]
-                    t = bus_dictionary[branch.bus_to.idtag]
-                    if hasattr(branch, 'X'):
-                        w = branch.X
-                    else:
-                        w = 1e-3
-                    tuples.append((f, t, w))
-
-        graph.add_weighted_edges_from(tuples)
-
-        return graph
-
     def auto_layout(self, sel: str):
         """
         Automatic layout of the nodes
@@ -1621,9 +1592,9 @@ class SchematicWidget(BaseDiagramWidget):
             pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
 
         # assign the positions to the graphical objects of the nodes
-        for i, bus in enumerate(node_like_api_objects):
-            loc = self.diagram.query_point(bus)
-            graphic_object = self.graphics_manager.query(elm=bus)
+        for i, elm in enumerate(node_like_api_objects):
+            loc = self.diagram.query_point(elm)
+            graphic_object = self.graphics_manager.query(elm=elm)
 
             if graphic_object is not None:
                 x, y = pos[i] * 500
