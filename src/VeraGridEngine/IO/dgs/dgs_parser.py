@@ -1142,9 +1142,10 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
         if options == "statgen_to_vsc":
 
             bus_dc = dev.Bus(
+                name = f'{bus_obj.name}_dc',
                 Vnom = bus_obj.Vnom,
-                xpos = bus_obj.x - 10,
-                ypos = bus_obj.y - 10,
+                xpos = bus_obj.x,
+                ypos = bus_obj.y + 20,
                 is_dc = True,
                 is_slack= True
             )
@@ -1155,7 +1156,7 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
                 bus_to = bus_obj,
                 name = bus_obj.name,
                 rate = static_generators['sgn'][i],
-                kdp = 20.0,
+                kdp=-0.05,
                 alpha1=0.0001,
                 alpha2=0.015,
                 alpha3=0.2,
@@ -1167,6 +1168,9 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
                 control2_dev = None,
             )
             circuit.add_vsc(vsc)
+
+            gen = dev.Generator()
+            circuit.add_generator(bus=bus_dc, api_obj=gen)
 
         else:
             gen = dev.StaticGenerator(name=static_generators['loc_name'][i],
