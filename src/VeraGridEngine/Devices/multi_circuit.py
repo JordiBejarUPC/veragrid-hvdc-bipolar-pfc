@@ -2878,6 +2878,7 @@ class MultiCircuit(Assets):
         self.wire_types += data.wire_types
         self.sequence_line_types += data.sequence_line_types
         self.rms_models += data.rms_models
+        print("done 2")
 
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):

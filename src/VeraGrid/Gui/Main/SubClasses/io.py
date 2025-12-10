@@ -998,6 +998,7 @@ class IoMain(ConfigurationMain):
         self.circuit.wire_types += get_wires_catalogue()
         self.circuit.sequence_line_types += get_sequence_lines_catalogue()
         self.circuit.rms_models += get_rms_model_catalogue()
+        print("done")
 
     def load_custom_catalogue(self):
         """

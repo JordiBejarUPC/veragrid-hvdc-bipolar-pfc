@@ -617,6 +617,15 @@ class EditableDevice:
         """
         return getattr(self, prop.name)
 
+    def set_snapshot_value(self, property_name, value: Any) -> None:
+        """
+        Set the value of a snapshot property
+        :param property_name: name of the property
+        :param value: Any
+        """
+        # set the snapshot value whatever it is
+        setattr(self, property_name, value)
+
     def get_snapshot_value_by_name(self, name) -> Any:
         """
         Return the stored object value from the property index
@@ -753,15 +762,6 @@ class EditableDevice:
             else:
                 # return the normal property
                 setattr(self, prop.name, value)
-
-    def set_snapshot_value(self, property_name, value: Any) -> None:
-        """
-        Set the value of a snapshot property
-        :param property_name: name of the property
-        :param value: Any
-        """
-        # set the snapshot value whatever it is
-        setattr(self, property_name, value)
 
     def create_profiles(self, index):
         """

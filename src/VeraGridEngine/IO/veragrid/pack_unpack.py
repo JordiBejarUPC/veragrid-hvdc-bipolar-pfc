@@ -1148,9 +1148,8 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
 
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
-                                    # get the line locations object and fill it with the json data
-                                    blk: Block = Block()
-                                    blk.parse(data=property_value)
+                                    # set the value of the property
+                                    elm.set_snapshot_value(gc_prop.name, Block.parse(data= property_value))
 
                                 elif gc_prop.tpe == SubObjectType.Associations:
 
@@ -1386,6 +1385,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
             text_func(f"Parsing {object_type_key} table data...")
 
         # try to get the DataFrame
+        # Todo: here we should get the data from template_object_types dict, not from data dict
         df = data.get(object_type_key, None)
 
         if df is not None:

@@ -145,7 +145,7 @@ def test_load_save_load_xlsx() -> None:
 
 
 def test_load_save_load_rms() -> None:
-    # Todo: this test fails because the grid property rms_templates contains all the existing rms templates. These templates are added whith the action "add default catalogue". It seems that the .block inside these templates changes its uid. This must be investigated.
+
     """
         This test checks if the saving and load process is correct when the grid contains rms models
 
@@ -162,11 +162,12 @@ def test_load_save_load_rms() -> None:
     if not os.path.exists("output"):
         os.makedirs("output")
 
-    for name in ['rms_1_bus_gen.veragrid']:
+    for name in ['rms_2_bus_gen_load.veragrid']:
         fname = os.path.join(folder, name)
 
         # open the main grid
         grid1 = gce.open_file(fname)
+        grid1.rms_models = list()
 
         name, ext = os.path.splitext(os.path.basename(fname))
 

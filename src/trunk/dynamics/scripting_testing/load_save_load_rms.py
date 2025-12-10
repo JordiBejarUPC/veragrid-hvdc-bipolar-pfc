@@ -13,7 +13,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic import Block, compare_blocks_dict
 
-def test_load_save_load_rms() -> None:
+def load_save_load_rms() -> None:
     """
         This test checks if the saving and load process is correct when the grid contains rms models
 
@@ -25,25 +25,27 @@ def test_load_save_load_rms() -> None:
 
         """
 
-    folder = os.path.join('data', 'grids')
 
-    if not os.path.exists("output"):
-        os.makedirs("output")
 
-    for name in ['rms_2_bus_gen_load.veragrid']:
-        fname = os.path.join(folder, name)
+
+
 
         # open the main grid
-        grid1 = gce.open_file(fname)
+    grid1 = gce.open_file('load2.veragrid')
+    print("one")
 
-        name, ext = os.path.splitext(os.path.basename(fname))
+    # grid1.rms_models = list()
+    # print("two")
 
-        fname2 = os.path.join("output", name + '_to_save.veragrid')
+    name, ext = os.path.splitext(os.path.basename('load2.veragrid'))
 
-        gce.save_file(grid=grid1, filename=fname2)
+    fname2 = os.path.join(name + '_to_save.veragrid')
 
-        # open the main grid again
-        grid2 = gce.open_file(fname2)
+    gce.save_file(grid=grid1, filename=fname2)
+
+    # open the main grid again
+    grid2 = gce.open_file(fname2)
+
 
     # compare the original grid with the saved one to check that they are equal
     equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
@@ -79,3 +81,6 @@ def test_load_save_load_rms() -> None:
 
     # if all ok, we can delete the test file
     os.remove(fname2)
+
+
+load_save_load_rms()
