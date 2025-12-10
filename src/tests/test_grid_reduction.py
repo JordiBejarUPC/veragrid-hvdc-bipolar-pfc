@@ -168,6 +168,104 @@ def test_ptdf_projected():
     assert np.allclose(flows_branches[[2, 3, 4, 5, 6]], flows_branches_red, atol=1e-5)
 
     
+def test_ptdf_projected_slack_remove():
+    """
+    Test to check the PTDF projected reduction in a very simple grid where we remove the slack
+    :return:
+    """
+    fname = os.path.join('data', 'grids', '5bus_linear.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', '5bus_linear.veragrid')
+    grid = gce.open_file(filename=fname)
+
+    P_original_gen = 0.0
+    for gen in grid.generators:
+        P_original_gen += gen.P
+
+    P_original_load = 0.0
+    for load in grid.loads:
+        P_original_load += load.P
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = np.array([0])
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    P_reduced_gen = 0.0
+    for gen in red_grid.generators:
+        P_reduced_gen += gen.P
+
+    P_reduced_load = 0.0
+    for load in red_grid.loads:
+        P_reduced_load += load.P
+
+    net_original = P_original_gen - P_original_load
+    net_reduced = P_reduced_gen - P_reduced_load
+
+    # print(flows_branches[[1, 2, 3, 7]])
+    # print(flows_branches_red)
+
+    assert abs(net_reduced) < 1e-4
+    assert abs(net_original - net_reduced) < 1e-4
+
+    assert np.allclose(flows_branches[[1, 2, 3, 7]], flows_branches_red, atol=1e-5)
+
+
+def test_ptdf_projected_slack_remove_with_load():
+    """
+    Test to check the PTDF projected reduction in a very simple grid where we remove the slack
+    :return:
+    """
+    fname = os.path.join('data', 'grids', '5bus_linear_load.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', '5bus_linear_load.veragrid')
+    grid = gce.open_file(filename=fname)
+
+    P_original_gen = 0.0
+    for gen in grid.generators:
+        P_original_gen += gen.P
+
+    P_original_load = 0.0
+    for load in grid.loads:
+        P_original_load += load.P
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = np.array([0])
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    P_reduced_gen = 0.0
+    for gen in red_grid.generators:
+        P_reduced_gen += gen.P
+
+    P_reduced_load = 0.0
+    for load in red_grid.loads:
+        P_reduced_load += load.P
+
+    net_original = P_original_gen - P_original_load
+    net_reduced = P_reduced_gen - P_reduced_load
+
+    # print(flows_branches[[1, 2, 3, 7]])
+    # print(flows_branches_red)
+
+    assert abs(net_reduced) < 1e-4
+    assert abs(net_original - net_reduced) < 1e-4
+
+    assert np.allclose(flows_branches[[1, 2, 3, 7]], flows_branches_red, atol=1e-5)
+
+    
 def test_reduction_flows():
     """
     Test to check the reduction flows
@@ -418,6 +516,91 @@ def test_ptdf_projected_ts():
     assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
 
 
+def test_ptdf_projected_ts_gb_full():
+    """
+    Test to check the reduction flows with time series and check:
+    1. Flows that match in the before and after reduction for all time steps
+    2. Compensation elements have correct profiles
+    :return:
+    """
+
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'GB Network.veragrid')
+    fname = os.path.join('data', 'grids', 'GB Network.gridcal')
+        
+    grid = gce.open_file(filename=fname)
+
+    # First run time series linear analysis
+    lin_ts = gce.LinearAnalysisTs(grid=grid, distributed_slack=False)
+    P_orig = grid.get_Pbus_prof()
+    Flows_orig = lin_ts.get_flows_ts(P=P_orig)
+
+    # Then reduce the network
+    bus_to_remove = np.array([6, 8])
+    
+    # Get internal branches before reduction to compare later
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+    
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    
+    # Run time series linear analysis on reduced grid
+    lin_ts_red = gce.LinearAnalysisTs(grid=red_grid, distributed_slack=False)
+    P_red = red_grid.get_Pbus_prof()
+    Flows_red = lin_ts_red.get_flows_ts(P=P_red)
+
+    # Compare flows on internal branches
+    Flows_orig_internal = Flows_orig[:, internal_branches]
+    
+    # Check if dimensions match
+    assert Flows_red.shape[1] == len(internal_branches)
+
+    print('Flow orig')
+    print(Flows_orig_internal)
+    print('Flow red')
+    print(Flows_red)
+
+    # Compare flows
+    assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+
+
+def test_ptdf_projected_ts_slack_remove():
+    """
+    Test to check the reduction flows with time series and remove the slack
+    :return:
+    """
+
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'ptdf_ts.veragrid')
+    fname = os.path.join('data', 'grids', 'ptdf_ts.veragrid')
+        
+    grid = gce.open_file(filename=fname)
+
+    # First run time series linear analysis
+    lin_ts = gce.LinearAnalysisTs(grid=grid, distributed_slack=False)
+    P_orig = grid.get_Pbus_prof()
+    Flows_orig = lin_ts.get_flows_ts(P=P_orig)
+
+    # Then reduce the network
+    bus_to_remove = np.array([0, 1])
+    
+    # Get internal branches before reduction to compare later
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+    
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    
+    # Run time series linear analysis on reduced grid
+    lin_ts_red = gce.LinearAnalysisTs(grid=red_grid, distributed_slack=False)
+    P_red = red_grid.get_Pbus_prof()
+    Flows_red = lin_ts_red.get_flows_ts(P=P_red)
+
+    # Compare flows on internal branches
+    Flows_orig_internal = Flows_orig[:, internal_branches]
+    
+    # Check if dimensions match
+    assert Flows_red.shape[1] == len(internal_branches)
+
+    # Compare flows
+    assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+
+
 if __name__ == '__main__':
     # test_ward_reduction()
     # test_ptdf_projected_14_reduction()
@@ -428,4 +611,7 @@ if __name__ == '__main__':
     # test_ptdf_projected_balances()
     # test_ptdf_projected_antena()
     # test_ptdf_projected_gb()
-    test_ptdf_projected_ts()
+    # test_ptdf_projected_ts()
+    test_ptdf_projected_slack_remove()
+    # test_ptdf_projected_ts_slack_remove()
+    # test_ptdf_projected_ts_gb_full()

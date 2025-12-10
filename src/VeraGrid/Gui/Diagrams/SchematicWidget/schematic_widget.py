@@ -1470,6 +1470,9 @@ class SchematicWidget(BaseDiagramWidget):
         min_y = sys.maxsize
         max_x = -sys.maxsize
         max_y = -sys.maxsize
+        max_w = 100
+        max_h = 60
+
         if elements is None:
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
@@ -1482,13 +1485,16 @@ class SchematicWidget(BaseDiagramWidget):
                     min_x = min(min_x, x)
                     max_y = max(max_y, y)
                     min_y = min(min_y, y)
+                    max_w = max(max_w, item.rect().width())
+                    max_h = max(max_h, item.rect().height())
         else:
+            elements_s = set(elements)
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
                                      Transformer3WGraphicItem)):
 
-                    if item.api_object in elements:
+                    if item.api_object in elements_s:
                         x = item.pos().x()
                         y = item.pos().y()
 
@@ -1496,14 +1502,17 @@ class SchematicWidget(BaseDiagramWidget):
                         min_x = min(min_x, x)
                         max_y = max(max_y, y)
                         min_y = min(min_y, y)
+                        max_w = max(max_w, item.rect().width())
+                        max_h = max(max_h, item.rect().height())
 
         # set the limits of the view
         dx = max_x - min_x
         dy = max_y - min_y
         mx = margin_factor * dx
         my = margin_factor * dy
-        h = dy + 2 * my + 80
-        w = dx + 2 * mx + 80
+
+        h = dy + 2 * my + max_h
+        w = dx + 2 * mx + max_w
         boundaries = QRectF(min_x - mx, min_y - my, w, h)
 
         self.diagram_scene.setSceneRect(boundaries)
@@ -1555,40 +1564,6 @@ class SchematicWidget(BaseDiagramWidget):
             # Fit the view
             self.set_boundaries(min_x, min_y, width, height)
 
-    def get_graph(self):
-        """
-        Get graph of the diagram (Not the circuit)
-        """
-        graph = nx.DiGraph()
-
-        bus_dictionary = dict()
-
-        for i, bus, graphic_object in self.get_buses():
-            graph.add_node(i)
-            bus_dictionary[bus.idtag] = i
-
-        tuples = list()
-
-        for dev_type in BRANCH_TYPES:
-
-            points_group = self.diagram.data.get(dev_type.value, None)
-
-            if points_group:
-
-                for idtag, point in points_group.locations.items():
-                    branch = point.api_object
-                    f = bus_dictionary[branch.bus_from.idtag]
-                    t = bus_dictionary[branch.bus_to.idtag]
-                    if hasattr(branch, 'X'):
-                        w = branch.X
-                    else:
-                        w = 1e-3
-                    tuples.append((f, t, w))
-
-        graph.add_weighted_edges_from(tuples)
-
-        return graph
-
     def auto_layout(self, sel: str):
         """
         Automatic layout of the nodes
@@ -1621,9 +1596,9 @@ class SchematicWidget(BaseDiagramWidget):
             pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
 
         # assign the positions to the graphical objects of the nodes
-        for i, bus in enumerate(node_like_api_objects):
-            loc = self.diagram.query_point(bus)
-            graphic_object = self.graphics_manager.query(elm=bus)
+        for i, elm in enumerate(node_like_api_objects):
+            loc = self.diagram.query_point(elm)
+            graphic_object = self.graphics_manager.query(elm=elm)
 
             if graphic_object is not None:
                 x, y = pos[i] * 500
@@ -5024,9 +4999,19 @@ List[FluidPath]]:
     # create a pool of buses
     bus_pool = [(b, 0) for b in buses]  # store the bus objects and their level from the root
 
+    # create a map of the tr3 that own the windings
+    windings2tr3 = dict()
+    for tr3 in circuit.transformers3w:
+        windings2tr3[tr3.winding1] = tr3
+        windings2tr3[tr3.winding2] = tr3
+        windings2tr3[tr3.winding3] = tr3
+        tr3.bus0.graphic_type = BusGraphicType.Internal  # make sure these don't show up
+
     buses = set()
     fluid_nodes = set()
     selected_branches = set()
+    visited = set()
+    max_level_offset = 0
 
     while len(bus_pool) > 0:
 
@@ -5036,19 +5021,29 @@ List[FluidPath]]:
         bus_idx.append(bus_dict[bus])
 
         # add searched bus
-        buses.add(bus)
+        if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type.Connectivity:
+            buses.add(bus)
 
-        if level < max_level:
+        if level < (max_level + max_level_offset):
 
             for i, br in enumerate(all_branches):
 
+                if isinstance(br, Winding):
+                    # if we find a winding, we need to add 1 extra search level
+                    # to be able to represent the whole 3-winding transformer
+                    max_level_offset = 1
+
                 if br.bus_from == bus:
-                    bus_pool.append((br.bus_to, level + 1))
-                    selected_branches.add(br)
+                    if br.bus_to not in visited:
+                        bus_pool.append((br.bus_to, level + 1))
+                        selected_branches.add(br)
+                        visited.add(br.bus_to)
 
                 elif br.bus_to == bus:
-                    bus_pool.append((br.bus_from, level + 1))
-                    selected_branches.add(br)
+                    if br.bus_from not in visited:
+                        bus_pool.append((br.bus_from, level + 1))
+                        selected_branches.add(br)
+                        visited.add(br.bus_from)
 
                 else:
                     pass
@@ -5057,7 +5052,7 @@ List[FluidPath]]:
     lines: List[Line] = list()
     dc_lines: List[DcLine] = list()
     transformers2w: List[Transformer2W] = list()
-    transformers3w: List[Transformer3W] = list()
+    transformers3w: Set[Transformer3W] = set()
     windings: List[Winding] = list()
     hvdc_lines: List[HvdcLine] = list()
     vsc_converters: List[VSC] = list()
@@ -5079,11 +5074,13 @@ List[FluidPath]]:
         elif obj.device_type == DeviceType.Transformer2WDevice:
             transformers2w.append(obj)
 
-        elif obj.device_type == DeviceType.Transformer3WDevice:
-            transformers3w.append(obj)  # TODO: think about this, because indeed a TR3 is never found this way
-
         elif obj.device_type == DeviceType.WindingDevice:
             windings.append(obj)
+
+            # for each winding, we add the tr3
+            tr3 = windings2tr3.get(obj, None)
+            if tr3 is not None:
+                transformers3w.add(tr3)
 
         elif obj.device_type == DeviceType.HVDCLineDevice:
             hvdc_lines.append(obj)
@@ -5103,7 +5100,7 @@ List[FluidPath]]:
         else:
             raise Exception(f'Unrecognized branch type {obj.device_type.value}')
 
-    return (list(buses), lines, dc_lines, transformers2w, transformers3w,
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 
