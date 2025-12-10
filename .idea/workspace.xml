@@ -177,7 +177,7 @@
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Debug",
+    "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -1897,7 +1897,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="673" />
+    <option name="localTasksCounter" value="674" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1958,7 +1958,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="implemented devices default names when adding them" />
     <MESSAGE value="Governor updated" />
     <MESSAGE value="exciter model" />
     <MESSAGE value="added functionality to connect output port to several input ports" />
@@ -1983,7 +1982,8 @@
     <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
-    <option name="LAST_COMMIT_MESSAGE" value="5.6.5" />
+    <MESSAGE value="small changes in dgs_parser.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="small changes in dgs_parser.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2514,33 +2514,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>233</line>
-          <option name="timeStamp" value="3069" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>1160</line>
-          <option name="timeStamp" value="3071" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>671</line>
-          <option name="timeStamp" value="3078" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>663</line>
-          <option name="timeStamp" value="3080" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>665</line>
-          <option name="timeStamp" value="3081" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>667</line>
-          <option name="timeStamp" value="3082" />
+          <line>1253</line>
+          <option name="timeStamp" value="3106" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
