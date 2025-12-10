@@ -12,7 +12,21 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowe
     tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, DiffBlock
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst, \
     sqrt, atan, f_exc
+from scipy.optimize import fsolve
 
+def solve_x(A, B, C, Ke, x0=0.1):
+    """
+    Solves the equation:
+        -A - x*C*exp(B*x) - x*Ke = 0
+    for x using fsolve.
+    """
+    f = lambda x: -A - x*C*np.exp(B*x) - x*Ke
+    sol, info, ier, msg = fsolve(f, x0, full_output=True)
+
+    if ier != 1:
+        print("Root finding did not fully converge:")
+        print(msg)
+    return sol[0]
 
 def GenqecBuild(name: str = "") -> RmsModelTemplate:
     """
@@ -380,7 +394,16 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         out_vars=[Tm],
         in_vars=inputs,
         event_dict=events_dict,
-        name="governor"
+        name="governor",
+        init_eqs={
+            y1: Const(0.0),
+            y2_3: Pm_ref,
+            y2_2: Pm_ref,
+            y3_1: Pm_ref,
+            y3_2: Pm_ref,
+            y3_3: Pm_ref,
+            y3_4: Pm_ref,
+        }
     )
     templ.block.uid = 222
     return templ
@@ -473,6 +496,14 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         parameters=parameters,
         name="stabilizer",
+        init_eqs={
+            Vpss: Const(0.0),
+            y: Const(1.0),
+            y2: Const(0.0),
+            y3: Const(0.0),
+            y4: Const(0.0),
+            y5: Const(0.0),
+        }
     )
 
     templ.block.add(vars_block)
@@ -640,7 +671,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
     aux_expr = parameters["Ke"] * Ve + AEx * Ve * exp(BEx * Ve)
     algebraic_eqs_submodel.append(u_aux - aux_expr)
-    algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
+    algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1*Ve)
 
     f_input = Var('f_input')
     f_output = Var('f_output')
@@ -662,14 +693,27 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],
         algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
-
     )
 
+    Ve_init = (y4 + inputs[0]*parameters['Kd'])/(parameters['Ke']+Const(1))
+    Ve_sat = hard_sat(Ve_init, VeMinPu, VeMaxPu)
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],
         out_vars=[Vf],
         in_vars=inputs,
-        event_dict=events_dict
+        event_dict=events_dict,
+        init_eqs={
+            y1: inputs[1],
+            y2: Const(0.0),
+            y3: -y1+UsRefPu,
+            y4: y3*parameters["Ka"],
+            Efe: hard_sat(y4, min_const, max_const),
+            u_aux: parameters["Ke"] * Ve_init + Ve_init*1,
+            Ve_presat: y4 + inputs[0]*parameters['Kd'] - u_aux,
+            f_input: parameters['Kc']*inputs[0]/Ve_sat,
+            f_output: f_exc(f_input),   
+            Vf: f_output*Ve_sat,
+        }
     )
     templ.block.uid = 444
     return templ
