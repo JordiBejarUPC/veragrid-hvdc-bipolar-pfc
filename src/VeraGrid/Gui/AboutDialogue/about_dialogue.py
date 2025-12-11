@@ -29,7 +29,13 @@ from VeraGridEngine.Compilers.circuit_to_pgm import (PGM_AVAILABLE,
 
 try:
     from importlib.metadata import distributions
+
+
     def get_packages():
+        """
+        Get system libraries info
+        :return:
+        """
         for d in distributions():
             name = d.metadata.get("Name", "")
             version = d.version
@@ -49,7 +55,13 @@ try:
 
 except ImportError:
     import pkg_resources
+
+
     def get_packages():
+        """
+        Get system libraries info
+        :return:
+        """
         for d in pkg_resources.working_set:
             name = d.project_name
             version = d.version
@@ -80,11 +92,12 @@ def sanitize_tsv_field(text: str) -> str:
     if text is None:
         return ""
     # Replace tabs and newlines with safe placeholders
-    text = text.replace("\t", " ")       # remove tabs
-    text = text.replace("\r\n", " ")     # Windows newlines
-    text = text.replace("\n", " ")       # Unix newlines
-    text = text.replace("\r", " ")       # Old mac newlines
+    text = text.replace("\t", " ")  # remove tabs
+    text = text.replace("\r\n", " ")  # Windows newlines
+    text = text.replace("\n", " ")  # Unix newlines
+    text = text.replace("\r", " ")  # Old mac newlines
     return text.strip()
+
 
 class AboutDialogueGuiGUI(QtWidgets.QDialog):
     """
@@ -274,7 +287,7 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
 
         tsv_text = "\n".join(lines)
 
-        QtWidgets.QApplication.clipboard().setText(tsv_text, QClipboard.Clipboard)
+        QtWidgets.QApplication.clipboard().setText(tsv_text, QClipboard.Mode.Clipboard)
 
     def show_license(self):
         """
