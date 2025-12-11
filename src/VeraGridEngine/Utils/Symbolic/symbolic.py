@@ -992,8 +992,10 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
     if isinstance(expr, Var):
         if expr.uid in uid_map_vars.keys():
             return uid_map_vars[expr.uid]  # positional variable
-        else:
+        elif expr.uid in uid_map_params.keys():
             return uid_map_params[expr.uid]
+        else:
+            raise ValueError(f'{expr} not found')
 
     if isinstance(expr, UnOp):
         return f"-({_emit(expr.operand, uid_map_vars, uid_map_params)})"

@@ -263,6 +263,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 x[uid2idx_vars[var.uid]] = init_val
 
         sys_block.add(mdl)
+        print(sys_block)
 
 
 def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
@@ -567,16 +568,16 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     # for bus, region in bus_regions_dict.items():
     bus_blocks_dict = grid.compose_bus_blocks()
     for bus, region in bus_blocks_dict.items():
-        try:
+        # try:
             # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
             #               array_index, use_init_values)
-            init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+        init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                          vars_array_index, use_init_values)
 
 
-        except ValueError:
-            print(f"Couldn't initialize system with explicit method")
-            init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
+        # except ValueError:
+        #     print(f"Couldn't initialize system with explicit method")
+        #     init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
 
 
     # del buses P, Q
