@@ -1128,9 +1128,6 @@ class LinearAnalysisTs:
             # get the linear analysis
             lin: LinearAnalysis = self._linear_analysis[t_idx]
 
-            print("LIN STUFF PTDF")
-            print(lin.PTDF)
-
             flow_ts[list_of_represented_time_steps, :] = lin.get_flows2d(Sbus=P[list_of_represented_time_steps, :])
 
             if progress_func is not None:
