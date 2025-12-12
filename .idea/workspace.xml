@@ -28,9 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="some more changes in PowerFactory parser to VeraGrid">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="small changes in LineBuilderDialogue.py">
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/double_circuits_bug.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/LineBuilderDialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/LineBuilderDialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -190,6 +191,7 @@
     &quot;Python.demo_code2.executor&quot;: &quot;Run&quot;,
     &quot;Python.demo_code3.executor&quot;: &quot;Debug&quot;,
     &quot;Python.demo_code4.executor&quot;: &quot;Run&quot;,
+    &quot;Python.double_circuits_bug.executor&quot;: &quot;Debug&quot;,
     &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.initialization.executor&quot;: &quot;Debug&quot;,
     &quot;Python.multi_circuit.executor&quot;: &quot;Debug&quot;,
@@ -1897,7 +1899,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="676" />
+    <option name="localTasksCounter" value="677" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1958,7 +1960,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added functionality to connect output port to several input ports" />
     <MESSAGE value="solver bug with connections when rebuilding scene" />
     <MESSAGE value="small signal and andes comparision tests passing" />
     <MESSAGE value="deleted multilinear im utils" />
@@ -1983,7 +1984,8 @@
     <MESSAGE value="small changes in dgs_parser.py" />
     <MESSAGE value="PowerFactory parser to VeraGrid" />
     <MESSAGE value="some more changes in PowerFactory parser to VeraGrid" />
-    <option name="LAST_COMMIT_MESSAGE" value="some more changes in PowerFactory parser to VeraGrid" />
+    <MESSAGE value="small changes in LineBuilderDialogue.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="small changes in LineBuilderDialogue.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2519,18 +2521,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py</url>
-          <line>768</line>
-          <option name="timeStamp" value="3112" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py</url>
-          <line>771</line>
-          <option name="timeStamp" value="3113" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py</url>
-          <line>1307</line>
-          <option name="timeStamp" value="3114" />
+          <line>528</line>
+          <option name="timeStamp" value="3127" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

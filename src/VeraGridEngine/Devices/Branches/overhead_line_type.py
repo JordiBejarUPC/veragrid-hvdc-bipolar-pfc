@@ -36,6 +36,10 @@ def phase2circuit(phase: int) -> int:
     k = int((phase - 1) / 3)
     return k + 1
 
+def build_y_4x4(y_nxn: np.ndarray, circuit_idx: int) -> np.ndarray:
+    start = 3 * (circuit_idx - 1) + 1
+    idx = [0, start, start + 1, start + 2]
+    return y_nxn[np.ix_(idx, idx)]
 
 class WireInTower:
     """
@@ -501,45 +505,28 @@ class OverheadLineType(EditableDevice):
         :return: AdmittanceMatrix with series admittance in p.u.
         """
         Zbase = (Vnom * Vnom) / Sbase
-        rows, columns = self.z_nabc.shape
         adm = AdmittanceMatrix(size=4)
 
-        if rows % 4 == 0 and columns % 4 == 0:
-            k = (4 * (circuit_idx - 1)) + np.array([0, 1, 2, 3])
-            z = self.z_nabc[np.ix_(k, k)] * length / Zbase
-            adm.values = np.linalg.inv(z)
+        z = self.z_nabc * length / Zbase
+        y = np.linalg.inv(z)
+
+        n = 4 * circuit_idx - (circuit_idx - 1)
+        y_nxn = np.zeros((n, n), dtype=complex)
+        y_nxn[np.ix_(self.z_phases_nabc, self.z_phases_nabc)] = y
+
+        y_4x4 = build_y_4x4(y_nxn, circuit_idx)
+
+        adm.values = y_4x4
+        if 0 in self.y_phases_nabc:
             adm.phN = 1
+        if 1 in self.y_phases_nabc:
             adm.phA = 1
+        if 2 in self.y_phases_nabc:
             adm.phB = 1
+        if 3 in self.y_phases_nabc:
             adm.phC = 1
 
-            return adm
-
-        elif rows < 4 and columns < 4:
-            phases = self.z_phases_nabc
-            phases = phases[phases > 4 * (circuit_idx - 1)]
-            phases = phases[phases <= 4 * circuit_idx]
-            phases = phases - 4 * (circuit_idx - 1)
-
-            z = self.z_nabc * length / Zbase
-            y = np.linalg.inv(z)
-            y_4x4 = np.zeros((4, 4), dtype=complex)
-            y_4x4[np.ix_(phases, phases)] = y
-
-            adm.values = y_4x4
-            if 0 in self.y_phases_nabc:
-                adm.phN = 1
-            if 1 in self.y_phases_nabc:
-                adm.phA = 1
-            if 2 in self.y_phases_nabc:
-                adm.phB = 1
-            if 3 in self.y_phases_nabc:
-                adm.phC = 1
-
-            return adm
-
-        else:
-            raise Exception("Invalid overhead line type configuration")
+        return adm
 
     def get_ysh(self, circuit_idx: int, Sbase: float, length: float, Vnom: float) -> AdmittanceMatrix:
         """
