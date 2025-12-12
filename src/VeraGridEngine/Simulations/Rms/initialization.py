@@ -635,7 +635,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
 
     # create time variable
 
-    time = Var("time")
+    time = Var("global_time")
 
     # instantiate vars2device  and vars_glob_name2uid dicts
 

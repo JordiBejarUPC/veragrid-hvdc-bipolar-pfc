@@ -30,9 +30,9 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="corrected parsing of the rms templates when opening file">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,7 +73,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="43-devel-EMT" />
+        <entry key="$PROJECT_DIR$" value="devel" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -154,34 +154,29 @@
     &quot;Python tests.Nosetests in test_topology_processor.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.Nosetests in tests.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.Python tests in tests.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for src.tests.test_ac_opf.test_pegase89.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for src.tests.test_power_flow_matpower.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_load_save_load.test_load_save_load2.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for test_transformer_type.test_psse_conversion3.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_transformer_type.test_transformer_type.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx.executor&quot;: &quot;Debug&quot;,
+    &quot;Python tests.pytest in grid4.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_ac_opf.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_admitances.py.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest in test_basic.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_benchmark_with_andes.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_benchmark_with_andes_diff_block_solver.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_cgmes_ieeee.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_copy.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_load_save_load.py.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest in test_small_signal_rms.py.executor&quot;: &quot;Debug&quot;,
+    &quot;Python tests.pytest in test_load_save_load.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest in test_small_signal_rms.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_transformer_type.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in tests.executor&quot;: &quot;Run&quot;,
     &quot;Python.AnalysisDialogue.executor&quot;: &quot;Run&quot;,
     &quot;Python.ExecuteGridCal.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ExecuteVeraGrid.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.ExecuteVeraGrid.executor&quot;: &quot;Run&quot;,
     &quot;Python.GridCalMain.executor&quot;: &quot;Run&quot;,
     &quot;Python._callers.executor&quot;: &quot;Debug&quot;,
     &quot;Python.alex.executor&quot;: &quot;Debug&quot;,
@@ -194,27 +189,18 @@
     &quot;Python.demo_code2.executor&quot;: &quot;Run&quot;,
     &quot;Python.demo_code3.executor&quot;: &quot;Debug&quot;,
     &quot;Python.demo_code4.executor&quot;: &quot;Run&quot;,
-    &quot;Python.emt_solver_generator_diffblock.executor&quot;: &quot;Run&quot;,
-    &quot;Python.generator_equations_diffblock.executor&quot;: &quot;Run&quot;,
+    &quot;Python.grid4.executor&quot;: &quot;Run&quot;,
     &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.initialization.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.io.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.load_save_load_rms.executor&quot;: &quot;Run&quot;,
     &quot;Python.multi_circuit.executor&quot;: &quot;Debug&quot;,
     &quot;Python.new_circuit_objects.executor&quot;: &quot;Run&quot;,
-    &quot;Python.new_diagram2.executor&quot;: &quot;Run&quot;,
     &quot;Python.profile.executor&quot;: &quot;Debug&quot;,
     &quot;Python.pymoo_example.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pyside6-designer (1).executor&quot;: &quot;Run&quot;,
-    &quot;Python.pyside6-designer.executor&quot;: &quot;Run&quot;,
     &quot;Python.python_console.executor&quot;: &quot;Run&quot;,
     &quot;Python.raw_imp_exp_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
-    &quot;Python.rms_model_editor_engine.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_hardcoded.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_hardcoded_light.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_small_system.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_small_system_controlled.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_small_system_whith_control.executor&quot;: &quot;Run&quot;,
@@ -239,13 +225,13 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;86__Dynamic__simulations__V1__DiffBlock&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/santi/Documentos/Git/eRoots/extended-equal-area-criterion&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.project.grazie&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
     &quot;two.files.diff.last.used.file&quot;: &quot;C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
@@ -258,10 +244,10 @@
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
-      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
-      <recent name="$PROJECT_DIR$/src/trunk/anarede" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
+      <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
+      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -271,7 +257,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx">
+  <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -723,19 +709,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
+      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       </list>
     </recent_temporary>
   </component>
@@ -1867,7 +1853,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="681" />
+    <option name="localTasksCounter" value="621" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1900,7 +1886,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="origin/17_implement_rms_templates" />
+                        <option value="HEAD" />
                       </list>
                     </value>
                   </entry>
@@ -1913,32 +1899,32 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="small signal and andes comparision tests passing" />
-    <MESSAGE value="deleted multilinear im utils" />
-    <MESSAGE value="initialization" />
-    <MESSAGE value="added external mapping to editor models" />
-    <MESSAGE value="Initialization 2" />
-    <MESSAGE value="small signal tests passing" />
-    <MESSAGE value="implemented DiffBLock solver fro modles with differential vars" />
-    <MESSAGE value="merged devel and removed templates from __init__.py" />
-    <MESSAGE value="Refactored some block templates" />
-    <MESSAGE value="some more refactor to the block save and parse logic" />
-    <MESSAGE value="Fixed minor error in the small signal test" />
-    <MESSAGE value="fixing convert_busbar_to_voltage_level" />
-    <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
-    <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
-    <MESSAGE value="Added more ContingencyFilteringMethods" />
-    <MESSAGE value="Several fixes when selecting by country, community, etc" />
-    <MESSAGE value="5.6.3" />
-    <MESSAGE value="function compose_bus_blocks created to get a block for each bus with the injection blocks connected to that bus" />
-    <MESSAGE value="initialization divided in 1st create region_blocks and then initialize them." />
-    <MESSAGE value="lines don't initialize twice (before in initialize_emt and in adapt_h)" />
-    <MESSAGE value="v_a, v_b, v_c as parameters in events_dict in generator_emt_type_template.py" />
-    <MESSAGE value="spaces deleted" />
-    <MESSAGE value="refactores initialization" />
-    <MESSAGE value="test_load_save_load rms updated" />
-    <MESSAGE value="corrected parsing of the rms templates when opening file" />
-    <option name="LAST_COMMIT_MESSAGE" value="corrected parsing of the rms templates when opening file" />
+    <MESSAGE value="Resolved circular import" />
+    <MESSAGE value="automatic initialization 1" />
+    <MESSAGE value="full implementation of initialize_rms and compose_system_block with initialization" />
+    <MESSAGE value="GridCal/Andes comparision part 1" />
+    <MESSAGE value="Small system constructed in gridcal and Andes" />
+    <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
+    <MESSAGE value="automatic initialization equations fixed" />
+    <MESSAGE value="moved rms initialization out of the MultiCircuit" />
+    <MESSAGE value="got some changes from horrendous alex comit" />
+    <MESSAGE value="several tweaks before the release" />
+    <MESSAGE value="5.4.0" />
+    <MESSAGE value="5.4.0 b" />
+    <MESSAGE value="Improved contingency docs" />
+    <MESSAGE value="added lat and lon to the injection" />
+    <MESSAGE value="improved icons" />
+    <MESSAGE value="improved pkg function" />
+    <MESSAGE value="several refactors" />
+    <MESSAGE value="formatted" />
+    <MESSAGE value="added verbose" />
+    <MESSAGE value="5.5.1" />
+    <MESSAGE value="Improved BlockSolver compilation" />
+    <MESSAGE value="more improvements to the block solver" />
+    <MESSAGE value="Fixed test" />
+    <MESSAGE value="icon crazyness" />
+    <MESSAGE value="icons check" />
+    <option name="LAST_COMMIT_MESSAGE" value="icons check" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

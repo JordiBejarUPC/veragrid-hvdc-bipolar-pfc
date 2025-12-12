@@ -497,6 +497,11 @@ class Block:
         for i, eq in enumerate(self.state_eqs):
             new_equ = eq.subs({old: new})
             self.state_eqs[i] = new_equ
+        for var, expr in self.init_eqs.items():
+            expr.subs({old: new})
+        for var in self.in_vars:
+            self.in_vars[self.in_vars.index(var)] = new
+
 
     def update_model(self, old, new):
         """
@@ -511,7 +516,7 @@ class Block:
 
     def connect(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
         """
-        Function to connect two blocks by variables share
+        Function to connect two blocks by variables sharing
         """
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):

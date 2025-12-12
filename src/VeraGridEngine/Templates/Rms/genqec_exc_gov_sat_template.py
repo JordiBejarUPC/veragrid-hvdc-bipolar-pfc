@@ -158,10 +158,10 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
         algebraic_eqs=[
-            Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
-            Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
-            Pg - (Vd * Id + Vq * Iq),  # from input block
-            Qg - (Vq * Id - Vd * Iq),  # from input block
+            # Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
+            # Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
+            # Pg - (Vd * Id + Vq * Iq),  # from input block
+            # Qg - (Vq * Id - Vd * Iq),  # from input block
             Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
             Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
             Psid - (Eq_prime - Id * Xd_2prime_sat),
@@ -195,8 +195,9 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Sat_d - (Const(1) + Sa),
             Sat_q - (Const(1) + Sa),
             # saturations (quadratic)
-            Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
-            IRPu - Eq1 * (1 + Sa)
+            # Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
+            Sa - A / 2 * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))) ** 2,
+            # IRPu - Eq1 * (1 + Sa)???
         ],
         algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id, Iq,
                         # saturated resistance
@@ -240,7 +241,6 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         event_dict=event_dict,
         name="genqec"
     )
-    templ.block.uid = 111
 
     return templ
 
@@ -405,7 +405,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
             y3_4: Pm_ref,
         }
     )
-    templ.block.uid = 222
     return templ
 
 
@@ -508,8 +507,6 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
 
     templ.block.add(vars_block)
     templ.block.add(block_1)
-
-    templ.block.uid = 333
 
     return templ
 
@@ -715,7 +712,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             Vf: f_output*Ve_sat,
         }
     )
-    templ.block.uid = 444
+
     return templ
 
 
@@ -1327,7 +1324,5 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     templ.block.children.append(stabilizer_block)
     templ.block.children.append(exciter_model)
     templ.block.children.append(generator_model)
-
-    templ.block.uid = 555
 
     return templ
