@@ -103,9 +103,6 @@ class LinearAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                     correct_values=self.options.correct_values,
                 )
 
-                print("LIN GOOD PTDF at ", t)
-                print(lin.PTDF)
-
                 Sbus = nc.get_power_injections_pu()
                 self.results.S[it, :] = Sbus * nc.Sbase
                 self.results.Sf[it, :] = lin.get_flows(Sbus=Sbus) * nc.Sbase
