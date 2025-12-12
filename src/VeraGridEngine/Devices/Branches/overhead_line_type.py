@@ -9,6 +9,7 @@ from warnings import warn
 import numpy as np
 from numpy import pi, log, sqrt
 from matplotlib import pyplot as plt
+import math
 
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec, Vec, CxMat
@@ -40,6 +41,12 @@ def build_y_4x4(y_nxn: np.ndarray, circuit_idx: int) -> np.ndarray:
     start = 3 * (circuit_idx - 1) + 1
     idx = [0, start, start + 1, start + 2]
     return y_nxn[np.ix_(idx, idx)]
+
+def n_circuits(idx):
+    m = max(idx)
+    if m <= 0:
+        return 0
+    return math.ceil(m / 3)
 
 class WireInTower:
     """
@@ -510,7 +517,9 @@ class OverheadLineType(EditableDevice):
         z = self.z_nabc * length / Zbase
         y = np.linalg.inv(z)
 
-        n = 4 * circuit_idx - (circuit_idx - 1)
+        n_c = n_circuits(self.z_phases_nabc)
+        n = 4 * n_c - (n_c - 1)
+
         y_nxn = np.zeros((n, n), dtype=complex)
         y_nxn[np.ix_(self.z_phases_nabc, self.z_phases_nabc)] = y
 
@@ -538,44 +547,29 @@ class OverheadLineType(EditableDevice):
         :return: AdmittanceMatrix with shunt admittance in p.u.
         """
 
-        if circuit_idx == 0:
-            circuit_idx = 1
-
         Zbase = (Vnom * Vnom) / Sbase
         Ybase = 1 / Zbase
-
-        rows, columns = self.y_nabc.shape
         adm = AdmittanceMatrix(size=4)
 
-        if rows % 4 == 0 and columns % 4 == 0:
-            k = (4 * (circuit_idx - 1)) + np.array([0, 1, 2, 3])
-            y = self.y_nabc[np.ix_(k, k)] * length * 1e6 / Ybase
-            adm.values = y
+        y = self.y_nabc * length * 1e6 / Ybase
+
+        n_c = n_circuits(self.z_phases_nabc)
+        n = 4 * n_c - (n_c - 1)
+
+        y_nxn = np.zeros((n, n), dtype=complex)
+        y_nxn[np.ix_(self.z_phases_nabc, self.z_phases_nabc)] = y
+
+        y_4x4 = build_y_4x4(y_nxn, circuit_idx)
+
+        adm.values = y_4x4
+        if 0 in self.y_phases_nabc:
             adm.phN = 1
+        if 1 in self.y_phases_nabc:
             adm.phA = 1
+        if 2 in self.y_phases_nabc:
             adm.phB = 1
+        if 3 in self.y_phases_nabc:
             adm.phC = 1
-
-        else:
-            phases = self.y_phases_nabc
-
-            phases = phases[phases > 4 * (circuit_idx - 1)]
-            phases = phases[phases <= 4 * circuit_idx]
-            phases = phases - 4 * (circuit_idx - 1)
-
-            y = self.y_nabc * length * 1e6 / Ybase
-            y_4x4 = np.zeros((4, 4), dtype=complex)
-            y_4x4[np.ix_(phases, phases)] = y
-
-            adm.values = y_4x4
-            if 1 in self.y_phases_nabc:
-                adm.phN = 1
-            if 2 in self.y_phases_nabc:
-                adm.phA = 1
-            if 3 in self.y_phases_nabc:
-                adm.phB = 1
-            if 4 in self.y_phases_nabc:
-                adm.phC = 1
 
         return adm
 
