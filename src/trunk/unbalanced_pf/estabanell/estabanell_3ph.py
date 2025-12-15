@@ -7,7 +7,7 @@ logger = gce.Logger()
 grid = gce.MultiCircuit()
 df_buses_lines = pd.read_csv('estabanell_grid/linies_bt_eRoots.csv', sep=";")
 
-# Buses que no quieres
+# Buses to delete
 buses_to_delete = [
     57573, 57552, 117181, 117182, 57744, 58152, 58173, 58025, 58026, 57723,
     58020, 58039, 58030, 58029, 58028, 58043, 58036, 58027, 58037, 58046
@@ -30,16 +30,16 @@ mask = df_buses_lines.apply(
 )
 df_path = df_buses_lines[mask]
 
-# sumar impedancias y longitud
+# sum of impedances y longitudes
 R_eq = df_path["resistencia"].sum()
 X_eq = df_path["reactancia"].sum()
 L_eq = df_path["longitud_cad"].sum()
 Imax_eq = df_path["intensitat_admisible"].min()
 
-# eliminar esas líneas del DataFrame original
+# to eliminate this lines from the original DataFrame
 df_buses_lines = df_buses_lines.drop(df_path.index)
 
-# añadir la nueva línea equivalente
+# to add this new equivalent line
 df_buses_lines = pd.concat([
     df_buses_lines,
     pd.DataFrame([{
