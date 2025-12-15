@@ -465,11 +465,31 @@ class Block:
 
         return flat
 
+    def unify_blocks(self):
+        for b in self.get_all_blocks():
+            self.algebraic_vars.extend(b.algebraic_vars)
+            self.algebraic_eqs.extend(b.algebraic_eqs)
+            self.state_vars.extend(b.state_vars)
+            self.state_eqs.extend(b.state_eqs)
+            for param, eq in b.event_dict.items():
+                self.event_dict[param] = eq
+
+            for var, init_eq in b.init_eqs.items():
+                self.event_dict[var] = init_eq
+
+
+            if isinstance(b, DiffBlock):
+                self.diff_vars.extend(b.diff_vars)
+
     def get_vars(self) -> List[Var]:
         """
         Get a list of algebraic + state vars
         :return: List[Var]
         """
+        if isinstance(self, DiffBlock):
+            diff_vars = self.diff_vars
+            return self.algebraic_vars + self.state_vars + diff_vars
+
         return self.algebraic_vars + self.state_vars
 
     def get_all_vars(self):
@@ -491,6 +511,7 @@ class Block:
         :param new:
         :return:
         """
+        init_eqs_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -498,7 +519,13 @@ class Block:
             new_equ = eq.subs({old: new})
             self.state_eqs[i] = new_equ
         for var, expr in self.init_eqs.items():
-            expr.subs({old: new})
+            new_expr = expr.subs({old: new})
+            if var is old:
+                init_eqs_new.update({new: new_expr})
+            else:
+                init_eqs_new.update({var: new_expr})
+        self.init_eqs = init_eqs_new
+
         for var in self.in_vars:
             self.in_vars[self.in_vars.index(var)] = new
 

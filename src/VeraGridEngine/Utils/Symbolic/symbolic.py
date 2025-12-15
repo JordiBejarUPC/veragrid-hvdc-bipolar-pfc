@@ -50,7 +50,6 @@ def _var_name(sym: Var | str) -> str:
 def _var_uid(sym: Var | str) -> str:
     return sym.uid if isinstance(sym, Var) else sym
 
-
 # ----------------------------------------------------------------------------
 # Function helpers
 # ----------------------------------------------------------------------------
@@ -127,6 +126,36 @@ class Expr:
     Abstract base class for all expression nodes.
     """
     uid: str  # real dataclass field lives in subclasses
+
+    def get_vars(self, vars_found: Optional[List["Var"]] = None) -> List["Var"]:
+        if vars_found is None:
+            vars_found = []
+
+        # Caso base: variable
+        if isinstance(self, Var):
+            if self not in vars_found:
+                vars_found.append(self)
+            return vars_found
+
+        # Operadores binarios (BinOp)
+        if hasattr(self, "left") and hasattr(self, "right"):
+            self.left.get_vars(vars_found)
+            self.right.get_vars(vars_found)
+            return vars_found
+
+        # Operadores unarios (UnOp)
+        if hasattr(self, "operand"):
+            self.operand.get_vars(vars_found)
+            return vars_found
+
+        # Comparaciones
+        if hasattr(self, "lhs") and hasattr(self, "rhs"):
+            self.lhs.get_vars(vars_found)
+            self.rhs.get_vars(vars_found)
+            return vars_found
+
+        # Const, UndefinedConst, etc.
+        return vars_found
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """

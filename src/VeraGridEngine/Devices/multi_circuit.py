@@ -1601,6 +1601,12 @@ class MultiCircuit(Assets):
 
 
     def compose_bus_blocks(self) -> Dict[dev.bus, Block]:
+        """
+        this function returns a dictionary with keys, the device bus, mand values, a block containing all the rms models of the elements connected to that bus.
+        Returns
+        -------
+
+        """
         syst_blocks: Dict[dev.bus, Block] = dict()
 
         bus_regions_dict = self.get_injection_devices_grouped_by_bus()

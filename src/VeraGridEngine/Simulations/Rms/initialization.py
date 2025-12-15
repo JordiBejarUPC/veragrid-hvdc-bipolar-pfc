@@ -197,6 +197,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     # already known variables:
 
     for mdl in region.children:
+        mdl.unify_blocks()
         bus_rms_mdl = bus.rms_model.model
 
         # fill general init guess
@@ -209,7 +210,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
              bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-        mdl_vars = mdl.state_vars + mdl.algebraic_vars
+        mdl_vars = mdl.get_all_vars()
 
         for var in mdl_vars:
             key = (var.uid, var.name)
@@ -251,16 +252,25 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             params_array[uid2idx_params[param.uid]] = param_val
 
         # compute and assign missing init_vars
-        for var in mdl.init_eqs.keys():
-            key = (var.uid, var.name)
-            if key in init_guess:
-                x[uid2idx_vars[var.uid]] = init_guess[key]
-            else:
-                eq = mdl.init_eqs[var]
-                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                init_val = float(eq_fn(x, params_array))
-                init_guess[key] = init_val
-                x[uid2idx_vars[var.uid]] = init_val
+        vars_initialized: List[Var] = list()
+        while len(vars_initialized) < len(mdl_vars):
+            for var in mdl.init_eqs.keys():
+                if var not in vars_initialized:
+                    key = (var.uid, var.name)
+                    if key in init_guess:
+                        x[uid2idx_vars[var.uid]] = init_guess[key]
+                        vars_initialized.append(var)
+                    else:
+                        eq = mdl.init_eqs[var]
+                        vars_in_eqs = eq.get_vars()
+                        all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
+                        if all_in_init_guess:
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                            init_val = float(eq_fn(x, params_array))
+                            init_guess[key] = init_val
+                            x[uid2idx_vars[var.uid]] = init_val
+                        else:
+                            continue
 
         sys_block.add(mdl)
         print(sys_block)

@@ -41,6 +41,9 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 bus2 = gce.Bus(name="Bus2", Vnom=10)
+bus0.initialize_rms()
+bus1.initialize_rms()
+bus2.initialize_rms()
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 grid.add_bus(bus2)
@@ -104,34 +107,34 @@ load_mdl = get_load_rms_template().block.copy()
 
 ## Build big generators by connecting elements
 
-genqec1_mdl.connect(genqec1_mdl.in_vars[3], exc1_mdl.out_vars[0])
-exc1_mdl.connect(exc1_mdl.in_vars[0], genqec1_mdl.out_vars[3])
+genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
+exc1_mdl.connect([exc1_mdl.in_vars[0]], [genqec1_mdl.out_vars[3]])
 
-genqec2_mdl.connect(genqec2_mdl.in_vars[3], exc2_mdl.out_vars[0])
-exc2_mdl.connect(exc2_mdl.in_vars[0], genqec2_mdl.out_vars[3])
+genqec2_mdl.connect([genqec2_mdl.in_vars[3]], [exc2_mdl.out_vars[0]])
+exc2_mdl.connect([exc2_mdl.in_vars[0]], [genqec2_mdl.out_vars[3]])
 
-stabil1_mdl.connect(stabil1_mdl.in_vars[0], genqec1_mdl.out_vars[2])
-stabil2_mdl.connect(stabil2_mdl.in_vars[0], genqec2_mdl.out_vars[2])
+stabil1_mdl.connect([stabil1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
+stabil2_mdl.connect([stabil2_mdl.in_vars[0]], [genqec2_mdl.out_vars[2]])
 
-exc1_mdl.connect(exc1_mdl.in_vars[2], stabil1_mdl.out_vars[0])
-exc2_mdl.connect(exc2_mdl.in_vars[2], stabil2_mdl.out_vars[0])
+exc1_mdl.connect([exc1_mdl.in_vars[2]], [stabil1_mdl.out_vars[0]])
+exc2_mdl.connect([exc2_mdl.in_vars[2]], [stabil2_mdl.out_vars[0]])
 
-genqec1_mdl.connect(genqec1_mdl.in_vars[2], gov1_mdl.out_vars[0])
-genqec2_mdl.connect(genqec2_mdl.in_vars[2], gov2_mdl.out_vars[0])
+genqec1_mdl.connect([genqec1_mdl.in_vars[2]], [gov1_mdl.out_vars[0]])
+genqec2_mdl.connect([genqec2_mdl.in_vars[2]], [gov2_mdl.out_vars[0]])
 
-gov1_mdl.connect(gov1_mdl.in_vars[0], genqec1_mdl.out_vars[2])
-gov2_mdl.connect(gov2_mdl.in_vars[0], genqec2_mdl.out_vars[2])
+gov1_mdl.connect([gov1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
+gov2_mdl.connect([gov2_mdl.in_vars[0]], [genqec2_mdl.out_vars[2]])
 
 # connection with buses
 
-genqec1_mdl.connect(genqec1_mdl.in_vars[0], bus0.rms_model.model.out_vars[0])
-genqec1_mdl.connect(genqec1_mdl.in_vars[1], bus0.rms_model.model.out_vars[1])
+genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 
-genqec2_mdl.connect(genqec2_mdl.in_vars[0], bus1.rms_model.model.out_vars[0])
-genqec2_mdl.connect(genqec2_mdl.in_vars[1], bus1.rms_model.model.out_vars[1])
+genqec2_mdl.connect([genqec2_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+genqec2_mdl.connect([genqec2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
-exc1_mdl.connect(exc1_mdl.in_vars[1], bus0.rms_model.model.out_vars[1])
-exc2_mdl.connect(exc2_mdl.in_vars[1], bus1.rms_model.model.out_vars[1])
+exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+exc2_mdl.connect([exc2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
 big_gen2 = Block(children = [genqec2_mdl, exc2_mdl, gov2_mdl, stabil2_mdl])

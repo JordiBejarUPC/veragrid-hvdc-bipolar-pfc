@@ -42,7 +42,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     # Vf: excitation voltage (from exciter)
 
     inputs: List[Var] = [Var("Vm_" + name),
-                         Var("Va" + name),
+                         Var("Va_" + name),
                          Var("Tm_" + name),
                          Var("Vf_" + name)]
 
@@ -395,14 +395,15 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         event_dict=events_dict,
         name="governor",
+        # Pm_ref
         init_eqs={
             y1: Const(0.0),
-            y2_3: Pm_ref,
-            y2_2: Pm_ref,
-            y3_1: Pm_ref,
-            y3_2: Pm_ref,
-            y3_3: Pm_ref,
-            y3_4: Pm_ref,
+            y2_3: Const(0),
+            y2_2: Const(0),
+            y3_1: Const(0),
+            y3_2: Const(0),
+            y3_3: Const(0),
+            y3_4: Const(0),
         }
     )
     return templ
@@ -495,6 +496,7 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         parameters=parameters,
         name="stabilizer",
+
         init_eqs={
             Vpss: Const(0.0),
             y: Const(1.0),
@@ -702,7 +704,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         init_eqs={
             y1: inputs[1],
             y2: Const(0.0),
-            y3: -y1+UsRefPu,
+            y3: -y1 + Const(0),
+            # y3: -y1+UsRefPu,
             y4: y3*parameters["Ka"],
             Efe: hard_sat(y4, min_const, max_const),
             u_aux: parameters["Ke"] * Ve_init + Ve_init*1,
