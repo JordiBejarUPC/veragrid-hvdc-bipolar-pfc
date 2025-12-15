@@ -76,8 +76,8 @@ pd.set_option("display.float_format", "{:.5f}".format)
 
 print()
 print(res.get_voltage_3ph_df())
-# print()
-# print(res.get_current_3ph_df())
+print()
+print(res.get_current_3ph_df())
 # print()
 # print(res.get_load_neutral_voltage_df())
 
@@ -98,12 +98,15 @@ print("\nIterations: ", res.iterations)
 # Ispec[2] = abs(0.5 + 0.4j) / (100/3)
 # print(Ispec)
 #
-# print("\nCurrent Modules at VeraGrid:")
-# Ivg = np.zeros(3)
-# Ivg[0] = abs(res.It_A[0])
-# Ivg[1] = abs(res.It_B[0])
-# Ivg[2] = abs(res.It_C[0])
-# print(Ivg)
+print("\nCurrent Modules at VeraGrid:")
+S_base = 100 * 10**6
+U_base = 4.16 * 10**3
+I_base = S_base / (U_base * np.sqrt(3))
+Ivg = np.zeros(3)
+Ivg[0] = abs(res.It_A[0]) * I_base
+Ivg[1] = abs(res.It_B[0]) * I_base
+Ivg[2] = abs(res.It_C[0]) * I_base
+print(Ivg)
 #
 # # ---------------------------------------------------------------------------------------------------------------------
 # # OpenDSS
