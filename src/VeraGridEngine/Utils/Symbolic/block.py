@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import copy
+import pdb
 import uuid
 import numpy as np
 from dataclasses import dataclass, field
@@ -475,7 +476,7 @@ class Block:
                 self.event_dict[param] = eq
 
             for var, init_eq in b.init_eqs.items():
-                self.event_dict[var] = init_eq
+                self.init_eqs[var] = init_eq
 
 
             if isinstance(b, DiffBlock):
@@ -505,7 +506,7 @@ class Block:
 
     def update_equations(self, old, new):
         """
-
+        this function changes the variable old for the variable new in a block
         :param blk:
         :param old:
         :param new:
@@ -524,10 +525,13 @@ class Block:
                 init_eqs_new.update({new: new_expr})
             else:
                 init_eqs_new.update({var: new_expr})
+
         self.init_eqs = init_eqs_new
 
-        for var in self.in_vars:
-            self.in_vars[self.in_vars.index(var)] = new
+        if old in self.in_vars:
+            idx = next(i for i, v in enumerate(self.in_vars) if v is old)
+            self.in_vars[idx] = new
+
 
 
     def update_model(self, old, new):
@@ -548,8 +552,8 @@ class Block:
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
-            self.in_vars.remove(var_to_subs)
-            self.in_vars.append(incoming_var)
+            # self.in_vars.remove(var_to_subs)
+            # self.in_vars.append(incoming_var)
 
     def to_dict(self) -> Dict[str, Any]:
         """

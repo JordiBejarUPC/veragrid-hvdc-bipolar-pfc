@@ -29,6 +29,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, StabilizerBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -136,8 +137,18 @@ genqec2_mdl.connect([genqec2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]]
 exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 exc2_mdl.connect([exc2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
+# external mapping
+
+
 big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
 big_gen2 = Block(children = [genqec2_mdl, exc2_mdl, gov2_mdl, stabil2_mdl])
+
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+
+big_gen2.external_mapping.update({VarPowerFlowRefferenceType.P: genqec2_mdl.out_vars[0]})
+big_gen2.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec2_mdl.out_vars[1]})
+
 
 # attach rms models to Veragrid objects
 gen0.rms_model.model = big_gen1
@@ -176,3 +187,5 @@ res = gce.power_flow(grid, options=options)
 print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
+
+sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
