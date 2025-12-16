@@ -535,7 +535,14 @@ def test_ptdf_projected_ts_gb_full():
     Flows_orig = lin_ts.get_flows_ts(P=P_orig)
 
     # Then reduce the network
-    bus_to_remove = np.array([6, 8])
+    bus_to_remove = []
+    bus_idx_dict = grid.get_bus_index_dict()
+    for bus in grid.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
+
+    bus_to_remove = np.array(bus_to_remove)
     
     # Get internal branches before reduction to compare later
     external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
