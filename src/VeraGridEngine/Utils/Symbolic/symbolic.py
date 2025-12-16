@@ -127,34 +127,26 @@ class Expr:
     """
     uid: str  # real dataclass field lives in subclasses
 
-    def get_vars(self, vars_found: Optional[List["Var"]] = None) -> List["Var"]:
+    def get_vars(self, vars_found: Optional[list["Var"]] = None) -> list["Var"]:
         if vars_found is None:
             vars_found = []
 
-        # Caso base: variable
         if isinstance(self, Var):
             if self not in vars_found:
                 vars_found.append(self)
-            return vars_found
 
-        # Operadores binarios (BinOp)
-        if hasattr(self, "left") and hasattr(self, "right"):
+        elif isinstance(self, BinOp):
             self.left.get_vars(vars_found)
             self.right.get_vars(vars_found)
-            return vars_found
 
-        # Operadores unarios (UnOp)
-        if hasattr(self, "operand"):
+        elif isinstance(self, UnOp):
             self.operand.get_vars(vars_found)
-            return vars_found
 
-        # Comparaciones
-        if hasattr(self, "lhs") and hasattr(self, "rhs"):
-            self.lhs.get_vars(vars_found)
-            self.rhs.get_vars(vars_found)
-            return vars_found
+        elif isinstance(self, Func):
+            self.arg.get_vars(vars_found)
 
-        # Const, UndefinedConst, etc.
+        # Todo: add comparisions
+
         return vars_found
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
@@ -219,52 +211,52 @@ class Expr:
     # ------------------------------------------------------------------
     # Operator helpers
     # ------------------------------------------------------------------
-    def __add__(self, other: Any) -> "Expr":
+    def __add__(self, other: Any) -> Expr:
         return BinOp("+", self, _to_expr(other))
 
-    def __radd__(self, other: Any) -> "Expr":
+    def __radd__(self, other: Any) -> Expr:
         return BinOp("+", _to_expr(other), self)
 
-    def __sub__(self, other: Any) -> "Expr":
+    def __sub__(self, other: Any) -> Expr:
         return BinOp("-", self, _to_expr(other))
 
-    def __rsub__(self, other: Any) -> "Expr":
+    def __rsub__(self, other: Any) -> Expr:
         return BinOp("-", _to_expr(other), self)
 
-    def __mul__(self, other: Any) -> "Expr":
+    def __mul__(self, other: Any) -> Expr:
         return BinOp("*", self, _to_expr(other))
 
-    def __rmul__(self, other: Any) -> "Expr":
+    def __rmul__(self, other: Any) -> Expr:
         return BinOp("*", _to_expr(other), self)
 
-    def __truediv__(self, other: Any) -> "Expr":
+    def __truediv__(self, other: Any) -> Expr:
         return BinOp("/", self, _to_expr(other))
 
-    def __rtruediv__(self, other: Any) -> "Expr":
+    def __rtruediv__(self, other: Any) -> Expr:
         return BinOp("/", _to_expr(other), self)
 
-    def __pow__(self, other: Any) -> "Expr":
+    def __pow__(self, other: Any) -> Expr:
         return BinOp("**", self, _to_expr(other))
 
-    def __rpow__(self, other: Any) -> "Expr":
+    def __rpow__(self, other: Any) -> Expr:
         return BinOp("**", _to_expr(other), self)
 
     def __neg__(self) -> "Expr":
         return UnOp("-", self)
 
-    def __le__(self, other: "Expr" | NUMBER) -> Comparison:
+    def __le__(self, other: Expr | NUMBER) -> Comparison:
         return Comparison(self, CmpOp.LE, other)
 
-    def __ge__(self, other: "Expr" | NUMBER) -> Comparison:
+    def __ge__(self, other: Expr | NUMBER) -> Comparison:
         return Comparison(self, CmpOp.GE, other)
 
-    def __eq__(self, other: "Expr" | NUMBER) -> Comparison:  # type: ignore[override]
+    def __eq__(self, other: Expr | NUMBER) -> Comparison:  # type: ignore[override]
         return Comparison(self, CmpOp.EQ, other)
 
-    def __lt__(self, other: "Expr" | NUMBER) -> Comparison:
+    def __lt__(self, other: Expr | NUMBER) -> Comparison:
         return Comparison(self, CmpOp.LT, other)
 
-    def __gt__(self, other: "Expr" | NUMBER) -> Comparison:
+    def __gt__(self, other: Expr | NUMBER) -> Comparison:
         return Comparison(self, CmpOp.GT, other)
 
     def __str__(self) -> str:  # pragma: no cover – abstract
@@ -357,10 +349,12 @@ class Var(Expr):
     def __repr__(self) -> str:
         return self.name
 
-    # def __eq__(self, other: "Var"):
-    #     return self.uid == other.uid
-    def __eq__(self, other: "Expr" | NUMBER) -> Comparison:  # type: ignore[override]
-        return Comparison(self, CmpOp.EQ, other)
+    # def __eq__(self, other: "Expr" | NUMBER) -> Comparison:  # type: ignore[override]
+    #     return Comparison(self, CmpOp.EQ, other)
+    def __eq__(self, other):
+        if isinstance(other, Var):
+            return self.uid == other.uid
+        return False
 
 
 class UndefinedConst(Expr):
@@ -743,7 +737,7 @@ class UnOp(Expr):
 @dataclass(frozen=True)
 class Func(Expr):
     name: str
-    arg: Expr
+    arg: Expr = Expr
     uid: int = field(default_factory=_new_uid, init=False)
 
     _impl: ClassVar[Mapping[str, Callable[[NUMBER], NUMBER]]] = MappingProxyType({
@@ -1103,10 +1097,12 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
     if isinstance(expr, BinOp):
         return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
     if isinstance(expr, Func):
-        if expr.name in ("real", "imag", "conj", "angle"):
+        if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
+                         "exp", "log", "sqrt", "asin", "acos", "atan",
+                         "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
-        else:
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
+        elif expr.name == "heaviside":
+            return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
 
     raise TypeError(type(expr))
 

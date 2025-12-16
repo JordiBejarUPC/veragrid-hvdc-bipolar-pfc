@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, \
-    LagVar
+    LagVar, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
 
@@ -90,7 +90,13 @@ def _compile_equation(eqs: Sequence[Expr],
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
-    ns: Dict[str, Any] = {"math": math, "np": np}
+    ns: Dict[str, Any] = {
+        "math": math,
+        "np": np,
+        "nb": nb,
+        "_heaviside": _heaviside,
+        "heaviside":heaviside
+    }
     exec(src, ns)
     fn = nb.njit(ns["_f"], fastmath=True)
 
@@ -210,7 +216,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
              bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-        mdl_vars = mdl.get_all_vars()
+        mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
 
         for var in mdl_vars:
             key = (var.uid, var.name)
@@ -252,25 +258,44 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             params_array[uid2idx_params[param.uid]] = param_val
 
         # compute and assign missing init_vars
-        vars_initialized: List[Var] = list()
-        while len(vars_initialized) < len(mdl_vars):
-            for var in mdl.init_eqs.keys():
-                if var not in vars_initialized:
-                    key = (var.uid, var.name)
-                    if key in init_guess:
-                        x[uid2idx_vars[var.uid]] = init_guess[key]
-                        vars_initialized.append(var)
+        vars_initialized: set[tuple[int, str]] = set()
+        while len(vars_initialized) < len(mdl.init_eqs):
+            progress = False
+
+            vars_init_at_start = len(vars_initialized)
+            for var, eq in mdl.init_eqs.items():
+
+                key = (var.uid, var.name)
+                if key in vars_initialized:
+                    continue
+
+                deps = eq.get_vars()
+                calculate_now = True
+                for v in deps:
+                    key_deps = (v.uid, v.name)
+                    if key_deps in init_guess:
+                        continue
                     else:
-                        eq = mdl.init_eqs[var]
-                        vars_in_eqs = eq.get_vars()
-                        all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
-                        if all_in_init_guess:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                            init_val = float(eq_fn(x, params_array))
-                            init_guess[key] = init_val
-                            x[uid2idx_vars[var.uid]] = init_val
-                        else:
-                            continue
+                        calculate_now = False
+                        break
+                # if all((v.uid, v.name) in init_guess for v in deps):
+                if calculate_now:
+                    var_now = var
+                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                    val = float(eq_fn(x, params_array))
+
+                    init_guess[key] = val
+                    x[uid2idx_vars[var.uid]] = val
+                    vars_initialized.add(key)
+
+            vars_init_at_end = len(vars_initialized)
+            if vars_init_at_end > vars_init_at_start:
+                progress = True
+
+
+            if not progress:
+                unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
+                raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
         sys_block.add(mdl)
         print(sys_block)

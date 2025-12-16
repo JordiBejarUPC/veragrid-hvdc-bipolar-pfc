@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType, tf_to_diffblock, \
     tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, DiffBlock
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst, \
-    sqrt, atan, f_exc
+    sqrt, atan, f_exc, heaviside
 from scipy.optimize import fsolve
 
 def solve_x(A, B, C, Ke, x0=0.1):
