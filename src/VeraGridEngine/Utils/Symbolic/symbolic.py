@@ -362,6 +362,10 @@ class Var(Expr):
     def __eq__(self, other: "Expr" | NUMBER) -> Comparison:  # type: ignore[override]
         return Comparison(self, CmpOp.EQ, other)
 
+class PlaceholderVar(Var):
+    name: str = 'name'
+    uid: int = field(default_factory=_new_uid)
+    placeholder: UndefinedConst
 
 class UndefinedConst(Expr):
     name: str = 'name'
@@ -669,7 +673,10 @@ class BinOp(Expr):
         if self.op == '/' and isinstance(l, Const):
             if l.value == 0:
                 return l
-
+        if self.op == '/':
+            if l.uid == r.uid:
+                return Const(1)
+        
         return BinOp(self.op, l, r)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:

@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, \
-    LagVar
+    LagVar, UndefinedConst, BinOp, PlaceholderVar  
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
 
@@ -255,22 +255,66 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         vars_initialized: List[Var] = list()
         while len(vars_initialized) < len(mdl_vars):
             for var in mdl.init_eqs.keys():
+
                 if var not in vars_initialized:
                     key = (var.uid, var.name)
                     if key in init_guess:
                         x[uid2idx_vars[var.uid]] = init_guess[key]
                         vars_initialized.append(var)
+
+                    #We initialize UndefinedConst
+                    elif isinstance(var, UndefinedConst) and not var.frozen:
+
+                        if all_in_init_guess:
+                            eq = mdl.init_eqs[var].right
+                            vars_in_eqs = eq.get_vars()
+                            vars_in_eqs = [vr for vr in vars_in_eqs if not isinstance(vr, PlaceholderVar)]
+                            all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
+                            is_placeholder = any(isinstance(vr, PlaceholderVar) for vr in vars_in_eqs)
+                            if is_placeholder:
+                                placeholder_var = next(
+                                    (vr for vr in vars_in_eqs if isinstance(vr, PlaceholderVar)),
+                                    None)
+                                tol = 1e-5
+                                error = 1
+                                x_last = 1
+                                while error>tol:
+                                    eq_compile = eq.subs({placeholder_var:Const(x_last)})
+                                    eq_fn = _compile_equation([eq_compile], uid2sym_vars, uid2sym_params)
+                                    init_val = float(eq_fn(x, params_array))
+                                    error = np.linalg.norm(init_val - x0)
+                                    x_last = init_val
+                            else:
+                                eq = mdl.init_eqs[var]
+                                vars_in_eqs = eq.get_vars()
+                                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                                all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
+
+                                init_val = float(eq_fn(x, params_array))
+                            var.assign_value(init_val)
+
                     else:
                         eq = mdl.init_eqs[var]
                         vars_in_eqs = eq.get_vars()
                         all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
                         if all_in_init_guess:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                            init_val = float(eq_fn(x, params_array))
-                            init_guess[key] = init_val
-                            x[uid2idx_vars[var.uid]] = init_val
-                        else:
-                            continue
+                            if var not in vars_in_eqs:
+                                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                                init_val = float(eq_fn(x, params_array))
+                                init_guess[key] = init_val
+                                x[uid2idx_vars[var.uid]] = init_val
+                            else:
+                                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                                tol = 1e-5
+                                error = 1
+                                while error>tol:
+                                    x0 = x[uid2idx_vars[var.uid]]
+                                    init_val = float(eq_fn(x, params_array))
+                                    x[uid2idx_vars[var.uid]] = init_val
+                                    error = np.linalg.norm(init_val - x0)
+                                init_guess[key] = init_val
+
+
 
         sys_block.add(mdl)
         print(sys_block)

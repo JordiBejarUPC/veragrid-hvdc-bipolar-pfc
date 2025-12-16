@@ -10,8 +10,8 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType, tf_to_diffblock, \
     tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, DiffBlock
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst, \
-    sqrt, atan, f_exc
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst,  \
+    PlaceholderVar, sqrt, atan, f_exc, heaviside
 from scipy.optimize import fsolve
 
 def solve_x(A, B, C, Ke, x0=0.1):
@@ -27,6 +27,18 @@ def solve_x(A, B, C, Ke, x0=0.1):
         print("Root finding did not fully converge:")
         print(msg)
     return sol[0]
+
+def find_name_in_block(name:str, block:Block):
+    for var in block.algebraic_vars + block.state_vars:
+        if name == var.name:
+            return var
+        
+    for block_child in block.children:
+        result = find_name_in_block(name, block_child)
+        if result is not None:   # found in a child
+            return result
+    
+    return None
 
 def GenqecBuild(name: str = "") -> RmsModelTemplate:
     """
@@ -236,7 +248,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Eq_2prime: Vd,
             Ed_2prime: Vq,
         },
-        out_vars=[Pg, Qg, omega, IRPu],
+        out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
         name="genqec"
@@ -269,7 +281,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         "K8": Const(0.0),
     }
 
-    inputs = [Var("omega_")]
+    inputs = [Var("omega_"), Var('Te_')]
 
     # ______________________________________________________________________________________
     #                                    variables
@@ -279,7 +291,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     et = Var("et")
 
     # reference
-    Pm_ref = Var('Pm_ref')
+    Pm_ref = UndefinedConst('Pm_ref')
     algebraic_eqs = []
     algebraic_vars = []
 
@@ -309,7 +321,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         p0: Const(1.0),
         P0: Const(0.01),
         omega_ref: Const(1),
-
         # Governor parameters
         K: Const(10.0),  # governor gain (inverse droop)
         Pmax: Const(2.0),  # max mechanical power (pu)
@@ -329,6 +340,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         ],
         algebraic_vars=[T_aux],
     )
+    controller_block = Block()
 
     u1 = inputs[0] - omega_ref
     lead_lag_block, y1 = tf_to_diffblock(
@@ -382,7 +394,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     )
 
     u = parameters["K1"] * y3_1 + parameters["K2"] * y3_2 + parameters["K3"] * y3_3 + \
-        parameters["K4"] * y3_4 + T_aux
+        parameters["K4"] * y3_4 
     aux_block = Block(
         algebraic_eqs=[u - Tm] + algebraic_eqs,
         algebraic_vars=[Tm, Pm_ref] + algebraic_vars,
@@ -397,13 +409,14 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         name="governor",
         # Pm_ref
         init_eqs={
+            Pm_ref: inputs[1],
             y1: Const(0.0),
             y2_3: Const(0),
             y2_2: Const(0),
-            y3_1: Const(0),
-            y3_2: Const(0),
-            y3_3: Const(0),
-            y3_4: Const(0),
+            y3_1: Pm_ref,
+            y3_2: Pm_ref,
+            y3_3: Pm_ref,
+            y3_4: Pm_ref,
         }
     )
     return templ
@@ -547,7 +560,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [Var("IRPu_"), Var("Va_"), Var("Vpss_")]
+    inputs = [Var("IRPu_"), Var("Va_"), Var("Vpss_"), Var('Efd_')]
 
     algebraic_vars = []
 
@@ -557,7 +570,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Vf = Var("Vf")
     Efe = Var('Efe')
-    UsRefPu = Var("UsRefPu")  # reference voltage (pu)
+    UsRefPu = UndefinedConst("UsRefPu")  # reference voltage (pu)
+    Efd = Var("")  # reference voltage (pu)
 
     # Exciter internal variables
     VeMaxPu = Var('VeMaxPu')
@@ -585,15 +599,16 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # exciter submodel parameters
     AEx = Var("AEx")  # Gain of saturation function
     BEx = Var("BEx")  # Exponential coefficient of saturation function
+    Se_threshold = Var("Se_threshold")  # Exponential coefficient of saturation function
     ToLLi = Var("ToLLi")  # Tolerance on limit crossing
     VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
     VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
-    F_rectifier = Var("F_rectifier")  # Rectifier factor
 
     events_dict = {
         # Exciter (AVR) parameters
         AEz: Const(0.02),  # saturation gain
         BEz: Const(1.5),  # saturation exponential coefficient
+        Se_threshold: Const(1.0),  # saturation threshold
         EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
         EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
 
@@ -608,11 +623,10 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
         # Exciter submodel parameters
         AEx: Const(0.02),  # saturation gain
-        BEx: Const(-0.01),  # exponential coeff of saturation function
+        BEx: Const(0.01),  # exponential coeff of saturation function
         ToLLi: Const(0.05),  # tolerance on limit crossing
         VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
         VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
-        F_rectifier: Const(1.0),  # rectifier factor (1=DC, 0.5=AC)
     }
 
     # ---Internal Blocks---
@@ -694,23 +708,42 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
     )
 
-    Ve_init = (y4 + inputs[0]*parameters['Kd'])/(parameters['Ke']+Const(1))
-    Ve_sat = hard_sat(Ve_init, VeMinPu, VeMaxPu)
+    u_exciter3 = find_name_in_block(tf3, 'u_exciter3')
+    u_subexciter1 = find_name_in_block(tf1_sub, 'u_subexciter1')
+    y_subexciter1 = find_name_in_block(tf1_sub, 'y_subexciter1')
+
+    Ve_sat = hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
+    Se_expr = AEx * Ve_sat * exp(BEx * (Ve_sat - Se_threshold)) \
+                  * heaviside(Ve_sat - Se_threshold)
+    
+    #Equations to find the reference
+    UsRefPlaceholder = PlaceholderVar('UsRefPlaceholder', UsRefPu)
+    Ve_sat_ref = hard_sat(y_subexciter1_ref, VeMinPu, VeMaxPu)
+    Se_expr_ref = AEx * Ve_sat * exp(BEx * (Ve_sat_ref - Se_threshold)) \
+                  * heaviside(Ve_sat_ref - Se_threshold)
+    y4_ref =  (-inputs[1] + UsRefPlaceholder)*parameters["Ka"]
+    Efe_ref =  hard_sat(y4_ref, EfeMinPu, EfeMaxPu)
+    y_subexciter1_ref = (Efe_ref - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]  + Se_expr_ref) 
+    f_output_ref = parameters['Kc']*inputs[0]/y_subexciter1_ref
+    Vf_ref = f_output_ref*Ve_sat_ref
+
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],
         out_vars=[Vf],
         in_vars=inputs,
         event_dict=events_dict,
         init_eqs={
+            UsRefPu:UsRefPlaceholder*(inputs[3]/Vf_ref),
             y1: inputs[1],
             y2: Const(0.0),
-            y3: -y1 + Const(0),
-            # y3: -y1+UsRefPu,
+            y3: -y1 + UsRefPu,
+            u_exciter3: y3,
             y4: y3*parameters["Ka"],
             Efe: hard_sat(y4, min_const, max_const),
-            u_aux: parameters["Ke"] * Ve_init + Ve_init*1,
-            Ve_presat: y4 + inputs[0]*parameters['Kd'] - u_aux,
-            f_input: parameters['Kc']*inputs[0]/Ve_sat,
+            u_subexciter1: Const(0.0),
+            y_subexciter1:(Efe - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]  + Se_expr),
+            u_aux: parameters["Ke"] * y_subexciter1 + y_subexciter1*Se_expr,
+            f_input: parameters['Kc']*inputs[0]/y_subexciter1,
             f_output: f_exc(f_input),   
             Vf: f_output*Ve_sat,
         }
