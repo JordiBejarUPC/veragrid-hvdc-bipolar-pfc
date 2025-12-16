@@ -560,12 +560,70 @@ def test_ptdf_projected_ts_gb_full():
     # Check if dimensions match
     assert Flows_red.shape[1] == len(internal_branches)
 
-    print('Flow orig')
-    print(Flows_orig_internal)
-    print('Flow red')
-    print(Flows_red)
-
     # Compare flows
+    assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+
+
+def test_ptdf_projected_ts_gb_selected_middle_steps():
+    """
+    Test to check the reduction flows with time series for selected time steps in the middle of the year.
+    Performs grid reduction for 3 hours that are neither the first nor the last ones.
+    :return:
+    """
+    fname = os.path.join('data', 'grids', 'GB Network.gridcal')
+    grid = gce.open_file(filename=fname)
+
+    # Get all available time indices
+    all_time_indices = grid.get_all_time_indices()
+    n_times = len(all_time_indices)
+    
+    # Select 3 time steps in the middle (not first, not last)
+    middle_idx = n_times // 2
+    selected_time_indices = np.array([
+        middle_idx - 1,
+        middle_idx,
+        middle_idx + 1
+    ])
+    
+    # Ensure indices are valid and not at the boundaries
+    assert selected_time_indices[0] > 0
+    assert selected_time_indices[-1] < n_times - 1
+    
+    # First run time series linear analysis for selected time steps only
+    lin_ts = gce.LinearAnalysisTs(grid=grid, distributed_slack=False, time_indices=selected_time_indices)
+    P_orig_full = grid.get_Pbus_prof()
+    P_orig = P_orig_full[selected_time_indices, :]  # Select only the time steps we're testing
+    Flows_orig = lin_ts.get_flows_ts(P=P_orig)
+
+    # Then reduce the network
+    bus_to_remove = []
+    bus_idx_dict = grid.get_bus_index_dict()
+    for bus in grid.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
+
+    bus_to_remove = np.array(bus_to_remove)
+    
+    # Get internal branches before reduction to compare later
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+    
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    
+    # Run time series linear analysis on reduced grid for the same selected time steps
+    lin_ts_red = gce.LinearAnalysisTs(grid=red_grid, distributed_slack=False, time_indices=selected_time_indices)
+    P_red_full = red_grid.get_Pbus_prof()
+    P_red = P_red_full[selected_time_indices, :]  # Select only the time steps we're testing
+    Flows_red = lin_ts_red.get_flows_ts(P=P_red)
+
+    # Compare flows on internal branches
+    Flows_orig_internal = Flows_orig[:, internal_branches]
+    
+    # Check if dimensions match
+    assert Flows_red.shape[0] == len(selected_time_indices)
+    assert Flows_red.shape[1] == len(internal_branches)
+
+    # Compare flows for the selected time steps
     assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
 
 
@@ -660,5 +718,5 @@ if __name__ == '__main__':
     # test_ptdf_projected_ts()
     # test_ptdf_projected_slack_remove()
     # test_ptdf_projected_ts_slack_remove()
-    # test_ptdf_projected_ts_gb_full()
-    test_ptdf_projected_ts_simple_ree()
+    test_ptdf_projected_ts_gb_full()
+    # test_ptdf_projected_ts_simple_ree()
