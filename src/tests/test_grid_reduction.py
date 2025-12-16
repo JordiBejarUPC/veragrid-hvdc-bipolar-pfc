@@ -10,6 +10,86 @@ from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard
 from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
 
 
+def get_total_generation(grid: gce.MultiCircuit) -> float:
+    """
+    Get total generation for snapshot
+    :param grid: MultiCircuit instance
+    :return: Total generation in MW
+    """
+    total = 0.0
+    for gen in grid.generators:
+        total += gen.P * gen.active
+    for batt in grid.batteries:
+        total += batt.P * batt.active
+    for stagen in grid.static_generators:
+        total += stagen.P * stagen.active
+    return total
+
+
+def get_total_load(grid: gce.MultiCircuit) -> float:
+    """
+    Get total load for snapshot
+    :param grid: MultiCircuit instance
+    :return: Total load in MW
+    """
+    total = 0.0
+    for load in grid.loads:
+        total += load.P * load.active
+    return total
+
+
+def get_total_generation_ts(grid: gce.MultiCircuit, time_indices: np.ndarray = None) -> np.ndarray:
+    """
+    Get total generation profile for time series
+    :param grid: MultiCircuit instance
+    :param time_indices: Optional array of time indices to select
+    :return: Total generation profile in MW (nt,)
+    """
+    if time_indices is None:
+        time_indices = grid.get_all_time_indices()
+    
+    nt = len(time_indices)
+    total = np.zeros(nt, dtype=float)
+    
+    for gen in grid.generators:
+        if gen.P_prof is not None:
+            prof = gen.P_prof.toarray()[time_indices] * gen.active_prof.toarray()[time_indices]
+            total += prof
+    
+    for batt in grid.batteries:
+        if batt.P_prof is not None:
+            prof = batt.P_prof.toarray()[time_indices] * batt.active_prof.toarray()[time_indices]
+            total += prof
+    
+    for stagen in grid.static_generators:
+        if stagen.P_prof is not None:
+            prof = stagen.P_prof.toarray()[time_indices] * stagen.active_prof.toarray()[time_indices]
+            total += prof
+    
+    return total
+
+
+def get_total_load_ts(grid: gce.MultiCircuit, time_indices: np.ndarray = None) -> np.ndarray:
+    """
+    Get total load profile for time series
+    :param grid: MultiCircuit instance
+    :param time_indices: Optional array of time indices to select
+    :return: Total load profile in MW (nt,)
+    """
+    if time_indices is None:
+        time_indices = grid.get_all_time_indices()
+    
+    nt = len(time_indices)
+    total = np.zeros(nt, dtype=float)
+    
+    for load in grid.loads:
+        if load.P_prof is not None:
+            prof = load.P_prof.toarray()[time_indices] * load.active_prof.toarray()[time_indices]
+            total += prof
+    
+    return total
+
+
 def test_ward_reduction():
     """
     Test to check the PTDF reduction
@@ -424,14 +504,6 @@ def test_ptdf_projected_gb():
     # fname = os.path.join('src', 'tests', 'data', 'grids', 'gb_t0.veragrid')
     grid = gce.open_file(filename=fname)
 
-    P_original_gen = 0.0
-    for gen in grid.generators:
-        P_original_gen += gen.P
-
-    P_original_load = 0.0
-    for load in grid.loads:
-        P_original_load += load.P
-
     # First run basic linear analysis
     flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr.run()
@@ -455,24 +527,19 @@ def test_ptdf_projected_gb():
     flows_dr_red.run()
     flows_branches_red = flows_dr_red.results.Sf
 
-    P_reduced_gen = 0.0
-    for gen in red_grid.generators:
-        P_reduced_gen += gen.P
-
-    P_reduced_load = 0.0
-    for load in red_grid.loads:
-        P_reduced_load += load.P
-
-    # Check net balance instead of gross balance, as reduction adds compensation power
-    net_original = P_original_gen - P_original_load
-    net_reduced = P_reduced_gen - P_reduced_load
-    
     # Check that flows on remaining branches match
     assert np.allclose(flows_branches[internal_branches], flows_branches_red, atol=1e-4)
 
-    assert abs(net_reduced) < 1e-4
-    assert abs(P_original_gen - P_reduced_gen) < 1e-4
-    assert abs(P_original_load - P_reduced_load) < 1e-4
+    # Check power balance: total generation and demand should not change
+    P_orig_gen_total = get_total_generation(grid)
+    P_orig_load_total = get_total_load(grid)
+    P_red_gen_total = get_total_generation(red_grid)
+    P_red_load_total = get_total_load(red_grid)
+    
+    assert abs(P_orig_gen_total - P_red_gen_total) < 1e-4, \
+        "Total generation should not change after reduction"
+    assert abs(P_orig_load_total - P_red_load_total) < 1e-4, \
+        "Total demand should not change after reduction"
 
 
 def test_ptdf_projected_ts():
@@ -562,6 +629,18 @@ def test_ptdf_projected_ts_gb_full():
 
     # Compare flows
     assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+    
+    # Check power balance for all time steps: total generation and demand should not change
+    all_time_indices = grid.get_all_time_indices()
+    P_orig_gen_ts = get_total_generation_ts(grid, time_indices=all_time_indices)
+    P_orig_load_ts = get_total_load_ts(grid, time_indices=all_time_indices)
+    P_red_gen_ts = get_total_generation_ts(red_grid, time_indices=all_time_indices)
+    P_red_load_ts = get_total_load_ts(red_grid, time_indices=all_time_indices)
+    
+    assert np.allclose(P_orig_gen_ts, P_red_gen_ts, atol=1e-4), \
+        "Total generation should not change after reduction at any time step"
+    assert np.allclose(P_orig_load_ts, P_red_load_ts, atol=1e-4), \
+        "Total demand should not change after reduction at any time step"
 
 
 def test_ptdf_projected_ts_gb_selected_middle_steps():
@@ -625,6 +704,17 @@ def test_ptdf_projected_ts_gb_selected_middle_steps():
 
     # Compare flows for the selected time steps
     assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+    
+    # Check power balance for selected time steps: total generation and demand should not change
+    P_orig_gen_ts = get_total_generation_ts(grid, time_indices=selected_time_indices)
+    P_orig_load_ts = get_total_load_ts(grid, time_indices=selected_time_indices)
+    P_red_gen_ts = get_total_generation_ts(red_grid, time_indices=selected_time_indices)
+    P_red_load_ts = get_total_load_ts(red_grid, time_indices=selected_time_indices)
+    
+    assert np.allclose(P_orig_gen_ts, P_red_gen_ts, atol=1e-4), \
+        "Total generation should not change after reduction at selected time steps"
+    assert np.allclose(P_orig_load_ts, P_red_load_ts, atol=1e-4), \
+        "Total demand should not change after reduction at selected time steps"
 
 
 def test_ptdf_projected_ts_slack_remove():
