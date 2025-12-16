@@ -346,15 +346,43 @@ for _, row in df_buses_lines.iterrows():
 df_meters = pd.read_csv('C:/Users/alexb/estabanell_grid/cups_eRoots.csv', sep=";")
 df_powers = pd.read_csv('C:/Users/alexb/estabanell_grid/Corbes_CUPS_CT-0975.csv', sep=";")
 
-# For now, only the first measurement of each meter
-df_first = df_powers.groupby("MeterID").first().reset_index()
+# --------------------------------------------------------------------------
+# Select snapshot with highest total active power across all meters
+# --------------------------------------------------------------------------
+# Per‑row active power [MW]
+df_powers["P_MW"] = (
+    df_powers["TotalActiveEnergyConsumed"] - df_powers["TotalActiveEnergyProduced"]
+) / 1000.0
+
+# Try to infer the time column (e.g. "Time", "Timestamp", "DateTime", ...)
+time_cols = [c for c in df_powers.columns if "time" in c.lower() or "date" in c.lower()]
+if len(time_cols) == 0:
+    raise ValueError(
+        "Could not infer time column in df_powers. "
+        "Please set 'time_col' manually to the appropriate column name."
+    )
+time_col = time_cols[0]
+
+# Total system active power per time instant
+P_tot_per_time = df_powers.groupby(time_col)["P_MW"].sum()
+time_peak = P_tot_per_time.idxmax()
+
+# Use only the rows at the peak‑load time instant
+df_at_peak = df_powers[df_powers[time_col] == time_peak]
+
+# One row per meter at that time instant
+df_first = df_at_peak.groupby("MeterID").first().reset_index()
 
 S_sum = 0 + 0j
 for _, row_meters in df_meters.iterrows():
     row_power = df_first[df_first["MeterID"] == row_meters["comptador"]]
 
-    P = (float(row_power["TotalActiveEnergyConsumed"].values[0]) - float(row_power["TotalActiveEnergyProduced"].values[0])) / 1000
-    Q = (float(row_power["TotalReactiveEnergyProduced"].values[0]) - float(row_power["TotalReactiveEnergyConsumed"].values[0])) / 1000
+    # Some meters might not have data at the selected peak time; skip them.
+    if row_power.empty:
+        continue
+
+    P = (float(row_power["TotalActiveEnergyConsumed"].values[0]) - float(row_power["TotalActiveEnergyProduced"].values[0])) / 1000 * 8
+    Q = (float(row_power["TotalReactiveEnergyProduced"].values[0]) - float(row_power["TotalReactiveEnergyConsumed"].values[0])) / 1000 * 8
 
     S_sum = S_sum + (P + 1j * Q)
 
@@ -411,6 +439,8 @@ for _, row_meters in df_meters.iterrows():
 # ---------------------------------------------------------------------------------------------------------------------
 # print()
 # gce.save_file(grid=grid, filename='estabanell.veragrid')
+
+print("\nS_sum =", abs(S_sum) * 1000, 'kVA')
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
