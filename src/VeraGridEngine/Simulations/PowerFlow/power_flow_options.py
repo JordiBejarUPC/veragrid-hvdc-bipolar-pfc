@@ -19,7 +19,7 @@ class PowerFlowOptions(OptionsTemplate):
                  initialize_with_existing_solution: bool = False,
                  tolerance: float = 1e-6,
                  max_iter: int = 25,
-                 limit_i_vsc: bool = False,
+                 limit_i_vsc: bool = True,
                  control_q: bool = False,
                  control_taps_modules: bool = True,
                  control_taps_phase: bool = True,
