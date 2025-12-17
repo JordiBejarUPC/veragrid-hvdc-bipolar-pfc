@@ -208,16 +208,16 @@ def adv_jacobian(nbus: int,
     # -------- ROW 4 (current balance VSCs) ---------
     dIvsc_dVa = CSC(nvsc_has_dc_n, len(i_u_va), 0, False)  # fully empty
     dIvsc_dVm = deriv.dIvsc_dVm_csc(k_vsc_has_dc_n, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
-    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(nvsc, u_vsc_pfp, Vm, Fdcn_vsc)
-    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(nvsc, u_vsc_pfn, Vm, Fdcp_vsc)
-    dIvsc_dPtvsc = CSC(nvsc, len(u_vsc_pt), 0, False)  # fully empty
-    dIvsc_dQtvsc = CSC(nvsc, len(u_vsc_qt), 0, False)  # fully empty
-    dIvsc_dPfhvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dPthvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dQfhvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dQthvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dm = CSC(nvsc, len(u_cbr_m), 0, False)  # fully empty
-    dIvsc_dtau = CSC(nvsc, len(u_cbr_tau), 0, False)  # fully empty
+    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(k_vsc_has_dc_n, u_vsc_pfp, Vm, Fdcn_vsc)
+    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(k_vsc_has_dc_n, u_vsc_pfn, Vm, Fdcp_vsc)
+    dIvsc_dPtvsc = CSC(nvsc_has_dc_n, len(u_vsc_pt), 0, False)  # fully empty
+    dIvsc_dQtvsc = CSC(nvsc_has_dc_n, len(u_vsc_qt), 0, False)  # fully empty
+    dIvsc_dPfhvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dPthvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dQfhvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dQthvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dm = CSC(nvsc_has_dc_n, len(u_cbr_m), 0, False)  # fully empty
+    dIvsc_dtau = CSC(nvsc_has_dc_n, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 5 (max current VSCs) ---------
     dImax_dVa = CSC(nvsc_imax, len(i_u_va), 0, False)  # fully empty
@@ -2315,7 +2315,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 u_vsc_pfn=self.u_vsc_pfn,
                 u_vsc_pt=self.u_vsc_pt,
                 u_vsc_qt=self.u_vsc_qt,
-
+                k_vsc_has_dc_n=self.k_vsc_has_dc_n,
                 k_vsc_imax=self.k_vsc_i,
 
                 # VSC Params

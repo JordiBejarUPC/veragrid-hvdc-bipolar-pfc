@@ -1793,17 +1793,18 @@ def dLossvsc_dQtvsc_csc(nvsc, u_vsc_qt, alpha2, alpha3, Vm, Pt, Qt, T_vsc) -> CS
     return mat
 
 @njit()
-def dIvsc_dPfpvsc_csc(nvsc, u_vsc_pfp, Vm, Fdcn_vsc) -> CSC:
+def dIvsc_dPfpvsc_csc(k_vsc_has_dc_n, u_vsc_pfp, Vm, Fdcn_vsc) -> CSC:
     """
     Compute dIvsc_dPfpvsc in CSC format.
-    :param nvsc: Number of VSCs (rows of the matrix).
+    :param k_vsc_has_dc_n: array of VSC indices with negative poles.
     :param u_vsc_pfp: Column indices for the sparse matrix.
     :param Vm: Voltage magnitudes at buses.
     :param Fdcn_vsc: From negative bus indices for VSCs.
     :return: Sparse matrix in CSC format.
     """
+    ndev = len(k_vsc_has_dc_n)
     n_cols = len(u_vsc_pfp)  # Number of columns (length of i_u_pfp).
-    n_rows = nvsc  # Number of rows (equal to nvsc).
+    n_rows = ndev  # Number of rows (equal to nvsc with negative pole asigned).
     max_nnz = len(u_vsc_pfp)  # Maximum number of non-zero entries.
 
     mat = CSC(n_rows, n_cols, max_nnz, False)
@@ -1831,17 +1832,17 @@ def dIvsc_dPfpvsc_csc(nvsc, u_vsc_pfp, Vm, Fdcn_vsc) -> CSC:
     return mat
 
 @njit()
-def dIvsc_dPfnvsc_csc(nvsc, u_vsc_pfn, Vm, Fdcp_vsc) -> CSC:
+def dIvsc_dPfnvsc_csc(k_vsc_has_dc_n, u_vsc_pfn, Vm, Fdcp_vsc) -> CSC:
     """
     Compute dIvsc_dPfnvsc in CSC format.
-    :param nvsc: Number of VSCs (rows of the matrix).
+    :param k_vsc_has_dc_n: array of VSC indices with negative poles.
     :param u_vsc_pfn: Column indices for the sparse matrix.
     :param Vm: Voltage magnitudes at buses.
     :param Fdcp_vsc: From positive bus indices for VSCs.
     :return: Sparse matrix in CSC format.
     """
     n_cols = len(u_vsc_pfn)  # Number of columns (length of i_u_pfn).
-    n_rows = nvsc  # Number of rows (equal to nvsc).
+    n_rows = len(k_vsc_has_dc_n)  # Number of rows (equal to nvsc with negative poles connected).
     max_nnz = len(u_vsc_pfn)  # Maximum number of non-zero entries.
 
     mat = CSC(n_rows, n_cols, max_nnz, False)
@@ -1868,10 +1869,12 @@ def dIvsc_dPfnvsc_csc(nvsc, u_vsc_pfn, Vm, Fdcp_vsc) -> CSC:
 
 
 @njit()
-def dIvsc_dVm_csc(nvsc, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc) -> CSC:
+def dIvsc_dVm_csc(k_vsc_has_dc_n: IntVec,
+                  nbus: int,
+                  i_u_vm: IntVec, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc) -> CSC:
     """
     Compute dIvsc_dVm in CSC format.
-    :param nvsc: Number of VSCs (rows of the matrix).
+    :param k_vsc_has_dc_n: array of VSC indices with negative poles.
     :param nbus: Number of buses.
     :param i_u_vm: Column indices for the sparse matrix.
     :param Pfp_vsc: Active power flows from positive bus to VSC.
@@ -1880,9 +1883,10 @@ def dIvsc_dVm_csc(nvsc, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc) -> C
     :param Fdcn_vsc: From negative bus indices for VSCs.
     :return: Sparse matrix in CSC format.
     """
+    n_dev = len(k_vsc_has_dc_n)
     n_cols = len(i_u_vm)  # Number of columns (length of i_u_vm).
-    n_rows = nvsc  # Number of rows (equal to nvsc).
-    max_nnz = 2 * nvsc  # Maximum number of non-zero entries.
+    n_rows = n_dev  # Number of rows (equal to nvsc).
+    max_nnz = 2 * n_dev  # Maximum number of non-zero entries.
 
     mat = CSC(n_rows, n_cols, max_nnz, False)
     Tx = np.empty(max_nnz, dtype=np.float64)
@@ -1893,7 +1897,7 @@ def dIvsc_dVm_csc(nvsc, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc) -> C
 
     j_lookup = make_lookup(nbus, i_u_vm)
 
-    for kidx in range(nvsc):
+    for kidx in k_vsc_has_dc_n:
         fp = Fdcp_vsc[kidx]
         fn = Fdcn_vsc[kidx]
 
