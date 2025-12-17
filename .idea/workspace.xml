@@ -29,8 +29,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added grid_reduction_with_multiple_islands_after">
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_sc/converter_controls_pq.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/converter_controls_pq.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_sc/converter_controls_uq.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/converter_controls_uq.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -263,7 +265,7 @@
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for src.tests.test_power_flow">
+  <component name="RunManager" selected="Python tests.pytest in tests">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -729,16 +731,16 @@
     </configuration>
     <list>
       <item itemvalue="Python.test_linear_time_series" />
-      <item itemvalue="Python.grid_reduction_checks" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python.grid_reduction_checks" />
       <item itemvalue="Python tests.pytest for src.tests.test_power_flow" />
       <item itemvalue="Python tests.pytest in test_grid_reduction.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for src.tests.test_power_flow" />
         <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python tests.pytest for src.tests.test_power_flow" />
         <item itemvalue="Python tests.pytest in test_grid_reduction.py" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.grid_reduction_checks" />
