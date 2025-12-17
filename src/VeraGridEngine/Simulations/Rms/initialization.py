@@ -271,8 +271,8 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                 deps = eq.get_vars()
                 calculate_now = True
-                for v in deps:
-                    key_deps = (v.uid, v.name)
+                for v_init in deps:
+                    key_deps = (v_init.uid, v_init.name)
                     if key_deps in init_guess:
                         continue
                     else:

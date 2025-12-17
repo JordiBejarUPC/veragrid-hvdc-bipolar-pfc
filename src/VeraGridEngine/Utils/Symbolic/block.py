@@ -513,6 +513,7 @@ class Block:
         :return:
         """
         init_eqs_new = dict()
+        events_dict_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -527,6 +528,15 @@ class Block:
                 init_eqs_new.update({var: new_expr})
 
         self.init_eqs = init_eqs_new
+
+        for var, expr in self.events_dict.items():
+            new_expr = expr.subs({old: new})
+            if var is old:
+                events_dict_new.update({new: new_expr})
+            else:
+                events_dict_new.update({var: new_expr})
+
+        self.events_dict = events_dict_new
 
         if old in self.in_vars:
             idx = next(i for i, v in enumerate(self.in_vars) if v is old)
@@ -552,8 +562,6 @@ class Block:
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
-            # self.in_vars.remove(var_to_subs)
-            # self.in_vars.append(incoming_var)
 
     def to_dict(self) -> Dict[str, Any]:
         """
