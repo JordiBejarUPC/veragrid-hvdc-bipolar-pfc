@@ -539,6 +539,38 @@ def test_power_flow_12bus_acdc() -> None:
         assert np.allclose(grid.hvdc_lines[0].Pset, solution.Pf_hvdc[0], atol=1e-10)
 
 
+def test_vsc_current_limitation() -> None:
+    """
+    Full AC/DC Power Flow simulation with converter's current limitation and negative poles
+    """
+    fname = os.path.join('data', 'grids', 'vsc_current_limitation.veragrid')
+
+    grid = gce.open_file(fname)
+
+    options = PowerFlowOptions(solver_type=SolverType.NR,
+                               retry_with_other_methods=False,
+                               limit_i_vsc=True)
+
+    driver = PowerFlowDriver(grid=grid, options=options)
+    driver.run()
+    solution = driver.results
+
+    if not solution.converged:
+        driver.logger.print("")
+
+    assert solution.converged
+
+    # Checks if the voltage magnitude and angle are correct.
+    assert np.allclose(0.9287489355489488, abs(solution.voltage[9]), atol=1e-4)
+    assert np.allclose(-11.373895194717075, np.angle(solution.voltage[9], deg=True), atol=1e-4)
+
+    # Checks if the converter's current limitation is well implemented, controlling Imax instead of Qac,
+    # which originally was 5 MVAr.
+    assert np.allclose(4.99999615809046, solution.St[27].real, atol=1e-4)
+    assert np.allclose(2.628707079131246, solution.St[27].imag, atol=1e-4)
+    assert np.allclose(1+0j, solution.voltage[21], atol=1e-4)
+
+
 def test_hvdc_all_methods() -> None:
     """
     Checks that the HVDC logic is working for all power flow methods
