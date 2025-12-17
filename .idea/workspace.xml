@@ -28,13 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Moved trunk out of src&#10;Added grid_reduction checks">
-      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/grid_reduction_2_island.veragrid" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added grid_reduction_with_multiple_islands_after">
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_grid_reduction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/grid_reduction/grid_reduction_checks.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/grid_reduction/grid_reduction_checks.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1877,7 +1873,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="679" />
+    <option name="localTasksCounter" value="680" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1923,7 +1919,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="deleted multilinear im utils" />
     <MESSAGE value="initialization" />
     <MESSAGE value="added external mapping to editor models" />
     <MESSAGE value="Initialization 2" />
@@ -1948,7 +1943,8 @@
     <MESSAGE value="Improved bus centering" />
     <MESSAGE value="Added copy button to the grid reduction" />
     <MESSAGE value="Moved trunk out of src&#10;Added grid_reduction checks" />
-    <option name="LAST_COMMIT_MESSAGE" value="Moved trunk out of src&#10;Added grid_reduction checks" />
+    <MESSAGE value="Added grid_reduction_with_multiple_islands_after" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added grid_reduction_with_multiple_islands_after" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
