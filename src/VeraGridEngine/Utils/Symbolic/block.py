@@ -513,7 +513,7 @@ class Block:
         :return:
         """
         init_eqs_new = dict()
-        events_dict_new = dict()
+        event_dict_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -529,14 +529,14 @@ class Block:
 
         self.init_eqs = init_eqs_new
 
-        for var, expr in self.events_dict.items():
+        for var, expr in self.event_dict.items():
             new_expr = expr.subs({old: new})
             if var is old:
-                events_dict_new.update({new: new_expr})
+                event_dict_new.update({new: new_expr})
             else:
-                events_dict_new.update({var: new_expr})
+                event_dict_new.update({var: new_expr})
 
-        self.events_dict = events_dict_new
+        self.event_dict = event_dict_new
 
         if old in self.in_vars:
             idx = next(i for i, v in enumerate(self.in_vars) if v is old)

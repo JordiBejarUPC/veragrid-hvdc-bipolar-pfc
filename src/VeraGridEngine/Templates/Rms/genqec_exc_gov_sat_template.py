@@ -209,7 +209,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             # saturations (quadratic)
             # Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
             Sa - A / 2 * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))) ** 2,
-            # IRPu - Eq1 * (1 + Sa)???
+            IRPu - Eq1 * (1 + Sa)
         ],
         algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id, Iq,
                         # saturated resistance
@@ -218,15 +218,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                         IRPu],
         init_eqs={
-            omega: Const(1),
-            V_dag: inputs[0] * sin(inputs[1]) + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            V_qag: inputs[0] * cos(inputs[1]) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-            Sa: A * (Psi_ag - B) ** 2,
+            # state vars
             delta: atan(
                 (inputs[0] * sin(inputs[1]) + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
@@ -236,19 +228,52 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (Const(1) + Sa) + Xl))),
+            omega: Const(1),
+            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
+                    Iq / (Const(1) + Sa)),
+            Eq_2prime: Vd,
+            Ed_2prime: Vq,
+
+            Eq1: ((Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat))/(Xd_sat - Xd_prime_sat),
+            Ed1: ((Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat))/(Xq_sat - Xq_prime_sat),
+            Eq2: (-1) * ((Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2)/(Xd_sat - Xd_2prime_sat),
+            Ed2: (-1) * ((Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2)/(Xq_sat - Xq_2prime_sat),
+
+            # algebraic vars
             Vd: (inputs[0] * sin(delta - inputs[1])),
             Vq: (inputs[0] * cos(delta - inputs[1])),
             Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
             Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-                    Iq / (Const(1) + Sa)),
-            Eq_2prime: Vd,
-            Ed_2prime: Vq,
-        },
-        out_vars=[Pg, Qg, omega, IRPu, Te],
+            Psid: (Eq_prime - Id * Xd_2prime_sat),
+            Psiq: (-Ed_prime - Iq * Xq_2prime_sat),
+            IRPu: Eq1 * (1 + Sa),
+
+            # saturated resistances
+            V_dag: inputs[0] * sin(inputs[1]) + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            V_qag: inputs[0] * cos(inputs[1]) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+            Sa: A * (Psi_ag - B) ** 2,
+            Ed2_coef:  (Xd_prime_sat - Xd_2prime_sat) * Sat_d/(Td0_2prime * (Xd_sat - Xd_2prime_sat)),
+            Eq2_coef:  (Xq_prime_sat - Xq_2prime_sat) * Sat_q/(Tq0_2prime * (Xq_sat - Xq_2prime_sat)),
+            Sat_d: (Const(1) + Sa),
+            Sat_q: (Const(1) + Sa),
+
+            # saturated resistance
+            Xd_2prime_sat: (Xd_2prime - Xl + Xl * Sat_d)/Sat_d,
+            Xq_2prime_sat: (Xq_2prime - Xl + Xl * Sat_q)/Sat_q,
+            Xd_prime_sat: - (Xd_prime - Xl + Xl * Sat_d)/Sat_d,
+            Xq_prime_sat: (Xq_prime - Xl + Xl * Sat_q)/Sat_q,
+            Xd_sat: (Xd - Xl + Xl * Sat_d)/Sat_d,
+            Xq_sat: (Xq - Xl + Xl * Sat_q)/Sat_q,
+            },
+        out_vars=[Pg, Qg, omega, IRPu],
         in_vars=inputs,
         event_dict=event_dict,
         name="genqec"
@@ -1142,6 +1167,7 @@ def get_complete_generator_template(name="complete generator rms template") -> R
                               Iq / (Const(1) + Sa)),
             Eq_2prime: Vd,
             Ed_2prime: Vq,
+            IRPu: Eq1 * (1 + Sa)
         })
 
     # governor_blocks:

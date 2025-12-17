@@ -260,6 +260,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
         # compute and assign missing init_vars
         vars_initialized: set[tuple[int, str]] = set()
+        parameters_list = list(mdl.event_dict.keys())
         while len(vars_initialized) < len(mdl.init_eqs):
             progress = False
 
@@ -271,8 +272,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     continue
 
                 deps = eq.get_vars()
+                vars_needed = [vr for vr in deps if vr not in parameters_list]
                 calculate_now = True
-                for v_init in deps:
+                for v_init in vars_needed:
                     key_deps = (v_init.uid, v_init.name)
                     if key_deps in init_guess:
                         continue
