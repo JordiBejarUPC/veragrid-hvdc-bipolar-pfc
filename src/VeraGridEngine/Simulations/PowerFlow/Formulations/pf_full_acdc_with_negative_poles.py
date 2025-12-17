@@ -1894,6 +1894,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self._f = self.compute_f(x, update_class_vars=True)
 
         self._error = compute_fx_error(self._f)
+        print('error = ', self._error)
 
         # Update controls only below a certain error
         if update_controls and self._error < self._controls_tol:
@@ -2026,7 +2027,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     It_i = np.sqrt(self.Pt_vsc[i]**2 + self.Qt_vsc[i]**2) / self.Vm[self.nc.vsc_data.T[i]]
                     Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
-                    print(f"Josep current: {It_i}, Imax: {Imax}")
+                    # print(f"Josep current: {It_i}, Imax: {Imax}")
 
                     if (It_i > Imax
                         and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
@@ -2106,7 +2107,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                             raise ValueError(f"Unfound control type when switching to current limiting: "
                                              f"{self.nc.vsc_data.control1[i]}")
 
-                        print(It_i, Imax)
+                        # print(It_i, Imax)
 
 
                         # Potentially add new conditionals, mainly for the 2nd iteration once saturated
@@ -2141,7 +2142,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                             raise ValueError(f"Unfound control type when switching to current limiting: "
                                              f"{self.nc.vsc_data.control1[i]}")
 
-                    print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
+                    # print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
                     print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
 
             if branch_ctrl_change:
@@ -2342,7 +2343,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = False) -> CSC:
+    def Jacobian(self, autodiff: bool = True) -> CSC:
         """
         Get the Jacobian
         :return:
