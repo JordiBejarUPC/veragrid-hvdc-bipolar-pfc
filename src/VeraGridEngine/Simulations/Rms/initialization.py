@@ -20,6 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, \
+    LagVar, UndefinedConst, BinOp, PlaceholderVar
     LagVar, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
