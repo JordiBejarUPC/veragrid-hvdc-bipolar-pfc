@@ -55,17 +55,17 @@ def get_total_load_ts(grid: gce.MultiCircuit, time_indices: np.ndarray = None) -
     return total
 
 
-grid = gce.open_file("/home/santi/Escritorio/Redes/MOU_2022_5GW_v6c.gridcal")
+grid_ = gce.open_file("/home/santi/Escritorio/Redes/MOU_2022_5GW_v6c.gridcal")
 
 # First run time series linear analysis
-lin_ts = gce.LinearAnalysisTs(grid=grid, distributed_slack=False)
-P_orig = grid.get_Pbus_prof()
+lin_ts = gce.LinearAnalysisTs(grid=grid_, distributed_slack=False)
+P_orig = grid_.get_Pbus_prof()
 Flows_orig = lin_ts.get_flows_ts(P=P_orig)
 
 # Then reduce the network
 bus_to_remove = list()
-bus_idx_dict = grid.get_bus_index_dict()
-for bus in grid.buses:
+bus_idx_dict = grid_.get_bus_index_dict()
+for bus in grid_.buses:
     if bus.Vnom < 400:
         bus_remove_idx = bus_idx_dict[bus]
         bus_to_remove.append(bus_remove_idx)
@@ -73,10 +73,13 @@ for bus in grid.buses:
 bus_to_remove = np.array(bus_to_remove)
 
 # Get internal branches before reduction to compare later
-external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(
-    reduction_bus_indices=bus_to_remove)
+(external, boundary,
+ internal, boundary_branches,
+ internal_branches) = grid_.get_reduction_sets(reduction_bus_indices=bus_to_remove)
 
-red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+red_grid, logger = ptdf_reduction_projected(grid=grid_,
+                                            reduction_bus_indices=bus_to_remove,
+                                            distribute_slack=False)
 
 # Run time series linear analysis on reduced grid
 lin_ts_red = gce.LinearAnalysisTs(grid=red_grid, distributed_slack=False)
@@ -93,14 +96,13 @@ if not (Flows_red.shape[1] == len(internal_branches)):
 # Compare flows
 if not np.allclose(Flows_orig_internal, Flows_red, atol=1e-4):
     print("Flows are not equal")
-
     print(Flows_orig_internal)
     print(Flows_red)
 
 # Check power balance for all time steps: total generation and demand should not change
-all_time_indices = grid.get_all_time_indices()
-P_orig_gen_ts = get_total_generation_ts(grid, time_indices=all_time_indices)
-P_orig_load_ts = get_total_load_ts(grid, time_indices=all_time_indices)
+all_time_indices = grid_.get_all_time_indices()
+P_orig_gen_ts = get_total_generation_ts(grid_, time_indices=all_time_indices)
+P_orig_load_ts = get_total_load_ts(grid_, time_indices=all_time_indices)
 P_red_gen_ts = get_total_generation_ts(red_grid, time_indices=all_time_indices)
 P_red_load_ts = get_total_load_ts(red_grid, time_indices=all_time_indices)
 

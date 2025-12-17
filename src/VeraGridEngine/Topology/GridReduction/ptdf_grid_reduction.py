@@ -507,7 +507,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
     lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
-    # base flows
+    # base flows -------------------------------------------------------------------------------------------------------
     Pload = get_Pload(grid)
     Pgen, Pgen_srap = get_Pgen(grid)
 
@@ -546,7 +546,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             
     boundary_buses = np.sort(np.array(list(boundary_set)))
     
-    # Eliminate the external buses (but not relocating injections)
+    # Eliminate the external buses (but not relocating injections) -----------------------------------------------------
     # We rely on solving for the necessary compensation on the boundary buses
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
     
@@ -763,13 +763,13 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     return grid, logger
 
 
-if __name__ == "__main__":
-    import VeraGridEngine as vg
-
-    circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
-
-    ptdf_reduction_projected(
-        grid=circuit,
-        reduction_bus_indices=[4],
-        tol=1e-8
-    )
+# if __name__ == "__main__":
+#     import VeraGridEngine as vg
+#
+#     circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
+#
+#     ptdf_reduction_projected(
+#         grid=circuit,
+#         reduction_bus_indices=[4],
+#         tol=1e-8
+#     )
