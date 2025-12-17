@@ -25,7 +25,7 @@ from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, Hvdc
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
-@njit()
+# @njit()
 def adv_jacobian(nbus: int,
                  nbr: int,
                  nvsc: int,
@@ -59,6 +59,7 @@ def adv_jacobian(nbus: int,
                  u_vsc_pfn: IntVec,
                  u_vsc_pt: IntVec,
                  u_vsc_qt: IntVec,
+                 k_vsc_has_dc_n: IntVec,
 
                  k_vsc_imax: IntVec,
 
@@ -158,6 +159,7 @@ def adv_jacobian(nbus: int,
     dS_dVm = CxCSC(nbus, nbus, len(dSy_dVm_x), False).set(Yi, Yp, dSy_dVm_x)
     dS_dVa = CxCSC(nbus, nbus, len(dSy_dVa_x), False).set(Yi, Yp, dSy_dVa_x)
 
+    nvsc_has_dc_n = len(k_vsc_has_dc_n)
     nvsc_imax = len(k_vsc_imax)
     hvdc_range = np.arange(nhvdc)
 
@@ -204,8 +206,8 @@ def adv_jacobian(nbus: int,
     dLvsc_dtau = CSC(nvsc, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 4 (current balance VSCs) ---------
-    dIvsc_dVa = CSC(nvsc, len(i_u_va), 0, False)  # fully empty
-    dIvsc_dVm = deriv.dIvsc_dVm_csc(nvsc, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
+    dIvsc_dVa = CSC(nvsc_has_dc_n, len(i_u_va), 0, False)  # fully empty
+    dIvsc_dVm = deriv.dIvsc_dVm_csc(k_vsc_has_dc_n, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
     dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(nvsc, u_vsc_pfp, Vm, Fdcn_vsc)
     dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(nvsc, u_vsc_pfn, Vm, Fdcp_vsc)
     dIvsc_dPtvsc = CSC(nvsc, len(u_vsc_pt), 0, False)  # fully empty
@@ -366,7 +368,7 @@ def adv_jacobian(nbus: int,
     return J
 
 
-@njit(cache=True)
+# @njit(cache=True)
 def calcSf(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
            R: Vec, X: Vec, G: Vec, B: Vec, m: Vec, tau: Vec, vtap_f: Vec, vtap_t: Vec):
     """
@@ -400,7 +402,7 @@ def calcSf(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
     return Sf_cbr
 
 
-@njit(cache=True)
+# @njit(cache=True)
 def calcSt(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
            R: Vec, X: Vec, G: Vec, B: Vec, m: Vec, tau: Vec, vtap_f: Vec, vtap_t: Vec):
     """
@@ -436,7 +438,7 @@ def calcSt(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
     return St_cbr
 
 
-@njit(cache=True)
+# @njit(cache=True)
 def calc_flows_summation_per_bus(nbus: int,
                                  F_br: IntVec, T_br: IntVec, Sf_br: CxVec, St_br: CxVec,
                                  F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
@@ -479,13 +481,16 @@ def calc_flows_summation_per_bus(nbus: int,
     # Add VSC with its 3 terminals
     for i in range(len(Fdcp_vsc)):
         res[Fdcp_vsc[i]] += Pfp_vsc[i]
-        res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
+        if Fdcn_vsc[i] > -1:
+            res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
         res[T_vsc[i]] += St_vsc[i]
 
     return res
 
 
-@njit(cache=True)
+# @njit(cache=True)
 def calc_flows_active_branch_per_bus(nbus: int,
                                      F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                      Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
@@ -518,7 +523,10 @@ def calc_flows_active_branch_per_bus(nbus: int,
     # Add VSC
     for i in range(len(Fdcp_vsc)):
         res[Fdcp_vsc[i]] += Pfp_vsc[i]
-        res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
+        if Fdcn_vsc[i] > -1:
+            res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
         res[T_vsc[i]] += St_vsc[i]
 
     return res
@@ -624,6 +632,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_pt_set = np.zeros(0, dtype=float)
         self.vsc_qt_set = np.zeros(0, dtype=float)
         self.vsc_i_set = np.zeros(0, dtype=float)
+        self.k_vsc_has_dc_n = np.zeros(0, dtype=int)
         self._set_vsc_control_indices()
 
         # Fill HVDC Indices
@@ -812,9 +821,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         vsc_pt_set = list()
         vsc_qt_set = list()
         vsc_i_set = list()
+        k_vsc_has_dc_n = list()
 
         # VSC LOOP
         for k in range(self.nc.vsc_data.nelm):
+
+            if self.nc.vsc_data.F_dcn[k] > -1:
+                k_vsc_has_dc_n.append(k)
 
             control1 = self.nc.vsc_data.control1[k]
             control2 = self.nc.vsc_data.control2[k]
@@ -1420,6 +1433,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.k_vsc_pt = np.array(k_vsc_pt, dtype=int)
         self.k_vsc_qt = np.array(k_vsc_qt, dtype=int)
         self.k_vsc_i = np.array(k_vsc_i, dtype=int)
+        self.k_vsc_has_dc_n = np.array(k_vsc_has_dc_n, dtype=int)
         self.vsc_pfp_set = np.array(vsc_pfp_set, dtype=float)
         self.vsc_pfn_set = np.array(vsc_pfn_set, dtype=float)
         self.vsc_pt_set = np.array(vsc_pt_set, dtype=float)
@@ -1673,7 +1687,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         St_vsc = make_complex(Pt_vsc_, Qt_vsc_)
 
         # Add the 2nd equation per VSC
-        balance_vsc = Pfp_vsc_ * Vm_[self.nc.vsc_data.F_dcn] + Pfn_vsc_ * Vm_[self.nc.vsc_data.F]
+        balance_vsc = (Pfp_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F_dcn[self.k_vsc_has_dc_n]] +
+                       Pfn_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F[self.k_vsc_has_dc_n]])
 
         # Add the 3rd equation per VSC
         current_vsc = It**2 - Imax_vsc**2
@@ -2180,7 +2195,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                      + self.nc.vsc_data.alpha1)
 
         loss_vsc = PLoss_IEC - self.Pt_vsc - self.Pfp_vsc - self.Pfn_vsc
-        balance_vsc = self.Pfp_vsc * self.Vm[F_dcn] + self.Pfn_vsc * self.Vm[F]
+        balance_vsc = (self.Pfp_vsc[self.k_vsc_has_dc_n] * self.Vm[F_dcn[self.k_vsc_has_dc_n]] +
+                       self.Pfn_vsc[self.k_vsc_has_dc_n] * self.Vm[F[self.k_vsc_has_dc_n]])
 
         current_vsc = It**2 - Imax_vsc**2
 

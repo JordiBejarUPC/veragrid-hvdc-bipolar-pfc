@@ -29,8 +29,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="can draper II">
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_sc/converter_controls_pq.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/trunk/unbalanced_sc/converter_controls_uq.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/unbalanced_pf/estabanell/estabanell.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/unbalanced_pf/estabanell/estabanell.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +76,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="86_Dynamic_simulations_V1_DiffBlock" />
+        <entry key="$PROJECT_DIR$" value="devel" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -189,6 +194,9 @@
     "Python.circuit_to_optimods.executor": "Run",
     "Python.constructing_kundur_full.executor": "Run",
     "Python.converter.executor": "Run",
+    "Python.converter_controls.executor": "Run",
+    "Python.converter_controls_pq.executor": "Run",
+    "Python.converter_controls_uq.executor": "Run",
     "Python.demo_code.executor": "Run",
     "Python.demo_code2.executor": "Run",
     "Python.demo_code3.executor": "Debug",
@@ -237,8 +245,8 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "devel",
-    "last_opened_file_path": "C:/Users/alexb/VeraGrid/src/trunk/unbalanced_pf/estabanell",
+    "git-widget-placeholder": "#132priv__two__poles__acdc",
+    "last_opened_file_path": "C:/Users/alexb/VeraGrid/src/trunk/unbalanced_sc",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -256,21 +264,21 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\alexb\VeraGrid\src\trunk\unbalanced_sc" />
       <recent name="C:\Users\alexb\VeraGrid\src\trunk\unbalanced_pf\estabanell" />
       <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
-      <recent name="$PROJECT_DIR$/src/trunk/anarede" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\alexb\VeraGrid\src\trunk" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -763,8 +771,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_power_neutralstar_3ph" />
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest for test_3ph_pf_neutral_loads.test_power_neutralstar_3ph" />
         <item itemvalue="Python tests.pytest for src.tests.test_linear_time_series.test_linear_time_series_with_time_simplification_randomized" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.add_time_series" />
@@ -1899,7 +1907,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="679" />
+    <option name="localTasksCounter" value="680" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -2475,14 +2483,29 @@
           <option name="timeStamp" value="3067" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
-          <line>1254</line>
-          <option name="timeStamp" value="3106" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py</url>
           <line>649</line>
           <option name="timeStamp" value="3146" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
+          <line>1936</line>
+          <option name="timeStamp" value="3148" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_generalized_formulation.py</url>
+          <line>1457</line>
+          <option name="timeStamp" value="3149" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_generalized_formulation.py</url>
+          <line>1866</line>
+          <option name="timeStamp" value="3152" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
+          <line>2454</line>
+          <option name="timeStamp" value="3161" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
