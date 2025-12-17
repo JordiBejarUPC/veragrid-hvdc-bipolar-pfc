@@ -5,14 +5,117 @@
 
 from typing import List, Dict
 import numpy as np
+import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType, tf_to_diffblock, \
     tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, DiffBlock
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst, \
-    sqrt, atan, f_exc, heaviside
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst,  \
+    PlaceholderVar, sqrt, atan, f_exc, heaviside, UNDEFINED
 from scipy.optimize import fsolve
+
+def solve_Ve_init(
+    y4, Ifd, Ke, Kd,
+    VeMinPu, VeMaxPu,
+    Se_threshold,
+    AEx, BEx,
+    tol=1e-6,
+    max_iter=1000
+):
+    # Initial unsaturated guess
+    Ve = (y4 - Ifd * Kd) / Ke
+    Ve = max(VeMinPu, min(Ve, VeMaxPu))
+
+    for _ in range(max_iter):
+        # Saturation function Se(Ve)
+        if Ve > Se_threshold:
+            Se = AEx * Ve * math.exp(BEx * (Ve - Se_threshold))
+        else:
+            Se = 0.0
+        Ve_new = (y4 - Ifd * Kd) / (Ke + Se)
+        Ve_new = max(VeMinPu, min(Ve_new, VeMaxPu))
+
+        # Convergence check
+        if abs(Ve_new - Ve) < tol:
+            return Ve_init
+
+        Ve = Ve_new
+    # Unsaturated value corresponding to final Se
+    Ve_init = (y4 - Ifd * Kd) / (Ke + Se)
+
+    return Ve_init
+
+def Efd_diff(UsRefPu, x):
+    # ----------------------------
+    # Unpack vector
+    # ----------------------------
+    Ifd           = x[0]
+    y1            = x[1]
+    E_fd_desired  = x[2]
+
+    Ka            = x[3]
+    Ke            = x[4]
+    Kd            = x[5]
+    Kc            = x[6]
+
+    VeMinPu       = x[7]
+    VeMaxPu       = x[8]
+    EfeMinPu      = x[9]
+    EfeMaxPu      = x[10]
+
+    AEx           = x[11]
+    BEx           = x[12]
+    Se_threshold  = x[13]
+
+    # ----------------------------
+    # Algebraic signals
+    # ----------------------------
+    y3 = -y1 + UsRefPu
+    y4 = y3 * Ka
+
+    # ----------------------------
+    # Solve Ve_init / Ve_sat
+    # ----------------------------
+    Ve_init, Ve_sat = solve_Ve_init(
+        y4=y4,
+        Ifd=Ifd,
+        Ke=Ke,
+        Kd=Kd,
+        VeMinPu=VeMinPu,
+        VeMaxPu=VeMaxPu,
+        Se_threshold=Se_threshold,
+        AEx=AEx,
+        BEx=BEx,
+    )
+
+    # ----------------------------
+    # Saturated Efe
+    # ----------------------------
+    Efe = max(EfeMinPu, min(y4, EfeMaxPu))
+
+    # ----------------------------
+    # Saturation function Se(Ve)
+    # ----------------------------
+    if Ve_sat > Se_threshold:
+        Se = AEx * Ve_sat * math.exp(BEx * (Ve_sat - Se_threshold))
+    else:
+        Se = 0.0
+
+    # ----------------------------
+    # Remaining algebra
+    # ----------------------------
+    u_aux = Ke * Ve_init + Se * Ve_init
+    Vfe   = u_aux + Ifd * Kd
+
+    f_input  = Kc * Ifd / max(Ve_sat, 1e-6)
+    f_output = f_exc(Const(f_input)).simplify().value
+    E_fd     = f_output * Ve_sat
+
+    # ----------------------------
+    # Residual
+    # ----------------------------
+    return E_fd - E_fd_desired
 
 def solve_x(A, B, C, Ke, x0=0.1):
     """
@@ -291,7 +394,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     et = Var("et")
 
     # reference
-    Pm_ref = UndefinedConst('Pm_ref')
+    Pm_ref = Var('Pm_ref')
     algebraic_eqs = []
     algebraic_vars = []
 
@@ -316,6 +419,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     events_dict = {
         # control parameters
+        Pm_ref: Const(UNDEFINED),
         Kp: Const(-0.01),
         Ki: Const(-0.01),
         p0: Const(1.0),
@@ -397,7 +501,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         parameters["K4"] * y3_4
     aux_block = Block(
         algebraic_eqs=[u - Tm] + algebraic_eqs,
-        algebraic_vars=[Tm, Pm_ref] + algebraic_vars,
+        algebraic_vars=[Tm] + algebraic_vars,
     )
 
     templ.block = Block(
@@ -419,6 +523,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
             y3_4: Pm_ref,
         }
     )
+
     return templ
 
 
@@ -570,7 +675,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Vf = Var("Vf")
     Efe = Var('Efe')
-    UsRefPu = UndefinedConst("UsRefPu")  # reference voltage (pu)
+    UsRefPu = UndefinedConst(name="UsRefPu")  # reference voltage (pu)
     Efd = Var("")  # reference voltage (pu)
 
     # Exciter internal variables
@@ -606,6 +711,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     events_dict = {
         # Exciter (AVR) parameters
+        UsRefPu: Const(UNDEFINED),  # reference voltage (pu)
         AEz: Const(0.02),  # saturation gain
         BEz: Const(1.5),  # saturation exponential coefficient
         Se_threshold: Const(1.0),  # saturation threshold
@@ -708,32 +814,38 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
     )
 
-    u_exciter3 = find_name_in_block(tf3, 'u_exciter3')
-    u_subexciter1 = find_name_in_block(tf1_sub, 'u_subexciter1')
-    y_subexciter1 = find_name_in_block(tf1_sub, 'y_subexciter1')
+    u_exciter3 = find_name_in_block('u_exciter3', tf3)
+    u_subexciter1 = find_name_in_block('u_subexciter1', tf1_sub)
+    y_subexciter1 = find_name_in_block('y_subexciter1', tf1_sub)
 
     Ve_sat = hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
     Se_expr = AEx * Ve_sat * exp(BEx * (Ve_sat - Se_threshold)) \
                   * heaviside(Ve_sat - Se_threshold)
 
     #Equations to find the reference
-    UsRefPlaceholder = PlaceholderVar('UsRefPlaceholder', UsRefPu)
-    Ve_sat_ref = hard_sat(y_subexciter1_ref, VeMinPu, VeMaxPu)
-    Se_expr_ref = AEx * Ve_sat * exp(BEx * (Ve_sat_ref - Se_threshold)) \
-                  * heaviside(Ve_sat_ref - Se_threshold)
-    y4_ref =  (-inputs[1] + UsRefPlaceholder)*parameters["Ka"]
-    Efe_ref =  hard_sat(y4_ref, EfeMinPu, EfeMaxPu)
-    y_subexciter1_ref = (Efe_ref - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]  + Se_expr_ref)
-    f_output_ref = parameters['Kc']*inputs[0]/y_subexciter1_ref
-    Vf_ref = f_output_ref*Ve_sat_ref
-
+    Ka = parameters["Ka"]
+    Kc = parameters["Kc"]
+    Kd = parameters["Kd"]
+    Ke = parameters["Ke"]
+    UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[3], Ka, Ke, Kd, Kc, VeMinPu, 
+                             VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
+    def UsRef_init(x):
+        UsRef_sol = fsolve(
+            Efd_diff,
+            x0=1.0,
+            args=(x,),
+            xtol=1e-6,
+            maxfev=500,
+        )[0]
+        return UsRef_sol
+    
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],
         out_vars=[Vf],
         in_vars=inputs,
         event_dict=events_dict,
         init_eqs={
-            UsRefPu:UsRefPlaceholder*(inputs[3]/Vf_ref),
+            UsRefPu: (UsRef_init, UsRef_init_parameters),
             y1: inputs[1],
             y2: Const(0.0),
             y3: -y1 + UsRefPu,
@@ -746,7 +858,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             f_input: parameters['Kc']*inputs[0]/y_subexciter1,
             f_output: f_exc(f_input),   
             Vf: f_output*Ve_sat,
-        }
+        },
     )
 
     return templ
@@ -1361,4 +1473,6 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     templ.block.children.append(exciter_model)
     templ.block.children.append(generator_model)
 
+    print(type(Pm_ref))
+    exit()
     return templ

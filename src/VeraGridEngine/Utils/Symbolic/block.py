@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
     real, sqrt, atan, \
-    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
+    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc, PlaceholderVar
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -338,6 +338,7 @@ class Block:
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
         :param event_dict: Dictionary of parameters that can change during the simulations
         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
+        :param placeholder_eqs: Dictionary of placeholder variables and their equations
         :param name: name of the block
         """
 
@@ -356,7 +357,7 @@ class Block:
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
 
         # initialization
-        self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
+        self.init_eqs: Dict[Var| UndefinedConst, Expr] = dict() if init_eqs is None else init_eqs
 
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
@@ -579,7 +580,7 @@ class Block:
             "diff_vars":  _serialize_var_list(self.diff_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.init_eqs.items()
+                for var, expr in self.init_eqs.items() if isinstance(expr, Expr)
             ],
             "init_values": [
                 {"var": var.to_dict(), "value": value.value}
@@ -638,6 +639,8 @@ class Block:
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
+            if not isinstance(expr_dict, Expr):
+                continue
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr

@@ -20,9 +20,9 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, \
-    LagVar, UndefinedConst, BinOp, PlaceholderVar
-    LagVar, heaviside
+    LagVar, BinOp, UNDEFINED   
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_comb import SymbolicParamsVector
 
 
 class SolverError(Exception):
@@ -254,6 +254,8 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         # compute and assign parameters value
         for param in mdl.event_dict.keys():
             eq = mdl.event_dict[param]
+            if isinstance(eq, Const) and eq.value is UNDEFINED:
+                continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
             param_val = float(eq_fn(0.0))
             params_array[uid2idx_params[param.uid]] = param_val
@@ -276,18 +278,59 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     key_deps = (v_init.uid, v_init.name)
                     if key_deps in init_guess:
                         continue
+                    elif v_init.uid in mdl.event_dict.keys():
+                        continue 
                     else:
                         calculate_now = False
                         break
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
-                    var_now = var
-                    eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                    val = float(eq_fn(x, params_array))
-
-                    init_guess[key] = val
-                    x[uid2idx_vars[var.uid]] = val
-                    vars_initialized.add(key)
+                    #We initialize params
+                    if var.uid in uid2idx_params.keys():
+                        if var.value is UNDEFINED:
+                            raise ValueError(f"Parameter {var.name} already initialized")
+                        
+                        if isinstance(mdl.init_eqs[var], tuple):
+                            f_init, f_params = mdl.init_eqs[var]
+                            all_in_init_guess = all((vr.uid, vr.name) in init_guess for vr in vars_in_eqs)
+                            x_params = np.zeros(len(f_params))
+                            for i, var in enumerate(f_params):
+                                x_params[i] = init_guess[(var.uid, var.name)]
+                            init_val = f_init(x_params)
+                            mdl._event_parameters_eqs[uid2idx_params[key.uid]] = Const(init_val)
+                            params_array[uid2idx_params[key.uid]] = init_val
+                        else:
+                            vars_in_eqs = eq.get_vars()
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                            all_in_init_guess = all((var.uid, var.name) in init_guess for var in vars_in_eqs)
+                            init_val = float(eq_fn(x, params_array))
+                            mdl._event_parameters_eqs[uid2idx_params[key.uid]] = Const(init_val)
+                            params_array[uid2idx_params[key.uid]] = init_val
+                    else:
+                        vars_in_eqs = eq.get_vars()
+                        if var not in vars_in_eqs:
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                            init_val = float(eq_fn(x, params_array))
+                            init_guess[key] = init_val
+                            print(var,type(var), getattr(var, 'frozen', None), getattr(var, 'value', None))
+                            x[uid2idx_vars[var.uid]] = init_val
+                        else:
+                            eq_fn = _compile_equation([eq - var], uid2sym_vars, uid2sym_params)
+                            tol = 1e-5
+                            error = 1
+                            while error>tol:
+                                x0 = x[uid2idx_vars[var.uid]]
+                                init_val = float(eq_fn(x, params_array))
+                                x[uid2idx_vars[var.uid]] = init_val
+                                error = np.linalg.norm(init_val - x0)
+                            init_guess[key] = init_val
+                            x[uid2idx_vars[var.uid]] = init_val
+                        eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                        val = float(eq_fn(x, params_array))
+                        init_guess[key] = val
+                        x[uid2idx_vars[var.uid]] = val
+                        vars_initialized.add(key)
+                    
 
             vars_init_at_end = len(vars_initialized)
             if vars_init_at_end > vars_init_at_start:
@@ -603,6 +646,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     #
     # for bus, region in bus_regions_dict.items():
     bus_blocks_dict = grid.compose_bus_blocks()
+
     for bus, region in bus_blocks_dict.items():
         # try:
             # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,

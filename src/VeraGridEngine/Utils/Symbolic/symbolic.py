@@ -135,6 +135,7 @@ class Expr:
             if self not in vars_found:
                 vars_found.append(self)
 
+
         elif isinstance(self, BinOp):
             self.left.get_vars(vars_found)
             self.right.get_vars(vars_found)
@@ -274,19 +275,32 @@ class Expr:
 # Atomic nodes
 # ----------------------------------------------------------------------------------------------------------------------
 
+class Undefined:
+    __slots__ = ()
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __repr__(self):
+        return "Undefined"
+UNDEFINED = Undefined()
+
 @dataclass(frozen=True)
 class Const(Expr):
-    value: NUMBER
+    value: NUMBER | Undefined
     name: str = 'name'
     uid: int = field(default_factory=_new_uid)
 
     def __deepcopy__(self, memo):
         return type(self)(self.uid, self.name)
 
-    def eval(self, **bindings: NUMBER) -> NUMBER:
+    def eval(self, **bindings: NUMBER) -> NUMBER| Undefined:
         return self.value
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER| Undefined:
         return self.value
 
     def _diff1(self, var: Var | str) -> "Expr":
@@ -357,10 +371,13 @@ class Var(Expr):
         return False
 
 class PlaceholderVar(Var):
-    name: str = 'name'
-    uid: int = field(default_factory=_new_uid)
     placeholder: UndefinedConst
+    init_value: NUMBER = field(default=1.0, compare=False, hash=False)
 
+    def change_value(self, new_value: NUMBER):
+        self.placeholder.assign_value(new_value)
+
+@dataclass()
 class UndefinedConst(Expr):
     name: str = 'name'
     frozen: bool = False
@@ -373,7 +390,6 @@ class UndefinedConst(Expr):
 
     def assign_value(self, value):
         self.value = value
-        self.frozen = True
 
     def eval(self, **bindings: NUMBER) -> NUMBER:
         if not hasattr(self, 'value'):
@@ -400,6 +416,16 @@ class UndefinedConst(Expr):
 
     def __repr__(self) -> str:
         return self.__str__()
+    
+    def __hash__(self):
+        return hash(self.uid)
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, UndefinedConst):
+            return False
+        return self.uid == other.uid
 
 @dataclass(frozen=True)
 class LagVar(Var):
@@ -849,9 +875,9 @@ tan = _make_unary("tan")
 exp = _make_unary("exp")
 log = _make_unary("log")
 sqrt = _make_unary("sqrt")
-asin = _make_unary("asin")
-acos = _make_unary("acos")
-atan = _make_unary("atan")
+asin = _make_unary("arcsin")
+acos = _make_unary("arccos")
+atan = _make_unary("arctan")
 sinh = _make_unary("sinh")
 cosh = _make_unary("cosh")
 real = _make_unary("real")
@@ -881,14 +907,15 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
         val = expr.value
         if isinstance(val, complex):
             return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
-
+        if val is UNDEFINED:
+            return {"type": "Const", "value": None, "kind": "undefined", "uid": expr.uid}
         return {"type": "Const", "value": expr.value, "uid": expr.uid}
 
     if isinstance(expr, Var):
         return {"type": "Var", "name": expr.name, "uid": expr.uid}
 
     if isinstance(expr, UndefinedConst):
-        return {"type": "UndefinedConst"}
+        return {"type": "UndefinedConst", "name": expr.name, "uid": expr.uid}
 
     # ------------------------------------------------------------------
     # Composite nodes
@@ -934,8 +961,12 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
     if t == "Const":
         if data.get("kind") == "complex":
             obj = Const(complex(*data["value"]))
+        elif data.get("kind") == "undefined":
+            obj = Const(UNDEFINED)
         else:
             obj = Const(data["value"])
+    elif t == "UndefinedConst":
+        obj = UndefinedConst(data['name'])
     elif t == "Var":
         obj = Var(data["name"])
     elif t == "BinOp":
