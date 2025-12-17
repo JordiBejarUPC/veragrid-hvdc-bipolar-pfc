@@ -18,8 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
     QHBoxLayout, QListView, QPushButton, QSizePolicy,
     QSpacerItem, QVBoxLayout, QWidget)
-from VeraGrid.Gui.Main.icons_rc import *
-
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_ReduceDialog(object):
     def setupUi(self, ReduceDialog):
