@@ -766,7 +766,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 if __name__ == "__main__":
     import VeraGridEngine as vg
 
-    circuit = vg.open_file("/home/santi/Documentos/Git/eRoots/VeraGrid/src/trunk/equivalents/completo.veragrid")
+    circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
 
     ptdf_reduction_projected(
         grid=circuit,
