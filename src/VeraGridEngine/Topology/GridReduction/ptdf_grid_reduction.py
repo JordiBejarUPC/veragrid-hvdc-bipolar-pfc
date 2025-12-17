@@ -763,13 +763,13 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     return grid, logger
 
 
-if __name__ == "__main__":
-    import VeraGridEngine as vg
-
-    circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
-
-    ptdf_reduction_projected(
-        grid=circuit,
-        reduction_bus_indices=[4],
-        tol=1e-8
-    )
+# if __name__ == "__main__":
+#     import VeraGridEngine as vg
+#
+#     circuit = vg.open_file("/trunk/equivalents/completo.veragrid")
+#
+#     ptdf_reduction_projected(
+#         grid=circuit,
+#         reduction_bus_indices=[4],
+#         tol=1e-8
+#     )

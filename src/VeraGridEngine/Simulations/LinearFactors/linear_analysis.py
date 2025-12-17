@@ -1023,7 +1023,7 @@ class LinearAnalysisTs:
     """
 
     def __init__(self, grid: MultiCircuit,
-                 distributed_slack: bool = True,
+                 distributed_slack: bool = False,
                  correct_values: bool = False,
                  time_indices: IntVec | None = None):
         """
