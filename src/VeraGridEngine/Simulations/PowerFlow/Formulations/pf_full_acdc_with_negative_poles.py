@@ -25,7 +25,7 @@ from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, Hvdc
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
-# @njit()
+@njit()
 def adv_jacobian(nbus: int,
                  nbr: int,
                  nvsc: int,
@@ -368,7 +368,7 @@ def adv_jacobian(nbus: int,
     return J
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def calcSf(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
            R: Vec, X: Vec, G: Vec, B: Vec, m: Vec, tau: Vec, vtap_f: Vec, vtap_t: Vec):
     """
@@ -402,7 +402,7 @@ def calcSf(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
     return Sf_cbr
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def calcSt(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
            R: Vec, X: Vec, G: Vec, B: Vec, m: Vec, tau: Vec, vtap_f: Vec, vtap_t: Vec):
     """
@@ -438,7 +438,7 @@ def calcSt(k: IntVec, V: CxVec, F: IntVec, T: IntVec,
     return St_cbr
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def calc_flows_summation_per_bus(nbus: int,
                                  F_br: IntVec, T_br: IntVec, Sf_br: CxVec, St_br: CxVec,
                                  F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
@@ -490,7 +490,7 @@ def calc_flows_summation_per_bus(nbus: int,
     return res
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def calc_flows_active_branch_per_bus(nbus: int,
                                      F_hvdc: IntVec, T_hvdc: IntVec, Sf_hvdc: CxVec, St_hvdc: CxVec,
                                      Fdcp_vsc: IntVec, Fdcn_vsc: IntVec, T_vsc: IntVec,
@@ -2343,7 +2343,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = True) -> CSC:
+    def Jacobian(self, autodiff: bool = False) -> CSC:
         """
         Get the Jacobian
         :return:
