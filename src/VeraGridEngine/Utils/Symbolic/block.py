@@ -530,14 +530,14 @@ class Block:
 
         self.init_eqs = init_eqs_new
 
-        for var, expr in self.events_dict.items():
+        for var, expr in self.event_dict.items():
             new_expr = expr.subs({old: new})
             if var is old:
                 events_dict_new.update({new: new_expr})
             else:
                 events_dict_new.update({var: new_expr})
 
-        self.events_dict = events_dict_new
+        self.event_dict = events_dict_new
 
         if old in self.in_vars:
             idx = next(i for i, v in enumerate(self.in_vars) if v is old)
@@ -580,7 +580,7 @@ class Block:
             "diff_vars":  _serialize_var_list(self.diff_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.init_eqs.items() if isinstance(expr, Expr)
+                for var, expr in self.init_eqs.items() 
             ],
             "init_values": [
                 {"var": var.to_dict(), "value": value.value}
@@ -639,8 +639,6 @@ class Block:
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
-            if not isinstance(expr_dict, Expr):
-                continue
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr

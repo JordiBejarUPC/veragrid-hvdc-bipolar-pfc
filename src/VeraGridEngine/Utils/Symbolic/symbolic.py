@@ -72,11 +72,10 @@ def hard_sat(x: Expr, x_min: Expr | float, x_max: Expr| float) -> Expr:
     return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
 
 def f_exc(In: Expr) -> Expr:
-    a = heaviside(-In)*(Const(0.577)*In)
-    b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2)))*heaviside(Const(0.433)-In)
-    c = ((sqrt(Const(0.75)-In**2) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
+    b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2 + Const(1e-5))))*heaviside(Const(0.433)-In)
+    c = ((sqrt(Const(0.75)-In**2 + Const(1e-5)) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
     d = (Const(1.732) - In*Const(1.732))*(Const(1)*heaviside(Const(1.0)-In))
-    return a + b + c + d
+    return b + c + d
 
 
 def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
@@ -781,9 +780,9 @@ class Func(Expr):
         "exp": np.exp,
         "log": math.log,
         "sqrt": math.sqrt,
-        "asin": math.asin,
-        "acos": math.acos,
-        "atan": math.atan,
+        "arcsin": math.asin,
+        "arccos": math.acos,
+        "arctan": math.atan,
         "sinh": math.sinh,
         "cosh": math.cosh,
         "real": np.real,
@@ -820,11 +819,11 @@ class Func(Expr):
             return du / u
         if self.name == "sqrt":
             return du / (Const(2) * sqrt(u))
-        if self.name == "asin":
+        if self.name == "arcsin":
             return du / sqrt(Const(1) - u ** Const(2))
-        if self.name == "acos":
+        if self.name == "arccos":
             return -du / sqrt(Const(1) - u ** Const(2))
-        if self.name == "atan":
+        if self.name == "arctan":
             return du / (Const(1) + u ** Const(2))
         if self.name == "sinh":
             return cosh(u) * du
@@ -886,6 +885,9 @@ imag = _make_unary("imag")
 conj = _make_unary("conj")
 angle = _make_unary("angle")
 abs = _make_unary("abs")
+arcsin = asin
+arccos = acos
+arctan = atan
 heaviside = _make_unary("heaviside")
 
 
@@ -1069,7 +1071,7 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
 
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-                         "exp", "log", "sqrt", "asin", "acos", "atan",
+                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
         elif expr.name == "heaviside":
@@ -1104,7 +1106,7 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     if isinstance(expr, Func):
         # Use numpy functions for standard numeric functions
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-                         "exp", "log", "sqrt", "asin", "acos", "atan",
+                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_params_eq(expr.arg, uid_map_t)})"
         elif expr.name == "heaviside":
@@ -1137,7 +1139,7 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
         return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-                         "exp", "log", "sqrt", "asin", "acos", "atan",
+                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
         elif expr.name == "heaviside":
@@ -1236,9 +1238,9 @@ _FUNC_MAP = {
     "exp": exp,
     "log": log,
     "sqrt": sqrt,
-    "asin": asin,
-    "acos": acos,
-    "atan": atan,
+    "arcsin": asin,
+    "arccos": acos,
+    "arctan": atan,
     "sinh": sinh,
     "cosh": cosh,
     "real": real,
@@ -1327,7 +1329,7 @@ def symbolic_to_string(expr: Expr) -> str:
 __all__ = [
     "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison",
     "sin", "cos", "tan", "exp", "log", "sqrt",
-    "asin", "acos", "atan", "sinh", "cosh",
+    "arcsin", "arccos", "arctan", "sinh", "cosh",
     "diff", "eval_uid",
     "find_vars_order",
     "real",
