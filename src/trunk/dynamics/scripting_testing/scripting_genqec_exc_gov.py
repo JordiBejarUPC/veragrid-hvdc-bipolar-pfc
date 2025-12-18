@@ -91,26 +91,26 @@ grid.add_generator(bus=bus1, api_obj=gen1)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = GenqecBuild().block.copy()
-genqec2_mdl = GenqecBuild().block.copy()
+genqec1_mdl = GenqecBuild().block
+genqec2_mdl = GenqecBuild().block
 
-exc1_mdl = ExciterBuild().block.copy()
-exc2_mdl = ExciterBuild().block.copy()
+exc1_mdl = ExciterBuild().block
+exc2_mdl = ExciterBuild().block
 
-gov1_mdl = GovernorBuild().block.copy()
-gov2_mdl = GovernorBuild().block.copy()
+gov1_mdl = GovernorBuild().block
+gov2_mdl = GovernorBuild().block
 
-stabil1_mdl = StabilizerBuild().block.copy()
-stabil2_mdl = StabilizerBuild().block.copy()
+stabil1_mdl = StabilizerBuild().block
+stabil2_mdl = StabilizerBuild().block
 
 
 
 #line
-line0_mdl = get_line_rms_template().block.copy()
-line1_mdl = get_line_rms_template().block.copy()
+line0_mdl = get_line_rms_template().block
+line1_mdl = get_line_rms_template().block
 
 #load
-load_mdl = get_load_rms_template().block.copy()
+load_mdl = get_load_rms_template().block
 
 Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
 print(f"Pm_ref type is {type(Pm_ref)}")
@@ -145,7 +145,20 @@ genqec2_mdl.connect([genqec2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]]
 exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 exc2_mdl.connect([exc2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+line1_mdl.connect([line1_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+line1_mdl.connect([line1_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
 
 # external mapping
 

@@ -468,20 +468,23 @@ class Block:
         return flat
 
     def unify_blocks(self):
+        mdl = Block()
         for b in self.get_all_blocks():
-            self.algebraic_vars.extend(b.algebraic_vars)
-            self.algebraic_eqs.extend(b.algebraic_eqs)
-            self.state_vars.extend(b.state_vars)
-            self.state_eqs.extend(b.state_eqs)
+            mdl.algebraic_vars.extend(b.algebraic_vars)
+            mdl.algebraic_eqs.extend(b.algebraic_eqs)
+            mdl.state_vars.extend(b.state_vars)
+            mdl.state_eqs.extend(b.state_eqs)
             for param, eq in b.event_dict.items():
-                self.event_dict[param] = eq
+                mdl.event_dict[param] = eq
 
             for var, init_eq in b.init_eqs.items():
-                self.init_eqs[var] = init_eq
+                mdl.init_eqs[var] = init_eq
 
 
             if isinstance(b, DiffBlock):
-                self.diff_vars.extend(b.diff_vars)
+                mdl.diff_vars.extend(b.diff_vars)
+
+        return mdl
 
     def get_vars(self) -> List[Var]:
         """

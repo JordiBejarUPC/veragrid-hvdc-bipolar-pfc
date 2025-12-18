@@ -398,11 +398,11 @@ class DiffBlockSolver(BlockSolver):
                 self._parameters.extend([param])
                 self._parameters_eqs.extend([eq])
 
-            if isinstance(b, DiffBlock):
-                self._diff_vars.extend(b.diff_vars)
-                self._lag_vars.extend(b.lag_vars)
-                self._differential_eqs.extend(b.differential_eqs)
-                self._reformulated_vars.extend(b.reformulated_vars)
+            # if isinstance(b, DiffBlock):
+            self._diff_vars.extend(b.diff_vars)
+            # self._lag_vars.extend(b.lag_vars)
+            # self._differential_eqs.extend(b.differential_eqs)
+            # self._reformulated_vars.extend(b.reformulated_vars)
 
         self._lag_vars_set = set(self._lag_vars)
         self._state_eqs_substituted = self._state_eqs.copy()

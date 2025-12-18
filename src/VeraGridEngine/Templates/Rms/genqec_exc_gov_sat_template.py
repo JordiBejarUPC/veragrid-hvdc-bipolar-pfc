@@ -851,17 +851,17 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     Kc = parameters["Kc"]
     Kd = parameters["Kd"]
     Ke = parameters["Ke"]
-    UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[3], Ka, Ke, Kd, Kc, VeMinPu, 
-                             VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
-    def UsRef_init(x):
-        UsRef_sol = fsolve(
-            Efd_diff,
-            x0=1.0,
-            args=(x,),
-            xtol=1e-6,
-            maxfev=500,
-        )[0]
-        return UsRef_sol
+    # UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[3], Ka, Ke, Kd, Kc, VeMinPu,
+    #                          VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
+    # def UsRef_init(x):
+    #     UsRef_sol = fsolve(
+    #         Efd_diff,
+    #         x0=1.0,
+    #         args=(x,),
+    #         xtol=1e-6,
+    #         maxfev=500,
+    #     )[0]
+    #     return UsRef_sol
     
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],

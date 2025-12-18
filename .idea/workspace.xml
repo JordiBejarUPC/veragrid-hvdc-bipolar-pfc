@@ -33,8 +33,9 @@
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -1883,7 +1884,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="625" />
+    <option name="localTasksCounter" value="626" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1929,7 +1930,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Small system constructed in gridcal and Andes" />
     <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
     <MESSAGE value="automatic initialization equations fixed" />
     <MESSAGE value="moved rms initialization out of the MultiCircuit" />
@@ -1954,7 +1954,8 @@
     <MESSAGE value="updated initialization ordered equations" />
     <MESSAGE value="get_vars function working" />
     <MESSAGE value="connect function updated" />
-    <option name="LAST_COMMIT_MESSAGE" value="connect function updated" />
+    <MESSAGE value="initialization algorithm working" />
+    <option name="LAST_COMMIT_MESSAGE" value="initialization algorithm working" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2344,19 +2345,9 @@
           <option name="timeStamp" value="3176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
-          <line>1054</line>
-          <option name="timeStamp" value="3199" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
           <line>388</line>
           <option name="timeStamp" value="3200" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>439</line>
-          <option name="timeStamp" value="3262" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
