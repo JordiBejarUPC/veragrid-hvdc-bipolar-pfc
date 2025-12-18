@@ -444,7 +444,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     events_dict = {
         # control parameters
-        Pm_ref: Const(UNDEFINED),
+        Pm_ref: Const(1.0),
         Kp: Const(-0.01),
         Ki: Const(-0.01),
         p0: Const(1.0),
@@ -538,7 +538,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         name="governor",
         # Pm_ref
         init_eqs={
-            Pm_ref: inputs[1],
             y1: Const(0.0),
             y2_3: Const(0),
             y2_2: Const(0),
@@ -700,7 +699,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Vf = Var("Vf")
     Efe = Var('Efe')
-    UsRefPu = UndefinedConst(name="UsRefPu")  # reference voltage (pu)
+    UsRefPu = Var("UsRefPu")  # reference voltage (pu)
     Efd = Var("")  # reference voltage (pu)
 
     # Exciter internal variables
@@ -736,7 +735,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: Const(UNDEFINED),  # reference voltage (pu)
+        UsRefPu: Const(1.0),  # reference voltage (pu)
         AEz: Const(0.02),  # saturation gain
         BEz: Const(1.5),  # saturation exponential coefficient
         Se_threshold: Const(1.0),  # saturation threshold
@@ -870,7 +869,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         event_dict=events_dict,
         init_eqs={
-            UsRefPu: (UsRef_init, UsRef_init_parameters),
+            # UsRefPu: (UsRef_init, UsRef_init_parameters),
             y1: inputs[1],
             y2: Const(0.0),
             y3: -y1 + UsRefPu,
@@ -878,11 +877,11 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             y4: y3*parameters["Ka"],
             Efe: hard_sat(y4, min_const, max_const),
             u_subexciter1: Const(0.0),
-            y_subexciter1:(Efe - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]  + Se_expr),
-            u_aux: parameters["Ke"] * y_subexciter1 + y_subexciter1*Se_expr,
+            y_subexciter1:(Efe - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]),
+            u_aux: parameters["Ke"] * y_subexciter1 + y_subexciter1,
             f_input: parameters['Kc']*inputs[0]/y_subexciter1,
             f_output: f_exc(f_input),   
-            Vf: f_output*Ve_sat,
+            Vf: f_output,
         },
     )
 

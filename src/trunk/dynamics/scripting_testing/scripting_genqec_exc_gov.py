@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 
 from VeraGridEngine import VarPowerFlowRefferenceType, power_flow
-
+from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -145,6 +145,8 @@ genqec2_mdl.connect([genqec2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]]
 exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 exc2_mdl.connect([exc2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
+line0_mdl.connect([line0_mdl])
+
 # external mapping
 
 
@@ -200,4 +202,29 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
+params_mapping = dict()
+
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+
+slv = DiffBlockSolver(ss, sim_time)
+
+params0 = slv.build_init_params_vector(params_mapping)
+x0 = slv.build_init_vars_vector_from_uid(init_guess)
+
+dx0 = np.zeros(len(slv._diff_vars))
+
+t, y = slv.simulate(
+    t0=0,
+    t_end=20,
+    h=0.001,
+    x0=x0,
+    dx0=dx0,
+    params0=params0,
+    method="rk4",
+    newton_tol = 1e-8,
+    newton_max_iter = 1000,
+    followed_vars = None,
+    initialized = False,
+    verbose = False,
+
+)

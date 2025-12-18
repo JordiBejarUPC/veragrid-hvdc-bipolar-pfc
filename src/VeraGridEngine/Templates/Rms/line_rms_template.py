@@ -19,6 +19,11 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
+    inputs: List[Var] = [Var("Vm_f" + name),
+                         Var("Va_f" + name),
+                         Var("Vm_t" + name),
+                         Var("Va_t" + name)]
+
     Vmf: Var = Var('Vmf')
     Vaf: Var = Var('Vaf')
     Vmt: Var = Var('Vmt')

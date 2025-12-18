@@ -357,7 +357,7 @@ class Block:
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
 
         # initialization
-        self.init_eqs: Dict[Var| UndefinedConst, Expr] = dict() if init_eqs is None else init_eqs
+        self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
 
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
@@ -580,7 +580,7 @@ class Block:
             "diff_vars":  _serialize_var_list(self.diff_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.init_eqs.items() if isinstance(expr, Expr)
+                for var, expr in self.init_eqs.items()
             ],
             "init_values": [
                 {"var": var.to_dict(), "value": value.value}
@@ -639,8 +639,6 @@ class Block:
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
-            if not isinstance(expr_dict, Expr):
-                continue
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr
