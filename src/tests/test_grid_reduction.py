@@ -862,7 +862,12 @@ def test_grid_reduction_with_multiple_islands_before():
     Flows_orig = lin_ts.get_flows_ts(P=P_orig)
 
     # Then reduce the network
-    bus_to_remove = np.array([0, 1, 4])
+    bus_to_remove = list()
+    bus_idx_dict = grid_.get_bus_index_dict()
+    for bus in grid_.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
 
     # Get internal branches before reduction to compare later
     (external, boundary,
