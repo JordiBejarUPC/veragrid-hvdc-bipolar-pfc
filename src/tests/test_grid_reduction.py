@@ -804,7 +804,6 @@ def test_grid_reduction_with_multiple_islands_after():
 
     grid = gce.open_file(filename=fname)
 
-
     # First run time series linear analysis
     lin_ts = gce.LinearAnalysisTs(grid=grid, distributed_slack=False)
     P_orig = grid.get_Pbus_prof()
