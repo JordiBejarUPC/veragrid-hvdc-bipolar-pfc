@@ -36,6 +36,12 @@ import VeraGridEngine.api as gce
 # Build VeraGrid object
 ###########################################################################################################################
 
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars:
+        if name == var.name:
+            return var
+
+
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
 # Buses
@@ -106,6 +112,8 @@ line1_mdl = get_line_rms_template().block.copy()
 #load
 load_mdl = get_load_rms_template().block.copy()
 
+Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
+print(f"Pm_ref type is {type(Pm_ref)}")
 ## Build big generators by connecting elements
 
 genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
@@ -158,6 +166,10 @@ line0.rms_model.model = line0_mdl
 line1.rms_model.model = line1_mdl
 
 load.rms_model.model = load_mdl
+
+import os
+print(os.environ.get("PYDEVD_DISABLE_SYS_MONITORING"))
+print(os.environ.get("PYDEVD_DISABLE_GUI_EVENT_LOOP"))
 
 
 options = gce.PowerFlowOptions(
