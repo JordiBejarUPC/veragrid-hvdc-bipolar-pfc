@@ -571,6 +571,45 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         if not new_slack_assigned and grid.get_bus_number() > 0:
             grid.buses[0].is_slack = True
 
+    # Ensure the grid has an explicit slack bus per resulting island (only if missing)
+    has_any_explicit_slack = any(b.is_slack for b in grid.buses)
+    nc_tmp = compile_numerical_circuit_at(circuit=grid, t_idx=0 if grid.has_time_series else None)
+    islands_tmp = nc_tmp.split_into_islands()
+    n_islands_tmp = len(islands_tmp)
+
+    for island in islands_tmp:
+        island_global_bus_idx = [int(x) for x in island.bus_data.original_idx]
+
+        # Keep at most one explicit slack per island
+        island_slacks = [i for i in island_global_bus_idx if grid.buses[i].is_slack]
+
+        if len(island_slacks) > 1:
+            keep = island_slacks[0]
+            for i in island_slacks[1:]:
+                grid.buses[i].is_slack = False
+            island_slacks = [keep]
+
+        # Do something when there is no explicit slack in the island
+        if len(island_slacks) != 1:
+            # if (n_islands_tmp <= 1) and has_any_explicit_slack:
+            #     pass
+
+            # else:
+            if not (n_islands_tmp <= 1) or not has_any_explicit_slack:
+                sim_idx = island.get_simulation_indices()
+
+                if len(sim_idx.vd) == 1:
+                    global_slack_idx = int(island.bus_data.original_idx[int(sim_idx.vd[0])])
+                    if 0 <= global_slack_idx < grid.get_bus_number():
+                        grid.buses[global_slack_idx].is_slack = True
+
+                else:
+                    # Fallback: pick the first bus in the island (maybe no PV buses)
+                    if island_global_bus_idx:
+                        grid.buses[island_global_bus_idx[0]].is_slack = True
+        
+    
+
     # Injections that remain (internal only, since external are gone)
     Pload2 = get_Pload(grid)
     Pgen2, Pgen_srap2 = get_Pgen(grid)
@@ -600,30 +639,30 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     residual_flow_gen = Flow0_gen[i_branches] - Flow2_gen
     residual_flow_gen_srap = Flow0_gen_srap[i_branches] - Flow2_gen_srap
     
-    # Solve for dP, but ONLY for boundary buses
+    # Solve for dP.
+    #
+    # Important: restricting compensation to only boundary buses can make the system
+    # underactuated in meshed islands (common when removing a corridor splits the grid).
+    # In that case, the residual internal-branch flows cannot be matched exactly.
+    #
+    # Therefore we solve for compensation across all remaining buses (minimum-norm solution).
+    dP, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow, rcond=None)
+    dP_load, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_load, rcond=None)
+    dP_gen, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_gen, rcond=None)
+    dP_gen_srap, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_gen_srap, rcond=None)
+    
+    # Boundary indices in the reduced grid (kept for allocating the extra balancing terms below)
     boundary_indices_new = np.searchsorted(i_buses, boundary_buses)
-    PTDF_boundary = lin2.PTDF[:, boundary_indices_new]
-    
-    # Solve: PTDF_boundary @ dP_boundary = residual_flow
-    dP_boundary, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow, rcond=None)
-    dP_boundary_load, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_load, rcond=None)
-    dP_boundary_gen, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_gen, rcond=None)
-    dP_boundary_gen_srap, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_gen_srap, rcond=None)
-    
-    # Create full dP vector for all new buses (initialized to 0)
-    n_i_buses = grid.get_bus_number()
-    dP = np.zeros(n_i_buses)
-    dP_load = np.zeros(n_i_buses)
-    dP_gen = np.zeros(n_i_buses)
-    dP_gen_srap = np.zeros(n_i_buses)
-
-    dP[boundary_indices_new] = dP_boundary
-    dP_load[boundary_indices_new] = dP_boundary_load
-    dP_gen[boundary_indices_new] = dP_boundary_gen
-    dP_gen_srap[boundary_indices_new] = dP_boundary_gen_srap
 
     ptdf_col_norms = np.linalg.norm(lin2.PTDF, axis=0)
     zero_influence_mask = ptdf_col_norms < tol
+    
+    # Zero out columns that cannot influence any flow (e.g., disconnected/island-slack degrees of freedom)
+    # to avoid creating meaningless compensated devices.
+    dP[zero_influence_mask] = 0.0
+    dP_load[zero_influence_mask] = 0.0
+    dP_gen[zero_influence_mask] = 0.0
+    dP_gen_srap[zero_influence_mask] = 0.0
 
     if grid.has_time_series:
 
