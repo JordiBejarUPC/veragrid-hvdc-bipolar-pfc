@@ -249,11 +249,11 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 x[uid2idx_vars[uid]] = init_guess[key]
 
         # initialize array for model params
-        params_array = np.zeros(len(comp_model.event_dict.keys()))
+        params_array = np.zeros(len(mdl.event_dict.keys()))
 
         # compute and assign parameters value
-        for param in comp_model.event_dict.keys():
-            eq = comp_model.event_dict[param]
+        for param in mdl.event_dict.keys():
+            eq = mdl.event_dict[param]
             if isinstance(eq, Const) and eq.value is UNDEFINED:
                 continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
@@ -262,8 +262,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
         # compute and assign missing init_vars
         vars_initialized: set[tuple[int, str]] = set()
-        parameters_list = list(comp_model.event_dict.keys())
-        while len(vars_initialized) < len(comp_model.init_eqs):
+        while len(vars_initialized) < len(mdl.init_eqs):
             progress = False
 
             vars_init_at_start = len(vars_initialized)
@@ -272,6 +271,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 key = (var.uid, var.name)
                 if key in vars_initialized:
                     continue
+
+                deps = eq.get_vars()
+                deps = [v for v in deps if v != var]
                 # check if it is an equation or an array:
                 deps = list()
                 if isinstance(eq, Expr):
@@ -286,49 +288,56 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     key_deps = (v_init.uid, v_init.name)
                     if key_deps in init_guess:
                         continue
-                    # elif v_init.uid in comp_mdl.event_dict.keys(): # Todo: shouldn't it be v_init instead of v_init.uid? and this is already done by taking away parameters from deps
-                    #     continue
+                    elif v_init in mdl.event_dict.keys():
+                        if mdl.event_dict[v_init] is not UNDEFINED:
+                            continue
                     else:
                         calculate_now = False
                         break
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
-                    # Initialize param
-                    if var in comp_model.event_dict:
-                        if comp_model.event_dict[var] is not UNDEFINED: # Check if the variable is already initialized
-                            continue
 
-                        if isinstance(comp_model.init_eqs[var], tuple): # Todo: could be ifisistance(eq, tuple)
-                            f_init, f_params = comp_model.init_eqs[var]
+                    #We initialize the params with value UNDEFINED
+                    if var.uid in uid2idx_params.keys():
+                        if var.value is not UNDEFINED:
+                            raise ValueError(f"Parameter {var.name} already initialized")
+
+                        if isinstance(mdl.init_eqs[var], tuple):
+                            f_init, f_params = mdl.init_eqs[var]
                             x_params = np.zeros(len(f_params))
-                            for i, var_needed in enumerate(f_params):
-                                x_params[i] = init_guess[(var_needed.uid, var_needed.name)] # Todo: params can be ordered using uid2idx dictionaries
+                            for i, var in enumerate(f_params):
+                                x_params[i] = init_guess[key]
                             init_val = f_init(x_params)
-                            comp_model.event_dict[var] = Const(init_val)
+                            mdl.event_dict[uid2idx_params[var.uid]] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
                         else:
+                            vars_in_eqs = eq.get_vars()
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
-                            comp_model.event_dict[var] = Const(init_val)
+                            mdl.event_dict[uid2idx_params[var.uid]] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
 
-                    # Initialize variable
+                    #We initialize the algebraic values
                     else:
-                        if var not in vars_needed:
+                        vars_in_eqs = eq.get_vars()
+                        if var not in vars_in_eqs:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
                             init_guess[key] = init_val
+                            print(var,type(var), getattr(var, 'frozen', None), getattr(var, 'value', None))
                             x[uid2idx_vars[var.uid]] = init_val
                         else:
-                            eq_fn = _compile_equation([eq - var], uid2sym_vars, uid2sym_params)
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             tol = 1e-5
                             error = 1
-                            init_val = 0
+                            alpha = 0.5
+                            x0 = -1.0
+                            x[uid2idx_vars[var.uid]] = x0
                             while error>tol:
-                                x0 = x[uid2idx_vars[var.uid]]
                                 init_val = float(eq_fn(x, params_array))
-                                x[uid2idx_vars[var.uid]] = init_val
+                                x[uid2idx_vars[var.uid]] = (1-alpha)*x0 + alpha*init_val
                                 error = np.linalg.norm(init_val - x0)
+                                x0 = x[uid2idx_vars[var.uid]]
                             init_guess[key] = init_val
                             x[uid2idx_vars[var.uid]] = init_val
 

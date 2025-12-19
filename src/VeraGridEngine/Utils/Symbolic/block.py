@@ -357,7 +357,7 @@ class Block:
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
 
         # initialization
-        self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
+        self.init_eqs: Dict[Var| UndefinedConst, Expr] = dict() if init_eqs is None else init_eqs
 
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children

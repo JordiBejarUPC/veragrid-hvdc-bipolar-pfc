@@ -113,7 +113,6 @@ line1_mdl = get_line_rms_template().block
 load_mdl = get_load_rms_template().block
 
 Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
-print(f"Pm_ref type is {type(Pm_ref)}")
 ## Build big generators by connecting elements
 
 genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
