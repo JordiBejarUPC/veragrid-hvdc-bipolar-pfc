@@ -249,11 +249,11 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 x[uid2idx_vars[uid]] = init_guess[key]
 
         # initialize array for model params
-        params_array = np.zeros(len(mdl.event_dict.keys()))
+        params_array = np.zeros(len(comp_model.event_dict.keys()))
 
         # compute and assign parameters value
-        for param in mdl.event_dict.keys():
-            eq = mdl.event_dict[param]
+        for param in comp_model.event_dict.keys():
+            eq = comp_model.event_dict[param]
             if isinstance(eq, Const) and eq.value is UNDEFINED:
                 continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
@@ -262,7 +262,8 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
         # compute and assign missing init_vars
         vars_initialized: set[tuple[int, str]] = set()
-        while len(vars_initialized) < len(mdl.init_eqs):
+        parameters_list = list(comp_model.event_dict.keys())
+        while len(vars_initialized) < len(comp_model.init_eqs):
             progress = False
 
             vars_init_at_start = len(vars_initialized)
@@ -302,19 +303,19 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                         if var.value is not UNDEFINED:
                             raise ValueError(f"Parameter {var.name} already initialized")
 
-                        if isinstance(mdl.init_eqs[var], tuple):
-                            f_init, f_params = mdl.init_eqs[var]
+                        if isinstance(comp_model.init_eqs[var], tuple):
+                            f_init, f_params = comp_model.init_eqs[var]
                             x_params = np.zeros(len(f_params))
                             for i, var in enumerate(f_params):
                                 x_params[i] = init_guess[key]
                             init_val = f_init(x_params)
-                            mdl.event_dict[uid2idx_params[var.uid]] = Const(init_val)
+                            comp_model.event_dict[uid2idx_params[var.uid]] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
                         else:
                             vars_in_eqs = eq.get_vars()
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
-                            mdl.event_dict[uid2idx_params[var.uid]] = Const(init_val)
+                            comp_model.event_dict[uid2idx_params[var.uid]] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
 
                     #We initialize the algebraic values
@@ -328,6 +329,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             x[uid2idx_vars[var.uid]] = init_val
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                            init_val = 0
                             tol = 1e-5
                             error = 1
                             alpha = 0.5
