@@ -273,10 +273,10 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
         algebraic_eqs=[
-            # Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
-            # Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
-            # Pg - (Vd * Id + Vq * Iq),  # from input block
-            # Qg - (Vq * Id - Vd * Iq),  # from input block
+            Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
+            Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
+            Pg - (Vd * Id + Vq * Iq),  # from input block
+            Qg - (Vq * Id - Vd * Iq),  # from input block
             Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
             Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
             Psid - (Eq_prime - Id * Xd_2prime_sat),
@@ -538,9 +538,9 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         name="governor",
         # Pm_ref
         init_eqs={
-            y1: Const(0.0),
-            y2_3: Const(0),
-            y2_2: Const(0),
+            y1: Const(1.0),
+            y2_3: Const(1),
+            y2_2: Const(1),
             y3_1: Pm_ref,
             y3_2: Pm_ref,
             y3_3: Pm_ref,
@@ -640,12 +640,12 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         name="stabilizer",
 
         init_eqs={
-            Vpss: Const(0.0),
+            Vpss: Const(1.0),
             y: Const(1.0),
-            y2: Const(0.0),
-            y3: Const(0.0),
-            y4: Const(0.0),
-            y5: Const(0.0),
+            y2: Const(1.0),
+            y3: Const(1.0),
+            y4: Const(1.0),
+            y5: Const(1.0),
         }
     )
 
@@ -835,7 +835,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],
-        algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
+        algebraic_vars=[Efe] + algebraic_vars,
     )
 
     u_exciter3 = find_name_in_block('u_exciter3', tf3)
@@ -877,7 +877,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             y4: y3*parameters["Ka"],
             Efe: hard_sat(y4, min_const, max_const),
             u_subexciter1: Const(0.0),
-            y_subexciter1:(Efe - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]),
+            # y_subexciter1:(Efe - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]),
+            y_subexciter1: Const(1),
             u_aux: parameters["Ke"] * y_subexciter1 + y_subexciter1,
             f_input: parameters['Kc']*inputs[0]/y_subexciter1,
             f_output: f_exc(f_input),   

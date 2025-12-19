@@ -1000,7 +1000,7 @@ class DiffBlockSolver(BlockSolver):
             initialized=False,
             verbose=False,
 
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) :
         """
         :param params0:
         :param t0: start time
@@ -1041,8 +1041,8 @@ class DiffBlockSolver(BlockSolver):
         raise ValueError(f"Unknown method '{method}'")
 
     # TODO: this function needs to be updated with current block_solver simulate function
-    def _simulate_implicit_euler_diff(self, t0, t_end, h, x0, dx0, lag0, params0: np.ndarray, time_var: Var, tol=1e-8,
-                                 max_iter=1e6, followed_vars=None, verbose=False):
+    def _simulate_implicit_euler_diff(self, t0, t_end, h, x0, dx0, lag0, params0: np.ndarray, tol=1e-8,
+                                 max_iter=1e6, verbose=False, followed_vars=None):
         """
         :param t0:
         :param t_end:
@@ -1056,9 +1056,6 @@ class DiffBlockSolver(BlockSolver):
         init_time = time.time()
         steady_state = np.allclose(dx0, 0.0, atol=1e-12)
         max_iter_0 = max_iter
-        # print(f'Simulation started at {init_time}')
-        # print(f'x0 is {x0}')
-        # print(f'lag0 is {lag0}')
         steps = int(np.ceil((t_end - t0) / h))
         t = np.empty(steps + 1)
         y = np.empty((steps + 1, self._n_vars))
@@ -1149,6 +1146,10 @@ class DiffBlockSolver(BlockSolver):
                     lag = self.build_initial_lag_variables(x_new, dx0, h)
                     lag = (1 - alpha_update) * old_lag + alpha_update * lag
                     max_iter = 5e5
+                    for i, num in enumerate(xnew_lags):
+                        if num == 0:
+                            xnew_lags[i] = 1
+                    print(xnew_lags)
                     Jf = self.jacobian_implicit(xnew_lags, params_current, h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
                     if converged:
