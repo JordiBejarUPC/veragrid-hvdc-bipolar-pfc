@@ -498,20 +498,17 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     original_slack_indices = [i for i, bus in enumerate(grid.buses) if bus.is_slack]
     external_set = set(e_buses)
     slack_is_removed = any(idx in external_set for idx in original_slack_indices)
-    
-    # If the slack is being removed, we need to relocate injections from the slack
-    # to boundary buses, so the power is not lost when we delete the slack bus
-    if slack_is_removed:
-        relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
 
+    # Compute original flows BEFORE any modifications to the grid
+    # This is critical: we want to preserve flows from the ORIGINAL grid topology
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
     lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
-    # base flows -------------------------------------------------------------------------------------------------------
+    # base flows (BEFORE relocation)
     Pload = get_Pload(grid)
     Pgen, Pgen_srap = get_Pgen(grid)
 
-    # flows
+    # flows (these are the ORIGINAL flows we want to preserve on internal branches)
     Flow0_load = lin.get_flows(Pload)
     Flow0_gen = lin.get_flows(Pgen)
     Flow0_gen_srap = lin.get_flows(Pgen_srap)
@@ -529,6 +526,11 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Flows0_load_ts = None
         Flows0_gen_ts = None
         Flows0_gen_srap_ts = None
+    
+    # Now relocate injections if the slack is being removed
+    # This moves devices from external buses to internal buses so they aren't lost during deletion
+    if slack_is_removed:
+        relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
 
     # Identify boundary buses (internal buses connected to external buses)
     bus_idx_dict = grid.get_bus_index_dict()

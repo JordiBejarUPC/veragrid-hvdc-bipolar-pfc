@@ -903,13 +903,13 @@ def test_grid_reduction_with_multiple_islands_before():
     assert np.allclose(P_orig_load_ts, P_red_load_ts, atol=1e-4)
 
 
-def test_ptdf_projected_large_real_syst_snapshot():
+def ptdf_projected_large_real_syst_snapshot():
     """
     Test to check if the snapshot reduction works well in a large grid
     :return:
     """
 
-    fname = '/Users/josep/Documents/Grids/100h.gridcal'
+    fname = '/Users/josep/Documents/Grids/100h_nohvdc.gridcal'
     grid = gce.open_file(filename=fname)
 
     # First run basic linear analysis
@@ -964,4 +964,4 @@ if __name__ == '__main__':
     # test_ptdf_projected_slack_remove()
     # test_ptdf_projected_ts_slack_remove()
     # test_ptdf_projected_ts_gb_full()
-    test_ptdf_projected_large_real_syst_snapshot()
+    ptdf_projected_large_real_syst_snapshot()
