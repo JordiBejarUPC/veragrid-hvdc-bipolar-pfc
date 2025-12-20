@@ -903,6 +903,53 @@ def test_grid_reduction_with_multiple_islands_before():
     assert np.allclose(P_orig_load_ts, P_red_load_ts, atol=1e-4)
 
 
+def test_ptdf_projected_large_real_syst_snapshot():
+    """
+    Test to check if the snapshot reduction works well in a large grid
+    :return:
+    """
+
+    fname = '/Users/josep/Documents/Grids/100h.gridcal'
+    grid = gce.open_file(filename=fname)
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = []
+    bus_idx_dict = grid.get_bus_index_dict()
+    for bus in grid.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
+
+    bus_to_remove = np.array(bus_to_remove)
+
+    # Determine internal branches before reduction
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    # Check that flows on remaining branches match
+    assert np.allclose(flows_branches[internal_branches], flows_branches_red, atol=1e-4)
+
+    # Check power balance: total generation and demand should not change
+    P_orig_gen_total = get_total_generation(grid)
+    P_orig_load_total = get_total_load(grid)
+    P_red_gen_total = get_total_generation(red_grid)
+    P_red_load_total = get_total_load(red_grid)
+    
+    assert abs(P_orig_gen_total - P_red_gen_total) < 1e-4, \
+        "Total generation should not change after reduction"
+    assert abs(P_orig_load_total - P_red_load_total) < 1e-4, \
+        "Total demand should not change after reduction"
+
+
 if __name__ == '__main__':
     # test_ward_reduction()
     # test_ptdf_projected_14_reduction()
@@ -916,5 +963,5 @@ if __name__ == '__main__':
     # test_ptdf_projected_ts()
     # test_ptdf_projected_slack_remove()
     # test_ptdf_projected_ts_slack_remove()
-    test_ptdf_projected_ts_gb_full()
-    # test_ptdf_projected_ts_simple_ree()
+    # test_ptdf_projected_ts_gb_full()
+    test_ptdf_projected_large_real_syst_snapshot()
