@@ -508,7 +508,15 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     Pload = get_Pload(grid)
     Pgen, Pgen_srap = get_Pgen(grid)
 
+    # Get HVDC power contribution (HVDC lines inject/withdraw power at their terminals)
+    if nc.hvdc_data.nelm > 0:
+        _, _, Pf_hvdc_pu, _, _, _ = nc.hvdc_data.get_power(Sbase=nc.Sbase, theta=np.zeros(nc.nbus))
+        Flow0_hvdc = lin.HvdcDF @ (Pf_hvdc_pu * nc.Sbase)
+    else:
+        Flow0_hvdc = np.zeros(nc.nbr)
+
     # flows (these are the ORIGINAL flows we want to preserve on internal branches)
+    # Include HVDC contribution to AC branch flows
     Flow0_load = lin.get_flows(Pload)
     Flow0_gen = lin.get_flows(Pgen)
     Flow0_gen_srap = lin.get_flows(Pgen_srap)
@@ -624,12 +632,21 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # We want to find dP such that: PTDF @ (Pbus2 + dP) = Flow0
     # So: PTDF @ dP = Flow0 - PTDF @ Pbus2
 
-    # Target flows in the original grid
-    Flow0_total = Flow0_load + Flow0_gen + Flow0_gen_srap
+    # Target flows in the original grid (including HVDC contribution)
+    Flow0_total = Flow0_load + Flow0_gen + Flow0_gen_srap + Flow0_hvdc
     
     # Total injections and flows in the reduced grid
     Pbus2_total = Pload2 + Pgen2 + Pgen_srap2
-    Flow2 = lin2.PTDF @ Pbus2_total
+    
+    # Get HVDC contribution in the reduced grid (some HVDC lines may have been deleted)
+    # Note: get_power returns Pf in p.u., need to convert to MW
+    if nc2.hvdc_data.nelm > 0:
+        _, _, Pf_hvdc2_pu, _, _, _ = nc2.hvdc_data.get_power(Sbase=nc2.Sbase, theta=np.zeros(nc2.nbus))
+        Flow2_hvdc = lin2.HvdcDF @ (Pf_hvdc2_pu * nc2.Sbase)
+    else:
+        Flow2_hvdc = np.zeros(nc2.nbr)
+    
+    Flow2 = lin2.PTDF @ Pbus2_total + Flow2_hvdc
 
     Flow2_load = lin2.get_flows(Pload2)
     Flow2_gen = lin2.get_flows(Pgen2)
@@ -641,17 +658,15 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     residual_flow_gen = Flow0_gen[i_branches] - Flow2_gen
     residual_flow_gen_srap = Flow0_gen_srap[i_branches] - Flow2_gen_srap
     
-    # Solve for dP.
-    #
-    # Important: restricting compensation to only boundary buses can make the system
-    # underactuated in meshed islands (common when removing a corridor splits the grid).
-    # In that case, the residual internal-branch flows cannot be matched exactly.
-    #
-    # Therefore we solve for compensation across all remaining buses (minimum-norm solution).
+    # Solve for compensation across all remaining buses (minimum-norm solution).
     dP, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow, rcond=None)
     dP_load, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_load, rcond=None)
     dP_gen, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_gen, rcond=None)
     dP_gen_srap, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow_gen_srap, rcond=None)
+    
+    # We need to add the HVDC correction to ensure the applied compensation matches the total
+    dP_hvdc_correction = dP - (dP_load + dP_gen + dP_gen_srap)
+    dP_gen_srap = dP_gen_srap + dP_hvdc_correction
     
     # Boundary indices in the reduced grid (kept for allocating the extra balancing terms below)
     boundary_indices_new = np.searchsorted(i_buses, boundary_buses)

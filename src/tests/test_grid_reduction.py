@@ -909,7 +909,9 @@ def ptdf_projected_large_real_syst_snapshot():
     :return:
     """
 
-    fname = '/Users/josep/Documents/Grids/100h_nohvdc.gridcal'
+    # fname = '/Users/josep/Documents/Grids/100h_nohvdc_noshunts.gridcal'
+    # fname = '/Users/josep/Documents/Grids/100h_nohvdc.gridcal'
+    fname = '/Users/josep/Documents/Grids/100h.gridcal'
     grid = gce.open_file(filename=fname)
 
     # First run basic linear analysis
