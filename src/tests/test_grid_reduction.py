@@ -952,6 +952,62 @@ def ptdf_projected_large_real_syst_snapshot():
         "Total demand should not change after reduction"
 
 
+def ptdf_projected_large_real_syst_time_series():
+    """
+    Test to check if the time series reduction works well in a large grid
+    """
+    # fname = '/Users/josep/Documents/Grids/100h.gridcal'
+    fname = '/Users/josep/Documents/Grids/6000h.gridcal'
+
+    grid_ = gce.open_file(filename=fname)
+
+    # First run time series linear analysis
+    lin_ts = gce.LinearAnalysisTs(grid=grid_, distributed_slack=False)
+    P_orig = grid_.get_Pbus_prof()
+    Flows_orig = lin_ts.get_flows_ts(P=P_orig)
+
+    # Then reduce the network
+    bus_to_remove = list()
+    bus_idx_dict = grid_.get_bus_index_dict()
+    for bus in grid_.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
+
+    # Get internal branches before reduction to compare later
+    (external, boundary,
+     internal, boundary_branches,
+     internal_branches) = grid_.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+
+    red_grid, logger = ptdf_reduction_projected(grid=grid_,
+                                                reduction_bus_indices=bus_to_remove,
+                                                distribute_slack=False)
+
+    # Run time series linear analysis on reduced grid
+    lin_ts_red = gce.LinearAnalysisTs(grid=red_grid, distributed_slack=False)
+    P_red = red_grid.get_Pbus_prof()
+    Flows_red = lin_ts_red.get_flows_ts(P=P_red)
+
+    # Compare flows on internal branches
+    Flows_orig_internal = Flows_orig[:, internal_branches]
+
+    # Check if dimensions match
+    assert (Flows_red.shape[1] == len(internal_branches))
+
+    # Compare flows
+    assert np.allclose(Flows_orig_internal, Flows_red, atol=1e-4)
+
+    # Check power balance for all time steps: total generation and demand should not change
+    all_time_indices = grid_.get_all_time_indices()
+    P_orig_gen_ts = get_total_generation_ts(grid_, time_indices=all_time_indices)
+    P_orig_load_ts = get_total_load_ts(grid_, time_indices=all_time_indices)
+    P_red_gen_ts = get_total_generation_ts(red_grid, time_indices=all_time_indices)
+    P_red_load_ts = get_total_load_ts(red_grid, time_indices=all_time_indices)
+
+    assert np.allclose(P_orig_gen_ts, P_red_gen_ts, atol=1e-4)
+    assert np.allclose(P_orig_load_ts, P_red_load_ts, atol=1e-4)
+
+
 if __name__ == '__main__':
     # test_ward_reduction()
     # test_ptdf_projected_14_reduction()
@@ -966,4 +1022,5 @@ if __name__ == '__main__':
     # test_ptdf_projected_slack_remove()
     # test_ptdf_projected_ts_slack_remove()
     # test_ptdf_projected_ts_gb_full()
-    ptdf_projected_large_real_syst_snapshot()
+    # ptdf_projected_large_real_syst_snapshot()
+    ptdf_projected_large_real_syst_time_series()
