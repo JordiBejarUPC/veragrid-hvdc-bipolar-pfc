@@ -177,8 +177,6 @@ def test_zip() -> None:
     Vm = np.abs(power_flow.results.voltage)
     Va = np.angle(power_flow.results.voltage, deg=False)
 
-    nc = compile_numerical_circuit_at(circuit=main_circuit)
-
     assert np.allclose(Vm_psse, Vm, atol=1e-3)
     assert np.allclose(Va_psse, Va, atol=1e-3)
 
@@ -439,6 +437,40 @@ def test_power_flow_control_with_pst_pt() -> None:
                 assert ok
             else:
                 assert not ok
+
+
+def test_generator_Q_lims() -> None:
+    """
+    Check that we can shift the controls well when hitting Q limits
+    """
+    fname = os.path.join('data', 'grids', '5Bus_LTC_FACTS_Fig4.7_Qlim.gridcal')
+
+    grid = gce.open_file(fname)
+
+    for control_q in [True, False]:
+        options = PowerFlowOptions(gce.SolverType.NR,
+                                   verbose=1,
+                                   control_q=control_q,
+                                   retry_with_other_methods=False,
+                                   control_taps_modules=False,
+                                   control_taps_phase=False,
+                                   control_remote_voltage=False,
+                                   apply_temperature_correction=False,
+                                   distributed_slack=False)
+
+        power_flow = PowerFlowDriver(grid, options)
+        power_flow.run()
+
+        # check that the bus Q is at the limit
+        qbus = power_flow.results.Sbus[3].imag
+        ok = np.isclose(qbus, grid.generators[1].Qmin, atol=options.tolerance)
+
+        if control_q:
+            assert ok
+        else:
+            assert not ok
+
+        assert power_flow.results.converged
 
 
 def test_fubm() -> None:

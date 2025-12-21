@@ -7,20 +7,17 @@ from __future__ import annotations
 import numpy as np
 import networkx as nx
 from typing import Tuple, Sequence, TYPE_CHECKING
-from VeraGridEngine.basic_structures import IntVec, Mat, Logger, Vector, Vec
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.basic_structures import IntVec, Mat, Logger, Vec
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.battery import Battery
 from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysisTs, LinearAnalysis
-from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc, PowerFlowOptions
-from VeraGridEngine.enumerations import SolverType
+
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-    from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysisTs
 
 
 def get_Pgen(grid: MultiCircuit) -> Tuple[Vec, Vec]:
@@ -291,7 +288,7 @@ def ptdf_reduction(grid: MultiCircuit,
         bus = grid.buses[i]
         if abs(dPbus[i]) > tol:
             elm = Load(name=f"compensation load {i}", P=dPbus[i])
-            elm.comment = "complensation load"
+            elm.comment = "Reduction compensation load"
 
             if dPbus_ts is not None:
                 elm.P_prof = dPbus_ts[:, i]
@@ -314,8 +311,6 @@ def ptdf_reduction_ree_bad(grid: MultiCircuit,
     No theory available
     :param grid: MultiCircuit
     :param reduction_bus_indices: Bus indices of the buses to delete
-    :param PTDF: PTDF matrix
-    :param lin_ts: LinearAnalysisTs
     :param tol: Tolerance, any equivalent power value under this is omitted
     """
     logger = Logger()
@@ -406,8 +401,6 @@ def ptdf_reduction_ree_less_bad(grid: MultiCircuit,
     No theory available
     :param grid: MultiCircuit
     :param reduction_bus_indices: Bus indices of the buses to delete
-    :param PTDF: PTDF matrix
-    :param lin_ts: LinearAnalysisTs
     :param tol: Tolerance, any equivalent power value under this is omitted
     """
     logger = Logger()
@@ -617,8 +610,6 @@ def ptdf_reduction_projected(grid: MultiCircuit,
                     # Fallback: pick the first bus in the island (maybe no PV buses)
                     if island_global_bus_idx:
                         grid.buses[island_global_bus_idx[0]].is_slack = True
-        
-    
 
     # Injections that remain (internal only, since external are gone)
     Pload2 = get_Pload(grid)
