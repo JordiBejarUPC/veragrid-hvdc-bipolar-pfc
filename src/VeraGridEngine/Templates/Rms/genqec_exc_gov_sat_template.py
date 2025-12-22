@@ -232,6 +232,14 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     Td0_2prime = Var('Td0_2prime')
     Tq0_2prime = Var('Tq0_2prime')
 
+    #Auxiliary expressions
+    Viag_expr = inputs[0] * sin(inputs[1]) + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl
+    Vrag_expr = inputs[0] * cos(inputs[1]) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *(Xl)
+
     A = Var('A')
     B = Var("B")
     Psid_prime = Vq/omega - (Xd_2prime -Xl)*(Id/(Const(1) + Sa)) 
@@ -323,14 +331,9 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                         IRPu],
         init_eqs={
+            #Air Gap Voltages and delta
             omega: Const(1),
-            V_dag: inputs[0] * sin(inputs[1]) + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            V_qag: inputs[0] * cos(inputs[1]) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *(Xl),
-            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+            Psi_ag: sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
             Sa: A * (Psi_ag - B) ** 2,
             delta: atan(
                 (inputs[0] * sin(inputs[1]) + imag(
@@ -341,17 +344,10 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            Vd: (inputs[0] * sin(delta - inputs[1])),
-            Vq: (inputs[0] * cos(delta - inputs[1])),
-            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-                    Iq / (Const(1) + Sa)),
-            Eq_2prime: Vq,
-            Ed_2prime: Vd,
+            V_dag: -Vrag_expr*sin(delta) +Viag_expr*cos(delta),
+            V_qag:  Vrag_expr*cos(delta) -Viag_expr*sin(delta),
+
+            #Saturated Resistances
             Sat_d: 1 + Sa,
             Sat_q: 1 + Sa,
             Xd_2prime_sat : (Xd_2prime - Xl + Xl * Sat_d)/Sat_d,
@@ -360,22 +356,30 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Xq_prime_sat : (Xq_prime - Xl + Xl * Sat_q)/Sat_q,
             Xd_sat : (Xd - Xl + Xl * Sat_d)/Sat_d,
             Xq_sat : (Xq - Xl + Xl * Sat_q)/Sat_q,
+
+            #Terminal Voltages and Intensities in dq frame
+            Vd: (inputs[0] * sin(delta - inputs[1])),
+            Vq: (inputs[0] * cos(delta - inputs[1])),
+            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
+            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
+            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+            Eq_prime: -(Vd + Ra*Id - Xq_2prime_sat*Iq) - (Xq_2prime - Xl) * (Id / (Const(1) + Sa)) + (Xq_prime - Xl) * (
+                    Id / (Const(1) + Sa)),
+            Eq_2prime: Vq + Xd_2prime_sat*Id - Ra*Iq,
+            Ed_2prime: Vd + Ra*Id - Xq_2prime_sat*Iq,
+
             Psid: (Eq_prime - Id * Xd_2prime_sat),
             Psiq:(-Ed_prime - Iq * Xq_2prime_sat),
             Te:(Psid * Iq - Psiq * Id),
 
-            #Eq1, Eq2, Ed1, Ed2 init
+            #Eq1, Eq2, Ed1, Ed2 definitions
             Eq1 : ((Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat))/(Xd_sat - Xd_prime_sat),
-            # Eq1 definition
             Ed1 : ((Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat))/(Xd_sat - Xd_prime_sat),
-            # Ed1 definition
             Eq2 : (-1) * ((Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
-            # Ed2 definition
             Ed2 : (-1) * ((Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
-            # Eq2 definition
             IRPu: Sat_q * Eq1,
-            #IRPu:(1+Sa)(Eq_prime + (Xd-Xd_prime)*(Id/(Sat_d) + ((Xd_prime-Xd_2prime)/(Xd_prime-Xl)**2)*\
-            #            (Eq_prime - Psid_prime - (Xd_prime -Xl)*Id/(Const(1) + Sa)))),
         },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
