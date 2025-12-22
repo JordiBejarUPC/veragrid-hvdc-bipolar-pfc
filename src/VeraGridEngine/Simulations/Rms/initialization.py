@@ -290,7 +290,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                     #We initialize the params with value UNDEFINED
                     if var.uid in uid2idx_params.keys():
-                        if var.value is not UNDEFINED:
+                        if isinstance(eq, Const) and eq.value is not UNDEFINED:
                             raise ValueError(f"Parameter {var.name} already initialized")
                         
                         if isinstance(mdl.init_eqs[var], tuple):
@@ -307,6 +307,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             init_val = float(eq_fn(x, params_array))
                             mdl.event_dict[uid2idx_params[var.uid]] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
+                        vars_initialized.add(key)
                     
                     #We initialize the algebraic values
                     else:
@@ -315,7 +316,6 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
                             init_guess[key] = init_val
-                            print(var,type(var), getattr(var, 'frozen', None), getattr(var, 'value', None))
                             x[uid2idx_vars[var.uid]] = init_val
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
@@ -331,10 +331,6 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                                 x0 = x[uid2idx_vars[var.uid]]
                             init_guess[key] = init_val
                             x[uid2idx_vars[var.uid]] = init_val
-                        eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                        val = float(eq_fn(x, params_array))
-                        init_guess[key] = val
-                        x[uid2idx_vars[var.uid]] = val
                         vars_initialized.add(key)
                     
 

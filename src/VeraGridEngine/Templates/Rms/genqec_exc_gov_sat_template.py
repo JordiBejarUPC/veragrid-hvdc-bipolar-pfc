@@ -329,7 +329,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
             V_qag: inputs[0] * cos(inputs[1]) + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *(Xl),
             Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
             Sa: A * (Psi_ag - B) ** 2,
             delta: atan(

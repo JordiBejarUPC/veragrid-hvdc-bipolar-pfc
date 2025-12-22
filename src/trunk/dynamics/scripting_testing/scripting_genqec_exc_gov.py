@@ -113,6 +113,7 @@ line1_mdl = get_line_rms_template().block.copy()
 load_mdl = get_load_rms_template().block.copy()
 
 Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
+
 ## Build big generators by connecting elements
 
 genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
@@ -132,6 +133,10 @@ genqec2_mdl.connect([genqec2_mdl.in_vars[2]], [gov2_mdl.out_vars[0]])
 
 gov1_mdl.connect([gov1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
 gov2_mdl.connect([gov2_mdl.in_vars[0]], [genqec2_mdl.out_vars[2]])
+
+#Te connection
+gov1_mdl.connect([gov1_mdl.in_vars[1]], [genqec1_mdl.out_vars[4]])
+gov2_mdl.connect([gov2_mdl.in_vars[1]], [genqec2_mdl.out_vars[4]])
 
 # connection with buses
 
