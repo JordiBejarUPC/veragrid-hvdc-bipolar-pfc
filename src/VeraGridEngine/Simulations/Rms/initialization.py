@@ -289,8 +289,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     key_deps = (v_init.uid, v_init.name)
                     if key_deps in init_guess:
                         continue
-                    elif v_init in mdl.event_dict.keys():
-                        if mdl.event_dict[v_init] is not UNDEFINED:
+                    elif v_init.uid == var.uid:
+                        continue
+                    elif v_init in comp_model.event_dict.keys():
+                        if comp_model.event_dict[v_init] is not UNDEFINED or v_init.uid != var.uid:
                             continue
                     else:
                         calculate_now = False
@@ -309,13 +311,13 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             for i, var in enumerate(f_params):
                                 x_params[i] = init_guess[key]
                             init_val = f_init(x_params)
-                            comp_model.event_dict[uid2idx_params[var.uid]] = Const(init_val)
+                            comp_model.event_dict[var] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
                         else:
                             vars_in_eqs = eq.get_vars()
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
-                            comp_model.event_dict[uid2idx_params[var.uid]] = Const(init_val)
+                            comp_model.event_dict[var] = Const(init_val)
                             params_array[uid2idx_params[var.uid]] = init_val
 
                     #We initialize the algebraic values
