@@ -240,3 +240,8 @@ class DgsCircuit:
         # TODO: implement conversion
 
         return grid
+
+    def from_veragrid(self, grid: dev.MultiCircuit):
+
+        # TODO: implement conversion
+        pass
