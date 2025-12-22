@@ -5,12 +5,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Type, Optional
-import math
-from warnings import warn
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from typing import Dict, List, Type, Optional, Tuple
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                ChaRef,
                                                ChaVec,
@@ -48,6 +44,47 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                TypSym,
                                                TypTr2,
                                                TypTr3)
+
+
+def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
+    """
+    Populate a DGSElement subclass from a PowerFactory API object,
+    using the class schema (properties_list).
+    Assumes the DGSElement has an explicit __init__.
+    """
+    elem = dgs_cls()
+
+    for prop in dgs_cls.properties_list:
+        name = prop.name
+
+        if hasattr(pf_obj, name):
+            try:
+                value = getattr(pf_obj, name)
+            except Exception:
+                value = None
+        else:
+            value = None
+
+        setattr(elem, name, value)
+
+    return elem
+
+
+def parse_header(line: str) -> Tuple[str, Dict[str, int]]:
+    """
+    Parse $$ header line and return property -> index map.
+    """
+    element_type = line[2:].split(";", 1)[0]
+    parts = line.strip().split(';')[1:]  # skip $$ElementType
+    header_map: Dict[str, int] = {}
+
+    for i, name_stub in enumerate(parts):
+        name_stub = parts[i]
+        stubs = name_stub.split("(")
+        prop_name = stubs[0] if len(stubs) > 0 else name_stub
+        header_map[prop_name] = i
+
+    return element_type, header_map
 
 
 class DgsCircuit:
@@ -94,45 +131,6 @@ class DgsCircuit:
 
     _REGISTRY: Dict[str, Type[DGSElement]] = {cls.element_type: cls for cls in _ELEMENT_CLASSES}
 
-    _CLASS_TO_LIST: Dict[Type[DGSElement], str] = {
-        ChaRef: 'charefs',
-        ChaVec: 'chavecs',
-        ElmAsm: 'elmasms',
-        ElmCoup: 'elmcoups',
-        ElmFeeder: 'elmfeeders',
-        ElmGenstat: 'elmgenstats',
-        ElmLne: 'elmlnes',
-        ElmLnesec: 'elmlnesecs',
-        ElmLod: 'elmlods',
-        ElmLodlv: 'elmlodlvs',
-        ElmLodlvp: 'elmlodlvps',
-        ElmNet: 'elmnets',
-        ElmShnt: 'elmshnts',
-        ElmSite: 'elmsites',
-        ElmSubstat: 'elmsubstats',
-        ElmSym: 'elmsyms',
-        ElmTerm: 'elmterms',
-        ElmTr2: 'elmtr2s',
-        ElmTr3: 'elmtr3s',
-        ElmXnet: 'elmxnets',
-        ElmZone: 'elmzones',
-        General: 'generals',
-        IntFolder: 'intfolders',
-        IntGrf: 'intgrfs',
-        IntGrfcon: 'intgrfcons',
-        IntGrfnet: 'intgrfnets',
-        RelFuse: 'relfuses',
-        StaCubic: 'stacubics',
-        StaSwitch: 'staswitchs',
-        TypAsmo: 'typasmos',
-        TypFuse: 'typfuses',
-        TypLne: 'typlnes',
-        TypLod: 'typlods',
-        TypSym: 'typsyms',
-        TypTr2: 'typtr2s',
-        TypTr3: 'typtr3s',
-    }
-
     def __init__(self) -> None:
         self.charefs: List[ChaRef] = list()
         self.chavecs: List[ChaVec] = list()
@@ -171,12 +169,52 @@ class DgsCircuit:
         self.typtr2s: List[TypTr2] = list()
         self.typtr3s: List[TypTr3] = list()
 
-    def parse(self, path: str):
+        self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
+            ChaRef: self.charefs,
+            ChaVec: self.chavecs,
+            ElmAsm: self.elmasms,
+            ElmCoup: self.elmcoups,
+            ElmFeeder: self.elmfeeders,
+            ElmGenstat: self.elmgenstats,
+            ElmLne: self.elmlnes,
+            ElmLnesec: self.elmlnesecs,
+            ElmLod: self.elmlods,
+            ElmLodlv: self.elmlodlvs,
+            ElmLodlvp: self.elmlodlvps,
+            ElmNet: self.elmnets,
+            ElmShnt: self.elmshnts,
+            ElmSite: self.elmsites,
+            ElmSubstat: self.elmsubstats,
+            ElmSym: self.elmsyms,
+            ElmTerm: self.elmterms,
+            ElmTr2: self.elmtr2s,
+            ElmTr3: self.elmtr3s,
+            ElmXnet: self.elmxnets,
+            ElmZone: self.elmzones,
+            General: self.generals,
+            IntFolder: self.intfolders,
+            IntGrf: self.intgrfs,
+            IntGrfcon: self.intgrfcons,
+            IntGrfnet: self.intgrfnets,
+            RelFuse: self.relfuses,
+            StaCubic: self.stacubics,
+            StaSwitch: self.staswitchs,
+            TypAsmo: self.typasmos,
+            TypFuse: self.typfuses,
+            TypLne: self.typlnes,
+            TypLod: self.typlods,
+            TypSym: self.typsyms,
+            TypTr2: self.typtr2s,
+            TypTr3: self.typtr3s,
+        }
+
+    def parse_dgs(self, path: str):
         """
         Parse a DGS file and populate the typed lists.
         """
         path = Path(path)
         current_cls: Optional[Type[DGSElement]] = None
+        header_map: Dict[str, int] | None = None
 
         with path.open("r", encoding="utf-8", errors="ignore") as f:
             for raw_line in f:
@@ -188,27 +226,27 @@ class DgsCircuit:
 
                 elif line.startswith("$$"):
                     # Header line
-                    element_type = line[2:].split(";", 1)[0]
+                    element_type, header_map = parse_header(line)
                     current_cls = self._REGISTRY.get(element_type)
 
                 else:
                     # Data line
                     if current_cls is not None:
                         try:
-                            obj = current_cls.parse_line(line)
+                            obj = current_cls.parse_line(line=line, header_map=header_map)
                         except (ValueError, IndexError):
                             # Legitimate parse failure (bad data line)
                             obj = None
 
                         if obj is not None:
                             try:
-                                list_name = self._CLASS_TO_LIST[current_cls]
-                                getattr(self, list_name).append(obj)
+                                objects_lst = self._CLASS_TO_LIST[current_cls]
+                                objects_lst.append(obj)
                             except KeyError:
                                 # Programming/configuration error → re-raise
                                 raise
 
-    def write(self, path: str):
+    def write_dgs(self, path: str):
         """
         Write the circuit back to a DGS file.
         """
@@ -216,8 +254,7 @@ class DgsCircuit:
 
         with path.open("w", encoding="utf-8") as f:
             for cls in self._ELEMENT_CLASSES:
-                list_name = self._CLASS_TO_LIST[cls]
-                objects: List[DGSElement] = getattr(self, list_name)
+                objects: List[DGSElement] = self._CLASS_TO_LIST[cls]
 
                 if objects:
                     header = "$$" + cls.element_type + ";" + ";".join(
@@ -229,6 +266,109 @@ class DgsCircuit:
                         f.write(obj.to_dgs_line() + "\n")
 
                     f.write("\n")
+
+    def from_api(self, study_case_name: str | None = None) -> None:
+        """
+        Populate this (empty) PfCircuit from an active PowerFactory application.
+        Assumes:
+        - self is empty (no existing elements)
+        - schema registries (_ELEMENT_CLASSES, _CLASS_TO_LIST) are complete
+        :param study_case_name: case name if any
+        :return: 
+        """
+
+        # Obtain PowerFactory application ------------------------------------------------------------------------------
+        try:
+            import powerfactory as pf
+        except ImportError as e:
+            print("PowerFactory Python module not available. "
+                  "Ensure this is executed inside a PowerFactory Python environment.", str(e))
+            return None
+
+        try:
+            app = pf.GetApplication()
+        except AttributeError as e:
+            print("powerfactory module does not expose GetApplication(). "
+                  "PowerFactory installation may be corrupted or incompatible.", str(e))
+            return None
+
+        except RuntimeError as e:
+            print("Failed to obtain PowerFactory application. "
+                  "Ensure PowerFactory is running and a project is open.", str(e))
+            return None
+
+        if app is None:
+            print("pf.GetApplication() returned None. No active PowerFactory application detected.")
+            return None
+
+        # Activate study case  -----------------------------------------------------------------------------------------
+
+        try:
+            project = app.GetActiveProject()
+        except RuntimeError as e:
+            print("No active PowerFactory project.", str(e))
+            return None
+
+        if project is None:
+            print("No active PowerFactory project.")
+            return None
+
+        # Fetch all study cases
+        try:
+            cases = project.GetContents("*.IntCase", recursive=True)
+        except RuntimeError as e:
+            print("Failed to retrieve study cases.", str(e))
+            return None
+
+        if not cases:
+            print("No study cases found in the project.")
+            return None
+
+        active_case = None
+
+        if study_case_name is not None:
+            for case in cases:
+                if case.loc_name == study_case_name:
+                    active_case = case
+                    break
+
+            if active_case is None:
+                print(f"Study case '{study_case_name}' not found in project.")
+                return None
+
+        else:
+            # Use currently active case, if any
+            try:
+                active_case = app.GetActiveStudyCase()
+            except RuntimeError:
+                active_case = None
+
+            if active_case is None:
+                print("No study case is active. Please specify study_case_name explicitly.")
+                return None
+
+        # Activate selected case
+        try:
+            active_case.Activate()
+        except RuntimeError as e:
+            print(f"Failed to activate study case '{active_case.loc_name}'.", str(e))
+            return None
+
+        # Iterate over all known DGSElement subclasses
+        for dgs_cls in self._ELEMENT_CLASSES:
+            pf_class_name = dgs_cls.element_type
+
+            try:
+                pf_objects = app.GetCalcRelevantObjects(f"*.{pf_class_name}")
+            except (RuntimeError, AttributeError):
+                pf_objects = list()
+
+            if pf_objects:
+                target_list = self._CLASS_TO_LIST[dgs_cls]
+
+                for pf_obj in pf_objects:
+                    elem = _populate_from_pf_object(pf_obj, dgs_cls)
+                    target_list.append(elem)
 
     def to_veragrid(self) -> dev.MultiCircuit:
         """
