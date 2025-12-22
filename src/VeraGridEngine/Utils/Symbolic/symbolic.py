@@ -1138,7 +1138,7 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
     if isinstance(expr, BinOp):
         return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
     if isinstance(expr, Func):
-        if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
+        if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "atan",
                          "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"

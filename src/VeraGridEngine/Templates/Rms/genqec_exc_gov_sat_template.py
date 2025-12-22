@@ -273,10 +273,10 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
         algebraic_eqs=[
-            # Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
-            # Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
-            # Pg - (Vd * Id + Vq * Iq),  # from input block
-            # Qg - (Vq * Id - Vd * Iq),  # from input block
+            Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
+            Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
+            Pg - (Vd * Id + Vq * Iq),  # from input block
+            Qg - (Vq * Id - Vd * Iq),  # from input block
             Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
             Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
             Psid - (Eq_prime - Id * Xd_2prime_sat),
@@ -537,7 +537,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         event_dict=events_dict,
         name="governor",
-        # Pm_ref
+
         init_eqs={
             Pm_ref: inputs[1],
             y1: Const(0.0),
@@ -848,23 +848,23 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     Se_expr = AEx * Ve_sat * exp(BEx * (Ve_sat - Se_threshold)) \
                   * heaviside(Ve_sat - Se_threshold)
 
-    #Equations to find the reference
-    Ka = parameters["Ka"]
-    Kc = parameters["Kc"]
-    Kd = parameters["Kd"]
-    Ke = parameters["Ke"]
-    UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[2], Ka, Ke, Kd, Kc, VeMinPu, 
-                             VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
-    def UsRef_init(x):
-        UsRef_sol = fsolve(
-            Efd_diff,
-            x0=1.0,
-            args=(x,),
-            xtol=1e-6,
-            maxfev=500,
-        )[0]
-        return UsRef_sol
-    
+    # #Equations to find the reference
+    # Ka = parameters["Ka"]
+    # Kc = parameters["Kc"]
+    # Kd = parameters["Kd"]
+    # Ke = parameters["Ke"]
+    # UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[2], Ka, Ke, Kd, Kc, VeMinPu,
+    #                          VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
+    # def UsRef_init(x):
+    #     UsRef_sol = fsolve(
+    #         Efd_diff,
+    #         x0=1.0,
+    #         args=(x,),
+    #         xtol=1e-6,
+    #         maxfev=500,
+    #     )[0]
+    #     return UsRef_sol
+    #
 
     Efe_ref = hard_sat(-inputs[1] + UsRefPu, min_const, max_const)
 
@@ -876,7 +876,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         init_eqs={
             Vf:inputs[0],
             y_subexciter1: inputs[0]*(1/f_exc(inputs[0] * parameters["Kd"]/y_subexciter1) ),
-            VeMaxPu: (VfeMaxPu -inputs[0]*Kd)/(Ke + AEx*exp(BEx*(Ve-Se_threshold))*heaviside(Ve-Se_threshold)),
+            VeMaxPu: (VfeMaxPu -inputs[0]*parameters["Kd"])/(parameters["Ke"] + AEx*exp(BEx*(Ve-Se_threshold))*heaviside(Ve-Se_threshold)),
             UsRefPu: (Efe_ref - inputs[0] * parameters["Kd"] ) / (parameters["Ke"]  + Se_expr),
             y1: inputs[1],
             y2: Const(0.0),
