@@ -992,8 +992,6 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
     elif t == "UndefinedConst":
         obj = UndefinedConst(data['name'])
     elif t == "Var":
-        if "y_subexciter1" in data["name"]:
-            print("found-it")
         obj = Var(data["name"])
 
     elif t == "DiffVar":

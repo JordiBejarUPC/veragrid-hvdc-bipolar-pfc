@@ -1191,10 +1191,10 @@ class DiffBlockSolver(BlockSolver):
                         dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
                         print(f"\nSingular direction {i}, σ={s[i]:.3e}")
                         for j in dominant_idx:
-                            var_name = self._algebraic_vars[j].name
-                            print(f"  {var_name:20s} {v[j]:+.3e}")
+                            if j < len(self._algebraic_vars):
+                                var_name = self._algebraic_vars[j].name
+                                print(f"  {var_name:20s} {v[j]:+.3e}")
                     print("Using LSQR")
-                    exit()
 
                 if not solved:
                     nan_indices = np.where(np.isnan(rhs))[0]
