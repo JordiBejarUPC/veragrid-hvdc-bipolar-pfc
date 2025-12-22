@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import List
 import numpy as np
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -19,10 +20,12 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    Vmf: Var = Var('Vmf')
-    Vaf: Var = Var('Vaf')
-    Vmt: Var = Var('Vmt')
-    Vat: Var = Var('Vat')
+    inputs: List[Var] = [Var("Vmf_" + name),
+                         Var("Vaf_" + name),
+                         Var("Vmt_" + name),
+                         Var("Vat_" + name)]
+
+
 
     Qf = Var("Qf")
     Qt = Var("Qt")
@@ -41,21 +44,22 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
 
     pi2 = np.pi / 2
     templ.block.algebraic_eqs = [
-        Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + pi2)),
-        Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + pi2)),
-        Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + pi2)),
-        Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + pi2)),
+        Pf - ((inputs[0] ** 2 * g) - g * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3] + pi2)),
+        Qf - (inputs[0] ** 2 * (-bsh / 2 - b) - g * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3]) + b * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3] + pi2)),
+        Pt - ((inputs[2] ** 2 * g) - g * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1] + pi2)),
+        Qt - (inputs[2] ** 2 * (-bsh / 2 - b) - g * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1]) + b * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1] + pi2)),
     ]
 
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vaf: Vaf,
-        VarPowerFlowRefferenceType.Vat: Vat,
-        VarPowerFlowRefferenceType.Vmf: Vmf,
-        VarPowerFlowRefferenceType.Vmt: Vmt,
+        VarPowerFlowRefferenceType.Vaf: inputs[1],
+        VarPowerFlowRefferenceType.Vat: inputs[3],
+        VarPowerFlowRefferenceType.Vmf: inputs[0],
+        VarPowerFlowRefferenceType.Vmt: inputs[2],
         VarPowerFlowRefferenceType.Pf: Pf,
         VarPowerFlowRefferenceType.Pt: Pt,
         VarPowerFlowRefferenceType.Qf: Qf,
         VarPowerFlowRefferenceType.Qt: Qt,
     }
+    templ.block.in_vars = inputs
 
     return templ

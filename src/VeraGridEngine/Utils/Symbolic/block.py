@@ -468,20 +468,23 @@ class Block:
         return flat
 
     def unify_blocks(self):
+        mdl = Block()
         for b in self.get_all_blocks():
-            self.algebraic_vars.extend(b.algebraic_vars)
-            self.algebraic_eqs.extend(b.algebraic_eqs)
-            self.state_vars.extend(b.state_vars)
-            self.state_eqs.extend(b.state_eqs)
+            mdl.algebraic_vars.extend(b.algebraic_vars)
+            mdl.algebraic_eqs.extend(b.algebraic_eqs)
+            mdl.state_vars.extend(b.state_vars)
+            mdl.state_eqs.extend(b.state_eqs)
             for param, eq in b.event_dict.items():
-                self.event_dict[param] = eq
+                mdl.event_dict[param] = eq
 
             for var, init_eq in b.init_eqs.items():
-                self.init_eqs[var] = init_eq
+                mdl.init_eqs[var] = init_eq
 
 
             if isinstance(b, DiffBlock):
-                self.diff_vars.extend(b.diff_vars)
+                mdl.diff_vars.extend(b.diff_vars)
+
+        return mdl
 
     def get_vars(self) -> List[Var]:
         """
@@ -514,7 +517,7 @@ class Block:
         :return:
         """
         init_eqs_new = dict()
-        events_dict_new = dict()
+        event_dict_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -533,11 +536,11 @@ class Block:
         for var, expr in self.event_dict.items():
             new_expr = expr.subs({old: new})
             if var is old:
-                events_dict_new.update({new: new_expr})
+                event_dict_new.update({new: new_expr})
             else:
-                events_dict_new.update({var: new_expr})
+                event_dict_new.update({var: new_expr})
 
-        self.event_dict = events_dict_new
+        self.event_dict = event_dict_new
 
         if old in self.in_vars:
             idx = next(i for i, v in enumerate(self.in_vars) if v is old)
@@ -580,7 +583,7 @@ class Block:
             "diff_vars":  _serialize_var_list(self.diff_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.init_eqs.items() 
+                for var, expr in self.init_eqs.items()
             ],
             "init_values": [
                 {"var": var.to_dict(), "value": value.value}

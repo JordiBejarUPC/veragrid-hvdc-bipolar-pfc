@@ -875,9 +875,9 @@ tan = _make_unary("tan")
 exp = _make_unary("exp")
 log = _make_unary("log")
 sqrt = _make_unary("sqrt")
-asin = _make_unary("arcsin")
-acos = _make_unary("arccos")
-atan = _make_unary("arctan")
+asin = _make_unary("asin")
+acos = _make_unary("acos")
+atan = _make_unary("atan")
 sinh = _make_unary("sinh")
 cosh = _make_unary("cosh")
 real = _make_unary("real")
@@ -1144,8 +1144,11 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
             return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
         elif expr.name == "heaviside":
             return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
+    #
+    # else:
+    #     print(expr)
 
-    raise TypeError(type(expr))
+    raise TypeError(expr)
 
 
 def find_vars_order(expressions: Union[Expr, Sequence[Expr]],

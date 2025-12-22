@@ -28,10 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="get_vars function working">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="diff vars in system">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="devel" />
+        <entry key="$PROJECT_DIR$" value="86_Dynamic_simulations_V1_DiffBlock" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -164,6 +163,7 @@
     &quot;Python tests.pytest for test_transformer_type.test_psse_conversion3.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_transformer_type.test_transformer_type.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for tests.test_load_save_load.test_load_save_load.executor&quot;: &quot;Debug&quot;,
+    &quot;Python tests.pytest for tests.test_symbolic.test_elementary_functions.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest in grid4.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_ac_opf.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_admitances.py.executor&quot;: &quot;Debug&quot;,
@@ -172,6 +172,8 @@
     &quot;Python tests.pytest in test_copy.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_load_save_load.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_small_signal_rms.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest in test_symbolic.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest in test_symbolic_lp.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_transformer_type.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in tests.executor&quot;: &quot;Run&quot;,
     &quot;Python.AnalysisDialogue.executor&quot;: &quot;Run&quot;,
@@ -190,6 +192,7 @@
     &quot;Python.demo_code2.executor&quot;: &quot;Run&quot;,
     &quot;Python.demo_code3.executor&quot;: &quot;Debug&quot;,
     &quot;Python.demo_code4.executor&quot;: &quot;Run&quot;,
+    &quot;Python.genqec_exc_gov_sat_template.executor&quot;: &quot;Debug&quot;,
     &quot;Python.grid4.executor&quot;: &quot;Run&quot;,
     &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.initialization.executor&quot;: &quot;Debug&quot;,
@@ -202,6 +205,7 @@
     &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_genqec_exc_gov.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.scripting_genqec_exc_gov_simple.executor&quot;: &quot;Debug&quot;,
     &quot;Python.scripting_gridcal.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_hardcoded.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_small_system.executor&quot;: &quot;Run&quot;,
@@ -228,7 +232,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;86__Dynamic__simulations__V1__DiffBlock&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/santi/Documentos/Git/eRoots/extended-equal-area-criterion&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics/scripting_testing&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
@@ -246,11 +250,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
       <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -260,7 +264,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python tests.pytest for tests.test_symbolic.test_elementary_functions">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -634,25 +638,6 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for tests.test_load_save_load.test_load_save_load" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;tests.test_load_save_load.test_load_save_load&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
     <configuration name="pytest for tests.test_load_save_load.test_load_save_load_rms" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
@@ -688,6 +673,25 @@
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;tests.test_load_save_load.test_load_save_load_xlsx&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for tests.test_symbolic.test_elementary_functions" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;tests.test_symbolic.test_elementary_functions&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
@@ -731,7 +735,7 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
+      <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
@@ -739,11 +743,11 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load" />
+        <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
       </list>
     </recent_temporary>
   </component>
@@ -1875,7 +1879,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="624" />
+    <option name="localTasksCounter" value="627" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1921,9 +1925,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="GridCal/Andes comparision part 1" />
-    <MESSAGE value="Small system constructed in gridcal and Andes" />
-    <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
     <MESSAGE value="automatic initialization equations fixed" />
     <MESSAGE value="moved rms initialization out of the MultiCircuit" />
     <MESSAGE value="got some changes from horrendous alex comit" />
@@ -1946,7 +1947,10 @@
     <MESSAGE value="changed connect function to change also init_equ" />
     <MESSAGE value="updated initialization ordered equations" />
     <MESSAGE value="get_vars function working" />
-    <option name="LAST_COMMIT_MESSAGE" value="get_vars function working" />
+    <MESSAGE value="connect function updated" />
+    <MESSAGE value="initialization algorithm working" />
+    <MESSAGE value="diff vars in system" />
+    <option name="LAST_COMMIT_MESSAGE" value="diff vars in system" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2287,13 +2291,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1497</line>
+          <line>1498</line>
           <option name="timeStamp" value="3086" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/dynamics/test_benchmark_with_andes_diff_block_solver.py</url>
-          <line>387</line>
-          <option name="timeStamp" value="3089" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/json_parser.py</url>
@@ -2341,39 +2340,39 @@
           <option name="timeStamp" value="3176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
-          <line>1022</line>
-          <option name="timeStamp" value="3199" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
           <line>388</line>
           <option name="timeStamp" value="3200" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>267</line>
-          <option name="timeStamp" value="3223" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1152</line>
+          <option name="timeStamp" value="3202" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>269</line>
-          <option name="timeStamp" value="3227" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1155</line>
+          <option name="timeStamp" value="3203" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>272</line>
-          <option name="timeStamp" value="3228" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1121</line>
+          <option name="timeStamp" value="3204" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>273</line>
-          <option name="timeStamp" value="3229" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>573</line>
+          <option name="timeStamp" value="3205" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>282</line>
-          <option name="timeStamp" value="3230" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1153</line>
+          <option name="timeStamp" value="3207" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1158</line>
+          <option name="timeStamp" value="3208" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

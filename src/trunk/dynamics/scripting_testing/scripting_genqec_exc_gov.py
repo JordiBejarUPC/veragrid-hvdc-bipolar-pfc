@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 
 from VeraGridEngine import VarPowerFlowRefferenceType, power_flow
-
+from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -91,26 +91,26 @@ grid.add_generator(bus=bus1, api_obj=gen1)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = GenqecBuild().block.copy()
-genqec2_mdl = GenqecBuild().block.copy()
+genqec1_mdl = GenqecBuild().block
+genqec2_mdl = GenqecBuild().block
 
-exc1_mdl = ExciterBuild().block.copy()
-exc2_mdl = ExciterBuild().block.copy()
+exc1_mdl = ExciterBuild().block
+exc2_mdl = ExciterBuild().block
 
-gov1_mdl = GovernorBuild().block.copy()
-gov2_mdl = GovernorBuild().block.copy()
+gov1_mdl = GovernorBuild().block
+gov2_mdl = GovernorBuild().block
 
-stabil1_mdl = StabilizerBuild().block.copy()
-stabil2_mdl = StabilizerBuild().block.copy()
+stabil1_mdl = StabilizerBuild().block
+stabil2_mdl = StabilizerBuild().block
 
 
 
 #line
-line0_mdl = get_line_rms_template().block.copy()
-line1_mdl = get_line_rms_template().block.copy()
+line0_mdl = get_line_rms_template().block
+line1_mdl = get_line_rms_template().block
 
 #load
-load_mdl = get_load_rms_template().block.copy()
+load_mdl = get_load_rms_template().block
 
 Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
 
@@ -148,6 +148,21 @@ genqec2_mdl.connect([genqec2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]]
 
 exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 exc2_mdl.connect([exc2_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+line1_mdl.connect([line1_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+line1_mdl.connect([line1_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
 
 # external mapping
 
@@ -204,4 +219,29 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
+params_mapping = dict()
+
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+
+slv = DiffBlockSolver(ss, sim_time)
+
+params0 = slv.build_init_params_vector(params_mapping)
+x0 = slv.build_init_vars_vector_from_uid(init_guess)
+
+dx0 = np.zeros(len(slv._diff_vars))
+
+t, y = slv.simulate(
+    t0=0,
+    t_end=20,
+    h=0.001,
+    x0=x0,
+    dx0=dx0,
+    params0=params0,
+    method="implicit_euler",
+    newton_tol = 1e-8,
+    newton_max_iter = 1000,
+    followed_vars = None,
+    initialized = False,
+    verbose = False,
+
+)

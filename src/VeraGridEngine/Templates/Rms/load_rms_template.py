@@ -22,8 +22,9 @@ def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    Vm: Var = Var('')
-    Va: Var = Var('')
+    inputs: List[Var] = [Var("Vm_" + name),
+                         Var("Va_" + name)
+                         ]
 
     Pl0 = Var("Pl0")
     Ql0 = Var("Ql0")
@@ -41,12 +42,12 @@ def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
                 Ql - Ql0]
 
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Va: Va,
-        VarPowerFlowRefferenceType.Vm: Vm,
+        VarPowerFlowRefferenceType.Va: inputs[0],
+        VarPowerFlowRefferenceType.Vm: inputs[1],
         VarPowerFlowRefferenceType.P: Pl,
         VarPowerFlowRefferenceType.Q: Ql
     }
 
-    templ.block.uid = 777
+    templ.block.in_vars = inputs
 
     return templ
