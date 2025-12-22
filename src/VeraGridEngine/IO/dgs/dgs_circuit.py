@@ -6,190 +6,170 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Type, Optional
+import math
+from warnings import warn
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.IO.dgs.dgs_objects import (
-    DGSElement,
-
-    # General / infra
-    General,
-    IntFolder,
-
-    # Network
-    ElmNet,
-    ElmTerm,
-    ElmSubstat,
-    ElmSite,
-    ElmCoup,
-    ElmXnet,
-
-    # Branches / loads / machines
-    ElmLne,
-    ElmLnesec,
-    ElmLod,
-    ElmLodlv,
-    ElmLodlvp,
-    ElmSym,
-    ElmGenstat,
-    ElmFeeder,
-
-    # Graphics / characteristics
-    StaSwitch,
-    StaCubic,
-    ChaRef,
-    ChaVec,
-    IntGrf,
-    IntGrfnet,
-    IntGrfcon,
-
-    # Types
-    TypAsmo,
-    TypFuse,
-    TypLne,
-    TypSym,
-    TypTr2,
-    TypTr3,
-)
+from VeraGridEngine.enumerations import ConverterControlType
+from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
+                                               ChaRef,
+                                               ChaVec,
+                                               ElmAsm,
+                                               ElmCoup,
+                                               ElmFeeder,
+                                               ElmGenstat,
+                                               ElmLne,
+                                               ElmLnesec,
+                                               ElmLod,
+                                               ElmLodlv,
+                                               ElmLodlvp,
+                                               ElmNet,
+                                               ElmShnt,
+                                               ElmSite,
+                                               ElmSubstat,
+                                               ElmSym,
+                                               ElmTerm,
+                                               ElmTr2,
+                                               ElmTr3,
+                                               ElmXnet,
+                                               ElmZone,
+                                               General,
+                                               IntFolder,
+                                               IntGrf,
+                                               IntGrfcon,
+                                               IntGrfnet,
+                                               RelFuse,
+                                               StaCubic,
+                                               StaSwitch,
+                                               TypAsmo,
+                                               TypFuse,
+                                               TypLne,
+                                               TypLod,
+                                               TypSym,
+                                               TypTr2,
+                                               TypTr3)
 
 
-class PfCircuit:
-    """
-    Strongly typed container for a PowerFactory DGS circuit.
-    Owns the schema registry and supports parse / write.
-    """
-
-    # ======================================================
-    # Internal registry (single source of truth)
-    # ======================================================
+class DgsCircuit:
+    """Strongly-typed container for a PowerFactory DGS file."""
 
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
-        # General / infra
-        General,
-        IntFolder,
-
-        # Network
-        ElmNet,
-        ElmTerm,
-        ElmSubstat,
-        ElmSite,
+        ChaRef,
+        ChaVec,
+        ElmAsm,
         ElmCoup,
-        ElmXnet,
-
-        # Branches / loads / machines
+        ElmFeeder,
+        ElmGenstat,
         ElmLne,
         ElmLnesec,
         ElmLod,
         ElmLodlv,
         ElmLodlvp,
+        ElmNet,
+        ElmShnt,
+        ElmSite,
+        ElmSubstat,
         ElmSym,
-        ElmGenstat,
-        ElmFeeder,
-
-        # Graphics / characteristics
-        StaSwitch,
-        StaCubic,
-        ChaRef,
-        ChaVec,
+        ElmTerm,
+        ElmTr2,
+        ElmTr3,
+        ElmXnet,
+        ElmZone,
+        General,
+        IntFolder,
         IntGrf,
-        IntGrfnet,
         IntGrfcon,
-
-        # Types
+        IntGrfnet,
+        RelFuse,
+        StaCubic,
+        StaSwitch,
         TypAsmo,
         TypFuse,
         TypLne,
+        TypLod,
         TypSym,
         TypTr2,
         TypTr3,
     ]
 
-    _REGISTRY: dict[str, Type[DGSElement]] = {
-        cls.element_type: cls for cls in _ELEMENT_CLASSES
+    _REGISTRY: Dict[str, Type[DGSElement]] = {cls.element_type: cls for cls in _ELEMENT_CLASSES}
+
+    _CLASS_TO_LIST: Dict[Type[DGSElement], str] = {
+        ChaRef: 'charefs',
+        ChaVec: 'chavecs',
+        ElmAsm: 'elmasms',
+        ElmCoup: 'elmcoups',
+        ElmFeeder: 'elmfeeders',
+        ElmGenstat: 'elmgenstats',
+        ElmLne: 'elmlnes',
+        ElmLnesec: 'elmlnesecs',
+        ElmLod: 'elmlods',
+        ElmLodlv: 'elmlodlvs',
+        ElmLodlvp: 'elmlodlvps',
+        ElmNet: 'elmnets',
+        ElmShnt: 'elmshnts',
+        ElmSite: 'elmsites',
+        ElmSubstat: 'elmsubstats',
+        ElmSym: 'elmsyms',
+        ElmTerm: 'elmterms',
+        ElmTr2: 'elmtr2s',
+        ElmTr3: 'elmtr3s',
+        ElmXnet: 'elmxnets',
+        ElmZone: 'elmzones',
+        General: 'generals',
+        IntFolder: 'intfolders',
+        IntGrf: 'intgrfs',
+        IntGrfcon: 'intgrfcons',
+        IntGrfnet: 'intgrfnets',
+        RelFuse: 'relfuses',
+        StaCubic: 'stacubics',
+        StaSwitch: 'staswitchs',
+        TypAsmo: 'typasmos',
+        TypFuse: 'typfuses',
+        TypLne: 'typlnes',
+        TypLod: 'typlods',
+        TypSym: 'typsyms',
+        TypTr2: 'typtr2s',
+        TypTr3: 'typtr3s',
     }
 
-    _CLASS_TO_LIST: dict[Type[DGSElement], str] = {
-        # General / infra
-        General: "general",
-        IntFolder: "int_folders",
-
-        # Network
-        ElmNet: "elm_nets",
-        ElmTerm: "elm_terms",
-        ElmSubstat: "elm_substats",
-        ElmSite: "elm_sites",
-        ElmCoup: "elm_coups",
-        ElmXnet: "elm_xnets",
-
-        # Branches / loads / machines
-        ElmLne: "elm_lnes",
-        ElmLnesec: "elm_lnesecs",
-        ElmLod: "elm_lods",
-        ElmLodlv: "elm_lodlvs",
-        ElmLodlvp: "elm_lodlvps",
-        ElmSym: "elm_syms",
-        ElmGenstat: "elm_genstats",
-        ElmFeeder: "elm_feeders",
-
-        # Graphics / characteristics
-        StaSwitch: "sta_switches",
-        StaCubic: "sta_cubics",
-        ChaRef: "cha_refs",
-        ChaVec: "cha_vecs",
-        IntGrf: "int_grfs",
-        IntGrfnet: "int_grfnets",
-        IntGrfcon: "int_grfcons",
-
-        # Types
-        TypAsmo: "typ_asmos",
-        TypFuse: "typ_fuses",
-        TypLne: "typ_lnes",
-        TypSym: "typ_syms",
-        TypTr2: "typ_tr2s",
-        TypTr3: "typ_tr3s",
-    }
-
-    # ======================================================
-    # Construction
-    # ======================================================
-
-    def __init__(self):
-        # General / infra
-        self.general: List[General] = list()
-        self.int_folders: List[IntFolder] = list()
-
-        # Network
-        self.elm_nets: List[ElmNet] = list()
-        self.elm_terms: List[ElmTerm] = list()
-        self.elm_substats: List[ElmSubstat] = list()
-        self.elm_sites: List[ElmSite] = list()
-        self.elm_coups: List[ElmCoup] = list()
-        self.elm_xnets: List[ElmXnet] = list()
-
-        # Branches / loads / machines
-        self.elm_lnes: List[ElmLne] = list()
-        self.elm_lnesecs: List[ElmLnesec] = list()
-        self.elm_lods: List[ElmLod] = list()
-        self.elm_lodlvs: List[ElmLodlv] = list()
-        self.elm_lodlvps: List[ElmLodlvp] = list()
-        self.elm_syms: List[ElmSym] = list()
-        self.elm_genstats: List[ElmGenstat] = list()
-        self.elm_feeders: List[ElmFeeder] = list()
-
-        # Graphics / characteristics
-        self.sta_switches: List[StaSwitch] = list()
-        self.sta_cubics: List[StaCubic] = list()
-        self.cha_refs: List[ChaRef] = list()
-        self.cha_vecs: List[ChaVec] = list()
-        self.int_grfs: List[IntGrf] = list()
-        self.int_grfnets: List[IntGrfnet] = list()
-        self.int_grfcons: List[IntGrfcon] = list()
-
-        # Types
-        self.typ_asmos: List[TypAsmo] = list()
-        self.typ_fuses: List[TypFuse] = list()
-        self.typ_lnes: List[TypLne] = list()
-        self.typ_syms: List[TypSym] = list()
-        self.typ_tr2s: List[TypTr2] = list()
-        self.typ_tr3s: List[TypTr3] = list()
+    def __init__(self) -> None:
+        self.charefs: List[ChaRef] = list()
+        self.chavecs: List[ChaVec] = list()
+        self.elmasms: List[ElmAsm] = list()
+        self.elmcoups: List[ElmCoup] = list()
+        self.elmfeeders: List[ElmFeeder] = list()
+        self.elmgenstats: List[ElmGenstat] = list()
+        self.elmlnes: List[ElmLne] = list()
+        self.elmlnesecs: List[ElmLnesec] = list()
+        self.elmlods: List[ElmLod] = list()
+        self.elmlodlvs: List[ElmLodlv] = list()
+        self.elmlodlvps: List[ElmLodlvp] = list()
+        self.elmnets: List[ElmNet] = list()
+        self.elmshnts: List[ElmShnt] = list()
+        self.elmsites: List[ElmSite] = list()
+        self.elmsubstats: List[ElmSubstat] = list()
+        self.elmsyms: List[ElmSym] = list()
+        self.elmterms: List[ElmTerm] = list()
+        self.elmtr2s: List[ElmTr2] = list()
+        self.elmtr3s: List[ElmTr3] = list()
+        self.elmxnets: List[ElmXnet] = list()
+        self.elmzones: List[ElmZone] = list()
+        self.generals: List[General] = list()
+        self.intfolders: List[IntFolder] = list()
+        self.intgrfs: List[IntGrf] = list()
+        self.intgrfcons: List[IntGrfcon] = list()
+        self.intgrfnets: List[IntGrfnet] = list()
+        self.relfuses: List[RelFuse] = list()
+        self.stacubics: List[StaCubic] = list()
+        self.staswitchs: List[StaSwitch] = list()
+        self.typasmos: List[TypAsmo] = list()
+        self.typfuses: List[TypFuse] = list()
+        self.typlnes: List[TypLne] = list()
+        self.typlods: List[TypLod] = list()
+        self.typsyms: List[TypSym] = list()
+        self.typtr2s: List[TypTr2] = list()
+        self.typtr3s: List[TypTr3] = list()
 
     def parse(self, path: str):
         """
