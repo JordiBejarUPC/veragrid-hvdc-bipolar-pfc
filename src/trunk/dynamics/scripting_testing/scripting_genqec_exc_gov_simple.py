@@ -84,29 +84,28 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = GenqecBuild().block
+genqec1_mdl = GenqecBuild().block.copy()
 
 
-exc1_mdl = ExciterBuild().block
+exc1_mdl = ExciterBuild().block.copy()
 
 
-gov1_mdl = GovernorBuild().block
+gov1_mdl = GovernorBuild().block.copy()
 
 
-stabil1_mdl = StabilizerBuild().block
+stabil1_mdl = StabilizerBuild().block.copy()
 
 
 
 
 #line
-line0_mdl = get_line_rms_template().block
+line0_mdl = get_line_rms_template().block.copy()
 
 
 #load
-load_mdl = get_load_rms_template().block
+load_mdl = get_load_rms_template().block.copy()
 
-Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
-print(f"Pm_ref type is {type(Pm_ref)}")
+
 ## Build big generators by connecting elements
 
 genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
@@ -124,6 +123,9 @@ genqec1_mdl.connect([genqec1_mdl.in_vars[2]], [gov1_mdl.out_vars[0]])
 
 
 gov1_mdl.connect([gov1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
+
+#Te connection
+gov1_mdl.connect([gov1_mdl.in_vars[1]], [genqec1_mdl.out_vars[4]])
 
 
 # connection with buses

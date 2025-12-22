@@ -837,7 +837,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],
-        algebraic_vars=[Efe, UsRefPu] + algebraic_vars,
+        algebraic_vars=[Efe] + algebraic_vars,
     )
 
     u_exciter3 = find_name_in_block('u_exciter3', tf3)

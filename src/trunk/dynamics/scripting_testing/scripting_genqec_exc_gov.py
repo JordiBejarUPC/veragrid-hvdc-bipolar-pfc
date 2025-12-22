@@ -112,7 +112,6 @@ line1_mdl = get_line_rms_template().block
 #load
 load_mdl = get_load_rms_template().block
 
-Pm_ref = find_name_in_block('Pm_ref', gov1_mdl)
 
 ## Build big generators by connecting elements
 

@@ -432,7 +432,7 @@ class LagVar(Var):
     lag: int = field(default=None)
 
     # Registry to ensure uniqueness
-    _registry: ClassVar[Dict[Tuple[int, int], "LagVar"]] = {}
+    _registry: ClassVar[Dict[Tuple[int, int], LagVar]] = {}
 
     def __post_init__(self):
         # Optionally, you could add checks here to ensure base_var is an instance of Var
@@ -481,8 +481,8 @@ class DiffVar(Var):
     base_var: Var = field(default=None)
 
     # Class-level registry
-    _registry: ClassVar[Dict[int, "DiffVar"]] = {}
-    _absolute_registry: ClassVar[Dict[Tuple[int, int], "DiffVar"]] = {}
+    _registry: ClassVar[Dict[int, DiffVar]] = {}
+    _absolute_registry: ClassVar[Dict[Tuple[int, int], DiffVar]] = {}
 
     @property
     def registry(self):
@@ -917,6 +917,27 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
     if isinstance(expr, Var):
         return {"type": "Var", "name": expr.name, "uid": expr.uid}
 
+    if isinstance(expr, DiffVar):
+        return {"type": "DiffVar",
+                "name": expr.name,
+                "uid": expr.uid,
+                "base_var": _expr_to_dict(expr.base_var),
+                "registry": {
+                    base_uid: {
+                    "uid": dv.uid,
+                    "name": dv.name,
+                    "base_uid": dv.base_var.uid,
+                    "diff_order": dv.diff_order,
+                    "origin_uid": dv.origin_var.uid,
+                }
+                for base_uid, dv in expr._registry.items()
+                },
+                "absolute_registry": {
+                    f"{origin_uid},{order}": dv.uid
+                    for (origin_uid, order), dv in expr._absolute_registry.items()
+            }
+        }
+
     if isinstance(expr, UndefinedConst):
         return {"type": "UndefinedConst", "name": expr.name, "uid": expr.uid}
 
@@ -972,6 +993,36 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
         obj = UndefinedConst(data['name'])
     elif t == "Var":
         obj = Var(data["name"])
+
+    elif t == "DiffVar":
+
+        # reconstruct base_var
+        base_data = data["base_var"]
+        base_var = _dict_to_expr(base_data)
+        if not isinstance(base_var, Var):
+            raise TypeError("base_var must be a Var")
+
+        obj = DiffVar.get_or_create(name=data["name"], base_var=base_var)
+
+        obj.uid = data["uid"]
+
+        registry_data = data["registry"]
+        for base_uid, dv_info in registry_data.items():
+            bvar = Var(dv_info["name"], uid=dv_info["base_uid"])
+            dv = DiffVar.get_or_create(name=dv_info["name"], base_var=bvar)
+            object.__setattr__(dv, "uid", dv_info["uid"])
+            dv.diff_order = dv_info["diff_order"]
+            dv.origin_uid = dv_info["origin_uid"]
+            DiffVar._registry[dv_info["base_uid"]] = dv
+
+
+        abs_data = data.get("absolute_registry", {})
+        for key_str, dv_uid in abs_data.items():
+            origin_uid, order = map(int, key_str.split(","))
+            dv = next((v for v in DiffVar._registry.values() if v.uid == dv_uid), None)
+            if dv is not None:
+                DiffVar._absolute_registry[(origin_uid, order)] = dv
+
     elif t == "BinOp":
         obj = BinOp(data["op"], _dict_to_expr(data["left"]), _dict_to_expr(data["right"]))
     elif t == "UnOp":
@@ -980,7 +1031,9 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
         obj = Func(data["name"], _dict_to_expr(data["arg"]))
     else:
         raise ValueError(f"Unknown type '{t}' in deserialisation")
-    object.__setattr__(obj, "uid", data["uid"])
+
+    if not isinstance(obj, DiffVar):  # DiffVar ya forzó su uid arriba
+        object.__setattr__(obj, "uid", data["uid"])
     return obj
 
 
