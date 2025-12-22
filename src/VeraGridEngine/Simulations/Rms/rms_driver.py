@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
-from VeraGridEngine.Utils.Symbolic.block import Block, DiffBlock
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem import RmsProblem
 from VeraGridEngine.Simulations.Rms.numerical.integration_methods import Trapezoid, BackEuler
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
@@ -22,27 +22,6 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicInte
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
-
-def check_if_diff_vars(system):
-
-    if isinstance(system, DiffBlock):
-        diff_vars = system.diff_vars
-        if len(diff_vars) != 0:
-            return True
-        else:
-            return False
-
-    if system.children:
-        for child in system.children:
-            if  check_if_diff_vars(child):
-                return True
-            else:
-                continue
-        return False
-
-    else:
-        return False
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -119,47 +98,29 @@ class RmsSimulationDriver(DriverTemplate):
 
         sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
 
-        diff_vars = check_if_diff_vars(ss)
 
-        if diff_vars:
-            slv = DiffBlockSolver(ss, sim_time)
+        slv = DiffBlockSolver(ss, sim_time)
 
-            params0 = slv.build_init_params_vector(params_mapping)
-            x0 = slv.build_init_vars_vector_from_uid(init_guess)
+        params0 = slv.build_init_params_vector(params_mapping)
+        x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
-            dx0 = np.zeros(len(slv._diff_vars))
+        dx0 = np.zeros(len(slv._diff_vars))
 
-            t, y = slv.simulate(
-                t0=0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                x0=x0,
-                dx0=dx0,
-                params0=params0,
-                method="rk4",
-                newton_tol = 1e-8,
-                newton_max_iter = 1000,
-                followed_vars = None,
-                initialized = False,
-                verbose = False,
+        t, y = slv.simulate(
+            t0=0,
+            t_end=self.options.simulation_time,
+            h=self.options.time_step,
+            x0=x0,
+            dx0=dx0,
+            params0=params0,
+            method="rk4",
+            newton_tol = 1e-8,
+            newton_max_iter = 1000,
+            followed_vars = None,
+            initialized = False,
+            verbose = False,
+        )
 
-            )
-
-        else:
-            slv = BlockSolver(ss, sim_time)
-
-            params0 = slv.build_init_params_vector(params_mapping)
-            x0 = slv.build_init_vars_vector_from_uid(init_guess)
-
-            t, y = slv.simulate(
-                t0=0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                x0=x0,
-                params0=params0,
-                method="implicit_euler",
-
-            )
 
 
         self.results = RmsResults(values=y,

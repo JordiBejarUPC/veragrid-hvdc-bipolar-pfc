@@ -10,7 +10,7 @@ import math
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType, tf_to_diffblock, \
-    tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, DiffBlock
+    tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst,  \
       sqrt, atan, f_exc, heaviside, UNDEFINED
 from scipy.optimize import fsolve
@@ -828,12 +828,12 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     algebraic_eqs_submodel.append(Vf - f_output * Ve)
     algebraic_eqs_submodel.append(f_output_res - f_output)
 
-    aux_model = DiffBlock(
+    aux_model = Block(
         algebraic_eqs=algebraic_eqs_submodel,
         algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
     )
 
-    exciter_submodel = DiffBlock(children=[tf1_sub, aux_model])
+    exciter_submodel = Block(children=[tf1_sub, aux_model])
 
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],
@@ -1474,12 +1474,12 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     algebraic_eqs_submodel.append(Vf - f_output * Ve)
     algebraic_eqs_submodel.append(f_output_res - f_output)
 
-    aux_model = DiffBlock(
+    aux_model = Block(
         algebraic_eqs=algebraic_eqs_submodel,
         algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
     )
 
-    exciter_submodel = DiffBlock(children=[tf1_sub, aux_model])
+    exciter_submodel = Block(children=[tf1_sub, aux_model])
 
     linking_block = Block(
         algebraic_eqs=[y6 - Efe],

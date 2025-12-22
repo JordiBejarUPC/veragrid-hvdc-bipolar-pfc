@@ -17,7 +17,7 @@ from scipy.sparse import csr_matrix, csc_matrix, lil_matrix
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block import Block, DiffBlock
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, _compile_parameters_equations, _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, DiffVar, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_params_eq
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -363,12 +363,12 @@ class NaNError(SolverError):
 
 class DiffBlockSolver(BlockSolver):
 
-    def __init__(self, block_system: Block | DiffBlock, glob_time: Var, use_jit: bool = True):
+    def __init__(self, block_system: Block, glob_time: Var, use_jit: bool = True):
         """
         Constructor
         :param block_system: BlockSystem
         """
-        self.block_system: Block | DiffBlock = block_system
+        self.block_system: Block = block_system
 
         # Flatten the block lists, preserving declaration order
         self._algebraic_vars: List[Var] = list()
@@ -495,7 +495,9 @@ class DiffBlockSolver(BlockSolver):
                 deriv = eq.diff(var)
                 if getattr(deriv, 'value', 1) == 0:
                     continue
+
                 approximation, total_lag = var.approximation_expr(self.dt, lag_can_be_0=lag_can_be_0)
+
                 eq = eq.subs({var: approximation})
                 self._lag_vars_set.update(LagVar.get_or_create(var.origin_var.name + '_lag_' + str(lag),
                                                                base_var=var.origin_var, lag=lag) for lag in
@@ -1364,11 +1366,11 @@ class DiffBlockSolver(BlockSolver):
 
                 if not found:
                     continue
-                bus_block = DiffBlock()
+                bus_block = Block()
 
                 if fix == 'P':
                     delete_vars_from_block(block, [Pg, Qg])
-                    bus_block = DiffBlock(
+                    bus_block = Block(
                         algebraic_vars=[Vm, Va])
                     bus_block.event_dict= {Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
                                      Qg: Const(float(np.imag(res.Sbus[bus] / grid.Sbase)))}
@@ -1376,7 +1378,7 @@ class DiffBlockSolver(BlockSolver):
 
                 elif fix == 'V':
                     delete_vars_from_block(block, [Va, Vm])
-                    bus_block = DiffBlock(
+                    bus_block = Block(
                         algebraic_vars=[Pg, Qg])
                     bus_block.event_dict ={Vm: Const(float(np.abs(res.voltage[bus]))),
                                            Va: Const(float(np.angle(res.voltage[bus])))}
@@ -1393,7 +1395,7 @@ class DiffBlockSolver(BlockSolver):
                     # Current from power and voltage
                     i = np.conj(Sb / v)  # ī = (p - jq) / v̄*
 
-                    bus_block = DiffBlock(
+                    bus_block = Block(
                         algebraic_eqs=[
                             Id - (-Im * sin(Ia - delta)),
                             Iq - Im * cos(Ia - delta),
@@ -1404,7 +1406,7 @@ class DiffBlockSolver(BlockSolver):
 
                 elif fix == 'P&V':
                     delete_vars_from_block(block, [Pg, Qg, Vm, Va])
-                    bus_block = DiffBlock()
+                    bus_block = Block()
 
                     bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase))),
                                             Qg: Const(float(np.imag(res.Sbus[bus] / grid.Sbase))),
@@ -1414,12 +1416,12 @@ class DiffBlockSolver(BlockSolver):
 
                 elif fix == 'mixed':
                     delete_vars_from_block(block, [Vm, Va, Pg, Qg])
-                    bus_block = DiffBlock(
+                    bus_block = Block(
                         algebraic_vars=[Va, Qg])
                     bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus]))),
                                              Pg: Const(float(np.real(res.Sbus[bus] / grid.Sbase)))}
 
-                init_block = DiffBlock(
+                init_block = Block(
                     children=[block, bus_block]
                 )
                 # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system

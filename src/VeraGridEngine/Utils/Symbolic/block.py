@@ -17,8 +17,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
-    real, sqrt, atan, \
-    imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc, PlaceholderVar
+    real, sqrt, atan, _dict_to_expr, imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc, PlaceholderVar
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -76,6 +75,9 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
     for d in var_dicts:
         if d["type"] == "Var":
             result.append(Var(name=d["name"], uid=d["uid"]))
+        elif d["type"] == "DiffVar":
+            diff_var = _dict_to_expr(d)
+            result.append(diff_var)
         elif d["type"] == "Const":
             result.append(Const(value=d["value"], uid=d["uid"]))
         elif d['type'] == "UndefinedConst":
@@ -85,11 +87,11 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
     return result
 
 
-def block2diffblock(block: Block):
-    diff_block = DiffBlock.from_block(block)
+def block2diff(block: Block):
+    diff_block = Block.from_block(block)
 
     for i, eq in enumerate(block.state_eqs):
-        state_var = block.state_vars[i]
+        state_var = block.state_vars[i] # Todo: not robust, order has to be followed
         dt_var = DiffVar.get_or_create(name='dt_' + state_var.name, base_var=state_var)
         eq = eq - dt_var
         diff_block.algebraic_eqs.append(eq)
@@ -101,7 +103,7 @@ def block2diffblock(block: Block):
     diff_block.state_vars = []
 
     for i, child_block in enumerate(diff_block.children):
-        diff_block.children[i] = block2diffblock(child_block)
+        diff_block.children[i] = block2diff(child_block)
 
     return diff_block
 
@@ -154,7 +156,7 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
     rhs = np.array(diff_vars_x) @ np.array(num)
     lhs = np.array(diff_vars_y) @ np.array(den)
 
-    block = DiffBlock()
+    block = Block()
     block.algebraic_vars = [y] + aux_vars
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
@@ -220,7 +222,7 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
     )
     diff_eqs.append(last_eq)
 
-    block = DiffBlock(
+    block = Block(
         algebraic_vars=y_states + x_states[1:] + aux_vars,
         algebraic_eqs=diff_eqs + aux_eqs,
     )
@@ -317,6 +319,9 @@ class Block:
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
                  diff_vars: List[DiffVar] | None = None,
+                 lag_vars: List[LagVar] | None = None,
+                 reformulated_vars: List[DiffVar] | None = None,
+                 differential_eqs: List[Expr] | None = None,
                  parameters: Dict[str, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
@@ -355,9 +360,12 @@ class Block:
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
+        self.lag_vars: List[LagVar] = list() if lag_vars is None else lag_vars
+        self.reformulated_vars: List[DiffVar] = list() if reformulated_vars is None else reformulated_vars
+        self.differential_eqs: List[Expr] = list() if differential_eqs is None else differential_eqs
 
         # initialization
-        self.init_eqs: Dict[Var| UndefinedConst, Expr] = dict() if init_eqs is None else init_eqs
+        self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
 
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
@@ -417,6 +425,20 @@ class Block:
 
         return False
 
+    @classmethod
+    def from_block(cls, block: Block, **kwargs):
+        """
+            This function creates a block with no state equations
+        """
+        if len(block.state_eqs) == 0 and len(block.state_vars) == 0:
+            return block  # already a DiffBlock
+
+        # Create a new instance of DiffBlock, copying fields from the original Block
+        obj = cls.__new__(cls)  # create instance without __init__
+        obj.__dict__ = block.__dict__.copy()
+        obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
+        return obj
+
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
 
@@ -468,21 +490,24 @@ class Block:
         return flat
 
     def unify_blocks(self):
+        """
+        This function collects all variables and equations of a block
+        Returns
+        -------
+        Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
+        """
         mdl = Block()
         for b in self.get_all_blocks():
             mdl.algebraic_vars.extend(b.algebraic_vars)
             mdl.algebraic_eqs.extend(b.algebraic_eqs)
             mdl.state_vars.extend(b.state_vars)
             mdl.state_eqs.extend(b.state_eqs)
+            mdl.diff_vars.extend(b.diff_vars)
             for param, eq in b.event_dict.items():
                 mdl.event_dict[param] = eq
 
             for var, init_eq in b.init_eqs.items():
                 mdl.init_eqs[var] = init_eq
-
-
-            if isinstance(b, DiffBlock):
-                mdl.diff_vars.extend(b.diff_vars)
 
         return mdl
 
@@ -491,11 +516,8 @@ class Block:
         Get a list of algebraic + state vars
         :return: List[Var]
         """
-        if isinstance(self, DiffBlock):
-            diff_vars = self.diff_vars
-            return self.algebraic_vars + self.state_vars + diff_vars
 
-        return self.algebraic_vars + self.state_vars
+        return self.algebraic_vars + self.state_vars + self.diff_vars
 
     def get_all_vars(self):
         """
@@ -524,6 +546,9 @@ class Block:
         for i, eq in enumerate(self.state_eqs):
             new_equ = eq.subs({old: new})
             self.state_eqs[i] = new_equ
+        for i, eq in enumerate(self.differential_eqs):
+            new_equ = eq.subs({old: new})
+            self.differential_eqs[i] = new_equ
         for var, expr in self.init_eqs.items():
             new_expr = expr.subs({old: new})
             if var is old:
@@ -581,6 +606,9 @@ class Block:
             "algebraic_vars": _serialize_var_list(self.algebraic_vars),
             "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
             "diff_vars":  _serialize_var_list(self.diff_vars),
+            "differential_eqs": _serialize_expr_list(self.differential_eqs),
+            "lag_vars": _serialize_var_list(self.lag_vars),
+            "reformulated_vars": _serialize_var_list(self.reformulated_vars),
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
                 for var, expr in self.init_eqs.items()
@@ -615,7 +643,10 @@ class Block:
         state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
-        diff_vars = _deserialize_expr_list(data.get("diff_vars", []))
+        diff_vars = _deserialize_var_list(data.get("diff_vars", []))
+        differential_eqs = _deserialize_expr_list(data.get("differential_eqs", []))
+        lag_vars = _deserialize_var_list(data.get("lag_vars", []))
+        reformulated_vars = _deserialize_var_list(data.get("reformulated_vars", []))
         in_vars = _deserialize_var_list(data.get("in_vars", []))
         out_vars = _deserialize_var_list(data.get("out_vars", []))
         children = [Block.parse(child) for child in data.get("children", [])]
@@ -691,38 +722,6 @@ class Block:
             return self.to_dict() == other.to_dict()
         else:
             return False
-
-
-
-
-
-class DiffBlock(Block):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.diff_vars: List[DiffVar] = []
-        self.lag_vars: List[LagVar] = []
-        self.reformulated_vars: List[DiffVar] = []
-        self.differential_eqs: List[Expr] = []
-
-    @classmethod
-    def from_block(cls, block: Block, **kwargs):
-        if isinstance(block, DiffBlock):
-            return block  # already a DiffBlock
-
-        # Create a new instance of DiffBlock, copying fields from the original Block
-        obj = cls.__new__(cls)  # create instance without __init__
-        obj.__dict__ = block.__dict__.copy()
-
-        # Ensure DiffBlock-specific fields are always initialised
-        obj.diff_vars = []
-        obj.lag_vars = []
-        obj.reformulated_vars = []
-        obj.differential_eqs = []
-
-        obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
-        return obj
-
 
 class BlockType(Enum):
     CONST = auto()

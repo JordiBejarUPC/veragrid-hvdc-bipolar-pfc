@@ -914,7 +914,7 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
             return {"type": "Const", "value": None, "kind": "undefined", "uid": expr.uid}
         return {"type": "Const", "value": expr.value, "uid": expr.uid}
 
-    if isinstance(expr, Var):
+    if isinstance(expr, Var) and not isinstance(expr, DiffVar):
         return {"type": "Var", "name": expr.name, "uid": expr.uid}
 
     if isinstance(expr, DiffVar):
@@ -992,6 +992,8 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
     elif t == "UndefinedConst":
         obj = UndefinedConst(data['name'])
     elif t == "Var":
+        if "y_subexciter1" in data["name"]:
+            print("found-it")
         obj = Var(data["name"])
 
     elif t == "DiffVar":
@@ -1004,15 +1006,11 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
 
         obj = DiffVar.get_or_create(name=data["name"], base_var=base_var)
 
-        obj.uid = data["uid"]
-
         registry_data = data["registry"]
         for base_uid, dv_info in registry_data.items():
             bvar = Var(dv_info["name"], uid=dv_info["base_uid"])
             dv = DiffVar.get_or_create(name=dv_info["name"], base_var=bvar)
             object.__setattr__(dv, "uid", dv_info["uid"])
-            dv.diff_order = dv_info["diff_order"]
-            dv.origin_uid = dv_info["origin_uid"]
             DiffVar._registry[dv_info["base_uid"]] = dv
 
 
@@ -1032,8 +1030,8 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
     else:
         raise ValueError(f"Unknown type '{t}' in deserialisation")
 
-    if not isinstance(obj, DiffVar):  # DiffVar ya forzó su uid arriba
-        object.__setattr__(obj, "uid", data["uid"])
+
+    object.__setattr__(obj, "uid", data["uid"])
     return obj
 
 
@@ -1305,6 +1303,7 @@ _FUNC_MAP = {
     "angle": angle,
     "abs": abs,  #
     "heaviside": heaviside,
+    "_dict_to_expression": _dict_to_expr
 }
 
 

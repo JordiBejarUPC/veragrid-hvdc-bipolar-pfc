@@ -14,7 +14,7 @@ import uuid
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one, sin, cos
-from VeraGridEngine.Utils.Symbolic.block import Block, DiffBlock, Expr, Var, block2diffblock
+from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2diff
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -365,7 +365,7 @@ def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
     init_guess_region: Dict[Var, float] = dict()
     vars_list: List[Var] = list()
     bus_index = grid.buses.index(bus)
-    region_system = DiffBlock()
+    region_system = Block()
     region_dev_list = list()
     # add bus variables to init_guess_region
     # Vm, Va = bus.get_rms_algebraic_vars()
@@ -428,7 +428,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
     for block in region_system.children:
         found = False
         for child_block in block.get_all_blocks():
-            child_block = block2diffblock(child_block)
+            child_block = block2diff(child_block)
             if not hasattr(child_block, 'external_mapping'):
                 continue
             if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
@@ -442,19 +442,19 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
 
         if not found:
             continue
-        bus_block = DiffBlock()
+        bus_block = Block()
 
         if fix == 'P':
             delete_vars_from_block(block, [Pg, Qg])
-            bus_block = DiffBlock()
-            bus_block = DiffBlock(
+            bus_block = Block()
+            bus_block = Block(
                 algebraic_vars=[Vm, Va])
             bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
                                     Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase)))}
 
         elif fix == 'V':
             # delete_vars_from_block(block, [Va, Vm])
-            bus_block = DiffBlock()
+            bus_block = Block()
             # bus_block = DiffBlock(
             #     algebraic_vars=[Pg, Qg])
             bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
@@ -472,7 +472,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
             # Current from power and voltage
             i = np.conj(Sb / v)  # ī = (p - jq) / v̄*
 
-            bus_block = DiffBlock(
+            bus_block = Block(
                 algebraic_eqs=[
                     Id - (-Im * sin(Ia - delta)),
                     Iq - Im * cos(Ia - delta),
@@ -483,7 +483,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
 
         elif fix == 'P&V':
             delete_vars_from_block(block, [Pg, Qg])
-            bus_block = DiffBlock()
+            bus_block = Block()
 
             bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
                                     Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
@@ -492,12 +492,12 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
 
         elif fix == 'mixed':
             delete_vars_from_block(block, [Vm, Va, Pg, Qg])
-            bus_block = DiffBlock(
+            bus_block = Block(
                 algebraic_vars=[Va, Qg])
             bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
                                     Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase)))}
 
-        init_block = DiffBlock(
+        init_block = Block(
             children=[block, bus_block]
         )
         # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
