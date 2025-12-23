@@ -10,7 +10,7 @@ import math
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType, tf_to_diffblock, \
-    tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat
+    tf_to_block_with_states, tf_to_diffblock_with_states, hard_sat, tf_to_diffblock_with_output
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst,  \
       sqrt, atan, f_exc, heaviside, UNDEFINED
 from scipy.optimize import fsolve
@@ -380,6 +380,9 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Eq2 : (-1) * ((Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
             Ed2 : (-1) * ((Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
             IRPu: Sat_q * Eq1,
+
+            Eq2_coef: ((Xq_prime_sat - Xq_2prime_sat) * Sat_q)/(Tq0_2prime * (Xq_sat - Xq_2prime_sat)),
+            Ed2_coef:((Xd_prime_sat - Xd_2prime_sat) * Sat_d)/(Td0_2prime * (Xd_sat - Xd_2prime_sat)),
         },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
@@ -477,7 +480,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     controller_block = Block()
 
     u1 = inputs[0] - omega_ref
-    lead_lag_block, y1 = tf_to_diffblock(
+    lead_lag_block, y1, x1 = tf_to_diffblock_with_output(
         num=np.array([1, parameters["T2"]]),
         den=np.array([1, parameters["T1"]]),
         x=u1,
@@ -492,7 +495,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     y2 = x2 * (1 / parameters["T3"])
     y2_1 = hard_sat(y2, Uc, Uo)
-    tf1, y2_2 = tf_to_diffblock(
+    tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
         num=np.array([1]),
         den=np.array([0, 1]),
         x=y2_1,
@@ -545,12 +548,15 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         init_eqs={
             Pm_ref: inputs[1],
             y1: Const(0.0),
+            x1: inputs[0] - omega_ref,
+            u_gov1: Const(0),
             y2_3: Const(0),
             y2_2: Const(0),
             y3_1: Pm_ref,
             y3_2: Pm_ref,
             y3_3: Pm_ref,
             y3_4: Pm_ref,
+            Tm: Pm_ref
         }
     )
 
@@ -607,9 +613,9 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
     )
 
     tf2, y2 = tf_to_diffblock(
-        num=np.array([0, Ks*parameters["t5"]]),
+        num=np.array([0, Ks * parameters["t5"]]),
         den=np.array([1, parameters["t5"]]),
-        x= y,
+        x=y,
         name='stabilizer2',
     )
     tf3, y3 = tf_to_diffblock(

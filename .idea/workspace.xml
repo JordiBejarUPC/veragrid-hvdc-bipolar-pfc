@@ -28,9 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="unified block and diffblock">
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="serialized DiffVar and merged block and diffblock">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" afterDir="false" />
@@ -188,7 +187,7 @@
     "Python.alex.executor": "Debug",
     "Python.block.executor": "Debug",
     "Python.block_solver.executor": "Run",
-    "Python.block_solver_comb.executor": "Debug",
+    "Python.block_solver_comb.executor": "Run",
     "Python.cgmes_rdfs_graph.executor": "Run",
     "Python.circuit_to_optimods.executor": "Run",
     "Python.constructing_kundur_full.executor": "Run",
@@ -210,7 +209,7 @@
     "Python.readme_checks.executor": "Run",
     "Python.scripting_andes.executor": "Run",
     "Python.scripting_genqec_exc_gov.executor": "Debug",
-    "Python.scripting_genqec_exc_gov_simple.executor": "Debug",
+    "Python.scripting_genqec_exc_gov_simple.executor": "Run",
     "Python.scripting_gridcal.executor": "Run",
     "Python.scripting_gridcal_hardcoded.executor": "Run",
     "Python.scripting_gridcal_small_system.executor": "Run",
@@ -1884,7 +1883,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="629" />
+    <option name="localTasksCounter" value="630" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1930,7 +1929,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="got some changes from horrendous alex comit" />
     <MESSAGE value="several tweaks before the release" />
     <MESSAGE value="5.4.0" />
     <MESSAGE value="5.4.0 b" />
@@ -1955,7 +1953,8 @@
     <MESSAGE value="diff vars in system" />
     <MESSAGE value="system well constructed in initialization" />
     <MESSAGE value="unified block and diffblock" />
-    <option name="LAST_COMMIT_MESSAGE" value="unified block and diffblock" />
+    <MESSAGE value="serialized DiffVar and merged block and diffblock" />
+    <option name="LAST_COMMIT_MESSAGE" value="serialized DiffVar and merged block and diffblock" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2351,11 +2350,6 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1154</line>
-          <option name="timeStamp" value="3202" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>1157</line>
           <option name="timeStamp" value="3203" />
         </line-breakpoint>
@@ -2380,19 +2374,24 @@
           <option name="timeStamp" value="3208" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>358</line>
-          <option name="timeStamp" value="3209" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py</url>
-          <line>217</line>
-          <option name="timeStamp" value="3226" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>107</line>
           <option name="timeStamp" value="3232" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py</url>
+          <line>210</line>
+          <option name="timeStamp" value="3247" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py</url>
+          <line>212</line>
+          <option name="timeStamp" value="3248" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>1154</line>
+          <option name="timeStamp" value="3250" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -2408,6 +2407,7 @@
         <watch expression="__exception__" language="Python" />
         <watch expression="self" />
         <watch expression="seen_vars" />
+        <watch expression="exc1_mdl.children[0].children" />
       </configuration>
     </watches-manager>
   </component>
