@@ -599,32 +599,32 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         algebraic_vars=[],
     )
 
-    tf, y = tf_to_diffblock_with_states(
+    tf, y = tf_to_diffblock(
         num=np.array([1.0]),
         den=np.array([1, parameters["t6"]]),
         x=inputs[0],
         name='stabilizer1',
     )
 
-    tf2, y2 = tf_to_diffblock_with_states(
-        num=np.array([0, parameters["t5"]]),
+    tf2, y2 = tf_to_diffblock(
+        num=np.array([0, Ks*parameters["t5"]]),
         den=np.array([1, parameters["t5"]]),
-        x=Ks * y,
+        x= y,
         name='stabilizer2',
     )
-    tf3, y3 = tf_to_diffblock_with_states(
+    tf3, y3 = tf_to_diffblock(
         num=np.array([1]),
         den=np.array([1, parameters["A1"], parameters["A2"]]),
         x=y2,
         name='stabilizer3',
     )
-    tf4, y4 = tf_to_diffblock_with_states(
+    tf4, y4 = tf_to_diffblock(
         num=np.array([1, parameters["t1"]]),
         den=np.array([1, parameters["t2"]]),
         x=y3,
         name='stabilizer4',
     )
-    tf5, y5 = tf_to_diffblock_with_states(
+    tf5, y5 = tf_to_diffblock(
         num=np.array([1, parameters["t3"]]),
         den=np.array([1, parameters["t4"]]),
         x=y4,
