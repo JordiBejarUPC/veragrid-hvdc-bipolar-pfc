@@ -19,7 +19,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
     QLabel, QMainWindow, QPushButton, QSizePolicy,
     QSpacerItem, QVBoxLayout, QWidget)
-from .icons_rc import *
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -82,7 +82,11 @@ class Ui_MainWindow(object):
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.InitGuessButton = QPushButton(self.frame_2)
+        self.InitGuessButton.setObjectName(u"InitGuessButton")
+
+        self.horizontalLayout_2.addWidget(self.InitGuessButton)
+
         self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
@@ -112,6 +116,7 @@ class Ui_MainWindow(object):
         self.model_selector_comboBox.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Select model to apply", None))
         self.currently_editing_block_label.setText(QCoreApplication.translate("MainWindow", u"Submodel:", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("MainWindow", u"Device:", None))
+        self.InitGuessButton.setText(QCoreApplication.translate("MainWindow", u"Add Initial Values", None))
         self.doItButton.setText(QCoreApplication.translate("MainWindow", u"Do it!", None))
     # retranslateUi
 

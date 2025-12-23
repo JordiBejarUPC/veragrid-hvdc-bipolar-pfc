@@ -2118,6 +2118,9 @@ class ContingencyFilteringMethods(Enum):
     """
     AllActive = "All active contingencies"
     Country = "Country"
+    Community = "Community"
+    Region = "Region"
+    Municipality = "Municipality"
     Zone = "Zone"
     Area = "Area"
     SensitiveToMonitored = "Sensitive to monitored"
@@ -2379,6 +2382,32 @@ class GridReductionMethod(Enum):
             return s
 
 
+class BusReductionMethod(Enum):
+    """
+    GridReductionMethod
+    """
+    Reduce = "Reduce"
+    Keep = "Keep"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return BusReductionMethod[s]
+        except KeyError:
+            return s
+
+
 class VarPowerFlowRefferenceType(Enum):
     """
     GridReductionMethod
@@ -2386,6 +2415,10 @@ class VarPowerFlowRefferenceType(Enum):
     NOTHING = "nothing"
     Vm = "Vm"  # Bus voltage module in p.u.
     Va = "Va"  # Bus voltage angle in rad
+    Vmf = "Vm"  # Bus voltage module in p.u.
+    Vaf = "Va"  # Bus voltage angle in rad
+    Vmt = "Vm"  # Bus voltage module in p.u.
+    Vat = "Va"  # Bus voltage angle in rad
     P = "P"  # Bus active power in p.u.
     Q = "Q"  # Bus reactive power in p.u.
     Pf = "Pf"  # Branch active power from in p.u.

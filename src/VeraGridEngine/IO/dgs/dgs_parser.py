@@ -3,12 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Dict, Tuple, List
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.Devices as dev
 import math
 import numpy as np
-from numpy import array
-from pandas import DataFrame as df
+import pandas as pd
 from warnings import warn
 
 
@@ -128,18 +129,15 @@ def read_DGS(filename):
 
     """
     types_dict = dict()
-    types_dict["a"] = "|S32"
-    types_dict["p"] = "|S32"
-    types_dict["i"] = "<i4"
-    types_dict["r"] = "<f4"
-    types_dict["d"] = "<f4"
+    types_dict["a"] = str
+    types_dict["p"] = str
+    types_dict["i"] = int
+    types_dict["r"] = float
+    types_dict["d"] = float
 
-    types_dict2 = dict()
+    types_dict2: Dict[str, List[Tuple[str, str]]] = dict()
 
     current_type = None
-    data_types = None
-    header = None
-
     Headers = dict()
     # parse the file lines
     for line in lines:
@@ -149,7 +147,6 @@ def read_DGS(filename):
             chnks = line.split(";")
             current_type = chnks[0]
             data[current_type] = list()
-            # print(current_type)
 
             # analyze types
             data_types = list()
@@ -173,15 +170,59 @@ def read_DGS(filename):
                 line = line.strip()
                 chnks = line.split(";")
                 chnks = ["0" if x == "" else x for x in chnks]
-                data[current_type].append(array(tuple(chnks)))
+                data[current_type].append(np.array(tuple(chnks)))
 
+    '''
     # format keys
     for key in data.keys():
-        # print("Converting " + str(key))
-        table = array([tuple(x) for x in data[key]], dtype=types_dict2[key])
-        table = array([list(x) for x in table], dtype=np.object)
         header = Headers[key]
-        data[key] = df(data=table, columns=header)
+        df = pd.DataFrame(data=data[key], columns=header)
+
+        # parse the stupid numbers separated by comma
+        for col_name, tpe in types_dict2[key]:
+            if tpe == float:
+                df[col_name] = df[col_name].str.replace(',', '.').astype(float)
+            elif tpe == int:
+                df[col_name] = df[col_name].str.replace(',', '.').astype(int)
+            else:
+                pass
+        data[key] = df
+    '''
+    for key in data.keys():
+        header = Headers[key]
+        rows = data[key]
+
+        fixed_rows = []
+        n_cols = len(header)
+
+        for row in rows:
+
+            # --- skip empty rows safely ---
+            if row is None or len(row) == 0:
+                continue
+
+            # convert np.array rows to list (safe)
+            if not isinstance(row, list):
+                row = list(row)
+
+            if len(row) > n_cols:
+                row = row[:n_cols]
+
+            elif len(row) < n_cols:
+                row = row + [None] * (n_cols - len(row))
+
+            fixed_rows.append(row)
+
+        df = pd.DataFrame(fixed_rows, columns=header)
+
+        # parse numbers with commas
+        for col_name, tpe in types_dict2[key]:
+            if tpe == float:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(float)
+            elif tpe == int:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(int)
+
+        data[key] = df
 
     # positions dictionary
     obj_id = data['IntGrf']['pDataObj'].values
@@ -194,12 +235,16 @@ def read_DGS(filename):
     return data, pos_dict
 
 
-def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
+def data_to_grid_object(data: Dict[str, pd.DataFrame],
+                        pos_dict: Dict[str, Tuple[float, float]],
+                        codification: str = "utf-8",
+                        options: str = "statgen") -> MultiCircuit:
     """
     Turns the read data dictionary into a VeraGrid MultiCircuit object
     Args:
         data: Dictionary of data read from a DGS file
         pos_dict: Dictionary of objects and their positions read from a DGS file
+        codification: codification type
     Returns: VeraGrid MultiCircuit object
     """
     ###############################################################################
@@ -571,14 +616,18 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     cub_obj_idx = cubicles['obj_id'].values
     cub_term_idx = cubicles['fold_id'].values
 
-    # for i, elm_id in enumerate(cub_obj_idx):
-    #     elm_idx = cub_term_idx[i]
-    #     terminals_dict[elm_id] = elm_idx
-
     ID_idx = 0
     for cla in classes:
         if cla.__len__() > 0:
-            for ID in cla['ID'].values:
+
+            if "ID" in cla:
+                arr = cla['ID'].values
+            elif "FID" in cla:
+                arr = cla['FID'].values
+            else:
+                raise ValueError("No bus ID, FID could be found...")
+
+            for ID in arr:
                 idx = np.where(cubicles == ID)[0]
                 terminals_dict[ID] = cub_term_idx[idx]
 
@@ -612,11 +661,22 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     """
     # print('Parsing terminals')
     buses_dict = dict()
+
+    if "ID" in buses:
+        id_arr = buses['ID'].values
+    elif "FID" in buses:
+        id_arr = buses['FID'].values
+    else:
+        raise ValueError("No bus ID, FID could be found...")
+
     for i in range(len(buses)):
-        ID = buses['ID'][i]
-        x, y = pos_dict[ID]
+        ID = int(id_arr[i])
+        if str(ID) in pos_dict:
+            x, y = pos_dict[str(ID)]
+        else:
+            x, y = 0.0, 0.0
         buses_dict[ID] = i
-        bus_name = buses['loc_name'][i].decode(codification)  # BUS_Name
+        bus_name = buses['loc_name'][i] # .decode(codification)  # BUS_Name
         vnom = buses['uknom'][i]
         bus = dev.Bus(name=bus_name, Vnom=vnom, vmin=0.9, vmax=1.1, xpos=x, ypos=-y, active=True)
         circuit.add_bus(bus)
@@ -715,9 +775,17 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     # print('Parsing lines')
 
     if lines_types.__len__() > 0:
-        lines_ID = lines['ID'].values
+
+        if "ID" in lines:
+            lines_ID = lines['ID'].values
+            line_types_ID = lines_types['ID'].values
+        elif "FID" in lines:
+            lines_ID = lines['FID'].values
+            line_types_ID = lines_types['FID'].values
+        else:
+            raise ValueError("No line ID, FID could be found...")
+
         lines_type_id = lines['typ_id'].values
-        line_types_ID = lines_types['ID'].values
         lines_lenght = lines['dline'].values
 
         if 'outserv' in lines.keys():
@@ -727,9 +795,17 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
 
         lines_R = lines_types['rline'].values
         lines_L = lines_types['xline'].values
-        lines_C = lines_types['cline'].values
+
+        lines_C = None
+        lines_B = None
+        if 'cline' in lines_types:
+            lines_C = lines_types['cline'].values
+        elif 'bline' in lines_types:
+            lines_B = lines_types['bline'].values
+
         lines_rate = lines_types['sline'].values
         lines_voltage = lines_types['uline'].values
+
         for i in range(len(lines)):
             # line_ = branch_line.copy()
 
@@ -738,8 +814,8 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
             type_idx = np.where(line_types_ID == ID_Type)[0][0]
 
             buses = terminals_dict[ID]  # array with the ID of the connection Buses
-            bus1 = buses_dict[buses[0]]
-            bus2 = buses_dict[buses[1]]
+            bus1 = buses_dict[int(buses[0])]
+            bus2 = buses_dict[int(buses[1])]
 
             bus_from = circuit.buses[bus1]
             bus_to = circuit.buses[bus2]
@@ -750,7 +826,10 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
             lenght = np.double(lines_lenght[i])
             R = np.double(lines_R[type_idx]) * lenght  # Ohm
             L = np.double(lines_L[type_idx]) * lenght  # Ohm
-            C = np.double(lines_C[type_idx]) * lenght * w * 1e-6  # S (siemens)
+            if lines_C is not None:
+                B = np.double(lines_C[type_idx]) * lenght * w * 1e-6  # S (siemens)
+            elif lines_B is not None:
+                B = np.double(lines_B[type_idx]) * lenght * 1e-6  # S (siemens)
 
             # pass impedance to per unit
             vbase = np.double(lines_voltage[type_idx])  # kV
@@ -758,14 +837,14 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
             ybase = 1.0 / zbase  # S
             r = R / zbase  # pu
             l = L / zbase  # pu
-            b = C / ybase  # pu
+            b = B / ybase  # pu
 
             # rated power
             Irated = np.double(lines_rate[type_idx])  # kA
             Smax = Irated * vbase  # MVA
 
             line = dev.Line(bus_from=bus_from, bus_to=bus_to,
-                            name=lines['loc_name'][i].decode(codification),
+                            name=lines['loc_name'][i],
                             r=r,
                             x=l,
                             b=b,
@@ -845,7 +924,13 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
         *  chr_name: Characteristic Name
         ********************************************************************************
         """
-        type_ID = transformers_types['ID'].values
+        if "ID" in transformers:
+            type_ID = transformers_types['ID'].values
+        elif "FID" in transformers:
+            type_ID = transformers_types['FID'].values
+        else:
+            raise ValueError("No transformer ID, FID could be found...")
+
         HV_nominal_voltage = transformers_types['utrn_h'].values
         LV_nominal_voltage = transformers_types['utrn_l'].values
         Nominal_power = transformers_types['strn'].values
@@ -853,20 +938,21 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
         Iron_losses = transformers_types['pfe'].values
         No_load_current = transformers_types['curmg'].values
         Short_circuit_voltage = transformers_types['uktr'].values
-        # GR_hv1 = transformers_types['ID']
-        # GX_hv1 = transformers_types['ID']
+
         for i in range(len(transformers)):
 
-            # line_ = branch_line.copy()
+            if "ID" in transformers:
+                ID = transformers['ID'][i]
+            elif "FID" in transformers:
+                ID = transformers['FID'][i]
 
-            ID = transformers['ID'][i]
             ID_Type = transformers['typ_id'][i]
 
             if ID_Type in type_ID:
                 type_idx = np.where(type_ID == ID_Type)[0][0]
                 buses = terminals_dict[ID]  # array with the ID of the connection Buses
-                bus1 = buses_dict[buses[0]]
-                bus2 = buses_dict[buses[1]]
+                bus1 = buses_dict[int(buses[0])]
+                bus2 = buses_dict[int(buses[1])]
 
                 bus_from = circuit.buses[bus1]
                 bus_to = circuit.buses[bus2]
@@ -897,7 +983,7 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
 
                 trafo = dev.Transformer2W(bus_from=bus_from,
                                           bus_to=bus_to,
-                                          name=transformers['loc_name'][i].decode(codification),
+                                          name=transformers['loc_name'][i],
                                           r=Zs.real,
                                           x=Zs.imag,
                                           g=Ysh.real,
@@ -935,18 +1021,26 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     """
     # print('Parsing Loads')
     if len(loads) > 0:
-        loads_ID = loads['ID']
+
+        if "ID" in loads:
+            loads_ID = loads['ID']
+        elif "FID" in loads:
+            loads_ID = loads['FID']
+        else:
+            raise ValueError("No load ID or FID could be found...")
+
         loads_P = loads['plini']
         loads_Q = loads['qlini']
         scale = loads['scale0']
+
         for i in range(len(loads)):
             ID = loads_ID[i]
-            bus_idx = buses_dict[(terminals_dict[ID][0])]
+            bus_idx = buses_dict[int(terminals_dict[ID][0])]
             bus_obj = circuit.buses[bus_idx]
             p = loads_P[i] * scale[i]  # in MW
             q = loads_Q[i] * scale[i]  # in MVA
 
-            load = dev.Load(name=loads['loc_name'][i].decode(codification),
+            load = dev.Load(name=loads['loc_name'][i],
                             P=p,
                             Q=q)
 
@@ -977,16 +1071,32 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     ********************************************************************************
     '''
     for i in range(len(shunts)):
-        ID = shunts['ID'][i]
-        buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
-        bus_obj = circuit.buses[bus1]
-        name = shunts['loc_name'][i].decode(codification)
 
+        if "ID" in loads:
+            ID = shunts['ID'][i]
+        elif "FID" in loads:
+            ID = shunts['FID'][i]
+        else:
+            raise ValueError("No shunt ID or FID could be found...")
+
+        buses = terminals_dict[ID]  # array with the ID of the connection Buses
+        bus1 = buses_dict[int(buses[0])]
+        bus_obj = circuit.buses[bus1]
+        name = shunts['loc_name'][i]
+
+        '''
         if 'qcapn' in shunts.columns.values:
             b = shunts['ushnm'][i] / shunts['qcapn'][i]
         elif 'qtotn' in shunts.columns.values:
             b = shunts['ushnm'][i] / shunts['qtotn'][i]
+        else:
+            b = 1e-20
+        '''
+
+        if 'qcapn' in shunts.columns.values:
+            b = shunts['qcapn'][i]
+        elif 'qtotn' in shunts.columns.values:
+            b = shunts['qtotn'][i]
         else:
             b = 1e-20
 
@@ -1015,17 +1125,54 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     ********************************************************************************
     '''
     for i in range(len(static_generators)):
-        ID = static_generators['ID'][i]
+
+        if "ID" in loads:
+            ID = static_generators['ID'][i]
+        elif "FID" in loads:
+            ID = static_generators['FID'][i]
+        else:
+            raise ValueError("No static generator ID or FID could be found...")
+
         buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
+        bus1 = buses_dict[int(buses[0])]
         bus_obj = circuit.buses[bus1]
         mode = static_generators['av_mode'][i]
         num_machines = static_generators['ngnum'][i]
 
-        gen = dev.StaticGenerator(name=static_generators['loc_name'][i].decode(codification),
-                                  P=static_generators['pgini'][i] * num_machines,
-                                  Q=static_generators['qgini'][i] * num_machines)
-        circuit.add_static_generator(bus_obj, gen)
+        if options == "statgen_to_vsc":
+
+            bus_dc = dev.Bus(
+                name = f'{bus_obj.name}_dc',
+                Vnom = bus_obj.Vnom,
+                xpos = bus_obj.x,
+                ypos = bus_obj.y + 20,
+                is_dc = True
+            )
+            circuit.add_bus(bus_dc)
+
+            vsc = dev.VSC(
+                bus_from = bus_dc,
+                bus_to = bus_obj,
+                name = bus_obj.name,
+                rate = static_generators['sgn'][i],
+                control1 = ConverterControlType.Vm_dc,
+                control2 = ConverterControlType.Qac,
+                control1_val = 1.0,
+                control2_val = -1 * static_generators['qgini'][i] * num_machines,
+                alpha1=0.0,
+                alpha2=0.0,
+                alpha3=0.0,
+            )
+            circuit.add_vsc(vsc)
+
+            gen = dev.Generator(P = static_generators['pgini'][i] * num_machines)
+            circuit.add_generator(bus=bus_dc, api_obj=gen)
+
+        else:
+            gen = dev.StaticGenerator(name=static_generators['loc_name'][i],
+                                      P=static_generators['pgini'][i] * num_machines,
+                                      Q=static_generators['qgini'][i] * num_machines)
+            circuit.add_static_generator(bus_obj, gen)
 
     ####################################################################################################################
     # Synchronous Machine (Gen)
@@ -1051,9 +1198,16 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     ********************************************************************************
     '''
     for i in range(len(synchronous_machine)):
-        ID = synchronous_machine['ID'][i]
+
+        if "ID" in loads:
+            ID = synchronous_machine['ID'][i]
+        elif "FID" in loads:
+            ID = synchronous_machine['FID'][i]
+        else:
+            raise ValueError("No synchronous machine ID or FID could be found...")
+
         buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
+        bus1 = buses_dict[int(buses[0])]
         bus_obj = circuit.buses[bus1]
         num_machines = synchronous_machine['ngnum'][i]
 
@@ -1080,7 +1234,7 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
 
         snom = typ['sgn'].values[0]
         vnom = synchronous_machine['usetp'][i]
-        name = synchronous_machine['loc_name'][i].decode(codification)
+        name = synchronous_machine['loc_name'][i]
         gen = dev.Generator(name=name,
                             P=synchronous_machine['pgini'][i] * num_machines,
                             vset=vnom,
@@ -1097,7 +1251,12 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     return circuit
 
 
-def dgs_to_circuit(filename) -> MultiCircuit:
+def dgs_to_circuit(filename: str) -> MultiCircuit:
+    """
+
+    :param filename:
+    :return:
+    """
     data, pos_dict = read_DGS(filename)
 
-    return data_to_grid_object(data, pos_dict)
+    return data_to_grid_object(data, pos_dict, options="statgen_to_vsc")

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 import numpy as np
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QMenu
+
+from PySide6.QtWidgets import QGraphicsSceneContextMenuEvent
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.messages import yes_no_question, info_msg
@@ -51,21 +51,15 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
     def api_object(self) -> Generator:
         return self._api_object
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event: QGraphicsSceneContextMenuEvent):
         """
         Display context menu
         @param event:
         @return:
         """
-        menu = QMenu()
-        menu.addSection("Generator")
+        menu = self.get_base_context_menu()
 
-        # add_menu_entry(menu=menu,
-        #                text="Active",
-        #                icon_path="",
-        #                function_ptr=self.enable_disable_toggle,
-        #                checkeable=True,
-        #                checked_value=self.api_object.active)
+        menu.addSection("Generator")
 
         add_menu_entry(menu=menu,
                        text="Voltage control",
@@ -73,11 +67,6 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        function_ptr=self.enable_disable_control_toggle,
                        checkeable=True,
                        checked_value=self.api_object.is_controlled)
-
-        add_menu_entry(menu=menu,
-                       text="Set regulation bus",
-                       icon_path="",
-                       function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
                        text="Rms Editor",
@@ -88,13 +77,6 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        text="Qcurve edit",
                        function_ptr=self.edit_q_curve,
                        icon_path=":/Icons/icons/edit.png")
-
-        menu.addSeparator()
-
-        add_menu_entry(menu=menu,
-                       text="Plot profiles",
-                       icon_path=":/Icons/icons/plot.png",
-                       function_ptr=self.plot)
 
         menu.addSeparator()
 
@@ -110,21 +92,12 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
         menu.addSeparator()
 
-        add_menu_entry(menu, text='Remove',
-                       icon_path=":/Icons/icons/delete_schematic.png",
-                       function_ptr=self.delete)
-
         add_menu_entry(menu=menu,
                        text="Convert to battery",
                        icon_path=":/Icons/icons/add_batt.png",
                        function_ptr=self.to_battery)
 
-        add_menu_entry(menu=menu,
-                       text="Change bus",
-                       icon_path=":/Icons/icons/move_bus.png",
-                       function_ptr=self.change_bus)
-
-        menu.exec_(event.screenPos())
+        menu.exec(event.screenPos())
 
     def edit_rms(self):
         """

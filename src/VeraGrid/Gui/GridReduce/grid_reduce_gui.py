@@ -18,6 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
     QHBoxLayout, QListView, QPushButton, QSizePolicy,
     QSpacerItem, QVBoxLayout, QWidget)
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_ReduceDialog(object):
     def setupUi(self, ReduceDialog):
@@ -48,6 +49,11 @@ class Ui_ReduceDialog(object):
         self.horizontalLayout = QHBoxLayout(self.frame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.busModeComboBox = QComboBox(self.frame)
+        self.busModeComboBox.setObjectName(u"busModeComboBox")
+
+        self.horizontalLayout.addWidget(self.busModeComboBox)
+
         self.methodComboBox = QComboBox(self.frame)
         self.methodComboBox.setObjectName(u"methodComboBox")
 
@@ -57,8 +63,19 @@ class Ui_ReduceDialog(object):
 
         self.horizontalLayout.addItem(self.horizontalSpacer)
 
+        self.copyIndicesButton = QPushButton(self.frame)
+        self.copyIndicesButton.setObjectName(u"copyIndicesButton")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/copy.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.copyIndicesButton.setIcon(icon)
+
+        self.horizontalLayout.addWidget(self.copyIndicesButton)
+
         self.reduceButton = QPushButton(self.frame)
         self.reduceButton.setObjectName(u"reduceButton")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/grid_reduction.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.reduceButton.setIcon(icon1)
 
         self.horizontalLayout.addWidget(self.reduceButton)
 
@@ -73,8 +90,14 @@ class Ui_ReduceDialog(object):
 
     def retranslateUi(self, ReduceDialog):
         ReduceDialog.setWindowTitle(QCoreApplication.translate("ReduceDialog", u"Grid Merge", None))
+        self.busModeComboBox.setPlaceholderText(QCoreApplication.translate("ReduceDialog", u"Reduce / Keep", None))
+        self.methodComboBox.setPlaceholderText(QCoreApplication.translate("ReduceDialog", u"Method", None))
 #if QT_CONFIG(tooltip)
-        self.reduceButton.setToolTip(QCoreApplication.translate("ReduceDialog", u"Aply the selected changes", None))
+        self.copyIndicesButton.setToolTip(QCoreApplication.translate("ReduceDialog", u"Copy the reduction indices as a list", None))
+#endif // QT_CONFIG(tooltip)
+        self.copyIndicesButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.reduceButton.setToolTip(QCoreApplication.translate("ReduceDialog", u"Reduce the grid using the selected method", None))
 #endif // QT_CONFIG(tooltip)
         self.reduceButton.setText(QCoreApplication.translate("ReduceDialog", u"Reduce", None))
     # retranslateUi

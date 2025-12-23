@@ -1365,7 +1365,7 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.PowerFlowTimeSeriesDriver.tpe.value:
             if t_idx is not None:
@@ -1382,7 +1382,7 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
 
         elif current_study == sim.StateEstimationDriver.tpe.value:
             if t_idx is None:
@@ -1398,7 +1398,7 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.ContinuationPowerFlowDriver.tpe.value:
             if t_idx is None:
@@ -1415,7 +1415,7 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.StochasticPowerFlowDriver.tpe.value:
 
@@ -1445,7 +1445,7 @@ class DiagramsMain(CompiledArraysMain):
                                   max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.OptimalPowerFlowDriver.tpe.value:
             if t_idx is None:
@@ -1460,7 +1460,7 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.OptimalPowerFlowTimeSeriesDriver.tpe.value:
 
@@ -1479,7 +1479,7 @@ class DiagramsMain(CompiledArraysMain):
                                       max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
 
         elif current_study == sim.NodalCapacityTimeSeriesDriver.tpe.value:
 
@@ -1507,7 +1507,7 @@ class DiagramsMain(CompiledArraysMain):
                                      max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.LinearAnalysisTimeSeriesDriver.tpe.value:
             if t_idx is not None:
@@ -1525,7 +1525,7 @@ class DiagramsMain(CompiledArraysMain):
                                         max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
 
         elif current_study == sim.ContingencyAnalysisDriver.tpe.value:
 
@@ -1544,7 +1544,7 @@ class DiagramsMain(CompiledArraysMain):
 
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.ContingencyAnalysisTimeSeriesDriver.tpe.value:
             if t_idx is not None:
@@ -1562,7 +1562,7 @@ class DiagramsMain(CompiledArraysMain):
                                       max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
 
         elif current_study == sim.AvailableTransferCapacityDriver.tpe.value:
             self.default_colouring(t_idx=t_idx,
@@ -1599,7 +1599,7 @@ class DiagramsMain(CompiledArraysMain):
                                    max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} only has values for the snapshot")
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == sim.OptimalNetTransferCapacityTimeSeriesDriver.tpe.value:
             if t_idx is not None:
@@ -1617,7 +1617,7 @@ class DiagramsMain(CompiledArraysMain):
                                       max_bus_width=max_bus_width)
             else:
                 if allow_popups:
-                    info_msg(f"{current_study} does not have values for the snapshot")
+                    self.show_warning_toast(f"{current_study} does not have values for the snapshot")
 
         elif current_study == sim.InputsAnalysisDriver.tpe.value:
 
@@ -1872,6 +1872,12 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(sel_obj, dev.Transformer2W):
                 root_bus = sel_obj.bus_from
 
+            elif isinstance(sel_obj, dev.Winding):
+                root_bus = sel_obj.bus_from
+
+            elif isinstance(sel_obj, dev.Transformer3W):
+                root_bus = sel_obj.bus1
+
             elif isinstance(sel_obj, dev.DcLine):
                 root_bus = sel_obj.bus_from
 
@@ -1964,7 +1970,8 @@ class DiagramsMain(CompiledArraysMain):
                      title="Substations schematic")
             return
 
-        selected_buses = self.circuit.get_buses_from_objects(elements=substations)
+        selected_buses = self.circuit.get_buses_from_objects(elements=substations,
+                                                             dtype=DeviceType.SubstationDevice)
 
         if len(selected_buses):
             diagram = make_diagram_from_buses(circuit=self.circuit,
@@ -2005,7 +2012,8 @@ class DiagramsMain(CompiledArraysMain):
             self.show_error_toast("The current diagram is not a schematic :(")
             return
 
-        selected_buses = self.circuit.get_buses_from_objects(elements=substations)
+        selected_buses = self.circuit.get_buses_from_objects(elements=substations,
+                                                             dtype=DeviceType.SubstationDevice)
 
         if len(selected_buses):
             diagram_widget.add_buses(selected_buses)
