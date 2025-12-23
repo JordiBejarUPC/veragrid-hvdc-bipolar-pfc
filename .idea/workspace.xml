@@ -28,10 +28,11 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed missing params">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added new dgs parse candidate">
+      <change afterPath="$PROJECT_DIR$/trunk/power_factory_api/power_factory_parser_example.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +73,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="master" />
+        <entry key="$PROJECT_DIR$" value="single_icons_source" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -94,8 +95,8 @@
   </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
-    &quot;accountId&quot;: &quot;cb83a36c-6a26-4d28-9aa3-3af0083cd55d&quot;
+    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
+    &quot;accountId&quot;: &quot;cf5b980e-9261-4544-851c-0ceba824405b&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -126,7 +127,7 @@
   &quot;associatedIndex&quot;: 8
 }</component>
   <component name="ProjectId" id="1bGvT9JqoJhBes9WGdphyWxAfMi" />
-  <component name="ProjectLevelVcsManager">
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <OptionsSetting value="false" id="Update" />
     <ConfirmationsSetting value="2" id="Add" />
   </component>
@@ -168,9 +169,12 @@
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
+    "Python tests.pytest in test_benchmark_with_andes.py.executor": "Run",
+    "Python tests.pytest in test_benchmark_with_andes_diff_block_solver.py.executor": "Run",
     "Python tests.pytest in test_cgmes_ieeee.py.executor": "Run",
     "Python tests.pytest in test_copy.py.executor": "Run",
     "Python tests.pytest in test_load_save_load.py.executor": "Run",
+    "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
@@ -189,6 +193,7 @@
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
+    "Python.initialization.executor": "Debug",
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
@@ -199,9 +204,11 @@
     "Python.python_console.executor": "Run",
     "Python.raw_imp_exp_test.executor": "Run",
     "Python.readme_checks.executor": "Run",
+    "Python.rms_model_editor_engine.executor": "Run",
     "Python.scripting_andes.executor": "Run",
     "Python.scripting_gridcal.executor": "Run",
     "Python.scripting_gridcal_hardcoded.executor": "Run",
+    "Python.scripting_gridcal_hardcoded_light.executor": "Run",
     "Python.scripting_gridcal_small_system.executor": "Run",
     "Python.scripting_gridcal_small_system_controlled.executor": "Run",
     "Python.scripting_gridcal_small_system_whith_control.executor": "Run",
@@ -225,14 +232,14 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "devel",
-    "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/src/trunk/anarede",
+    "git-widget-placeholder": "86__Dynamic__simulations__V1__DiffBlock",
+    "last_opened_file_path": "/home/santi/Documentos/Git/eRoots/VeraGrid/trunk/power_factory_api",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "settings.editor.selected.configurable": "project.propDebugger",
     "two.files.diff.last.used.file": "C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py",
     "vue.rearranger.settings.migration": "true"
   }
@@ -244,21 +251,21 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/trunk/anarede" />
+      <recent name="$PROJECT_DIR$/trunk/power_factory_api" />
+      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
+      <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
-      <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
-      <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons" />
+      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
+      <recent name="$PROJECT_DIR$/trunk" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
-      <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
-      <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python.power_factory_parser_example">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -299,15 +306,6 @@
       <option name="CUSTOM_SETTINGS" value="false" />
       <option name="USE_OPTIONS" value="false" />
       <option name="OPTIONS" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration default="true" type="MatlabApplication">
-      <option name="FILE_PATH" value="" />
-      <option name="INTERPRETER_PATH" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="PARAMETERS" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
@@ -484,18 +482,25 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="MatlabApplication">
+      <option name="FILE_PATH" value="" />
+      <option name="INTERPRETER_PATH" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="PARAMETERS" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
+      <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.11 (VeraGrid)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
@@ -510,7 +515,6 @@
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -531,67 +535,43 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
+    <configuration name="power_factory_parser_example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/power_factory_api" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/power_factory_api/power_factory_parser_example.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test_linear_time_series" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (VeraGrid eroots)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tests/test_linear_time_series.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -602,7 +582,6 @@
     </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -615,7 +594,6 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -633,7 +611,6 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Sphinx task">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -651,7 +628,6 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Doctests">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -671,7 +647,6 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Nosetests">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -688,7 +663,6 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="py.test">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -704,9 +678,42 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for src.tests.test_power_flow" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;src.tests.test_power_flow&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest in test_grid_reduction.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_grid_reduction.py&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="ENV_FILES" value="" />
+      <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -723,26 +730,27 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.upload_to_pypi" />
-      <item itemvalue="Python.pyside6-designer" />
-      <item itemvalue="Python.update_gui_file" />
+      <item itemvalue="Python.test_linear_time_series" />
+      <item itemvalue="Python.power_factory_parser_example" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest for src.tests.test_power_flow" />
+      <item itemvalue="Python tests.pytest in test_grid_reduction.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.power_factory_parser_example" />
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python tests.pytest in tests" />
-        <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.pyside6-designer" />
+        <item itemvalue="Python tests.pytest in test_grid_reduction.py" />
+        <item itemvalue="Python tests.pytest for src.tests.test_power_flow" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-4e2b1448bda8-9a97661f3031-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.27397.106" />
+        <option value="bundled-python-sdk-f69e5c277ee4-cbfc7b97e6b2-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-252.27397.106" />
       </set>
     </attachedChunks>
   </component>
@@ -1867,7 +1875,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="637" />
+    <option name="localTasksCounter" value="683" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1913,222 +1921,222 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="several refactors" />
-    <MESSAGE value="formatted" />
-    <MESSAGE value="added verbose" />
-    <MESSAGE value="5.5.1" />
-    <MESSAGE value="Improved BlockSolver compilation" />
-    <MESSAGE value="more improvements to the block solver" />
-    <MESSAGE value="Fixed test" />
-    <MESSAGE value="icon crazyness" />
-    <MESSAGE value="icons check" />
-    <MESSAGE value="showing icons in macos menus" />
-    <MESSAGE value="fixed macos icon menu" />
-    <MESSAGE value="improved windows icon thing" />
-    <MESSAGE value="some changes" />
-    <MESSAGE value="some improvements in the zoom on laptops" />
-    <MESSAGE value="Fixed NTC generation limits" />
-    <MESSAGE value="Fixed NTC generation limits test" />
-    <MESSAGE value="Added anarede examples" />
-    <MESSAGE value="minimal fix when transformer templates do not exist" />
-    <MESSAGE value="Added missing bus highlight clearing action" />
-    <MESSAGE value="Moved the compiled arrays from the numerical circuit" />
-    <MESSAGE value="minimal type change" />
-    <MESSAGE value="Some refactorings&#10;Improved the pf initialization in pf grids" />
-    <MESSAGE value="Improved the pf initialization in pf grids" />
-    <MESSAGE value="Improved OPF" />
-    <MESSAGE value="Fixed missing params" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed missing params" />
+    <MESSAGE value="small signal tests passing" />
+    <MESSAGE value="implemented DiffBLock solver fro modles with differential vars" />
+    <MESSAGE value="merged devel and removed templates from __init__.py" />
+    <MESSAGE value="Refactored some block templates" />
+    <MESSAGE value="some more refactor to the block save and parse logic" />
+    <MESSAGE value="Fixed minor error in the small signal test" />
+    <MESSAGE value="fixing convert_busbar_to_voltage_level" />
+    <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
+    <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
+    <MESSAGE value="Added more ContingencyFilteringMethods" />
+    <MESSAGE value="Several fixes when selecting by country, community, etc" />
+    <MESSAGE value="5.6.3" />
+    <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
+    <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
+    <MESSAGE value="5.6.5" />
+    <MESSAGE value="Fixed important bug" />
+    <MESSAGE value="minimal changes" />
+    <MESSAGE value="some comments" />
+    <MESSAGE value="Improved bus centering" />
+    <MESSAGE value="Added copy button to the grid reduction" />
+    <MESSAGE value="Moved trunk out of src&#10;Added grid_reduction checks" />
+    <MESSAGE value="Added grid_reduction_with_multiple_islands_after" />
+    <MESSAGE value="refactored more trunk files" />
+    <MESSAGE value="Icons moved to Icons folder&#10;All GUI's reference a single icons resource now" />
+    <MESSAGE value="added new dgs parse candidate" />
+    <option name="LAST_COMMIT_MESSAGE" value="added new dgs parse candidate" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/power_flow/asd/josep/v3_pv.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/power_flow/asd/josep/v3_pv.py</url>
           <line>163</line>
           <option name="timeStamp" value="189" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/OPF/ac_opf_ts.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/OPF/ac_opf_ts.py</url>
           <line>403</line>
           <option name="timeStamp" value="328" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/tests/test_transformer_regulator.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/tests/test_transformer_regulator.py</url>
           <line>185</line>
           <option name="timeStamp" value="352" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="conv == DeviceType" language="Python" />
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/IO/excel_interface.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/IO/excel_interface.py</url>
           <line>276</line>
           <option name="timeStamp" value="402" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/helm_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/helm_power_flow.py</url>
           <line>185</line>
           <option name="timeStamp" value="407" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
           <line>1166</line>
           <option name="timeStamp" value="418" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
           <line>1192</line>
           <option name="timeStamp" value="419" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
           <line>1189</line>
           <option name="timeStamp" value="420" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Sparse/sparse_utils.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Sparse/sparse_utils.py</url>
           <line>453</line>
           <option name="timeStamp" value="486" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/IO/h5_interface.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/IO/h5_interface.py</url>
           <line>101</line>
           <option name="timeStamp" value="625" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Core/DataStructures/generator_data.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Core/DataStructures/generator_data.py</url>
           <line>173</line>
           <option name="timeStamp" value="740" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/IO/power_world_parser.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/IO/power_world_parser.py</url>
           <line>237</line>
           <option name="timeStamp" value="808" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/StateEstimation/state_estimation.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/StateEstimation/state_estimation.py</url>
           <line>285</line>
           <option name="timeStamp" value="851" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/ThirdParty/pulp/solver_interfaces/cplex.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/ThirdParty/pulp/solver_interfaces/cplex.py</url>
           <line>127</line>
           <option name="timeStamp" value="922" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
           <line>551</line>
           <option name="timeStamp" value="995" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/jacobian_based_power_flow.py</url>
           <line>543</line>
           <option name="timeStamp" value="996" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Core/admittance_matrices.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Core/admittance_matrices.py</url>
           <line>296</line>
           <option name="timeStamp" value="1032" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="nnz == 10" language="Python" />
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/ac_jacobian.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/ac_jacobian.py</url>
           <line>140</line>
           <option name="timeStamp" value="1045" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
           <line>165</line>
           <option name="timeStamp" value="1048" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="k == 7" language="Python" />
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
           <line>159</line>
           <option name="timeStamp" value="1050" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <condition expression="k == 7" language="Python" />
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/derivatives.py</url>
           <line>145</line>
           <option name="timeStamp" value="1051" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/newton_raphson.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/newton_raphson.py</url>
           <line>121</line>
           <option name="timeStamp" value="1056" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/power_flow_worker.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/PowerFlow/power_flow_worker.py</url>
           <line>503</line>
           <option name="timeStamp" value="1115" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/IO/cim/cim_parser.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/IO/cim/cim_parser.py</url>
           <line>848</line>
           <option name="timeStamp" value="1116" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
           <line>200</line>
           <option name="timeStamp" value="1133" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
           <line>545</line>
           <option name="timeStamp" value="1135" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
           <line>543</line>
           <option name="timeStamp" value="1136" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_2.py</url>
           <line>531</line>
           <option name="timeStamp" value="1137" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_3.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/derivatives_and_jacobian/branch_power_3.py</url>
           <line>22</line>
           <option name="timeStamp" value="1144" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/research/experimental_readers/arrillagas_book_grids_to_gridcal.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/research/experimental_readers/arrillagas_book_grids_to_gridcal.py</url>
           <line>58</line>
           <option name="timeStamp" value="1145" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_driver.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_driver.py</url>
           <line>238</line>
           <option name="timeStamp" value="1160" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_driver.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_driver.py</url>
           <line>240</line>
           <option name="timeStamp" value="1161" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit.py</url>
           <line>98</line>
           <option name="timeStamp" value="1177" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_worker.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_worker.py</url>
           <line>270</line>
           <option name="timeStamp" value="1178" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_worker.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_worker.py</url>
           <line>108</line>
           <option name="timeStamp" value="1179" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/trunk/qt_related/se_editor.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/trunk/qt_related/se_editor.py</url>
           <line>78</line>
           <option name="timeStamp" value="1829" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/Comparison/GridCal/src/GridCal/Gui/Main/update_gui_file.py</url>
+          <url>file://$PROJECT_DIR$/../Comparison/GridCal/src/GridCal/Gui/Main/update_gui_file.py</url>
           <line>23</line>
           <option name="timeStamp" value="2078" />
         </line-breakpoint>
@@ -2213,11 +2221,6 @@
           <option name="timeStamp" value="2522" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_tower_composition.py</url>
-          <line>121</line>
-          <option name="timeStamp" value="2580" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/remote.py</url>
           <line>234</line>
           <option name="timeStamp" value="2595" />
@@ -2248,21 +2251,6 @@
           <option name="timeStamp" value="2606" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py</url>
-          <line>205</line>
-          <option name="timeStamp" value="2656" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py</url>
-          <line>220</line>
-          <option name="timeStamp" value="2659" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py</url>
-          <line>226</line>
-          <option name="timeStamp" value="2660" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_to_gridcal.py</url>
           <line>2528</line>
           <option name="timeStamp" value="2661" />
@@ -2278,13 +2266,13 @@
           <option name="timeStamp" value="2698" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/ntc/pmode3_eqs.py</url>
+          <url>file://$PROJECT_DIR$/trunk/ntc/pmode3_eqs.py</url>
           <line>53</line>
           <option name="timeStamp" value="2712" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/tests/test_ntc.py</url>
-          <line>770</line>
+          <line>778</line>
           <option name="timeStamp" value="2714" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2293,18 +2281,18 @@
           <option name="timeStamp" value="2715" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/simple_dispatch/simple_dispatch_demo.py</url>
+          <url>file://$PROJECT_DIR$/trunk/simple_dispatch/simple_dispatch_demo.py</url>
           <line>40</line>
           <option name="timeStamp" value="2716" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/pf/example_new_england.py</url>
+          <url>file://$PROJECT_DIR$/trunk/pf/example_new_england.py</url>
           <line>36</line>
           <option name="timeStamp" value="2719" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/simple_dispatch_ts.py</url>
-          <line>738</line>
+          <line>814</line>
           <option name="timeStamp" value="2736" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2314,11 +2302,11 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/simple_dispatch_ts.py</url>
-          <line>721</line>
+          <line>797</line>
           <option name="timeStamp" value="2743" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/contingencies/run_contingencies_ts.py</url>
+          <url>file://$PROJECT_DIR$/trunk/contingencies/run_contingencies_ts.py</url>
           <line>12</line>
           <option name="timeStamp" value="2767" />
         </line-breakpoint>
@@ -2334,12 +2322,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py</url>
-          <line>570</line>
+          <line>568</line>
           <option name="timeStamp" value="2967" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/time_events.py</url>
-          <line>572</line>
+          <line>570</line>
           <option name="timeStamp" value="2968" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2353,41 +2341,161 @@
           <option name="timeStamp" value="2970" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py</url>
-          <line>571</line>
-          <option name="timeStamp" value="2976" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py</url>
-          <line>174</line>
-          <option name="timeStamp" value="2977" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py</url>
-          <line>212</line>
+          <line>209</line>
           <option name="timeStamp" value="2980" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
-          <line>282</line>
-          <option name="timeStamp" value="2981" />
+          <url>file://$PROJECT_DIR$/src/tests/test_gslv_contingencies.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="2986" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_gslv_conversion.py</url>
+          <line>35</line>
+          <option name="timeStamp" value="2989" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_gslv_conversion.py</url>
+          <line>44</line>
+          <option name="timeStamp" value="2990" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2803</line>
+          <option name="timeStamp" value="2991" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2630</line>
+          <option name="timeStamp" value="2992" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2622</line>
+          <option name="timeStamp" value="2993" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/base.py</url>
+          <line>179</line>
+          <option name="timeStamp" value="2994" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
+          <line>864</line>
+          <option name="timeStamp" value="3011" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
+          <line>872</line>
+          <option name="timeStamp" value="3012" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
+          <line>876</line>
+          <option name="timeStamp" value="3013" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/unbalanced_pf/Neutral/ShortCircuit/Impedance_GroundedStar_3ph.py</url>
+          <line>78</line>
+          <option name="timeStamp" value="3035" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py</url>
+          <line>2142</line>
+          <option name="timeStamp" value="3044" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py</url>
+          <line>2166</line>
+          <option name="timeStamp" value="3045" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
+          <line>1231</line>
+          <option name="timeStamp" value="3046" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
+          <line>3654</line>
+          <option name="timeStamp" value="3047" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/CA_Script.py</url>
+          <line>106</line>
+          <option name="timeStamp" value="3048" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2897</line>
+          <option name="timeStamp" value="3050" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2926</line>
+          <option name="timeStamp" value="3051" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2958</line>
+          <option name="timeStamp" value="3052" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2970</line>
+          <option name="timeStamp" value="3053" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2906</line>
+          <option name="timeStamp" value="3054" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>2380</line>
+          <option name="timeStamp" value="3055" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py</url>
+          <line>834</line>
+          <option name="timeStamp" value="3060" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py</url>
-          <line>1687</line>
-          <option name="timeStamp" value="2985" />
+          <line>1547</line>
+          <option name="timeStamp" value="3061" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py</url>
-          <line>103</line>
-          <option name="timeStamp" value="2986" />
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
+          <line>4753</line>
+          <option name="timeStamp" value="3065" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/LinearFactors/linear_analysis_ts_results.py</url>
+          <line>126</line>
+          <option name="timeStamp" value="3067" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_parser.py</url>
+          <line>234</line>
+          <option name="timeStamp" value="3069" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
+          <line>5048</line>
+          <option name="timeStamp" value="3102" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py</url>
+          <line>124</line>
+          <option name="timeStamp" value="3103" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/power_factory_api/power_factory_parser_example.py</url>
+          <line>8</line>
+          <option name="timeStamp" value="3104" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="PythonConfigurationType">
-        <watch expression="__exception__" language="Python" />
-      </configuration>
-    </watches-manager>
   </component>
 </project>

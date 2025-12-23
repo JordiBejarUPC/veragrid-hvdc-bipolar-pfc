@@ -4,41 +4,92 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
 
-class PfProperty:
-    def __init__(
-        self,
-        name: str,
-        dgs_type: str,
-        description: str,
-        py_name: str | None = None,
-        converter: Callable[[str], Any] | None = None,
-    ):
+
+class DgsProperty:
+    """
+    Dgs Property
+    """
+
+    def __init__(self, name: str, dgs_type: str, description: str, py_name: str):
         self.name = name
-        self.py_name = py_name or name
         self.dgs_type = dgs_type
         self.description = description
-        self.converter = converter or self._default_converter(dgs_type)
+        self.py_name = py_name
 
-    @staticmethod
-    def _default_converter(dgs_type: str):
-        if dgs_type.startswith('a'):
-            return str
-        if dgs_type == 'i':
-            return int
-        if dgs_type == 'r':
-            return float
-        if dgs_type == 'b':
-            return lambda x: bool(int(x))
-        return str
+        if dgs_type.startswith("b"):  # boolean
+            self.py_type = bool
+            self.default_value = False
 
-    def parse(self, value: str):
-        if value is None or value == '':
-            return None
-        return self.converter(value)
+        elif dgs_type.startswith("i"):  # integer
+            self.py_type = int
+            self.default_value = 0
+
+        elif dgs_type.startswith("r"):  # real/float
+            self.py_type = float
+            self.default_value = 0.0
+
+        elif dgs_type.startswith("a"):  # string
+            self.py_type = str
+            self.default_value = ""
+
+        elif dgs_type.startswith("p"):  # object reference
+            self.py_type = str
+            self.default_value = None
+
+        else:
+            # Unknown/rare types: keep as string by default
+            self.py_type = str
+            self.default_value = None
+
+    def parse(self, raw: str) -> str | int | bool | float | None:
+        """
+
+        :param raw: incoming value
+        :return:
+        """
+        if raw is None:
+            return self.default_value
+
+        raw = raw.strip()
+
+        # PowerFactory placeholders / missing values
+        if raw == "" or raw == "*":
+            return self.default_value
+
+        # Boolean parsing
+        if self.py_type is bool:
+            v = raw.strip().lower()
+            if v in {"1", "true", "t", "yes", "y"}:
+                return True
+            elif v in {"0", "false", "f", "no", "n"}:
+                return False
+            else:
+                # Unexpected encoding → fallback
+                return self.default_value
+
+        # Numeric parsing (int/float) with decimal comma
+        if self.py_type in (int, float):
+            raw_norm = raw.replace(",", ".")
+            try:
+                if self.py_type is int:
+                    # Some PF fields may show "1.0" for ints; tolerate that
+                    return int(float(raw_norm))
+                else:
+                    return float(raw_norm)
+            except ValueError:
+                return self.default_value
+
+        # String/reference
+        return raw
 
     def format(self, value: Any) -> str:
+        """
+
+        :param value:
+        :return:
+        """
         if value is None:
             return ''
         if self.dgs_type == 'b':
@@ -47,134 +98,75 @@ class PfProperty:
 
 
 class DGSElement:
+    """
+    Base class
+    """
     element_type: str
-    properties_list: List[PfProperty]
-    properties: Dict[str, PfProperty]
+    properties_list: List[DgsProperty]
+    properties: Dict[str, DgsProperty]
 
     def __init_subclass__(cls):
         cls.properties = {p.name: p for p in cls.properties_list}
 
     @classmethod
-    def parse_line(cls, line: str):
+    def parse_line(cls, line: str, header_map: dict[str, int]):
+        """
+        Parse a DGS data line using a header-derived column map.
+
+        Parameters
+        ----------
+        line : str
+            Raw data line from DGS
+        header_map : dict[str, int]
+            Mapping {property_name -> column_index}
+            derived from the $$ header line
+        """
         parts = line.rstrip('\n').split(';')
         obj = cls()
-        for prop, raw in zip(cls.properties_list, parts):
-            setattr(obj, prop.py_name, prop.parse(raw))
+
+        for prop in cls.properties_list:
+
+            idx = header_map.get(prop.name, None)
+
+            if idx is not None:
+
+                if -1 < idx < len(parts):
+                    raw = parts[idx]
+                    value = prop.parse(raw)
+                    setattr(obj, prop.py_name, value)
+                else:
+                    # Column declared but missing in this line
+                    pass
+            else:
+                # Property not present in this DGS version
+                pass
+
         return obj
 
     def to_dgs_line(self) -> str:
+        """
+        Create DGS line
+        :return:
+        """
         return ';'.join(p.format(getattr(self, p.py_name)) for p in self.properties_list)
 
+    def __repr__(self):
+        """
 
-# NOTE: Header type conflicts observed across input DGS files.
-# First-seen type was kept; later differing types are listed below.
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmLod.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmLod.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmShnt.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmShnt.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmSym.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmSym.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr2.sernum: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr3.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTr3.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example1.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - StaSwitch.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypLne.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypLne.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - TypLne.aohl_: kept(a:3) vs seen(a) in Example1.dgs
-# - TypLod.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypSym.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypTr2.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypTr2.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - TypTr2.manuf: kept(a:20) vs seen(a) in Example1.dgs
-# - TypTr2.tr2cn_h: kept(a:2) vs seen(a) in Example1.dgs
-# - TypTr2.tr2cn_l: kept(a:2) vs seen(a) in Example1.dgs
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmLod.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmLod.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmShnt.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmShnt.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmSym.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmSym.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr2.sernum: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr3.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTr3.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example2.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - StaSwitch.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmFeeder.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example4.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypLne.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - TypLne.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypLne.aohl_: kept(a:3) vs seen(a) in Example4.dgs
-# - TypTr2.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - TypTr2.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypTr2.manuf: kept(a:20) vs seen(a) in Example4.dgs
-# - TypTr2.tr2cn_h: kept(a:2) vs seen(a) in Example4.dgs
-# - TypTr2.tr2cn_l: kept(a:2) vs seen(a) in Example4.dgs
-# - ElmLodlv.loc_name: kept(a) vs seen(a:40) in PLATOS grid 3.dgs
-# - ElmLodlv.for_name: kept(a) vs seen(a:40) in PLATOS grid 3.dgs
-# - ElmLodlv.chr_name: kept(a) vs seen(a:20) in PLATOS grid 3.dgs
-# - ElmCoup.loc_name: kept(a) vs seen(a:40) in Switches-missing-voltage.dgs
-# - ElmCoup.aUsage: kept(a) vs seen(a:4) in Switches-missing-voltage.dgs
-# - ElmCoup.loc_name: kept(a) vs seen(a:40) in Switches-negative-voltage.dgs
-# - ElmCoup.aUsage: kept(a) vs seen(a:4) in Switches-negative-voltage.dgs
-# - ElmSubstat.loc_name: kept(a) vs seen(a:40) in VoltageLevelsAndSubstations.dgs
-# - TypTr3.loc_name: kept(a) vs seen(a:40) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_h: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_m: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_l: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
+        :return:
+        """
+        if hasattr(self, "loc_name"):
+            return getattr(self, "loc_name")
+        else:
+            return getattr(self, "ID")
 
 
 class ChaRef(DGSElement):
     element_type = 'ChaRef'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
     ]
 
     def __init__(self) -> None:
@@ -186,16 +178,16 @@ class ChaRef(DGSElement):
 class ChaVec(DGSElement):
     element_type = 'ChaVec'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('scale', 'p', 'DGS field scale (p)', py_name='scale'),
-        PfProperty('usage', 'i', 'DGS field usage (i)', py_name='usage'),
-        PfProperty('approx', 'i', 'DGS field approx (i)', py_name='approx'),
-        PfProperty('vector:SIZEROW', 'i', 'DGS field vector:SIZEROW (i)', py_name='vector_SIZEROW'),
-        PfProperty('vector:0', 'r', 'DGS field vector:0 (r)', py_name='vector_0'),
-        PfProperty('vector:1', 'r', 'DGS field vector:1 (r)', py_name='vector_1'),
-        PfProperty('vector:2', 'r', 'DGS field vector:2 (r)', py_name='vector_2'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('scale', 'p', 'DGS field scale (p)', py_name='scale'),
+        DgsProperty('usage', 'i', 'DGS field usage (i)', py_name='usage'),
+        DgsProperty('approx', 'i', 'DGS field approx (i)', py_name='approx'),
+        DgsProperty('vector:SIZEROW', 'i', 'DGS field vector:SIZEROW (i)', py_name='vector_SIZEROW'),
+        DgsProperty('vector:0', 'r', 'DGS field vector:0 (r)', py_name='vector_0'),
+        DgsProperty('vector:1', 'r', 'DGS field vector:1 (r)', py_name='vector_1'),
+        DgsProperty('vector:2', 'r', 'DGS field vector:2 (r)', py_name='vector_2'),
     ]
 
     def __init__(self) -> None:
@@ -214,15 +206,15 @@ class ChaVec(DGSElement):
 class ElmAsm(DGSElement):
     element_type = 'ElmAsm'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('i_mot', 'i', 'DGS field i_mot (i)', py_name='i_mot'),
-        PfProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('i_mot', 'i', 'DGS field i_mot (i)', py_name='i_mot'),
+        DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
     ]
 
     def __init__(self) -> None:
@@ -240,16 +232,16 @@ class ElmAsm(DGSElement):
 class ElmCoup(DGSElement):
     element_type = 'ElmCoup'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
-        PfProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
-        PfProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
-        PfProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
+        DgsProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
+        DgsProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
+        DgsProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
     ]
 
     def __init__(self) -> None:
@@ -268,15 +260,15 @@ class ElmCoup(DGSElement):
 class ElmFeeder(DGSElement):
     element_type = 'ElmFeeder'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('obj_id', 'p', 'DGS field obj_id (p)', py_name='obj_id'),
-        PfProperty('iorient', 'i', 'DGS field iorient (i)', py_name='iorient'),
-        PfProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
-        PfProperty('Iset', 'r', 'DGS field Iset (r)', py_name='Iset'),
-        PfProperty('icolor', 'i', 'DGS field icolor (i)', py_name='icolor'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('obj_id', 'p', 'DGS field obj_id (p)', py_name='obj_id'),
+        DgsProperty('iorient', 'i', 'DGS field iorient (i)', py_name='iorient'),
+        DgsProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
+        DgsProperty('Iset', 'r', 'DGS field Iset (r)', py_name='Iset'),
+        DgsProperty('icolor', 'i', 'DGS field icolor (i)', py_name='icolor'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
     ]
 
     def __init__(self) -> None:
@@ -294,18 +286,18 @@ class ElmFeeder(DGSElement):
 class ElmGenstat(DGSElement):
     element_type = 'ElmGenstat'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('bus1', 'p', 'DGS field bus1 (p)', py_name='bus1'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
-        PfProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
-        PfProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
-        PfProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
-        PfProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
-        PfProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
-        PfProperty('ip_ctrl', 'i', 'DGS field ip_ctrl (i)', py_name='ip_ctrl'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('bus1', 'p', 'DGS field bus1 (p)', py_name='bus1'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
+        DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
+        DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
+        DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
+        DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
+        DgsProperty('ip_ctrl', 'i', 'DGS field ip_ctrl (i)', py_name='ip_ctrl'),
     ]
 
     def __init__(self) -> None:
@@ -326,20 +318,20 @@ class ElmGenstat(DGSElement):
 class ElmLne(DGSElement):
     element_type = 'ElmLne'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('pStoch', 'p', 'DGS field pStoch (p)', py_name='pStoch'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('GPScoords:SIZEROW', 'i', 'DGS field GPScoords:SIZEROW (i)', py_name='GPScoords_SIZEROW'),
-        PfProperty('GPScoords:SIZECOL', 'i', 'DGS field GPScoords:SIZECOL (i)', py_name='GPScoords_SIZECOL'),
-        PfProperty('nlnum', 'i', 'DGS field nlnum (i)', py_name='nlnum'),
-        PfProperty('inAir', 'i', 'DGS field inAir (i)', py_name='inAir'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('pStoch', 'p', 'DGS field pStoch (p)', py_name='pStoch'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('GPScoords:SIZEROW', 'i', 'DGS field GPScoords:SIZEROW (i)', py_name='GPScoords_SIZEROW'),
+        DgsProperty('GPScoords:SIZECOL', 'i', 'DGS field GPScoords:SIZECOL (i)', py_name='GPScoords_SIZECOL'),
+        DgsProperty('nlnum', 'i', 'DGS field nlnum (i)', py_name='nlnum'),
+        DgsProperty('inAir', 'i', 'DGS field inAir (i)', py_name='inAir'),
     ]
 
     def __init__(self) -> None:
@@ -362,14 +354,14 @@ class ElmLne(DGSElement):
 class ElmLnesec(DGSElement):
     element_type = 'ElmLnesec'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
-        PfProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
-        PfProperty('index', 'r', 'DGS field index (r)', py_name='index'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
+        DgsProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
+        DgsProperty('index', 'r', 'DGS field index (r)', py_name='index'),
     ]
 
     def __init__(self) -> None:
@@ -386,22 +378,22 @@ class ElmLnesec(DGSElement):
 class ElmLod(DGSElement):
     element_type = 'ElmLod'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('plini', 'r', 'DGS field plini (r)', py_name='plini'),
-        PfProperty('qlini', 'r', 'DGS field qlini (r)', py_name='qlini'),
-        PfProperty('scale0', 'r', 'DGS field scale0 (r)', py_name='scale0'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('mode_inp', 'a:3', 'DGS field mode_inp (a:3)', py_name='mode_inp'),
-        PfProperty('slini', 'r', 'DGS field slini (r)', py_name='slini'),
-        PfProperty('coslini', 'r', 'DGS field coslini (r)', py_name='coslini'),
-        PfProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
-        PfProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
-        PfProperty('classif', 'a:20', 'DGS field classif (a:20)', py_name='classif'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('plini', 'r', 'DGS field plini (r)', py_name='plini'),
+        DgsProperty('qlini', 'r', 'DGS field qlini (r)', py_name='qlini'),
+        DgsProperty('scale0', 'r', 'DGS field scale0 (r)', py_name='scale0'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('mode_inp', 'a:3', 'DGS field mode_inp (a:3)', py_name='mode_inp'),
+        DgsProperty('slini', 'r', 'DGS field slini (r)', py_name='slini'),
+        DgsProperty('coslini', 'r', 'DGS field coslini (r)', py_name='coslini'),
+        DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
+        DgsProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
+        DgsProperty('classif', 'a:20', 'DGS field classif (a:20)', py_name='classif'),
     ]
 
     def __init__(self) -> None:
@@ -426,13 +418,13 @@ class ElmLod(DGSElement):
 class ElmLodlv(DGSElement):
     element_type = 'ElmLodlv'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('for_name', 'a', 'DGS field for_name (a)', py_name='for_name'),
-        PfProperty('ulini', 'r', 'DGS field ulini (r)', py_name='ulini'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('for_name', 'a', 'DGS field for_name (a)', py_name='for_name'),
+        DgsProperty('ulini', 'r', 'DGS field ulini (r)', py_name='ulini'),
     ]
 
     def __init__(self) -> None:
@@ -448,15 +440,15 @@ class ElmLodlv(DGSElement):
 class ElmLodlvp(DGSElement):
     element_type = 'ElmLodlvp'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('for_name', 'a', 'DGS field for_name (a)', py_name='for_name'),
-        PfProperty('lneposkm', 'r', 'DGS field lneposkm (r)', py_name='lneposkm'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('ulini', 'r', 'DGS field ulini (r)', py_name='ulini'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('for_name', 'a', 'DGS field for_name (a)', py_name='for_name'),
+        DgsProperty('lneposkm', 'r', 'DGS field lneposkm (r)', py_name='lneposkm'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('ulini', 'r', 'DGS field ulini (r)', py_name='ulini'),
     ]
 
     def __init__(self) -> None:
@@ -474,12 +466,12 @@ class ElmLodlvp(DGSElement):
 class ElmNet(DGSElement):
     element_type = 'ElmNet'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('pDiagram', 'p', 'DGS field pDiagram (p)', py_name='pDiagram'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('pDiagram', 'p', 'DGS field pDiagram (p)', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -494,21 +486,21 @@ class ElmNet(DGSElement):
 class ElmShnt(DGSElement):
     element_type = 'ElmShnt'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('shtype', 'i', 'DGS field shtype (i)', py_name='shtype'),
-        PfProperty('ushnm', 'r', 'DGS field ushnm (r)', py_name='ushnm'),
-        PfProperty('qcapn', 'r', 'DGS field qcapn (r)', py_name='qcapn'),
-        PfProperty('ncapx', 'i', 'DGS field ncapx (i)', py_name='ncapx'),
-        PfProperty('ncapa', 'i', 'DGS field ncapa (i)', py_name='ncapa'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('ctech', 'i', 'DGS field ctech (i)', py_name='ctech'),
-        PfProperty('fres', 'r', 'DGS field fres (r)', py_name='fres'),
-        PfProperty('greaf0', 'r', 'DGS field greaf0 (r)', py_name='greaf0'),
-        PfProperty('iswitch', 'i', 'DGS field iswitch (i)', py_name='iswitch'),
-        PfProperty('qtotn', 'r', 'DGS field qtotn (r)', py_name='qtotn'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('shtype', 'i', 'DGS field shtype (i)', py_name='shtype'),
+        DgsProperty('ushnm', 'r', 'DGS field ushnm (r)', py_name='ushnm'),
+        DgsProperty('qcapn', 'r', 'DGS field qcapn (r)', py_name='qcapn'),
+        DgsProperty('ncapx', 'i', 'DGS field ncapx (i)', py_name='ncapx'),
+        DgsProperty('ncapa', 'i', 'DGS field ncapa (i)', py_name='ncapa'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('ctech', 'i', 'DGS field ctech (i)', py_name='ctech'),
+        DgsProperty('fres', 'r', 'DGS field fres (r)', py_name='fres'),
+        DgsProperty('greaf0', 'r', 'DGS field greaf0 (r)', py_name='greaf0'),
+        DgsProperty('iswitch', 'i', 'DGS field iswitch (i)', py_name='iswitch'),
+        DgsProperty('qtotn', 'r', 'DGS field qtotn (r)', py_name='qtotn'),
     ]
 
     def __init__(self) -> None:
@@ -532,13 +524,13 @@ class ElmShnt(DGSElement):
 class ElmSite(DGSElement):
     element_type = 'ElmSite'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
-        PfProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
-        PfProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
+        DgsProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
+        DgsProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
     ]
 
     def __init__(self) -> None:
@@ -554,16 +546,16 @@ class ElmSite(DGSElement):
 class ElmSubstat(DGSElement):
     element_type = 'ElmSubstat'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('Unom', 'r', 'DGS field Unom (r)', py_name='Unom'),
-        PfProperty('pRA', 'p', 'DGS field pRA (p)', py_name='pRA'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('sShort', 'a:6', 'DGS field sShort (a:6)', py_name='sShort'),
-        PfProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
-        PfProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
-        PfProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('Unom', 'r', 'DGS field Unom (r)', py_name='Unom'),
+        DgsProperty('pRA', 'p', 'DGS field pRA (p)', py_name='pRA'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('sShort', 'a:6', 'DGS field sShort (a:6)', py_name='sShort'),
+        DgsProperty('sType', 'a:80', 'DGS field sType (a:80)', py_name='sType'),
+        DgsProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
+        DgsProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
     ]
 
     def __init__(self) -> None:
@@ -582,29 +574,29 @@ class ElmSubstat(DGSElement):
 class ElmSym(DGSElement):
     element_type = 'ElmSym'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
-        PfProperty('i_mot', 'i', 'DGS field i_mot (i)', py_name='i_mot'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
-        PfProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
-        PfProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
-        PfProperty('iv_mode', 'i', 'DGS field iv_mode (i)', py_name='iv_mode'),
-        PfProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
-        PfProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
-        PfProperty('Pmin_uc', 'r', 'DGS field Pmin_uc (r)', py_name='Pmin_uc'),
-        PfProperty('Pmax_uc', 'r', 'DGS field Pmax_uc (r)', py_name='Pmax_uc'),
-        PfProperty('iqtype', 'i', 'DGS field iqtype (i)', py_name='iqtype'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('cCategory', 'a', 'DGS field cCategory (a)', py_name='cCategory'),
-        PfProperty('cosgini', 'r', 'DGS field cosgini (r)', py_name='cosgini'),
-        PfProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
-        PfProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
-        PfProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
+        DgsProperty('i_mot', 'i', 'DGS field i_mot (i)', py_name='i_mot'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+        DgsProperty('iv_mode', 'i', 'DGS field iv_mode (i)', py_name='iv_mode'),
+        DgsProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
+        DgsProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
+        DgsProperty('Pmin_uc', 'r', 'DGS field Pmin_uc (r)', py_name='Pmin_uc'),
+        DgsProperty('Pmax_uc', 'r', 'DGS field Pmax_uc (r)', py_name='Pmax_uc'),
+        DgsProperty('iqtype', 'i', 'DGS field iqtype (i)', py_name='iqtype'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('cCategory', 'a', 'DGS field cCategory (a)', py_name='cCategory'),
+        DgsProperty('cosgini', 'r', 'DGS field cosgini (r)', py_name='cosgini'),
+        DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
+        DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
+        DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
     ]
 
     def __init__(self) -> None:
@@ -636,24 +628,24 @@ class ElmSym(DGSElement):
 class ElmTerm(DGSElement):
     element_type = 'ElmTerm'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('iUsage', 'i', 'DGS field iUsage (i)', py_name='iUsage'),
-        PfProperty('uknom', 'r', 'DGS field uknom (r)', py_name='uknom'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('systype', 'i', 'DGS field systype (i)', py_name='systype'),
-        PfProperty('unknom', 'r', 'DGS field unknom (r)', py_name='unknom'),
-        PfProperty('iminus', 'i', 'DGS field iminus (i)', py_name='iminus'),
-        PfProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
-        PfProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
-        PfProperty('vtarget', 'r', 'DGS field vtarget (r)', py_name='vtarget'),
-        PfProperty('m:u', 'r', 'DGS field m:u (r)', py_name='m_u'),
-        PfProperty('m:phiu', 'r', 'DGS field m:phiu (r)', py_name='m_phiu'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('iUsage', 'i', 'DGS field iUsage (i)', py_name='iUsage'),
+        DgsProperty('uknom', 'r', 'DGS field uknom (r)', py_name='uknom'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('systype', 'i', 'DGS field systype (i)', py_name='systype'),
+        DgsProperty('unknom', 'r', 'DGS field unknom (r)', py_name='unknom'),
+        DgsProperty('iminus', 'i', 'DGS field iminus (i)', py_name='iminus'),
+        DgsProperty('GPSlat', 'r', 'DGS field GPSlat (r)', py_name='GPSlat'),
+        DgsProperty('GPSlon', 'r', 'DGS field GPSlon (r)', py_name='GPSlon'),
+        DgsProperty('vtarget', 'r', 'DGS field vtarget (r)', py_name='vtarget'),
+        DgsProperty('m:u', 'r', 'DGS field m:u (r)', py_name='m_u'),
+        DgsProperty('m:phiu', 'r', 'DGS field m:phiu (r)', py_name='m_phiu'),
     ]
 
     def __init__(self) -> None:
@@ -680,28 +672,28 @@ class ElmTerm(DGSElement):
 class ElmTr2(DGSElement):
     element_type = 'ElmTr2'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('nntap', 'i', 'DGS field nntap (i)', py_name='nntap'),
-        PfProperty('sernum', 'a:20', 'DGS field sernum (a:20)', py_name='sernum'),
-        PfProperty('constr', 'i', 'DGS field constr (i)', py_name='constr'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('cgnd_h', 'i', 'DGS field cgnd_h (i)', py_name='cgnd_h'),
-        PfProperty('cgnd_l', 'i', 'DGS field cgnd_l (i)', py_name='cgnd_l'),
-        PfProperty('i_auto', 'i', 'DGS field i_auto (i)', py_name='i_auto'),
-        PfProperty('ntrcn', 'i', 'DGS field ntrcn (i)', py_name='ntrcn'),
-        PfProperty('ratfac', 'r', 'DGS field ratfac (r)', py_name='ratfac'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('ntnum', 'i', 'DGS field ntnum (i)', py_name='ntnum'),
-        PfProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
-        PfProperty('usp_low', 'r', 'DGS field usp_low (r)', py_name='usp_low'),
-        PfProperty('usp_up', 'r', 'DGS field usp_up (r)', py_name='usp_up'),
-        PfProperty('t2ldc', 'i', 'DGS field t2ldc (i)', py_name='t2ldc'),
-        PfProperty('mTaps:SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
-        PfProperty('mTaps:SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+        DgsProperty('nntap', 'i', 'Tap Changer 1: Tap Position', py_name='nntap'),
+        DgsProperty('sernum', 'a:20', 'Serial Number (a:20)', py_name='sernum'),
+        DgsProperty('constr', 'i', 'Year of Construction', py_name='constr'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected', py_name='cgnd_h'),
+        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected', py_name='cgnd_l'),
+        DgsProperty('i_auto', 'i', 'Auto Transformer', py_name='i_auto'),
+        DgsProperty('ntrcn', 'i', 'Controller, Tap Changer 1: Automatic Tap Changing', py_name='ntrcn'),
+        DgsProperty('ratfac', 'r', 'Rating Factor', py_name='ratfac'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('ntnum', 'i', 'DGS field ntnum (i)', py_name='ntnum'),
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+        DgsProperty('usp_low', 'r', 'DGS field usp_low (r)', py_name='usp_low'),
+        DgsProperty('usp_up', 'r', 'DGS field usp_up (r)', py_name='usp_up'),
+        DgsProperty('t2ldc', 'i', 'DGS field t2ldc (i)', py_name='t2ldc'),
+        DgsProperty('mTaps_SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
+        DgsProperty('mTaps_SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
     ]
 
     def __init__(self) -> None:
@@ -732,51 +724,51 @@ class ElmTr2(DGSElement):
 class ElmTr3(DGSElement):
     element_type = 'ElmTr3'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('nt3nm', 'i', 'DGS field nt3nm (i)', py_name='nt3nm'),
-        PfProperty('n3tap_h', 'i', 'DGS field n3tap_h (i)', py_name='n3tap_h'),
-        PfProperty('n3tap_m', 'i', 'DGS field n3tap_m (i)', py_name='n3tap_m'),
-        PfProperty('n3tap_l', 'i', 'DGS field n3tap_l (i)', py_name='n3tap_l'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('i_auto_hl', 'i', 'DGS field i_auto_hl (i)', py_name='i_auto_hl'),
-        PfProperty('ictrlside', 'i', 'DGS field ictrlside (i)', py_name='ictrlside'),
-        PfProperty('ntrcn', 'i', 'DGS field ntrcn (i)', py_name='ntrcn'),
-        PfProperty('t3ldc', 'i', 'DGS field t3ldc (i)', py_name='t3ldc'),
-        PfProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
-        PfProperty('usp_low', 'r', 'DGS field usp_low (r)', py_name='usp_low'),
-        PfProperty('usp_up', 'r', 'DGS field usp_up (r)', py_name='usp_up'),
-        PfProperty('mTaps:SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
-        PfProperty('mTaps:SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
-        PfProperty('mTaps:0:0', 'r', 'DGS field mTaps:0:0 (r)', py_name='mTaps_0_0'),
-        PfProperty('mTaps:0:1', 'r', 'DGS field mTaps:0:1 (r)', py_name='mTaps_0_1'),
-        PfProperty('mTaps:0:2', 'r', 'DGS field mTaps:0:2 (r)', py_name='mTaps_0_2'),
-        PfProperty('mTaps:0:3', 'r', 'DGS field mTaps:0:3 (r)', py_name='mTaps_0_3'),
-        PfProperty('mTaps:0:4', 'r', 'DGS field mTaps:0:4 (r)', py_name='mTaps_0_4'),
-        PfProperty('mTaps:0:5', 'r', 'DGS field mTaps:0:5 (r)', py_name='mTaps_0_5'),
-        PfProperty('mTaps:0:6', 'r', 'DGS field mTaps:0:6 (r)', py_name='mTaps_0_6'),
-        PfProperty('mTaps:0:7', 'r', 'DGS field mTaps:0:7 (r)', py_name='mTaps_0_7'),
-        PfProperty('mTaps:1:0', 'r', 'DGS field mTaps:1:0 (r)', py_name='mTaps_1_0'),
-        PfProperty('mTaps:1:1', 'r', 'DGS field mTaps:1:1 (r)', py_name='mTaps_1_1'),
-        PfProperty('mTaps:1:2', 'r', 'DGS field mTaps:1:2 (r)', py_name='mTaps_1_2'),
-        PfProperty('mTaps:1:3', 'r', 'DGS field mTaps:1:3 (r)', py_name='mTaps_1_3'),
-        PfProperty('mTaps:1:4', 'r', 'DGS field mTaps:1:4 (r)', py_name='mTaps_1_4'),
-        PfProperty('mTaps:1:5', 'r', 'DGS field mTaps:1:5 (r)', py_name='mTaps_1_5'),
-        PfProperty('mTaps:1:6', 'r', 'DGS field mTaps:1:6 (r)', py_name='mTaps_1_6'),
-        PfProperty('mTaps:1:7', 'r', 'DGS field mTaps:1:7 (r)', py_name='mTaps_1_7'),
-        PfProperty('mTaps:2:0', 'r', 'DGS field mTaps:2:0 (r)', py_name='mTaps_2_0'),
-        PfProperty('mTaps:2:1', 'r', 'DGS field mTaps:2:1 (r)', py_name='mTaps_2_1'),
-        PfProperty('mTaps:2:2', 'r', 'DGS field mTaps:2:2 (r)', py_name='mTaps_2_2'),
-        PfProperty('mTaps:2:3', 'r', 'DGS field mTaps:2:3 (r)', py_name='mTaps_2_3'),
-        PfProperty('mTaps:2:4', 'r', 'DGS field mTaps:2:4 (r)', py_name='mTaps_2_4'),
-        PfProperty('mTaps:2:5', 'r', 'DGS field mTaps:2:5 (r)', py_name='mTaps_2_5'),
-        PfProperty('mTaps:2:6', 'r', 'DGS field mTaps:2:6 (r)', py_name='mTaps_2_6'),
-        PfProperty('mTaps:2:7', 'r', 'DGS field mTaps:2:7 (r)', py_name='mTaps_2_7'),
-        PfProperty('iMeasTap', 'i', 'DGS field iMeasTap (i)', py_name='iMeasTap'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('nt3nm', 'i', 'DGS field nt3nm (i)', py_name='nt3nm'),
+        DgsProperty('n3tap_h', 'i', 'DGS field n3tap_h (i)', py_name='n3tap_h'),
+        DgsProperty('n3tap_m', 'i', 'DGS field n3tap_m (i)', py_name='n3tap_m'),
+        DgsProperty('n3tap_l', 'i', 'DGS field n3tap_l (i)', py_name='n3tap_l'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('i_auto_hl', 'i', 'DGS field i_auto_hl (i)', py_name='i_auto_hl'),
+        DgsProperty('ictrlside', 'i', 'DGS field ictrlside (i)', py_name='ictrlside'),
+        DgsProperty('ntrcn', 'i', 'DGS field ntrcn (i)', py_name='ntrcn'),
+        DgsProperty('t3ldc', 'i', 'DGS field t3ldc (i)', py_name='t3ldc'),
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+        DgsProperty('usp_low', 'r', 'DGS field usp_low (r)', py_name='usp_low'),
+        DgsProperty('usp_up', 'r', 'DGS field usp_up (r)', py_name='usp_up'),
+        DgsProperty('mTaps:SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
+        DgsProperty('mTaps:SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
+        DgsProperty('mTaps:0:0', 'r', 'DGS field mTaps:0:0 (r)', py_name='mTaps_0_0'),
+        DgsProperty('mTaps:0:1', 'r', 'DGS field mTaps:0:1 (r)', py_name='mTaps_0_1'),
+        DgsProperty('mTaps:0:2', 'r', 'DGS field mTaps:0:2 (r)', py_name='mTaps_0_2'),
+        DgsProperty('mTaps:0:3', 'r', 'DGS field mTaps:0:3 (r)', py_name='mTaps_0_3'),
+        DgsProperty('mTaps:0:4', 'r', 'DGS field mTaps:0:4 (r)', py_name='mTaps_0_4'),
+        DgsProperty('mTaps:0:5', 'r', 'DGS field mTaps:0:5 (r)', py_name='mTaps_0_5'),
+        DgsProperty('mTaps:0:6', 'r', 'DGS field mTaps:0:6 (r)', py_name='mTaps_0_6'),
+        DgsProperty('mTaps:0:7', 'r', 'DGS field mTaps:0:7 (r)', py_name='mTaps_0_7'),
+        DgsProperty('mTaps:1:0', 'r', 'DGS field mTaps:1:0 (r)', py_name='mTaps_1_0'),
+        DgsProperty('mTaps:1:1', 'r', 'DGS field mTaps:1:1 (r)', py_name='mTaps_1_1'),
+        DgsProperty('mTaps:1:2', 'r', 'DGS field mTaps:1:2 (r)', py_name='mTaps_1_2'),
+        DgsProperty('mTaps:1:3', 'r', 'DGS field mTaps:1:3 (r)', py_name='mTaps_1_3'),
+        DgsProperty('mTaps:1:4', 'r', 'DGS field mTaps:1:4 (r)', py_name='mTaps_1_4'),
+        DgsProperty('mTaps:1:5', 'r', 'DGS field mTaps:1:5 (r)', py_name='mTaps_1_5'),
+        DgsProperty('mTaps:1:6', 'r', 'DGS field mTaps:1:6 (r)', py_name='mTaps_1_6'),
+        DgsProperty('mTaps:1:7', 'r', 'DGS field mTaps:1:7 (r)', py_name='mTaps_1_7'),
+        DgsProperty('mTaps:2:0', 'r', 'DGS field mTaps:2:0 (r)', py_name='mTaps_2_0'),
+        DgsProperty('mTaps:2:1', 'r', 'DGS field mTaps:2:1 (r)', py_name='mTaps_2_1'),
+        DgsProperty('mTaps:2:2', 'r', 'DGS field mTaps:2:2 (r)', py_name='mTaps_2_2'),
+        DgsProperty('mTaps:2:3', 'r', 'DGS field mTaps:2:3 (r)', py_name='mTaps_2_3'),
+        DgsProperty('mTaps:2:4', 'r', 'DGS field mTaps:2:4 (r)', py_name='mTaps_2_4'),
+        DgsProperty('mTaps:2:5', 'r', 'DGS field mTaps:2:5 (r)', py_name='mTaps_2_5'),
+        DgsProperty('mTaps:2:6', 'r', 'DGS field mTaps:2:6 (r)', py_name='mTaps_2_6'),
+        DgsProperty('mTaps:2:7', 'r', 'DGS field mTaps:2:7 (r)', py_name='mTaps_2_7'),
+        DgsProperty('iMeasTap', 'i', 'DGS field iMeasTap (i)', py_name='iMeasTap'),
     ]
 
     def __init__(self) -> None:
@@ -830,27 +822,27 @@ class ElmTr3(DGSElement):
 class ElmXnet(DGSElement):
     element_type = 'ElmXnet'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        PfProperty('snss', 'r', 'DGS field snss (r)', py_name='snss'),
-        PfProperty('rntxn', 'r', 'DGS field rntxn (r)', py_name='rntxn'),
-        PfProperty('z2tz1', 'r', 'DGS field z2tz1 (r)', py_name='z2tz1'),
-        PfProperty('snssmin', 'r', 'DGS field snssmin (r)', py_name='snssmin'),
-        PfProperty('rntxnmin', 'r', 'DGS field rntxnmin (r)', py_name='rntxnmin'),
-        PfProperty('z2tz1min', 'r', 'DGS field z2tz1min (r)', py_name='z2tz1min'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('bustp', 'a:2', 'DGS field bustp (a:2)', py_name='bustp'),
-        PfProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
-        PfProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
-        PfProperty('phiini', 'r', 'DGS field phiini (r)', py_name='phiini'),
-        PfProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
-        PfProperty('cgnd', 'i', 'DGS field cgnd (i)', py_name='cgnd'),
-        PfProperty('iintgnd', 'i', 'DGS field iintgnd (i)', py_name='iintgnd'),
-        PfProperty('ikssmin', 'r', 'DGS field ikssmin (r)', py_name='ikssmin'),
-        PfProperty('r0tx0', 'r', 'DGS field r0tx0 (r)', py_name='r0tx0'),
-        PfProperty('r0tx0min', 'r', 'DGS field r0tx0min (r)', py_name='r0tx0min'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('snss', 'r', 'DGS field snss (r)', py_name='snss'),
+        DgsProperty('rntxn', 'r', 'DGS field rntxn (r)', py_name='rntxn'),
+        DgsProperty('z2tz1', 'r', 'DGS field z2tz1 (r)', py_name='z2tz1'),
+        DgsProperty('snssmin', 'r', 'DGS field snssmin (r)', py_name='snssmin'),
+        DgsProperty('rntxnmin', 'r', 'DGS field rntxnmin (r)', py_name='rntxnmin'),
+        DgsProperty('z2tz1min', 'r', 'DGS field z2tz1min (r)', py_name='z2tz1min'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('bustp', 'a:2', 'DGS field bustp (a:2)', py_name='bustp'),
+        DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
+        DgsProperty('phiini', 'r', 'DGS field phiini (r)', py_name='phiini'),
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+        DgsProperty('cgnd', 'i', 'DGS field cgnd (i)', py_name='cgnd'),
+        DgsProperty('iintgnd', 'i', 'DGS field iintgnd (i)', py_name='iintgnd'),
+        DgsProperty('ikssmin', 'r', 'DGS field ikssmin (r)', py_name='ikssmin'),
+        DgsProperty('r0tx0', 'r', 'DGS field r0tx0 (r)', py_name='r0tx0'),
+        DgsProperty('r0tx0min', 'r', 'DGS field r0tx0min (r)', py_name='r0tx0min'),
     ]
 
     def __init__(self) -> None:
@@ -880,12 +872,12 @@ class ElmXnet(DGSElement):
 class ElmZone(DGSElement):
     element_type = 'ElmZone'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('icolor', 'i', 'DGS field icolor (i)', py_name='icolor'),
-        PfProperty('curscale', 'r', 'DGS field curscale (r)', py_name='curscale'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('icolor', 'i', 'DGS field icolor (i)', py_name='icolor'),
+        DgsProperty('curscale', 'r', 'DGS field curscale (r)', py_name='curscale'),
     ]
 
     def __init__(self) -> None:
@@ -900,10 +892,10 @@ class ElmZone(DGSElement):
 class General(DGSElement):
     element_type = 'General'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('Descr', 'a:40', 'DGS field Descr (a:40)', py_name='Descr'),
-        PfProperty('Val', 'a:40', 'DGS field Val (a:40)', py_name='Val'),
-        PfProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='FID'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('Descr', 'a:40', 'DGS field Descr (a:40)', py_name='Descr'),
+        DgsProperty('Val', 'a:40', 'DGS field Val (a:40)', py_name='Val'),
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='FID'),
     ]
 
     def __init__(self) -> None:
@@ -916,10 +908,10 @@ class General(DGSElement):
 class IntFolder(DGSElement):
     element_type = 'IntFolder'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('iopt_typ', 'i', 'DGS field iopt_typ (i)', py_name='iopt_typ'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('iopt_typ', 'i', 'DGS field iopt_typ (i)', py_name='iopt_typ'),
     ]
 
     def __init__(self) -> None:
@@ -932,23 +924,23 @@ class IntFolder(DGSElement):
 class IntGrf(DGSElement):
     element_type = 'IntGrf'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('iCol', 'i', 'DGS field iCol (i)', py_name='iCol'),
-        PfProperty('iVis', 'i', 'DGS field iVis (i)', py_name='iVis'),
-        PfProperty('iLevel', 'i', 'DGS field iLevel (i)', py_name='iLevel'),
-        PfProperty('rCenterX', 'r', 'DGS field rCenterX (r)', py_name='rCenterX'),
-        PfProperty('rCenterY', 'r', 'DGS field rCenterY (r)', py_name='rCenterY'),
-        PfProperty('sSymNam', 'a:40', 'DGS field sSymNam (a:40)', py_name='sSymNam'),
-        PfProperty('pDataObj', 'p', 'DGS field pDataObj (p)', py_name='pDataObj'),
-        PfProperty('iRot', 'i', 'DGS field iRot (i)', py_name='iRot'),
-        PfProperty('rSizeX', 'r', 'DGS field rSizeX (r)', py_name='rSizeX'),
-        PfProperty('rSizeY', 'r', 'DGS field rSizeY (r)', py_name='rSizeY'),
-        PfProperty('sAttr:SIZEROW', 'i', 'DGS field sAttr:SIZEROW (i)', py_name='sAttr_SIZEROW'),
-        PfProperty('sAttr:0', 'a', 'DGS field sAttr:0 (a)', py_name='sAttr_0'),
-        PfProperty('sAttr:1', 'a', 'DGS field sAttr:1 (a)', py_name='sAttr_1'),
-        PfProperty('sAttr:2', 'a', 'DGS field sAttr:2 (a)', py_name='sAttr_2'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('iCol', 'i', 'DGS field iCol (i)', py_name='iCol'),
+        DgsProperty('iVis', 'i', 'DGS field iVis (i)', py_name='iVis'),
+        DgsProperty('iLevel', 'i', 'DGS field iLevel (i)', py_name='iLevel'),
+        DgsProperty('rCenterX', 'r', 'DGS field rCenterX (r)', py_name='rCenterX'),
+        DgsProperty('rCenterY', 'r', 'DGS field rCenterY (r)', py_name='rCenterY'),
+        DgsProperty('sSymNam', 'a:40', 'DGS field sSymNam (a:40)', py_name='sSymNam'),
+        DgsProperty('pDataObj', 'p', 'DGS field pDataObj (p)', py_name='pDataObj'),
+        DgsProperty('iRot', 'i', 'DGS field iRot (i)', py_name='iRot'),
+        DgsProperty('rSizeX', 'r', 'DGS field rSizeX (r)', py_name='rSizeX'),
+        DgsProperty('rSizeY', 'r', 'DGS field rSizeY (r)', py_name='rSizeY'),
+        DgsProperty('sAttr:SIZEROW', 'i', 'DGS field sAttr:SIZEROW (i)', py_name='sAttr_SIZEROW'),
+        DgsProperty('sAttr:0', 'a', 'DGS field sAttr:0 (a)', py_name='sAttr_0'),
+        DgsProperty('sAttr:1', 'a', 'DGS field sAttr:1 (a)', py_name='sAttr_1'),
+        DgsProperty('sAttr:2', 'a', 'DGS field sAttr:2 (a)', py_name='sAttr_2'),
     ]
 
     def __init__(self) -> None:
@@ -974,31 +966,31 @@ class IntGrf(DGSElement):
 class IntGrfcon(DGSElement):
     element_type = 'IntGrfcon'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('rX:SIZEROW', 'i', 'DGS field rX:SIZEROW (i)', py_name='rX_SIZEROW'),
-        PfProperty('rX:0', 'r', 'DGS field rX:0 (r)', py_name='rX_0'),
-        PfProperty('rX:1', 'r', 'DGS field rX:1 (r)', py_name='rX_1'),
-        PfProperty('rX:2', 'r', 'DGS field rX:2 (r)', py_name='rX_2'),
-        PfProperty('rX:3', 'r', 'DGS field rX:3 (r)', py_name='rX_3'),
-        PfProperty('rY:SIZEROW', 'i', 'DGS field rY:SIZEROW (i)', py_name='rY_SIZEROW'),
-        PfProperty('rY:0', 'r', 'DGS field rY:0 (r)', py_name='rY_0'),
-        PfProperty('rY:1', 'r', 'DGS field rY:1 (r)', py_name='rY_1'),
-        PfProperty('rY:2', 'r', 'DGS field rY:2 (r)', py_name='rY_2'),
-        PfProperty('rY:3', 'r', 'DGS field rY:3 (r)', py_name='rY_3'),
-        PfProperty('rX:4', 'r', 'DGS field rX:4 (r)', py_name='rX_4'),
-        PfProperty('rX:5', 'r', 'DGS field rX:5 (r)', py_name='rX_5'),
-        PfProperty('rX:6', 'r', 'DGS field rX:6 (r)', py_name='rX_6'),
-        PfProperty('rX:7', 'r', 'DGS field rX:7 (r)', py_name='rX_7'),
-        PfProperty('rX:8', 'r', 'DGS field rX:8 (r)', py_name='rX_8'),
-        PfProperty('rX:9', 'r', 'DGS field rX:9 (r)', py_name='rX_9'),
-        PfProperty('rY:4', 'r', 'DGS field rY:4 (r)', py_name='rY_4'),
-        PfProperty('rY:5', 'r', 'DGS field rY:5 (r)', py_name='rY_5'),
-        PfProperty('rY:6', 'r', 'DGS field rY:6 (r)', py_name='rY_6'),
-        PfProperty('rY:7', 'r', 'DGS field rY:7 (r)', py_name='rY_7'),
-        PfProperty('rY:8', 'r', 'DGS field rY:8 (r)', py_name='rY_8'),
-        PfProperty('rY:9', 'r', 'DGS field rY:9 (r)', py_name='rY_9'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('rX:SIZEROW', 'i', 'DGS field rX:SIZEROW (i)', py_name='rX_SIZEROW'),
+        DgsProperty('rX:0', 'r', 'DGS field rX:0 (r)', py_name='rX_0'),
+        DgsProperty('rX:1', 'r', 'DGS field rX:1 (r)', py_name='rX_1'),
+        DgsProperty('rX:2', 'r', 'DGS field rX:2 (r)', py_name='rX_2'),
+        DgsProperty('rX:3', 'r', 'DGS field rX:3 (r)', py_name='rX_3'),
+        DgsProperty('rY:SIZEROW', 'i', 'DGS field rY:SIZEROW (i)', py_name='rY_SIZEROW'),
+        DgsProperty('rY:0', 'r', 'DGS field rY:0 (r)', py_name='rY_0'),
+        DgsProperty('rY:1', 'r', 'DGS field rY:1 (r)', py_name='rY_1'),
+        DgsProperty('rY:2', 'r', 'DGS field rY:2 (r)', py_name='rY_2'),
+        DgsProperty('rY:3', 'r', 'DGS field rY:3 (r)', py_name='rY_3'),
+        DgsProperty('rX:4', 'r', 'DGS field rX:4 (r)', py_name='rX_4'),
+        DgsProperty('rX:5', 'r', 'DGS field rX:5 (r)', py_name='rX_5'),
+        DgsProperty('rX:6', 'r', 'DGS field rX:6 (r)', py_name='rX_6'),
+        DgsProperty('rX:7', 'r', 'DGS field rX:7 (r)', py_name='rX_7'),
+        DgsProperty('rX:8', 'r', 'DGS field rX:8 (r)', py_name='rX_8'),
+        DgsProperty('rX:9', 'r', 'DGS field rX:9 (r)', py_name='rX_9'),
+        DgsProperty('rY:4', 'r', 'DGS field rY:4 (r)', py_name='rY_4'),
+        DgsProperty('rY:5', 'r', 'DGS field rY:5 (r)', py_name='rY_5'),
+        DgsProperty('rY:6', 'r', 'DGS field rY:6 (r)', py_name='rY_6'),
+        DgsProperty('rY:7', 'r', 'DGS field rY:7 (r)', py_name='rY_7'),
+        DgsProperty('rY:8', 'r', 'DGS field rY:8 (r)', py_name='rY_8'),
+        DgsProperty('rY:9', 'r', 'DGS field rY:9 (r)', py_name='rY_9'),
     ]
 
     def __init__(self) -> None:
@@ -1032,13 +1024,13 @@ class IntGrfcon(DGSElement):
 class IntGrfnet(DGSElement):
     element_type = 'IntGrfnet'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('snap_on', 'i', 'DGS field snap_on (i)', py_name='snap_on'),
-        PfProperty('grid_on', 'i', 'DGS field grid_on (i)', py_name='grid_on'),
-        PfProperty('ortho_on', 'i', 'DGS field ortho_on (i)', py_name='ortho_on'),
-        PfProperty('pDataFolder', 'p', 'DGS field pDataFolder (p)', py_name='pDataFolder'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('snap_on', 'i', 'DGS field snap_on (i)', py_name='snap_on'),
+        DgsProperty('grid_on', 'i', 'DGS field grid_on (i)', py_name='grid_on'),
+        DgsProperty('ortho_on', 'i', 'DGS field ortho_on (i)', py_name='ortho_on'),
+        DgsProperty('pDataFolder', 'p', 'DGS field pDataFolder (p)', py_name='pDataFolder'),
     ]
 
     def __init__(self) -> None:
@@ -1054,15 +1046,15 @@ class IntGrfnet(DGSElement):
 class RelFuse(DGSElement):
     element_type = 'RelFuse'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
-        PfProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
-        PfProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
-        PfProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
-        PfProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('chr_name', 'a', 'DGS field chr_name (a)', py_name='chr_name'),
+        DgsProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
+        DgsProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
+        DgsProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
     ]
 
     def __init__(self) -> None:
@@ -1080,16 +1072,16 @@ class RelFuse(DGSElement):
 class StaCubic(DGSElement):
     element_type = 'StaCubic'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('obj_bus', 'i', 'DGS field obj_bus (i)', py_name='obj_bus'),
-        PfProperty('obj_id', 'p', 'DGS field obj_id (p)', py_name='obj_id'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('it2p1', 'i', 'DGS field it2p1 (i)', py_name='it2p1'),
-        PfProperty('it2p2', 'i', 'DGS field it2p2 (i)', py_name='it2p2'),
-        PfProperty('it2p3', 'i', 'DGS field it2p3 (i)', py_name='it2p3'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('obj_bus', 'i', 'DGS field obj_bus (i)', py_name='obj_bus'),
+        DgsProperty('obj_id', 'p', 'DGS field obj_id (p)', py_name='obj_id'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('it2p1', 'i', 'DGS field it2p1 (i)', py_name='it2p1'),
+        DgsProperty('it2p2', 'i', 'DGS field it2p2 (i)', py_name='it2p2'),
+        DgsProperty('it2p3', 'i', 'DGS field it2p3 (i)', py_name='it2p3'),
     ]
 
     def __init__(self) -> None:
@@ -1108,14 +1100,14 @@ class StaCubic(DGSElement):
 class StaSwitch(DGSElement):
     element_type = 'StaSwitch'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
-        PfProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        PfProperty('iUse', 'i', 'DGS field iUse (i)', py_name='iUse'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('on_off', 'i', 'DGS field on_off (i)', py_name='on_off'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('iUse', 'i', 'DGS field iUse (i)', py_name='iUse'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('aUsage', 'a', 'DGS field aUsage (a)', py_name='aUsage'),
     ]
 
     def __init__(self) -> None:
@@ -1132,23 +1124,23 @@ class StaSwitch(DGSElement):
 class TypAsmo(DGSElement):
     element_type = 'TypAsmo'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('i_mode', 'i', 'DGS field i_mode (i)', py_name='i_mode'),
-        PfProperty('aiazn', 'r', 'DGS field aiazn (r)', py_name='aiazn'),
-        PfProperty('amazn', 'r', 'DGS field amazn (r)', py_name='amazn'),
-        PfProperty('amkzn', 'r', 'DGS field amkzn (r)', py_name='amkzn'),
-        PfProperty('anend', 'r', 'DGS field anend (r)', py_name='anend'),
-        PfProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
-        PfProperty('effic', 'r', 'DGS field effic (r)', py_name='effic'),
-        PfProperty('frequ', 'r', 'DGS field frequ (r)', py_name='frequ'),
-        PfProperty('i_cage', 'i', 'DGS field i_cage (i)', py_name='i_cage'),
-        PfProperty('nppol', 'i', 'DGS field nppol (i)', py_name='nppol'),
-        PfProperty('pgn', 'r', 'DGS field pgn (r)', py_name='pgn'),
-        PfProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
-        PfProperty('xmrtr', 'r', 'DGS field xmrtr (r)', py_name='xmrtr'),
-        PfProperty('xstr', 'r', 'DGS field xstr (r)', py_name='xstr'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('i_mode', 'i', 'DGS field i_mode (i)', py_name='i_mode'),
+        DgsProperty('aiazn', 'r', 'DGS field aiazn (r)', py_name='aiazn'),
+        DgsProperty('amazn', 'r', 'DGS field amazn (r)', py_name='amazn'),
+        DgsProperty('amkzn', 'r', 'DGS field amkzn (r)', py_name='amkzn'),
+        DgsProperty('anend', 'r', 'DGS field anend (r)', py_name='anend'),
+        DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
+        DgsProperty('effic', 'r', 'DGS field effic (r)', py_name='effic'),
+        DgsProperty('frequ', 'r', 'DGS field frequ (r)', py_name='frequ'),
+        DgsProperty('i_cage', 'i', 'DGS field i_cage (i)', py_name='i_cage'),
+        DgsProperty('nppol', 'i', 'DGS field nppol (i)', py_name='nppol'),
+        DgsProperty('pgn', 'r', 'DGS field pgn (r)', py_name='pgn'),
+        DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
+        DgsProperty('xmrtr', 'r', 'DGS field xmrtr (r)', py_name='xmrtr'),
+        DgsProperty('xstr', 'r', 'DGS field xstr (r)', py_name='xstr'),
     ]
 
     def __init__(self) -> None:
@@ -1174,12 +1166,12 @@ class TypAsmo(DGSElement):
 class TypFuse(DGSElement):
     element_type = 'TypFuse'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('frq', 'r', 'DGS field frq (r)', py_name='frq'),
-        PfProperty('irat', 'r', 'DGS field irat (r)', py_name='irat'),
-        PfProperty('urat', 'r', 'DGS field urat (r)', py_name='urat'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('frq', 'r', 'DGS field frq (r)', py_name='frq'),
+        DgsProperty('irat', 'r', 'DGS field irat (r)', py_name='irat'),
+        DgsProperty('urat', 'r', 'DGS field urat (r)', py_name='urat'),
     ]
 
     def __init__(self) -> None:
@@ -1194,32 +1186,32 @@ class TypFuse(DGSElement):
 class TypLne(DGSElement):
     element_type = 'TypLne'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('uline', 'r', 'DGS field uline (r)', py_name='uline'),
-        PfProperty('sline', 'r', 'DGS field sline (r)', py_name='sline'),
-        PfProperty('aohl_', 'a:3', 'DGS field aohl_ (a:3)', py_name='aohl_'),
-        PfProperty('rline', 'r', 'DGS field rline (r)', py_name='rline'),
-        PfProperty('xline', 'r', 'DGS field xline (r)', py_name='xline'),
-        PfProperty('cline', 'r', 'DGS field cline (r)', py_name='cline'),
-        PfProperty('rline0', 'r', 'DGS field rline0 (r)', py_name='rline0'),
-        PfProperty('xline0', 'r', 'DGS field xline0 (r)', py_name='xline0'),
-        PfProperty('cline0', 'r', 'DGS field cline0 (r)', py_name='cline0'),
-        PfProperty('rtemp', 'r', 'DGS field rtemp (r)', py_name='rtemp'),
-        PfProperty('Ithr', 'r', 'DGS field Ithr (r)', py_name='Ithr'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('nlnph', 'i', 'DGS field nlnph (i)', py_name='nlnph'),
-        PfProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('InomAir', 'r', 'DGS field InomAir (r)', py_name='InomAir'),
-        PfProperty('cohl_', 'i', 'DGS field cohl_ (i)', py_name='cohl_'),
-        PfProperty('tmax', 'r', 'DGS field tmax (r)', py_name='tmax'),
-        PfProperty('systp', 'i', 'DGS field systp (i)', py_name='systp'),
-        PfProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
-        PfProperty('mlei', 'a:2', 'DGS field mlei (a:2)', py_name='mlei'),
-        PfProperty('bline', 'r', 'DGS field bline (r)', py_name='bline'),
-        PfProperty('bline0', 'r', 'DGS field bline0 (r)', py_name='bline0'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('uline', 'r', 'DGS field uline (r)', py_name='uline'),
+        DgsProperty('sline', 'r', 'DGS field sline (r)', py_name='sline'),
+        DgsProperty('aohl_', 'a:3', 'DGS field aohl_ (a:3)', py_name='aohl_'),
+        DgsProperty('rline', 'r', 'DGS field rline (r)', py_name='rline'),
+        DgsProperty('xline', 'r', 'DGS field xline (r)', py_name='xline'),
+        DgsProperty('cline', 'r', 'DGS field cline (r)', py_name='cline'),
+        DgsProperty('rline0', 'r', 'DGS field rline0 (r)', py_name='rline0'),
+        DgsProperty('xline0', 'r', 'DGS field xline0 (r)', py_name='xline0'),
+        DgsProperty('cline0', 'r', 'DGS field cline0 (r)', py_name='cline0'),
+        DgsProperty('rtemp', 'r', 'DGS field rtemp (r)', py_name='rtemp'),
+        DgsProperty('Ithr', 'r', 'DGS field Ithr (r)', py_name='Ithr'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('nlnph', 'i', 'DGS field nlnph (i)', py_name='nlnph'),
+        DgsProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('InomAir', 'r', 'DGS field InomAir (r)', py_name='InomAir'),
+        DgsProperty('cohl_', 'i', 'DGS field cohl_ (i)', py_name='cohl_'),
+        DgsProperty('tmax', 'r', 'DGS field tmax (r)', py_name='tmax'),
+        DgsProperty('systp', 'i', 'DGS field systp (i)', py_name='systp'),
+        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
+        DgsProperty('mlei', 'a:2', 'DGS field mlei (a:2)', py_name='mlei'),
+        DgsProperty('bline', 'r', 'DGS field bline (r)', py_name='bline'),
+        DgsProperty('bline0', 'r', 'DGS field bline0 (r)', py_name='bline0'),
     ]
 
     def __init__(self) -> None:
@@ -1254,22 +1246,22 @@ class TypLne(DGSElement):
 class TypLod(DGSElement):
     element_type = 'TypLod'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('kpu', 'r', 'DGS field kpu (r)', py_name='kpu'),
-        PfProperty('kqu', 'r', 'DGS field kqu (r)', py_name='kqu'),
-        PfProperty('systp', 'i', 'DGS field systp (i)', py_name='systp'),
-        PfProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('aP', 'r', 'DGS field aP (r)', py_name='aP'),
-        PfProperty('bP', 'r', 'DGS field bP (r)', py_name='bP'),
-        PfProperty('kpu0', 'r', 'DGS field kpu0 (r)', py_name='kpu0'),
-        PfProperty('kpu1', 'r', 'DGS field kpu1 (r)', py_name='kpu1'),
-        PfProperty('aQ', 'r', 'DGS field aQ (r)', py_name='aQ'),
-        PfProperty('bQ', 'r', 'DGS field bQ (r)', py_name='bQ'),
-        PfProperty('kqu0', 'r', 'DGS field kqu0 (r)', py_name='kqu0'),
-        PfProperty('kqu1', 'r', 'DGS field kqu1 (r)', py_name='kqu1'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('kpu', 'r', 'DGS field kpu (r)', py_name='kpu'),
+        DgsProperty('kqu', 'r', 'DGS field kqu (r)', py_name='kqu'),
+        DgsProperty('systp', 'i', 'DGS field systp (i)', py_name='systp'),
+        DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('aP', 'r', 'DGS field aP (r)', py_name='aP'),
+        DgsProperty('bP', 'r', 'DGS field bP (r)', py_name='bP'),
+        DgsProperty('kpu0', 'r', 'DGS field kpu0 (r)', py_name='kpu0'),
+        DgsProperty('kpu1', 'r', 'DGS field kpu1 (r)', py_name='kpu1'),
+        DgsProperty('aQ', 'r', 'DGS field aQ (r)', py_name='aQ'),
+        DgsProperty('bQ', 'r', 'DGS field bQ (r)', py_name='bQ'),
+        DgsProperty('kqu0', 'r', 'DGS field kqu0 (r)', py_name='kqu0'),
+        DgsProperty('kqu1', 'r', 'DGS field kqu1 (r)', py_name='kqu1'),
     ]
 
     def __init__(self) -> None:
@@ -1294,40 +1286,40 @@ class TypLod(DGSElement):
 class TypSym(DGSElement):
     element_type = 'TypSym'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
-        PfProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
-        PfProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
-        PfProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
-        PfProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
-        PfProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
-        PfProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
-        PfProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
-        PfProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
-        PfProperty('Q_min', 'r', 'DGS field Q_min (r)', py_name='Q_min'),
-        PfProperty('Q_max', 'r', 'DGS field Q_max (r)', py_name='Q_max'),
-        PfProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
-        PfProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
-        PfProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
-        PfProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
-        PfProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
-        PfProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
-        PfProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
-        PfProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
-        PfProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
-        PfProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
-        PfProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
-        PfProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
-        PfProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
-        PfProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
-        PfProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
-        PfProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
-        PfProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
-        PfProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
+        DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
+        DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
+        DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
+        DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
+        DgsProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
+        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        DgsProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
+        DgsProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
+        DgsProperty('Q_min', 'r', 'DGS field Q_min (r)', py_name='Q_min'),
+        DgsProperty('Q_max', 'r', 'DGS field Q_max (r)', py_name='Q_max'),
+        DgsProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
+        DgsProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
+        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        DgsProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
+        DgsProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
+        DgsProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
+        DgsProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
+        DgsProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
+        DgsProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
+        DgsProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
+        DgsProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
+        DgsProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
+        DgsProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
+        DgsProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
+        DgsProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
+        DgsProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
+        DgsProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
+        DgsProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
     ]
 
     def __init__(self) -> None:
@@ -1370,34 +1362,34 @@ class TypSym(DGSElement):
 class TypTr2(DGSElement):
     element_type = 'TypTr2'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('strn', 'r', 'DGS field strn (r)', py_name='strn'),
-        PfProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
-        PfProperty('utrn_h', 'r', 'DGS field utrn_h (r)', py_name='utrn_h'),
-        PfProperty('utrn_l', 'r', 'DGS field utrn_l (r)', py_name='utrn_l'),
-        PfProperty('uktr', 'r', 'DGS field uktr (r)', py_name='uktr'),
-        PfProperty('pcutr', 'r', 'DGS field pcutr (r)', py_name='pcutr'),
-        PfProperty('uk0tr', 'r', 'DGS field uk0tr (r)', py_name='uk0tr'),
-        PfProperty('ur0tr', 'r', 'DGS field ur0tr (r)', py_name='ur0tr'),
-        PfProperty('tr2cn_h', 'a:2', 'DGS field tr2cn_h (a:2)', py_name='tr2cn_h'),
-        PfProperty('tr2cn_l', 'a:2', 'DGS field tr2cn_l (a:2)', py_name='tr2cn_l'),
-        PfProperty('nt2ag', 'r', 'DGS field nt2ag (r)', py_name='nt2ag'),
-        PfProperty('curmg', 'r', 'DGS field curmg (r)', py_name='curmg'),
-        PfProperty('pfe', 'r', 'DGS field pfe (r)', py_name='pfe'),
-        PfProperty('zx0hl_n', 'r', 'DGS field zx0hl_n (r)', py_name='zx0hl_n'),
-        PfProperty('tap_side', 'i', 'DGS field tap_side (i)', py_name='tap_side'),
-        PfProperty('dutap', 'r', 'DGS field dutap (r)', py_name='dutap'),
-        PfProperty('phitr', 'r', 'DGS field phitr (r)', py_name='phitr'),
-        PfProperty('nntap0', 'i', 'DGS field nntap0 (i)', py_name='nntap0'),
-        PfProperty('ntpmn', 'i', 'DGS field ntpmn (i)', py_name='ntpmn'),
-        PfProperty('ntpmx', 'i', 'DGS field ntpmx (i)', py_name='ntpmx'),
-        PfProperty('manuf', 'a:20', 'DGS field manuf (a:20)', py_name='manuf'),
-        PfProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('nt2ph', 'i', 'DGS field nt2ph (i)', py_name='nt2ph'),
-        PfProperty('itapch', 'i', 'DGS field itapch (i)', py_name='itapch'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('strn', 'r', 'DGS field strn (r)', py_name='strn'),
+        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
+        DgsProperty('utrn_h', 'r', 'DGS field utrn_h (r)', py_name='utrn_h'),
+        DgsProperty('utrn_l', 'r', 'DGS field utrn_l (r)', py_name='utrn_l'),
+        DgsProperty('uktr', 'r', 'DGS field uktr (r)', py_name='uktr'),
+        DgsProperty('pcutr', 'r', 'DGS field pcutr (r)', py_name='pcutr'),
+        DgsProperty('uk0tr', 'r', 'DGS field uk0tr (r)', py_name='uk0tr'),
+        DgsProperty('ur0tr', 'r', 'DGS field ur0tr (r)', py_name='ur0tr'),
+        DgsProperty('tr2cn_h', 'a:2', 'DGS field tr2cn_h (a:2)', py_name='tr2cn_h'),
+        DgsProperty('tr2cn_l', 'a:2', 'DGS field tr2cn_l (a:2)', py_name='tr2cn_l'),
+        DgsProperty('nt2ag', 'r', 'DGS field nt2ag (r)', py_name='nt2ag'),
+        DgsProperty('curmg', 'r', 'DGS field curmg (r)', py_name='curmg'),
+        DgsProperty('pfe', 'r', 'DGS field pfe (r)', py_name='pfe'),
+        DgsProperty('zx0hl_n', 'r', 'DGS field zx0hl_n (r)', py_name='zx0hl_n'),
+        DgsProperty('tap_side', 'i', 'DGS field tap_side (i)', py_name='tap_side'),
+        DgsProperty('dutap', 'r', 'DGS field dutap (r)', py_name='dutap'),
+        DgsProperty('phitr', 'r', 'DGS field phitr (r)', py_name='phitr'),
+        DgsProperty('nntap0', 'i', 'DGS field nntap0 (i)', py_name='nntap0'),
+        DgsProperty('ntpmn', 'i', 'DGS field ntpmn (i)', py_name='ntpmn'),
+        DgsProperty('ntpmx', 'i', 'DGS field ntpmx (i)', py_name='ntpmx'),
+        DgsProperty('manuf', 'a:20', 'DGS field manuf (a:20)', py_name='manuf'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('nt2ph', 'i', 'DGS field nt2ph (i)', py_name='nt2ph'),
+        DgsProperty('itapch', 'i', 'DGS field itapch (i)', py_name='itapch'),
     ]
 
     def __init__(self) -> None:
@@ -1434,53 +1426,53 @@ class TypTr2(DGSElement):
 class TypTr3(DGSElement):
     element_type = 'TypTr3'
     properties_list = [
-        PfProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        PfProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
-        PfProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        PfProperty('curm3', 'r', 'DGS field curm3 (r)', py_name='curm3'),
-        PfProperty('du3tp_h', 'r', 'DGS field du3tp_h (r)', py_name='du3tp_h'),
-        PfProperty('du3tp_l', 'r', 'DGS field du3tp_l (r)', py_name='du3tp_l'),
-        PfProperty('du3tp_m', 'r', 'DGS field du3tp_m (r)', py_name='du3tp_m'),
-        PfProperty('n3tmn_h', 'i', 'DGS field n3tmn_h (i)', py_name='n3tmn_h'),
-        PfProperty('n3tmn_l', 'i', 'DGS field n3tmn_l (i)', py_name='n3tmn_l'),
-        PfProperty('n3tmn_m', 'i', 'DGS field n3tmn_m (i)', py_name='n3tmn_m'),
-        PfProperty('n3tmx_h', 'i', 'DGS field n3tmx_h (i)', py_name='n3tmx_h'),
-        PfProperty('n3tmx_l', 'i', 'DGS field n3tmx_l (i)', py_name='n3tmx_l'),
-        PfProperty('n3tmx_m', 'i', 'DGS field n3tmx_m (i)', py_name='n3tmx_m'),
-        PfProperty('n3tp0_h', 'i', 'DGS field n3tp0_h (i)', py_name='n3tp0_h'),
-        PfProperty('n3tp0_l', 'i', 'DGS field n3tp0_l (i)', py_name='n3tp0_l'),
-        PfProperty('n3tp0_m', 'i', 'DGS field n3tp0_m (i)', py_name='n3tp0_m'),
-        PfProperty('nt3ag_h', 'r', 'DGS field nt3ag_h (r)', py_name='nt3ag_h'),
-        PfProperty('nt3ag_l', 'r', 'DGS field nt3ag_l (r)', py_name='nt3ag_l'),
-        PfProperty('nt3ag_m', 'r', 'DGS field nt3ag_m (r)', py_name='nt3ag_m'),
-        PfProperty('pcut3_h', 'r', 'DGS field pcut3_h (r)', py_name='pcut3_h'),
-        PfProperty('pcut3_l', 'r', 'DGS field pcut3_l (r)', py_name='pcut3_l'),
-        PfProperty('pcut3_m', 'r', 'DGS field pcut3_m (r)', py_name='pcut3_m'),
-        PfProperty('pfe', 'r', 'DGS field pfe (r)', py_name='pfe'),
-        PfProperty('ph3tr_h', 'r', 'DGS field ph3tr_h (r)', py_name='ph3tr_h'),
-        PfProperty('ph3tr_l', 'r', 'DGS field ph3tr_l (r)', py_name='ph3tr_l'),
-        PfProperty('ph3tr_m', 'r', 'DGS field ph3tr_m (r)', py_name='ph3tr_m'),
-        PfProperty('strn3_h', 'r', 'DGS field strn3_h (r)', py_name='strn3_h'),
-        PfProperty('strn3_l', 'r', 'DGS field strn3_l (r)', py_name='strn3_l'),
-        PfProperty('strn3_m', 'r', 'DGS field strn3_m (r)', py_name='strn3_m'),
-        PfProperty('tr3cn_h', 'a', 'DGS field tr3cn_h (a)', py_name='tr3cn_h'),
-        PfProperty('tr3cn_l', 'a', 'DGS field tr3cn_l (a)', py_name='tr3cn_l'),
-        PfProperty('tr3cn_m', 'a', 'DGS field tr3cn_m (a)', py_name='tr3cn_m'),
-        PfProperty('uk0hl', 'r', 'DGS field uk0hl (r)', py_name='uk0hl'),
-        PfProperty('uk0hm', 'r', 'DGS field uk0hm (r)', py_name='uk0hm'),
-        PfProperty('uk0ml', 'r', 'DGS field uk0ml (r)', py_name='uk0ml'),
-        PfProperty('uktr3_h', 'r', 'DGS field uktr3_h (r)', py_name='uktr3_h'),
-        PfProperty('uktr3_l', 'r', 'DGS field uktr3_l (r)', py_name='uktr3_l'),
-        PfProperty('uktr3_m', 'r', 'DGS field uktr3_m (r)', py_name='uktr3_m'),
-        PfProperty('ur0hl', 'r', 'DGS field ur0hl (r)', py_name='ur0hl'),
-        PfProperty('ur0hm', 'r', 'DGS field ur0hm (r)', py_name='ur0hm'),
-        PfProperty('ur0ml', 'r', 'DGS field ur0ml (r)', py_name='ur0ml'),
-        PfProperty('utrn3_h', 'r', 'DGS field utrn3_h (r)', py_name='utrn3_h'),
-        PfProperty('utrn3_l', 'r', 'DGS field utrn3_l (r)', py_name='utrn3_l'),
-        PfProperty('utrn3_m', 'r', 'DGS field utrn3_m (r)', py_name='utrn3_m'),
-        PfProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        PfProperty('itapos', 'i', 'DGS field itapos (i)', py_name='itapos'),
-        PfProperty('i3loc', 'i', 'DGS field i3loc (i)', py_name='i3loc'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('curm3', 'r', 'DGS field curm3 (r)', py_name='curm3'),
+        DgsProperty('du3tp_h', 'r', 'DGS field du3tp_h (r)', py_name='du3tp_h'),
+        DgsProperty('du3tp_l', 'r', 'DGS field du3tp_l (r)', py_name='du3tp_l'),
+        DgsProperty('du3tp_m', 'r', 'DGS field du3tp_m (r)', py_name='du3tp_m'),
+        DgsProperty('n3tmn_h', 'i', 'DGS field n3tmn_h (i)', py_name='n3tmn_h'),
+        DgsProperty('n3tmn_l', 'i', 'DGS field n3tmn_l (i)', py_name='n3tmn_l'),
+        DgsProperty('n3tmn_m', 'i', 'DGS field n3tmn_m (i)', py_name='n3tmn_m'),
+        DgsProperty('n3tmx_h', 'i', 'DGS field n3tmx_h (i)', py_name='n3tmx_h'),
+        DgsProperty('n3tmx_l', 'i', 'DGS field n3tmx_l (i)', py_name='n3tmx_l'),
+        DgsProperty('n3tmx_m', 'i', 'DGS field n3tmx_m (i)', py_name='n3tmx_m'),
+        DgsProperty('n3tp0_h', 'i', 'DGS field n3tp0_h (i)', py_name='n3tp0_h'),
+        DgsProperty('n3tp0_l', 'i', 'DGS field n3tp0_l (i)', py_name='n3tp0_l'),
+        DgsProperty('n3tp0_m', 'i', 'DGS field n3tp0_m (i)', py_name='n3tp0_m'),
+        DgsProperty('nt3ag_h', 'r', 'DGS field nt3ag_h (r)', py_name='nt3ag_h'),
+        DgsProperty('nt3ag_l', 'r', 'DGS field nt3ag_l (r)', py_name='nt3ag_l'),
+        DgsProperty('nt3ag_m', 'r', 'DGS field nt3ag_m (r)', py_name='nt3ag_m'),
+        DgsProperty('pcut3_h', 'r', 'DGS field pcut3_h (r)', py_name='pcut3_h'),
+        DgsProperty('pcut3_l', 'r', 'DGS field pcut3_l (r)', py_name='pcut3_l'),
+        DgsProperty('pcut3_m', 'r', 'DGS field pcut3_m (r)', py_name='pcut3_m'),
+        DgsProperty('pfe', 'r', 'DGS field pfe (r)', py_name='pfe'),
+        DgsProperty('ph3tr_h', 'r', 'DGS field ph3tr_h (r)', py_name='ph3tr_h'),
+        DgsProperty('ph3tr_l', 'r', 'DGS field ph3tr_l (r)', py_name='ph3tr_l'),
+        DgsProperty('ph3tr_m', 'r', 'DGS field ph3tr_m (r)', py_name='ph3tr_m'),
+        DgsProperty('strn3_h', 'r', 'DGS field strn3_h (r)', py_name='strn3_h'),
+        DgsProperty('strn3_l', 'r', 'DGS field strn3_l (r)', py_name='strn3_l'),
+        DgsProperty('strn3_m', 'r', 'DGS field strn3_m (r)', py_name='strn3_m'),
+        DgsProperty('tr3cn_h', 'a', 'DGS field tr3cn_h (a)', py_name='tr3cn_h'),
+        DgsProperty('tr3cn_l', 'a', 'DGS field tr3cn_l (a)', py_name='tr3cn_l'),
+        DgsProperty('tr3cn_m', 'a', 'DGS field tr3cn_m (a)', py_name='tr3cn_m'),
+        DgsProperty('uk0hl', 'r', 'DGS field uk0hl (r)', py_name='uk0hl'),
+        DgsProperty('uk0hm', 'r', 'DGS field uk0hm (r)', py_name='uk0hm'),
+        DgsProperty('uk0ml', 'r', 'DGS field uk0ml (r)', py_name='uk0ml'),
+        DgsProperty('uktr3_h', 'r', 'DGS field uktr3_h (r)', py_name='uktr3_h'),
+        DgsProperty('uktr3_l', 'r', 'DGS field uktr3_l (r)', py_name='uktr3_l'),
+        DgsProperty('uktr3_m', 'r', 'DGS field uktr3_m (r)', py_name='uktr3_m'),
+        DgsProperty('ur0hl', 'r', 'DGS field ur0hl (r)', py_name='ur0hl'),
+        DgsProperty('ur0hm', 'r', 'DGS field ur0hm (r)', py_name='ur0hm'),
+        DgsProperty('ur0ml', 'r', 'DGS field ur0ml (r)', py_name='ur0ml'),
+        DgsProperty('utrn3_h', 'r', 'DGS field utrn3_h (r)', py_name='utrn3_h'),
+        DgsProperty('utrn3_l', 'r', 'DGS field utrn3_l (r)', py_name='utrn3_l'),
+        DgsProperty('utrn3_m', 'r', 'DGS field utrn3_m (r)', py_name='utrn3_m'),
+        DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
+        DgsProperty('itapos', 'i', 'DGS field itapos (i)', py_name='itapos'),
+        DgsProperty('i3loc', 'i', 'DGS field i3loc (i)', py_name='i3loc'),
     ]
 
     def __init__(self) -> None:
