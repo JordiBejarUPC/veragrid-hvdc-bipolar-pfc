@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class DgsProperty:
@@ -125,15 +125,15 @@ class DGSElement:
         obj = cls()
 
         for prop in cls.properties_list:
-            name = prop.name
 
-            if name in header_map:
-                idx = header_map.get(name, -1)
+            idx = header_map.get(prop.name, None)
+
+            if idx is not None:
 
                 if -1 < idx < len(parts):
                     raw = parts[idx]
                     value = prop.parse(raw)
-                    setattr(obj, name, value)
+                    setattr(obj, prop.py_name, value)
                 else:
                     # Column declared but missing in this line
                     pass
@@ -159,109 +159,6 @@ class DGSElement:
             return getattr(self, "loc_name")
         else:
             return getattr(self, "ID")
-
-
-# NOTE: Header type conflicts observed across input DGS files.
-# First-seen type was kept; later differing types are listed below.
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmLod.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmLod.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmShnt.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmShnt.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmSym.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmSym.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr2.sernum: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmTr3.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmTr3.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example1.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - StaSwitch.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypLne.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypLne.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - TypLne.aohl_: kept(a:3) vs seen(a) in Example1.dgs
-# - TypLod.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypSym.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypTr2.loc_name: kept(a:40) vs seen(a) in Example1.dgs
-# - TypTr2.chr_name: kept(a:20) vs seen(a) in Example1.dgs
-# - TypTr2.manuf: kept(a:20) vs seen(a) in Example1.dgs
-# - TypTr2.tr2cn_h: kept(a:2) vs seen(a) in Example1.dgs
-# - TypTr2.tr2cn_l: kept(a:2) vs seen(a) in Example1.dgs
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmLod.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmLod.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmShnt.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmShnt.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmSym.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmSym.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr2.sernum: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmTr3.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmTr3.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example2.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example2.dgs
-# - StaSwitch.loc_name: kept(a:40) vs seen(a) in Example2.dgs
-# - ElmFeeder.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmLne.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmLne.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmNet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTerm.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTerm.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmTr2.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmTr2.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmXnet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - ElmXnet.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - ElmXnet.bustp: kept(a:2) vs seen(a) in Example4.dgs
-# - IntGrf.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrf.sSymNam: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrfcon.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - IntGrfnet.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - StaCubic.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - StaCubic.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypLne.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - TypLne.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypLne.aohl_: kept(a:3) vs seen(a) in Example4.dgs
-# - TypTr2.loc_name: kept(a:40) vs seen(a) in Example4.dgs
-# - TypTr2.chr_name: kept(a:20) vs seen(a) in Example4.dgs
-# - TypTr2.manuf: kept(a:20) vs seen(a) in Example4.dgs
-# - TypTr2.tr2cn_h: kept(a:2) vs seen(a) in Example4.dgs
-# - TypTr2.tr2cn_l: kept(a:2) vs seen(a) in Example4.dgs
-# - ElmLodlv.loc_name: kept(a) vs seen(a:40) in PLATOS grid 3.dgs
-# - ElmLodlv.for_name: kept(a) vs seen(a:40) in PLATOS grid 3.dgs
-# - ElmLodlv.chr_name: kept(a) vs seen(a:20) in PLATOS grid 3.dgs
-# - ElmCoup.loc_name: kept(a) vs seen(a:40) in Switches-missing-voltage.dgs
-# - ElmCoup.aUsage: kept(a) vs seen(a:4) in Switches-missing-voltage.dgs
-# - ElmCoup.loc_name: kept(a) vs seen(a:40) in Switches-negative-voltage.dgs
-# - ElmCoup.aUsage: kept(a) vs seen(a:4) in Switches-negative-voltage.dgs
-# - ElmSubstat.loc_name: kept(a) vs seen(a:40) in VoltageLevelsAndSubstations.dgs
-# - TypTr3.loc_name: kept(a) vs seen(a:40) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_h: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_m: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
-# - TypTr3.tr3cn_l: kept(a) vs seen(a:2) in ThreeMIB_T3W_phase_winding12.dgs
 
 
 class ChaRef(DGSElement):
@@ -779,24 +676,24 @@ class ElmTr2(DGSElement):
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
-        DgsProperty('nntap', 'i', 'DGS field nntap (i)', py_name='nntap'),
-        DgsProperty('sernum', 'a:20', 'DGS field sernum (a:20)', py_name='sernum'),
-        DgsProperty('constr', 'i', 'DGS field constr (i)', py_name='constr'),
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+        DgsProperty('nntap', 'i', 'Tap Changer 1: Tap Position', py_name='nntap'),
+        DgsProperty('sernum', 'a:20', 'Serial Number (a:20)', py_name='sernum'),
+        DgsProperty('constr', 'i', 'Year of Construction', py_name='constr'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('cgnd_h', 'i', 'DGS field cgnd_h (i)', py_name='cgnd_h'),
-        DgsProperty('cgnd_l', 'i', 'DGS field cgnd_l (i)', py_name='cgnd_l'),
-        DgsProperty('i_auto', 'i', 'DGS field i_auto (i)', py_name='i_auto'),
-        DgsProperty('ntrcn', 'i', 'DGS field ntrcn (i)', py_name='ntrcn'),
-        DgsProperty('ratfac', 'r', 'DGS field ratfac (r)', py_name='ratfac'),
+        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected', py_name='cgnd_h'),
+        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected', py_name='cgnd_l'),
+        DgsProperty('i_auto', 'i', 'Auto Transformer', py_name='i_auto'),
+        DgsProperty('ntrcn', 'i', 'Controller, Tap Changer 1: Automatic Tap Changing', py_name='ntrcn'),
+        DgsProperty('ratfac', 'r', 'Rating Factor', py_name='ratfac'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('ntnum', 'i', 'DGS field ntnum (i)', py_name='ntnum'),
         DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
         DgsProperty('usp_low', 'r', 'DGS field usp_low (r)', py_name='usp_low'),
         DgsProperty('usp_up', 'r', 'DGS field usp_up (r)', py_name='usp_up'),
         DgsProperty('t2ldc', 'i', 'DGS field t2ldc (i)', py_name='t2ldc'),
-        DgsProperty('mTaps:SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
-        DgsProperty('mTaps:SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
+        DgsProperty('mTaps_SIZEROW', 'i', 'DGS field mTaps:SIZEROW (i)', py_name='mTaps_SIZEROW'),
+        DgsProperty('mTaps_SIZECOL', 'i', 'DGS field mTaps:SIZECOL (i)', py_name='mTaps_SIZECOL'),
     ]
 
     def __init__(self) -> None:
