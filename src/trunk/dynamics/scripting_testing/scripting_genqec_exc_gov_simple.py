@@ -36,10 +36,6 @@ import VeraGridEngine.api as gce
 # Build VeraGrid object
 ###########################################################################################################################
 
-def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars:
-        if name == var.name:
-            return var
 
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
