@@ -1090,11 +1090,12 @@ class DiffBlockSolver(BlockSolver):
             n_iter = 0
             current_time = t[step_idx]
             params_current = self._params_fn(float(current_time))
+            params_current[-2] = h
             # We compute dx for the next step
             # dx = self.compute_dx(x_new, lag, h)
             # print(f'Step {step_idx} read')
             if step_idx == 0:
-                tol = 1e-3
+                tol = 1e-5
                 initial_step_start = time.time()
             else:
                 tol = 1e-7
@@ -1160,9 +1161,13 @@ class DiffBlockSolver(BlockSolver):
                     else:
                         print(f"System bad initialized. DAE resiudal is {residual}.")
                         print(f'rhs is {rhs}')
-                        non_zero_indexes = np.where(np.abs(rhs) > 1e-6)[0]
-                        # eqs = [self._algebraic_eqs[i] for i in non_zero_indexes]
-                        # print(f'eqs are {eqs}')
+                        non_zero_indexes = np.where(np.abs(rhs) > 0.001)[0]
+                        all_eq = self._state_eqs + self._algebraic_eqs 
+                        print("eqs are")
+                        for i in non_zero_indexes:
+                            eq = all_eq[i]
+                            print(f"eq {eq} with error {rhs[i]}")
+                        exit()
                 else:
                     max_iter = max_iter_0
                     # Jf = self.jacobian_implicit(xnew_lags, params_current, h)

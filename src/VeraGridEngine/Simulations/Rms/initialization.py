@@ -288,7 +288,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     elif v_init.uid == var.uid:
                         continue
                     elif v_init in comp_model.event_dict.keys():
-                        if comp_model.event_dict[v_init] is not UNDEFINED or v_init.uid != var.uid:
+                        if comp_model.event_dict[v_init] is not UNDEFINED:
                             continue
                     else:
                         calculate_now = False

@@ -147,7 +147,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
-
+    pi = math.pi
     templ = RmsModelTemplate()
 
     # Inputs
@@ -281,8 +281,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
         algebraic_eqs=[
-            Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
-            Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
+            Vd - (-inputs[0] * sin(inputs[1] - delta)),  # from input block
+            Vq - (inputs[0] * cos(inputs[1] - delta)),  # from input block
             Pg - (Vd * Id + Vq * Iq),  # from input block
             Qg - (Vq * Id - Vd * Iq),  # from input block
             Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
@@ -312,8 +312,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Sat_d * Xd_sat - (Xd - Xl + Xl * Sat_d),
             Sat_q * Xq_sat - (Xq - Xl + Xl * Sat_q),
             # flux
-            V_dag - (Vd - Ra * Id + Xq_2prime_sat * Iq + Iq * Ra + Id * Xl),
-            V_qag - (Vq - Ra * Iq + Xd_2prime_sat * Id + Id * Ra - Iq * Xl),
+            V_dag - (Vd + Iq * Ra + Id * Xl),
+            V_qag - (Vq + Id * Ra - Iq * Xl),
             omega * Psi_ag - ws * sqrt(V_qag * V_qag + V_dag * V_dag),
             Sat_d - (Const(1) + Sa),
             Sat_q - (Const(1) + Sa),
@@ -344,8 +344,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            V_dag: -Vrag_expr*sin(delta) +Viag_expr*cos(delta),
-            V_qag:  Vrag_expr*cos(delta) -Viag_expr*sin(delta),
+            V_dag: Vrag_expr*sin(delta - inputs[1]) - Viag_expr*cos(delta - inputs[1]),
+            V_qag: Vrag_expr*cos(delta - inputs[1]) + Viag_expr*sin(delta - inputs[1]),
 
             #Saturated Resistances
             Sat_d: 1 + Sa,
@@ -358,8 +358,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Xq_sat : (Xq - Xl + Xl * Sat_q)/Sat_q,
 
             #Terminal Voltages and Intensities in dq frame
-            Vd: (inputs[0] * sin(delta - inputs[1])),
-            Vq: (inputs[0] * cos(delta - inputs[1])),
+            Vd: -(inputs[0] * sin(inputs[1] - delta)),
+            Vq: (inputs[0] * cos(inputs[1] - delta)),
             Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
             Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
