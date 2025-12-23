@@ -653,32 +653,26 @@ class IoMain(ConfigurationMain):
         :return: FileSavingOptions
         """
 
-        if self.ui.saveResultsCheckBox.isChecked():
-            sessions_data = self.session.get_save_data()
-        else:
-            sessions_data = list()
+        # get save data
+        sessions_data = self.session.get_save_data() if self.ui.saveResultsCheckBox.isChecked() else list()
 
         # get json files to store
         json_files = {"gui_config": self.get_gui_config_data()}
 
         cgmes_version = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
-
         cgmes_profiles_txt = gf.get_checked_values(mdl=self.ui.cgmes_profiles_listView.model())
         cgmes_profiles = [self.cgmes_profiles_dict[e] for e in cgmes_profiles_txt]
-
-        one_file_per_profile = self.ui.cgmes_single_profile_per_file_checkBox.isChecked()
-
+        cgmes_one_file_per_profile = self.ui.cgmes_single_profile_per_file_checkBox.isChecked()
         cgmes_map_areas_like_raw = self.ui.cgmes_map_regions_like_raw_checkBox.isChecked()
 
         raw_version = self.ui.raw_export_version_comboBox.currentText()
 
         options = filedrv.FileSavingOptions(cgmes_boundary_set=self.current_boundary_set,
-                                            simulation_drivers=self.get_simulations(),
                                             sessions_data=sessions_data,
                                             dictionary_of_json_files=json_files,
                                             cgmes_version=cgmes_version,
                                             cgmes_profiles=cgmes_profiles,
-                                            cgmes_one_file_per_profile=one_file_per_profile,
+                                            cgmes_one_file_per_profile=cgmes_one_file_per_profile,
                                             cgmes_map_areas_like_raw=cgmes_map_areas_like_raw,
                                             raw_version=raw_version)
 
@@ -737,7 +731,7 @@ class IoMain(ConfigurationMain):
             # register as the latest file driver
             self.last_file_driver = self.save_file_thread_object
 
-            self.stuff_running_now.append('file_save')
+            self.stuff_running_now.append("file_save")
 
         else:
             warning_msg('There is a file being processed..')
