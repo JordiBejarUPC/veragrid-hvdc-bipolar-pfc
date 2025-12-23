@@ -24,7 +24,7 @@ from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames,
 from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
 from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
 from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
-from VeraGridEngine.IO.dgs.dgs_parser import dgs_to_circuit
+from VeraGridEngine.IO.dgs.dgs_circuit import dgs_to_circuit
 from VeraGridEngine.IO.others.dpx_parser import load_dpx
 from VeraGridEngine.IO.others.ipa_parser import load_iPA
 from VeraGridEngine.IO.veragrid.json_parser import parse_json, parse_json_data_v2, parse_json_data_v3
