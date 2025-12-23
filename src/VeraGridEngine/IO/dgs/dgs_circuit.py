@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-
+import math
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
 import VeraGridEngine.Devices as dev
@@ -374,6 +374,7 @@ class DgsCircuit:
         grid = dev.MultiCircuit()
 
         def _ref_id(x):
+            # TODO: never have functions inside functions, remove this from here
             if x is None:
                 return None
             s = str(x)
@@ -409,6 +410,7 @@ class DgsCircuit:
             cubics_by_objid.setdefault(obj, []).append(c)
 
         def get_terminal_ids(element_id: str):
+            # TODO: never have functions inside functions, remove this from here
             cbs = cubics_by_objid.get(_ref_id(element_id), [])
             # fold_id suele ser el ID del ElmTerm “padre”
             return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None]
