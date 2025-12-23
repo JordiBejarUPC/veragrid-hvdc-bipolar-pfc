@@ -36,8 +36,8 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
     b = Var("b")
     bsh = Var("bsh")
 
-    templ.block.event_dict[g] = Const(0.0)
-    templ.block.event_dict[b] = Const(0.0)
+    templ.block.event_dict[g] = Const(5)
+    templ.block.event_dict[b] = Const(-12)
     templ.block.event_dict[bsh] = Const(0.0)
 
     templ.block.algebraic_vars = [Pf, Pt, Qf, Qt]

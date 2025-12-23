@@ -49,9 +49,9 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     vf = Var("vf")
     tm0 = Var("tm0")
 
-    templ.block.event_dict[R1] = Const(0.0)
-    templ.block.event_dict[X1] = Const(0.3)
-    templ.block.event_dict[freq] = Const(60.0)
+    templ.block.event_dict[R1] = Const(0.3)
+    templ.block.event_dict[X1] = Const(0.86138701)
+    templ.block.event_dict[freq] = Const(50.0)
     templ.block.event_dict[M] = Const(4.0)
     templ.block.event_dict[D] = Const(1.0)
     templ.block.event_dict[omega_ref] = Const(1.0)

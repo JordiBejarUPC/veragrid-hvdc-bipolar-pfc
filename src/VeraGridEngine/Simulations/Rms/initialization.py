@@ -251,7 +251,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         # initialize array for model params
         params_array = np.zeros(len(comp_model.event_dict.keys()))
 
-        # compute and assign parameters value
+        # compute and assign parameters non undefined value
         for param in comp_model.event_dict.keys():
             eq = comp_model.event_dict[param]
             if isinstance(eq, Const) and eq.value is UNDEFINED:
@@ -260,9 +260,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             param_val = float(eq_fn(0.0))
             params_array[uid2idx_params[param.uid]] = param_val
 
-        # compute and assign missing init_vars
+        # compute and assign missing init_vars and undefined parameters
         vars_initialized: set[tuple[int, str]] = set()
         parameters_list = list(comp_model.event_dict.keys())
+
         while len(vars_initialized) < len(comp_model.init_eqs):
             progress = False
 
@@ -273,20 +274,15 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 if key in vars_initialized:
                     continue
 
-                deps = eq.get_vars()
-                deps = [v for v in deps if v != var]
-                # check if it is an equation or an array:
-                deps = list()
-                if isinstance(eq, Expr):
-                    deps = eq.get_vars()
-                elif isinstance(eq, tuple):
-                    f_init, f_params = comp_model.init_eqs[var]
-                    deps = f_params
-                ######################################################3
-                vars_needed = [vr for vr in deps if vr not in parameters_list]
+                #get all the variables inside de initialization equation
+
+                vars_needed = eq.get_vars()
+                ######################################################
+
                 calculate_now = True
                 for v_init in vars_needed:
                     key_deps = (v_init.uid, v_init.name)
+                    # check if this variable is already initialized
                     if key_deps in init_guess:
                         continue
                     elif v_init.uid == var.uid:
@@ -301,20 +297,12 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 if calculate_now:
 
                     #We initialize the params with value UNDEFINED
-                    if var.uid in uid2idx_params.keys():
+                    if var in comp_model.event_dict.keys():
                         if isinstance(eq, Const) and eq.value is not UNDEFINED:
+
                             raise ValueError(f"Parameter {var.name} already initialized")
 
-                        if isinstance(comp_model.init_eqs[var], tuple):
-                            f_init, f_params = comp_model.init_eqs[var]
-                            x_params = np.zeros(len(f_params))
-                            for i, var in enumerate(f_params):
-                                x_params[i] = init_guess[key]
-                            init_val = f_init(x_params)
-                            comp_model.event_dict[var] = Const(init_val)
-                            params_array[uid2idx_params[var.uid]] = init_val
                         else:
-                            vars_in_eqs = eq.get_vars()
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = float(eq_fn(x, params_array))
                             comp_model.event_dict[var] = Const(init_val)
@@ -357,6 +345,8 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
         sys_block.add(comp_model)
+
+    return init_guess, sys_block
 
 
 def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
@@ -665,8 +655,12 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         # try:
             # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
             #               array_index, use_init_values)
-        init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+        init_guess_region, sys_block_region = init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                          vars_array_index, use_init_values)
+        init_guess.update(init_guess_region)
+        sys_block = sys_block_region
+
+
 
 
         # except ValueError:
