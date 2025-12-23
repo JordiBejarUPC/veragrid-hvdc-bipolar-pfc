@@ -80,7 +80,7 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     templ.block.state_eqs = [
                 (2 * np.pi * freq) * (omega - omega_ref),
                 (tm - te - D * (omega - omega_ref)) / M,
-            ],
+            ]
     
     templ.block.init_eqs = {
                 delta: imag(
@@ -105,6 +105,8 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
             }
 
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Vm: inputs[0],
+        VarPowerFlowRefferenceType.Va: inputs[1],
         VarPowerFlowRefferenceType.P: P_g,
         VarPowerFlowRefferenceType.Q: Q_g
     }

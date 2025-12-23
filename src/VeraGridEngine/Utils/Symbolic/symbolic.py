@@ -369,12 +369,6 @@ class Var(Expr):
             return self.uid == other.uid
         return False
 
-class PlaceholderVar(Var):
-    placeholder: UndefinedConst
-    init_value: NUMBER = field(default=1.0, compare=False, hash=False)
-
-    def change_value(self, new_value: NUMBER):
-        self.placeholder.assign_value(new_value)
 
 @dataclass()
 class UndefinedConst(Expr):
@@ -422,8 +416,6 @@ class UndefinedConst(Expr):
     def __eq__(self, other):
         if self is other:
             return True
-        if not isinstance(other, UndefinedConst):
-            return False
         return self.uid == other.uid
 
 @dataclass(frozen=True)
@@ -938,9 +930,6 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
             }
         }
 
-    if isinstance(expr, UndefinedConst):
-        return {"type": "UndefinedConst", "name": expr.name, "uid": expr.uid}
-
     # ------------------------------------------------------------------
     # Composite nodes
     # ------------------------------------------------------------------
@@ -989,8 +978,6 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
             obj = Const(UNDEFINED)
         else:
             obj = Const(data["value"])
-    elif t == "UndefinedConst":
-        obj = UndefinedConst(data['name'])
     elif t == "Var":
         obj = Var(data["name"])
 
@@ -1099,7 +1086,7 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
     :return:
     """
 
-    if isinstance(expr, Const) or isinstance(expr, UndefinedConst):
+    if isinstance(expr, Const):
         return repr(expr.value)
 
     if isinstance(expr, Var):
@@ -1355,8 +1342,6 @@ def symbolic_to_string(expr: Expr) -> str:
         return str(expr.value)
     elif isinstance(expr, Var):
         return expr.name
-    elif isinstance(expr, UndefinedConst):
-        return expr.name
     elif isinstance(expr, UnOp):
         if expr.op == "-":
             return f"-({symbolic_to_string(expr.operand)})"
@@ -1396,7 +1381,6 @@ __all__ = [
     "make_symbolic",
     "DiffVar",
     "hard_sat",
-    "UndefinedConst",
     "f_exc",
     "UNDEFINED"
 ]

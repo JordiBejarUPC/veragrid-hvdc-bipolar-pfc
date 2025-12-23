@@ -28,10 +28,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="initialization almost working">
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="icons check">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/templates.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -73,7 +76,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="Dynamic_simulations_V0" />
+        <entry key="$PROJECT_DIR$" value="devel" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -95,8 +98,8 @@
   </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
-    &quot;accountId&quot;: &quot;cf5b980e-9261-4544-851c-0ceba824405b&quot;
+    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
+    &quot;accountId&quot;: &quot;d905e739-bce6-452f-b93d-3ff9fc8215e9&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -164,18 +167,12 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
-    "Python tests.pytest for tests.test_load_save_load.test_load_save_load.executor": "Debug",
-    "Python tests.pytest for tests.test_symbolic.test_elementary_functions.executor": "Debug",
-    "Python tests.pytest in grid4.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
     "Python tests.pytest in test_cgmes_ieeee.py.executor": "Run",
     "Python tests.pytest in test_copy.py.executor": "Run",
     "Python tests.pytest in test_load_save_load.py.executor": "Run",
-    "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
-    "Python tests.pytest in test_symbolic.py.executor": "Run",
-    "Python tests.pytest in test_symbolic_lp.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
@@ -184,9 +181,7 @@
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
-    "Python.block.executor": "Debug",
     "Python.block_solver.executor": "Run",
-    "Python.block_solver_comb.executor": "Run",
     "Python.cgmes_rdfs_graph.executor": "Run",
     "Python.circuit_to_optimods.executor": "Run",
     "Python.constructing_kundur_full.executor": "Run",
@@ -195,10 +190,7 @@
     "Python.demo_code2.executor": "Run",
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
-    "Python.genqec_exc_gov_sat_template.executor": "Run",
-    "Python.grid4.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
-    "Python.initialization.executor": "Debug",
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.profile.executor": "Debug",
@@ -207,8 +199,6 @@
     "Python.raw_imp_exp_test.executor": "Run",
     "Python.readme_checks.executor": "Run",
     "Python.scripting_andes.executor": "Run",
-    "Python.scripting_genqec_exc_gov.executor": "Debug",
-    "Python.scripting_genqec_exc_gov_simple.executor": "Run",
     "Python.scripting_gridcal.executor": "Run",
     "Python.scripting_gridcal_hardcoded.executor": "Run",
     "Python.scripting_gridcal_small_system.executor": "Run",
@@ -231,11 +221,10 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Templates/Rms/RmsTemplatesFolder",
+    "last_opened_file_path": "/home/santi/Documentos/Git/eRoots/extended-equal-area-criterion",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -253,18 +242,18 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/RmsTemplatesFolder" />
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
+      <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
+      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Schema" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
+      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
   <component name="RunManager">
@@ -738,9 +727,9 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
+      <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
       <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
@@ -757,7 +746,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-0978a7220b69-9867c7d4c0a4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.28294.336" />
+        <option value="bundled-js-predefined-d6986cc7102b-256f9dae541f-JavaScript-PY-253.20558.58" />
+        <option value="bundled-python-sdk-7e710ed067e7-8e468156c80b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.20558.58" />
       </set>
     </attachedChunks>
   </component>
@@ -1882,7 +1872,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="631" />
+    <option name="localTasksCounter" value="621" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1928,6 +1918,16 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
+    <MESSAGE value="Resolved circular import" />
+    <MESSAGE value="automatic initialization 1" />
+    <MESSAGE value="full implementation of initialize_rms and compose_system_block with initialization" />
+    <MESSAGE value="GridCal/Andes comparision part 1" />
+    <MESSAGE value="Small system constructed in gridcal and Andes" />
+    <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
+    <MESSAGE value="automatic initialization equations fixed" />
+    <MESSAGE value="moved rms initialization out of the MultiCircuit" />
+    <MESSAGE value="got some changes from horrendous alex comit" />
+    <MESSAGE value="several tweaks before the release" />
     <MESSAGE value="5.4.0" />
     <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Improved contingency docs" />
@@ -1943,17 +1943,7 @@
     <MESSAGE value="Fixed test" />
     <MESSAGE value="icon crazyness" />
     <MESSAGE value="icons check" />
-    <MESSAGE value="changed connect function to change also init_equ" />
-    <MESSAGE value="updated initialization ordered equations" />
-    <MESSAGE value="get_vars function working" />
-    <MESSAGE value="connect function updated" />
-    <MESSAGE value="initialization algorithm working" />
-    <MESSAGE value="diff vars in system" />
-    <MESSAGE value="system well constructed in initialization" />
-    <MESSAGE value="unified block and diffblock" />
-    <MESSAGE value="serialized DiffVar and merged block and diffblock" />
-    <MESSAGE value="initialization almost working" />
-    <option name="LAST_COMMIT_MESSAGE" value="initialization almost working" />
+    <option name="LAST_COMMIT_MESSAGE" value="icons check" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2309,13 +2299,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
-          <line>2205</line>
+          <line>2204</line>
           <option name="timeStamp" value="3123" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
-          <line>2273</line>
-          <option name="timeStamp" value="3126" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py</url>
@@ -2356,6 +2341,11 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>107</line>
           <option name="timeStamp" value="3232" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py</url>
+          <line>590</line>
+          <option name="timeStamp" value="3251" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

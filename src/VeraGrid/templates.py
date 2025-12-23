@@ -96,5 +96,5 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
             ExciterBuild(),
             get_genrow_rms_template(),
             get_line_rms_template(),
-            get_complete_generator_template(),
-            get_load_rms_template()]
+            get_load_rms_template()
+    ]

@@ -17,7 +17,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
-    real, sqrt, atan, _dict_to_expr, imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc, PlaceholderVar
+    real, sqrt, atan, _dict_to_expr, imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -47,15 +47,6 @@ def _serialize_var_list(vars_: List[Var | Const]) -> List[Dict[str, Any]]:
     return [v.to_dict() for v in vars_]
 
 
-def _serialize_undefinedconst_list(undefconsts_: List[UndefinedConst]) -> List[Dict[str, Any]]:
-    """
-    Serialize list of variables or constants
-    :param vars_: list of Var or Const
-    :return: List of dictionaries with the serialized data
-    """
-    return [undefconst.to_dict() for undefconst in undefconsts_]
-
-
 def _deserialize_expr_list(expr_dicts: List[Dict[str, Any]]) -> List[Expr]:
     """
 
@@ -65,7 +56,7 @@ def _deserialize_expr_list(expr_dicts: List[Dict[str, Any]]) -> List[Expr]:
     return [Expr.from_dict(d) for d in expr_dicts]
 
 
-def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const | UndefinedConst]:
+def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
     """
     De-serialize previously serialized data into List of Vars or Const
     :param var_dicts: List of serialized data
@@ -80,8 +71,6 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const |
             result.append(diff_var)
         elif d["type"] == "Const":
             result.append(Const(value=d["value"], uid=d["uid"]))
-        elif d['type'] == "UndefinedConst":
-            result.append(UndefinedConst())
         else:
             raise ValueError(f"Unknown variable type {d['type']}")
     return result

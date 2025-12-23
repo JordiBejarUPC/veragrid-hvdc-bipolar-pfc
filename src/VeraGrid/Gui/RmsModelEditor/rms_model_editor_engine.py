@@ -2203,7 +2203,6 @@ class BlockBoxesEditor(QSplitter):
                     if model.uid == node.device_uid:
                         model_host.model = model
                         model_found = True
-                print(f'{model_found} for {model.name}')
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
@@ -2227,8 +2226,6 @@ class BlockBoxesEditor(QSplitter):
                     if model.uid == node.device_uid:
                         bus_con_blk = model
                         model_found = True
-                print(f'{model_found} for {model.name}')
-
 
 
                 bus_con_item.set_subsystem(bus_con_blk)
@@ -2249,7 +2246,6 @@ class BlockBoxesEditor(QSplitter):
                     if model.uid == node.device_uid:
                         bus_mapping_blk = model
                         model_found = True
-                print(f'{model_found} for {model.name}')
 
 
                 bus_mapping_item.set_subsystem(bus_mapping_blk)
@@ -2271,7 +2267,7 @@ class BlockBoxesEditor(QSplitter):
                     if model.uid == node.device_uid:
                         block = model
                         model_found = True
-                print(f'{model_found} for {model.name}')
+
 
                 block_item.set_subsystem(block)
                 block_item.build_item()

@@ -113,7 +113,7 @@ class RmsSimulationDriver(DriverTemplate):
             x0=x0,
             dx0=dx0,
             params0=params0,
-            method="rk4",
+            method="implicit_euler",
             newton_tol = 1e-8,
             newton_max_iter = 1000,
             followed_vars = None,
