@@ -12,6 +12,7 @@ from VeraGridEngine.Devices.Branches.transformer import TransformerType
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template, GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -93,6 +94,7 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
             GovernorBuild(),
             StabilizerBuild(),
             ExciterBuild(),
-            get_complete_generator_template(),
+            get_genrow_rms_template(),
             get_line_rms_template(),
+            get_complete_generator_template(),
             get_load_rms_template()]

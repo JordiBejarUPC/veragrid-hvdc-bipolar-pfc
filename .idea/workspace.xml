@@ -28,11 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="serialized DiffVar and merged block and diffblock">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="initialization almost working">
+      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/templates.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -74,7 +73,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="86_Dynamic_simulations_DiffBlock_integrate" />
+        <entry key="$PROJECT_DIR$" value="Dynamic_simulations_V0" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -181,7 +180,7 @@
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Debug",
+    "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -196,7 +195,7 @@
     "Python.demo_code2.executor": "Run",
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
-    "Python.genqec_exc_gov_sat_template.executor": "Debug",
+    "Python.genqec_exc_gov_sat_template.executor": "Run",
     "Python.grid4.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
@@ -236,7 +235,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics/scripting_testing",
+    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Templates/Rms/RmsTemplatesFolder",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -254,18 +253,18 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/RmsTemplatesFolder" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
       <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
-      <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
   <component name="RunManager">
@@ -1883,7 +1882,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="630" />
+    <option name="localTasksCounter" value="631" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1929,7 +1928,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="several tweaks before the release" />
     <MESSAGE value="5.4.0" />
     <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Improved contingency docs" />
@@ -1954,7 +1952,8 @@
     <MESSAGE value="system well constructed in initialization" />
     <MESSAGE value="unified block and diffblock" />
     <MESSAGE value="serialized DiffVar and merged block and diffblock" />
-    <option name="LAST_COMMIT_MESSAGE" value="serialized DiffVar and merged block and diffblock" />
+    <MESSAGE value="initialization almost working" />
+    <option name="LAST_COMMIT_MESSAGE" value="initialization almost working" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2350,48 +2349,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1157</line>
-          <option name="timeStamp" value="3203" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1123</line>
-          <option name="timeStamp" value="3204" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>575</line>
           <option name="timeStamp" value="3205" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1155</line>
-          <option name="timeStamp" value="3207" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1160</line>
-          <option name="timeStamp" value="3208" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>107</line>
           <option name="timeStamp" value="3232" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py</url>
-          <line>210</line>
-          <option name="timeStamp" value="3247" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py</url>
-          <line>212</line>
-          <option name="timeStamp" value="3248" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1154</line>
-          <option name="timeStamp" value="3250" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
