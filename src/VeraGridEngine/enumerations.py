@@ -735,6 +735,7 @@ class MethodShortCircuit(Enum):
     Short circuit type
     """
     sequences = 'sequences'
+    sequences_vsc = 'sequences_vsc'
     phases = 'phases'
 
     def __str__(self):

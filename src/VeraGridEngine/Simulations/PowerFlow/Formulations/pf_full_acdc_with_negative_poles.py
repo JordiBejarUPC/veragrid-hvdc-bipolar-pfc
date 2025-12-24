@@ -1863,6 +1863,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.adm = adm_
             self._f = f_
 
+        print('residual = \n', f_)
+
         return f_
 
     def check_error(self, x: Vec) -> Tuple[float, Vec]:
@@ -1894,7 +1896,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self._f = self.compute_f(x, update_class_vars=True)
 
         self._error = compute_fx_error(self._f)
-        print('error = ', self._error)
+        # print('error = ', self._error)
 
         # Update controls only below a certain error
         if update_controls and self._error < self._controls_tol:

@@ -799,20 +799,23 @@ def short_circuit_vsc(nc: NumericalCircuit,
         S0_linear = np.zeros(shape=nbus, dtype=complex)
 
         Yfault = np.zeros(shape=nbus, dtype=complex)
-        Yfault[fault_bus] = 1 / Z_fault
-        Ygen = np.zeros(shape=nbus, dtype=complex)
+        Yfault[fault_bus] = 1 / Z_fault[fault_bus]
 
-        I0_linear = np.zeros(shape=nbus, dtype=complex) # Add generator's norton
-        gen_idx = nc.generator_data.bus_idx
+        Ygen = np.zeros(shape=nbus, dtype=complex)
+        gen_idx = nc.generator_data.original_idx
+        bus_gen_idx = nc.generator_data.bus_idx
         for i in range(len(gen_idx)):
-            Ugen = V_pf[gen_idx[i]]
-            Sgen = S_pf[gen_idx[i]]
-            Igen = np.conj(Sgen / Ugen)
-            Ygen[gen_idx[i]] = nc.generator_data.r1[gen_idx[i]] + 1j * nc.generator_data.x1[gen_idx[i]]
-            Egen = Ugen + Igen / Ygen[gen_idx[i]]
-            I0_linear[gen_idx[i]] = Ygen[gen_idx[i]] * Egen
+            Ygen[bus_gen_idx[i]] = 1 / (nc.generator_data.r1[i] + 1j * nc.generator_data.x1[i])
 
         Y0_linear = np.conj(S0 / (np.conj(V_pf) * V_pf)) + I0 / V_pf + Y0 + Ygen + Yfault
+
+        I0_linear = np.zeros(shape=nbus, dtype=complex) # Add generator's norton
+        for i in range(len(bus_gen_idx)):
+            Ugen = V_pf[bus_gen_idx[i]]
+            Sgen = S_pf[bus_gen_idx[i]]
+            Igen = np.conj(Sgen / Ugen)
+            Egen = Ugen + Igen / Ygen[bus_gen_idx[i]]
+            I0_linear[bus_gen_idx[i]] = Ygen[bus_gen_idx[i]] * Egen
 
         if len(indices.vd) > 0:
 
@@ -872,7 +875,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
     sc_results.If1[:, 0] = pf_results.If  # in p.u.
     sc_results.It1[:, 0] = pf_results.It  # in p.u.
     sc_results.vsc_If[:, 0] = pf_results.If_vsc  # in p.u.
-    sc_results.vac_It[:, 0] = pf_results.It_vsc  # in p.u.
+    sc_results.vsc_It[:, 0] = pf_results.It_vsc  # in p.u.
     sc_results.Vbranch1[:, 0] = pf_results.Vbranch
     sc_results.loading1[:, 0] = pf_results.loading
     sc_results.losses1[:, 0] = pf_results.losses

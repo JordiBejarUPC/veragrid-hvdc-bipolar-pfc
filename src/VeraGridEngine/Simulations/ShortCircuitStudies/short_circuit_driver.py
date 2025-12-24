@@ -534,6 +534,29 @@ class ShortCircuitDriver(DriverTemplate):
                         else:
                             self.logger.add_error("Sequence power flow results missing")
 
+                    elif sc_definition.method == MethodShortCircuit.sequences_vsc:
+
+                        if self.pf_results is not None:
+                            res = self.single_short_circuit_vsc(
+                                nc=island,
+                                V_pf=self.pf_results.voltage[island.bus_data.original_idx],
+                                S_pf=self.pf_results.Sbus[island.bus_data.original_idx],
+                                Z_fault=Zf[island.bus_data.original_idx],
+                                fault_bus=island_bus_index,
+                                options=self.pf_options,
+                                logger=self.logger
+                            )
+
+                            # merge results
+                            results.apply_from_island(k_sc,
+                                                      res,
+                                                      island.bus_data.original_idx,
+                                                      island.passive_branch_data.original_idx,
+                                                      island.hvdc_data.original_idx,
+                                                      island.vsc_data.original_idx)
+                        else:
+                            self.logger.add_error("Sequence power flow results missing")
+
                     elif sc_definition.method == MethodShortCircuit.phases:
 
                         if self.pf_results3ph is not None:
