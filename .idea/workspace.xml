@@ -28,35 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="simple generator working">
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow1_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow2_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow3_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow4_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line0_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line10_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line11_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line12_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line13_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line1_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line2_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line3_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line4_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line5_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line6_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line7_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line8_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line9_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load1_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load2_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/trafo1_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/trafo2_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/trafo3_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/trafo4_rms_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tests/test_small_signal_rms_new.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="test small signal rebuilt">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_genqec_exc_gov_simple.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_small_signal_rms.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_small_signal_rms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_small_signal_rms_new.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -117,12 +92,12 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
-    &quot;accountId&quot;: &quot;d905e739-bce6-452f-b93d-3ff9fc8215e9&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/eRoots-Analytics/VeraGrid",
+    "accountId": "cf5b980e-9261-4544-851c-0ceba824405b"
   }
-}</component>
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
@@ -188,13 +163,14 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor": "Debug",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
     "Python tests.pytest in test_cgmes_ieeee.py.executor": "Run",
     "Python tests.pytest in test_copy.py.executor": "Run",
     "Python tests.pytest in test_load_save_load.py.executor": "Run",
-    "Python tests.pytest in test_small_signal_rms_new.py.executor": "Debug",
+    "Python tests.pytest in test_small_signal_rms_new.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
@@ -760,10 +736,10 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
       </list>
     </recent_temporary>
@@ -771,8 +747,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-256f9dae541f-JavaScript-PY-253.20558.58" />
-        <option value="bundled-python-sdk-7e710ed067e7-8e468156c80b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.20558.58" />
+        <option value="bundled-python-sdk-0978a7220b69-9867c7d4c0a4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.28294.336" />
       </set>
     </attachedChunks>
   </component>
@@ -1897,7 +1872,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="622" />
+    <option name="localTasksCounter" value="623" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1943,7 +1918,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="automatic initialization 1" />
     <MESSAGE value="full implementation of initialize_rms and compose_system_block with initialization" />
     <MESSAGE value="GridCal/Andes comparision part 1" />
     <MESSAGE value="Small system constructed in gridcal and Andes" />
@@ -1968,7 +1942,8 @@
     <MESSAGE value="icon crazyness" />
     <MESSAGE value="icons check" />
     <MESSAGE value="simple generator working" />
-    <option name="LAST_COMMIT_MESSAGE" value="simple generator working" />
+    <MESSAGE value="test small signal rebuilt" />
+    <option name="LAST_COMMIT_MESSAGE" value="test small signal rebuilt" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2379,8 +2354,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>314</line>
-          <option name="timeStamp" value="3271" />
+          <line>334</line>
+          <option name="timeStamp" value="3279" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
