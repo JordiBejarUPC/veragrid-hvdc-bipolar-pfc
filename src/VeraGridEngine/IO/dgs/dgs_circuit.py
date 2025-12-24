@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import numpy as np
+import sys
+import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
 import VeraGridEngine.Devices as dev
@@ -599,38 +601,47 @@ class DgsCircuit:
 
                     f.write("\n")
 
-    def from_api(self, study_case_name: str | None = None) -> None:
+    def from_api(self, study_case_name: str | None = None, pf_path: str = "") -> None:
         """
         Populate this (empty) PfCircuit from an active PowerFactory application.
         Assumes:
         - self is empty (no existing elements)
         - schema registries (_ELEMENT_CLASSES, _CLASS_TO_LIST) are complete
         :param study_case_name: case name if any
+        :param pf_path: PowerFactory path
         :return:
         """
+        if pf_path == "":
+            pf_path = r"C:\Program Files\DIgSILENT\PowerFactory 2025 SP1"
+        python_folder = f"{sys.version_info.major}.{sys.version_info.minor}"
+        module_folder = os.path.join(pf_path, "Python", python_folder)
+
+        if not os.path.exists(module_folder):
+            print(f"PowerFactory path for the compatible module not found: {module_folder}")
+
+        # add the pf path to the system path
+        sys.path.append(pf_path)
+        sys.path.append(module_folder)
 
         # Obtain PowerFactory application ------------------------------------------------------------------------------
         try:
             import powerfactory as pf
+            print(f"loaded PowerFactory version {pf.__version__}")
         except ImportError as e:
             print("PowerFactory Python module not available. "
                   "Ensure this is executed inside a PowerFactory Python environment.", str(e))
             return None
 
         try:
-            app = pf.GetApplication()
-        except AttributeError as e:
-            print("powerfactory module does not expose GetApplication(). "
-                  "PowerFactory installation may be corrupted or incompatible.", str(e))
+            app = pf.GetApplicationExt()
+        except pf.ExitError as error:
+            print(error)
+            print('error.code = %d' % error.code)
             return None
 
         except RuntimeError as e:
             print("Failed to obtain PowerFactory application. "
                   "Ensure PowerFactory is running and a project is open.", str(e))
-            return None
-
-        if app is None:
-            print("pf.GetApplication() returned None. No active PowerFactory application detected.")
             return None
 
         # Activate study case  -----------------------------------------------------------------------------------------
