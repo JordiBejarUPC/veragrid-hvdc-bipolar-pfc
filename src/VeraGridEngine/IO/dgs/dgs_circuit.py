@@ -857,7 +857,7 @@ def from_veragrid(self, grid: dev.MultiCircuit):
         net = ElmNet()
         net.ID = _new_id()
         net.loc_name = "Grid"
-        net.frnom = 50.0  # TODO: si grid tiene frecuencia, úsala
+        net.frnom = 50.0
         self.elmnets.append(net)
 
         # 2) ElmTerm por bus
@@ -905,14 +905,13 @@ def from_veragrid(self, grid: dev.MultiCircuit):
         for line in grid.lines:
             tpe = TypLne()
             tpe.ID = _new_id()
-            # TODO: revertir pu -> ohm/km si quieres, o guardar aproximado
             self.typlnes.append(tpe)
 
             e = ElmLne()
             e.ID = _new_id()
             e.loc_name = line.name
             e.typ_id = tpe.ID
-            e.dline = 1.0  # TODO: si no sabes longitud, 1.0 y meter todo en el tipo
+            e.dline = 1.0
             e.outserv = 0 if line.active else 1
             self.elmlnes.append(e)
             add_cubicles_for_element(e.ID, [line.bus_from, line.bus_to])
@@ -921,7 +920,7 @@ def from_veragrid(self, grid: dev.MultiCircuit):
         for tr in grid.transformers2w:
             tpe = TypTr2()
             tpe.ID = _new_id()
-            # TODO: rellenar parámetros si los tienes
+
             self.typtr2s.append(tpe)
 
             e = ElmTr2()
@@ -1157,7 +1156,7 @@ def from_veragrid(self, grid: dev.MultiCircuit):
     #             g=Ysh.real,
     #             b=Ysh.imag,
     #             rate=Snom,
-    #             tap_module=1.0,  # TODO: mapear taps si lo necesitáis
+    #             tap_module=1.0,
     #             tap_phase=0.0,
     #             active=(int(tr.outserv or 0) == 0),
     #             mttf=0,
