@@ -742,5 +742,5 @@ def dgs_to_circuit(path: str) -> dev.MultiCircuit:
     Entry point: read a DGS and return a VeraGrid MultiCircuit.
     """
     dgs = DgsCircuit()
-    dgs.parse(path)
+    dgs.parse_dgs(path)
     return dgs.to_veragrid()
