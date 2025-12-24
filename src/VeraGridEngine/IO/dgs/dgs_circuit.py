@@ -103,7 +103,9 @@ def parse_header(line: str) -> Tuple[str, Dict[str, int]]:
 
 def get_branch_buses(elm_id: str,
                      stacubic_dict: Dict[str, List[int]],
-                     buses: List[dev.Bus]) -> Tuple[dev.bus, dev.Bus]:
+                     buses: List[dev.Bus],
+                     cubics_by_objid: Dict[str, List[StaCubic]],
+                     bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.bus, dev.Bus]:
     """
     Function to get the buses from a branch element
     :param elm_id:
@@ -111,6 +113,16 @@ def get_branch_buses(elm_id: str,
     :param buses:
     :return:
     """
+    # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
+    term_ids = get_terminal_ids(element_id=elm_id, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) == 2:
+        try:
+            return bus_by_term_id[term_ids[0]], bus_by_term_id[term_ids[1]]
+        except KeyError:
+            # Fall back to legacy obj_bus indexing if terminal mapping is incomplete
+            pass
+
+    # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
     if bus_ids is None:
         raise ValueError(f"No buses for the line {elm_id}")
@@ -119,14 +131,16 @@ def get_branch_buses(elm_id: str,
         raise ValueError(f"Not exactly 2 buses for the line {elm_id}")
 
     bus_from = buses[bus_ids[0]]
-    bus_to = buses[bus_ids[0]]
+    bus_to = buses[bus_ids[1]]
 
     return bus_from, bus_to
 
 
 def get_injection_bus(elm_id: str,
                       stacubic_dict: Dict[str, List[int]],
-                      buses: List[dev.Bus]) -> dev.bus:
+                      buses: List[dev.Bus],
+                      cubics_by_objid: Dict[str, List[StaCubic]],
+                      bus_by_term_id: Dict[str, dev.Bus]) -> dev.bus:
     """
     Function to get the bus from a injection element
     :param elm_id:
@@ -134,6 +148,16 @@ def get_injection_bus(elm_id: str,
     :param buses:
     :return:
     """
+    # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
+    term_ids = get_terminal_ids(element_id=elm_id, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) == 1:
+        try:
+            return bus_by_term_id[term_ids[0]]
+        except KeyError:
+            # Fall back to legacy obj_bus indexing if terminal mapping is incomplete
+            pass
+
+    # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
     if bus_ids is None:
         raise ValueError(f"No buses for the element {elm_id}")
@@ -199,13 +223,158 @@ def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
     return elm
 
 
+def _convert_pf_tr2_connection(code: str):
+    """
+    Convert a PowerFactory 2-character transformer connection code to VeraGrid enum when available.
+    If the enum is not available or the code is unknown, return None and let defaults apply.
+    """
+    try:
+        from VeraGridEngine.enumerations import WindingsConnection
+    except Exception:
+        return None
+
+    if code is None:
+        return None
+
+    c = str(code).strip().upper()
+    if c == "":
+        return None
+
+    # Common PowerFactory 2-char winding codes in DGS: Y, YN, D, Z, ZN
+    try:
+        return getattr(WindingsConnection, c)
+    except AttributeError:
+        return None
+
+
+def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
+    """
+    Convert a TypTr2 to TransformerType
+    :param typtr2: TypTr2
+    :return: TransformerType
+    """
+    tpe = dev.TransformerType(hv_nominal_voltage=float(typtr2.utrn_h or 0.0),
+                              lv_nominal_voltage=float(typtr2.utrn_l or 0.0),
+                              nominal_power=float(typtr2.strn or 0.0),
+                              copper_losses=float(typtr2.pcutr or 0.0),
+                              iron_losses=float(typtr2.pfe or 0.0),
+                              no_load_current=float(typtr2.curmg or 0.0),
+                              short_circuit_voltage=float(typtr2.uktr or 0.0),
+                              gr_hv1=0.5,
+                              gx_hv1=0.5,
+                              name=typtr2.loc_name)
+
+    conn_hv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_h", None))
+    conn_lv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_l", None))
+
+    if conn_hv is not None and hasattr(tpe, "conn_hv"):
+        tpe.conn_hv = conn_hv
+
+    if conn_lv is not None and hasattr(tpe, "conn_lv"):
+        tpe.conn_lv = conn_lv
+
+    return tpe
+
+
+def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -> Tuple[dev.Bus, dev.Bus]:
+    """
+    Order two buses as (HV, LV) based on nominal voltage.
+    If voltages are equal or undefined, keep the original order and warn.
+    """
+    va = float(getattr(bus_a, "Vnom", 0.0) or 0.0)
+    vb = float(getattr(bus_b, "Vnom", 0.0) or 0.0)
+
+    if va == 0.0 or vb == 0.0:
+        logger.add_warning(f"Transformer '{tr_name}': one or both buses have Vnom=0.0 (va={va}, vb={vb}).")
+        return bus_a, bus_b
+
+    if va > vb:
+        return bus_a, bus_b
+    if vb > va:
+        return bus_b, bus_a
+
+    logger.add_warning(f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Keeping original order.")
+    return bus_a, bus_b
+
+
+def convert_dgs_to_transformer(tr2: ElmTr2,
+                               buses: List[dev.Bus],
+                               stacubic_dict: Dict[str, List[int]],
+                               templates_dict: Dict[str, dev.TransformerType],
+                               freq: float,
+                               baseMVA: float,
+                               logger: Logger,
+                               cubics_by_objid: Dict[str, List[StaCubic]],
+                               bus_by_term_id: Dict[str, dev.Bus]) -> dev.Transformer2W:
+    """
+    Convert ElmTr2 to Transformer2W
+    :param tr2: ElmTr2
+    :param buses:
+    :param stacubic_dict:
+    :param templates_dict:
+    :param freq:
+    :param baseMVA:
+    :param logger:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
+    :return: Transformer2W
+    """
+    template = templates_dict.get(tr2.typ_id, None)
+    if template is None:
+        template = templates_dict.get(_ref_id(tr2.typ_id), None)
+
+    if template is None:
+        raise ValueError(f"No template for the transformer {tr2.ID}")
+
+    # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
+    term_ids = get_terminal_ids(element_id=tr2.ID, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) != 2:
+        # Fall back to legacy check only if terminal mapping is not available
+        bus_ids = stacubic_dict.get(tr2.ID, None)
+        if bus_ids is None:
+            raise ValueError(f"No buses for the transformer {tr2.ID}")
+
+        if len(bus_ids) != 2:
+            raise ValueError(f"Not exactly 2 buses for the transformer {tr2.ID}")
+
+    bus_from, bus_to = get_branch_buses(elm_id=tr2.ID,
+                                        stacubic_dict=stacubic_dict,
+                                        buses=buses,
+                                        cubics_by_objid=cubics_by_objid,
+                                        bus_by_term_id=bus_by_term_id)
+
+    bus_hv, bus_lv = _order_hv_lv(bus_a=bus_from,
+                                  bus_b=bus_to,
+                                  logger=logger,
+                                  tr_name=tr2.loc_name)
+
+    trafo = dev.Transformer2W(bus_from=bus_hv,
+                              bus_to=bus_lv,
+                              name=tr2.loc_name,
+                              active=not tr2.outserv,
+                              HV=max(bus_hv.Vnom, bus_lv.Vnom),
+                              LV=min(bus_hv.Vnom, bus_lv.Vnom),
+                              nominal_power=float(getattr(template, "Sn", getattr(template, "nominal_power", 0.001)) or 0.001),
+                              copper_losses=float(getattr(template, "Pcu", getattr(template, "copper_losses", 0.0)) or 0.0),
+                              iron_losses=float(getattr(template, "Pfe", getattr(template, "iron_losses", 0.0)) or 0.0),
+                              no_load_current=float(getattr(template, "I0", getattr(template, "no_load_current", 0.0)) or 0.0),
+                              short_circuit_voltage=float(getattr(template, "Vsc", getattr(template, "short_circuit_voltage", 0.0)) or 0.0),
+                              template=template)
+
+    trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
+
+    return trafo
+
+
 def convert_dgs_to_line(lne: ElmLne,
                         buses: List[dev.Bus],
                         stacubic_dict: Dict[str, List[int]],
                         templates_dict: Dict[str, dev.SequenceLineType],
                         freq: float,
                         baseMVA: float,
-                        logger: Logger) -> dev.Line:
+                        logger: Logger,
+                        cubics_by_objid: Dict[str, List[StaCubic]],
+                        bus_by_term_id: Dict[str, dev.Bus]) -> dev.Line:
     """
 
     :param lne:
@@ -222,16 +391,22 @@ def convert_dgs_to_line(lne: ElmLne,
     if template is None:
         raise ValueError(f"No template for the line {lne.ID}")
 
-    bus_ids = stacubic_dict.get(lne.ID, None)
-    if bus_ids is None:
-        raise ValueError(f"No buses for the line {lne.ID}")
+    # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
+    term_ids = get_terminal_ids(element_id=lne.ID, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) != 2:
+        # Fall back to legacy check only if terminal mapping is not available
+        bus_ids = stacubic_dict.get(lne.ID, None)
+        if bus_ids is None:
+            raise ValueError(f"No buses for the line {lne.ID}")
 
-    if len(bus_ids) != 2:
-        raise ValueError(f"Not exactly 2 buses for the line {lne.ID}")
+        if len(bus_ids) != 2:
+            raise ValueError(f"Not exactly 2 buses for the line {lne.ID}")
 
     bus_from, bus_to = get_branch_buses(elm_id=lne.ID,
                                         stacubic_dict=stacubic_dict,
-                                        buses=buses)
+                                        buses=buses,
+                                        cubics_by_objid=cubics_by_objid,
+                                        bus_by_term_id=bus_by_term_id)
 
     line = dev.Line(bus_from=bus_from,
                     bus_to=bus_to,
@@ -431,7 +606,7 @@ class DgsCircuit:
         - self is empty (no existing elements)
         - schema registries (_ELEMENT_CLASSES, _CLASS_TO_LIST) are complete
         :param study_case_name: case name if any
-        :return: 
+        :return:
         """
 
         # Obtain PowerFactory application ------------------------------------------------------------------------------
@@ -527,7 +702,250 @@ class DgsCircuit:
                     elem = _populate_from_pf_object(pf_obj, dgs_cls)
                     target_list.append(elem)
 
-    # def to_veragrid_old(self) -> dev.MultiCircuit:
+
+
+    def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
+        """
+
+        :return:
+        """
+        if logger is None:
+            logger = Logger()
+
+        grid = dev.MultiCircuit()
+
+        baseMVA = 100.0
+
+        # --- frequency ---
+        if len(self.elmnets) > 0:
+            frequency = float(self.elmnets[0].frnom or 50.0)
+        else:
+            frequency = 50.0
+
+        # StaCubic dictionary
+        stacubic_dict: Dict[str, List[int]] = dict()
+        for elm in self.stacubics:
+            lst = stacubic_dict.get(elm.obj_id, None)
+            if lst is None:
+                stacubic_dict[elm.obj_id] = [elm.obj_bus]
+            else:
+                lst.append(elm.obj_bus)
+
+        # StaCubic dictionary (robust)
+        cubics_by_objid: Dict[str, List[StaCubic]] = dict()
+        for cb in self.stacubics:
+            oid = _ref_id(cb.obj_id)
+            if oid is None:
+                continue
+            lst = cubics_by_objid.get(oid, None)
+            if lst is None:
+                cubics_by_objid[oid] = [cb]
+            else:
+                lst.append(cb)
+
+        # graphics dictioary
+        pos_by_objid: Dict[str, Tuple[float, float]] = dict()
+        for g in self.intgrfs:
+            pos_by_objid[g.pDataObj] = (float(g.rCenterX or 0.0), float(g.rCenterY or 0.0))
+
+        # Buses
+        bus_by_term_id: Dict[str, dev.Bus] = dict()
+        for elmterm in self.elmterms:
+            bus = convert_dgs_to_bus(elmterm=elmterm, pos_by_objid=pos_by_objid)
+            grid.add_bus(obj=bus)
+            tid = _ref_id(elmterm.ID)
+            if tid is not None:
+                bus_by_term_id[tid] = bus
+
+        # Line types
+        typlne_dict: Dict[str, dev.SequenceLineType] = dict()
+        for typlne in self.typlnes:
+            seq_lne = convert_dgs_to_sequence_line(typlne=typlne)
+            grid.add_sequence_line(obj=seq_lne)
+            typlne_dict[typlne.ID] = seq_lne
+
+        # Transformer types
+        typtr2_dict: Dict[str, dev.TransformerType] = dict()
+        for typtr2 in self.typtr2s:
+            tpe = convert_dgs_to_transformer_type(typtr2=typtr2)
+            if hasattr(grid, "add_transformer_type"):
+                grid.add_transformer_type(obj=tpe)
+            elif hasattr(grid, "add_transformer2w_type"):
+                grid.add_transformer2w_type(obj=tpe)
+            typtr2_dict[typtr2.ID] = tpe
+            tid = _ref_id(typtr2.ID)
+            if tid is not None:
+                typtr2_dict[tid] = tpe
+
+        # lines
+        for elmlne in self.elmlnes:
+            line = convert_dgs_to_line(lne=elmlne,
+                                       buses=grid.buses,
+                                       stacubic_dict=stacubic_dict,
+                                       templates_dict=typlne_dict,
+                                       freq=frequency,
+                                       baseMVA=baseMVA,
+                                       logger=logger,
+                                       cubics_by_objid=cubics_by_objid,
+                                       bus_by_term_id=bus_by_term_id)
+            grid.add_line(obj=line, logger=logger)
+
+        # Transformers 2W
+        for elmtr2 in self.elmtr2s:
+            trafo = convert_dgs_to_transformer(tr2=elmtr2,
+                                               buses=grid.buses,
+                                               stacubic_dict=stacubic_dict,
+                                               templates_dict=typtr2_dict,
+                                               freq=frequency,
+                                               baseMVA=baseMVA,
+                                               logger=logger,
+                                               cubics_by_objid=cubics_by_objid,
+                                               bus_by_term_id=bus_by_term_id)
+
+            grid.add_transformer2w(obj=trafo)
+
+
+        return grid
+
+def _new_id(counter=[1]):
+    v = counter[0]
+    counter[0] += 1
+    return str(v)
+
+
+def dgs_to_circuit(path: str) -> dev.MultiCircuit:
+    """
+    Entry point: read a DGS and return a VeraGrid MultiCircuit.
+    """
+    dgs = DgsCircuit()
+    dgs.parse_dgs(path)
+    return dgs.to_veragrid()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def from_veragrid(self, grid: dev.MultiCircuit):
+        # 0) limpiar listas
+        for cls, list_name in self._CLASS_TO_LIST.items():
+            getattr(self, list_name).clear()
+
+        def _new_id(counter=[1]):
+            v = counter[0];
+            counter[0] += 1
+            return str(v)
+
+        # 1) ElmNet
+        net = ElmNet()
+        net.ID = _new_id()
+        net.loc_name = "Grid"
+        net.frnom = 50.0  # TODO: si grid tiene frecuencia, úsala
+        self.elmnets.append(net)
+
+        # 2) ElmTerm por bus
+        term_id_by_bus = {}
+        for bus in grid.buses:
+            t = ElmTerm()
+            t.ID = _new_id()
+            t.loc_name = bus.name
+            t.uknom = float(bus.Vnom)
+            t.outserv = 0 if bus.active else 1
+            self.elmterms.append(t)
+            term_id_by_bus[bus] = t.ID
+
+            # opcional: IntGrf para posición
+            g = IntGrf()
+            g.ID = _new_id()
+            g.pDataObj = t.ID
+            g.rCenterX = float(getattr(bus, "xpos", 0.0))
+            g.rCenterY = float(-getattr(bus, "ypos", 0.0))
+            self.intgrfs.append(g)
+
+        # 3) helper para crear cubicles y “conectar” un elemento a buses
+        def add_cubicles_for_element(element_id: str, buses: list):
+            for b in buses:
+                c = StaCubic()
+                c.ID = _new_id()
+                c.obj_id = element_id
+                c.fold_id = term_id_by_bus[b]  # esta es la clave
+                self.stacubics.append(c)
+
+        # 4) Loads
+        for bus in grid.buses:
+            for ld in getattr(bus, "loads", []):  # depende de cómo VeraGrid guarde loads
+                e = ElmLod()
+                e.ID = _new_id()
+                e.loc_name = ld.name
+                e.plini = float(ld.P)
+                e.qlini = float(ld.Q)
+                e.scale0 = 1.0
+                e.outserv = 0
+                self.elmlods.append(e)
+                add_cubicles_for_element(e.ID, [bus])
+
+        # 5) Lines (+ type)
+        for line in grid.lines:
+            tpe = TypLne()
+            tpe.ID = _new_id()
+            # TODO: revertir pu -> ohm/km si quieres, o guardar aproximado
+            self.typlnes.append(tpe)
+
+            e = ElmLne()
+            e.ID = _new_id()
+            e.loc_name = line.name
+            e.typ_id = tpe.ID
+            e.dline = 1.0  # TODO: si no sabes longitud, 1.0 y meter todo en el tipo
+            e.outserv = 0 if line.active else 1
+            self.elmlnes.append(e)
+            add_cubicles_for_element(e.ID, [line.bus_from, line.bus_to])
+
+        # 6) Transformers 2W (+ type)
+        for tr in grid.transformers2w:
+            tpe = TypTr2()
+            tpe.ID = _new_id()
+            # TODO: rellenar parámetros si los tienes
+            self.typtr2s.append(tpe)
+
+            e = ElmTr2()
+            e.ID = _new_id()
+            e.loc_name = tr.name
+            e.typ_id = tpe.ID
+            e.outserv = 0 if tr.active else 1
+            self.elmtr2s.append(e)
+            add_cubicles_for_element(e.ID, [tr.bus_from, tr.bus_to])
+
+        # 7) Slack / external grid (ElmXnet)
+        for bus in grid.buses:
+            if getattr(bus, "is_slack", False):
+                x = ElmXnet()
+                x.ID = _new_id()
+                x.loc_name = f"Slack_{bus.name}"
+                x.bustp = "SL"
+                x.usetp = 1.0
+                self.elmxnets.append(x)
+                add_cubicles_for_element(x.ID, [bus])
+
+
+
+ # def to_veragrid_old(self) -> dev.MultiCircuit:
     #     """
     #
     #     :return:
@@ -784,178 +1202,5 @@ class DgsCircuit:
     #         shunt = dev.Shunt(name=sh.loc_name or f"Shunt_{eid}", B=b_val)
     #         grid.add_shunt(bus, shunt)
     #
-    #     # TODO: ElmGenstat / ElmSym si lo necesitáis ya (yo lo haría en un segundo commit)
     #
     #     return grid
-
-    def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
-        """
-
-        :return:
-        """
-        if logger is None:
-            logger = Logger()
-
-        grid = dev.MultiCircuit()
-
-        baseMVA = 100.0
-
-        # --- frequency ---
-        if len(self.elmnets) > 0:
-            frequency = float(self.elmnets[0].frnom or 50.0)
-        else:
-            frequency = 50.0
-
-        # StaCubic dictionary
-        stacubic_dict: Dict[str, List[int]] = dict()
-        for elm in self.stacubics:
-            lst = stacubic_dict.get(elm.obj_id, None)
-            if lst is None:
-                stacubic_dict[elm.obj_id] = [elm.obj_bus]
-            else:
-                lst.append(elm.obj_bus)
-
-        # graphics dictioary
-        pos_by_objid: Dict[str, Tuple[float, float]] = dict()
-        for g in self.intgrfs:
-            pos_by_objid[g.pDataObj] = (float(g.rCenterX or 0.0), float(g.rCenterY or 0.0))
-
-        # Buses
-        for elmterm in self.elmterms:
-            bus = convert_dgs_to_bus(elmterm=elmterm, pos_by_objid=pos_by_objid)
-            grid.add_bus(obj=bus)
-
-        # Line types
-        typlne_dict: Dict[str, dev.SequenceLineType] = dict()
-        for typlne in self.typlnes:
-            seq_lne = convert_dgs_to_sequence_line(typlne=typlne)
-            grid.add_sequence_line(obj=seq_lne)
-            typlne_dict[typlne.ID] = seq_lne
-
-        # lines
-        for elmlne in self.elmlnes:
-            line = convert_dgs_to_line(lne=elmlne,
-                                       buses=grid.buses,
-                                       stacubic_dict=stacubic_dict,
-                                       templates_dict=typlne_dict,
-                                       freq=frequency,
-                                       baseMVA=baseMVA,
-                                       logger=logger)
-            grid.add_line(obj=line, logger=logger)
-
-        return grid
-
-    def from_veragrid(self, grid: dev.MultiCircuit):
-        # 0) limpiar listas
-        for cls, list_name in self._CLASS_TO_LIST.items():
-            getattr(self, list_name).clear()
-
-        def _new_id(counter=[1]):
-            v = counter[0];
-            counter[0] += 1
-            return str(v)
-
-        # 1) ElmNet
-        net = ElmNet()
-        net.ID = _new_id()
-        net.loc_name = "Grid"
-        net.frnom = 50.0  # TODO: si grid tiene frecuencia, úsala
-        self.elmnets.append(net)
-
-        # 2) ElmTerm por bus
-        term_id_by_bus = {}
-        for bus in grid.buses:
-            t = ElmTerm()
-            t.ID = _new_id()
-            t.loc_name = bus.name
-            t.uknom = float(bus.Vnom)
-            t.outserv = 0 if bus.active else 1
-            self.elmterms.append(t)
-            term_id_by_bus[bus] = t.ID
-
-            # opcional: IntGrf para posición
-            g = IntGrf()
-            g.ID = _new_id()
-            g.pDataObj = t.ID
-            g.rCenterX = float(getattr(bus, "xpos", 0.0))
-            g.rCenterY = float(-getattr(bus, "ypos", 0.0))
-            self.intgrfs.append(g)
-
-        # 3) helper para crear cubicles y “conectar” un elemento a buses
-        def add_cubicles_for_element(element_id: str, buses: list):
-            for b in buses:
-                c = StaCubic()
-                c.ID = _new_id()
-                c.obj_id = element_id
-                c.fold_id = term_id_by_bus[b]  # esta es la clave
-                self.stacubics.append(c)
-
-        # 4) Loads
-        for bus in grid.buses:
-            for ld in getattr(bus, "loads", []):  # depende de cómo VeraGrid guarde loads
-                e = ElmLod()
-                e.ID = _new_id()
-                e.loc_name = ld.name
-                e.plini = float(ld.P)
-                e.qlini = float(ld.Q)
-                e.scale0 = 1.0
-                e.outserv = 0
-                self.elmlods.append(e)
-                add_cubicles_for_element(e.ID, [bus])
-
-        # 5) Lines (+ type)
-        for line in grid.lines:
-            tpe = TypLne()
-            tpe.ID = _new_id()
-            # TODO: revertir pu -> ohm/km si quieres, o guardar aproximado
-            self.typlnes.append(tpe)
-
-            e = ElmLne()
-            e.ID = _new_id()
-            e.loc_name = line.name
-            e.typ_id = tpe.ID
-            e.dline = 1.0  # TODO: si no sabes longitud, 1.0 y meter todo en el tipo
-            e.outserv = 0 if line.active else 1
-            self.elmlnes.append(e)
-            add_cubicles_for_element(e.ID, [line.bus_from, line.bus_to])
-
-        # 6) Transformers 2W (+ type)
-        for tr in grid.transformers2w:
-            tpe = TypTr2()
-            tpe.ID = _new_id()
-            # TODO: rellenar parámetros si los tienes
-            self.typtr2s.append(tpe)
-
-            e = ElmTr2()
-            e.ID = _new_id()
-            e.loc_name = tr.name
-            e.typ_id = tpe.ID
-            e.outserv = 0 if tr.active else 1
-            self.elmtr2s.append(e)
-            add_cubicles_for_element(e.ID, [tr.bus_from, tr.bus_to])
-
-        # 7) Slack / external grid (ElmXnet)
-        for bus in grid.buses:
-            if getattr(bus, "is_slack", False):
-                x = ElmXnet()
-                x.ID = _new_id()
-                x.loc_name = f"Slack_{bus.name}"
-                x.bustp = "SL"
-                x.usetp = 1.0
-                self.elmxnets.append(x)
-                add_cubicles_for_element(x.ID, [bus])
-
-
-def _new_id(counter=[1]):
-    v = counter[0]
-    counter[0] += 1
-    return str(v)
-
-
-def dgs_to_circuit(path: str) -> dev.MultiCircuit:
-    """
-    Entry point: read a DGS and return a VeraGrid MultiCircuit.
-    """
-    dgs = DgsCircuit()
-    dgs.parse_dgs(path)
-    return dgs.to_veragrid()
