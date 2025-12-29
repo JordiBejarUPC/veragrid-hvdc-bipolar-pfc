@@ -597,6 +597,7 @@ class IoMain(ConfigurationMain):
                            "Electrical Json V3 (*.ejson3);;"
                            "Raw (*.raw);;"
                            "Rawx (*.rawx);;"
+                           "DIgSILENT Power Factory DGS (*.dgs);;"
                            "Sqlite (*.sqlite);;")
 
             if NEWTON_PA_AVAILABLE:
@@ -636,6 +637,7 @@ class IoMain(ConfigurationMain):
                     extension['Sqlite (*.sqlite)'] = '.sqlite'
                     extension['Newton (*.newton)'] = '.newton'
                     extension['PGM Json (*.pgm)'] = '.pgm'
+                    extension['DIgSILENT Power Factory DGS (*.dgs)'] = '.dgs'
 
                     if file_extension == '':
                         filename = name + extension[type_selected]
