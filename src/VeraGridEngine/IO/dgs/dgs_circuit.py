@@ -613,6 +613,7 @@ class DgsCircuit:
         """
         if pf_path == "":
             pf_path = r"C:\Program Files\DIgSILENT\PowerFactory 2025 SP1"
+        os.environ["PATH"] = pf_path + ";" + os.environ["PATH"]
         python_folder = f"{sys.version_info.major}.{sys.version_info.minor}"
         module_folder = os.path.join(pf_path, "Python", python_folder)
 
