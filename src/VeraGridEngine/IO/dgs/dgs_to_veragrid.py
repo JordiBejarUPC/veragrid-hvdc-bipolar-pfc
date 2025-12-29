@@ -59,6 +59,12 @@ def _ref_id(x):
 
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
+    """
+
+    :param element_id:
+    :param cubics_by_objid:
+    :return:
+    """
     cbs = cubics_by_objid.get(_ref_id(element_id), [])
     # fold_id suele ser el ID del ElmTerm “padre”
     return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None]
@@ -74,6 +80,8 @@ def get_branch_buses(elm_id: str,
     :param elm_id:
     :param stacubic_dict:
     :param buses:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
     :return:
     """
     # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
@@ -105,13 +113,14 @@ def get_injection_bus(elm_id: str,
     :param elm_id:
     :param stacubic_dict:
     :param buses:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
     :return:
     """
     # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
     term_ids = get_terminal_ids(element_id=elm_id, cubics_by_objid=cubics_by_objid)
     if len(term_ids) == 1:
         return bus_by_term_id[term_ids[0]]
-
 
     # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
@@ -147,14 +156,6 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
     return bus
 
 
-def convert_dgs_from_bus(bus: dev.Bus) -> ElmTerm:
-    elm = ElmTerm()
-
-    # TODO: implement conversion
-
-    return elm
-
-
 def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
     """
     Convert a TypLne to SequenceLineType
@@ -166,11 +167,11 @@ def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
         R=typlne.rline,
         X=typlne.xline,
         B=typlne.bline,
-        CnF=typlne.cline*1000,
+        CnF=typlne.cline * 1000,
         R0=typlne.rline0,
         X0=typlne.xline0,
         B0=typlne.bline0,
-        CnF0=typlne.cline0*1000,
+        CnF0=typlne.cline0 * 1000,
         Vnom=typlne.uline,
         Imax=typlne.sline,
         use_conductance=typlne.cline != 0.0
@@ -211,7 +212,6 @@ def _convert_pf_tr2_connection(code: str) -> WindingType | None:
         return None
 
 
-
 def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
     """
     Convert a TypTr2 to TransformerType
@@ -232,10 +232,10 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
     conn_hv = _convert_pf_tr2_connection(typtr2.tr2cn_h)
     conn_lv = _convert_pf_tr2_connection(typtr2.tr2cn_l)
 
-    if conn_hv is not None and hasattr(tpe, "conn_hv"):
+    if conn_hv is not None:
         tpe.conn_hv = conn_hv
 
-    if conn_lv is not None and hasattr(tpe, "conn_lv"):
+    if conn_lv is not None:
         tpe.conn_lv = conn_lv
 
     return tpe
@@ -319,11 +319,11 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               active=not tr2.outserv,
                               HV=max(bus_hv.Vnom, bus_lv.Vnom),
                               LV=min(bus_hv.Vnom, bus_lv.Vnom),
-                              #nominal_power=float(template.nominal_power or 0.001),
-                              #copper_losses=float(template.copper_losses or 0.0),
-                              #iron_losses=float(template.iron_losses or 0.0),
-                              #no_load_current=float(template.no_load_current or 0.0),
-                              #short_circuit_voltage=float(template.short_circuit_voltage or 0.0),
+                              # nominal_power=float(template.nominal_power or 0.001),
+                              # copper_losses=float(template.copper_losses or 0.0),
+                              # iron_losses=float(template.iron_losses or 0.0),
+                              # no_load_current=float(template.no_load_current or 0.0),
+                              # short_circuit_voltage=float(template.short_circuit_voltage or 0.0),
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
@@ -393,7 +393,6 @@ def _safe_float(x, default: float = 0.0) -> float:
     return float(x)
 
 
-
 def _safe_int(x, default: int = 0) -> int:
     """
     Convert a value to int safely.
@@ -413,7 +412,7 @@ def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
 
     # Heuristic: values > 10 are very likely percentages (e.g., 100 = 100%)
     if s > 10.0:
-        logger.add_warning(f"Load '{name}': scale0={s} looks like percent. Interpreting as {s/100.0}.")
+        logger.add_warning(f"Load '{name}': scale0={s} looks like percent. Interpreting as {s / 100.0}.")
         return s / 100.0
 
     return s
@@ -468,10 +467,10 @@ def convert_dgs_to_load(elmlod: ElmLod,
     Convert ElmLod to VeraGrid Load.
     """
     bus = get_injection_bus(elm_id=elmlod.ID,
-                           stacubic_dict=stacubic_dict,
-                           buses=buses,
-                           cubics_by_objid=cubics_by_objid,
-                           bus_by_term_id=bus_by_term_id)
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
 
     p_mw, q_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
 
@@ -479,7 +478,6 @@ def convert_dgs_to_load(elmlod: ElmLod,
                     P=p_mw,
                     Q=q_mvar,
                     active=(int(elmlod.outserv or 0) == 0))
-
 
     return bus, load
 
@@ -570,7 +568,6 @@ def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
     return max(0.0, min(1.0, pf))
 
 
-
 def _interpret_pu_limit(value: float,
                         baseMVA: float,
                         reference_abs: float,
@@ -605,13 +602,13 @@ def _add_generator_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, gen: dev.Genera
 
 
 def convert_dgs_to_generator(elmsym: ElmSym,
-                            stacubic_dict: Dict[str, List[int]],
-                            buses: List[dev.Bus],
-                            typsym_dict: Dict[str, TypSym],
-                            baseMVA: float,
-                            logger: Logger,
-                            cubics_by_objid: Dict[str, List[StaCubic]],
-                            bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
+                             stacubic_dict: Dict[str, List[int]],
+                             buses: List[dev.Bus],
+                             typsym_dict: Dict[str, TypSym],
+                             baseMVA: float,
+                             logger: Logger,
+                             cubics_by_objid: Dict[str, List[StaCubic]],
+                             bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
     """
     Convert ElmSym to VeraGrid Generator.
     """
@@ -699,6 +696,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
     """
 
+    :param self:
+    :param logger:
     :return:
     """
     if logger is None:
@@ -784,11 +783,11 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
     # Shunts (fixed)
     for elmshnt in self.elmshnts:
         bus, shunt = convert_dgs_to_shunt(elmshnt=elmshnt,
-                                            stacubic_dict=stacubic_dict,
-                                            buses=grid.buses,
-                                            logger=logger,
-                                            cubics_by_objid=cubics_by_objid,
-                                            bus_by_term_id=bus_by_term_id)
+                                          stacubic_dict=stacubic_dict,
+                                          buses=grid.buses,
+                                          logger=logger,
+                                          cubics_by_objid=cubics_by_objid,
+                                          bus_by_term_id=bus_by_term_id)
 
         _add_shunt_to_grid(grid=grid, bus=bus, shunt=shunt, logger=logger)
 
@@ -807,10 +806,8 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
     for typtr2 in self.typtr2s:
         tpe = convert_dgs_to_transformer_type(typtr2=typtr2)
-        if hasattr(grid, "add_transformer_type"):
-            grid.add_transformer_type(obj=tpe)
-        elif hasattr(grid, "add_transformer2w_type"):
-            grid.add_transformer2w_type(obj=tpe)
+        grid.add_transformer_type(obj=tpe)
+        grid.add_transformer2w_type(obj=tpe)
         typtr2_dict[typtr2.ID] = tpe
         tid = _ref_id(typtr2.ID)
         if tid is not None:
@@ -843,17 +840,5 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_transformer2w(obj=trafo)
 
-
     return grid
-
-
-_ID_COUNTER: int = 1
-
-
-def _new_id() -> str:
-    global _ID_COUNTER
-    v = _ID_COUNTER
-    _ID_COUNTER += 1
-    return str(v)
-
 
