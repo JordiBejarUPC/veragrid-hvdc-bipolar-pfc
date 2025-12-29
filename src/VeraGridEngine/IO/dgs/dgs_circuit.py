@@ -9,6 +9,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
+from VeraGridEngine.enumerations import WindingsConnection
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
@@ -62,10 +63,8 @@ def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
         name = prop.name
 
         if hasattr(pf_obj, name):
-            try:
-                value = pf_obj.name
-            except Exception:
-                value = None
+            value = pf_obj.name
+
         else:
             value = None
 
@@ -119,11 +118,7 @@ def get_branch_buses(elm_id: str,
     # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
     term_ids = get_terminal_ids(element_id=elm_id, cubics_by_objid=cubics_by_objid)
     if len(term_ids) == 2:
-        try:
-            return bus_by_term_id[term_ids[0]], bus_by_term_id[term_ids[1]]
-        except KeyError:
-            # Fall back to legacy obj_bus indexing if terminal mapping is incomplete
-            pass
+        return bus_by_term_id[term_ids[0]], bus_by_term_id[term_ids[1]]
 
     # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
@@ -154,11 +149,8 @@ def get_injection_bus(elm_id: str,
     # Prefer robust mapping using StaCubic.fold_id -> ElmTerm.ID -> Bus
     term_ids = get_terminal_ids(element_id=elm_id, cubics_by_objid=cubics_by_objid)
     if len(term_ids) == 1:
-        try:
-            return bus_by_term_id[term_ids[0]]
-        except KeyError:
-            # Fall back to legacy obj_bus indexing if terminal mapping is incomplete
-            pass
+        return bus_by_term_id[term_ids[0]]
+
 
     # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
@@ -231,10 +223,6 @@ def _convert_pf_tr2_connection(code: str):
     Convert a PowerFactory 2-character transformer connection code to VeraGrid enum when available.
     If the enum is not available or the code is unknown, return None and let defaults apply.
     """
-    try:
-        from VeraGridEngine.enumerations import WindingsConnection
-    except Exception:
-        return None
 
     if code is None:
         return None
@@ -426,24 +414,19 @@ def _safe_float(x, default: float = 0.0) -> float:
     """
     Convert a value to float safely.
     """
-    try:
-        if x is None:
-            return default
-        return float(x)
-    except Exception:
+    if x is None:
         return default
+    return float(x)
+
 
 
 def _safe_int(x, default: int = 0) -> int:
     """
     Convert a value to int safely.
     """
-    try:
-        if x is None:
-            return default
-        return int(x)
-    except Exception:
+    if x is None:
         return default
+    return int(x)
 
 
 def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
@@ -496,16 +479,11 @@ def _add_load_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, load: dev.Load, logg
     """
     Add a load to the grid with compatibility across MultiCircuit API variants.
     """
-    try:
-        load.bus = bus
-    except Exception:
-        pass
+    load.bus = bus
 
-    try:
-        grid.add_load(bus=bus, api_obj=load)
-        return
-    except TypeError:
-        pass
+    grid.add_load(bus=bus, api_obj=load)
+    return
+
 
     try:
         grid.add_load(obj=load, bus=bus)
@@ -669,14 +647,12 @@ def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
     """
     Compute power factor from (P, Q).
     """
-    try:
-        s = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
-        if s <= 0.0:
-            return default
-        pf = abs(p_mw) / s
-        return max(0.0, min(1.0, pf))
-    except Exception:
+    s = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
+    if s <= 0.0:
         return default
+    pf = abs(p_mw) / s
+    return max(0.0, min(1.0, pf))
+
 
 
 def _interpret_pu_limit(value: float,
@@ -707,46 +683,9 @@ def _add_generator_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, gen: dev.Genera
     """
     Add a generator to the grid with compatibility across MultiCircuit API variants.
     """
-    try:
-        gen.bus = bus
-    except Exception:
-        pass
-
-    try:
-        grid.add_generator(bus=bus, api_obj=gen)
-        return
-    except (TypeError, AttributeError):
-        pass
-
-    try:
-        grid.add_generator(obj=gen, bus=bus)
-        return
-    except (TypeError, AttributeError):
-        pass
-
-    try:
-        grid.add_generator(bus, gen)
-        return
-    except (TypeError, AttributeError):
-        pass
-
-    try:
-        grid.add_generator(obj=gen)
-        return
-    except (TypeError, AttributeError):
-        pass
-
-    # Fallback: append to 'generators' list if present
-    if hasattr(grid, "generators"):
-        try:
-            grid.generators.append(gen)
-            return
-        except Exception as e:
-            logger.add_warning(f"Failed to append generator '{gen.name}' to grid.generators: {e}")
-            raise
-
-    logger.add_warning(f"Failed to add generator '{gen.name}' to grid: no compatible API found.")
-    raise AttributeError("No compatible method to add Generator to MultiCircuit.")
+    gen.bus = bus
+    grid.add_generator(bus=bus, api_obj=gen)
+    return
 
 
 def convert_dgs_to_generator(elmsym: ElmSym,
@@ -986,19 +925,11 @@ class DgsCircuit:
                 else:
                     # Data line
                     if current_cls is not None:
-                        try:
-                            obj = current_cls.parse_line(line=line, header_map=header_map)
-                        except (ValueError, IndexError):
-                            # Legitimate parse failure (bad data line)
-                            obj = None
+                        obj = current_cls.parse_line(line=line, header_map=header_map)
 
                         if obj is not None:
-                            try:
-                                objects_lst = self._CLASS_TO_LIST[current_cls]
-                                objects_lst.append(obj)
-                            except KeyError:
-                                # Programming/configuration error → re-raise
-                                raise
+                            objects_lst = self._CLASS_TO_LIST[current_cls]
+                            objects_lst.append(obj)
 
     def write_dgs(self, path: str):
         """
@@ -1199,17 +1130,14 @@ class DgsCircuit:
 
         # Generators
         for elmsym in self.elmsyms:
-            try:
-                bus, gen = convert_dgs_to_generator(elmsym=elmsym,
-                                                    stacubic_dict=stacubic_dict,
-                                                    buses=grid.buses,
-                                                    typsym_dict=typsym_dict,
-                                                    baseMVA=baseMVA,
-                                                    logger=logger,
-                                                    cubics_by_objid=cubics_by_objid,
-                                                    bus_by_term_id=bus_by_term_id)
-            except ValueError:
-                continue
+            bus, gen = convert_dgs_to_generator(elmsym=elmsym,
+                                                stacubic_dict=stacubic_dict,
+                                                buses=grid.buses,
+                                                typsym_dict=typsym_dict,
+                                                baseMVA=baseMVA,
+                                                logger=logger,
+                                                cubics_by_objid=cubics_by_objid,
+                                                bus_by_term_id=bus_by_term_id)
 
             _add_generator_to_grid(grid=grid, bus=bus, gen=gen, logger=logger)
 
@@ -1226,15 +1154,12 @@ class DgsCircuit:
 
         # Shunts (fixed)
         for elmshnt in self.elmshnts:
-            try:
-                bus, shunt = convert_dgs_to_shunt(elmshnt=elmshnt,
-                                                  stacubic_dict=stacubic_dict,
-                                                  buses=grid.buses,
-                                                  logger=logger,
-                                                  cubics_by_objid=cubics_by_objid,
-                                                  bus_by_term_id=bus_by_term_id)
-            except ValueError:
-                continue
+            bus, shunt = convert_dgs_to_shunt(elmshnt=elmshnt,
+                                                stacubic_dict=stacubic_dict,
+                                                buses=grid.buses,
+                                                logger=logger,
+                                                cubics_by_objid=cubics_by_objid,
+                                                bus_by_term_id=bus_by_term_id)
 
             _add_shunt_to_grid(grid=grid, bus=bus, shunt=shunt, logger=logger)
 
