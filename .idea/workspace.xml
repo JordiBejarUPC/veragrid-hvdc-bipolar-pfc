@@ -28,9 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Changed the getattr">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Changed the try/except, the &quot;or 0.0&quot; and made the dicctionary of conversion for the _convert_pf_tr2_connection">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_to_veragrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_to_veragrid.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1895,7 +1896,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="697" />
+    <option name="localTasksCounter" value="698" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1941,7 +1942,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
     <MESSAGE value="Added more ContingencyFilteringMethods" />
     <MESSAGE value="Several fixes when selecting by country, community, etc" />
     <MESSAGE value="5.6.3" />
@@ -1966,7 +1966,8 @@
     <MESSAGE value="1. Finished the line parser&#10;2. Made the trafo parser in the same way as for the lines" />
     <MESSAGE value="Worked on the Loads, Generators and Fixed Shunts" />
     <MESSAGE value="Changed the getattr" />
-    <option name="LAST_COMMIT_MESSAGE" value="Changed the getattr" />
+    <MESSAGE value="Changed the try/except, the &quot;or 0.0&quot; and made the dicctionary of conversion for the _convert_pf_tr2_connection" />
+    <option name="LAST_COMMIT_MESSAGE" value="Changed the try/except, the &quot;or 0.0&quot; and made the dicctionary of conversion for the _convert_pf_tr2_connection" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2512,18 +2513,23 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py</url>
-          <line>229</line>
-          <option name="timeStamp" value="3112" />
+          <line>415</line>
+          <option name="timeStamp" value="3116" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py</url>
-          <line>235</line>
-          <option name="timeStamp" value="3113" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_to_veragrid.py</url>
+          <line>425</line>
+          <option name="timeStamp" value="3117" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py</url>
-          <line>230</line>
-          <option name="timeStamp" value="3114" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_to_veragrid.py</url>
+          <line>537</line>
+          <option name="timeStamp" value="3119" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_to_veragrid.py</url>
+          <line>635</line>
+          <option name="timeStamp" value="3120" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
