@@ -51,7 +51,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                TypTr3)
 
 
-def convert_bus(bus: dev.Bus, new_id) -> ElmTerm:
+def convert_bus(bus: dev.Bus, new_id: str) -> ElmTerm:
     """
 
     :param bus:
@@ -70,7 +70,7 @@ def convert_bus(bus: dev.Bus, new_id) -> ElmTerm:
     return elm_term
 
 
-def convert_bus_graphic(elm_term, bus: dev.Bus, new_id) -> IntGrf:
+def convert_bus_graphic(elm_term, bus: dev.Bus, new_id: str) -> IntGrf:
     """
 
     :param elm_term:
@@ -88,7 +88,7 @@ def convert_bus_graphic(elm_term, bus: dev.Bus, new_id) -> IntGrf:
     return int_grf
 
 
-def convert_load(load: dev.Load, new_id) -> ElmLod:
+def convert_load(load: dev.Load, new_id: str) -> ElmLod:
     """
 
     :param load:
@@ -104,6 +104,33 @@ def convert_load(load: dev.Load, new_id) -> ElmLod:
     e.outserv = not load.active
 
     return e
+
+
+def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
+    """
+
+    :param seq:
+    :param new_id:
+    :return:
+    """
+    typlne = TypLne()
+    typlne.ID = new_id
+
+    typlne.loc_name = seq.name
+    typlne.rline = seq.R
+    typlne.xline = seq.X
+    typlne.bline = seq.B
+    typlne.cline = seq.Cnf
+
+    typlne.rline0 = seq.R0
+    typlne.xline0 = seq.X0
+    typlne.bline0 = seq.B0
+    typlne.cline0 = seq.Cnf0
+
+    typlne.uline = seq.Vnom
+    typlne.sline = seq.Imax
+
+    return typlne
 
 
 def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
@@ -123,7 +150,7 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
 
     # 2) ElmTerm por bus
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
-    for i, bus in enumerate(grid.buses):
+    for bus in grid.buses:
         elm_term = convert_bus(bus, new_id=dgs_grid.new_id())
         int_grf = convert_bus_graphic(elm_term, bus, new_id=dgs_grid.new_id())
         dgs_grid.elmterms.append(elm_term)
@@ -138,6 +165,12 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
 
     for gen in grid.generators:
         pass
+
+    seq2typlne_dict: Dict[dev.SequenceLineType, TypLne] = dict()
+    for seq in grid.sequence_line_types:
+        typlne = convert_sequence_line(seq=seq, new_id=dgs_grid.new_id())
+        dgs_grid.typlnes.append(typlne)
+        seq2typlne_dict[seq] = typlne
 
     # 5) Lines (+ type)
     for line in grid.lines:

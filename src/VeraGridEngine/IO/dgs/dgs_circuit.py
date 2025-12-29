@@ -205,14 +205,6 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
     return bus
 
 
-def convert_dgs_from_bus(bus: dev.Bus) -> ElmTerm:
-    elm = ElmTerm()
-
-    # TODO: implement conversion
-
-    return elm
-
-
 def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
     """
     Convert a TypLne to SequenceLineType
@@ -267,36 +259,39 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
     :param typtr2: TypTr2
     :return: TransformerType
     """
-    tpe = dev.TransformerType(hv_nominal_voltage=float(typtr2.utrn_h or 0.0),
-                              lv_nominal_voltage=float(typtr2.utrn_l or 0.0),
-                              nominal_power=float(typtr2.strn or 0.0),
-                              copper_losses=float(typtr2.pcutr or 0.0),
-                              iron_losses=float(typtr2.pfe or 0.0),
-                              no_load_current=float(typtr2.curmg or 0.0),
-                              short_circuit_voltage=float(typtr2.uktr or 0.0),
+    tpe = dev.TransformerType(hv_nominal_voltage=float(typtr2.utrn_h),
+                              lv_nominal_voltage=float(typtr2.utrn_l),
+                              nominal_power=float(typtr2.strn),
+                              copper_losses=float(typtr2.pcutr),
+                              iron_losses=float(typtr2.pfe),
+                              no_load_current=float(typtr2.curmg),
+                              short_circuit_voltage=float(typtr2.uktr),
                               gr_hv1=0.5,
                               gx_hv1=0.5,
                               name=typtr2.loc_name)
 
-    conn_hv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_h", None))
-    conn_lv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_l", None))
+    conn_hv = _convert_pf_tr2_connection(typtr2.tr2cn_h)
+    conn_lv = _convert_pf_tr2_connection(typtr2.tr2cn_l)
 
-    if conn_hv is not None and hasattr(tpe, "conn_hv"):
+    if conn_hv is not None:
         tpe.conn_hv = conn_hv
 
-    if conn_lv is not None and hasattr(tpe, "conn_lv"):
+    if conn_lv is not None:
         tpe.conn_lv = conn_lv
 
     return tpe
 
 
-def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -> Tuple[dev.Bus, dev.Bus]:
+def _order_hv_lv(bus_a: dev.Bus,
+                 bus_b: dev.Bus,
+                 logger: Logger,
+                 tr_name: str) -> Tuple[dev.Bus, dev.Bus]:
     """
     Order two buses as (HV, LV) based on nominal voltage.
     If voltages are equal or undefined, keep the original order and warn.
     """
-    va = float(getattr(bus_a, "Vnom", 0.0) or 0.0)
-    vb = float(getattr(bus_b, "Vnom", 0.0) or 0.0)
+    va = bus_a.Vnom
+    vb = bus_b.Vnom
 
     if va == 0.0 or vb == 0.0:
         logger.add_warning(f"Transformer '{tr_name}': one or both buses have Vnom=0.0 (va={va}, vb={vb}).")
@@ -1347,9 +1342,6 @@ def dgs_to_circuit(path: str) -> dev.MultiCircuit:
     dgs = DgsCircuit()
     dgs.parse_dgs(path)
     return dgs.to_veragrid()
-
-
-
 
 # def to_veragrid_old(self) -> dev.MultiCircuit:
 #     """

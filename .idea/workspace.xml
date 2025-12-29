@@ -28,7 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="moved veragrid_to_dgs to a new file">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="veragrid_to_dgs WIP">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/veragrid_to_dgs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/veragrid_to_dgs.py" afterDir="false" />
@@ -1874,7 +1874,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="692" />
+    <option name="localTasksCounter" value="693" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1920,7 +1920,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
     <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
     <MESSAGE value="Added more ContingencyFilteringMethods" />
     <MESSAGE value="Several fixes when selecting by country, community, etc" />
@@ -1945,7 +1944,8 @@
     <MESSAGE value="minimal format changes" />
     <MESSAGE value="Some work about power factory converter" />
     <MESSAGE value="moved veragrid_to_dgs to a new file" />
-    <option name="LAST_COMMIT_MESSAGE" value="moved veragrid_to_dgs to a new file" />
+    <MESSAGE value="veragrid_to_dgs WIP" />
+    <option name="LAST_COMMIT_MESSAGE" value="veragrid_to_dgs WIP" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
