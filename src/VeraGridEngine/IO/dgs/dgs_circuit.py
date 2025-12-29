@@ -63,7 +63,7 @@ def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
 
         if hasattr(pf_obj, name):
             try:
-                value = getattr(pf_obj, name)
+                value = pf_obj.name
             except Exception:
                 value = None
         else:
@@ -245,7 +245,7 @@ def _convert_pf_tr2_connection(code: str):
 
     # Common PowerFactory 2-char winding codes in DGS: Y, YN, D, Z, ZN
     try:
-        return getattr(WindingsConnection, c)
+        return WindingsConnection.c
     except AttributeError:
         return None
 
@@ -267,8 +267,8 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
                               gx_hv1=0.5,
                               name=typtr2.loc_name)
 
-    conn_hv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_h", None))
-    conn_lv = _convert_pf_tr2_connection(getattr(typtr2, "tr2cn_l", None))
+    conn_hv = _convert_pf_tr2_connection(typtr2.tr2cn_h)
+    conn_lv = _convert_pf_tr2_connection(typtr2.tr2cn_l)
 
     if conn_hv is not None and hasattr(tpe, "conn_hv"):
         tpe.conn_hv = conn_hv
@@ -284,8 +284,8 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     Order two buses as (HV, LV) based on nominal voltage.
     If voltages are equal or undefined, keep the original order and warn.
     """
-    va = float(getattr(bus_a, "Vnom", 0.0) or 0.0)
-    vb = float(getattr(bus_b, "Vnom", 0.0) or 0.0)
+    va = float(bus_a.Vnom or 0.0)
+    vb = float(bus_b.Vnom or 0.0)
 
     if va == 0.0 or vb == 0.0:
         logger.add_warning(f"Transformer '{tr_name}': one or both buses have Vnom=0.0 (va={va}, vb={vb}).")
@@ -357,11 +357,11 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               active=not tr2.outserv,
                               HV=max(bus_hv.Vnom, bus_lv.Vnom),
                               LV=min(bus_hv.Vnom, bus_lv.Vnom),
-                              nominal_power=float(getattr(template, "Sn", getattr(template, "nominal_power", 0.001)) or 0.001),
-                              copper_losses=float(getattr(template, "Pcu", getattr(template, "copper_losses", 0.0)) or 0.0),
-                              iron_losses=float(getattr(template, "Pfe", getattr(template, "iron_losses", 0.0)) or 0.0),
-                              no_load_current=float(getattr(template, "I0", getattr(template, "no_load_current", 0.0)) or 0.0),
-                              short_circuit_voltage=float(getattr(template, "Vsc", getattr(template, "short_circuit_voltage", 0.0)) or 0.0),
+                              #nominal_power=float(template.nominal_power or 0.001),
+                              #copper_losses=float(template.copper_losses or 0.0),
+                              #iron_losses=float(template.iron_losses or 0.0),
+                              #no_load_current=float(template.no_load_current or 0.0),
+                              #short_circuit_voltage=float(template.short_circuit_voltage or 0.0),
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
@@ -469,13 +469,13 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
 
     # Primary: direct P/Q
-    p = _safe_float(getattr(elmlod, "plini", 0.0), 0.0)
-    q = _safe_float(getattr(elmlod, "qlini", 0.0), 0.0)
+    p = _safe_float(elmlod.plini, 0.0)
+    q = _safe_float(elmlod.qlini, 0.0)
 
     # Fallback: S + cos(phi)
     if p == 0.0 and q == 0.0:
-        s = _safe_float(getattr(elmlod, "slini", 0.0), 0.0)
-        cosphi = _safe_float(getattr(elmlod, "coslini", 0.0), 0.0)
+        s = _safe_float(elmlod.slini, 0.0)
+        cosphi = _safe_float(elmlod.coslini, 0.0)
 
         if s != 0.0 and cosphi != 0.0:
             cosphi = max(min(cosphi, 1.0), -1.0)
@@ -485,7 +485,7 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
             logger.add_warning(f"Load '{name}': P/Q not provided, derived from slini/coslini.")
 
     # Apply scaling
-    scale = _get_scale_factor(scale0=getattr(elmlod, "scale0", 1.0), logger=logger, name=name)
+    scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
     p *= scale
     q *= scale
 
@@ -547,7 +547,8 @@ def convert_dgs_to_load(elmlod: ElmLod,
     load = dev.Load(name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
                     P=p_mw,
                     Q=q_mvar,
-                    active=(int(getattr(elmlod, "outserv", 0) or 0) == 0))
+                    active=(int(elmlod.outserv or 0) == 0))
+
 
     return bus, load
 
@@ -566,15 +567,16 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
     g_mw: float = 0.0
 
     # Reactive power per step (MVAr) and connected steps
-    q_step: float = _safe_float(getattr(elmshnt, "qcapn", 0.0), 0.0)
-    n_on: int = _safe_int(getattr(elmshnt, "ncapa", 1), 1)
+    q_step: float = _safe_float(elmshnt.qcapn, 0.0)
+    n_on: int = _safe_int(elmshnt.ncapa, 1)
+
     if n_on <= 0:
         n_on = 1
 
     b_mvar: float = q_step * float(n_on)
 
     # If total rated MVAr is present in schema, prefer it when non-zero
-    qtotn: float = _safe_float(getattr(elmshnt, "qtotn", 0.0), 0.0)
+    qtotn: float = _safe_float(elmshnt.qtotn, 0.0)
     if qtotn != 0.0:
         b_mvar = qtotn
 
@@ -642,7 +644,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     name = elmshnt.loc_name or f"Shunt_{_ref_id(elmshnt.ID)}"
 
     # Fixed shunts only: if max steps > 1, the device is stepped/controllable in PF
-    ncapx: int = _safe_int(getattr(elmshnt, "ncapx", 1), 1)
+    ncapx: int = _safe_int(elmshnt.ncapx, 1)
     if ncapx > 1:
         logger.add_warning(f"ElmShnt '{name}': ncapx={ncapx} indicates stepped shunt. Skipping fixed conversion.")
         raise ValueError("ElmShnt is stepped/controllable (ncapx>1).")
@@ -658,7 +660,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     shunt = dev.Shunt(name=name,
                       G=g_mw,
                       B=b_mvar,
-                      active=(_safe_int(getattr(elmshnt, "outserv", 0), 0) == 0))
+                      active=(_safe_int(elmshnt.outserv, 0) == 0))
 
     return bus, shunt
 
@@ -761,7 +763,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
 
     # Skip motors (ElmSym can represent synchronous motors too)
-    if _safe_int(getattr(elmsym, "i_mot", 0), 0) != 0:
+    if _safe_int(elmsym.i_mot, 0) != 0:
         logger.add_warning(f"ElmSym '{name}' is marked as motor (i_mot=1). Skipping Generator conversion.")
         raise ValueError("ElmSym is a motor, not a generator.")
 
@@ -776,28 +778,28 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     if typsym is None:
         typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
 
-    p_mw = _safe_float(getattr(elmsym, "pgini", 0.0), 0.0)
-    q_mvar = _safe_float(getattr(elmsym, "qgini", 0.0), 0.0)
+    p_mw = _safe_float(elmsym.pgini, 0.0)
+    q_mvar = _safe_float(elmsym.qgini, 0.0)
 
     # Voltage control
-    vset = _safe_float(getattr(elmsym, "usetp", 1.0), 1.0)
-    is_controlled = (_safe_int(getattr(elmsym, "iv_mode", 0), 0) != 0)
+    vset = _safe_float(elmsym.usetp, 1.0)
+    is_controlled = (_safe_int(elmsym.iv_mode, 0) != 0)
 
     # Power factor (used mainly when not controlled)
-    pf = _safe_float(getattr(elmsym, "cosgini", 0.0), 0.0)
+    pf = _safe_float(elmsym.cosgini, 0.0)
     if pf == 0.0 and typsym is not None:
-        pf = _safe_float(getattr(typsym, "cosn", 0.0), 0.0)
+        pf = _safe_float(typsym.cosn, 0.0)
     if pf == 0.0:
         pf = _pf_from_pq(p_mw=p_mw, q_mvar=q_mvar, default=0.8)
 
     # Nominal power
     snom = 9999.0
     if typsym is not None:
-        snom = _safe_float(getattr(typsym, "sgn", 9999.0), 9999.0)
+        snom = _safe_float(typsym.sgn, 9999.0)
 
     # Limits (q_min/q_max are often in p.u. on Sbase in DGS exports)
-    qmin_raw = _safe_float(getattr(elmsym, "q_min", -9999.0), -9999.0)
-    qmax_raw = _safe_float(getattr(elmsym, "q_max", 9999.0), 9999.0)
+    qmin_raw = _safe_float(elmsym.q_min, -9999.0)
+    qmax_raw = _safe_float(elmsym.q_max, 9999.0)
 
     qmin = _interpret_pu_limit(value=qmin_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
                                logger=logger, name=name, field="q_min")
@@ -805,8 +807,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                                logger=logger, name=name, field="q_max")
 
     # Optional P limits if present in schema
-    pmin = _safe_float(getattr(elmsym, "Pmin_uc", 0.0), 0.0)
-    pmax = _safe_float(getattr(elmsym, "Pmax_uc", 9999.0), 9999.0)
+    pmin = _safe_float(elmsym.Pmin_uc, 0.0)
+    pmax = _safe_float(elmsym.Pmax_uc, 9999.0)
 
     # Interpret P limits if they look like p.u. too
     pmin = _interpret_pu_limit(value=pmin, baseMVA=baseMVA, reference_abs=abs(p_mw),
@@ -822,15 +824,15 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         Qmin=qmin,
                         Qmax=qmax,
                         Snom=snom,
-                        active=(_safe_int(getattr(elmsym, "outserv", 0), 0) == 0),
+                        active=(_safe_int(elmsym.outserv, 0) == 0),
                         Pmin=pmin,
                         Pmax=pmax,
                         Sbase=baseMVA)
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
-        r1 = _safe_float(getattr(typsym, "rstr", 0.0), 0.0)
-        x1 = _safe_float(getattr(typsym, "xd", 0.0), 0.0)
+        r1 = _safe_float(typsym.rstr, 0.0)
+        x1 = _safe_float(typsym.xd, 0.0)
 
         if r1 != 0.0 or x1 != 0.0:
             gen.R1 = float(r1)
@@ -1359,8 +1361,8 @@ def from_veragrid(self, grid: dev.MultiCircuit):
             g = IntGrf()
             g.ID = _new_id()
             g.pDataObj = t.ID
-            g.rCenterX = float(getattr(bus, "xpos", 0.0))
-            g.rCenterY = float(-getattr(bus, "ypos", 0.0))
+            g.rCenterX = float(bus.xpos or 0.0)
+            g.rCenterY = float(-(bus.ypos or 0.0))
             self.intgrfs.append(g)
 
         # 3) helper para crear cubicles y “conectar” un elemento a buses
@@ -1374,7 +1376,7 @@ def from_veragrid(self, grid: dev.MultiCircuit):
 
         # 4) Loads
         for bus in grid.buses:
-            for ld in getattr(bus, "loads", []):  # depende de cómo VeraGrid guarde loads
+            for ld in bus.loads:  # depends on how VeraGrid stores loads
                 e = ElmLod()
                 e.ID = _new_id()
                 e.loc_name = ld.name
@@ -1417,7 +1419,7 @@ def from_veragrid(self, grid: dev.MultiCircuit):
 
         # 7) Slack / external grid (ElmXnet)
         for bus in grid.buses:
-            if getattr(bus, "is_slack", False):
+            if bus.is_slack:
                 x = ElmXnet()
                 x.ID = _new_id()
                 x.loc_name = f"Slack_{bus.name}"

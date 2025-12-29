@@ -91,12 +91,12 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/eRoots-Analytics/VeraGrid",
-    "accountId": "1aabb1b8-3f86-4002-b08f-3d808f1ab77e"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
+    &quot;accountId&quot;: &quot;1aabb1b8-3f86-4002-b08f-3d808f1ab77e&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
@@ -1895,7 +1895,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="693" />
+    <option name="localTasksCounter" value="695" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
