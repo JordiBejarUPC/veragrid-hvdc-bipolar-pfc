@@ -3,11 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-import math
-import numpy as np
-import sys
-import os
-from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
@@ -91,6 +86,7 @@ def convert_generator(gen: dev.Generator, new_id: str, Sbase, t: int | None) -> 
     e.q_min = gen.get_Qmin_at(t) / Sbase
     e.q_max = gen.get_Qmax_at(t) / Sbase
     e.usetp = gen.get_Vset_at(t)
+    e.ip_ctrl = 1 if gen.bus.is_slack else 0
 
     return e
 
@@ -144,7 +140,7 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     return typtr2
 
 
-def veragrid_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
+def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
     """
 
     :param grid:

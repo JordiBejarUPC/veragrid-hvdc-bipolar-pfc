@@ -12,6 +12,7 @@ from typing import Dict, List, Type, Optional, Tuple
 from VeraGridEngine.enumerations import WindingType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                ChaRef,
                                                ChaVec,
@@ -448,15 +449,6 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     return p, q
 
 
-def _add_load_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, load: dev.Load, logger: Logger) -> None:
-    """
-    Add a load to the grid with compatibility across MultiCircuit API variants.
-    """
-    load.bus = bus
-    grid.add_load(bus=bus, api_obj=load)
-    return
-
-
 def convert_dgs_to_load(elmlod: ElmLod,
                         stacubic_dict: Dict[str, List[int]],
                         buses: List[dev.Bus],
@@ -592,15 +584,6 @@ def _interpret_pu_limit(value: float,
     return v
 
 
-def _add_generator_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, gen: dev.Generator, logger: Logger) -> None:
-    """
-    Add a generator to the grid with compatibility across MultiCircuit API variants.
-    """
-    gen.bus = bus
-    grid.add_generator(bus=bus, api_obj=gen)
-    return
-
-
 def convert_dgs_to_generator(elmsym: ElmSym,
                              stacubic_dict: Dict[str, List[int]],
                              buses: List[dev.Bus],
@@ -681,6 +664,10 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         Pmax=pmax,
                         Sbase=baseMVA)
 
+    # slack
+    if elmsym.ip_ctrl == 1:
+        bus.is_slack = True
+
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
         r1 = _safe_float(typsym.rstr, 0.0)
@@ -693,7 +680,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     return bus, gen
 
 
-def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
+def dgs_to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
     """
 
     :param self:
@@ -767,7 +754,7 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
                                             cubics_by_objid=cubics_by_objid,
                                             bus_by_term_id=bus_by_term_id)
 
-        _add_generator_to_grid(grid=grid, bus=bus, gen=gen, logger=logger)
+        grid.add_generator(bus=bus, api_obj=gen)
 
     # Loads
     for elmlod in self.elmlods:
@@ -778,7 +765,7 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
                                         cubics_by_objid=cubics_by_objid,
                                         bus_by_term_id=bus_by_term_id)
 
-        _add_load_to_grid(grid=grid, bus=bus, load=load, logger=logger)
+        grid.add_load(bus=bus, api_obj=load)
 
     # Shunts (fixed)
     for elmshnt in self.elmshnts:
@@ -842,3 +829,11 @@ def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
 
     return grid
 
+
+def dgs_to_circuit(path: str) -> dev.MultiCircuit:
+    """
+    Entry point: read a DGS and return a VeraGrid MultiCircuit.
+    """
+    dgs = DgsCircuit()
+    dgs.parse_dgs(path)
+    return dgs.to_veragrid()

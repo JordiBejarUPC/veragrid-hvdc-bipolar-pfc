@@ -24,7 +24,8 @@ from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames,
 from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
 from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
 from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
-from VeraGridEngine.IO.dgs.dgs_circuit import dgs_to_circuit
+from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
+from VeraGridEngine.IO.dgs.dgs_to_veragrid import dgs_to_circuit
 from VeraGridEngine.IO.others.dpx_parser import load_dpx
 from VeraGridEngine.IO.others.ipa_parser import load_iPA
 from VeraGridEngine.IO.veragrid.json_parser import parse_json, parse_json_data_v2, parse_json_data_v3
@@ -555,6 +556,9 @@ class FileSave:
         elif self.file_name.endswith('.pgm'):
             logger = self.save_pgm()
 
+        elif self.file_name.endswith('.dgs'):
+            logger = self.save_dgs()
+
         else:
             logger = Logger()
             logger.add_error('File path extension not understood', self.file_name)
@@ -759,4 +763,14 @@ class FileSave:
 
         save_pgm(filename=self.file_name, circuit=self.circuit, logger=logger, time_series=self.circuit.has_time_series)
 
+        return logger
+
+    def save_dgs(self) -> Logger:
+        """
+
+        :return:
+        """
+        logger = Logger()
+        dgs = circuit_to_dgs(grid=self.circuit)
+        dgs.write_dgs(path=self.file_name)
         return logger

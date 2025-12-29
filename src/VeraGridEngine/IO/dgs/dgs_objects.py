@@ -597,6 +597,7 @@ class ElmSym(DGSElement):
         DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
+        DgsProperty('phtech', 'i', 'Reference machine', py_name='ip_ctrl'),
     ]
 
     def __init__(self) -> None:
@@ -623,9 +624,29 @@ class ElmSym(DGSElement):
         self.pf_recap: int = 0
         self.av_mode: str = ""
         self.phtech: int = 0
+        self.ip_ctrl: int = 0
 
 
 class ElmTerm(DGSElement):
+
+    """
+
+    *  FID: Unique identifier for DGS file
+    *  OP: Operation (C=create, U=update, D=delete, M=merge, I=ignore)
+    *  loc_name: Name
+    *  fold_id: In Folder
+    *  typ_id: Type in TypBar
+    *  systype: System Type:AC:DC:AC/BI
+    *  iUsage: Usage:Busbar:Junction Node:Internal Node
+    *  uknom: Nominal Voltage: Line-Line in kV
+    *  unknom: Nominal Voltage: Line-Ground in kV
+    *  iminus: Nominal Voltage: DC-Polarity:positive (+):negative (-):neutral
+    *  outserv: Out of Service
+    *  GPSlat: Geographical Position: Latitude / Northing in deg
+    *  GPSlon: Geographical Position: Longitude / Easting in deg
+    *  vtarget: Voltage Control: Target Voltage in p.u.
+
+    """
     element_type = 'ElmTerm'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),

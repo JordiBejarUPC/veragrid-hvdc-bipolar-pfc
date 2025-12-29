@@ -3,16 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from VeraGridEngine.IO.dgs.dgs_to_veragrid import to_veragrid
-import math
-import numpy as np
 import sys
 import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
-from VeraGridEngine.enumerations import WindingType
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                ChaRef,
                                                ChaVec,
@@ -370,20 +365,9 @@ class DgsCircuit:
                     elem = _populate_from_pf_object(pf_obj, dgs_cls)
                     target_list.append(elem)
 
-    def to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
-        """
-        :return:
-        """
-        return to_veragrid(self, logger=logger)
 
 
-def dgs_to_circuit(path: str) -> dev.MultiCircuit:
-    """
-    Entry point: read a DGS and return a VeraGrid MultiCircuit.
-    """
-    dgs = DgsCircuit()
-    dgs.parse_dgs(path)
-    return dgs.to_veragrid()
+
 
 
 
