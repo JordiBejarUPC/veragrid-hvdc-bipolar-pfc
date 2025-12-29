@@ -7,43 +7,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
-from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
-                                               ChaRef,
-                                               ChaVec,
-                                               ElmAsm,
-                                               ElmCoup,
-                                               ElmFeeder,
-                                               ElmGenstat,
-                                               ElmLne,
-                                               ElmLnesec,
-                                               ElmLod,
-                                               ElmLodlv,
-                                               ElmLodlvp,
-                                               ElmNet,
-                                               ElmShnt,
-                                               ElmSite,
-                                               ElmSubstat,
-                                               ElmSym,
-                                               ElmTerm,
-                                               ElmTr2,
-                                               ElmTr3,
-                                               ElmXnet,
-                                               ElmZone,
-                                               General,
-                                               IntFolder,
-                                               IntGrf,
-                                               IntGrfcon,
-                                               IntGrfnet,
-                                               RelFuse,
-                                               StaCubic,
-                                               StaSwitch,
-                                               TypAsmo,
-                                               TypFuse,
-                                               TypLne,
-                                               TypLod,
-                                               TypSym,
-                                               TypTr2,
-                                               TypTr3)
+from VeraGridEngine.IO.dgs.dgs_objects import *
 
 
 def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
@@ -83,6 +47,7 @@ class DgsCircuit:
     """Strongly-typed container for a PowerFactory DGS file."""
 
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
+        General,
         ChaRef,
         ChaVec,
         ElmAsm,
@@ -129,6 +94,7 @@ class DgsCircuit:
         """
         self._id_counter = 0
 
+        self.generals: List[General] = list()
         self.charefs: List[ChaRef] = list()
         self.chavecs: List[ChaVec] = list()
         self.elmasms: List[ElmAsm] = list()
@@ -150,7 +116,6 @@ class DgsCircuit:
         self.elmtr3s: List[ElmTr3] = list()
         self.elmxnets: List[ElmXnet] = list()
         self.elmzones: List[ElmZone] = list()
-        self.generals: List[General] = list()
         self.intfolders: List[IntFolder] = list()
         self.intgrfs: List[IntGrf] = list()
         self.intgrfcons: List[IntGrfcon] = list()
@@ -167,6 +132,7 @@ class DgsCircuit:
         self.typtr3s: List[TypTr3] = list()
 
         self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
+            General: self.generals,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
             ElmAsm: self.elmasms,
@@ -188,7 +154,6 @@ class DgsCircuit:
             ElmTr3: self.elmtr3s,
             ElmXnet: self.elmxnets,
             ElmZone: self.elmzones,
-            General: self.generals,
             IntFolder: self.intfolders,
             IntGrf: self.intgrfs,
             IntGrfcon: self.intgrfcons,

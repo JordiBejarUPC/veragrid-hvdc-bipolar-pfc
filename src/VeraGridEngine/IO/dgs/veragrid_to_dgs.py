@@ -149,6 +149,13 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
     """
     dgs_grid = DgsCircuit()
 
+    # general
+    general = General()
+    general.ID = dgs_grid.new_id()
+    general.Descr = "Version"
+    general.Val = "5.0"
+    dgs_grid.generals.append(general)
+
     # grid
     net = ElmNet()
     net.ID = dgs_grid.new_id()
