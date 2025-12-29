@@ -125,7 +125,7 @@ def get_injection_bus(elm_id: str,
 
     # Legacy fallback (index-based), kept for backward compatibility
     bus_ids = stacubic_dict.get(elm_id, None)
-    if bus_ids is None:
+    if bus_ids is None or len(bus_ids) == 0:
         raise ValueError(f"No buses for the element {elm_id}")
 
     if len(bus_ids) != 1:
@@ -466,12 +466,73 @@ def convert_dgs_to_load(elmlod: ElmLod,
 
     p_mw, q_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
 
-    load = dev.Load(name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
-                    P=p_mw,
-                    Q=q_mvar,
-                    active=(int(elmlod.outserv or 0) == 0))
+    load = dev.Load(
+        name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
+        P=p_mw,
+        Q=q_mvar,
+        active=0 if elmlod.outserv else 1
+    )
 
     return bus, load
+
+
+def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
+                              stacubic_dict: Dict[str, List[int]],
+                              buses: List[dev.Bus],
+                              logger: Logger,
+                              cubics_by_objid: Dict[str, List[StaCubic]],
+                              bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.StaticGenerator]:
+    """
+    Convert ElmGenstat to VeraGrid Load.
+    """
+    bus = get_injection_bus(elm_id=elmgenstat.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    stagen = dev.StaticGenerator(
+        name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
+        P=elmgenstat.pgini,
+        Q=elmgenstat.qgini,
+        active=0 if elmgenstat.outserv else 1
+    )
+
+    return bus, stagen
+
+
+def convert_dgs_to_external_grid(elmxnet: ElmXnet,
+                                 stacubic_dict: Dict[str, List[int]],
+                                 buses: List[dev.Bus],
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ExternalGrid]:
+    """
+    Convert ElmXnet to VeraGrid Load.
+    """
+    bus = get_injection_bus(elm_id=elmxnet.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    xgrid = dev.ExternalGrid(
+        name=elmxnet.loc_name or f"Load_{_ref_id(elmxnet.ID)}",
+        active=0 if elmxnet.outserv else 1
+    )
+
+    if elmxnet.bustp == b'SL':
+        bus.is_slack = True
+        xgrid.Vm = elmxnet.usetp
+
+    elif elmxnet.bustp == b'PV':
+        xgrid.P = elmxnet.pgini
+
+    elif elmxnet.bustp == b'PQ':
+        xgrid.P = elmxnet.pgini
+        xgrid.Q = elmxnet.qgini
+
+    return bus, xgrid
 
 
 def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
@@ -505,15 +566,6 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
         logger.add_warning(f"Shunt '{name}': computed B=0.0 MVAr (qcapn={q_step}, ncapa={n_on}).")
 
     return g_mw, b_mvar
-
-
-def _add_shunt_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, shunt: dev.Shunt, logger: Logger) -> None:
-    """
-    Add a fixed shunt to the grid with compatibility across MultiCircuit API variants.
-    """
-    shunt.bus = bus
-    grid.add_shunt(bus=bus, api_obj=shunt)
-    return
 
 
 def convert_dgs_to_shunt(elmshnt: ElmShnt,
@@ -680,55 +732,53 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     return bus, gen
 
 
-def dgs_to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
+def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     """
 
-    :param self:
+    :param path:
     :param logger:
     :return:
     """
     if logger is None:
         logger = Logger()
 
+    dgs_grid = DgsCircuit()
+    dgs_grid.parse_dgs(path)
+
     grid = dev.MultiCircuit()
 
     baseMVA = 100.0
 
     # --- frequency ---
-    if len(self.elmnets) > 0:
-        frequency = float(self.elmnets[0].frnom or 50.0)
+    if len(dgs_grid.elmnets) > 0:
+        frequency = float(dgs_grid.elmnets[0].frnom or 50.0)
     else:
         frequency = 50.0
 
-    # StaCubic dictionary
+    # StaCubic dictionaries
     stacubic_dict: Dict[str, List[int]] = dict()
-    for elm in self.stacubics:
-        lst = stacubic_dict.get(elm.obj_id, None)
-        if lst is None:
-            stacubic_dict[elm.obj_id] = [elm.obj_bus]
-        else:
-            lst.append(elm.obj_bus)
-
-    # StaCubic dictionary (robust)
     cubics_by_objid: Dict[str, List[StaCubic]] = dict()
-    for cb in self.stacubics:
-        oid = _ref_id(cb.obj_id)
-        if oid is None:
-            continue
-        lst = cubics_by_objid.get(oid, None)
+    for cb in dgs_grid.stacubics:
+        lst = stacubic_dict.get(cb.obj_id, None)
         if lst is None:
-            cubics_by_objid[oid] = [cb]
+            stacubic_dict[cb.obj_id] = [cb.obj_bus]
+        else:
+            lst.append(cb.obj_bus)
+
+        lst = cubics_by_objid.get(cb.obj_id, None)
+        if lst is None:
+            cubics_by_objid[cb.obj_id] = [cb]
         else:
             lst.append(cb)
 
     # graphics dictioary
     pos_by_objid: Dict[str, Tuple[float, float]] = dict()
-    for g in self.intgrfs:
+    for g in dgs_grid.intgrfs:
         pos_by_objid[g.pDataObj] = (float(g.rCenterX), float(g.rCenterY))
 
     # Buses
     bus_by_term_id: Dict[str, dev.Bus] = dict()
-    for elmterm in self.elmterms:
+    for elmterm in dgs_grid.elmterms:
         bus = convert_dgs_to_bus(elmterm=elmterm, pos_by_objid=pos_by_objid)
         grid.add_bus(obj=bus)
         tid = _ref_id(elmterm.ID)
@@ -737,103 +787,128 @@ def dgs_to_veragrid(self, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Generator types
     typsym_dict: Dict[str, TypSym] = dict()
-    for typsym in self.typsyms:
+    for typsym in dgs_grid.typsyms:
         typsym_dict[typsym.ID] = typsym
         tid = _ref_id(typsym.ID)
         if tid is not None:
             typsym_dict[tid] = typsym
 
     # Generators
-    for elmsym in self.elmsyms:
-        bus, gen = convert_dgs_to_generator(elmsym=elmsym,
-                                            stacubic_dict=stacubic_dict,
-                                            buses=grid.buses,
-                                            typsym_dict=typsym_dict,
-                                            baseMVA=baseMVA,
-                                            logger=logger,
-                                            cubics_by_objid=cubics_by_objid,
-                                            bus_by_term_id=bus_by_term_id)
+    for elmsym in dgs_grid.elmsyms:
+        bus, gen = convert_dgs_to_generator(
+            elmsym=elmsym,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            typsym_dict=typsym_dict,
+            baseMVA=baseMVA,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
 
         grid.add_generator(bus=bus, api_obj=gen)
 
     # Loads
-    for elmlod in self.elmlods:
-        bus, load = convert_dgs_to_load(elmlod=elmlod,
-                                        stacubic_dict=stacubic_dict,
-                                        buses=grid.buses,
-                                        logger=logger,
-                                        cubics_by_objid=cubics_by_objid,
-                                        bus_by_term_id=bus_by_term_id)
+    for elmlod in dgs_grid.elmlods:
+        bus, load = convert_dgs_to_load(
+            elmlod=elmlod,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
 
         grid.add_load(bus=bus, api_obj=load)
 
-    # Shunts (fixed)
-    for elmshnt in self.elmshnts:
-        bus, shunt = convert_dgs_to_shunt(elmshnt=elmshnt,
-                                          stacubic_dict=stacubic_dict,
-                                          buses=grid.buses,
-                                          logger=logger,
-                                          cubics_by_objid=cubics_by_objid,
-                                          bus_by_term_id=bus_by_term_id)
+    # Loads
+    for elmgenstat in dgs_grid.elmgenstats:
+        bus, stagen = convert_dgs_to_static_gen(
+            elmgenstat=elmgenstat,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
 
-        _add_shunt_to_grid(grid=grid, bus=bus, shunt=shunt, logger=logger)
+        grid.add_static_generator(bus=bus, api_obj=stagen)
+
+    # external grids
+    for eg in dgs_grid.elmxnets:
+        bus, ext_grd = convert_dgs_to_external_grid(
+            elmxnet=eg,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+        grid.add_external_grid(bus=bus, api_obj=ext_grd)
+
+    # Shunts (fixed)
+    for elmshnt in dgs_grid.elmshnts:
+        bus, shunt = convert_dgs_to_shunt(
+            elmshnt=elmshnt,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+
+        grid.add_shunt(bus=bus, api_obj=shunt)
 
     # Loads (LV)
-    if len(self.elmlodlvs) > 0 or len(self.elmlodlvps) > 0:
+    if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:
         logger.add_warning("ElmLodlv/ElmLodlvp found but not converted: no P/Q fields available in DGS schema.")
 
     # Line types
     typlne_dict: Dict[str, dev.SequenceLineType] = dict()
-    for typlne in self.typlnes:
+    for typlne in dgs_grid.typlnes:
         seq_lne = convert_dgs_to_sequence_line(typlne=typlne)
         grid.add_sequence_line(obj=seq_lne)
         typlne_dict[typlne.ID] = seq_lne
 
     # Transformer types
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
-    for typtr2 in self.typtr2s:
+    for typtr2 in dgs_grid.typtr2s:
         tpe = convert_dgs_to_transformer_type(typtr2=typtr2)
         grid.add_transformer_type(obj=tpe)
-        grid.add_transformer2w_type(obj=tpe)
         typtr2_dict[typtr2.ID] = tpe
         tid = _ref_id(typtr2.ID)
         if tid is not None:
             typtr2_dict[tid] = tpe
 
     # lines
-    for elmlne in self.elmlnes:
-        line = convert_dgs_to_line(lne=elmlne,
-                                   buses=grid.buses,
-                                   stacubic_dict=stacubic_dict,
-                                   templates_dict=typlne_dict,
-                                   freq=frequency,
-                                   baseMVA=baseMVA,
-                                   logger=logger,
-                                   cubics_by_objid=cubics_by_objid,
-                                   bus_by_term_id=bus_by_term_id)
+    for elmlne in dgs_grid.elmlnes:
+        line = convert_dgs_to_line(
+            lne=elmlne,
+            buses=grid.buses,
+            stacubic_dict=stacubic_dict,
+            templates_dict=typlne_dict,
+            freq=frequency,
+            baseMVA=baseMVA,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
         grid.add_line(obj=line, logger=logger)
 
     # Transformers 2W
-    for elmtr2 in self.elmtr2s:
-        trafo = convert_dgs_to_transformer(tr2=elmtr2,
-                                           buses=grid.buses,
-                                           stacubic_dict=stacubic_dict,
-                                           templates_dict=typtr2_dict,
-                                           freq=frequency,
-                                           baseMVA=baseMVA,
-                                           logger=logger,
-                                           cubics_by_objid=cubics_by_objid,
-                                           bus_by_term_id=bus_by_term_id)
+    for elmtr2 in dgs_grid.elmtr2s:
+        trafo = convert_dgs_to_transformer(
+            tr2=elmtr2,
+            buses=grid.buses,
+            stacubic_dict=stacubic_dict,
+            templates_dict=typtr2_dict,
+            freq=frequency,
+            baseMVA=baseMVA,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
 
         grid.add_transformer2w(obj=trafo)
 
     return grid
-
-
-def dgs_to_circuit(path: str) -> dev.MultiCircuit:
-    """
-    Entry point: read a DGS and return a VeraGrid MultiCircuit.
-    """
-    dgs = DgsCircuit()
-    dgs.parse_dgs(path)
-    return dgs.to_veragrid()
