@@ -106,7 +106,7 @@ def get_branch_buses(elm_id: str,
                      stacubic_dict: Dict[str, List[int]],
                      buses: List[dev.Bus],
                      cubics_by_objid: Dict[str, List[StaCubic]],
-                     bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.bus, dev.Bus]:
+                     bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Bus]:
     """
     Function to get the buses from a branch element
     :param elm_id:
@@ -141,7 +141,7 @@ def get_injection_bus(elm_id: str,
                       stacubic_dict: Dict[str, List[int]],
                       buses: List[dev.Bus],
                       cubics_by_objid: Dict[str, List[StaCubic]],
-                      bus_by_term_id: Dict[str, dev.Bus]) -> dev.bus:
+                      bus_by_term_id: Dict[str, dev.Bus]) -> dev.Bus:
     """
     Function to get the bus from a injection element
     :param elm_id:
