@@ -731,9 +731,9 @@ class ElmTr2(DGSElement):
         self.cgnd_l: int = 0
         self.i_auto: int = 0
         self.ntrcn: int = 0
-        self.ratfac: float = 0.0
+        self.ratfac: float = 1.0
         self.for_name: str = ""
-        self.ntnum: int = 0
+        self.ntnum: int = 1
         self.usetp: float = 0.0
         self.usp_low: float = 0.0
         self.usp_up: float = 0.0
@@ -1304,6 +1304,8 @@ class TypLod(DGSElement):
 
 class TypSym(DGSElement):
     element_type = 'TypSym'
+
+    # We comment out the dynamic stuff because it will trigger errors at import
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
@@ -1311,34 +1313,34 @@ class TypSym(DGSElement):
         DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
         DgsProperty('ugn', 'r', 'Rated voltage in kV', py_name='ugn'),
         DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
-        DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
-        DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
-        DgsProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
-        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
-        DgsProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
-        DgsProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
+        # DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
+        # DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
+        # DgsProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
+        # DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        # DgsProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
+        # DgsProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
         DgsProperty('Q_min', 'r', 'DGS field Q_min (r)', py_name='Q_min'),
         DgsProperty('Q_max', 'r', 'DGS field Q_max (r)', py_name='Q_max'),
         DgsProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
         DgsProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
-        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
-        DgsProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
-        DgsProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
-        DgsProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
-        DgsProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
-        DgsProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
-        DgsProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
-        DgsProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
-        DgsProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
-        DgsProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
-        DgsProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
-        DgsProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
-        DgsProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
-        DgsProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
-        DgsProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
-        DgsProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
+        # DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        # DgsProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
+        # DgsProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
+        # DgsProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
+        # DgsProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
+        # DgsProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
+        # DgsProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
+        # DgsProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
+        # DgsProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
+        # DgsProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
+        # DgsProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
+        # DgsProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
+        # DgsProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
+        # DgsProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
+        # DgsProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
+        # DgsProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
     ]
 
     def __init__(self) -> None:
@@ -1423,8 +1425,8 @@ class TypTr2(DGSElement):
         self.pcutr: float = 0.0
         self.uk0tr: float = 0.0
         self.ur0tr: float = 0.0
-        self.tr2cn_h: str = ""
-        self.tr2cn_l: str = ""
+        self.tr2cn_h: str = "D"  # Y,YN,Z,ZN,D.
+        self.tr2cn_l: str = "Y"
         self.nt2ag: float = 0.0
         self.curmg: float = 0.0
         self.pfe: float = 0.0
@@ -1438,7 +1440,7 @@ class TypTr2(DGSElement):
         self.manuf: str = ""
         self.chr_name: str = ""
         self.for_name: str = ""
-        self.nt2ph: int = 0
+        self.nt2ph: int = 1
         self.itapch: int = 0
 
 

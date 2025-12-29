@@ -11,8 +11,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
-from VeraGridEngine.enumerations import DiagramType
-
+from VeraGridEngine.enumerations import DiagramType, WindingType
 
 SQRT3 = np.sqrt(3)
 
@@ -120,10 +119,10 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.bline = seq.B
     typlne.cline = seq.Cnf
 
-    typlne.rline0 = seq.R0
-    typlne.xline0 = seq.X0
-    typlne.bline0 = seq.B0
-    typlne.cline0 = seq.Cnf0
+    typlne.rline0 = seq.R0 if seq.R0 > 0 else 2 * seq.R
+    typlne.xline0 = seq.X0 if seq.X0 > 0 else 2 * seq.X
+    typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
+    typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
 
     typlne.uline = seq.Vnom
     typlne.sline = seq.Imax
@@ -152,6 +151,27 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     typtr2.uktr = tr.Vsc
     typtr2.loc_name = tr.name
 
+    """
+    class WindingType(Enum):
+        FloatingStar = "Y"
+        GroundedStar = "Yg"
+        NeutralStar = "Yn"
+        Delta = "D"
+        ZigZag = "Z"
+    """
+
+    # Y,YN,Z,ZN,D.
+    wtpe_dict = {
+        WindingType.FloatingStar: "Y",
+        WindingType.GroundedStar: "Y",
+        WindingType.NeutralStar: "YN",
+        WindingType.Delta: "D",
+        WindingType.ZigZag: "Z"
+    }
+
+    typtr2.tr2cn_h = wtpe_dict[tr.conn_hv]
+    typtr2.tr2cn_l = wtpe_dict[tr.conn_lv]
+
     return typtr2
 
 
@@ -174,7 +194,7 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
     # grid
     net = ElmNet()
     net.ID = dgs_grid.new_id()
-    net.loc_name = grid.name
+    net.loc_name = grid.name if grid.name != "" else "Grid"
     net.frnom = grid.fBase
     dgs_grid.elmnets.append(net)
 
@@ -197,7 +217,6 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
 
     # generators
     for gen in grid.generators:
-
         # Generate a fake TypSym
         tpe = TypSym()
         tpe.ID = dgs_grid.new_id()
@@ -274,14 +293,18 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
         e.ID = dgs_grid.new_id()
         e.loc_name = tr.name
         e.typ_id = tpe.ID
-
+        e.ntnum = 1
+        e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
+
+        hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            dgs_buses=[bus2term_dict[tr.bus_from],
-                       bus2term_dict[tr.bus_to]]
+            # the order must be HV, LV
+            dgs_buses=[bus2term_dict[hv_bus],
+                       bus2term_dict[lv_bus]]
         )
 
     # diagrams
