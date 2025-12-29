@@ -133,6 +133,28 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     return typlne
 
 
+def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
+    """
+
+    :param tr:
+    :param new_id:
+    :return:
+    """
+    typtr2 = TypTr2()
+    typtr2.ID = new_id
+
+    typtr2.utrn_h = tr.HV
+    typtr2.utrn_l = tr.LV
+    typtr2.strn = tr.Sn
+    typtr2.pcutr = tr.Pcu
+    typtr2.pfe = tr.Pfe
+    typtr2.curmg = tr.I0
+    typtr2.uktr = tr.Vsc
+    typtr2.loc_name = tr.name
+
+    return typtr2
+
+
 def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
     """
 
@@ -172,7 +194,12 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
         dgs_grid.typlnes.append(typlne)
         seq2typlne_dict[seq] = typlne
 
-    # 5) Lines (+ type)
+    tr2typtr2_dict: Dict[dev.TransformerType, TypTr2] = dict()
+    for tr in grid.transformer_types:
+        typtr2 = convert_transformer_type(tr=tr, new_id=dgs_grid.new_id())
+        dgs_grid.typtr2s.append(typtr2)
+        tr2typtr2_dict[tr] = typtr2
+
     for line in grid.lines:
         tpe = TypLne()
         tpe.ID = dgs_grid.new_id()
@@ -182,10 +209,14 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
         e.ID = dgs_grid.new_id()
         e.loc_name = line.name
         e.typ_id = tpe.ID
-        e.dline = 1.0
+        e.dline = line.length
         e.outserv = 0 if line.active else 1
         dgs_grid.elmlnes.append(e)
-        dgs_grid.add_element_cubicles(e.ID, [line.bus_from, line.bus_to])
+        dgs_grid.add_element_cubicles(
+            element_id=e.ID,
+            dgs_buses=[bus2term_dict[line.bus_from],
+                       bus2term_dict[line.bus_to]]
+        )
 
     # 6) Transformers 2W (+ type)
     for tr in grid.transformers2w:
@@ -200,8 +231,10 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
         e.typ_id = tpe.ID
         e.outserv = 0 if tr.active else 1
         dgs_grid.elmtr2s.append(e)
-        dgs_grid.add_element_cubicles(e.ID, [tr.bus_from, tr.bus_to])
-
- 
+        dgs_grid.add_element_cubicles(
+            element_id=e.ID,
+            dgs_buses=[bus2term_dict[tr.bus_from],
+                       bus2term_dict[tr.bus_to]]
+        )
 
     return dgs_grid
