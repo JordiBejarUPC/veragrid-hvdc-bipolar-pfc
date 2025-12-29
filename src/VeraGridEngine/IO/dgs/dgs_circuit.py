@@ -184,11 +184,13 @@ class DgsCircuit:
         :param element_id: Element ID
         :param dgs_buses: list of ElmTerm
         """
-        for b in dgs_buses:
+        for i, b in enumerate(dgs_buses):
             c = StaCubic()
             c.ID = self.new_id()
+            c.loc_name = f"StaCubic_{c.ID}"
             c.obj_id = element_id
-            c.obj_bus = b.ID
+            c.obj_bus = i
+            c.fold_id = b.ID
             self.stacubics.append(c)
 
     def parse_dgs(self, path: str):

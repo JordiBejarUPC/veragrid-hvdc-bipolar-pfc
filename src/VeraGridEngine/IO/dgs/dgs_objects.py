@@ -324,7 +324,7 @@ class ElmLne(DGSElement):
         DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
         DgsProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
+        DgsProperty('fline', 'r', 'Derating factor', py_name='fline'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('pStoch', 'p', 'DGS field pStoch (p)', py_name='pStoch'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
@@ -341,13 +341,13 @@ class ElmLne(DGSElement):
         self.typ_id: str = ""
         self.dline: float = 0.0
         self.chr_name: str = ""
-        self.fline: float = 0.0
+        self.fline: float = 1.0
         self.outserv: int = 0
         self.pStoch: str = ""
         self.for_name: str = ""
         self.GPScoords_SIZEROW: int = 0
         self.GPScoords_SIZECOL: int = 0
-        self.nlnum: int = 0
+        self.nlnum: int = 1
         self.inAir: int = 0
 
 
@@ -469,9 +469,9 @@ class ElmNet(DGSElement):
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
+        DgsProperty('frnom', 'r', 'Nominal Frequency in Hz', py_name='frnom'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        DgsProperty('pDiagram', 'p', 'DGS field pDiagram (p)', py_name='pDiagram'),
+        DgsProperty('pDiagram', 'p', 'Diagram in IntGrfnet', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -605,7 +605,7 @@ class ElmSym(DGSElement):
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.typ_id: str = ""
-        self.ngnum: int = 0
+        self.ngnum: int = 1
         self.i_mot: int = 0
         self.chr_name: str = ""
         self.outserv: int = 0
@@ -916,14 +916,12 @@ class General(DGSElement):
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('Descr', 'a:40', 'DGS field Descr (a:40)', py_name='Descr'),
         DgsProperty('Val', 'a:40', 'DGS field Val (a:40)', py_name='Val'),
-        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='FID'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
         self.Descr: str = ""
         self.Val: str = ""
-        self.FID: str = ""
 
 
 class IntFolder(DGSElement):
@@ -1222,7 +1220,7 @@ class TypLne(DGSElement):
         DgsProperty('rtemp', 'r', 'DGS field rtemp (r)', py_name='rtemp'),
         DgsProperty('Ithr', 'r', 'DGS field Ithr (r)', py_name='Ithr'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('nlnph', 'i', 'DGS field nlnph (i)', py_name='nlnph'),
+        DgsProperty('nlnph', 'i', 'Phases:1:2:3', py_name='nlnph'),
         DgsProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('InomAir', 'r', 'DGS field InomAir (r)', py_name='InomAir'),
@@ -1241,22 +1239,22 @@ class TypLne(DGSElement):
         self.fold_id: str = ""
         self.uline: float = 0.0
         self.sline: float = 0.0
-        self.aohl_: str = ""
+        self.aohl_: str = "cab"  # allowed values are "cab" and "ohl"
         self.rline: float = 0.0
         self.xline: float = 0.0
         self.cline: float = 0.0
         self.rline0: float = 0.0
         self.xline0: float = 0.0
         self.cline0: float = 0.0
-        self.rtemp: float = 0.0
+        self.rtemp: float = 20.0
         self.Ithr: float = 0.0
         self.chr_name: str = ""
-        self.nlnph: int = 0
+        self.nlnph: int = 3
         self.nneutral: int = 0
         self.for_name: str = ""
         self.InomAir: float = 0.0
         self.cohl_: int = 0
-        self.tmax: float = 0.0
+        self.tmax: float = 80.0
         self.systp: int = 0
         self.frnom: float = 0.0
         self.mlei: str = ""
@@ -1311,7 +1309,7 @@ class TypSym(DGSElement):
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
-        DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
+        DgsProperty('ugn', 'r', 'Rated voltage in kV', py_name='ugn'),
         DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
         DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
         DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
@@ -1347,7 +1345,7 @@ class TypSym(DGSElement):
         self.ID: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
-        self.sgn: float = 0.0
+        self.sgn: float = 0.1
         self.ugn: float = 0.0
         self.cosn: float = 0.0
         self.xd: float = 0.0
@@ -1361,7 +1359,7 @@ class TypSym(DGSElement):
         self.q_min: float = 0.0
         self.q_max: float = 0.0
         self.for_name: str = ""
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.nslty: int = 0
         self.x0sy: float = 0.0
         self.r0sy: float = 0.0
