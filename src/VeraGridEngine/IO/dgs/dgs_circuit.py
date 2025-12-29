@@ -79,7 +79,7 @@ def _ref_id(x):
     return s.split("\\")[-1] if "\\" in s else s
 
 
-def get_terminal_ids(element_id: str, cubics_by_objid):
+def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
     cbs = cubics_by_objid.get(_ref_id(element_id), [])
     # fold_id suele ser el ID del ElmTerm “padre”
     return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None]
@@ -1278,9 +1278,13 @@ class DgsCircuit:
 
         return grid
 
-def _new_id(counter=[1]):
-    v = counter[0]
-    counter[0] += 1
+_ID_COUNTER: int = 1
+
+
+def _new_id() -> str:
+    global _ID_COUNTER
+    v = _ID_COUNTER
+    _ID_COUNTER += 1
     return str(v)
 
 
@@ -1291,6 +1295,7 @@ def dgs_to_circuit(path: str) -> dev.MultiCircuit:
     dgs = DgsCircuit()
     dgs.parse_dgs(path)
     return dgs.to_veragrid()
+
 
 
 
