@@ -98,6 +98,8 @@ def convert_generator(gen: dev.Generator, tpe: TypSym, new_id: str, Sbase, t: in
     e.usetp = gen.get_Vset_at(t)
     e.ip_ctrl = 1 if gen.bus.is_slack else 0
     e.typ_id = tpe.ID
+    e.Pmin_uc = gen.get_Pmin_at(t)
+    e.Pmax_uc = gen.get_Pmax_at(t)
 
     return e
 
