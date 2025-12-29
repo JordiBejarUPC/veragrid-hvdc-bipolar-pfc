@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+from VeraGridEngine.IO.dgs.dgs_to_veragrid import to_veragrid
 import math
 import numpy as np
 import sys
@@ -61,13 +62,7 @@ def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
 
     for prop in dgs_cls.properties_list:
         name = prop.name
-
-        if hasattr(pf_obj, name):
-            value = pf_obj.name
-
-        else:
-            value = None
-
+        value = pf_obj.name
         setattr(elem, name, value)
 
     return elem
@@ -379,7 +374,6 @@ class DgsCircuit:
         """
         :return:
         """
-        from VeraGridEngine.IO.dgs.dgs_to_veragrid import to_veragrid
         return to_veragrid(self, logger=logger)
 
 

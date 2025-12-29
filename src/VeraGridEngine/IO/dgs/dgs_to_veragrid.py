@@ -136,7 +136,7 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
     x, y = pos_by_objid.get(tid, (0.0, 0.0))
     bus = dev.Bus(
         name=elmterm.loc_name or f"Bus_{tid}",
-        Vnom=float(elmterm.uknom or 0.0),
+        Vnom=float(elmterm.uknom),
         vmin=0.9,
         vmax=1.1,
         xpos=float(x),
@@ -857,11 +857,3 @@ def _new_id() -> str:
     return str(v)
 
 
-def dgs_to_circuit(path: str) -> dev.MultiCircuit:
-    """
-    Entry point: read a DGS and return a VeraGrid MultiCircuit.
-    """
-    from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-    dgs = DgsCircuit()
-    dgs.parse_dgs(path)
-    return to_veragrid(dgs)
