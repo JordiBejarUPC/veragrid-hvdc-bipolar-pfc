@@ -166,11 +166,11 @@ def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
         R=typlne.rline,
         X=typlne.xline,
         B=typlne.bline,
-        CnF=typlne.cline,
+        CnF=typlne.cline*1000,
         R0=typlne.rline0,
         X0=typlne.xline0,
         B0=typlne.bline0,
-        CnF0=typlne.cline0,
+        CnF0=typlne.cline0*1000,
         Vnom=typlne.uline,
         Imax=typlne.sline,
         use_conductance=typlne.cline != 0.0
