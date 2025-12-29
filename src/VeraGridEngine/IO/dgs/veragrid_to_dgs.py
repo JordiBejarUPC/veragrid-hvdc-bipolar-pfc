@@ -200,9 +200,9 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
         tpe = seq2typlne_dict.get(line.template, None)
 
         if tpe is None:
-            # produce a new tamplate
-            typtr2 = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
-            dgs_grid.typlnes.append(typtr2)
+            # produce a new template
+            tpe = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
+            dgs_grid.typlnes.append(tpe)
 
         e = ElmLne()
         e.ID = dgs_grid.new_id()
@@ -224,10 +224,10 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
         tpe = tr2typtr2_dict.get(tr.template, None)
 
         if tpe is None:
-            # produce a new tamplate
-            typtr2 = convert_transformer_type(tr=tr.get_transformer_type(),
-                                              new_id=dgs_grid.new_id())
-            dgs_grid.typtr2s.append(typtr2)
+            # produce a new template
+            tpe = convert_transformer_type(tr=tr.get_transformer_type(),
+                                           new_id=dgs_grid.new_id())
+            dgs_grid.typtr2s.append(tpe)
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
@@ -241,5 +241,5 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
             dgs_buses=[bus2term_dict[tr.bus_from],
                        bus2term_dict[tr.bus_to]]
         )
-    
+
     return dgs_grid

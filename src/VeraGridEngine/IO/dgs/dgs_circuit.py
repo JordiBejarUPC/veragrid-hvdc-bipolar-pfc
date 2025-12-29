@@ -124,6 +124,11 @@ class DgsCircuit:
     _REGISTRY: Dict[str, Type[DGSElement]] = {cls.element_type: cls for cls in _ELEMENT_CLASSES}
 
     def __init__(self) -> None:
+        """
+
+        """
+        self._id_counter = 0
+
         self.charefs: List[ChaRef] = list()
         self.chavecs: List[ChaVec] = list()
         self.elmasms: List[ElmAsm] = list()
@@ -199,6 +204,27 @@ class DgsCircuit:
             TypTr2: self.typtr2s,
             TypTr3: self.typtr3s,
         }
+
+    def new_id(self) -> str:
+        """
+
+        :return:
+        """
+        self._id_counter += 1
+        return str(self._id_counter)
+
+    def add_element_cubicles(self, element_id: str, dgs_buses: List[ElmTerm]):
+        """
+        Add cubicles
+        :param element_id: Element ID
+        :param dgs_buses: list of ElmTerm
+        """
+        for b in dgs_buses:
+            c = StaCubic()
+            c.ID = self.new_id()
+            c.obj_id = element_id
+            c.obj_bus = b.ID
+            self.stacubics.append(c)
 
     def parse_dgs(self, path: str):
         """
