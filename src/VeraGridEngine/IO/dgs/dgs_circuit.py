@@ -263,14 +263,28 @@ class DgsCircuit:
         path = Path(path)
 
         with path.open("w", encoding="utf-8") as f:
+
+            comment = "*" * 80 + "\n"
+            comment += "* Created with VeraGrid\n"
+            comment += "*" * 80 + "\n"
+            f.write(comment + "\n")
+
             for cls in self._ELEMENT_CLASSES:
                 objects: List[DGSElement] = self._CLASS_TO_LIST[cls]
 
-                if objects:
+                if len(objects) > 0:
+
                     header = "$$" + cls.element_type + ";" + ";".join(
                         f"{p.name}({p.dgs_type})" for p in cls.properties_list
                     )
                     f.write(header + "\n")
+
+                    comment = "*" * 80 + "\n"
+                    for prp in objects[0].properties_list:
+                        comment += f"* {prp.name}: {prp.dgs_type}: {prp.description}\n"
+
+                    comment += "*" * 80
+                    f.write(comment + "\n")
 
                     for obj in objects:
                         f.write(obj.to_dgs_line() + "\n")
