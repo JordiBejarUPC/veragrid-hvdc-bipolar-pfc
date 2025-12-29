@@ -12,57 +12,22 @@ from typing import Dict, List, Type, Optional, Tuple
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
-                                               ChaRef,
-                                               ChaVec,
-                                               ElmAsm,
-                                               ElmCoup,
-                                               ElmFeeder,
-                                               ElmGenstat,
-                                               ElmLne,
-                                               ElmLnesec,
-                                               ElmLod,
-                                               ElmLodlv,
-                                               ElmLodlvp,
-                                               ElmNet,
-                                               ElmShnt,
-                                               ElmSite,
-                                               ElmSubstat,
-                                               ElmSym,
-                                               ElmTerm,
-                                               ElmTr2,
-                                               ElmTr3,
-                                               ElmXnet,
-                                               ElmZone,
-                                               General,
-                                               IntFolder,
-                                               IntGrf,
-                                               IntGrfcon,
-                                               IntGrfnet,
-                                               RelFuse,
-                                               StaCubic,
-                                               StaSwitch,
-                                               TypAsmo,
-                                               TypFuse,
-                                               TypLne,
-                                               TypLod,
-                                               TypSym,
-                                               TypTr2,
-                                               TypTr3)
+from VeraGridEngine.IO.dgs.dgs_objects import *
 
 
-def convert_bus(bus: dev.Bus, new_id: str) -> ElmTerm:
+def convert_bus(bus: dev.Bus, new_id: str, t: int | None = None) -> ElmTerm:
     """
 
     :param bus:
     :param new_id:
+    :param t:
     :return:
     """
     elm_term = ElmTerm()
     elm_term.ID = new_id
     elm_term.loc_name = bus.name
     elm_term.uknom = float(bus.Vnom)
-    elm_term.outserv = 0 if bus.active else 1
+    elm_term.outserv = not bus.get_active_at(t)
 
     if bus.is_slack:
         elm_term.bustp = "SL"
@@ -88,20 +53,44 @@ def convert_bus_graphic(elm_term, bus: dev.Bus, new_id: str) -> IntGrf:
     return int_grf
 
 
-def convert_load(load: dev.Load, new_id: str) -> ElmLod:
+def convert_load(load: dev.Load, new_id: str, t: int | None = None) -> ElmLod:
     """
 
     :param load:
     :param new_id:
+    :param t:
     :return:
     """
     e = ElmLod()
     e.ID = new_id
     e.loc_name = load.name
-    e.plini = float(load.P)
-    e.qlini = float(load.Q)
+    e.plini = float(load.get_P_at(t))
+    e.qlini = float(load.get_Q_at(t))
     e.scale0 = 1.0
-    e.outserv = not load.active
+    e.outserv = not load.get_active_at(t)
+
+    return e
+
+
+def convert_generator(gen: dev.Generator, new_id: str, Sbase, t: int | None) -> ElmSym:
+    """
+
+    :param gen:
+    :param new_id:
+    :param Sbase:
+    :param t:
+    :return:
+    """
+    e = ElmSym()
+    e.ID = new_id
+    e.loc_name = gen.name
+    e.ngnum = 1
+    e.outserv = not gen.get_active_at(t)
+    e.pgini = gen.get_P_at(t)
+    e.qgini = gen.get_Q_at(t)
+    e.q_min = gen.get_Qmin_at(t) / Sbase
+    e.q_max = gen.get_Qmax_at(t) / Sbase
+    e.usetp = gen.get_Vset_at(t)
 
     return e
 
@@ -155,62 +144,77 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     return typtr2
 
 
-def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
+def veragrid_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
     """
 
     :param grid:
+    :param t: time step (None for snapshot)
     :return:
     """
     dgs_grid = DgsCircuit()
 
-    # 1) ElmNet
+    # grid
     net = ElmNet()
     net.ID = dgs_grid.new_id()
     net.loc_name = grid.name
     net.frnom = grid.fBase
     dgs_grid.elmnets.append(net)
 
-    # 2) ElmTerm por bus
+    # buses
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
     for bus in grid.buses:
-        elm_term = convert_bus(bus, new_id=dgs_grid.new_id())
+        elm_term = convert_bus(bus, new_id=dgs_grid.new_id(), t=t)
         int_grf = convert_bus_graphic(elm_term, bus, new_id=dgs_grid.new_id())
         dgs_grid.elmterms.append(elm_term)
         dgs_grid.intgrfs.append(int_grf)
         bus2term_dict[bus] = elm_term
 
+    # Loads
     for load in grid.loads:
-        e = convert_load(load, new_id=dgs_grid.new_id())
+        e = convert_load(load, new_id=dgs_grid.new_id(), t=t)
         term = bus2term_dict[load.bus]
         dgs_grid.elmlods.append(e)
-        dgs_grid.add_element_cubicles(e.ID, [term])
+        dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
+    # generators
     for gen in grid.generators:
-        pass
+        e = convert_generator(gen=gen, new_id=dgs_grid.new_id(), Sbase=grid.Sbase, t=t)
+        term = bus2term_dict[gen.bus]
+        dgs_grid.elmsyms.append(e)
+        dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
+    # sequence lines
     seq2typlne_dict: Dict[dev.SequenceLineType, TypLne] = dict()
     for seq in grid.sequence_line_types:
-        typlne = convert_sequence_line(seq=seq, new_id=dgs_grid.new_id())
-        dgs_grid.typlnes.append(typlne)
-        seq2typlne_dict[seq] = typlne
+        typtr2 = convert_sequence_line(seq=seq, new_id=dgs_grid.new_id())
+        dgs_grid.typlnes.append(typtr2)
+        seq2typlne_dict[seq] = typtr2
 
+    # transformer types
     tr2typtr2_dict: Dict[dev.TransformerType, TypTr2] = dict()
     for tr in grid.transformer_types:
         typtr2 = convert_transformer_type(tr=tr, new_id=dgs_grid.new_id())
         dgs_grid.typtr2s.append(typtr2)
         tr2typtr2_dict[tr] = typtr2
 
+    # lines
     for line in grid.lines:
-        tpe = TypLne()
-        tpe.ID = dgs_grid.new_id()
-        dgs_grid.typlnes.append(tpe)
+
+        # try search for the template
+        tpe = seq2typlne_dict.get(line.template, None)
+
+        if tpe is None:
+            # produce a new tamplate
+            typtr2 = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
+            dgs_grid.typlnes.append(typtr2)
 
         e = ElmLne()
         e.ID = dgs_grid.new_id()
         e.loc_name = line.name
         e.typ_id = tpe.ID
         e.dline = line.length
-        e.outserv = 0 if line.active else 1
+        e.outserv = not line.get_active_at(t)
+
         dgs_grid.elmlnes.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
@@ -218,23 +222,28 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
                        bus2term_dict[line.bus_to]]
         )
 
-    # 6) Transformers 2W (+ type)
+    # 2W transformers
     for tr in grid.transformers2w:
-        tpe = TypTr2()
-        tpe.ID = dgs_grid.new_id()
+        # try search for the template
+        tpe = tr2typtr2_dict.get(tr.template, None)
 
-        dgs_grid.typtr2s.append(tpe)
+        if tpe is None:
+            # produce a new tamplate
+            typtr2 = convert_transformer_type(tr=tr.get_transformer_type(),
+                                              new_id=dgs_grid.new_id())
+            dgs_grid.typtr2s.append(typtr2)
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
         e.loc_name = tr.name
         e.typ_id = tpe.ID
-        e.outserv = 0 if tr.active else 1
+        e.outserv = not tr.get_active_at(t)
+
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
             dgs_buses=[bus2term_dict[tr.bus_from],
                        bus2term_dict[tr.bus_to]]
         )
-
+    
     return dgs_grid
