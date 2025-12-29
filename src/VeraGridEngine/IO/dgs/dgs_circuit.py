@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+import math
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
@@ -419,6 +420,423 @@ def convert_dgs_to_line(lne: ElmLne,
     return line
 
 
+def _safe_float(x, default: float = 0.0) -> float:
+    """
+    Convert a value to float safely.
+    """
+    try:
+        if x is None:
+            return default
+        return float(x)
+    except Exception:
+        return default
+
+
+def _safe_int(x, default: int = 0) -> int:
+    """
+    Convert a value to int safely.
+    """
+    try:
+        if x is None:
+            return default
+        return int(x)
+    except Exception:
+        return default
+
+
+def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
+    """
+    Interpret PowerFactory/DGS load scaling factor.
+    """
+    s = _safe_float(scale0, default=1.0)
+    if s == 0.0:
+        return 1.0
+
+    # Heuristic: values > 10 are very likely percentages (e.g., 100 = 100%)
+    if s > 10.0:
+        logger.add_warning(f"Load '{name}': scale0={s} looks like percent. Interpreting as {s/100.0}.")
+        return s / 100.0
+
+    return s
+
+
+def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
+    """
+    Extract (P, Q) in MW/MVAr from an ElmLod.
+    """
+    name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
+
+    # Primary: direct P/Q
+    p = _safe_float(getattr(elmlod, "plini", 0.0), 0.0)
+    q = _safe_float(getattr(elmlod, "qlini", 0.0), 0.0)
+
+    # Fallback: S + cos(phi)
+    if p == 0.0 and q == 0.0:
+        s = _safe_float(getattr(elmlod, "slini", 0.0), 0.0)
+        cosphi = _safe_float(getattr(elmlod, "coslini", 0.0), 0.0)
+
+        if s != 0.0 and cosphi != 0.0:
+            cosphi = max(min(cosphi, 1.0), -1.0)
+            p = s * cosphi
+            sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
+            q = s * sinphi
+            logger.add_warning(f"Load '{name}': P/Q not provided, derived from slini/coslini.")
+
+    # Apply scaling
+    scale = _get_scale_factor(scale0=getattr(elmlod, "scale0", 1.0), logger=logger, name=name)
+    p *= scale
+    q *= scale
+
+    return p, q
+
+
+def _add_load_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, load: dev.Load, logger: Logger) -> None:
+    """
+    Add a load to the grid with compatibility across MultiCircuit API variants.
+    """
+    try:
+        load.bus = bus
+    except Exception:
+        pass
+
+    try:
+        grid.add_load(bus=bus, api_obj=load)
+        return
+    except TypeError:
+        pass
+
+    try:
+        grid.add_load(obj=load, bus=bus)
+        return
+    except TypeError:
+        pass
+
+    try:
+        grid.add_load(bus, load)
+        return
+    except TypeError:
+        pass
+
+    try:
+        grid.add_load(obj=load)
+        return
+    except TypeError as e:
+        logger.add_warning(f"Failed to add load '{load.name}' to grid: {e}")
+        raise
+
+
+def convert_dgs_to_load(elmlod: ElmLod,
+                        stacubic_dict: Dict[str, List[int]],
+                        buses: List[dev.Bus],
+                        logger: Logger,
+                        cubics_by_objid: Dict[str, List[StaCubic]],
+                        bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Load]:
+    """
+    Convert ElmLod to VeraGrid Load.
+    """
+    bus = get_injection_bus(elm_id=elmlod.ID,
+                           stacubic_dict=stacubic_dict,
+                           buses=buses,
+                           cubics_by_objid=cubics_by_objid,
+                           bus_by_term_id=bus_by_term_id)
+
+    p_mw, q_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
+
+    load = dev.Load(name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
+                    P=p_mw,
+                    Q=q_mvar,
+                    active=(int(getattr(elmlod, "outserv", 0) or 0) == 0))
+
+    return bus, load
+
+
+def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
+    """
+    Extract (G, B) from an ElmShnt.
+    VeraGrid expects:
+      - G in MW @ v=1 p.u.
+      - B in MVAr @ v=1 p.u.
+    PowerFactory DGS provides qcapn as MVAr per step and ncapa as connected steps.
+    """
+    name = elmshnt.loc_name or _ref_id(elmshnt.ID) or "Shunt"
+
+    # Active losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
+    g_mw: float = 0.0
+
+    # Reactive power per step (MVAr) and connected steps
+    q_step: float = _safe_float(getattr(elmshnt, "qcapn", 0.0), 0.0)
+    n_on: int = _safe_int(getattr(elmshnt, "ncapa", 1), 1)
+    if n_on <= 0:
+        n_on = 1
+
+    b_mvar: float = q_step * float(n_on)
+
+    # If total rated MVAr is present in schema, prefer it when non-zero
+    qtotn: float = _safe_float(getattr(elmshnt, "qtotn", 0.0), 0.0)
+    if qtotn != 0.0:
+        b_mvar = qtotn
+
+    if b_mvar == 0.0:
+        logger.add_warning(f"Shunt '{name}': computed B=0.0 MVAr (qcapn={q_step}, ncapa={n_on}).")
+
+    return g_mw, b_mvar
+
+
+def _add_shunt_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, shunt: dev.Shunt, logger: Logger) -> None:
+    """
+    Add a fixed shunt to the grid with compatibility across MultiCircuit API variants.
+    """
+    try:
+        shunt.bus = bus
+    except Exception:
+        pass
+
+    try:
+        grid.add_shunt(bus=bus, api_obj=shunt)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_shunt(obj=shunt, bus=bus)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_shunt(bus, shunt)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_shunt(obj=shunt)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    # Fallback: append to 'shunts' list if present
+    if hasattr(grid, "shunts"):
+        try:
+            grid.shunts.append(shunt)
+            return
+        except Exception as e:
+            logger.add_warning(f"Failed to append shunt '{shunt.name}' to grid.shunts: {e}")
+            raise
+
+    logger.add_warning(f"Failed to add shunt '{shunt.name}' to grid: no compatible API found.")
+    raise AttributeError("No compatible method to add Shunt to MultiCircuit.")
+
+
+def convert_dgs_to_shunt(elmshnt: ElmShnt,
+                         stacubic_dict: Dict[str, List[int]],
+                         buses: List[dev.Bus],
+                         logger: Logger,
+                         cubics_by_objid: Dict[str, List[StaCubic]],
+                         bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Shunt]:
+    """
+    Convert ElmShnt to VeraGrid fixed Shunt.
+    """
+    name = elmshnt.loc_name or f"Shunt_{_ref_id(elmshnt.ID)}"
+
+    # Fixed shunts only: if max steps > 1, the device is stepped/controllable in PF
+    ncapx: int = _safe_int(getattr(elmshnt, "ncapx", 1), 1)
+    if ncapx > 1:
+        logger.add_warning(f"ElmShnt '{name}': ncapx={ncapx} indicates stepped shunt. Skipping fixed conversion.")
+        raise ValueError("ElmShnt is stepped/controllable (ncapx>1).")
+
+    bus = get_injection_bus(elm_id=elmshnt.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, logger=logger)
+
+    shunt = dev.Shunt(name=name,
+                      G=g_mw,
+                      B=b_mvar,
+                      active=(_safe_int(getattr(elmshnt, "outserv", 0), 0) == 0))
+
+    return bus, shunt
+
+
+def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
+    """
+    Compute power factor from (P, Q).
+    """
+    try:
+        s = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
+        if s <= 0.0:
+            return default
+        pf = abs(p_mw) / s
+        return max(0.0, min(1.0, pf))
+    except Exception:
+        return default
+
+
+def _interpret_pu_limit(value: float,
+                        baseMVA: float,
+                        reference_abs: float,
+                        logger: Logger,
+                        name: str,
+                        field: str) -> float:
+    """
+    Interpret a DGS limit that might be in p.u. (on Sbase) or in MW/MVAr.
+    """
+    v = _safe_float(value, default=0.0)
+
+    # If reference is small too, do not guess
+    if abs(reference_abs) <= 5.0:
+        return v
+
+    # Heuristic: if |value| is small while reference magnitude is clearly in MW/MVAr,
+    # then it is very likely a p.u. value and we scale by baseMVA.
+    if abs(v) <= 5.0 and baseMVA > 0.0:
+        logger.add_warning(f"Generator '{name}': {field}={v} looks like p.u. on Sbase. Interpreting as {v * baseMVA}.")
+        return v * baseMVA
+
+    return v
+
+
+def _add_generator_to_grid(grid: dev.MultiCircuit, bus: dev.Bus, gen: dev.Generator, logger: Logger) -> None:
+    """
+    Add a generator to the grid with compatibility across MultiCircuit API variants.
+    """
+    try:
+        gen.bus = bus
+    except Exception:
+        pass
+
+    try:
+        grid.add_generator(bus=bus, api_obj=gen)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_generator(obj=gen, bus=bus)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_generator(bus, gen)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    try:
+        grid.add_generator(obj=gen)
+        return
+    except (TypeError, AttributeError):
+        pass
+
+    # Fallback: append to 'generators' list if present
+    if hasattr(grid, "generators"):
+        try:
+            grid.generators.append(gen)
+            return
+        except Exception as e:
+            logger.add_warning(f"Failed to append generator '{gen.name}' to grid.generators: {e}")
+            raise
+
+    logger.add_warning(f"Failed to add generator '{gen.name}' to grid: no compatible API found.")
+    raise AttributeError("No compatible method to add Generator to MultiCircuit.")
+
+
+def convert_dgs_to_generator(elmsym: ElmSym,
+                            stacubic_dict: Dict[str, List[int]],
+                            buses: List[dev.Bus],
+                            typsym_dict: Dict[str, TypSym],
+                            baseMVA: float,
+                            logger: Logger,
+                            cubics_by_objid: Dict[str, List[StaCubic]],
+                            bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
+    """
+    Convert ElmSym to VeraGrid Generator.
+    """
+    name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
+
+    # Skip motors (ElmSym can represent synchronous motors too)
+    if _safe_int(getattr(elmsym, "i_mot", 0), 0) != 0:
+        logger.add_warning(f"ElmSym '{name}' is marked as motor (i_mot=1). Skipping Generator conversion.")
+        raise ValueError("ElmSym is a motor, not a generator.")
+
+    bus = get_injection_bus(elm_id=elmsym.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    # Resolve type (optional but recommended)
+    typsym = typsym_dict.get(elmsym.typ_id, None)
+    if typsym is None:
+        typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
+
+    p_mw = _safe_float(getattr(elmsym, "pgini", 0.0), 0.0)
+    q_mvar = _safe_float(getattr(elmsym, "qgini", 0.0), 0.0)
+
+    # Voltage control
+    vset = _safe_float(getattr(elmsym, "usetp", 1.0), 1.0)
+    is_controlled = (_safe_int(getattr(elmsym, "iv_mode", 0), 0) != 0)
+
+    # Power factor (used mainly when not controlled)
+    pf = _safe_float(getattr(elmsym, "cosgini", 0.0), 0.0)
+    if pf == 0.0 and typsym is not None:
+        pf = _safe_float(getattr(typsym, "cosn", 0.0), 0.0)
+    if pf == 0.0:
+        pf = _pf_from_pq(p_mw=p_mw, q_mvar=q_mvar, default=0.8)
+
+    # Nominal power
+    snom = 9999.0
+    if typsym is not None:
+        snom = _safe_float(getattr(typsym, "sgn", 9999.0), 9999.0)
+
+    # Limits (q_min/q_max are often in p.u. on Sbase in DGS exports)
+    qmin_raw = _safe_float(getattr(elmsym, "q_min", -9999.0), -9999.0)
+    qmax_raw = _safe_float(getattr(elmsym, "q_max", 9999.0), 9999.0)
+
+    qmin = _interpret_pu_limit(value=qmin_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
+                               logger=logger, name=name, field="q_min")
+    qmax = _interpret_pu_limit(value=qmax_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
+                               logger=logger, name=name, field="q_max")
+
+    # Optional P limits if present in schema
+    pmin = _safe_float(getattr(elmsym, "Pmin_uc", 0.0), 0.0)
+    pmax = _safe_float(getattr(elmsym, "Pmax_uc", 9999.0), 9999.0)
+
+    # Interpret P limits if they look like p.u. too
+    pmin = _interpret_pu_limit(value=pmin, baseMVA=baseMVA, reference_abs=abs(p_mw),
+                               logger=logger, name=name, field="Pmin_uc")
+    pmax = _interpret_pu_limit(value=pmax, baseMVA=baseMVA, reference_abs=abs(p_mw),
+                               logger=logger, name=name, field="Pmax_uc")
+
+    gen = dev.Generator(name=name,
+                        P=p_mw,
+                        power_factor=pf,
+                        vset=vset,
+                        is_controlled=is_controlled,
+                        Qmin=qmin,
+                        Qmax=qmax,
+                        Snom=snom,
+                        active=(_safe_int(getattr(elmsym, "outserv", 0), 0) == 0),
+                        Pmin=pmin,
+                        Pmax=pmax,
+                        Sbase=baseMVA)
+
+    # Optional sequence data from type (best-effort, may not exist in all exports)
+    if typsym is not None:
+        r1 = _safe_float(getattr(typsym, "rstr", 0.0), 0.0)
+        x1 = _safe_float(getattr(typsym, "xd", 0.0), 0.0)
+
+        if r1 != 0.0 or x1 != 0.0:
+            gen.R1 = float(r1)
+            gen.X1 = float(x1)
+
+    return bus, gen
+
+
 class DgsCircuit:
     """Strongly-typed container for a PowerFactory DGS file."""
 
@@ -757,6 +1175,59 @@ class DgsCircuit:
             if tid is not None:
                 bus_by_term_id[tid] = bus
 
+        # Generator types
+        typsym_dict: Dict[str, TypSym] = dict()
+        for typsym in self.typsyms:
+            typsym_dict[typsym.ID] = typsym
+            tid = _ref_id(typsym.ID)
+            if tid is not None:
+                typsym_dict[tid] = typsym
+
+        # Generators
+        for elmsym in self.elmsyms:
+            try:
+                bus, gen = convert_dgs_to_generator(elmsym=elmsym,
+                                                    stacubic_dict=stacubic_dict,
+                                                    buses=grid.buses,
+                                                    typsym_dict=typsym_dict,
+                                                    baseMVA=baseMVA,
+                                                    logger=logger,
+                                                    cubics_by_objid=cubics_by_objid,
+                                                    bus_by_term_id=bus_by_term_id)
+            except ValueError:
+                continue
+
+            _add_generator_to_grid(grid=grid, bus=bus, gen=gen, logger=logger)
+
+        # Loads
+        for elmlod in self.elmlods:
+            bus, load = convert_dgs_to_load(elmlod=elmlod,
+                                            stacubic_dict=stacubic_dict,
+                                            buses=grid.buses,
+                                            logger=logger,
+                                            cubics_by_objid=cubics_by_objid,
+                                            bus_by_term_id=bus_by_term_id)
+
+            _add_load_to_grid(grid=grid, bus=bus, load=load, logger=logger)
+
+        # Shunts (fixed)
+        for elmshnt in self.elmshnts:
+            try:
+                bus, shunt = convert_dgs_to_shunt(elmshnt=elmshnt,
+                                                  stacubic_dict=stacubic_dict,
+                                                  buses=grid.buses,
+                                                  logger=logger,
+                                                  cubics_by_objid=cubics_by_objid,
+                                                  bus_by_term_id=bus_by_term_id)
+            except ValueError:
+                continue
+
+            _add_shunt_to_grid(grid=grid, bus=bus, shunt=shunt, logger=logger)
+
+        # Loads (LV)
+        if len(self.elmlodlvs) > 0 or len(self.elmlodlvps) > 0:
+            logger.add_warning("ElmLodlv/ElmLodlvp found but not converted: no P/Q fields available in DGS schema.")
+
         # Line types
         typlne_dict: Dict[str, dev.SequenceLineType] = dict()
         for typlne in self.typlnes:
@@ -820,10 +1291,6 @@ def dgs_to_circuit(path: str) -> dev.MultiCircuit:
     dgs = DgsCircuit()
     dgs.parse_dgs(path)
     return dgs.to_veragrid()
-
-
-
-
 
 
 
