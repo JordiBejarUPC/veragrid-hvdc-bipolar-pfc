@@ -51,6 +51,61 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                TypTr3)
 
 
+def convert_bus(bus: dev.Bus, new_id) -> ElmTerm:
+    """
+
+    :param bus:
+    :param new_id:
+    :return:
+    """
+    elm_term = ElmTerm()
+    elm_term.ID = new_id
+    elm_term.loc_name = bus.name
+    elm_term.uknom = float(bus.Vnom)
+    elm_term.outserv = 0 if bus.active else 1
+
+    if bus.is_slack:
+        elm_term.bustp = "SL"
+
+    return elm_term
+
+
+def convert_bus_graphic(elm_term, bus: dev.Bus, new_id) -> IntGrf:
+    """
+
+    :param elm_term:
+    :param bus:
+    :param new_id:
+    :return:
+    """
+    # opcional: IntGrf para posición
+    int_grf = IntGrf()
+    int_grf.ID = new_id
+    int_grf.pDataObj = elm_term.ID
+    int_grf.rCenterX = bus.x
+    int_grf.rCenterY = bus.y
+
+    return int_grf
+
+
+def convert_load(load: dev.Load, new_id) -> ElmLod:
+    """
+
+    :param load:
+    :param new_id:
+    :return:
+    """
+    e = ElmLod()
+    e.ID = new_id
+    e.loc_name = load.name
+    e.plini = float(load.P)
+    e.qlini = float(load.Q)
+    e.scale0 = 1.0
+    e.outserv = not load.active
+
+    return e
+
+
 def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
     """
 
@@ -67,41 +122,22 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
     dgs_grid.elmnets.append(net)
 
     # 2) ElmTerm por bus
-    term_id_by_bus = {}
+    bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
     for i, bus in enumerate(grid.buses):
-        elm_term = ElmTerm()
-        elm_term.ID = dgs_grid.new_id()
-        elm_term.loc_name = bus.name
-        elm_term.uknom = float(bus.Vnom)
-        elm_term.outserv = 0 if bus.active else 1
+        elm_term = convert_bus(bus, new_id=dgs_grid.new_id())
+        int_grf = convert_bus_graphic(elm_term, bus, new_id=dgs_grid.new_id())
         dgs_grid.elmterms.append(elm_term)
-        term_id_by_bus[bus] = elm_term.ID
-        
-        if bus.is_slack:
-            elm_term.bustp = "SL"
-
-        # opcional: IntGrf para posición
-        int_grf = IntGrf()
-        int_grf.ID = dgs_grid.new_id()
-        int_grf.pDataObj = elm_term.ID
-        int_grf.rCenterX = bus.x
-        int_grf.rCenterY = bus.y
         dgs_grid.intgrfs.append(int_grf)
+        bus2term_dict[bus] = elm_term
 
-    # 3) helper para crear cubicles y “conectar” un elemento a buses
+    for load in grid.loads:
+        e = convert_load(load, new_id=dgs_grid.new_id())
+        term = bus2term_dict[load.bus]
+        dgs_grid.elmlods.append(e)
+        dgs_grid.add_element_cubicles(e.ID, [term])
 
-    # 4) Loads
-    for bus in grid.buses:
-        for ld in getattr(bus, "loads", []):  # depende de cómo VeraGrid guarde loads
-            e = ElmLod()
-            e.ID = dgs_grid.new_id()
-            e.loc_name = ld.name
-            e.plini = float(ld.P)
-            e.qlini = float(ld.Q)
-            e.scale0 = 1.0
-            e.outserv = 0
-            dgs_grid.elmlods.append(e)
-            dgs_grid.add_cubicles_for_element(e.ID, [bus])
+    for gen in grid.generators:
+        pass
 
     # 5) Lines (+ type)
     for line in grid.lines:
@@ -116,7 +152,7 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
         e.dline = 1.0
         e.outserv = 0 if line.active else 1
         dgs_grid.elmlnes.append(e)
-        dgs_grid.add_cubicles_for_element(e.ID, [line.bus_from, line.bus_to])
+        dgs_grid.add_element_cubicles(e.ID, [line.bus_from, line.bus_to])
 
     # 6) Transformers 2W (+ type)
     for tr in grid.transformers2w:
@@ -131,7 +167,7 @@ def veragrid_to_dgs(grid: dev.MultiCircuit) -> DgsCircuit:
         e.typ_id = tpe.ID
         e.outserv = 0 if tr.active else 1
         dgs_grid.elmtr2s.append(e)
-        dgs_grid.add_cubicles_for_element(e.ID, [tr.bus_from, tr.bus_to])
+        dgs_grid.add_element_cubicles(e.ID, [tr.bus_from, tr.bus_to])
 
  
 

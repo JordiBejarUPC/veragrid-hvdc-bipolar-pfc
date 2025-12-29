@@ -75,6 +75,11 @@ def _populate_from_pf_object(pf_obj: DGSElement, dgs_cls: Type[DGSElement]):
 
 
 def _ref_id(x):
+    """
+
+    :param x:
+    :return:
+    """
     if x is None:
         return None
     s = str(x)
@@ -82,6 +87,12 @@ def _ref_id(x):
 
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
+    """
+
+    :param element_id:
+    :param cubics_by_objid:
+    :return:
+    """
     cbs = cubics_by_objid.get(_ref_id(element_id), [])
     # fold_id suele ser el ID del ElmTerm “padre”
     return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None]
@@ -978,12 +989,17 @@ class DgsCircuit:
         self._id_counter += 1
         return str(self._id_counter)
 
-    def add_cubicles_for_element(self, element_id: str, buses: list):
-        for b in buses:
+    def add_element_cubicles(self, element_id: str, dgs_buses: List[ElmTerm]):
+        """
+        Add cubicles
+        :param element_id: Element ID
+        :param dgs_buses: list of ElmTerm
+        """
+        for b in dgs_buses:
             c = StaCubic()
-            c.ID = len(self.stacubics) + 1
+            c.ID = self.new_id()
             c.obj_id = element_id
-            c.fold_id = term_id_by_bus[b]  # esta es la clave
+            c.obj_bus = b.ID
             self.stacubics.append(c)
 
     def parse_dgs(self, path: str):
