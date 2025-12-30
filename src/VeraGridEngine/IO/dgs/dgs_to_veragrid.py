@@ -263,6 +263,34 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     return bus_a, bus_b
 
 
+def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logger, tr_name: str) -> Tuple[dev.Bus, dev.Bus, dev.Bus]:
+    """
+    Order three buses as (HV, MV, LV) based on nominal voltage.
+    If voltages are equal or undefined, keep a stable order and warn.
+    """
+    va = float(bus_a.Vnom)
+    vb = float(bus_b.Vnom)
+    vc = float(bus_c.Vnom)
+
+    if va == 0.0 or vb == 0.0 or vc == 0.0:
+        logger.add_warning(f"Transformer3W '{tr_name}': one or more buses have Vnom=0.0 (va={va}, vb={vb}, vc={vc}).")
+        return bus_a, bus_b, bus_c
+
+    buses: List[dev.Bus] = [bus_a, bus_b, bus_c]
+    buses_sorted: List[dev.Bus] = sorted(buses, key=lambda b: float(b.Vnom), reverse=True)
+
+    v0 = float(buses_sorted[0].Vnom)
+    v1 = float(buses_sorted[1].Vnom)
+    v2 = float(buses_sorted[2].Vnom)
+
+    if v0 == v1 or v1 == v2:
+        logger.add_warning(
+            f"Transformer3W '{tr_name}': HV/MV/LV ambiguous (Vnom={v0}, {v1}, {v2}). Keeping Vnom-based ordering."
+        )
+
+    return buses_sorted[0], buses_sorted[1], buses_sorted[2]
+
+
 def convert_dgs_to_transformer(tr2: ElmTr2,
                                buses: List[dev.Bus],
                                stacubic_dict: Dict[str, List[int]],
@@ -318,8 +346,6 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               bus_to=bus_lv,
                               name=tr2.loc_name,
                               active=not tr2.outserv,
-                              HV=max(bus_hv.Vnom, bus_lv.Vnom),
-                              LV=min(bus_hv.Vnom, bus_lv.Vnom),
                               # nominal_power=float(template.nominal_power or 0.001),
                               # copper_losses=float(template.copper_losses or 0.0),
                               # iron_losses=float(template.iron_losses or 0.0),
@@ -330,6 +356,83 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
 
     return trafo
+
+
+def convert_dgs_to_transformer3w(tr3: ElmTr3,
+                                 buses: List[dev.Bus],
+                                 stacubic_dict: Dict[str, List[int]],
+                                 templates_dict: Dict[str, TypTr3],
+                                 baseMVA: float,
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus]) -> dev.Transformer3W:
+    """
+    Convert ElmTr3 to Transformer3W using TypTr3 as template for design values.
+    """
+    template = templates_dict.get(tr3.typ_id, None)
+    if template is None:
+        template = templates_dict.get(_ref_id(tr3.typ_id), None)
+
+    if template is None:
+        raise ValueError(f"No template for the transformer3w {tr3.ID}")
+
+    # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
+    term_ids = get_terminal_ids(element_id=tr3.ID, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) != 3:
+        # Fall back to legacy check only if terminal mapping is not available
+        bus_ids = stacubic_dict.get(tr3.ID, None)
+        if bus_ids is None:
+            raise ValueError(f"No buses for the transformer3w {tr3.ID}")
+
+        if len(bus_ids) != 3:
+            raise ValueError(f"Not exactly 3 buses for the transformer3w {tr3.ID}")
+
+    if len(term_ids) == 3:
+        bus_a = bus_by_term_id[term_ids[0]]
+        bus_b = bus_by_term_id[term_ids[1]]
+        bus_c = bus_by_term_id[term_ids[2]]
+    else:
+        bus_ids = stacubic_dict[tr3.ID]
+        bus_a = buses[bus_ids[0]]
+        bus_b = buses[bus_ids[1]]
+        bus_c = buses[bus_ids[2]]
+
+    bus_hv, bus_mv, bus_lv = _order_hv_mv_lv(bus_a=bus_a,
+                                             bus_b=bus_b,
+                                             bus_c=bus_c,
+                                             logger=logger,
+                                             tr_name=tr3.loc_name)
+
+    x = (float(bus_hv.xpos) + float(bus_mv.xpos) + float(bus_lv.xpos)) / 3.0
+    y = (float(bus_hv.ypos) + float(bus_mv.ypos) + float(bus_lv.ypos)) / 3.0
+
+    trafo3w = dev.Transformer3W(name=tr3.loc_name,
+                                bus1=bus_hv,
+                                bus2=bus_mv,
+                                bus3=bus_lv,
+                                active=not tr3.outserv,
+                                x=x,
+                                y=y)
+
+    trafo3w.fill_from_design_values(
+        V1=float(template.utrn3_h),
+        V2=float(template.utrn3_m),
+        V3=float(template.utrn3_l),
+        Sn1=float(template.strn3_h),
+        Sn2=float(template.strn3_m),
+        Sn3=float(template.strn3_l),
+        Pcu12=float(template.pcut3_h),
+        Pcu23=float(template.pcut3_m),
+        Pcu31=float(template.pcut3_l),
+        Vsc12=float(template.uktr3_h),
+        Vsc23=float(template.uktr3_m),
+        Vsc31=float(template.uktr3_l),
+        Pfe=float(template.pfe),
+        I0=float(template.curm3),
+        Sbase=float(baseMVA),
+    )
+
+    return trafo3w
 
 
 def convert_dgs_to_line(lne: ElmLne,
@@ -880,6 +983,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typtr2_dict[tid] = tpe
 
+    # Transformer types (3W)
+    typtr3_dict: Dict[str, TypTr3] = dict()
+    for typtr3 in dgs_grid.typtr3s:
+        typtr3_dict[typtr3.ID] = typtr3
+        tid = _ref_id(typtr3.ID)
+        if tid is not None:
+            typtr3_dict[tid] = typtr3
+
     # lines
     for elmlne in dgs_grid.elmlnes:
         line = convert_dgs_to_line(
@@ -910,5 +1021,39 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
 
         grid.add_transformer2w(obj=trafo)
+
+    # Transformers 3W
+    # Transformers 3W
+    for elmtr3 in dgs_grid.elmtr3s:
+        # Skip invalid 3W transformers: missing template reference or not fully connected
+        tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
+        if tr3_typ_id is None or tr3_typ_id == "":
+            logger.add_warning(
+                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: missing typ_id (no TypTr3 reference in DGS)."
+            )
+            continue
+
+        term_ids: List[str] = get_terminal_ids(element_id=elmtr3.ID, cubics_by_objid=cubics_by_objid)
+        if len(term_ids) != 3:
+            bus_ids: List[int] | None = stacubic_dict.get(elmtr3.ID, None)
+            if bus_ids is None or len(bus_ids) != 3:
+                logger.add_warning(
+                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: not connected to exactly 3 terminals."
+                )
+                continue
+
+        trafo3w = convert_dgs_to_transformer3w(
+            tr3=elmtr3,
+            buses=grid.buses,
+            stacubic_dict=stacubic_dict,
+            templates_dict=typtr3_dict,
+            baseMVA=baseMVA,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+
+        grid.add_bus(obj=trafo3w.bus0)
+        grid.add_transformer3w(obj=trafo3w)
 
     return grid
