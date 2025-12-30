@@ -114,6 +114,27 @@ def convert_static_gen(stagen: dev.StaticGenerator, new_id: str, t: int | None =
 
     return e
 
+def convert_gen_to_static_gen(gen: dev.Generator, new_id: str, t: int | None = None) -> ElmGenstat:
+    """
+
+    :param gen:
+    :param new_id:
+    :param t:
+    :return:
+    """
+    e = ElmGenstat()
+    e.ID = new_id
+    e.loc_name = gen.name
+    e.plini = float(gen.get_P_at(t))
+    e.qlini = float(gen.get_Q_at(t))
+    e.scale0 = 1.0
+    e.outserv = 0 if gen.get_active_at(t) else 1
+    e.ngnum = 1
+    e.cosn = gen.get_Pf_at(t)
+    e.sgn = gen.Snom if gen.Snom > 0 else 9999.0
+
+    return e
+
 
 def convert_battery(batt: dev.Battery, new_id: str, t: int | None = None) -> ElmGenstat:
     """
@@ -316,16 +337,37 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
 
     # generators
     for gen in grid.generators:
-        # generate the actual generator
-        tpe, e = convert_generator(gen=gen,
-                                   tpe_new_id=dgs_grid.new_id(),
-                                   new_id=dgs_grid.new_id(),
-                                   bus_v_controlled=bus_v_controlled,
-                                   Sbase=grid.Sbase,
-                                   t=t)
+        tech_list = gen.tech_list
+        if len(gen.tech_list) > 0:
+            tech_name = tech_list[0].name.lower()
+
+            if "pv" in tech_name or "batt" in tech_name or "wind" in tech_name:
+                # This has to be a ElmGenstat
+                e = convert_gen_to_static_gen(gen=gen, new_id=dgs_grid.new_id(), t=t)
+                dgs_grid.elmgenstats.append(e)
+            else:
+                # Normal generator
+                tpe, e = convert_generator(gen=gen,
+                                           tpe_new_id=dgs_grid.new_id(),
+                                           new_id=dgs_grid.new_id(),
+                                           bus_v_controlled=bus_v_controlled,
+                                           Sbase=grid.Sbase,
+                                           t=t)
+                dgs_grid.typsyms.append(tpe)
+                dgs_grid.elmsyms.append(e)
+        else:
+
+            # generate the actual generator
+            tpe, e = convert_generator(gen=gen,
+                                       tpe_new_id=dgs_grid.new_id(),
+                                       new_id=dgs_grid.new_id(),
+                                       bus_v_controlled=bus_v_controlled,
+                                       Sbase=grid.Sbase,
+                                       t=t)
+            dgs_grid.typsyms.append(tpe)
+            dgs_grid.elmsyms.append(e)
+
         term = bus2term_dict[gen.bus]
-        dgs_grid.typsyms.append(tpe)
-        dgs_grid.elmsyms.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
     # sequence lines
