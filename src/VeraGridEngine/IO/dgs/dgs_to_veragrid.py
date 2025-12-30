@@ -8,7 +8,7 @@ import numpy as np
 import sys
 import os
 from pathlib import Path
-from typing import Dict, List, Type, Optional, Tuple
+from typing import Dict, List, Type, Optional, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
@@ -434,6 +434,127 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
     )
 
     return trafo3w
+
+
+def build_switch_by_cubic_id(staswitchs: List[StaSwitch]) -> Dict[str, StaSwitch]:
+    """
+    Build a dictionary mapping StaCubic.ID -> StaSwitch.
+    In DGS/PowerFactory, StaSwitch.fold_id points to the StaCubic that owns the switch.
+    :param staswitchs: List of StaSwitch objects from DGS
+    :return: Dictionary where key is Cubic ID and value is the Switch object
+    """
+    d: Dict[str, StaSwitch] = dict()
+    for sw in staswitchs:
+        cubic_id: str | None = _ref_id(sw.fold_id)
+        if cubic_id is None or cubic_id == "":
+            continue
+        d[cubic_id] = sw
+    return d
+
+
+def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic]],
+                                        switch_by_cubic_id: Dict[str, StaSwitch],
+                                        bus_by_term_id: Dict[str, dev.Bus],
+                                        tr3_ids: Set[str],
+                                        logger: Logger) -> List[dev.Switch]:
+    """
+    Create one VeraGrid Switch per 2-terminal element (line/trafo/etc.) when both ends have StaSwitch.
+    This function filters out "internal" PowerFactory switches (closed and without type) unless
+    they belong to a 3-Winding Transformer.
+
+    :param cubics_by_objid: Dictionary mapping Element ID -> List of Cubicles
+    :param switch_by_cubic_id: Dictionary mapping Cubic ID -> Switch Object
+    :param bus_by_term_id: Dictionary mapping Terminal ID -> Bus Object
+    :param tr3_ids: Set of IDs belonging to 3-Winding Transformers (to force visibility)
+    :param logger: Logger object
+    :return: List of VeraGrid Switch objects
+    """
+    switches: List[dev.Switch] = list()
+
+    for obj_id, cubics in cubics_by_objid.items():
+        obj_id_ref: str | None = _ref_id(obj_id)
+        if obj_id_ref is None or obj_id_ref == "":
+            continue
+
+        # Avoid duplicates because cubics_by_objid may contain both raw and ref keys
+        if obj_id != obj_id_ref:
+            continue
+
+        ends: List[Tuple[dev.Bus, StaSwitch]] = list()
+
+        for cb in cubics:
+            cb_id: str | None = _ref_id(cb.ID)
+            if cb_id is None or cb_id == "":
+                continue
+
+            stasw: StaSwitch | None = switch_by_cubic_id.get(cb_id, None)
+            if stasw is None:
+                continue
+
+            term_id: str | None = _ref_id(cb.fold_id)
+            if term_id is None or term_id == "":
+                continue
+
+            bus: dev.Bus = bus_by_term_id[term_id]
+            ends.append((bus, stasw))
+
+        if len(ends) != 2:
+            continue
+
+        bus_from: dev.Bus = ends[0][0]
+        bus_to: dev.Bus = ends[1][0]
+
+        # Skip degenerate cases
+        if bus_from is bus_to:
+            continue
+
+        sw_a: StaSwitch = ends[0][1]
+        sw_b: StaSwitch = ends[1][1]
+
+        # Physical state
+        is_closed: bool = (int(sw_a.on_off) != 0) and (int(sw_b.on_off) != 0)
+
+        # --- VISIBILITY FILTER ---
+        # 1. Check if switches have a specific Type assigned (Real Device)
+        #    In DGS, an empty type usually means it is a logical connector.
+        has_type_a: bool = (sw_a.typ_id is not None) and (str(sw_a.typ_id).strip() != "")
+        has_type_b: bool = (sw_b.typ_id is not None) and (str(sw_b.typ_id).strip() != "")
+        is_real_device: bool = has_type_a or has_type_b
+
+        # 2. Check if it belongs to a 3-Winding Transformer (User requirement)
+        is_tr3: bool = obj_id_ref in tr3_ids
+
+        # 3. Logic: Show if OPEN or REAL DEVICE or TR3. Hide otherwise.
+        should_render: bool = (not is_closed) or is_real_device or is_tr3
+
+        if not should_render:
+            continue
+        # -------------------------
+
+        # Calculate graphical position (midpoint between buses)
+        mid_x: float = (float(bus_from.x) + float(bus_to.x)) / 2.0
+        mid_y: float = (float(bus_from.y) + float(bus_to.y)) / 2.0
+
+        normal_open: bool = not is_closed
+        graphic_type: SwitchGraphicType = _convert_pf_switch_graphic_type(iuse=sw_a.iUse, ausage=sw_a.aUsage)
+
+        sw = dev.Switch(bus_from=bus_from,
+                        bus_to=bus_to,
+                        name=f"SW_{obj_id_ref}",
+                        idtag=obj_id_ref,
+                        code=sw_a.typ_id,
+                        active=is_closed,
+                        normal_open=normal_open,
+                        retained=False,
+                        rated_current=0.0,
+                        graphic_type=graphic_type,
+                        #x=mid_x,
+                        #y=mid_y
+                        )
+
+        switches.append(sw)
+
+    return switches
 
 
 def _convert_pf_switch_graphic_type(iuse: int, ausage: str) -> SwitchGraphicType:
@@ -1110,18 +1231,27 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
         grid.add_line(obj=line, logger=logger)
 
-    # switches
-    for stasw in dgs_grid.staswitchs:
-        sw = convert_dgs_to_switch(
-            stasw=stasw,
-            buses=grid.buses,
-            stacubic_dict=stacubic_dict,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
-        if sw is not None:
-            grid.add_switch(obj=sw)
+    # switches (PowerFactory/DGS: StaSwitch.fold_id -> StaCubic.ID -> ElmTerm.ID -> Bus)
+    switch_by_cubic_id: Dict[str, StaSwitch] = build_switch_by_cubic_id(staswitchs=dgs_grid.staswitchs)
+
+    # Collect 3-Winding Transformers IDs to force switch visibility
+    tr3_set: Set[str] = set()
+    for elmtr3 in dgs_grid.elmtr3s:
+        tid = _ref_id(elmtr3.ID)
+        if tid is not None and tid != "":
+            tr3_set.add(tid)
+
+    # Convert Switches with visibility filter
+    vg_switches: List[dev.Switch] = convert_dgs_to_switches_by_elements(
+        cubics_by_objid=cubics_by_objid,
+        switch_by_cubic_id=switch_by_cubic_id,
+        bus_by_term_id=bus_by_term_id,
+        tr3_ids=tr3_set,
+        logger=logger
+    )
+
+    for sw in vg_switches:
+        grid.add_switch(obj=sw)
 
     # Transformers 2W
     for elmtr2 in dgs_grid.elmtr2s:
