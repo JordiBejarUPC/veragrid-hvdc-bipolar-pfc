@@ -55,6 +55,25 @@ def convert_bus_graphic(elm_term, bus: dev.Bus, new_id: str) -> IntGrf:
     return int_grf
 
 
+def convert_shunt(load: dev.Shunt, new_id: str, t: int | None = None) -> ElmShnt:
+    """
+
+    :param load:
+    :param new_id:
+    :param t:
+    :return:
+    """
+    e = ElmShnt()
+    e.ID = new_id
+    e.loc_name = load.name
+    e.p = float(load.get_G_at(t))
+    e.qlini = float(load.get_B_at(t))
+    e.scale0 = 1.0
+    e.outserv = 0 if load.get_active_at(t) else 1
+
+    return e
+
+
 def convert_load(load: dev.Load, new_id: str, t: int | None = None) -> ElmLod:
     """
 
@@ -74,16 +93,71 @@ def convert_load(load: dev.Load, new_id: str, t: int | None = None) -> ElmLod:
     return e
 
 
-def convert_generator(gen: dev.Generator, tpe: TypSym, new_id: str, Sbase, t: int | None) -> ElmSym:
+def convert_static_gen(stagen: dev.StaticGenerator, new_id: str, t: int | None = None) -> ElmGenstat:
+    """
+
+    :param stagen:
+    :param new_id:
+    :param t:
+    :return:
+    """
+    e = ElmGenstat()
+    e.ID = new_id
+    e.loc_name = stagen.name
+    e.plini = float(stagen.get_P_at(t))
+    e.qlini = float(stagen.get_Q_at(t))
+    e.scale0 = 1.0
+    e.outserv = 0 if stagen.get_active_at(t) else 1
+    e.ngnum = 1
+    e.cosn = stagen.get_Pf_at(t)
+    e.sgn = stagen.Snom if stagen.Snom > 0 else 9999.0
+
+    return e
+
+
+def convert_battery(batt: dev.Battery, new_id: str, t: int | None = None) -> ElmGenstat:
+    """
+
+    :param batt:
+    :param new_id:
+    :param t:
+    :return:
+    """
+    e = ElmGenstat()
+    e.ID = new_id
+    e.loc_name = batt.name
+    e.plini = float(batt.get_P_at(t))
+    e.qlini = float(batt.get_Q_at(t))
+    e.scale0 = 1.0
+    e.outserv = 0 if batt.get_active_at(t) else 1
+    e.cCategory = "stor"
+    e.ngnum = 1
+    e.cosn = batt.get_Pf_at(t)
+    e.sgn = batt.Snom if batt.Snom > 0 else 9999.0
+
+    return e
+
+
+def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_controlled: Dict[dev.Bus, bool],
+                      Sbase: float, t: int | None) -> Tuple[TypSym, ElmSym]:
     """
 
     :param gen:
-    :param tpe:
+    :param tpe_new_id:
     :param new_id:
+    :param bus_v_controlled:
     :param Sbase:
     :param t:
     :return:
     """
+    # Generate a fake TypSym
+    tpe = TypSym()
+    tpe.ID = tpe_new_id
+    tpe.loc_name = gen.name
+    tpe.ugn = gen.bus.Vnom
+    tpe.cosn = gen.get_Pf_at(t)
+    tpe.nphase = 3
+    tpe.sgn = 0.01 if gen.Snom == 0 else gen.Snom
 
     e = ElmSym()
     e.ID = new_id
@@ -99,9 +173,16 @@ def convert_generator(gen: dev.Generator, tpe: TypSym, new_id: str, Sbase, t: in
     e.typ_id = tpe.ID
     e.Pmin_uc = gen.get_Pmin_at(t)
     e.Pmax_uc = gen.get_Pmax_at(t)
-    e.av_mode = "constv" if gen.is_controlled else "constq"
 
-    return e
+    if not bus_v_controlled[gen.bus]:
+        # NOTE: in power factory, only one generator can control the bus voltage
+        e.av_mode = "constv" if gen.is_controlled else "constq"
+        bus_v_controlled[gen.bus] = True
+    else:
+        # the bus was flagged already
+        e.av_mode = "constq"
+
+    return tpe, e
 
 
 def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
@@ -202,10 +283,12 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
 
     # buses
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
+    bus_v_controlled: Dict[dev.Bus, bool] = dict()
     for bus in grid.buses:
         elm_term = convert_bus(bus, new_id=dgs_grid.new_id(), t=t)
         dgs_grid.elmterms.append(elm_term)
         bus2term_dict[bus] = elm_term
+        bus_v_controlled[bus] = False  # initialization values
 
         # int_grf = convert_bus_graphic(elm_term, bus, new_id=dgs_grid.new_id())
         # dgs_grid.intgrfs.append(int_grf)
@@ -217,25 +300,31 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
         dgs_grid.elmlods.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
+    # Static generators
+    for stagen in grid.static_generators:
+        e = convert_static_gen(stagen, new_id=dgs_grid.new_id(), t=t)
+        term = bus2term_dict[stagen.bus]
+        dgs_grid.elmgenstats.append(e)
+        dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
+
+    # Batteries
+    for batt in grid.batteries:
+        e = convert_battery(batt, new_id=dgs_grid.new_id(), t=t)
+        term = bus2term_dict[batt.bus]
+        dgs_grid.elmgenstats.append(e)
+        dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
+
     # generators
     for gen in grid.generators:
-        # Generate a fake TypSym
-        tpe = TypSym()
-        tpe.ID = dgs_grid.new_id()
-        tpe.loc_name = gen.name
-        tpe.ugn = gen.bus.Vnom
-        tpe.cosn = gen.get_Pf_at(t)
-        tpe.nphase = 3
-        tpe.sgn = 0.01 if gen.Snom == 0 else gen.Snom
-        dgs_grid.typsyms.append(tpe)
-
         # generate the actual generator
-        e = convert_generator(gen=gen,
-                              tpe=tpe,
-                              new_id=dgs_grid.new_id(),
-                              Sbase=grid.Sbase,
-                              t=t)
+        tpe, e = convert_generator(gen=gen,
+                                   tpe_new_id=dgs_grid.new_id(),
+                                   new_id=dgs_grid.new_id(),
+                                   bus_v_controlled=bus_v_controlled,
+                                   Sbase=grid.Sbase,
+                                   t=t)
         term = bus2term_dict[gen.bus]
+        dgs_grid.typsyms.append(tpe)
         dgs_grid.elmsyms.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 

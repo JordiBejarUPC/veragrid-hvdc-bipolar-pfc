@@ -298,6 +298,7 @@ class ElmGenstat(DGSElement):
         DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('ip_ctrl', 'i', 'DGS field ip_ctrl (i)', py_name='ip_ctrl'),
+        DgsProperty('cCategory', 'a:40', 'plant types', py_name='cCategory'),
     ]
 
     def __init__(self) -> None:
@@ -313,6 +314,7 @@ class ElmGenstat(DGSElement):
         self.qgini: float = 0.0
         self.av_mode: str = ""
         self.ip_ctrl: int = 0
+        self.cCategory: str = ""
 
 
 class ElmLne(DGSElement):
