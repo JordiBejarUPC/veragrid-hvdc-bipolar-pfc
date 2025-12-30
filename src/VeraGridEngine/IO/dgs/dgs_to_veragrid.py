@@ -9,7 +9,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
-from VeraGridEngine.enumerations import WindingType
+from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
@@ -40,6 +40,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                IntGrf,
                                                IntGrfcon,
                                                IntGrfnet,
+                                               IntGrfnet,
                                                RelFuse,
                                                StaCubic,
                                                StaSwitch,
@@ -52,7 +53,11 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                TypTr3)
 
 
-def _ref_id(x):
+def _ref_id(x: str | None) -> str | None:
+    """
+    Extract the referenced object ID from PowerFactory/DGS pointer strings.
+    DGS pointers may contain a path separated by backslashes. We keep only the last token.
+    """
     if x is None:
         return None
     s = str(x)
@@ -61,14 +66,12 @@ def _ref_id(x):
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
     """
-
-    :param element_id:
-    :param cubics_by_objid:
-    :return:
+    Get the connected terminal IDs (ElmTerm.ID) for a given branch/injection element ID
+    using the StaCubic.fold_id -> ElmTerm.ID mapping.
     """
     cbs = cubics_by_objid.get(_ref_id(element_id), [])
-    # fold_id suele ser el ID del ElmTerm “padre”
-    return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None]
+    # StaCubic.fold_id typically points to the parent ElmTerm of the connection
+    return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None and _ref_id(cb.fold_id) != ""]
 
 
 def get_branch_buses(elm_id: str,
@@ -91,7 +94,8 @@ def get_branch_buses(elm_id: str,
         return bus_by_term_id[term_ids[0]], bus_by_term_id[term_ids[1]]
 
     # Legacy fallback (index-based), kept for backward compatibility
-    bus_ids = stacubic_dict.get(elm_id, None)
+    elm_id_ref = _ref_id(elm_id)
+    bus_ids = stacubic_dict.get(elm_id_ref, None)
     if bus_ids is None:
         raise ValueError(f"No buses for the line {elm_id}")
 
@@ -124,7 +128,8 @@ def get_injection_bus(elm_id: str,
         return bus_by_term_id[term_ids[0]]
 
     # Legacy fallback (index-based), kept for backward compatibility
-    bus_ids = stacubic_dict.get(elm_id, None)
+    elm_id_ref = _ref_id(elm_id)
+    bus_ids = stacubic_dict.get(elm_id_ref, None)
     if bus_ids is None or len(bus_ids) == 0:
         raise ValueError(f"No buses for the element {elm_id}")
 
@@ -324,7 +329,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     term_ids = get_terminal_ids(element_id=tr2.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 2:
         # Fall back to legacy check only if terminal mapping is not available
-        bus_ids = stacubic_dict.get(tr2.ID, None)
+        bus_ids = stacubic_dict.get(_ref_id(tr2.ID), None)
         if bus_ids is None:
             raise ValueError(f"No buses for the transformer {tr2.ID}")
 
@@ -346,11 +351,6 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               bus_to=bus_lv,
                               name=tr2.loc_name,
                               active=not tr2.outserv,
-                              # nominal_power=float(template.nominal_power or 0.001),
-                              # copper_losses=float(template.copper_losses or 0.0),
-                              # iron_losses=float(template.iron_losses or 0.0),
-                              # no_load_current=float(template.no_load_current or 0.0),
-                              # short_circuit_voltage=float(template.short_circuit_voltage or 0.0),
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
@@ -380,7 +380,7 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
     term_ids = get_terminal_ids(element_id=tr3.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 3:
         # Fall back to legacy check only if terminal mapping is not available
-        bus_ids = stacubic_dict.get(tr3.ID, None)
+        bus_ids = stacubic_dict.get(_ref_id(tr3.ID), None)
         if bus_ids is None:
             raise ValueError(f"No buses for the transformer3w {tr3.ID}")
 
@@ -392,7 +392,7 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
         bus_b = bus_by_term_id[term_ids[1]]
         bus_c = bus_by_term_id[term_ids[2]]
     else:
-        bus_ids = stacubic_dict[tr3.ID]
+        bus_ids = stacubic_dict[_ref_id(tr3.ID)]
         bus_a = buses[bus_ids[0]]
         bus_b = buses[bus_ids[1]]
         bus_c = buses[bus_ids[2]]
@@ -403,8 +403,9 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
                                              logger=logger,
                                              tr_name=tr3.loc_name)
 
-    x = (float(bus_hv.xpos) + float(bus_mv.xpos) + float(bus_lv.xpos)) / 3.0
-    y = (float(bus_hv.ypos) + float(bus_mv.ypos) + float(bus_lv.ypos)) / 3.0
+    # Graphic position not working right now
+    x = (float(bus_hv.x) + float(bus_mv.x) + float(bus_lv.x)) / 3.0
+    y = (float(bus_hv.y) + float(bus_mv.y) + float(bus_lv.y)) / 3.0
 
     trafo3w = dev.Transformer3W(name=tr3.loc_name,
                                 bus1=bus_hv,
@@ -433,6 +434,89 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
     )
 
     return trafo3w
+
+
+def _convert_pf_switch_graphic_type(iuse: int, ausage: str) -> SwitchGraphicType:
+    """
+    Convert PowerFactory/DGS switch usage fields to a VeraGrid SwitchGraphicType.
+
+    This mapping uses SwitchGraphicType.__members__ to avoid referencing enum values
+    that may not exist in a given VeraGrid version.
+    """
+    usage = str(ausage).strip().upper()
+
+    usage_to_member: Dict[str, str] = {
+        "CB": "CircuitBreaker",
+        "BREAKER": "CircuitBreaker",
+        "DIS": "Disconnector",
+        "DISCONNECTOR": "Disconnector",
+        "LBS": "LoadBreakSwitch",
+        "LOADBREAKSWITCH": "LoadBreakSwitch",
+        "FUSE": "Fuse",
+    }
+
+    member_name = usage_to_member.get(usage, None)
+    if member_name is not None and member_name in SwitchGraphicType.__members__:
+        return SwitchGraphicType.__members__[member_name]
+
+    iuse_to_member: Dict[int, str] = {
+        0: "CircuitBreaker",
+        1: "Disconnector",
+        2: "LoadBreakSwitch",
+        3: "Fuse",
+    }
+
+    member_name = iuse_to_member.get(int(iuse), "CircuitBreaker")
+    if member_name in SwitchGraphicType.__members__:
+        return SwitchGraphicType.__members__[member_name]
+
+    return SwitchGraphicType.CircuitBreaker
+
+
+def convert_dgs_to_switch(stasw: StaSwitch,
+                          buses: List[dev.Bus],
+                          stacubic_dict: Dict[str, List[int]],
+                          logger: Logger,
+                          cubics_by_objid: Dict[str, List[StaCubic]],
+                          bus_by_term_id: Dict[str, dev.Bus]) -> dev.Switch | None:
+    """
+    Convert a PowerFactory/DGS StaSwitch into a VeraGrid Switch.
+
+    Connectivity is resolved via StaCubic:
+      StaCubic.obj_id == StaSwitch.ID
+      StaCubic.fold_id == ElmTerm.ID
+    """
+    term_ids: List[str] = get_terminal_ids(element_id=stasw.ID, cubics_by_objid=cubics_by_objid)
+    if len(term_ids) != 2:
+        logger.add_warning(
+            f"StaSwitch '{stasw.loc_name}' (ID={stasw.ID}) skipped: not connected to exactly 2 terminals."
+        )
+        return None
+
+    bus_from = bus_by_term_id[term_ids[0]]
+    bus_to = bus_by_term_id[term_ids[1]]
+
+    # PowerFactory/DGS state: on_off (int)
+    # We interpret on_off != 0 as "closed/connected" (active switch).
+    is_closed: bool = (int(stasw.on_off) != 0)
+    normal_open: bool = not is_closed
+
+    graphic_type: SwitchGraphicType = _convert_pf_switch_graphic_type(iuse=stasw.iUse,
+                                                                      ausage=stasw.aUsage)
+
+    sw = dev.Switch(bus_from=bus_from,
+                    bus_to=bus_to,
+                    name=stasw.loc_name,
+                    idtag=stasw.ID,
+                    code=stasw.typ_id,
+                    active=is_closed,
+                    normal_open=normal_open,
+                    retained=False,
+                    rated_current=0.0,
+                    graphic_type=graphic_type)
+
+    return sw
+
 
 
 def convert_dgs_to_line(lne: ElmLne,
@@ -464,7 +548,7 @@ def convert_dgs_to_line(lne: ElmLne,
     term_ids = get_terminal_ids(element_id=lne.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 2:
         # Fall back to legacy check only if terminal mapping is not available
-        bus_ids = stacubic_dict.get(lne.ID, None)
+        bus_ids = stacubic_dict.get(_ref_id(lne.ID), None)
         if bus_ids is None:
             raise ValueError(f"No buses for the line {lne.ID}")
 
@@ -854,7 +938,11 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # --- frequency ---
     if len(dgs_grid.elmnets) > 0:
-        frequency = float(dgs_grid.elmnets[0].frnom or 50.0)
+        frnom = dgs_grid.elmnets[0].frnom
+        if frnom is None:
+            frequency = 50.0
+        else:
+            frequency = float(frnom)
     else:
         frequency = 50.0
 
@@ -862,17 +950,33 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     stacubic_dict: Dict[str, List[int]] = dict()
     cubics_by_objid: Dict[str, List[StaCubic]] = dict()
     for cb in dgs_grid.stacubics:
-        lst = stacubic_dict.get(cb.obj_id, None)
+        obj_id_raw = cb.obj_id
+        obj_id = _ref_id(obj_id_raw)
+
+        lst = stacubic_dict.get(obj_id, None)
         if lst is None:
-            stacubic_dict[cb.obj_id] = [cb.obj_bus]
+            stacubic_dict[obj_id] = [cb.obj_bus]
         else:
             lst.append(cb.obj_bus)
 
-        lst = cubics_by_objid.get(cb.obj_id, None)
+        lst = cubics_by_objid.get(obj_id, None)
         if lst is None:
-            cubics_by_objid[cb.obj_id] = [cb]
+            cubics_by_objid[obj_id] = [cb]
         else:
             lst.append(cb)
+
+        if obj_id_raw != obj_id:
+            lst = stacubic_dict.get(obj_id_raw, None)
+            if lst is None:
+                stacubic_dict[obj_id_raw] = [cb.obj_bus]
+            else:
+                lst.append(cb.obj_bus)
+
+            lst = cubics_by_objid.get(obj_id_raw, None)
+            if lst is None:
+                cubics_by_objid[obj_id_raw] = [cb]
+            else:
+                lst.append(cb)
 
     # graphics dictioary
     pos_by_objid: Dict[str, Tuple[float, float]] = dict()
@@ -1006,6 +1110,19 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
         grid.add_line(obj=line, logger=logger)
 
+    # switches
+    for stasw in dgs_grid.staswitchs:
+        sw = convert_dgs_to_switch(
+            stasw=stasw,
+            buses=grid.buses,
+            stacubic_dict=stacubic_dict,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+        if sw is not None:
+            grid.add_switch(obj=sw)
+
     # Transformers 2W
     for elmtr2 in dgs_grid.elmtr2s:
         trafo = convert_dgs_to_transformer(
@@ -1023,7 +1140,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         grid.add_transformer2w(obj=trafo)
 
     # Transformers 3W
-    # Transformers 3W
     for elmtr3 in dgs_grid.elmtr3s:
         # Skip invalid 3W transformers: missing template reference or not fully connected
         tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
@@ -1035,7 +1151,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         term_ids: List[str] = get_terminal_ids(element_id=elmtr3.ID, cubics_by_objid=cubics_by_objid)
         if len(term_ids) != 3:
-            bus_ids: List[int] | None = stacubic_dict.get(elmtr3.ID, None)
+            bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
             if bus_ids is None or len(bus_ids) != 3:
                 logger.add_warning(
                     f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: not connected to exactly 3 terminals."
