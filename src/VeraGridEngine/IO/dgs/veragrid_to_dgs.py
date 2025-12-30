@@ -99,6 +99,7 @@ def convert_generator(gen: dev.Generator, tpe: TypSym, new_id: str, Sbase, t: in
     e.typ_id = tpe.ID
     e.Pmin_uc = gen.get_Pmin_at(t)
     e.Pmax_uc = gen.get_Pmax_at(t)
+    e.av_mode = "constv" if gen.is_controlled else "constq"
 
     return e
 
@@ -150,6 +151,7 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     typtr2.curmg = tr.I0
     typtr2.uktr = tr.Vsc
     typtr2.loc_name = tr.name
+    typtr2.nt2ph = 3  # 3 phase
 
     """
     class WindingType(Enum):

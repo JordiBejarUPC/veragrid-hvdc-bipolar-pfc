@@ -252,7 +252,7 @@ class ElmCoup(DGSElement):
         self.chr_name: str = ""
         self.aUsage: str = ""
         self.nneutral: int = 0
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.on_off: int = 0
         self.for_name: str = ""
 
@@ -1083,7 +1083,7 @@ class RelFuse(DGSElement):
         self.typ_id: str = ""
         self.chr_name: str = ""
         self.aUsage: str = ""
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.on_off: int = 0
         self.outserv: int = 0
 
@@ -1440,7 +1440,7 @@ class TypTr2(DGSElement):
         self.manuf: str = ""
         self.chr_name: str = ""
         self.for_name: str = ""
-        self.nt2ph: int = 1
+        self.nt2ph: int = 3  # 3-phase
         self.itapch: int = 0
 
 

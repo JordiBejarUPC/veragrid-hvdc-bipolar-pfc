@@ -954,6 +954,15 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                              bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
     """
     Convert ElmSym to VeraGrid Generator.
+    :param elmsym:
+    :param stacubic_dict:
+    :param buses:
+    :param typsym_dict:
+    :param baseMVA:
+    :param logger:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
+    :return:
     """
     name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
 
@@ -978,7 +987,14 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 
     # Voltage control
     vset = _safe_float(elmsym.usetp, 1.0)
-    is_controlled = (_safe_int(elmsym.iv_mode, 0) != 0)
+
+    if elmsym.av_mode != "":
+        if elmsym.av_mode == "constv":
+            is_controlled = True
+        else:
+            is_controlled = False
+    else:
+        is_controlled = elmsym.iv_mode == 0
 
     # Power factor (used mainly when not controlled)
     pf = _safe_float(elmsym.cosgini, 0.0)
