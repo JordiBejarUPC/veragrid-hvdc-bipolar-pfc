@@ -2345,7 +2345,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = False) -> CSC:
+    def Jacobian(self, autodiff: bool = True) -> CSC:
         """
         Get the Jacobian
         :return:
@@ -2555,6 +2555,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tau2 = self.nc.active_branch_data.tap_angle.copy()
         m2[self.u_cbr_m] = self.m
         tau2[self.u_cbr_tau] = self.tau
+
+        print('\nConverged?', self.converged, '\n')
 
         return NumericPowerFlowResults(
             V=self.V,
