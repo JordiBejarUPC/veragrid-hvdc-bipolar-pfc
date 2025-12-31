@@ -4601,6 +4601,38 @@ class SchematicWidget(BaseDiagramWidget):
 
         self.draw_additional_diagram(diagram=diagram)
 
+    def add_buses_deep(self, buses: List[Bus] | Set[Bus]):
+        """
+        Draw all elements associated to a group of buses with deeper expansion.
+        Used for voltage level conversions where internal buses and switches
+        may be multiple hops away.
+        :param buses: List or Set of Buses
+        """
+
+        (buses,
+         lines, dc_lines, transformers2w,
+         transformers3w, windings, hvdc_lines,
+         vsc_converters, upfc_devices,
+         series_reactances, switches,
+         fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit, buses=buses, max_level=5)
+
+        # Draw schematic subset
+        diagram = generate_schematic_diagram(buses=list(buses),
+                                             lines=lines,
+                                             dc_lines=dc_lines,
+                                             transformers2w=transformers2w,
+                                             transformers3w=transformers3w,
+                                             windings=windings,
+                                             hvdc_lines=hvdc_lines,
+                                             vsc_devices=vsc_converters,
+                                             upfc_devices=upfc_devices,
+                                             series_reactances=series_reactances,
+                                             switches=switches,
+                                             fluid_nodes=list(fluid_nodes),
+                                             fluid_paths=fluid_paths)
+
+        self.draw_additional_diagram(diagram=diagram)
+
     def change_injection_bus(self, injection_graphics: INJECTION_GRAPHICS):
         """
 
@@ -4721,11 +4753,24 @@ class SchematicWidget(BaseDiagramWidget):
                 vl_type=vl_wizard.get_vl_type(),
                 add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
                 bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked(),
-                skip_injections_reconnection=True
+                skip_injections_reconnection=True,
+                enable_transfer_bus=vl_wizard.enable_transfer_bus_checkbox.isChecked(),
+                reducible_branches=vl_wizard.reducible_branches_checkbox.isChecked(),
+                bay_assignments=vl_wizard.get_bay_assignments()
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
-            self.add_buses(buses=new_buses)
+            # Use all buses (including internal ones) to ensure all switches are drawn
+            self.add_buses_deep(buses=new_buses)
+
+            # Force redraw of all new bus graphics to ensure connections are visible
+            for new_bus in new_buses:
+                bus_graphic = self.graphics_manager.query(new_bus)
+                if bus_graphic is not None:
+                    bus_graphic.update()
+                    terminal = bus_graphic.get_terminal()
+                    if terminal is not None:
+                        terminal.update()
 
             # reconnect graphics
             # self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=conn_buses)
@@ -4736,22 +4781,43 @@ class SchematicWidget(BaseDiagramWidget):
                 new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
                 branch_graphic = self.graphics_manager.query(element)
 
-                # At this point the API branch has been ressigned already
+                # Skip if graphics not found
+                if new_bus_graphic is None:
+                    print(f"Warning: No graphic found for bus {new_bus.name}")
+                    continue
+                if branch_graphic is None:
+                    print(f"Warning: No graphic found for element {element.name}")
+                    continue
 
-                new_bus_graphic.terminal.reassign_terminal(
-                    graphic_obj=branch_graphic,
-                    another_terminal=bus_graphics.terminal
-                )
+                # At this point the API branch has been reassigned already
+                terminal = new_bus_graphic.get_terminal()
+                if terminal is not None:
+                    terminal.reassign_terminal(
+                        graphic_obj=branch_graphic,
+                        another_terminal=bus_graphics.terminal
+                    )
 
-                branch_graphic.api_object.reassign_bus(
-                    old_bus=bus_graphics.api_object,
-                    new_bus=new_bus_graphic.api_object
-                )
+                if hasattr(branch_graphic, 'api_object') and branch_graphic.api_object is not None:
+                    branch_graphic.api_object.reassign_bus(
+                        old_bus=bus_graphics.api_object,
+                        new_bus=new_bus_graphic.api_object
+                    )
 
-                new_bus_graphic.get_terminal().update()
+                if terminal is not None:
+                    terminal.update()
 
             # Finally delete the old bus
             self.delete_element_utility_function(device=bus_graphics.api_object)
+
+            # Update scene to ensure visual refresh of newly added elements
+            # Invalidate the entire scene to force redraw of all items
+            self.diagram_scene.invalidate()
+            self.diagram_scene.update()
+            self.editor_graphics_view.viewport().update()
+
+            # Process events to ensure updates are applied immediately
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
 
         else:
             self.gui.show_warning_toast("No conversion made...")
@@ -5021,7 +5087,7 @@ List[FluidPath]]:
         bus_idx.append(bus_dict[bus])
 
         # add searched bus
-        if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type.Connectivity:
+        if bus.graphic_type == BusGraphicType.BusBar or bus.graphic_type == BusGraphicType.Connectivity:
             buses.add(bus)
 
         if level < (max_level + max_level_offset):
@@ -5034,15 +5100,19 @@ List[FluidPath]]:
                     max_level_offset = 1
 
                 if br.bus_from == bus:
+                    # Always add the branch if connected to current bus
+                    selected_branches.add(br)
+                    # Only add the other bus to pool if not visited
                     if br.bus_to not in visited:
                         bus_pool.append((br.bus_to, level + 1))
-                        selected_branches.add(br)
                         visited.add(br.bus_to)
 
                 elif br.bus_to == bus:
+                    # Always add the branch if connected to current bus
+                    selected_branches.add(br)
+                    # Only add the other bus to pool if not visited
                     if br.bus_from not in visited:
                         bus_pool.append((br.bus_from, level + 1))
-                        selected_branches.add(br)
                         visited.add(br.bus_from)
 
                 else:

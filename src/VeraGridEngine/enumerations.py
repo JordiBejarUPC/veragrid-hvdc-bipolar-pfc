@@ -2497,3 +2497,29 @@ class OpfDispatchMode(Enum):
             return OpfDispatchMode[s]
         except KeyError:
             return s
+
+
+class TimeSeriesSearchPoint(Enum):
+    """
+    TimeSeriesSearchPoint
+    """
+    HighestLoad = "Highest Load"
+    LowestLoad = "Lowest load"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return TimeSeriesSearchPoint[s]
+        except KeyError:
+            return s
+

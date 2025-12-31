@@ -13,6 +13,8 @@ __pycache__
 .idea/inspectionProfiles
 .idea/workspace.xml
 
+.claude/
+
 /build
 /dist
 *.egg-info
