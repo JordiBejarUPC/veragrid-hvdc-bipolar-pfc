@@ -586,7 +586,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         self.S0: CxVec = S0
         self.I0: CxVec = I0
-        self.Y0: CxVec = Y0
+        # We move Y0 to Ybus diagonal to improve convergence, so self.Y0 set to zeros
+        self.Y0: CxVec = np.zeros_like(Y0)
 
         self.Qmin = Qmin
         self.Qmax = Qmax
@@ -678,7 +679,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             tap_angle=expand(self.nc.nbr, self.tau, self.u_cbr_tau, 0.0),
             F=self.nc.passive_branch_data.F,
             T=self.nc.passive_branch_data.T,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.nc.get_Yshunt_bus_pu() + Y0,
         )
         self.adm.initialize_update()  # allows mega fast matrix updates
 
@@ -1707,7 +1708,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tm[2] = time.time()
 
         V = polar_to_rect(Vm_, Va_)
-        Sbus = compute_zip_power(self.S0, self.I0, self.Y0, Vm_)
+
+        # Use V instead of Vm (not a device-centered axis). Thus avoid compute_zip_power()
+        # We add self.Y0 despite it being zero
+        Sbus = self.S0 + V * np.conj(self.I0) + V * np.conj(V) * np.conj(self.Y0)
         Scalc_passive = compute_power(adm_.Ybus, V)
 
         Pf_cbr = calcSf(k=self.k_cbr_pf,
@@ -1863,7 +1867,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.adm = adm_
             self._f = f_
 
-        print('residual = \n', f_)
+        if self.options.verbose > 1:
+            print('residual = \n', f_)
 
         return f_
 

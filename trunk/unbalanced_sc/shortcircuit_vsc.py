@@ -12,7 +12,7 @@ grid = vge.MultiCircuit()
 bus_dc = vge.Bus(name='Bus DC', xpos=0, ypos=0, is_dc=True)
 grid.add_bus(obj=bus_dc)
 
-bus_ac = vge.Bus(name='Bus AC', xpos=0, ypos=300, r_fault=1.0)
+bus_ac = vge.Bus(name='Bus AC', xpos=0, ypos=300, r_fault=0.2)
 grid.add_bus(obj=bus_ac)
 
 bus_slack = vge.Bus(name='Bus Slack', xpos=0, ypos=600, is_slack=True)
@@ -58,7 +58,8 @@ vge.save_file(grid=grid, filename='shortcircuit_vsc.veragrid')
 # ----------------------------------------------------------------------------------------------------------------------
 pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=False)
+                                limit_i_vsc=False,
+                                verbose=1)
 res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 
 print('Power flow results:')
@@ -69,7 +70,8 @@ print(abs(res_pf.voltage))
 # ----------------------------------------------------------------------------------------------------------------------
 pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=False)
+                                limit_i_vsc=True,
+                                verbose=1)
 
 grid.add_short_circuit_definition(
     vge.ShortCircuitEvent(
