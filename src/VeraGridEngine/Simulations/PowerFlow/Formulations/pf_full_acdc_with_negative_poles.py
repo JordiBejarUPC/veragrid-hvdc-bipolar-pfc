@@ -12,6 +12,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 import VeraGridEngine.Simulations.Derivatives.csc_derivatives as deriv
+from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSbus_dV_with_I0_numba_sparse_csc
 from VeraGridEngine.Utils.NumericalMethods.common import find_closest_number, make_complex
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, CxCSC, scipy_to_mat, sp_slice, csc_stack_2d_ff)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_for_generalized_method,
@@ -25,7 +26,7 @@ from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, Hvdc
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
-# @njit()
+@njit()
 def adv_jacobian(nbus: int,
                  nbr: int,
                  nvsc: int,
@@ -44,6 +45,7 @@ def adv_jacobian(nbus: int,
                  V: CxVec,
                  Vm: Vec,
                  Va: Vec,
+                 I0: CxVec,
 
                  # Controllable Branch Indices
                  u_cbr_m: IntVec,
@@ -115,6 +117,7 @@ def adv_jacobian(nbus: int,
     :param V:
     :param Vm:
     :param Va:
+    :param I0: Current injections vector (for Norton equivalent in short-circuit)
     :param u_cbr_m:
     :param u_cbr_tau:
     :param k_cbr_pf:
@@ -154,8 +157,8 @@ def adv_jacobian(nbus: int,
     tap = polar_to_rect(tap_modules, tap_angles)
 
     # -------- ROW 1 + ROW 2 (Sbus) ---------
-    # bus-bus derivatives (always needed)
-    dSy_dVm_x, dSy_dVa_x = deriv.dSbus_dV_numba_sparse_csc(Yx, Yp, Yi, V, Vm)
+    # bus-bus derivatives (including I0 Norton current contribution)
+    dSy_dVm_x, dSy_dVa_x = dSbus_dV_with_I0_numba_sparse_csc(Yx, Yp, Yi, V, Vm, I0)
     dS_dVm = CxCSC(nbus, nbus, len(dSy_dVm_x), False).set(Yi, Yp, dSy_dVm_x)
     dS_dVa = CxCSC(nbus, nbus, len(dSy_dVa_x), False).set(Yi, Yp, dSy_dVa_x)
 
@@ -2397,6 +2400,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 V=self.V,
                 Vm=self.Vm,
                 Va=self.Va,
+                I0=self.I0,
 
                 # Controllable Branch Indices
                 u_cbr_m=self.u_cbr_m,
