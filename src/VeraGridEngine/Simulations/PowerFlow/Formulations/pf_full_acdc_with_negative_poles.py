@@ -25,7 +25,7 @@ from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, Hvdc
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
-@njit()
+# @njit()
 def adv_jacobian(nbus: int,
                  nbr: int,
                  nvsc: int,
@@ -2350,7 +2350,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = True) -> CSC:
+    def Jacobian(self, autodiff: bool = False) -> CSC:
         """
         Get the Jacobian
         :return:

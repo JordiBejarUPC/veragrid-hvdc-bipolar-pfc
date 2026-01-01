@@ -895,5 +895,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
     # Restore original generator control flags
     nc.bus_data.is_vm_controlled[bus_gen_idx] = original_is_vm_controlled
     nc.bus_data.is_va_controlled[bus_gen_idx] = original_is_va_controlled
+    nc.bus_data.is_p_controlled[bus_gen_idx] = original_is_p_controlled
+    nc.bus_data.is_q_controlled[bus_gen_idx] = original_is_q_controlled
 
     return sc_results
