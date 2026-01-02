@@ -28,9 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Some refactors">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed Elmgenstat issues">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/veragrid_to_dgs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/veragrid_to_dgs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="#137Make-the-to_veragrid-and-from_veragrid-functions-for-dgs_circuit" />
+        <entry key="$PROJECT_DIR$" value="devel" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -230,7 +230,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "devel",
+    "git-widget-placeholder": "#137Make-the-to__veragrid-and-from__veragrid-functions-for-dgs__circuit",
     "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/src/tests/data/grids",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -1837,7 +1837,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="686" />
+    <option name="localTasksCounter" value="687" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1898,7 +1898,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Refactored some block templates" />
     <MESSAGE value="some more refactor to the block save and parse logic" />
     <MESSAGE value="Fixed minor error in the small signal test" />
     <MESSAGE value="fixing convert_busbar_to_voltage_level" />
@@ -1923,7 +1922,8 @@
     <MESSAGE value="Added one extra power flow test&#10;Minor enhancements" />
     <MESSAGE value="Commented out the HELM contingency" />
     <MESSAGE value="Some refactors" />
-    <option name="LAST_COMMIT_MESSAGE" value="Some refactors" />
+    <MESSAGE value="Fixed Elmgenstat issues" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed Elmgenstat issues" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2163,11 +2163,6 @@
           <option name="timeStamp" value="2428" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_ts_results.py</url>
-          <line>345</line>
-          <option name="timeStamp" value="2490" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/remote.py</url>
           <line>175</line>
           <option name="timeStamp" value="2505" />
@@ -2354,17 +2349,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>864</line>
+          <line>865</line>
           <option name="timeStamp" value="3011" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>872</line>
+          <line>873</line>
           <option name="timeStamp" value="3012" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>876</line>
+          <line>877</line>
           <option name="timeStamp" value="3013" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2468,6 +2463,11 @@
           <option name="timeStamp" value="3123" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_power_flow.py</url>
+          <line>473</line>
+          <option name="timeStamp" value="3124" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py</url>
           <line>921</line>
           <option name="timeStamp" value="3127" />
@@ -2476,16 +2476,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py</url>
           <line>934</line>
           <option name="timeStamp" value="3128" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py</url>
-          <line>962</line>
-          <option name="timeStamp" value="3129" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py</url>
-          <line>876</line>
-          <option name="timeStamp" value="3130" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation.py</url>
@@ -2521,36 +2511,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation.py</url>
           <line>291</line>
           <option name="timeStamp" value="3141" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py</url>
-          <line>241</line>
-          <option name="timeStamp" value="3145" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_circuit.py</url>
-          <line>256</line>
-          <option name="timeStamp" value="3146" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py</url>
-          <line>150</line>
-          <option name="timeStamp" value="3147" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py</url>
-          <line>96</line>
-          <option name="timeStamp" value="3148" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py</url>
-          <line>93</line>
-          <option name="timeStamp" value="3149" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/dgs/dgs_objects.py</url>
-          <line>95</line>
-          <option name="timeStamp" value="3150" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
