@@ -1025,13 +1025,15 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     # Voltage control
     vset = _safe_float(elmsym.usetp, 1.0)
 
+
     if elmsym.av_mode != "":
         if elmsym.av_mode == "constv":
             is_controlled = True
         else:
             is_controlled = False
     else:
-        is_controlled = elmsym.iv_mode == 0
+        is_controlled = elmsym.iv_mode != 0
+
 
     # Power factor (used mainly when not controlled)
     pf = _safe_float(elmsym.cosgini, 0.0)
