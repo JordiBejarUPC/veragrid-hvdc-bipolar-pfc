@@ -779,6 +779,19 @@ def short_circuit_vsc(nc: NumericalCircuit,
         bus_types=nc.bus_data.bus_types,
     )
 
+    # Disable voltage magnitude and angle control for all generators during short-circuit
+    bus_gen_idx = nc.generator_data.bus_idx
+    
+    original_is_vm_controlled = nc.bus_data.is_vm_controlled[bus_gen_idx].copy()
+    original_is_va_controlled = nc.bus_data.is_va_controlled[bus_gen_idx].copy()
+    original_is_p_controlled = nc.bus_data.is_p_controlled[bus_gen_idx].copy()
+    original_is_q_controlled = nc.bus_data.is_q_controlled[bus_gen_idx].copy()
+
+    nc.bus_data.is_vm_controlled[bus_gen_idx] = False
+    nc.bus_data.is_va_controlled[bus_gen_idx] = False
+    nc.bus_data.is_p_controlled[bus_gen_idx] = True
+    nc.bus_data.is_q_controlled[bus_gen_idx] = True
+
     # compute islands
     islands = nc.split_into_islands(ignore_single_node_islands=options.ignore_single_node_islands,
                                     consider_hvdc_as_island_links=True,
@@ -803,19 +816,18 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
         Ygen = np.zeros(shape=nbus, dtype=complex)
         gen_idx = nc.generator_data.original_idx
-        bus_gen_idx = nc.generator_data.bus_idx
-        for i in range(len(gen_idx)):
-            Ygen[bus_gen_idx[i]] = 1 / (nc.generator_data.r1[i] + 1j * nc.generator_data.x1[i])
+        for gen_i in range(len(gen_idx)):
+            Ygen[bus_gen_idx[gen_i]] = 1 / (nc.generator_data.r1[gen_i] + 1j * nc.generator_data.x1[gen_i])
 
         Y0_linear = np.conj(S0 / (np.conj(V_pf) * V_pf)) + I0 / V_pf + Y0 + Ygen + Yfault
 
         I0_linear = np.zeros(shape=nbus, dtype=complex) # Add generator's norton
-        for i in range(len(bus_gen_idx)):
-            Ugen = V_pf[bus_gen_idx[i]]
-            Sgen = S_pf[bus_gen_idx[i]]
+        for gen_i in range(len(bus_gen_idx)):
+            Ugen = V_pf[bus_gen_idx[gen_i]]
+            Sgen = S_pf[bus_gen_idx[gen_i]] / nc.Sbase
             Igen = np.conj(Sgen / Ugen)
-            Egen = Ugen + Igen / Ygen[bus_gen_idx[i]]
-            I0_linear[bus_gen_idx[i]] = Ygen[bus_gen_idx[i]] * Egen
+            Egen = Ugen + Igen / Ygen[bus_gen_idx[gen_i]]
+            I0_linear[bus_gen_idx[gen_i]] = Ygen[bus_gen_idx[gen_i]] * Egen
 
         if len(indices.vd) > 0:
 
@@ -864,8 +876,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
         area_names=None
     )
 
-    sc_results.SCpower[:, 0] = pf_results.voltage * pf_results.voltage * Yfault
-    sc_results.ICurrent[:, 0] = pf_results.voltage * Yfault
+    sc_results.SCpower[:, 0] = pf_results.voltage[fault_bus] * pf_results.voltage[fault_bus] * Yfault[fault_bus]
+    sc_results.ICurrent[:, 0] = pf_results.voltage[fault_bus] * Yfault[fault_bus]
     sc_results.Sbus1[:, 0] = nc.get_power_injections_pu() * nc.Sbase  # MVA
     sc_results.voltage1[:, 0] = pf_results.voltage
     sc_results.Sf1[:, 0] = pf_results.Sf  # in MVA already
@@ -879,5 +891,11 @@ def short_circuit_vsc(nc: NumericalCircuit,
     sc_results.Vbranch1[:, 0] = pf_results.Vbranch
     sc_results.loading1[:, 0] = pf_results.loading
     sc_results.losses1[:, 0] = pf_results.losses
+
+    # Restore original generator control flags
+    nc.bus_data.is_vm_controlled[bus_gen_idx] = original_is_vm_controlled
+    nc.bus_data.is_va_controlled[bus_gen_idx] = original_is_va_controlled
+    nc.bus_data.is_p_controlled[bus_gen_idx] = original_is_p_controlled
+    nc.bus_data.is_q_controlled[bus_gen_idx] = original_is_q_controlled
 
     return sc_results
