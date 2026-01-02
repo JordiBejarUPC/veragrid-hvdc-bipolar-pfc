@@ -104,8 +104,8 @@ def convert_static_gen(stagen: dev.StaticGenerator, new_id: str, t: int | None =
     e = ElmGenstat()
     e.ID = new_id
     e.loc_name = stagen.name
-    e.plini = float(stagen.get_P_at(t))
-    e.qlini = float(stagen.get_Q_at(t))
+    e.pgini = float(stagen.get_P_at(t))
+    e.qgini = float(stagen.get_Q_at(t))
     e.scale0 = 1.0
     e.outserv = 0 if stagen.get_active_at(t) else 1
     e.ngnum = 1
@@ -113,6 +113,7 @@ def convert_static_gen(stagen: dev.StaticGenerator, new_id: str, t: int | None =
     e.sgn = stagen.Snom if stagen.Snom > 0 else 9999.0
 
     return e
+
 
 def convert_gen_to_static_gen(gen: dev.Generator, new_id: str, t: int | None = None) -> ElmGenstat:
     """
@@ -125,8 +126,8 @@ def convert_gen_to_static_gen(gen: dev.Generator, new_id: str, t: int | None = N
     e = ElmGenstat()
     e.ID = new_id
     e.loc_name = gen.name
-    e.plini = float(gen.get_P_at(t))
-    e.qlini = float(gen.get_Q_at(t))
+    e.pgini = float(gen.get_P_at(t))
+    e.qgini = float(gen.get_Q_at(t))
     e.scale0 = 1.0
     e.outserv = 0 if gen.get_active_at(t) else 1
     e.ngnum = 1
@@ -147,8 +148,8 @@ def convert_battery(batt: dev.Battery, new_id: str, t: int | None = None) -> Elm
     e = ElmGenstat()
     e.ID = new_id
     e.loc_name = batt.name
-    e.plini = float(batt.get_P_at(t))
-    e.qlini = float(batt.get_Q_at(t))
+    e.pgini = float(batt.get_P_at(t))
+    e.qgini = float(batt.get_Q_at(t))
     e.scale0 = 1.0
     e.outserv = 0 if batt.get_active_at(t) else 1
     e.cCategory = "stor"
