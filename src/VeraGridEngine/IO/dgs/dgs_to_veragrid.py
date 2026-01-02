@@ -4,11 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import math
-import numpy as np
-import sys
-import os
-from pathlib import Path
-from typing import Dict, List, Type, Optional, Tuple, Set
+from typing import Dict, List, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
@@ -268,7 +264,8 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     return bus_a, bus_b
 
 
-def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logger, tr_name: str) -> Tuple[dev.Bus, dev.Bus, dev.Bus]:
+def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logger, tr_name: str) -> Tuple[
+    dev.Bus, dev.Bus, dev.Bus]:
     """
     Order three buses as (HV, MV, LV) based on nominal voltage.
     If voltages are equal or undefined, keep a stable order and warn.
@@ -585,8 +582,8 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
                         retained=False,
                         rated_current=0.0,
                         graphic_type=graphic_type,
-                        #x=mid_x,
-                        #y=mid_y
+                        # x=mid_x,
+                        # y=mid_y
                         )
 
         switches.append(sw)
@@ -676,7 +673,6 @@ def convert_dgs_to_switch(stasw: StaSwitch,
     return sw
 
 
-
 def convert_dgs_to_line(lne: ElmLne,
                         buses: List[dev.Bus],
                         stacubic_dict: Dict[str, List[int]],
@@ -695,6 +691,8 @@ def convert_dgs_to_line(lne: ElmLne,
     :param freq:
     :param baseMVA:
     :param logger:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
     :return:
     """
 
@@ -1025,7 +1023,6 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     # Voltage control
     vset = _safe_float(elmsym.usetp, 1.0)
 
-
     if elmsym.av_mode != "":
         if elmsym.av_mode == "constv":
             is_controlled = True
@@ -1033,7 +1030,6 @@ def convert_dgs_to_generator(elmsym: ElmSym,
             is_controlled = False
     else:
         is_controlled = elmsym.iv_mode != 0
-
 
     # Power factor (used mainly when not controlled)
     pf = _safe_float(elmsym.cosgini, 0.0)
@@ -1154,7 +1150,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             else:
                 lst.append(cb)
 
-    # graphics dictioary
+    # graphics dictionary
     pos_by_objid: Dict[str, Tuple[float, float]] = dict()
     for g in dgs_grid.intgrfs:
         pos_by_objid[g.pDataObj] = (float(g.rCenterX), float(g.rCenterY))
@@ -1334,7 +1330,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
         if tr3_typ_id is None or tr3_typ_id == "":
             logger.add_warning(
-                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: missing typ_id (no TypTr3 reference in DGS)."
+                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
+                f"skipped: missing typ_id (no TypTr3 reference in DGS)."
             )
             continue
 
@@ -1343,7 +1340,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
             if bus_ids is None or len(bus_ids) != 3:
                 logger.add_warning(
-                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: not connected to exactly 3 terminals."
+                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
+                    f"skipped: not connected to exactly 3 terminals."
                 )
                 continue
 
