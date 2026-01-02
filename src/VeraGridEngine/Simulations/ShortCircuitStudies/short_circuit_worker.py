@@ -787,10 +787,13 @@ def short_circuit_vsc(nc: NumericalCircuit,
     original_is_p_controlled = nc.bus_data.is_p_controlled[bus_gen_idx].copy()
     original_is_q_controlled = nc.bus_data.is_q_controlled[bus_gen_idx].copy()
 
-    nc.bus_data.is_vm_controlled[bus_gen_idx] = False
-    nc.bus_data.is_va_controlled[bus_gen_idx] = False
-    nc.bus_data.is_p_controlled[bus_gen_idx] = True
-    nc.bus_data.is_q_controlled[bus_gen_idx] = True
+    for gen in bus_gen_idx:
+
+        if nc.bus_data.is_dc[gen] == False:
+            nc.bus_data.is_vm_controlled[gen] = False
+            nc.bus_data.is_va_controlled[gen] = False
+            nc.bus_data.is_p_controlled[gen] = True
+            nc.bus_data.is_q_controlled[gen] = True
 
     # compute islands
     islands = nc.split_into_islands(ignore_single_node_islands=options.ignore_single_node_islands,
