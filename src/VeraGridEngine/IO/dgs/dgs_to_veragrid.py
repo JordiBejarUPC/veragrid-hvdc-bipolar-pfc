@@ -4,11 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import math
-import numpy as np
-import sys
-import os
-from pathlib import Path
-from typing import Dict, List, Type, Optional, Tuple, Set
+from typing import Dict, List, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
@@ -268,7 +264,8 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     return bus_a, bus_b
 
 
-def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logger, tr_name: str) -> Tuple[dev.Bus, dev.Bus, dev.Bus]:
+def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logger, tr_name: str) -> Tuple[
+    dev.Bus, dev.Bus, dev.Bus]:
     """
     Order three buses as (HV, MV, LV) based on nominal voltage.
     If voltages are equal or undefined, keep a stable order and warn.
@@ -300,6 +297,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                                buses: List[dev.Bus],
                                stacubic_dict: Dict[str, List[int]],
                                templates_dict: Dict[str, dev.TransformerType],
+                               typtr2_dict: Dict[str, TypTr2],
                                freq: float,
                                baseMVA: float,
                                logger: Logger,
@@ -311,6 +309,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     :param buses:
     :param stacubic_dict:
     :param templates_dict:
+    :param typtr2_dict: Dictionary of TypTr2 objects indexed by ID (raw PF data)
     :param freq:
     :param baseMVA:
     :param logger:
@@ -324,6 +323,9 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
     if template is None:
         raise ValueError(f"No template for the transformer {tr2.ID}")
+
+    # Resolve the raw TypTr2 (needed to parse tap settings: step/min/max/neutral)
+    typtr2_raw = typtr2_dict.get(tr2.typ_id, None)
 
     # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
     term_ids = get_terminal_ids(element_id=tr2.ID, cubics_by_objid=cubics_by_objid)
@@ -354,6 +356,38 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
+
+    #   - TypTr2.dutap   : tap step in percent (%)
+    #   - TypTr2.nntap0  : neutral position (integer)
+    #   - TypTr2.ntpmn   : minimum position (integer)
+    #   - TypTr2.ntpmx   : maximum position (integer)
+    #   - TypTr2.tap_side: side where the tap-changer is located (typically 0=HV, 1=LV)
+    #   - ElmTr2.nntap   : current position (integer)
+
+    step: float = float(typtr2_raw.dutap) / 100.0
+    n0: int = int(typtr2_raw.nntap0)
+    n: int = int(tr2.nntap)
+
+    tap: float = 1.0 + (n - n0) * step
+    tap_min: float = 1.0 + (int(typtr2_raw.ntpmn) - n0) * step
+    tap_max: float = 1.0 + (int(typtr2_raw.ntpmx) - n0) * step
+
+    # Ensure ordering for min/max (in case data is inverted in the source)
+    if tap_min > tap_max:
+        tap_min, tap_max = tap_max, tap_min
+
+    # If tap-changer is on LV side, move it to HV side by inversion to match VeraGrid model
+    if int(typtr2_raw.tap_side) != 0:
+        tap = 1.0 / tap
+        tap_min_i: float = 1.0 / tap_min
+        tap_max_i: float = 1.0 / tap_max
+        tap_min = min(tap_min_i, tap_max_i)
+        tap_max = max(tap_min_i, tap_max_i)
+
+    trafo.tap_module = tap
+    trafo.tap_module_min = tap_min
+    trafo.tap_module_max = tap_max
+    # ---------------------------------------------------------------
 
     return trafo
 
@@ -548,8 +582,8 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
                         retained=False,
                         rated_current=0.0,
                         graphic_type=graphic_type,
-                        #x=mid_x,
-                        #y=mid_y
+                        # x=mid_x,
+                        # y=mid_y
                         )
 
         switches.append(sw)
@@ -639,7 +673,6 @@ def convert_dgs_to_switch(stasw: StaSwitch,
     return sw
 
 
-
 def convert_dgs_to_line(lne: ElmLne,
                         buses: List[dev.Bus],
                         stacubic_dict: Dict[str, List[int]],
@@ -658,6 +691,8 @@ def convert_dgs_to_line(lne: ElmLne,
     :param freq:
     :param baseMVA:
     :param logger:
+    :param cubics_by_objid:
+    :param bus_by_term_id:
     :return:
     """
 
@@ -692,30 +727,11 @@ def convert_dgs_to_line(lne: ElmLne,
 
     return line
 
-
-def _safe_float(x, default: float = 0.0) -> float:
-    """
-    Convert a value to float safely.
-    """
-    if x is None:
-        return default
-    return float(x)
-
-
-def _safe_int(x, default: int = 0) -> int:
-    """
-    Convert a value to int safely.
-    """
-    if x is None:
-        return default
-    return int(x)
-
-
 def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
     """
     Interpret PowerFactory/DGS load scaling factor.
     """
-    s = _safe_float(scale0, default=1.0)
+    s = scale0
     if s == 0.0:
         return 1.0
 
@@ -734,13 +750,13 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
 
     # Primary: direct P/Q
-    p = _safe_float(elmlod.plini, 0.0)
-    q = _safe_float(elmlod.qlini, 0.0)
+    p = elmlod.plini
+    q = elmlod.qlini
 
     # Fallback: S + cos(phi)
     if p == 0.0 and q == 0.0:
-        s = _safe_float(elmlod.slini, 0.0)
-        cosphi = _safe_float(elmlod.coslini, 0.0)
+        s = elmlod.slini
+        cosphi = elmlod.coslini
 
         if s != 0.0 and cosphi != 0.0:
             cosphi = max(min(cosphi, 1.0), -1.0)
@@ -857,8 +873,8 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
     g_mw: float = 0.0
 
     # Reactive power per step (MVAr) and connected steps
-    q_step: float = _safe_float(elmshnt.qcapn, 0.0)
-    n_on: int = _safe_int(elmshnt.ncapa, 1)
+    q_step: float = elmshnt.qcapn
+    n_on: int = elmshnt.ncapa
 
     if n_on <= 0:
         n_on = 1
@@ -866,7 +882,7 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
     b_mvar: float = q_step * float(n_on)
 
     # If total rated MVAr is present in schema, prefer it when non-zero
-    qtotn: float = _safe_float(elmshnt.qtotn, 0.0)
+    qtotn: float = elmshnt.qtotn
     if qtotn != 0.0:
         b_mvar = qtotn
 
@@ -888,7 +904,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     name = elmshnt.loc_name or f"Shunt_{_ref_id(elmshnt.ID)}"
 
     # Fixed shunts only: if max steps > 1, the device is stepped/controllable in PF
-    ncapx: int = _safe_int(elmshnt.ncapx, 1)
+    ncapx: int = elmshnt.ncapx
     if ncapx > 1:
         logger.add_warning(f"ElmShnt '{name}': ncapx={ncapx} indicates stepped shunt. Skipping fixed conversion.")
         raise ValueError("ElmShnt is stepped/controllable (ncapx>1).")
@@ -904,7 +920,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     shunt = dev.Shunt(name=name,
                       G=g_mw,
                       B=b_mvar,
-                      active=(_safe_int(elmshnt.outserv, 0) == 0))
+                      active=(elmshnt.outserv == 0))
 
     return bus, shunt
 
@@ -929,7 +945,7 @@ def _interpret_pu_limit(value: float,
     """
     Interpret a DGS limit that might be in p.u. (on Sbase) or in MW/MVAr.
     """
-    v = _safe_float(value, default=0.0)
+    v = value
 
     # If reference is small too, do not guess
     if abs(reference_abs) <= 5.0:
@@ -967,7 +983,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
 
     # Skip motors (ElmSym can represent synchronous motors too)
-    if _safe_int(elmsym.i_mot, 0) != 0:
+    if elmsym.i_mot != 0:
         logger.add_warning(f"ElmSym '{name}' is marked as motor (i_mot=1). Skipping Generator conversion.")
         raise ValueError("ElmSym is a motor, not a generator.")
 
@@ -982,11 +998,11 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     if typsym is None:
         typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
 
-    p_mw = _safe_float(elmsym.pgini, 0.0)
-    q_mvar = _safe_float(elmsym.qgini, 0.0)
+    p_mw = elmsym.pgini
+    q_mvar = elmsym.qgini
 
     # Voltage control
-    vset = _safe_float(elmsym.usetp, 1.0)
+    vset = elmsym.usetp
 
     if elmsym.av_mode != "":
         if elmsym.av_mode == "constv":
@@ -994,23 +1010,23 @@ def convert_dgs_to_generator(elmsym: ElmSym,
         else:
             is_controlled = False
     else:
-        is_controlled = elmsym.iv_mode == 0
+        is_controlled = elmsym.iv_mode != 0
 
     # Power factor (used mainly when not controlled)
-    pf = _safe_float(elmsym.cosgini, 0.0)
+    pf = elmsym.cosgini
     if pf == 0.0 and typsym is not None:
-        pf = _safe_float(typsym.cosn, 0.0)
+        pf = typsym.cosn
     if pf == 0.0:
         pf = _pf_from_pq(p_mw=p_mw, q_mvar=q_mvar, default=0.8)
 
     # Nominal power
     snom = 9999.0
     if typsym is not None:
-        snom = _safe_float(typsym.sgn, 9999.0)
+        snom = typsym.sgn
 
     # Limits (q_min/q_max are often in p.u. on Sbase in DGS exports)
-    qmin_raw = _safe_float(elmsym.q_min, -9999.0)
-    qmax_raw = _safe_float(elmsym.q_max, 9999.0)
+    qmin_raw = elmsym.q_min
+    qmax_raw = elmsym.q_max
 
     qmin = _interpret_pu_limit(value=qmin_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
                                logger=logger, name=name, field="q_min")
@@ -1018,8 +1034,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                                logger=logger, name=name, field="q_max")
 
     # Optional P limits if present in schema
-    pmin = _safe_float(elmsym.Pmin_uc, 0.0)
-    pmax = _safe_float(elmsym.Pmax_uc, 9999.0)
+    pmin = elmsym.Pmin_uc
+    pmax = elmsym.Pmax_uc
 
     # Interpret P limits if they look like p.u. too
     pmin = _interpret_pu_limit(value=pmin, baseMVA=baseMVA, reference_abs=abs(p_mw),
@@ -1035,7 +1051,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         Qmin=qmin,
                         Qmax=qmax,
                         Snom=snom,
-                        active=(_safe_int(elmsym.outserv, 0) == 0),
+                        active=(elmsym.outserv == 0),
                         Pmin=pmin,
                         Pmax=pmax,
                         Sbase=baseMVA)
@@ -1046,8 +1062,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
-        r1 = _safe_float(typsym.rstr, 0.0)
-        x1 = _safe_float(typsym.xd, 0.0)
+        r1 = typsym.rstr
+        x1 = typsym.xd
 
         if r1 != 0.0 or x1 != 0.0:
             gen.R1 = float(r1)
@@ -1115,7 +1131,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             else:
                 lst.append(cb)
 
-    # graphics dictioary
+    # graphics dictionary
     pos_by_objid: Dict[str, Tuple[float, float]] = dict()
     for g in dgs_grid.intgrfs:
         pos_by_objid[g.pDataObj] = (float(g.rCenterX), float(g.rCenterY))
@@ -1216,13 +1232,16 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Transformer types
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
+    typtr2_raw_dict: Dict[str, TypTr2] = dict()
     for typtr2 in dgs_grid.typtr2s:
         tpe = convert_dgs_to_transformer_type(typtr2=typtr2)
         grid.add_transformer_type(obj=tpe)
         typtr2_dict[typtr2.ID] = tpe
+        typtr2_raw_dict[typtr2.ID] = typtr2
         tid = _ref_id(typtr2.ID)
         if tid is not None:
             typtr2_dict[tid] = tpe
+            typtr2_raw_dict[tid] = typtr2
 
     # Transformer types (3W)
     typtr3_dict: Dict[str, TypTr3] = dict()
@@ -1276,6 +1295,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             buses=grid.buses,
             stacubic_dict=stacubic_dict,
             templates_dict=typtr2_dict,
+            typtr2_dict=typtr2_raw_dict,
             freq=frequency,
             baseMVA=baseMVA,
             logger=logger,
@@ -1291,7 +1311,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
         if tr3_typ_id is None or tr3_typ_id == "":
             logger.add_warning(
-                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: missing typ_id (no TypTr3 reference in DGS)."
+                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
+                f"skipped: missing typ_id (no TypTr3 reference in DGS)."
             )
             continue
 
@@ -1300,7 +1321,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
             if bus_ids is None or len(bus_ids) != 3:
                 logger.add_warning(
-                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) skipped: not connected to exactly 3 terminals."
+                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
+                    f"skipped: not connected to exactly 3 terminals."
                 )
                 continue
 
