@@ -300,6 +300,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                                buses: List[dev.Bus],
                                stacubic_dict: Dict[str, List[int]],
                                templates_dict: Dict[str, dev.TransformerType],
+                               typtr2_dict: Dict[str, TypTr2],
                                freq: float,
                                baseMVA: float,
                                logger: Logger,
@@ -311,6 +312,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     :param buses:
     :param stacubic_dict:
     :param templates_dict:
+    :param typtr2_dict: Dictionary of TypTr2 objects indexed by ID (raw PF data)
     :param freq:
     :param baseMVA:
     :param logger:
@@ -324,6 +326,9 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
     if template is None:
         raise ValueError(f"No template for the transformer {tr2.ID}")
+
+    # Resolve the raw TypTr2 (needed to parse tap settings: step/min/max/neutral)
+    typtr2_raw = typtr2_dict.get(tr2.typ_id, None)
 
     # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
     term_ids = get_terminal_ids(element_id=tr2.ID, cubics_by_objid=cubics_by_objid)
@@ -354,6 +359,38 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
+
+    #   - TypTr2.dutap   : tap step in percent (%)
+    #   - TypTr2.nntap0  : neutral position (integer)
+    #   - TypTr2.ntpmn   : minimum position (integer)
+    #   - TypTr2.ntpmx   : maximum position (integer)
+    #   - TypTr2.tap_side: side where the tap-changer is located (typically 0=HV, 1=LV)
+    #   - ElmTr2.nntap   : current position (integer)
+
+    step: float = float(typtr2_raw.dutap) / 100.0
+    n0: int = int(typtr2_raw.nntap0)
+    n: int = int(tr2.nntap)
+
+    tap: float = 1.0 + (n - n0) * step
+    tap_min: float = 1.0 + (int(typtr2_raw.ntpmn) - n0) * step
+    tap_max: float = 1.0 + (int(typtr2_raw.ntpmx) - n0) * step
+
+    # Ensure ordering for min/max (in case data is inverted in the source)
+    if tap_min > tap_max:
+        tap_min, tap_max = tap_max, tap_min
+
+    # If tap-changer is on LV side, move it to HV side by inversion to match VeraGrid model
+    if int(typtr2_raw.tap_side) != 0:
+        tap = 1.0 / tap
+        tap_min_i: float = 1.0 / tap_min
+        tap_max_i: float = 1.0 / tap_max
+        tap_min = min(tap_min_i, tap_max_i)
+        tap_max = max(tap_min_i, tap_max_i)
+
+    trafo.tap_module = tap
+    trafo.tap_module_min = tap_min
+    trafo.tap_module_max = tap_max
+    # ---------------------------------------------------------------
 
     return trafo
 
@@ -1200,13 +1237,16 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Transformer types
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
+    typtr2_raw_dict: Dict[str, TypTr2] = dict()
     for typtr2 in dgs_grid.typtr2s:
         tpe = convert_dgs_to_transformer_type(typtr2=typtr2)
         grid.add_transformer_type(obj=tpe)
         typtr2_dict[typtr2.ID] = tpe
+        typtr2_raw_dict[typtr2.ID] = typtr2
         tid = _ref_id(typtr2.ID)
         if tid is not None:
             typtr2_dict[tid] = tpe
+            typtr2_raw_dict[tid] = typtr2
 
     # Transformer types (3W)
     typtr3_dict: Dict[str, TypTr3] = dict()
@@ -1260,6 +1300,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             buses=grid.buses,
             stacubic_dict=stacubic_dict,
             templates_dict=typtr2_dict,
+            typtr2_dict=typtr2_raw_dict,
             freq=frequency,
             baseMVA=baseMVA,
             logger=logger,
