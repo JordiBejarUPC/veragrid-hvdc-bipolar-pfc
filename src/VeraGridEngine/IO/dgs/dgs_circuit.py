@@ -50,6 +50,8 @@ class DgsCircuit:
         General,
         ChaRef,
         ChaVec,
+        ElmComp,
+        ElmDsl,
         ElmAsm,
         ElmCoup,
         ElmFeeder,
@@ -95,6 +97,8 @@ class DgsCircuit:
         self._id_counter = 0
 
         self.generals: List[General] = list()
+        self.elmcomps: List[ElmComp] = list()
+        self.elmdsls: List[ElmDsl] = list()
         self.charefs: List[ChaRef] = list()
         self.chavecs: List[ChaVec] = list()
         self.elmasms: List[ElmAsm] = list()
@@ -135,6 +139,8 @@ class DgsCircuit:
             General: self.generals,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
+            ElmComp: self.elmcomps,
+            ElmDsl: self.elmdsls,
             ElmAsm: self.elmasms,
             ElmCoup: self.elmcoups,
             ElmFeeder: self.elmfeeders,

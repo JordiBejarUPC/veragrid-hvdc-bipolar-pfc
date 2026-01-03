@@ -128,6 +128,10 @@ class DGSElement:
 
             idx = header_map.get(prop.name, None)
 
+            # Fix ID vs FID thing, internally it is always ID, and we handle the FID issue
+            if idx is None and prop.name == "ID":
+                idx = header_map.get("FID", None)
+
             if idx is not None:
 
                 if -1 < idx < len(parts):
@@ -201,6 +205,42 @@ class ChaVec(DGSElement):
         self.vector_0: float = 0.0
         self.vector_1: float = 0.0
         self.vector_2: float = 0.0
+
+
+class ElmComp(DGSElement):
+    element_type = 'ElmComp'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+        self.outserv: int = 0
+
+
+class ElmDsl(DGSElement):
+    element_type = 'ElmDsl'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+        self.outserv: int = 0
 
 
 class ElmAsm(DGSElement):
@@ -299,6 +339,7 @@ class ElmGenstat(DGSElement):
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('ip_ctrl', 'i', 'DGS field ip_ctrl (i)', py_name='ip_ctrl'),
         DgsProperty('cCategory', 'a:40', 'plant types', py_name='cCategory'),
+        DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
     ]
 
     def __init__(self) -> None:
@@ -315,7 +356,7 @@ class ElmGenstat(DGSElement):
         self.av_mode: str = ""
         self.ip_ctrl: int = 0
         self.cCategory: str = ""
-
+        self.c_pmod: str = ""
 
 class ElmLne(DGSElement):
     element_type = 'ElmLne'
@@ -600,6 +641,7 @@ class ElmSym(DGSElement):
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
         DgsProperty('phtech', 'i', 'Reference machine', py_name='ip_ctrl'),
+        DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
     ]
 
     def __init__(self) -> None:
@@ -627,10 +669,10 @@ class ElmSym(DGSElement):
         self.av_mode: str = ""
         self.phtech: int = 0
         self.ip_ctrl: int = 0
+        self.c_pmod: str = ""
 
 
 class ElmTerm(DGSElement):
-
     """
 
     *  FID: Unique identifier for DGS file
@@ -704,8 +746,10 @@ class ElmTr2(DGSElement):
         DgsProperty('sernum', 'a:20', 'Serial Number (a:20)', py_name='sernum'),
         DgsProperty('constr', 'i', 'Year of Construction', py_name='constr'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected', py_name='cgnd_h'),
-        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected', py_name='cgnd_l'),
+        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected',
+                    py_name='cgnd_h'),
+        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected',
+                    py_name='cgnd_l'),
         DgsProperty('i_auto', 'i', 'Auto Transformer', py_name='i_auto'),
         DgsProperty('ntrcn', 'i', 'Controller, Tap Changer 1: Automatic Tap Changing', py_name='ntrcn'),
         DgsProperty('ratfac', 'r', 'Rating Factor', py_name='ratfac'),

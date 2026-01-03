@@ -280,6 +280,65 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     return typtr2
 
 
+def generate_diesel_dsl_composite(dgs_grid: DgsCircuit, name: str, net_id: str) -> ElmComp:
+    """
+    Generate a diesel composite
+    :param dgs_grid:
+    :param name:
+    :param net_id:
+    :return:
+    """
+    elmcomp = ElmComp()
+    elmcomp.ID = dgs_grid.new_id()
+    elmcomp.loc_name = name
+    elmcomp.fold_id = net_id
+
+    for dsl_name in ["PSS/E COMP",
+                     "PSS/E DEGOV1",
+                     "PSS/E EXAC1"]:
+        comp1 = ElmDsl()
+        comp1.ID = dgs_grid.new_id()
+        comp1.loc_name = dsl_name
+        comp1.fold_id = elmcomp.ID
+        dgs_grid.elmdsls.append(comp1)
+
+    dgs_grid.elmcomps.append(elmcomp)
+
+    return elmcomp
+
+
+def generate_pv_dsl_composite(dgs_grid: DgsCircuit, name: str, net_id: str) -> ElmComp:
+    """
+    Generate a PV composite
+    :param dgs_grid:
+    :param name:
+    :param net_id:
+    :return:
+    """
+    elmcomp = ElmComp()
+    elmcomp.ID = dgs_grid.new_id()
+    elmcomp.loc_name = name
+    elmcomp.fold_id = net_id
+
+    for dsl_name in ["Active Power Reduction",
+                     "Controller",
+                     "DC Busbar and Capacitor",
+                     "PV Array",
+                     "Protection",
+                     "Qreference",
+                     "Solar Radiation",
+                     "Temperature"]:
+        comp1 = ElmDsl()
+        comp1.ID = dgs_grid.new_id()
+        comp1.loc_name = dsl_name
+        comp1.fold_id = elmcomp.ID
+        dgs_grid.elmdsls.append(comp1)
+
+    dgs_grid.elmcomps.append(elmcomp)
+
+    return elmcomp
+
+
 def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
     """
 
@@ -356,6 +415,19 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
                                            t=t)
                 dgs_grid.typsyms.append(tpe)
                 dgs_grid.elmsyms.append(e)
+
+            # Add DSL composites
+            if "diesel" in tech_name:
+                composite = generate_diesel_dsl_composite(dgs_grid=dgs_grid,
+                                                          name=f"{gen.name} composite",
+                                                          net_id=net.ID)
+                e.c_pmod = composite.ID
+            elif "pv" in tech_name:
+                composite = generate_pv_dsl_composite(dgs_grid=dgs_grid,
+                                                      name=f"{gen.name} composite",
+                                                          net_id=net.ID)
+                e.c_pmod = composite.ID
+
         else:
 
             # generate the actual generator
