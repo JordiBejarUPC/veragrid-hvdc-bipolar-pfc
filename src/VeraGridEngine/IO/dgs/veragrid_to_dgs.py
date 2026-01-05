@@ -339,12 +339,13 @@ def generate_pv_dsl_composite(dgs_grid: DgsCircuit, name: str, net_id: str) -> E
     return elmcomp
 
 
-def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
+def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_elmgenstat: bool = False) -> DgsCircuit:
     """
-
-    :param grid:
+    Convert MultiCircuit to DgsCircuit
+    :param grid: MultiCircuit
     :param t: time step (None for snapshot)
-    :return:
+    :param convert_gen_to_elmgenstat: Convert generators to ElmGenstat depending on the technology assigned
+    :return: DgsCircuit
     """
     dgs_grid = DgsCircuit()
 
@@ -401,7 +402,7 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
         if len(gen.tech_list) > 0:
             tech_name = tech_list[0].name.lower()
 
-            if "pv" in tech_name or "batt" in tech_name or "wind" in tech_name:
+            if ("pv" in tech_name or "batt" in tech_name or "wind" in tech_name) and convert_gen_to_elmgenstat:
                 # This has to be a ElmGenstat
                 e = convert_gen_to_static_gen(gen=gen, new_id=dgs_grid.new_id(), t=t)
                 dgs_grid.elmgenstats.append(e)
@@ -417,16 +418,16 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None) -> DgsCircuit:
                 dgs_grid.elmsyms.append(e)
 
             # Add DSL composites
-            if "diesel" in tech_name:
-                composite = generate_diesel_dsl_composite(dgs_grid=dgs_grid,
-                                                          name=f"{gen.name} composite",
-                                                          net_id=net.ID)
-                e.c_pmod = composite.ID
-            elif "pv" in tech_name:
-                composite = generate_pv_dsl_composite(dgs_grid=dgs_grid,
-                                                      name=f"{gen.name} composite",
-                                                          net_id=net.ID)
-                e.c_pmod = composite.ID
+            # if "diesel" in tech_name:
+            #     composite = generate_diesel_dsl_composite(dgs_grid=dgs_grid,
+            #                                               name=f"{gen.name} composite",
+            #                                               net_id=net.ID)
+            #     e.c_pmod = composite.ID
+            # elif "pv" in tech_name:
+            #     composite = generate_pv_dsl_composite(dgs_grid=dgs_grid,
+            #                                           name=f"{gen.name} composite",
+            #                                           net_id=net.ID)
+            #     e.c_pmod = composite.ID
 
         else:
 
