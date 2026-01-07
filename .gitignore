@@ -14,6 +14,7 @@ __pycache__
 .idea/workspace.xml
 
 .claude/
+CLAUDE.md
 
 /build
 /dist
