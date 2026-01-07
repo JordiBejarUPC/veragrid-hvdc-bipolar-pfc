@@ -255,6 +255,7 @@ class ElmAsm(DGSElement):
         DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
     ]
 
     def __init__(self) -> None:
@@ -267,6 +268,7 @@ class ElmAsm(DGSElement):
         self.ngnum: int = 0
         self.outserv: int = 0
         self.pgini: float = 0.0
+        self.qgini: float = 0.0
 
 
 class ElmCoup(DGSElement):
@@ -1309,6 +1311,10 @@ class TypAsmo(DGSElement):
         DgsProperty('i_cage', 'i', 'DGS field i_cage (i)', py_name='i_cage'),
         DgsProperty('nppol', 'i', 'DGS field nppol (i)', py_name='nppol'),
         DgsProperty('pgn', 'r', 'DGS field pgn (r)', py_name='pgn'),
+        DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
+        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        DgsProperty('xm', 'r', 'DGS field xm (r)', py_name='xm'),
         DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
         DgsProperty('xmrtr', 'r', 'DGS field xmrtr (r)', py_name='xmrtr'),
         DgsProperty('xstr', 'r', 'DGS field xstr (r)', py_name='xstr'),
@@ -1332,6 +1338,10 @@ class TypAsmo(DGSElement):
         self.ugn: float = 0.0
         self.xmrtr: float = 0.0
         self.xstr: float = 0.0
+        self.sgn: float = 0.0
+        self.nslty: int = 0
+        self.rstr: float = 0.0
+        self.xm: float = 0.0
 
 
 class TypFuse(DGSElement):

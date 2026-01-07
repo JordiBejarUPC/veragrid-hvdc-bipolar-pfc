@@ -1243,6 +1243,100 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 
     return bus, gen
 
+def convert_dgs_to_asm_generator(elmasm: ElmAsm,
+                                 stacubic_dict: Dict[str, List[int]],
+                                 buses: List[dev.Bus],
+                                 typasmo_dict: Dict[str, TypAsmo],
+                                 baseMVA: float,
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
+    """
+    Convert ElmAsm (asynchronous machine) to VeraGrid Generator.
+
+    Important notes:
+    - We model ElmAsm as a non-voltage-controlled Generator (PQ behavior).
+    - VeraGrid stores PQ behavior via (P, power_factor). There is no explicit Q field for PQ generators.
+    - Therefore, we deduce the power factor from (P, Q) in the DGS.
+    - If P and Q have opposite sign, VeraGrid cannot reproduce that sign combination using only Pf.
+      In that case we log a warning and compute Pf from magnitudes.
+    """
+    name: str = elmasm.loc_name
+    if name == "":
+        name = f"ElmAsm_{_ref_id(elmasm.ID)}"
+
+    # Bus resolution must be StaCubic-based (PowerFactory connectivity)
+    bus = get_injection_bus(elm_id=elmasm.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    p_mw: float = float(elmasm.pgini)
+    q_mvar: float = float(elmasm.qgini)
+
+    # Deduce power factor from P and Q
+    # For a PQ generator in VeraGrid: Q ~= P * sqrt(1/Pf^2 - 1)
+    abs_p: float = abs(p_mw)
+    abs_q: float = abs(q_mvar)
+
+    if abs_p > 0.0:
+        s_mva: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
+        if s_mva > 0.0:
+            pf: float = abs_p / s_mva
+        else:
+            pf = 1.0
+    else:
+        # If P is zero, Pf cannot encode Q (VeraGrid formula would give Q=0).
+        # We keep Pf=1.0 and warn if Q is not zero.
+        pf = 1.0
+        if abs_q > 0.0:
+            logger.add_warning(
+                f"ElmAsm '{name}' has P=0 with Q={q_mvar}. "
+                f"PQ Generator in VeraGrid cannot encode reactive power when P=0 using only Pf. "
+                f"Using Pf=1.0."
+            )
+
+    # If P and Q signs differ, VeraGrid Pf-only representation cannot match that sign combination
+    if p_mw * q_mvar < 0.0:
+        logger.add_warning(
+            f"ElmAsm '{name}' has P and Q with opposite sign (P={p_mw}, Q={q_mvar}). "
+            f"VeraGrid PQ Generator stores reactive via Pf magnitude only. "
+            f"Computed Pf from |P| and |Q| (Pf={pf})."
+        )
+
+    # Resolve Snom from TypAsmo if available
+    snom: float = 9999.0
+    typasmo: TypAsmo | None = typasmo_dict.get(elmasm.typ_id, None)
+    if typasmo is None:
+        typasmo = typasmo_dict.get(_ref_id(elmasm.typ_id), None)
+
+    if typasmo is not None:
+        # Prefer nominal apparent power if present
+        if typasmo.sgn != 0.0:
+            snom = float(typasmo.sgn)
+        else:
+            # Fallback: if cosn is available, estimate S from Pn/cosn
+            if typasmo.pgn != 0.0 and typasmo.cosn != 0.0:
+                snom = float(typasmo.pgn / typasmo.cosn)
+    else:
+        # Fallback to operating point apparent power if non-zero
+        s_op: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
+        if s_op > 0.0:
+            snom = float(s_op)
+
+    # ElmAsm should behave as PQ (no voltage control)
+    gen = dev.Generator(name=name,
+                        P=p_mw,
+                        power_factor=pf,
+                        vset=1.0,
+                        is_controlled=False,
+                        Snom=snom,
+                        active=(elmasm.outserv == 0),
+                        Sbase=baseMVA)
+
+    return bus, gen
+
 
 def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     """
@@ -1360,6 +1454,15 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typsym_dict[tid] = typsym
 
+    # Asynchronous machine types (TypAsmo)
+    typasmo_dict: Dict[str, TypAsmo] = dict()
+    for typasmo in dgs_grid.typasmos:
+        typasmo_dict[typasmo.ID] = typasmo
+        tid = _ref_id(typasmo.ID)
+        if tid is not None:
+            typasmo_dict[tid] = typasmo
+
+
     # Generators
     for elmsym in dgs_grid.elmsyms:
         bus, gen = convert_dgs_to_generator(
@@ -1374,6 +1477,24 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
 
         grid.add_generator(bus=bus, api_obj=gen)
+
+
+    # Asynchronous machines (ElmAsm) -> model as PQ Generators
+    for elmasm in dgs_grid.elmasms:
+
+        bus, gen = convert_dgs_to_asm_generator(
+            elmasm=elmasm,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            typasmo_dict=typasmo_dict,
+            baseMVA=baseMVA,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+
+        grid.add_generator(bus=bus, api_obj=gen)
+
 
     # Loads
     for elmlod in dgs_grid.elmlods:
