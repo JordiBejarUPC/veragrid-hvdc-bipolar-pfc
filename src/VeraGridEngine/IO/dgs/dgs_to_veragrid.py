@@ -777,6 +777,9 @@ def convert_dgs_to_series_reactance(
 
     # Prefer the type/template if present (PowerFactory "Type" pattern)
     typ_id: str | None = _ref_id(element.typ_id)
+    if typ_id == "":
+        typ_id = None
+
     src: ElmSind | TypSind = element
     if typ_id is not None and typ_id in typsind_dict:
         src = typsind_dict[typ_id]
@@ -1390,7 +1393,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             sbase_mva=baseMVA
         )
         # MultiCircuit supports generic branch insertion
-        grid.add_branch(obj=sr)
+        grid.add_series_reactance(obj=sr)
 
     # switches (PowerFactory/DGS: StaSwitch.fold_id -> StaCubic.ID -> ElmTerm.ID -> Bus)
     switch_by_cubic_id: Dict[str, StaSwitch] = build_switch_by_cubic_id(staswitchs=dgs_grid.staswitchs)

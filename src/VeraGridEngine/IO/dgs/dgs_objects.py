@@ -380,6 +380,7 @@ class ElmSind(DGSElement):
         self.loc_name: str = ""
         self.for_name: str = ""
         self.fold_id: str = ""
+        self.typ_id: str = ""
 
         self.ucn: float = 0.0
         self.Sn: float = 0.0
