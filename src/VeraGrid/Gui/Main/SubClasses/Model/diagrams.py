@@ -832,19 +832,28 @@ class DiagramsMain(CompiledArraysMain):
         hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
         vsc_active = self.circuit.get_vsc_actives(t_idx=None)
 
-        return diagram_widget.colour_results(Sbus=results.Sbus1[:, 0],
+        # TODO: allow to select the short-circuit event that the user wants to colour in the gui, i is the sc_idx
+        i = 0
+
+        return diagram_widget.colour_results(Sbus=results.Sbus1[:, i],
                                              bus_active=bus_active,
-                                             Sf=results.Sf1[:, 0],
-                                             St=results.St1[:, 0],
-                                             voltages=results.voltage1[:, 0],
+                                             Sf=results.Sf1[:, i],
+                                             St=results.St1[:, i],
+                                             voltages=results.voltage1[:, i],
                                              types=results.bus_types,
-                                             loadings=results.loading1[:, 0],
+                                             loadings=results.loading1[:, i],
                                              br_active=br_active,
                                              hvdc_Pf=None,
                                              hvdc_Pt=None,
                                              hvdc_losses=None,
                                              hvdc_loading=None,
                                              hvdc_active=hvdc_active,
+                                             vsc_Pf=results.vsc_Pf[:, i],
+                                             vsc_Pt=results.vsc_St.real[:, i],
+                                             vsc_Qt=results.vsc_St.imag[:, i],
+                                             vsc_losses=results.vsc_losses[:, i],
+                                             vsc_loading=results.vsc_loading[:, i],
+                                             vsc_active=vsc_active,
                                              use_flow_based_width=use_flow_based_width,
                                              min_branch_width=min_branch_width,
                                              max_branch_width=max_branch_width,

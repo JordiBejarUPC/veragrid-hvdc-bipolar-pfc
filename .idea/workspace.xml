@@ -28,10 +28,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="New test for the short-circuit with converter's current limitation">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="limit_i_vsc always TRUE during the single_short_circuit_vsc">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.veragrid" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.veragrid" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -229,7 +232,7 @@
     "Python.scripting_small_sys_bus_mapping.executor": "Run",
     "Python.scripting_smallsys_p_controller.executor": "Run",
     "Python.short_circuit_worker.executor": "Debug",
-    "Python.shortcircuit_vsc.executor": "Run",
+    "Python.shortcircuit_vsc.executor": "Debug",
     "Python.substation_wizards.executor": "Run",
     "Python.substations_types.executor": "Run",
     "Python.test_linear_time_series.executor": "Debug",
@@ -1597,7 +1600,7 @@
       <workItem from="1767357708830" duration="5000" />
       <workItem from="1767548202721" duration="33000" />
       <workItem from="1767775863319" duration="3290000" />
-      <workItem from="1767779585301" duration="8242000" />
+      <workItem from="1767779585301" duration="15887000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1942,7 +1945,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="688" />
+    <option name="localTasksCounter" value="689" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -2003,7 +2006,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="some more refactor to the block save and parse logic" />
     <MESSAGE value="Fixed minor error in the small signal test" />
     <MESSAGE value="fixing convert_busbar_to_voltage_level" />
     <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
@@ -2028,7 +2030,8 @@
     <MESSAGE value="developing the short-circuit with converter's current limitation." />
     <MESSAGE value="filtering DC generators in the short_circuit_vsc()" />
     <MESSAGE value="New test for the short-circuit with converter's current limitation" />
-    <option name="LAST_COMMIT_MESSAGE" value="New test for the short-circuit with converter's current limitation" />
+    <MESSAGE value="limit_i_vsc always TRUE during the single_short_circuit_vsc" />
+    <option name="LAST_COMMIT_MESSAGE" value="limit_i_vsc always TRUE during the single_short_circuit_vsc" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2583,22 +2586,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
-          <line>585</line>
-          <option name="timeStamp" value="3106" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
-          <line>2027</line>
-          <option name="timeStamp" value="3107" />
+          <line>2532</line>
+          <option name="timeStamp" value="3110" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_power_flow_12bus_acdc.coverage" NAME="pytest for tests.test_power_flow.test_power_flow_12bus_acdc Coverage Results" MODIFIED="1767289880831" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VeraGrid$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1767794955004" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
+    <SUITE FILE_PATH="coverage/VeraGrid$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1767807568596" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
     <SUITE FILE_PATH="coverage/VeraGrid$short_circuit_worker.coverage" NAME="short_circuit_worker Coverage Results" MODIFIED="1767206551422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies" />
-    <SUITE FILE_PATH="coverage/VeraGrid$shortcircuit_vsc.coverage" NAME="shortcircuit_vsc Coverage Results" MODIFIED="1767794841728" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
+    <SUITE FILE_PATH="coverage/VeraGrid$shortcircuit_vsc.coverage" NAME="shortcircuit_vsc Coverage Results" MODIFIED="1767807478880" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_fubm.coverage" NAME="pytest for tests.test_power_flow.test_fubm Coverage Results" MODIFIED="1767289866495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_short_circuit_vsc_test_short_circuit_vsc_3buses.coverage" NAME="pytest for tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses Coverage Results" MODIFIED="1767356143526" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_vsc_current_limitation.coverage" NAME="pytest for tests.test_power_flow.test_vsc_current_limitation Coverage Results" MODIFIED="1767289788940" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
