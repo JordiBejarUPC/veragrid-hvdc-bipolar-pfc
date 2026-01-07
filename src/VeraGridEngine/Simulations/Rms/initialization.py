@@ -136,7 +136,6 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
         fn.__doc__ = "def _f(vars)"
     return fn
 
-
 def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
     deleted_vars_uid = set(var.uid for var in deleted_vars)
     for b in block.get_all_blocks():
@@ -747,12 +746,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
     for i, elm in enumerate(grid.buses):
         elm.initialize_rms()
         bus_dict[elm] = i
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
@@ -766,12 +762,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
         setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
         setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
@@ -802,12 +795,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
         setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
         setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # add the nodal balance equations
     for i, elm in enumerate(grid.buses):
