@@ -56,13 +56,13 @@ class DgsCircuit:
         ElmGenstat,
         ElmLne,
         ElmSind,
-        ElmZpu,
         ElmLnesec,
         ElmLod,
         ElmLodlv,
         ElmLodlvp,
         ElmNet,
         ElmShnt,
+        ElmSind,
         ElmSite,
         ElmSubstat,
         ElmSym,
@@ -83,7 +83,6 @@ class DgsCircuit:
         TypFuse,
         TypLne,
         TypSind,
-        TypZpu,
         TypLod,
         TypSym,
         TypTr2,
@@ -107,13 +106,13 @@ class DgsCircuit:
         self.elmgenstats: List[ElmGenstat] = list()
         self.elmlnes: List[ElmLne] = list()
         self.elmsinds: List[ElmSind] = list()
-        self.elmzpus: List[ElmZpu] = list()
         self.elmlnesecs: List[ElmLnesec] = list()
         self.elmlods: List[ElmLod] = list()
         self.elmlodlvs: List[ElmLodlv] = list()
         self.elmlodlvps: List[ElmLodlvp] = list()
         self.elmnets: List[ElmNet] = list()
         self.elmshnts: List[ElmShnt] = list()
+        self.elmsinds: List[ElmSind] = list()
         self.elmsites: List[ElmSite] = list()
         self.elmsubstats: List[ElmSubstat] = list()
         self.elmsyms: List[ElmSym] = list()
@@ -133,7 +132,6 @@ class DgsCircuit:
         self.typfuses: List[TypFuse] = list()
         self.typlnes: List[TypLne] = list()
         self.typsinds: List[TypSind] = list()
-        self.typzpus: List[TypZpu] = list()
         self.typlods: List[TypLod] = list()
         self.typsyms: List[TypSym] = list()
         self.typtr2s: List[TypTr2] = list()
@@ -149,7 +147,6 @@ class DgsCircuit:
             ElmGenstat: self.elmgenstats,
             ElmLne: self.elmlnes,
             ElmSind: self.elmsinds,
-            ElmZpu: self.elmzpus,
             ElmLnesec: self.elmlnesecs,
             ElmLod: self.elmlods,
             ElmLodlv: self.elmlodlvs,
@@ -175,7 +172,6 @@ class DgsCircuit:
             TypFuse: self.typfuses,
             TypLne: self.typlnes,
             TypSind: self.typsinds,
-            TypZpu: self.typzpus,
             TypLod: self.typlods,
             TypSym: self.typsyms,
             TypTr2: self.typtr2s,

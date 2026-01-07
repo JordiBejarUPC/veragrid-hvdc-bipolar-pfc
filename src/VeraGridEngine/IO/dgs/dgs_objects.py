@@ -354,21 +354,40 @@ class ElmLne(DGSElement):
 
 
 class ElmSind(DGSElement):
-    """PowerFactory Series Reactor / Series Reactance (ElmSind)."""
     element_type = 'ElmSind'
     properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        DgsProperty('outserv', 'b', 'DGS field outserv (b)', py_name='outserv'),
+        # test_export_v5.dgs uses FID(...) not ID(...)
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        # Optional alias (harmless if missing)
+        DgsProperty('ID',  'a:40', 'DGS field ID (a:40)',  py_name='ID'),
 
-        # NOTE:
-        # The DGS export often provides the impedance directly as Re/Xe fields.
-        # Depending on the export settings and PowerFactory version, these values may be given in Ohm or in p.u.
-        DgsProperty('Re', 'r', 'Series resistance (Re)', py_name='Re'),
-        DgsProperty('Xe', 'r', 'Series reactance (Xe)', py_name='Xe'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('ucn', 'r', 'Rated Voltage in kV', py_name='ucn'),
+        DgsProperty('Sn', 'r', 'Rated Power in MVA', py_name='Sn'),
+        DgsProperty('uk', 'r', 'Short-Circuit Voltage uk in %', py_name='uk'),
+        DgsProperty('Pcu', 'r', 'Copper Losses in kW', py_name='Pcu'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
     ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+
+        self.ucn: float = 0.0
+        self.Sn: float = 0.0
+        self.uk: float = 0.0
+        self.Pcu: float = 0.0
+
+        self.outserv: int = 0
+
 
 
 class TypSind(DGSElement):
@@ -384,47 +403,6 @@ class TypSind(DGSElement):
         DgsProperty('Xe', 'r', 'Type series reactance (Xe)', py_name='Xe'),
     ]
 
-
-class ElmZpu(DGSElement):
-    """PowerFactory Common Impedance / p.u. Impedance (ElmZpu)."""
-    element_type = 'ElmZpu'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        DgsProperty('outserv', 'b', 'DGS field outserv (b)', py_name='outserv'),
-
-        # Positive sequence impedance in p.u.
-        DgsProperty('rpu', 'r', 'Positive-sequence resistance (p.u.)', py_name='rpu'),
-        DgsProperty('xpu', 'r', 'Positive-sequence reactance (p.u.)', py_name='xpu'),
-
-        # Optional sequence data (may be missing depending on the export)
-        DgsProperty('rpu0', 'r', 'Zero-sequence resistance (p.u.)', py_name='rpu0'),
-        DgsProperty('xpu0', 'r', 'Zero-sequence reactance (p.u.)', py_name='xpu0'),
-        DgsProperty('rpu2', 'r', 'Negative-sequence resistance (p.u.)', py_name='rpu2'),
-        DgsProperty('xpu2', 'r', 'Negative-sequence reactance (p.u.)', py_name='xpu2'),
-    ]
-
-
-class TypZpu(DGSElement):
-    """PowerFactory Common Impedance type (TypZpu)."""
-    element_type = 'TypZpu'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-
-        # Positive sequence impedance in p.u.
-        DgsProperty('rpu', 'r', 'Positive-sequence resistance (p.u.)', py_name='rpu'),
-        DgsProperty('xpu', 'r', 'Positive-sequence reactance (p.u.)', py_name='xpu'),
-
-        # Optional sequence data (may be missing depending on the export)
-        DgsProperty('rpu0', 'r', 'Zero-sequence resistance (p.u.)', py_name='rpu0'),
-        DgsProperty('xpu0', 'r', 'Zero-sequence reactance (p.u.)', py_name='xpu0'),
-        DgsProperty('rpu2', 'r', 'Negative-sequence resistance (p.u.)', py_name='rpu2'),
-        DgsProperty('xpu2', 'r', 'Negative-sequence reactance (p.u.)', py_name='xpu2'),
-    ]
 class ElmLnesec(DGSElement):
     element_type = 'ElmLnesec'
     properties_list = [
