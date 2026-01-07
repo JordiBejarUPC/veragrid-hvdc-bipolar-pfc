@@ -805,6 +805,7 @@ class ElmTerm(DGSElement):
         DgsProperty('uknom', 'r', 'DGS field uknom (r)', py_name='uknom'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('cpZone', 'p', 'DGS field cpZone (p)', py_name='cpZone'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('systype', 'i', 'DGS field systype (i)', py_name='systype'),
@@ -836,6 +837,7 @@ class ElmTerm(DGSElement):
         self.vtarget: float = 0.0
         self.m_u: float = 0.0
         self.m_phiu: float = 0.0
+        self.cpZone: str = ""
 
 
 class ElmTr2(DGSElement):

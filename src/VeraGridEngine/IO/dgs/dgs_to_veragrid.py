@@ -1308,6 +1308,27 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     for g in dgs_grid.intgrfs:
         pos_by_objid[g.pDataObj] = (float(g.rCenterX), float(g.rCenterY))
 
+    # Zones
+    # In DGS, ElmTerm.cpZone is a pointer (p) to ElmZone.ID
+    zone_by_id: Dict[str, dev.Zone] = dict()
+    for elmzone in dgs_grid.elmzones:
+        zid = _ref_id(elmzone.ID)
+
+        zone = dev.Zone(
+            name=elmzone.loc_name if elmzone.loc_name != "" else f"Zone_{zid}",
+            idtag=zid,
+            code="",
+            latitude=0.0,
+            longitude=0.0,
+            area=None
+        )
+
+        grid.add_zone(zone)
+
+        if zid is not None:
+            zone_by_id[zid] = zone
+
+
     # Buses
     bus_by_term_id: Dict[str, dev.Bus] = dict()
     for elmterm in dgs_grid.elmterms:
@@ -1316,6 +1337,20 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tid = _ref_id(elmterm.ID)
         if tid is not None:
             bus_by_term_id[tid] = bus
+
+    # Assign zone reference to buses
+    # ElmTerm.cpZone -> ElmZone.ID -> dev.Zone
+    for elmterm in dgs_grid.elmterms:
+        tid = _ref_id(elmterm.ID)
+        zid = _ref_id(elmterm.cpZone)
+
+        # In some DGS exports (e.g., test_export_v6), cpZone is not present. In that case, skip assignment.
+        if tid is not None and zid is not None and zid != "":
+            bus = bus_by_term_id.get(tid, None)
+            zone = zone_by_id.get(zid, None)
+
+            if bus is not None:
+                bus.zone = zone
 
     # Generator types
     typsym_dict: Dict[str, TypSym] = dict()
