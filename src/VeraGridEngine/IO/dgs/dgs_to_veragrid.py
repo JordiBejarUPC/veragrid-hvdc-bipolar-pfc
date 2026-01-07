@@ -17,6 +17,8 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                ElmFeeder,
                                                ElmGenstat,
                                                ElmLne,
+                                               ElmSind,
+                                               ElmZpu,
                                                ElmLnesec,
                                                ElmLod,
                                                ElmLodlv,
@@ -727,6 +729,105 @@ def convert_dgs_to_line(lne: ElmLne,
 
     return line
 
+
+def convert_dgs_to_series_reactance(
+        element: DGSElement,
+        buses: List[dev.Bus],
+        bus_by_terminal_id: Dict[str, dev.Bus],
+        stacubic_dict: Dict[str, StaCubic],
+        cubics_by_obj_id: Dict[str, List[StaCubic]],
+        typsind_dict: Dict[str, TypSind],
+        typzpu_dict: Dict[str, TypZpu],
+        logger: Logger,
+        sbase_mva: float = 100.0
+) -> dev.SeriesReactance:
+    """
+    Convert a PowerFactory DGS series impedance element into a VeraGrid SeriesReactance device.
+
+    Supported DGS elements:
+    - ElmSind (Series reactor / series reactance)
+    - ElmZpu  (Common impedance, stored in p.u.)
+
+    The connectivity is resolved through StaCubic terminals, exactly like lines/transformers.
+    """
+
+    # Resolve buses from StaCubic terminals
+    terminals: Tuple[str, str] = get_terminal_ids(element.ID, stacubic_dict, cubics_by_obj_id, logger=logger)
+    bus_from, bus_to = get_branch_buses(terminals, bus_by_terminal_id)
+
+    name: str = element.loc_name
+
+    # Initialize sequence impedances (p.u.)
+    r_pu: float = 1e-20
+    x_pu: float = 1e-20
+    r0_pu: float = 1e-20
+    x0_pu: float = 1e-20
+    r2_pu: float = 1e-20
+    x2_pu: float = 1e-20
+
+    # --- ElmSind: series reactor / series reactance
+    if isinstance(element, ElmSind):
+
+        # Prefer the type/template if present
+        typ_id: str = _ref_id(element.typ_id)
+        if typ_id in typsind_dict:
+            typ: TypSind = typsind_dict[typ_id]
+            r_raw: float = typ.Re
+            x_raw: float = typ.Xe
+        else:
+            r_raw = element.Re
+            x_raw = element.Xe
+
+
+        # ElmSind exports Re/Xe in Ohm. Therefore we always convert Re/Xe from Ohm to p.u. on the system base.
+        v_base_kv: float = float(max(float(bus_from.Vnom), float(bus_to.Vnom)))
+        z_base_ohm: float = (v_base_kv * v_base_kv) / sbase_mva
+        r_pu = r_raw/z_base_ohm
+        x_pu = x_raw/z_base_ohm
+
+
+    # --- ElmZpu: impedance already in p.u. (or by template)
+    elif isinstance(element, ElmZpu):
+
+        typ_id = _ref_id(element.typ_id)
+        if typ_id in typzpu_dict:
+            typ = typzpu_dict[typ_id]
+            r_pu = typ.rpu
+            x_pu = typ.xpu
+            # Optional sequence data (might not exist in the header, but we assume the export includes them)
+            r0_pu = typ.rpu0
+            x0_pu = typ.xpu0
+            r2_pu = typ.rpu2
+            x2_pu = typ.xpu2
+        else:
+            r_pu = element.rpu
+            x_pu = element.xpu
+            r0_pu = element.rpu0
+            x0_pu = element.xpu0
+            r2_pu = element.rpu2
+            x2_pu = element.xpu2
+
+    else:
+        raise TypeError(f"Unsupported DGS element for series reactance conversion: {type(element)}")
+
+    series_reactance = dev.SeriesReactance(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=name,
+        idtag=_ref_id(element.ID),
+        active=not element.outserv,
+        r=r_pu,
+        x=x_pu,
+        r0=r0_pu,
+        x0=x0_pu,
+        r2=r2_pu,
+        x2=x2_pu,
+        rate=1.0
+    )
+
+    return series_reactance
+
+
 def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
     """
     Interpret PowerFactory/DGS load scaling factor.
@@ -1251,6 +1352,22 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typtr3_dict[tid] = typtr3
 
+
+    # Series reactance / impedance types (raw DGS objects, used as templates)
+    typsind_raw_dict: Dict[str, TypSind] = dict()
+    for typsind in dgs_grid.typsinds:
+        typsind_raw_dict[typsind.ID] = typsind
+        tid = _ref_id(typsind.ID)
+        if tid is not None:
+            typsind_raw_dict[tid] = typsind
+
+    typzpu_raw_dict: Dict[str, TypZpu] = dict()
+    for typzpu in dgs_grid.typzpus:
+        typzpu_raw_dict[typzpu.ID] = typzpu
+        tid = _ref_id(typzpu.ID)
+        if tid is not None:
+            typzpu_raw_dict[tid] = typzpu
+
     # lines
     for elmlne in dgs_grid.elmlnes:
         line = convert_dgs_to_line(
@@ -1265,6 +1382,37 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             bus_by_term_id=bus_by_term_id
         )
         grid.add_line(obj=line, logger=logger)
+
+
+    # series reactances / impedances
+    for elmsind in dgs_grid.elmsinds:
+        sr = convert_dgs_to_series_reactance(
+            element=elmsind,
+            buses=grid.buses,
+            bus_by_terminal_id=bus_by_term_id,
+            stacubic_dict=stacubic_dict,
+            cubics_by_obj_id=cubics_by_objid,
+            typsind_dict=typsind_raw_dict,
+            typzpu_dict=typzpu_raw_dict,
+            logger=logger,
+            sbase_mva=baseMVA
+        )
+        # MultiCircuit supports generic branch insertion
+        grid.add_branch(obj=sr)
+
+    for elmzpu in dgs_grid.elmzpus:
+        sr = convert_dgs_to_series_reactance(
+            element=elmzpu,
+            buses=grid.buses,
+            bus_by_terminal_id=bus_by_term_id,
+            stacubic_dict=stacubic_dict,
+            cubics_by_obj_id=cubics_by_objid,
+            typsind_dict=typsind_raw_dict,
+            typzpu_dict=typzpu_raw_dict,
+            logger=logger,
+            sbase_mva=baseMVA
+        )
+        grid.add_branch(obj=sr)
 
     # switches (PowerFactory/DGS: StaSwitch.fold_id -> StaCubic.ID -> ElmTerm.ID -> Bus)
     switch_by_cubic_id: Dict[str, StaSwitch] = build_switch_by_cubic_id(staswitchs=dgs_grid.staswitchs)
