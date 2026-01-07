@@ -21,7 +21,7 @@ grid.add_bus(obj=bus_slack)
 # ----------------------------------------------------------------------------------------------------------------------
 #   Line
 # ----------------------------------------------------------------------------------------------------------------------
-line_slack_ac = vge.Line(name='AC - Fault', bus_from=bus_ac, bus_to=bus_slack, r=0.001, x=0.1, rate=20.0)
+line_slack_ac = vge.Line(name='AC - Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.001, x=0.1, rate=20.0)
 grid.add_line(line_slack_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -91,3 +91,9 @@ res_sc = sc_driver.results
 
 print('Short-circuit results:')
 print(abs(res_sc.voltage1))
+
+print('\nPower flow St_vsc =', res_pf.St_vsc)
+print('\nPower flow St_line =', res_pf.Sf)
+
+print('\nShort-circuit St_vsc =', res_sc.vsc_St)
+print('\nShort-circuit St_line =', res_sc.Sf1)
