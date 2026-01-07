@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import math
+import numpy as np
 from typing import Dict, List, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
@@ -24,6 +25,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
                                                ElmLodlvp,
                                                ElmNet,
                                                ElmShnt,
+                                               ElmSvs,
                                                ElmSite,
                                                ElmSubstat,
                                                ElmSym,
@@ -1029,6 +1031,72 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     return bus, shunt
 
 
+def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
+                                      stacubic_dict: Dict[str, List[int]],
+                                      buses: List[dev.Bus],
+                                      logger: Logger,
+                                      cubics_by_objid: Dict[str, List[StaCubic]],
+                                      bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+    """
+    Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid ControllableShunt.
+
+    Notes
+    -----
+    - Electrical connectivity is obtained via StaCubic, consistent with other injected devices.
+    - If the DGS does not provide a voltage setpoint, Vset defaults to 1.0 p.u. (per project convention).
+    """
+    name = elmsvs.loc_name or f"ElmSvs_{_ref_id(elmsvs.ID)}"
+
+    bus = get_injection_bus(elm_id=elmsvs.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    bmin = float(elmsvs.qmin)
+    bmax = float(elmsvs.qmax)
+
+    vset = float(elmsvs.usetp)
+
+    # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
+    if bmin < 0.0 and bmax > 0.0:
+        b_steps = np.array([bmin, -bmin, bmax], dtype=float)
+        initial_step = 1
+    elif bmin == bmax:
+        b_steps = np.array([bmax], dtype=float)
+        initial_step = 0
+    else:
+        b_steps = np.array([bmin, (bmax - bmin)], dtype=float)
+        initial_step = 0
+
+    cshunt = dev.ControllableShunt(
+        name=name,
+        idtag=_ref_id(elmsvs.ID),
+        is_nonlinear=False,
+        number_of_steps=int(len(b_steps)),
+        step=int(initial_step),
+        g_per_step=0.0,
+        b_per_step=0.0,
+        Bmin=bmin,
+        Bmax=bmax,
+        Gmin=0.0,
+        Gmax=0.0,
+        active=(elmsvs.outserv == 0),
+        vset=vset,
+        is_controlled=True,
+        control_bus=bus
+    )
+
+    # Override step arrays to match the constructed block model
+    cshunt.b_steps = b_steps
+    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+
+    # Ensure B/G are coherent with the initial step after overriding arrays
+    cshunt.step = int(initial_step)
+
+    return bus, cshunt
+
 def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
     """
     Compute power factor from (P, Q).
@@ -1322,6 +1390,20 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
 
         grid.add_shunt(bus=bus, api_obj=shunt)
+
+    # Controllable shunts (SVC/SVS)
+    for elmsvs in dgs_grid.elmsvss:
+        bus, cshunt = convert_dgs_to_controllable_shunt(
+            elmsvs=elmsvs,
+            stacubic_dict=stacubic_dict,
+            buses=grid.buses,
+            logger=logger,
+            cubics_by_objid=cubics_by_objid,
+            bus_by_term_id=bus_by_term_id
+        )
+
+        grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
+
 
     # Loads (LV)
     if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:

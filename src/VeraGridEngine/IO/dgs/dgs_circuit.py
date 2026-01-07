@@ -64,6 +64,7 @@ class DgsCircuit:
         ElmLodlvp,
         ElmNet,
         ElmShnt,
+        ElmSvs,
         ElmSind,
         ElmSite,
         ElmSubstat,
@@ -116,6 +117,7 @@ class DgsCircuit:
         self.elmlodlvps: List[ElmLodlvp] = list()
         self.elmnets: List[ElmNet] = list()
         self.elmshnts: List[ElmShnt] = list()
+        self.elmsvss: List[ElmSvs] = list()
         self.elmsinds: List[ElmSind] = list()
         self.elmsites: List[ElmSite] = list()
         self.elmsubstats: List[ElmSubstat] = list()
@@ -159,6 +161,7 @@ class DgsCircuit:
             ElmLodlvp: self.elmlodlvps,
             ElmNet: self.elmnets,
             ElmShnt: self.elmshnts,
+            ElmSvs: self.elmsvss,
             ElmSite: self.elmsites,
             ElmSubstat: self.elmsubstats,
             ElmSym: self.elmsyms,

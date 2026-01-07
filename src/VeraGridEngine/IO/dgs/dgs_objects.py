@@ -616,6 +616,57 @@ class ElmShnt(DGSElement):
         self.iswitch: int = 0
         self.qtotn: float = 0.0
 
+class ElmSvs(DGSElement):
+    element_type = 'ElmSvs'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+
+        # Reactive limits (MVAr @ v=1 p.u.)
+        DgsProperty('qmin', 'r', 'DGS field qmin (r)', py_name='qmin'),
+        DgsProperty('qmax', 'r', 'DGS field qmax (r)', py_name='qmax'),
+
+        # PF SVS/SVC model-specific fields (kept for completeness)
+        DgsProperty('tcrmax', 'r', 'DGS field tcrmax (r)', py_name='tcrmax'),
+        DgsProperty('nxcap', 'i', 'DGS field nxcap (i)', py_name='nxcap'),
+        DgsProperty('nfixcap', 'i', 'DGS field nfixcap (i)', py_name='nfixcap'),
+        DgsProperty('Qfixcap', 'r', 'DGS field Qfixcap (r)', py_name='Qfixcap'),
+
+        # Out of service flag (0/1)
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+
+        # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
+        # If absent in the file, it will remain at its default value (1.0).
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+    ]
+
+    def __init__(self) -> None:
+        # Identifiers
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+
+        # Operating limits (MVAr @ v=1 p.u.)
+        self.qmin: float = 0.0
+        self.qmax: float = 0.0
+
+        # Thyristor controlled reactor max (PF SVC/SVS model-specific, may be unused in VeraGrid)
+        self.tcrmax: float = 0.0
+
+        # Step / block data (PF model-specific, may be used to infer an equivalent stepped model)
+        self.nxcap: int = 0
+        self.nfixcap: int = 0
+        self.Qfixcap: float = 0.0
+
+        # Status
+        self.outserv: int = 0
+
+        # Voltage setpoint (p.u.) for controlled shunts
+        self.usetp: float = 1.0
+
 
 class ElmSite(DGSElement):
     element_type = 'ElmSite'
