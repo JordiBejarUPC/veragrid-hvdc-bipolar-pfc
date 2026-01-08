@@ -9,19 +9,19 @@ grid = vge.MultiCircuit()
 # ----------------------------------------------------------------------------------------------------------------------
 #   Buses
 # ----------------------------------------------------------------------------------------------------------------------
-bus_dc = vge.Bus(name='Bus DC', xpos=0, ypos=0, is_dc=True)
+bus_dc = vge.Bus(name='Bus DC', Vnom=0.75, xpos=0, ypos=0, is_dc=True)
 grid.add_bus(obj=bus_dc)
 
-bus_ac = vge.Bus(name='Bus AC', xpos=0, ypos=300, r_fault=0.2)
+bus_ac = vge.Bus(name='Bus AC', Vnom=0.4, xpos=0, ypos=300, r_fault=0.2)
 grid.add_bus(obj=bus_ac)
 
-bus_slack = vge.Bus(name='Bus Slack', xpos=0, ypos=600, is_slack=True)
+bus_slack = vge.Bus(name='Bus Slack', Vnom=0.4, xpos=0, ypos=600, is_slack=True)
 grid.add_bus(obj=bus_slack)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Line
 # ----------------------------------------------------------------------------------------------------------------------
-line_slack_ac = vge.Line(name='AC - Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.001, x=0.1, rate=20.0)
+line_slack_ac = vge.Line(name='AC - Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.01, x=0.1, rate=20.0)
 grid.add_line(line_slack_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -29,41 +29,29 @@ grid.add_line(line_slack_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 vsc = vge.VSC(bus_from=bus_dc,
               bus_to=bus_ac,
-              rate=10.0,
+              rate=12.0,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
               control1=ConverterControlType.Vm_dc,
               control2=ConverterControlType.Qac,
               control1_val=1.0,
-              control2_val=-5.0)
+              control2_val=-1.2824305436)
 grid.add_vsc(vsc)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Generators
 # ----------------------------------------------------------------------------------------------------------------------
-generator_ac = vge.Generator(r1=0.005, x1=0.05)
-grid.add_generator(bus_slack, generator_ac)
-
-generator_dc = vge.Generator(P=10.0, power_factor=1.0, r1=0.005)
+generator_dc = vge.Generator(P=9.0, power_factor=1.0, r1=0.005)
 grid.add_generator(bus_dc, generator_dc)
 
-# ----------------------------------------------------------------------------------------------------------------------
-#   DC Loads
-# ----------------------------------------------------------------------------------------------------------------------
-load_dc_power = vge.Load(P=1.0)
-grid.add_load(bus_dc, load_dc_power)
-
-load_dc_current = vge.Load(Ir=1.0)
-grid.add_load(bus_dc, load_dc_current)
-
-load_dc_admittance = vge.Load(G=1.0)
-grid.add_load(bus_dc, load_dc_admittance)
+generator_ac = vge.Generator(r1=0.005, x1=0.05)
+grid.add_generator(bus_slack, generator_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Save Grid
 # ----------------------------------------------------------------------------------------------------------------------
-vge.save_file(grid=grid, filename='shortcircuit_vsc.veragrid')
+vge.save_file(grid=grid, filename='3bus_powerfactory.veragrid')
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions

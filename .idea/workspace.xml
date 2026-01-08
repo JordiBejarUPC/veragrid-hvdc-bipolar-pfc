@@ -28,15 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="updated -&gt; test_short_circuit_vsc_3buses">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="admittance loads">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shortcircuit_vsc.veragrid" beforeDir="false" afterPath="$PROJECT_DIR$/shortcircuit_vsc.veragrid" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/power_flow_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/ZIP_load_example.gridcal" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_short_circuit_vsc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_short_circuit_vsc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.veragrid" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.veragrid" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -191,6 +185,7 @@
     "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
+    "Python.3bus_powerfactory.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
     "Python.ExecuteVeraGrid.executor": "Run",
@@ -255,7 +250,7 @@
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "#133__shortcircuit__vsc",
     "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "/home/santi/Documentos/Git/eRoots/VeraGrid/trunk/power_factory_api",
+    "last_opened_file_path": "C:/Users/alexb/PycharmProjects/VeraGrid/trunk/unbalanced_sc",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -274,11 +269,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\alexb\PycharmProjects\VeraGrid\trunk\unbalanced_sc" />
       <recent name="$PROJECT_DIR$/trunk/power_factory_api" />
       <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
       <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
-      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons" />
@@ -288,7 +283,7 @@
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses">
+  <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -690,49 +685,9 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
-    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses" />
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -1535,7 +1490,8 @@
       <workItem from="1767811100058" duration="1613000" />
       <workItem from="1767818914308" duration="6000" />
       <workItem from="1767861361282" duration="24447000" />
-      <workItem from="1767888484721" duration="2464000" />
+      <workItem from="1767888484721" duration="3645000" />
+      <workItem from="1767892408564" duration="942000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1880,7 +1836,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="696" />
+    <option name="localTasksCounter" value="697" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1941,7 +1897,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
     <MESSAGE value="Fixed important bug" />
@@ -1966,7 +1921,8 @@
     <MESSAGE value="small change in test_power_flow_12bus_acdc" />
     <MESSAGE value="small change in test_nc_active_works" />
     <MESSAGE value="updated -&gt; test_short_circuit_vsc_3buses" />
-    <option name="LAST_COMMIT_MESSAGE" value="updated -&gt; test_short_circuit_vsc_3buses" />
+    <MESSAGE value="admittance loads" />
+    <option name="LAST_COMMIT_MESSAGE" value="admittance loads" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2518,16 +2474,17 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_power_flow_12bus_acdc.coverage" NAME="pytest for tests.test_power_flow.test_power_flow_12bus_acdc Coverage Results" MODIFIED="1767289880831" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VeraGrid$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1767890472822" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
-    <SUITE FILE_PATH="coverage/VeraGrid$short_circuit_worker.coverage" NAME="short_circuit_worker Coverage Results" MODIFIED="1767206551422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies" />
+    <SUITE FILE_PATH="coverage/VeraGrid$3bus_powerfactory.coverage" NAME="3bus_powerfactory Coverage Results" MODIFIED="1767892424890" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
     <SUITE FILE_PATH="coverage/VeraGrid$shortcircuit_vsc.coverage" NAME="shortcircuit_vsc Coverage Results" MODIFIED="1767890714533" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_fubm.coverage" NAME="pytest for tests.test_power_flow.test_fubm Coverage Results" MODIFIED="1767289866495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VeraGrid$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1767888697030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_topology_processor_test_nc_active_works.coverage" NAME="pytest for tests.test_topology_processor.test_nc_active_works Coverage Results" MODIFIED="1767887825051" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_short_circuit_vsc_test_short_circuit_vsc_3buses.coverage" NAME="pytest for tests.test_short_circuit_vsc.test_short_circuit_vsc_3buses Coverage Results" MODIFIED="1767890907298" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_vsc_current_limitation.coverage" NAME="pytest for tests.test_power_flow.test_vsc_current_limitation Coverage Results" MODIFIED="1767289788940" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/VeraGrid$test_linear_time_series.coverage" NAME="test_linear_time_series Coverage Results" MODIFIED="1767299503913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_in_test_short_circuit_vsc_py.coverage" NAME="pytest in test_short_circuit_vsc.py Coverage Results" MODIFIED="1767355852709" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_power_flow_12bus_acdc.coverage" NAME="pytest for tests.test_power_flow.test_power_flow_12bus_acdc Coverage Results" MODIFIED="1767289880831" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/VeraGrid$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1767892463891" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
+    <SUITE FILE_PATH="coverage/VeraGrid$short_circuit_worker.coverage" NAME="short_circuit_worker Coverage Results" MODIFIED="1767206551422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies" />
+    <SUITE FILE_PATH="coverage/VeraGrid$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1767888697030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid$test_linear_time_series.coverage" NAME="test_linear_time_series Coverage Results" MODIFIED="1767299503913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
   </component>
 </project>
