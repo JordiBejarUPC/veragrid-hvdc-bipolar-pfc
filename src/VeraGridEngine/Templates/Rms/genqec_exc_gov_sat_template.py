@@ -149,6 +149,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     """
     pi = math.pi
     templ = RmsModelTemplate()
+    templ.tpe = DeviceType.GeneratorDevice
 
     # Inputs
     # Vm: Bus voltage module
@@ -510,7 +511,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     templ.block = Block(
         children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block],
-        parameters=parameters,
         out_vars=[Tm],
         in_vars=inputs,
         event_dict=events_dict,
@@ -619,7 +619,6 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         out_vars=[Vpss],
         event_dict=events_dict,
-        parameters=parameters,
         name="stabilizer",
 
         init_eqs={
@@ -866,6 +865,8 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
+
+
 
     Vm: Var = Var('Vm_placeholder')
     Va: Var = Var('Va_placeholder')

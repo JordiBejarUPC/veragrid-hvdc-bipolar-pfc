@@ -1062,6 +1062,9 @@ class DeviceType(Enum):
     LoadLikeDevice = 'Load like'
     BranchGroupDevice = 'Branch group'
     LambdaDevice = r"Loading from the base situation ($\lambda$)"
+    ExciterDevice = "Exciter"
+    GovernorDevice = "Governor"
+    StabilizerDevice = "Stabilizer"
 
     PMeasurementDevice = 'Pi Measurement'
     QMeasurementDevice = 'Qi Measurement'

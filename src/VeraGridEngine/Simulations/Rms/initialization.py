@@ -344,10 +344,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             x[uid2idx_vars[var.uid]] = x0
                             while error>tol:
                                 try:
-                                    init_val = float(eq_fn(x, params_array))
+                                    init_val = float(eq_fn(x, event_params_array, params_array))
                                 except:
                                     x[uid2idx_vars[var.uid]] = -0.1
-                                    init_val = float(eq_fn(x, params_array))
+                                    init_val = float(eq_fn(x, event_params_array, params_array))
                                 x[uid2idx_vars[var.uid]] = (1-alpha)*x0 + alpha*init_val
                                 error = np.linalg.norm(init_val - x0)
                                 x0 = x[uid2idx_vars[var.uid]]

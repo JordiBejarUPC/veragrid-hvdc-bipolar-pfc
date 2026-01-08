@@ -49,6 +49,7 @@ class SymbolicJacobian:
                  lag_variables: List[LagVar],
                  lag_vars_set,
                  uid2sym_vars: Dict[int, str],
+                 uid2sym_event_params: Dict[int, str],
                  uid2sym_params: Dict[int, str],
                  uid2idx_vars,
                  uid2idx_lag,
@@ -158,8 +159,8 @@ class SymbolicJacobian:
         fname = f"jac"  # since we compile into a namespace, there won't be repeated names
 
         # Build source
-        src = f"def {fname}(vars, params, out):\n"
-        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}"
+        src = f"def {fname}(vars, event_params, params, out):\n"
+        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
 
         # compile to python
@@ -167,13 +168,13 @@ class SymbolicJacobian:
 
         if use_jit:
             # compile with numba
-            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             # just pick the python pointer from the namespace
             self.func = self.namespace[fname]
 
-    def __call__(self, values: Vec, params: Vec) -> csc_matrix:
+    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> csc_matrix:
         """
         Update the jacobian data
         :param values:
@@ -183,7 +184,7 @@ class SymbolicJacobian:
         # assert len(values) >= self.nvar
 
         # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
-        self.func(values, params, self.J.data)
+        self.func(values, event_params, params, self.J.data)
 
         return self.J
 
@@ -194,6 +195,7 @@ class SymbolicVector:
 
     def __init__(self, eqs: Sequence[Expr],
                  uid2sym_vars: Dict[int, str],
+                 uid2sym_event_params: Dict[int, str],
                  uid2sym_params: Dict[int, str],
                  use_jit: bool = True):
         """
@@ -214,15 +216,15 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-            src = f"def {fname}(vars, params, out):\n"
-            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+            src = f"def {fname}(vars, event_params, params, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
 
             # compile in python namespace
             exec(src, self.namespace)
 
             # compile in numba
             if use_jit:
-                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                                     fastmath=True)(self.namespace[fname])
             else:
                 self.func = self.namespace[fname]
@@ -231,7 +233,7 @@ class SymbolicVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, values: Vec, params: Vec) -> Vec:
+    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> Vec:
         """
         Call the compiled function
         :param values:
@@ -239,7 +241,7 @@ class SymbolicVector:
         :return:
         """
         if self.func is not None:
-            self.func(values, params, self.data)
+            self.func(values, event_params, params, self.data)
         return self.data
 
 
@@ -382,8 +384,10 @@ class DiffBlockSolver(BlockSolver):
         self._lag_vars: List[LagVar] = list()
         self._lag_vars_set: Set[LagVar] = set()
         self._reformulated_vars: List[Var] = list()
+        self._event_parameters: List[Var] = list()
+        self._event_parameters_eqs: List[Expr] = list()
         self._parameters: List[Var] = list()
-        self._parameters_eqs: List[Expr] = list()
+        self._parameters_values: List[Const] = list()
         self._stability_eqs: List[Expr] = list()
 
         self.glob_time: Var = glob_time
@@ -395,8 +399,11 @@ class DiffBlockSolver(BlockSolver):
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
             for param, eq in b.event_dict.items():
-                self._parameters.extend([param])
-                self._parameters_eqs.extend([eq])
+                self._event_parameters.append(param)
+                self._event_parameters_eqs.append(eq)
+            for param, constant in b.parameters.items():
+                self._parameters.append(param)
+                self._parameters_values.append(constant)
 
             # if isinstance(b, DiffBlock):
             self._diff_vars.extend(b.diff_vars)
@@ -410,14 +417,15 @@ class DiffBlockSolver(BlockSolver):
         # We define the parameter dt and delta
         self.dt = Var(name='dt')
         self.delta = Var(name='delta')
-        self._parameters.append(self.dt)
-        self._parameters.append(self.delta)
-        self._parameters_eqs.append(Const(1e-3))
-        self._parameters_eqs.append(Const(1))
+        self._event_parameters.append(self.dt)
+        self._event_parameters.append(self.delta)
+        self._event_parameters_eqs.append(Const(1e-3))
+        self._event_parameters_eqs.append(Const(1))
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
+        self._n_event_params = len(self._event_parameters)
         self._n_params = len(self._parameters)
         self._n_diff = len(self._diff_vars)
         n_algebraic = len(self._algebraic_eqs)
@@ -427,10 +435,12 @@ class DiffBlockSolver(BlockSolver):
         # going to be represented by an array called vars[]
 
         self.uid2sym_vars: Dict[int, str] = dict()
+        self.uid2sym_event_params: Dict[int, str] = dict()
         self.uid2sym_params: Dict[int, str] = dict()
         self.uid2sym_diff: Dict[int, str] = dict()
         self.uid2sym_t: Dict[int, str] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
+        self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_params: Dict[int, int] = dict()
         self.uid2idx_diff: Dict[int, int] = dict()
         self.uid2idx_lag: Dict[int, int] = dict()
@@ -452,6 +462,12 @@ class DiffBlockSolver(BlockSolver):
             self.uid2sym_params[ep.uid] = f"params[{j}]"
             self.uid2idx_params[ep.uid] = j
             j += 1
+
+        l = 0
+        for l, ep in enumerate(self._event_parameters):
+            self.uid2sym_event_params[ep.uid] = f"event_params[{l}]"
+            self.uid2idx_event_params[ep.uid] = l
+            l += 1
 
         k = 0
         for ep in self._diff_vars:
@@ -576,46 +592,54 @@ class DiffBlockSolver(BlockSolver):
         print("Compiling...")
 
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
+                                            uid2sym_event_params=self.uid2sym_event_params,
                                                 uid2sym_params=self.uid2sym_params)
 
-        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs, uid2sym_t=self.uid2sym_t)
+        self._event_params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs, uid2sym_t=self.uid2sym_t)
 
         if len(self._state_eqs) != 0:
             self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs_substituted, uid2sym_vars=self.uid2sym_vars,
-                                                    uid2sym_params=self.uid2sym_params)
+                                                uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params)
 
 
 
 
             self._j11_fn =  SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._state_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
             self._j12_fn =  SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars, diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
             self._j21_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
             self._j22_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
         else:
             self._j22_fn =  SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
 
 
         # stability equations for initialization
         self._j_stable =  SymbolicJacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,diff_variables= self._diff_vars,
                                                     lag_variables= self._lag_vars, lag_vars_set= self._lag_vars_set,
-                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_params=self.uid2sym_params,
+                                                    uid2sym_vars=self.uid2sym_vars, uid2sym_event_params=self.uid2sym_event_params,
+                                                uid2sym_params=self.uid2sym_params,
                                                     uid2idx_vars=self.uid2sym_vars, uid2idx_lag=self.uid2idx_lag, dt= self.dt)
         print(
             f"Model compiled with {self._n_vars} variables, {len(self._lag_vars)} lags, {len(self._algebraic_eqs_substituted)}  algebraic eqs and {len(self._state_eqs_substituted)} state eqs")
@@ -625,6 +649,7 @@ class DiffBlockSolver(BlockSolver):
                       eqs: List[Expr],
                       variables: List[Var],
                       uid2sym_vars: Dict[int, str],
+                      uid2sym_event_params: Dict[int, str],
                       uid2sym_params: Dict[int, str],
                       dt: Const = Const(0.001),
                       substitute:bool = True,
@@ -702,7 +727,7 @@ class DiffBlockSolver(BlockSolver):
         # Sort by column, then row for CSC layout
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-        functions_ptr = _compile_equations(eqs=equations_sorted, uid2sym_vars=uid2sym_vars,
+        functions_ptr = _compile_equations(eqs=equations_sorted, uid2sym_vars=uid2sym_vars, uid2sym_event_params=uid2sym_event_params,
                                                   uid2sym_params=uid2sym_params)
 
         nnz = len(cols_sorted)
@@ -713,11 +738,11 @@ class DiffBlockSolver(BlockSolver):
             indptr[c + 1] += 1
         np.cumsum(indptr, out=indptr)
 
-        def jac_fn(values: np.ndarray, params: np.ndarray) -> sp.csc_matrix:  # noqa: D401 – simple
+        def jac_fn(values: np.ndarray, event_params: np.ndarray, params: np.ndarray) -> sp.csc_matrix:  # noqa: D401 – simple
             assert len(values) >= len(variables)
             ##print(f'Signtures are {functions_ptr.signatures}')
 
-            jac_values = functions_ptr(values, params)
+            jac_values = functions_ptr(values, event_params, params)
             data = np.array(jac_values, dtype=np.float64)
 
             return sp.csc_matrix((data, indices, indptr), shape=(len(eqs), len(variables)))
@@ -725,13 +750,14 @@ class DiffBlockSolver(BlockSolver):
         return jac_fn
 
 
-    def rhs_pseudo_transient(self, x: np.ndarray, xn: np.ndarray, params: np.ndarray, sim_step, h: float) -> np.ndarray:
+    def rhs_pseudo_transient(self, x: np.ndarray, xn: np.ndarray, event_params: np.ndarray, params: np.ndarray, sim_step, h: float) -> np.ndarray:
         # returns algeb rhs is there is no states, is there is states, returns states and algebs rhs
 
         """
         Return 𝑑x/dt given the current *state* vector.
         :param x: get the right-hand-side give a state vector
         :param xn:
+        :param event_params:
         :param params: params array
         :param sim_step: simulation step
         :param h: simulation step
@@ -742,23 +768,24 @@ class DiffBlockSolver(BlockSolver):
 
         # we set dt = 1.0
         params[-2] = 1e50
-        f_algeb = np.array(self._rhs_algeb_fn(x, params))
+        f_algeb = np.array(self._rhs_algeb_fn(x, event_params, params))
         x_aux = x.copy()
         dx = np.zeros(len(self.uid2sym_vars))
         params = np.r_[params, dx]
         # f_algeb = self._rhs_predictor(x_aux, params)
         sim_step = sim_step
         if self._n_state > 0:
-            f_state = np.array(self._rhs_state_fn(x, params))
+            f_state = np.array(self._rhs_state_fn(x, event_params, params))
             f_state_update = (x[:self._n_state] - xn[:self._n_state]) / h - f_state
             return np.r_[f_state_update, f_algeb]
 
         else:
             return f_algeb
 
-    def jacobian_implicit(self, x: np.ndarray, params: np.ndarray, h: float) -> sp.csc_matrix:
+    def jacobian_implicit(self, x: np.ndarray, event_params: np.ndarray, params: np.ndarray, h: float) -> sp.csc_matrix:
         """
         :param x: vector or variables' values
+        :param event_params:
         :param params: params array
         :param h: step
         :return:
@@ -776,13 +803,13 @@ class DiffBlockSolver(BlockSolver):
         #returns only j22 if no states, returns J if states
 
         if len(self._state_eqs) == 0:
-            j22: sp.csc_matrix = self._j22_fn(x, params)
+            j22: sp.csc_matrix = self._j22_fn(x, event_params, params)
             return j22
 
-        j11_val: csc_matrix = self._j11_fn(x, params)
-        j12_val: csc_matrix = self._j12_fn(x, params)
-        j21_val: csc_matrix = self._j21_fn(x, params)
-        j22_val: csc_matrix = self._j22_fn(x, params)
+        j11_val: csc_matrix = self._j11_fn(x, event_params, params)
+        j12_val: csc_matrix = self._j12_fn(x, event_params, params)
+        j21_val: csc_matrix = self._j21_fn(x, event_params, params)
+        j22_val: csc_matrix = self._j22_fn(x, event_params, params)
 
         I = sp.eye(m=self._n_state, n=self._n_state)
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -796,7 +823,7 @@ class DiffBlockSolver(BlockSolver):
 
     #### initialization
 
-    def jacobian_pseudo_transient(self, x: np.ndarray, params: np.ndarray, h: float) -> sp.csc_matrix:
+    def jacobian_pseudo_transient(self, x: np.ndarray, event_params: np.ndarray, params: np.ndarray, h: float) -> sp.csc_matrix:
         """
         #We want to build an equivalent of the following Jacobian:
                 J11 = delta^-1 * I + Jf
@@ -808,7 +835,7 @@ class DiffBlockSolver(BlockSolver):
         params[-2] = h
 
         # Now we have J = -delta^-1 * I - Jf so we need to multiply J by -1.
-        J = self.jacobian_implicit(x, params, h)
+        J = self.jacobian_implicit(x, event_params, params, h)
 
         flip_index = self._diff_eq_index
         J = J.tolil()
@@ -866,7 +893,7 @@ class DiffBlockSolver(BlockSolver):
 
     def warm_up_start(self):
         dummy_vals = np.zeros(len(self._algebraic_vars) + len(self._state_vars) + len(self._lag_vars), dtype=np.float64)
-        dummy_params = np.random.rand(len(self._parameters))
+        dummy_params = np.random.rand(len(self._event_parameters))
         self.jacobian_implicit(dummy_vals, dummy_params, 0.001)  # triggers compilation once
         self._rhs_algeb_fn(dummy_vals, dummy_params)  # triggers compilation once
 
@@ -1089,8 +1116,10 @@ class DiffBlockSolver(BlockSolver):
             converged = False
             n_iter = 0
             current_time = t[step_idx]
-            params_current = self._params_fn(float(current_time))
+
+            params_current = self._event_params_fn(float(current_time))
             params_current[-2] = h
+            params = np.array([const.value for const in self._parameters_values])
             # We compute dx for the next step
             # dx = self.compute_dx(x_new, lag, h)
             # print(f'Step {step_idx} read')
@@ -1122,7 +1151,7 @@ class DiffBlockSolver(BlockSolver):
                 params_current = np.asarray(params_current, dtype=np.float64)
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
-                rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, step_idx + 1, h)
+                rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, params, step_idx + 1, h)
                 # print(rhs)
                 rhs_end = time.time()
                 timings["rhs_time"] += rhs_end - rhs_start
@@ -1153,7 +1182,7 @@ class DiffBlockSolver(BlockSolver):
                         if num == 0:
                             xnew_lags[i] = 1
                     print(xnew_lags)
-                    Jf = self.jacobian_implicit(xnew_lags, params_current, h)
+                    Jf = self.jacobian_implicit(xnew_lags, params_current, params, h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
                     if converged:
                         print("System well initialized.")
@@ -1177,7 +1206,7 @@ class DiffBlockSolver(BlockSolver):
 
                 solved = False
                 linear_start = time.time()
-                Jf = self.jacobian_implicit(xnew_lags, params_current, h)
+                Jf = self.jacobian_implicit(xnew_lags, params_current, params, h)
                 delta = sp.linalg.spsolve(Jf, -rhs)
 
                 linear_end = time.time()
@@ -1504,7 +1533,7 @@ class DiffBlockSolver(BlockSolver):
         x_new = x0.copy()
         tries = 0
         current_time = 0
-        params_current = self._params_fn(float(current_time))
+        params_current = self._event_params_fn(float(current_time))
 
         # We set dt = 1
         params_current[-1] = 1
@@ -1837,7 +1866,7 @@ class DiffBlockSolver(BlockSolver):
         x_new = x0.copy()
         tries = 0
         current_time = 0
-        params_current = self._params_fn(float(current_time))
+        params_current = self._event_params_fn(float(current_time))
         params_outer = params_current.copy()
         params_outer[-1] = 1e-3
         dx_error = 1
@@ -2026,7 +2055,7 @@ class DiffBlockSolver(BlockSolver):
         x_new = x0.copy()
         tries = 0
         current_time = 0
-        params_current = self._params_fn(float(current_time))
+        params_current = self._event_params_fn(float(current_time))
         params_outer = params_current.copy()
         params_outer[-1] = 1e-3
         dx_error = 1
@@ -2670,7 +2699,7 @@ class DiffBlockSolver(BlockSolver):
                 base_var_idx = self.uid2idx_vars[base_var.uid]
                 xstart[self.uid2idx_lag[lag.uid]] = x0[base_var_idx]
 
-        params_current = self._params_fn(float(0))
+        params_current = self._event_params_fn(float(0))
         T_operator = self.T_operator(params_current)
         residual = 10
         alpha = 0.05

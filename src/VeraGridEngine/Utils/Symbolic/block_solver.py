@@ -45,7 +45,7 @@ def _compile_equations(eqs: Sequence[Expr],
                        uid2sym_vars: Dict[int, str],
                        uid2sym_event_params: Dict[int, str],
                        uid2sym_params: Dict[int, str],
-                       add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+                       add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
@@ -397,8 +397,8 @@ class BlockSolver:
         l = 0
         for l, ep in enumerate(self._parameters):
             uid2sym_params[ep.uid] = f"params[{l}]"
-            self.uid2idx_params[ep.uid] = j
-            j += 1
+            self.uid2idx_params[ep.uid] = l
+            l += 1
 
         # Ensure deterministic variable order
         for variables in (self._state_vars, self._algebraic_vars):
