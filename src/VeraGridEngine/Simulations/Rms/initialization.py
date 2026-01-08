@@ -784,7 +784,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
                     collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
-                    default_value = copy.deepcopy(elm.rms_model.model.event_dict[param])
+                    default_value = elm.rms_model.model.event_dict[param]
                     elm.rms_model.model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
                                                                       np.array(events_info["values"]), default_value)
 
