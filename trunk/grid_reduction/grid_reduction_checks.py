@@ -55,7 +55,7 @@ def get_total_load_ts(grid: gce.MultiCircuit, time_indices: np.ndarray = None) -
     return total
 
 
-grid_ = gce.open_file("/home/santi/Escritorio/Redes/MOU_2022_5GW_v6c.gridcal")
+grid_ = gce.open_file("/Users/santi/Documents/Grids/Redes/MOU_2022_5GW_v1_nofused__100h_Pset.gridcal")
 
 # First run time series linear analysis
 lin_ts = gce.LinearAnalysisTs(grid=grid_, distributed_slack=False)
