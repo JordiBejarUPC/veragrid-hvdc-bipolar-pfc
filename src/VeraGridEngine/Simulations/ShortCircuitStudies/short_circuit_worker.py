@@ -814,7 +814,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
         S0_linear = np.zeros(shape=nbus, dtype=complex)
         S0_non_gen = S0 - nc.generator_data.get_injections_per_bus() / nc.Sbase
-        S0_gen = S_pf / nc.Sbase - S0_non_gen - I0
+        S0_gen = S_pf / nc.Sbase - S0_non_gen - I0 + Y0
 
         Yfault = np.zeros(shape=nbus, dtype=complex)
         Yfault[fault_bus] = 1 / Z_fault[fault_bus]

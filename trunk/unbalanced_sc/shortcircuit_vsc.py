@@ -57,6 +57,9 @@ grid.add_load(bus_dc, load_dc_power)
 load_dc_current = vge.Load(Ir=1.0)
 grid.add_load(bus_dc, load_dc_current)
 
+load_dc_admittance = vge.Load(G=-1.0)
+grid.add_load(bus_dc, load_dc_admittance)
+
 # ----------------------------------------------------------------------------------------------------------------------
 #   Save Grid
 # ----------------------------------------------------------------------------------------------------------------------
