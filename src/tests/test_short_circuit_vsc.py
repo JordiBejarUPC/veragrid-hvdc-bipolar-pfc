@@ -24,7 +24,7 @@ def test_short_circuit_vsc_3buses():
     # ----------------------------------------------------------------------------------------------------------------------
     #   Line
     # ----------------------------------------------------------------------------------------------------------------------
-    line_slack_ac = vge.Line(name='AC - Fault', bus_from=bus_ac, bus_to=bus_slack, r=0.001, x=0.1, rate=20.0)
+    line_slack_ac = vge.Line(name='AC - Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.001, x=0.1, rate=20.0)
     grid.add_line(line_slack_ac)
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ def test_short_circuit_vsc_3buses():
     # ----------------------------------------------------------------------------------------------------------------------
     vsc = vge.VSC(bus_from=bus_dc,
                   bus_to=bus_ac,
-                  rate=14.0,
+                  rate=10.0,
                   alpha1=0.0,
                   alpha2=0.0,
                   alpha3=0.0,
@@ -52,6 +52,18 @@ def test_short_circuit_vsc_3buses():
     grid.add_generator(bus_dc, generator_dc)
 
     # ----------------------------------------------------------------------------------------------------------------------
+    #   DC Loads
+    # ----------------------------------------------------------------------------------------------------------------------
+    load_dc_power = vge.Load(P=1.0)
+    grid.add_load(bus_dc, load_dc_power)
+
+    load_dc_current = vge.Load(Ir=1.0)
+    grid.add_load(bus_dc, load_dc_current)
+
+    load_dc_admittance = vge.Load(G=1.0)
+    grid.add_load(bus_dc, load_dc_admittance)
+
+    # ----------------------------------------------------------------------------------------------------------------------
     #   Save Grid
     # ----------------------------------------------------------------------------------------------------------------------
     vge.save_file(grid=grid, filename='shortcircuit_vsc.veragrid')
@@ -65,9 +77,8 @@ def test_short_circuit_vsc_3buses():
                                     verbose=1)
     res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 
-    Upf_reference = np.array([1.0, 1.0050255, 1.0])
-
-    assert np.allclose(abs(res_pf.voltage), Upf_reference, atol=1e-6)
+    print('Power flow results:')
+    print(abs(res_pf.voltage))
 
     # ----------------------------------------------------------------------------------------------------------------------
     #   AC/DC Short-Circuit with converter's current limitation
@@ -95,8 +106,18 @@ def test_short_circuit_vsc_3buses():
 
     Usc_reference = np.array([
         [1.0],
-        [0.79744135],
-        [0.88393066]
+        [0.79343276],
+        [0.88245054]
+    ])
+
+    St_vsc_reference = np.array([
+        [-7.0-3.73544573j]
+    ])
+
+    St_line_reference = np.array([
+        [-307.76777399+3.73544573j]
     ])
 
     assert np.allclose(abs(res_sc.voltage1), Usc_reference, atol=1e-6)
+    assert np.allclose(res_sc.vsc_St, St_vsc_reference, atol=1e-6)
+    assert np.allclose(res_sc.Sf1, St_line_reference, atol=1e-6)

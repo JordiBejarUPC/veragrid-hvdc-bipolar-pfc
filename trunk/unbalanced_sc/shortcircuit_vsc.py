@@ -29,7 +29,7 @@ grid.add_line(line_slack_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 vsc = vge.VSC(bus_from=bus_dc,
               bus_to=bus_ac,
-              rate=14.0,
+              rate=10.0,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
@@ -57,7 +57,7 @@ grid.add_load(bus_dc, load_dc_power)
 load_dc_current = vge.Load(Ir=1.0)
 grid.add_load(bus_dc, load_dc_current)
 
-load_dc_admittance = vge.Load(G=-1.0)
+load_dc_admittance = vge.Load(G=1.0)
 grid.add_load(bus_dc, load_dc_admittance)
 
 # ----------------------------------------------------------------------------------------------------------------------
