@@ -24,7 +24,7 @@ from matplotlib import pyplot as plt
 from typing import Dict, List, Any, Callable, Sequence
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_event_params_eq, _heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec
@@ -43,6 +43,7 @@ def _fully_substitute(expr: Expr, mapping: Dict[Var, Expr], max_iter: int = 10) 
 
 def _compile_equations(eqs: Sequence[Expr],
                        uid2sym_vars: Dict[int, str],
+                       uid2sym_event_params: Dict[int, str],
                        uid2sym_params: Dict[int, str],
                        add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
     """
@@ -60,7 +61,7 @@ def _compile_equations(eqs: Sequence[Expr],
     # src = f"@nb.njit()\n"
     src = f"def {fname}(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -84,7 +85,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     # Build source
     src = f"def {fname}(glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -102,6 +103,7 @@ class SymbolicJacobian:
                  eqs: List[Expr],
                  variables: List[Var],
                  uid2sym_vars: Dict[int, str],
+                 uid2sym_event_params: Dict[int, str],
                  uid2sym_params: Dict[int, str],
                  use_jit: bool = True):
         """
@@ -165,8 +167,8 @@ class SymbolicJacobian:
         fname = f"jac"  # since we compile into a namespace, there won't be repeated names
 
         # Build source
-        src = f"def {fname}(vars, params, out):\n"
-        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}"
+        src = f"def {fname}(vars, event_params, params, out):\n"
+        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
 
         # compile to python
@@ -174,23 +176,24 @@ class SymbolicJacobian:
 
         if use_jit:
             # compile with numba
-            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             # just pick the python pointer from the namespace
             self.func = self.namespace[fname]
 
-    def __call__(self, values: Vec, params: Vec) -> csc_matrix:
+    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> csc_matrix:
         """
         Update the jacobian data
         :param values:
+        :param event_params:
         :param params:
         :return: Updated jacobian structure
         """
         assert len(values) >= self.nvar
 
         # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
-        self.func(values, params, self.J.data)
+        self.func(values, event_params, params, self.J.data)
 
         return self.J
 
@@ -202,6 +205,7 @@ class SymbolicVector:
 
     def __init__(self, eqs: Sequence[Expr],
                  uid2sym_vars: Dict[int, str],
+                 uid2sym_event_params: Dict[int, str],
                  uid2sym_params: Dict[int, str],
                  use_jit: bool = True):
         """
@@ -222,15 +226,15 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-            src = f"def {fname}(vars, params, out):\n"
-            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+            src = f"def {fname}(vars, event_params, params, out):\n"
+            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
 
             # compile in python namespace
             exec(src, self.namespace)
 
             # compile in numba
             if use_jit:
-                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:]),
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:],  nb.float64[:], nb.float64[:]),
                                     fastmath=True)(self.namespace[fname])
             else:
                 self.func = self.namespace[fname]
@@ -239,19 +243,20 @@ class SymbolicVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, values: Vec, params: Vec) -> Vec:
+    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> Vec:
         """
         Call the compiled function
         :param values:
+        :param event_params:
         :param params:
         :return:
         """
         if self.func is not None:
-            self.func(values, params, self.data)
+            self.func(values, event_params, params, self.data)
         return self.data
 
 
-class SymbolicParamsVector:
+class SymbolicEventParamsVector:
     """
     SymbolicFunction
     """
@@ -277,7 +282,7 @@ class SymbolicParamsVector:
 
             # Build source
             src = f"def {fname}(glob_time, out):\n"
-            src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+            src += "\n".join([f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
 
             # compile in python namespace
             exec(src, self.namespace)
@@ -327,6 +332,8 @@ class BlockSolver:
         self._state_eqs: List[Expr] = list()
         self._event_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Expr] = list()
+        self._parameters: List[Var] = list()
+        self._parameters_values: List[Const] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
         self.v_glob_name2uid = block_system.vars_glob_name2uid
@@ -339,12 +346,16 @@ class BlockSolver:
             for param, eq in b.event_dict.items():
                 self._event_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
+            for param, constant in b.parameters.items():
+                self._parameters.append(param)
+                self._parameters_values.append(constant)
 
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
         self._n_event_params = len(self._event_parameters)
+        self._n_params = len(self._parameters)
 
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
@@ -352,10 +363,12 @@ class BlockSolver:
 
         uid2sym_vars: Dict[int, str] = dict()
         uid2sym_event_params: Dict[int, str] = dict()
+        uid2sym_params: Dict[int, str] = dict()
         uid2sym_t: Dict[int, str] = dict()
         self.uid2var: Dict[int, Var] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
         self.uid2idx_event_params: Dict[int, int] = dict()
+        self.uid2idx_params: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
         i = 0
         for v in self._state_vars:
@@ -373,13 +386,19 @@ class BlockSolver:
 
         j = 0
         for j, ep in enumerate(self._event_parameters):
-            uid2sym_event_params[ep.uid] = f"params[{j}]"
+            uid2sym_event_params[ep.uid] = f"event_params[{j}]"
             self.uid2idx_event_params[ep.uid] = j
             j += 1
 
         k = 0
         uid2sym_t[self.glob_time.uid] = f"glob_time"
         self.uid2idx_t[self.glob_time.uid] = k
+
+        l = 0
+        for l, ep in enumerate(self._parameters):
+            uid2sym_params[ep.uid] = f"params[{l}]"
+            self.uid2idx_params[ep.uid] = j
+            j += 1
 
         # Ensure deterministic variable order
         for variables in (self._state_vars, self._algebraic_vars):
@@ -404,39 +423,45 @@ class BlockSolver:
 
         self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_event_params,
+                                            uid2sym_event_params=uid2sym_event_params,
+                                            uid2sym_params=uid2sym_params,
                                             use_jit=use_jit)
 
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_event_params,
+                                            uid2sym_event_params=uid2sym_event_params,
+                                            uid2sym_params=uid2sym_params,
                                             use_jit=use_jit)
 
-        self._params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs,
-                                               uid2sym_t=uid2sym_t)
+        self._event_params_fn = SymbolicEventParamsVector(eqs=self._event_parameters_eqs,
+                                                          uid2sym_t=uid2sym_t)
 
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_event_params,
+                                        uid2sym_event_params=uid2sym_event_params,
+                                        uid2sym_params=uid2sym_params,
                                         use_jit=use_jit)
 
         self._j12_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_event_params,
+                                        uid2sym_event_params=uid2sym_event_params,
+                                        uid2sym_params=uid2sym_params,
                                         use_jit=use_jit)
 
         self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_event_params,
+                                        uid2sym_event_params=uid2sym_event_params,
+                                        uid2sym_params=uid2sym_params,
                                         use_jit=use_jit)
 
         self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_event_params,
+                                        uid2sym_event_params=uid2sym_event_params,
+                                        uid2sym_params=uid2sym_params,
                                         use_jit=use_jit)
 
         print("done!")
@@ -445,12 +470,12 @@ class BlockSolver:
         print(f"all compilation time = {compilation_time:.6f} [s]")
 
     @property
-    def params_fn(self) -> SymbolicParamsVector:
+    def params_fn(self) -> SymbolicEventParamsVector:
         """
         state eq / state var jacobian
         :return: SymbolicJacobian
         """
-        return self._params_fn
+        return self._event_params_fn
 
     @property
     def j11(self) -> SymbolicJacobian:
@@ -587,43 +612,47 @@ class BlockSolver:
 
         return x
 
-    def rhs_fixed(self, x: Vec, params: Vec) -> np.ndarray:
+    def rhs_fixed(self, x: Vec, event_params: np.ndarray, params: Vec) -> np.ndarray:
         """
         Return 𝑑x/dt given the current *state* vector.
+        :param event_params:
+        :param params:
         :param x: get the right-hand-side give a state vector
         :return [f_state_update, f_algeb]
         """
-        f_algeb = np.array(self._rhs_algeb_fn(x, params))
+        f_algeb = np.array(self._rhs_algeb_fn(x, event_params, params))
 
         if self._n_state > 0:
-            f_state = np.array(self._rhs_state_fn(x, params))
+            f_state = np.array(self._rhs_state_fn(x, event_params, params))
             return np.r_[f_state, f_algeb]
         else:
             return f_algeb
 
-    def rhs_implicit(self, x: Vec, xn: Vec, params: Vec, sim_step, h: float) -> np.ndarray:
+    def rhs_implicit(self, x: Vec, xn: Vec, event_params: np.ndarray, params: Vec, sim_step, h: float) -> np.ndarray:
         """
         Return 𝑑x/dt given the current *state* vector.
         :param x: get the right-hand-side give a state vector
         :param xn:
+        :param event_params:
         :param params: params array
         :param sim_step: simulation step
         :param h: simulation step
         :return [f_state_update, f_algeb]
         """
-        f_algeb = np.array(self._rhs_algeb_fn(x, params))
+        f_algeb = np.array(self._rhs_algeb_fn(x, event_params, params))
 
         if self._n_state > 0:
-            f_state = np.array(self._rhs_state_fn(x, params))
+            f_state = np.array(self._rhs_state_fn(x, event_params, params))
             f_state_update = x[:self._n_state] - xn[:self._n_state] - h * f_state
             return np.r_[f_state_update, f_algeb]
 
         else:
             return f_algeb
 
-    def jacobian_implicit(self, x: np.ndarray, params: np.ndarray, h: float) -> csc_matrix:
+    def jacobian_implicit(self, x: np.ndarray, event_params: np.ndarray, params: np.ndarray, h: float) -> csc_matrix:
         """
         :param x: vector or variables' values
+        :param event_params:
         :param params: params array
         :param h: step
         :return:
@@ -638,10 +667,10 @@ class BlockSolver:
                  |            |           |    |            |    |            |
         """
 
-        j11_val: csc_matrix = self._j11_fn(x, params)
-        j12_val: csc_matrix = self._j12_fn(x, params)
-        j21_val: csc_matrix = self._j21_fn(x, params)
-        j22_val: csc_matrix = self._j22_fn(x, params)
+        j11_val: csc_matrix = self._j11_fn(x, event_params, params)
+        j12_val: csc_matrix = self._j12_fn(x, event_params, params)
+        j21_val: csc_matrix = self._j21_fn(x, event_params, params)
+        j22_val: csc_matrix = self._j22_fn(x, event_params, params)
 
         I = sp.eye(m=self._n_state, n=self._n_state)
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -653,29 +682,31 @@ class BlockSolver:
 
         return J
 
-    def residual_init(self, z: np.ndarray, params: np.ndarray):
+    def residual_init(self, z: np.ndarray, event_params: np.ndarray, params: np.ndarray):
         """
 
         :param z:
+        :param event_params:
         :param params:
         :return:
         """
         # concatenate state & algebraic residuals
-        f_s = np.array(self._rhs_state_fn(z, params))  # f_state(x)        == 0 at t=0
-        f_a = np.array(self._rhs_algeb_fn(z, params))  # g_algeb(x, y)     == 0
+        f_s = np.array(self._rhs_state_fn(z, event_params, params))  # f_state(x)        == 0 at t=0
+        f_a = np.array(self._rhs_algeb_fn(z, event_params, params))  # g_algeb(x, y)     == 0
         return np.r_[f_s, f_a]
 
-    def jacobian_init(self, z: np.ndarray, params: np.ndarray):
+    def jacobian_init(self, z: np.ndarray, event_params: np.ndarray, params: np.ndarray):
         """
 
         :param z:
+        :param event_params:
         :param params:
         :return:
         """
-        J11 = self._j11_fn(z, params)  # ∂f_state/∂x
-        J12 = self._j12_fn(z, params)  # ∂f_state/∂y
-        J21 = self._j21_fn(z, params)  # ∂g/∂x
-        J22 = self._j22_fn(z, params)  # ∂g/∂y
+        J11 = self._j11_fn(z, event_params, params)  # ∂f_state/∂x
+        J12 = self._j12_fn(z, event_params, params)  # ∂f_state/∂y
+        J21 = self._j21_fn(z, event_params, params)  # ∂g/∂x
+        J22 = self._j22_fn(z, event_params, params)  # ∂g/∂y
         return pack_4_by_4_scipy(J11, J12, J21, J22)  # → sparse 2×2 block Jacobian
 
     def equations(self) -> Tuple[List[Expr], List[Expr]]:
@@ -718,7 +749,7 @@ class BlockSolver:
             )
         raise ValueError(f"Unknown method '{method}'")
 
-    def _simulate_fixed(self, t0, t_end, h, x0, params, stepper="euler"):
+    def _simulate_fixed(self, t0, t_end, h, x0, event_params, stepper="euler"):
         """
         Fixed‑step helpers (Euler, RK‑4)
         :param t0:
@@ -733,18 +764,19 @@ class BlockSolver:
         y = np.empty((steps + 1, self._n_vars))
         t[0] = t0
         y[0, :] = x0.copy()
+        params = np.array([const.value for const in self._parameters_values])
 
         for i in range(steps):
             tn = t[i]
             xn = y[i]
             if stepper == "euler":
-                k1 = self.rhs_fixed(xn, params)
+                k1 = self.rhs_fixed(xn, event_params, params)
                 y[i + 1] = xn + h * k1
             elif stepper == "rk4":
-                k1 = self.rhs_fixed(xn, params)
-                k2 = self.rhs_fixed(xn + 0.5 * h * k1, params)
-                k3 = self.rhs_fixed(xn + 0.5 * h * k2, params)
-                k4 = self.rhs_fixed(xn + h * k3, params)
+                k1 = self.rhs_fixed(xn, event_params, params)
+                k2 = self.rhs_fixed(xn + 0.5 * h * k1, event_params, params)
+                k3 = self.rhs_fixed(xn + 0.5 * h * k2, event_params, params)
+                k4 = self.rhs_fixed(xn + h * k3, event_params, params)
                 y[i + 1] = xn + (h / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
             else:
                 raise RuntimeError("unknown stepper")
@@ -788,7 +820,8 @@ class BlockSolver:
             current_time = t[step_idx]
 
             start_params_calculation = time.time()
-            params_current = self._params_fn(float(current_time))
+            event_params_current = self._event_params_fn(float(current_time))
+            params = np.array([const.value for const in self._parameters_values])
             end_params_calculation = time.time()
             params_calculation_time = end_params_calculation - start_params_calculation
             params_time += params_calculation_time
@@ -796,7 +829,7 @@ class BlockSolver:
             while not converged and n_iter < max_iter:
 
                 start_functions_calc = time.time()
-                rhs = self.rhs_implicit(x_new, xn, params_current, step_idx, h)
+                rhs = self.rhs_implicit(x_new, xn, event_params_current, params,step_idx, h)
                 end_functions_calc = time.time()
                 calc_functions_time = end_functions_calc - start_functions_calc
                 functions_time += calc_functions_time
@@ -819,7 +852,7 @@ class BlockSolver:
                     break
 
                 start_jac_calc = time.time()
-                Jf = self.jacobian_implicit(x_new, params_current, h)  # sparse matrix
+                Jf = self.jacobian_implicit(x_new, event_params_current, params, h)  # sparse matrix
                 end_jac_calc = time.time()
                 calc_jac_time = end_jac_calc - start_jac_calc
                 jacobian_time += calc_jac_time

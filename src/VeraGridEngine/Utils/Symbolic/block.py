@@ -366,7 +366,7 @@ class Block:
                  lag_vars: List[LagVar] | None = None,
                  reformulated_vars: List[DiffVar] | None = None,
                  differential_eqs: List[Expr] | None = None,
-                 parameters: Dict[str, Const] | None = None,
+                 parameters: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
@@ -417,7 +417,7 @@ class Block:
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
-        self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
+        self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.external_mapping: Dict[
             VarPowerFlowRefferenceType, Var] = dict() if external_mapping is None else external_mapping
@@ -547,8 +547,11 @@ class Block:
             mdl.state_vars.extend(b.state_vars)
             mdl.state_eqs.extend(b.state_eqs)
             mdl.diff_vars.extend(b.diff_vars)
-            for param, eq in b.event_dict.items():
-                mdl.event_dict[param] = eq
+            for event_param, eq in b.event_dict.items():
+                mdl.event_dict[event_param] = eq
+
+            for param, const in b.parameters.items():
+                mdl.parameters[param] = const
 
             for var, init_eq in b.init_eqs.items():
                 mdl.init_eqs[var] = init_eq
@@ -613,12 +616,6 @@ class Block:
 
         self.event_dict = event_dict_new
 
-        # if old in self.in_vars:
-        #     idx = next(i for i, v in enumerate(self.in_vars) if v is old)
-        #     self.in_vars[idx] = new
-
-
-
     def update_model(self, old, new):
         """
         :param old:
@@ -664,8 +661,8 @@ class Block:
                 for var, value in self.init_values.items()
             ],
             "parameters": [
-                {"name": name, "value": value.value}
-                for name, value in self.parameters.items()
+                {"var": var.to_dict(), "value": value.value}
+                for var, value in self.parameters.items()
             ],
             "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
             "event_dict": [
@@ -731,10 +728,11 @@ class Block:
             block.init_values[var] = const_value
 
         for pair in data.get("parameters", []):
-            name = pair["name"]
+            var_dict = pair["var"]
             value = pair["value"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             const_value = Const(value)
-            block.parameters[name] = const_value
+            block.parameters[var] = const_value
 
         for key_str, var_dict in data.get("external_mapping", {}).items():
             key = VarPowerFlowRefferenceType(key_str)

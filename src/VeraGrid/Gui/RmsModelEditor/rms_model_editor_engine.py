@@ -1271,6 +1271,13 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
+                P, Q = self.api_object.P, self.api_object.Q
+                for param in self.selected_template.block.parameters.keys():
+                    if param.name == 'Pl0':
+                        self.selected_template.block.parameters[param] = Const(P)
+                    if param.name == 'Ql0':
+                        self.selected_template.block.parameters[param] = Const(Q)
+
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
@@ -1283,10 +1290,14 @@ class TemplateEditor(QtWidgets.QWidget):
                 #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters.
                 #Todo: create parameters dict for block and update it here with values from correspondant line
 
-                # R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
-                # self.selected_template.R
-                # self.selected_template.X = X
-                # self.selected_template.B = B
+                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
+                for param in self.selected_template.block.parameters.keys():
+                    if param.name == 'g':
+                        self.selected_template.block.parameters[param] = Const(R/(R**2 + X**2))
+                    if param.name == 'b':
+                        self.selected_template.block.parameters[param] = Const(-X/(R**2 + X**2))
+                    if param.name == 'bsh':
+                        self.selected_template.block.parameters[param] = Const(B)
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")

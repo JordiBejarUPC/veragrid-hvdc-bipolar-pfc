@@ -1077,7 +1077,7 @@ def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
     return list(res)
 
 
-def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
+def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
     :param expr: Expr (expression)
@@ -1094,31 +1094,33 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
             return uid_map_vars[expr.uid]  # positional variable
         elif expr.uid in uid_map_params.keys():
             return uid_map_params[expr.uid]
+        elif expr.uid in uid_map_event_params.keys():
+            return uid_map_event_params[expr.uid]
         else:
             raise ValueError(f'{expr} not found')
 
     if isinstance(expr, UnOp):
-        return f"-({_emit(expr.operand, uid_map_vars, uid_map_params)})"
+        return f"-({_emit(expr.operand, uid_map_vars, uid_map_event_params, uid_map_params)})"
 
     if isinstance(expr, BinOp):
-        return (f"({_emit(expr.left, uid_map_vars, uid_map_params)} "
+        return (f"({_emit(expr.left, uid_map_vars, uid_map_event_params, uid_map_params)} "
                 f"{expr.op} "
-                f"{_emit(expr.right, uid_map_vars, uid_map_params)})")
+                f"{_emit(expr.right, uid_map_vars, uid_map_event_params, uid_map_params)})")
 
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
                          "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
-            return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         elif expr.name == "heaviside":
-            return f"_heaviside({_emit(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"_heaviside({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         else:
-            return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
 
     raise TypeError(type(expr))
 
 
-def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
+def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
     :param expr: Expr (expression)
@@ -1134,19 +1136,19 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
             return uid_map_t[expr.uid]
 
     if isinstance(expr, UnOp):
-        return f"-({_emit_params_eq(expr.operand, uid_map_t)})"
+        return f"-({_emit_event_params_eq(expr.operand, uid_map_t)})"
 
     if isinstance(expr, BinOp):
-        return f"({_emit_params_eq(expr.left, uid_map_t)} {expr.op} {_emit_params_eq(expr.right, uid_map_t)})"
+        return f"({_emit_event_params_eq(expr.left, uid_map_t)} {expr.op} {_emit_event_params_eq(expr.right, uid_map_t)})"
 
     if isinstance(expr, Func):
         # Use numpy functions for standard numeric functions
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
                          "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
-            return f"np.{expr.name}({_emit_params_eq(expr.arg, uid_map_t)})"
+            return f"np.{expr.name}({_emit_event_params_eq(expr.arg, uid_map_t)})"
         elif expr.name == "heaviside":
-            return f"_heaviside({_emit_params_eq(expr.arg, uid_map_t)})"
+            return f"_heaviside({_emit_event_params_eq(expr.arg, uid_map_t)})"
 
     else:
         raise ValueError(f"Unknown function '{expr.name}' in _emit_params_eq")
@@ -1154,7 +1156,7 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     raise TypeError(type(expr))
 
 
-def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
+def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
     :param expr: Expr (expression)
@@ -1166,23 +1168,22 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
     if isinstance(expr, Var):
         if expr.uid in uid_map_vars.keys():
             return uid_map_vars[expr.uid]  # positional variable
-
+        elif expr.uid in uid_map_event_params.keys():
+            return uid_map_event_params[expr.uid]  # positional variable
         else:
             return uid_map_params[expr.uid]
     if isinstance(expr, UnOp):
-        return f"-({_emit_one(expr.operand, uid_map_vars, uid_map_params)})"
+        return f"-({_emit_one(expr.operand, uid_map_vars, uid_map_event_params, uid_map_params)})"
     if isinstance(expr, BinOp):
-        return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
+        return f"({_emit_one(expr.left, uid_map_vars, uid_map_event_params, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_event_params, uid_map_params)})"
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "atan",
                          "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
                          "sinh", "cosh", "abs"):
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         elif expr.name == "heaviside":
-            return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
-    #
-    # else:
-    #     print(expr)
+            return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
+
 
     raise TypeError(expr)
 
@@ -1382,7 +1383,10 @@ __all__ = [
     "DiffVar",
     "hard_sat",
     "f_exc",
-    "UNDEFINED"
+    "UNDEFINED",
+    '_emit',
+    '_emit_event_params_eq',
+    '_heaviside'
 ]
 #
 # x = Var("x")

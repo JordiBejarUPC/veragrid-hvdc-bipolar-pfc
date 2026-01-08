@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.Dynamic.events import RmsEvents
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, _compile_parameters_equations, _compile_equations
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, DiffVar, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_params_eq
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, DiffVar, Const, Expr, Func, cos, sin, _emit, _heaviside, _emit_event_params_eq
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 from dataclasses import dataclass, field
@@ -269,7 +269,7 @@ class SymbolicParamsVector:
 
             # Build source
             src = f"def {fname}(glob_time, out):\n"
-            src += "\n".join([f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+            src += "\n".join([f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
 
             # compile in python namespace
             exec(src, self.namespace)
