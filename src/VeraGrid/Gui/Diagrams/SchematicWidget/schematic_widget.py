@@ -1757,8 +1757,8 @@ class SchematicWidget(BaseDiagramWidget):
                     bus: Bus,
                     injections_by_tpe: Dict[DeviceType, List[ALL_DEV_TYPES]],
                     explode_factor: float = 1.0,
-                    x0: Union[int, None] = None,
-                    y0: Union[int, None] = None) -> BusGraphicItem:
+                    x0: Union[float, None] = None,
+                    y0: Union[float, None] = None) -> BusGraphicItem:
         """
         Add API bus to the diagram
         :param bus: Bus instance
@@ -1996,8 +1996,8 @@ class SchematicWidget(BaseDiagramWidget):
 
     def add_api_vsc(self,
                     elm: VSC,
-                    x: float,
-                    y: float,
+                    x: float | None = None,
+                    y: float | None = None,
                     r: float = 0.0,
                     logger: Logger = Logger()) -> Union[VscGraphicItem, None]:
         """
@@ -4703,6 +4703,55 @@ class SchematicWidget(BaseDiagramWidget):
             )
 
             new_bus_graphic.get_terminal().update()
+
+    def move_behind_converter(self, injection_graphics: INJECTION_GRAPHICS):
+        """
+        This function moved an injection device from an AC bus to another
+        newly created DC bus that is connected to a new converter
+        :param injection_graphics:
+        :return:
+        """
+
+        ok = yes_no_question(
+            text=f"Are you sure that you want to relocate {injection_graphics.api_object.name} "
+                 f"behind a converter?",
+            title='Move behind converter'
+        )
+
+        if ok:
+            old_bus_graphic: BusGraphicItem = self.graphics_manager.query(injection_graphics.api_object.bus)
+
+            new_bus, converter = self.circuit.move_behind_converter(api_object=injection_graphics.api_object)
+
+            if old_bus_graphic is None:
+                x0 = injection_graphics.api_object.bus.x
+                y0 = injection_graphics.api_object.bus.y + 180
+            else:
+                x0 = old_bus_graphic.x()
+                y0 = old_bus_graphic.y() + 180
+
+            new_bus_graphic_item = self.add_api_bus(
+                bus=new_bus,
+                injections_by_tpe={
+                    injection_graphics.api_object.device_type: [injection_graphics.api_object]
+                },
+                x0=x0,
+                y0=y0
+            )
+            self.add_to_scene(new_bus_graphic_item)
+
+            new_bus_graphic_item.set_position(x=x0, y=y0)
+
+            self.add_api_vsc(elm=converter)
+
+            # add the graphics for the new bus
+            # new_bus_graphic_item.add_object(api_obj=injection_graphics.api_object)
+
+            self._remove_from_scene(injection_graphics.nexus)
+            self._remove_from_scene(injection_graphics)
+
+            new_bus_graphic_item.update()
+            injection_graphics.update_nexus(injection_graphics.pos())
 
     def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem, x_offset=80):
         """

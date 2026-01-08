@@ -430,7 +430,7 @@ def transform_bus_into_voltage_level(
     if bay_assignments is not None and len(bay_assignments) > 0:
         # Create mapping from device name to (row_index, bay_num, assigned_bus)
         # row_index is the position in the table (the order specified by the user)
-        device_mapping = {}
+        device_mapping = dict()
         for row_index, (device_name, bay_num, assigned_bus) in enumerate(bay_assignments):
             if device_name != "(Spare)":
                 device_mapping[device_name] = (row_index, bay_num, assigned_bus)
@@ -439,7 +439,7 @@ def transform_bus_into_voltage_level(
         all_elements = list(associated_branches) + list(associated_injections)
 
         # Create a list of (element, row_index, bay_num, assigned_bus)
-        ordered_elements = []
+        ordered_elements = list()
         for elem in all_elements:
             if elem.name in device_mapping:
                 row_index, bay_num, assigned_bus = device_mapping[elem.name]
@@ -458,7 +458,8 @@ def transform_bus_into_voltage_level(
         if vl_type == VoltageLevelTypes.BreakerAndAHalf:
             # Special handling for breaker and a half to respect JBP1/JBP2 assignment
             for elem, bay_num, assigned_bus in sorted_elements:
-                if bay_num <= 0: bay_num = 1 # just for safety
+                if bay_num <= 0:
+                    bay_num = 1  # just for safety
 
                 # Calculate target index
                 # Bay num is 1-based.
@@ -913,9 +914,10 @@ def create_substation(
                 renamed_voltage_levels.add(v_nom)
 
     # Reconnect buses to replace to the new substation connection buses
-    buses_to_delete = []
+    buses_to_delete = list()
+
     # Track connection index per voltage level to distribute connections evenly
-    conn_idx_by_voltage = {}
+    conn_idx_by_voltage = dict()
 
     if buses_to_replace and bus_connections:
         for old_bus in buses_to_replace:
