@@ -26,7 +26,10 @@ from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QMod
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (GenqecBuild,
                                                                       GovernorBuild,
                                                                       StabilizerBuild,
-                                                                      ExciterBuild, )
+                                                                      ExciterBuild )
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     constant,
@@ -36,18 +39,14 @@ from VeraGridEngine.Utils.Symbolic.block import (
     product,
     divide,
     absolut,
-    generator,
-    line,
     generic,
-    exciter_fake,
-    governor_fake,
     BlockType
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string, \
-    VarPowerFlowRefferenceType
+    VarPowerFlowRefferenceType, UNDEFINED
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType
 
@@ -870,7 +869,7 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
     """
     Create a Block appropriate for block_type.
     """
-    # GAIN (single output)
+    # CONST (single output)
     if block_type == BlockType.CONST:
         blk = constant(item_name)
         return blk
@@ -905,10 +904,9 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
         blk = absolut(item_name)
         return blk
 
-    # GENERATOR (simple model)
-    if block_type == BlockType.GENERATOR:
-        blk = generator(item_name)
-        return blk
+    # GENRAW (simple model)
+    if block_type == BlockType.GENRAW:
+        return get_genrow_rms_template().block
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
@@ -928,18 +926,11 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # LINE (line)
     if block_type == BlockType.LINE:
-        blk = line(item_name, api_object)
-        return blk
+        return get_line_rms_template().block
 
-    # EXCITER FAKE (line)
-    if block_type == BlockType.EXCITER_FAKE:
-        blk = exciter_fake(item_name)
-        return blk
-
-    # GOVERNOR FAKE (line)
-    if block_type == BlockType.GOVERNOR_FAKE:
-        blk = governor_fake(item_name)
-        return blk
+    # LOAD (line)
+    if block_type == BlockType.LOAD:
+        return get_load_rms_template().block
 
     else:
         return None
@@ -1280,6 +1271,13 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
+                P, Q = self.api_object.P, self.api_object.Q
+                for param in self.selected_template.block.parameters.keys():
+                    if param.name == 'Pl0':
+                        self.selected_template.block.parameters[param] = Const(P)
+                    if param.name == 'Ql0':
+                        self.selected_template.block.parameters[param] = Const(Q)
+
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
@@ -1290,11 +1288,16 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
                 # power flow parameters
                 #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters.
+                #Todo: create parameters dict for block and update it here with values from correspondant line
 
-                # R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
-                # self.selected_template.R
-                # self.selected_template.X = X
-                # self.selected_template.B = B
+                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
+                for param in self.selected_template.block.parameters.keys():
+                    if param.name == 'g':
+                        self.selected_template.block.parameters[param] = Const(R/(R**2 + X**2))
+                    if param.name == 'b':
+                        self.selected_template.block.parameters[param] = Const(-X/(R**2 + X**2))
+                    if param.name == 'bsh':
+                        self.selected_template.block.parameters[param] = Const(B)
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
@@ -1320,17 +1323,18 @@ class TemplateEditor(QtWidgets.QWidget):
         self._vars_order = []
 
         for var, const in event_dict.items():
-            row = self.params_table.rowCount()
-            self.params_table.insertRow(row)
+            if const.value is not UNDEFINED:
+                row = self.params_table.rowCount()
+                self.params_table.insertRow(row)
 
-            self._vars_order.append(var)
+                self._vars_order.append(var)
 
-            name_item = QtWidgets.QTableWidgetItem(var.name)
-            name_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.params_table.setItem(row, 0, name_item)
+                name_item = QtWidgets.QTableWidgetItem(var.name)
+                name_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.params_table.setItem(row, 0, name_item)
 
-            value_item = QtWidgets.QTableWidgetItem(str(const.value))
-            self.params_table.setItem(row, 1, value_item)
+                value_item = QtWidgets.QTableWidgetItem(str(const.value))
+                self.params_table.setItem(row, 1, value_item)
 
         self.params_table.blockSignals(False)
         self.params_table.resizeColumnsToContents()
@@ -1346,7 +1350,7 @@ class TemplateEditor(QtWidgets.QWidget):
         try:
             value = float(value_str)
         except ValueError:
-            value = value_str  # permitir strings
+            value = value_str
 
         self.selected_template.block.event_dict[var] = Const(value=value, name=var.name)
 
@@ -1436,11 +1440,14 @@ class ParameterEditorDialog(QDialog):
 
         # --- event_dict ---
         for var, const in self.event_dict.items():
-            name = getattr(var, "name", str(var))
-            self.add_row(row, name, getattr(const, "value", const))
-            # store metadata
-            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, ("event", var))
-            row += 1
+            if const.value != "Undefined":
+                name = getattr(var, "name", str(var))
+                self.add_row(row, name, getattr(const, "value", const))
+                # store metadata
+                self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, ("event", var))
+                row += 1
+            else:
+                self.new_event_dict[var] = UNDEFINED
 
     # --------------------------------------------------------
 

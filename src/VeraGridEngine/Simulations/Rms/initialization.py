@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_params_eq, _heaviside, piecewise, \
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_event_params_eq, _heaviside, piecewise, \
     LagVar, BinOp, UNDEFINED, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import SymbolicParamsVector
@@ -75,8 +75,9 @@ def _compile_equations(eqs: Sequence[Expr],
 
 def _compile_equation(eqs: Sequence[Expr],
                       uid2sym_vars: Dict[int, str],
+                      uid2sym_event_params: Dict[int, str],
                       uid2sym_params: Dict[int, str],
-                      add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+                      add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
@@ -87,9 +88,9 @@ def _compile_equation(eqs: Sequence[Expr],
     """
     # TODO: Why is there a second compile equation thing here?
     # Build source
-    src = f"def _f(vars, params):\n"
+    src = f"def _f(vars, event_params, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
@@ -121,7 +122,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     src = f"def _f(glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
     src += "\n".join(
-        [f"    out[{i}] = {_emit_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+        [f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
@@ -135,7 +136,6 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     if add_doc_string:
         fn.__doc__ = "def _f(vars)"
     return fn
-
 
 def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
     deleted_vars_uid = set(var.uid for var in deleted_vars)
@@ -198,6 +198,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     """
     Initialize using explicit equations
     """
+    uid2sym_event_params: Dict[int, str] = {}
+    uid2idx_event_params: Dict[int, int] = {}
+
     uid2sym_params: Dict[int, str] = {}
     uid2idx_params: Dict[int, int] = {}
 
@@ -231,9 +234,15 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 uid2idx_vars[v.uid] = array_index
                 array_index += 1
 
-        params_array_index = 0
+        event_params_array_index = 0
+        for event_param in comp_model.event_dict.keys():
+            if event_param.uid not in uid2sym_event_params:
+                uid2sym_event_params[event_param.uid] = f"event_params[{event_params_array_index}]"
+                uid2idx_event_params[event_param.uid] = event_params_array_index
+                event_params_array_index += 1
 
-        for param in comp_model.event_dict.keys():
+        params_array_index = 0
+        for param in comp_model.parameters.keys():
             if param.uid not in uid2sym_params:
                 uid2sym_params[param.uid] = f"params[{params_array_index}]"
                 uid2idx_params[param.uid] = params_array_index
@@ -248,17 +257,26 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             if key in init_guess:
                 x[uid2idx_vars[uid]] = init_guess[key]
 
-        # initialize array for model params
-        params_array = np.zeros(len(comp_model.event_dict.keys()))
+        # initialize array for model event params
+        event_params_array = np.zeros(len(comp_model.event_dict.keys()))
 
-        # compute and assign parameters non undefined value
-        for param in comp_model.event_dict.keys():
-            eq = comp_model.event_dict[param]
+        # compute and assign event parameters non undefined value
+        for event_param in comp_model.event_dict.keys():
+            eq = comp_model.event_dict[event_param]
             if isinstance(eq, Const) and eq.value is UNDEFINED:
                 continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
             param_val = float(eq_fn(0.0))
+            event_params_array[uid2idx_event_params[event_param.uid]] = param_val
+
+        # initialize array for model params
+        params_array = np.zeros(len(comp_model.parameters.keys()))
+
+        # compute and assign parameters value
+        for param, const in comp_model.parameters.items():
+            param_val = const.value
             params_array[uid2idx_params[param.uid]] = param_val
+
 
         # compute and assign missing init_vars and undefined parameters
         vars_initialized: set[tuple[int, str]] = set()
@@ -303,21 +321,21 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             raise ValueError(f"Parameter {var.name} already initialized")
 
                         else:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                            init_val = float(eq_fn(x, params_array))
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
+                            init_val = float(eq_fn(x, event_params_array, params_array))
                             comp_model.event_dict[var] = Const(init_val)
-                            params_array[uid2idx_params[var.uid]] = init_val
+                            event_params_array[uid2idx_event_params[var.uid]] = init_val
 
                     #We initialize the algebraic values
                     else:
                         vars_in_eqs = eq.get_vars()
                         if var not in vars_in_eqs:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
-                            init_val = float(eq_fn(x, params_array))
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
+                            init_val = float(eq_fn(x, event_params_array, params_array))
                             init_guess[key] = init_val
                             x[uid2idx_vars[var.uid]] = init_val
                         else:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
+                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = 0
                             tol = 1e-5
                             error = 1
@@ -751,12 +769,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
     for i, elm in enumerate(grid.buses):
         elm.initialize_rms()
         bus_dict[elm] = i
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
@@ -770,12 +785,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
         setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
         setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
@@ -795,7 +807,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
                     collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
-                    default_value = copy.deepcopy(elm.rms_model.model.event_dict[param])
+                    default_value = elm.rms_model.model.event_dict[param]
                     elm.rms_model.model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
                                                                       np.array(events_info["values"]), default_value)
 
@@ -806,12 +818,9 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
         setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
         setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
-        for state_var in elm.rms_model.model.state_vars:
-            vars2device[state_var.uid] = elm
-            vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.rms_model.model.algebraic_vars:
-            vars2device[algeb_var.uid] = elm
-            vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
+        for var in elm.rms_model.model.get_all_vars():
+            vars2device[var.uid] = elm
+            vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # add the nodal balance equations
     for i, elm in enumerate(grid.buses):

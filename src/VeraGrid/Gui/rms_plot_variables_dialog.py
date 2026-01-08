@@ -44,8 +44,7 @@ class RmsPlotDialog(QDialog):
             devices_options[device.name] = [
                 results.uid2vars_glob_name[var.uid]
                 for var in (
-                    device.rms_model.model.state_vars +
-                    device.rms_model.model.algebraic_vars
+                    device.rms_model.model.get_all_vars()
                 )
             ]
 

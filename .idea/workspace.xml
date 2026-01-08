@@ -28,12 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="icons check">
-      <change afterPath="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing/scripting_simple_generator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genrow_rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="powe flow parameters taken from api object in rms model">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="devel" />
+        <entry key="$PROJECT_DIR$" value="86_Dynamic_simulations_V1_DiffBlock" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -96,8 +93,8 @@
   </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid.git&quot;,
-    &quot;accountId&quot;: &quot;d905e739-bce6-452f-b93d-3ff9fc8215e9&quot;
+    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
+    &quot;accountId&quot;: &quot;cf5b980e-9261-4544-851c-0ceba824405b&quot;
   }
 }</component>
   <component name="HighlightingSettingsPerFile">
@@ -165,12 +162,15 @@
     &quot;Python tests.pytest for test_load_save_load.test_load_save_load2.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest for test_transformer_type.test_psse_conversion3.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest for test_transformer_type.test_transformer_type.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest in test_ac_opf.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_admitances.py.executor&quot;: &quot;Debug&quot;,
     &quot;Python tests.pytest in test_basic.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_cgmes_ieeee.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_copy.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_load_save_load.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest in test_small_signal_rms.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.pytest in test_small_signal_rms_new.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in test_transformer_type.py.executor&quot;: &quot;Run&quot;,
     &quot;Python tests.pytest in tests.executor&quot;: &quot;Run&quot;,
     &quot;Python.AnalysisDialogue.executor&quot;: &quot;Run&quot;,
@@ -188,6 +188,7 @@
     &quot;Python.demo_code2.executor&quot;: &quot;Run&quot;,
     &quot;Python.demo_code3.executor&quot;: &quot;Debug&quot;,
     &quot;Python.demo_code4.executor&quot;: &quot;Run&quot;,
+    &quot;Python.dynamic_model_host.executor&quot;: &quot;Run&quot;,
     &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.multi_circuit.executor&quot;: &quot;Debug&quot;,
     &quot;Python.new_circuit_objects.executor&quot;: &quot;Run&quot;,
@@ -198,7 +199,7 @@
     &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
     &quot;Python.rms_driver.executor&quot;: &quot;Debug&quot;,
     &quot;Python.scripting_andes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_genqec_exc_gov_simple.executor&quot;: &quot;Run&quot;,
+    &quot;Python.scripting_genqec_exc_gov_simple.executor&quot;: &quot;Debug&quot;,
     &quot;Python.scripting_gridcal.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_hardcoded.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal_small_system.executor&quot;: &quot;Run&quot;,
@@ -224,8 +225,8 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;86__Dynamic__simulations__V1__DiffBlock&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/marina/PycharmProjects/VeraGrid/src/trunk/dynamics/scripting_testing&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;139__86__Dynamic__simulations__V1__DiffBlock&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Templates/Rms&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
@@ -243,11 +244,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
+      <recent name="$PROJECT_DIR$/src/tests" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/scripting_testing" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics/Gen_Load" />
-      <recent name="C:\Work\git_local\GridCal\src\tests\data\grids\RAW" />
-      <recent name="$PROJECT_DIR$/src/GridCal/Gui/Diagrams/MapWidget2" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -257,7 +258,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms">
+  <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -736,19 +737,18 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
-        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-256f9dae541f-JavaScript-PY-253.20558.58" />
-        <option value="bundled-python-sdk-7e710ed067e7-8e468156c80b-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.20558.58" />
+        <option value="bundled-python-sdk-f2b7a9f6281b-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.142" />
       </set>
     </attachedChunks>
   </component>
@@ -1873,7 +1873,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="621" />
+    <option name="localTasksCounter" value="627" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1919,12 +1919,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Resolved circular import" />
-    <MESSAGE value="automatic initialization 1" />
-    <MESSAGE value="full implementation of initialize_rms and compose_system_block with initialization" />
-    <MESSAGE value="GridCal/Andes comparision part 1" />
-    <MESSAGE value="Small system constructed in gridcal and Andes" />
-    <MESSAGE value="complex numbers handling implemented and scripts cleaning" />
     <MESSAGE value="automatic initialization equations fixed" />
     <MESSAGE value="moved rms initialization out of the MultiCircuit" />
     <MESSAGE value="got some changes from horrendous alex comit" />
@@ -1944,7 +1938,13 @@
     <MESSAGE value="Fixed test" />
     <MESSAGE value="icon crazyness" />
     <MESSAGE value="icons check" />
-    <option name="LAST_COMMIT_MESSAGE" value="icons check" />
+    <MESSAGE value="simple generator working" />
+    <MESSAGE value="test small signal rebuilt" />
+    <MESSAGE value="test small signal rms passing" />
+    <MESSAGE value="solved saving with templates" />
+    <MESSAGE value="events working" />
+    <MESSAGE value="powe flow parameters taken from api object in rms model" />
+    <option name="LAST_COMMIT_MESSAGE" value="powe flow parameters taken from api object in rms model" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2275,7 +2275,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py</url>
-          <line>212</line>
+          <line>213</line>
           <option name="timeStamp" value="2980" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2285,7 +2285,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1500</line>
+          <line>1505</line>
           <option name="timeStamp" value="3086" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2300,7 +2300,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
-          <line>2204</line>
+          <line>2211</line>
           <option name="timeStamp" value="3123" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2329,11 +2329,6 @@
           <option name="timeStamp" value="3176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
-          <line>388</line>
-          <option name="timeStamp" value="3200" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
           <line>575</line>
           <option name="timeStamp" value="3205" />
@@ -2344,69 +2339,9 @@
           <option name="timeStamp" value="3232" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py</url>
-          <line>144</line>
-          <option name="timeStamp" value="3252" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py</url>
-          <line>149</line>
-          <option name="timeStamp" value="3253" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>613</line>
-          <option name="timeStamp" value="3256" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>644</line>
-          <option name="timeStamp" value="3257" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>651</line>
-          <option name="timeStamp" value="3258" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>653</line>
-          <option name="timeStamp" value="3259" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>205</line>
-          <option name="timeStamp" value="3260" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>207</line>
-          <option name="timeStamp" value="3261" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>219</line>
-          <option name="timeStamp" value="3262" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>305</line>
-          <option name="timeStamp" value="3263" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>314</line>
-          <option name="timeStamp" value="3264" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>319</line>
-          <option name="timeStamp" value="3265" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>334</line>
-          <option name="timeStamp" value="3266" />
+          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
+          <line>1442</line>
+          <option name="timeStamp" value="3280" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -2423,6 +2358,9 @@
         <watch expression="self" />
         <watch expression="seen_vars" />
         <watch expression="exc1_mdl.children[0].children" />
+        <watch expression="bus_blocks_dict[Bus 1].children[0].children[0].parameters" />
+        <watch expression="self.editor.splitterMoved" />
+        <watch expression="res" />
       </configuration>
     </watches-manager>
   </component>

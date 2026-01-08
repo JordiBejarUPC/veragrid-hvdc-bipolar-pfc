@@ -41,11 +41,12 @@ def compute_state_matrix(slv: BlockSolver, x: Vec, time: float,):
     """
 
     params_current = slv.params_fn(time)
+    params = np.zeros(10)
 
-    fx = slv.j11(x, params_current)  # ∂f/∂x
-    fy = slv.j12(x, params_current)  # ∂f/∂y
-    gx = slv.j21(x, params_current)  # ∂g/∂x
-    gy = slv.j22(x, params_current)  # ∂g/∂y
+    fx = slv.j11(x, params_current, params)  # ∂f/∂x
+    fy = slv.j12(x, params_current, params)  # ∂f/∂y
+    gx = slv.j21(x, params_current, params)  # ∂g/∂x
+    gy = slv.j22(x, params_current, params)  # ∂g/∂y
 
     gyx = spsolve(gy, gx)
     return fx - fy @ gyx

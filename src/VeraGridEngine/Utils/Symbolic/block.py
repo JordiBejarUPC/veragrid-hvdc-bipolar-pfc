@@ -366,7 +366,7 @@ class Block:
                  lag_vars: List[LagVar] | None = None,
                  reformulated_vars: List[DiffVar] | None = None,
                  differential_eqs: List[Expr] | None = None,
-                 parameters: Dict[str, Const] | None = None,
+                 parameters: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
@@ -417,7 +417,7 @@ class Block:
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
-        self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
+        self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.external_mapping: Dict[
             VarPowerFlowRefferenceType, Var] = dict() if external_mapping is None else external_mapping
@@ -547,8 +547,11 @@ class Block:
             mdl.state_vars.extend(b.state_vars)
             mdl.state_eqs.extend(b.state_eqs)
             mdl.diff_vars.extend(b.diff_vars)
-            for param, eq in b.event_dict.items():
-                mdl.event_dict[param] = eq
+            for event_param, eq in b.event_dict.items():
+                mdl.event_dict[event_param] = eq
+
+            for param, const in b.parameters.items():
+                mdl.parameters[param] = const
 
             for var, init_eq in b.init_eqs.items():
                 mdl.init_eqs[var] = init_eq
@@ -573,6 +576,8 @@ class Block:
         for blk in all_blocks:
             variables.extend(blk.get_vars())
         return variables
+
+
 
     def update_equations(self, old, new):
         """
@@ -610,12 +615,6 @@ class Block:
                 event_dict_new.update({var: new_expr})
 
         self.event_dict = event_dict_new
-
-        if old in self.in_vars:
-            idx = next(i for i, v in enumerate(self.in_vars) if v is old)
-            self.in_vars[idx] = new
-
-
 
     def update_model(self, old, new):
         """
@@ -662,8 +661,8 @@ class Block:
                 for var, value in self.init_values.items()
             ],
             "parameters": [
-                {"name": name, "value": value.value}
-                for name, value in self.parameters.items()
+                {"var": var.to_dict(), "value": value.value}
+                for var, value in self.parameters.items()
             ],
             "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
             "event_dict": [
@@ -729,10 +728,11 @@ class Block:
             block.init_values[var] = const_value
 
         for pair in data.get("parameters", []):
-            name = pair["name"]
+            var_dict = pair["var"]
             value = pair["value"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             const_value = Const(value)
-            block.parameters[name] = const_value
+            block.parameters[var] = const_value
 
         for key_str, var_dict in data.get("external_mapping", {}).items():
             key = VarPowerFlowRefferenceType(key_str)
@@ -775,18 +775,16 @@ class BlockType(Enum):
     PRODUCT = auto()
     DIVIDE = auto()
     ABS = auto()
-    GENERATOR = auto()
+    GENRAW = auto()
     GENQEC = auto()
     GOV = auto()
     STAB = auto()
     EXCITER = auto()
     LINE = auto()
+    LOAD = auto()
     GENERIC = auto()
     BUS_CONNECTION = auto()
     EXTERNAL_MAPPING = auto()
-    EXCITER_FAKE = auto()
-    GOVERNOR_FAKE = auto()
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Pre defined blocks
 # ----------------------------------------------------------------------------------------------------------------------
@@ -983,210 +981,6 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  children=[blk_kp, blk_int, blk_ki, blk_sum],
                  in_vars=[err],
                  out_vars=[u])
-
-
-def exciter_fake(item_name: str = "") -> Block:
-    """
-
-    :param item_name:
-    :return:
-    """
-    vf = Var("vf" + item_name)
-    vf_fixed = Var("vf_fixed")
-    # event_dict = {vf_fixed: Const(1.2028205849036708)}
-    blk = Block()
-    blk.algebraic_vars.append(vf)
-    # blk.algebraic_eqs.append(vf-vf_fixed)
-    # blk.event_dict = event_dict
-    blk.in_vars = dict()
-    blk.out_vars = [vf]
-    blk.name = "const"
-    return blk
-
-
-def governor_fake(item_name: str = "") -> Block:
-    """
-
-    :param item_name:
-    :return:
-    """
-    tm = Var("tm" + item_name)
-    tm_fixed = Var("tm_fixed")
-    # event_dict = {tm_fixed: Const(6.99999999999765)}
-    blk = Block()
-    blk.algebraic_vars.append(tm)
-    # blk.algebraic_eqs.append(tm-tm_fixed)
-    # blk.event_dict = event_dict
-    blk.in_vars = dict()
-    blk.out_vars = [tm]
-    blk.name = "const"
-    return blk
-
-
-def generator(name: str = "") -> Block:
-    """
-
-    :param name:
-    :return:
-    """
-    inputs = [Var("Vm_" + name), Var("Va_" + name)]
-
-    delta = Var("delta")
-    omega = Var("omega")
-    psid = Var("psid")
-    psiq = Var("psiq")
-    i_d = Var("i_d")
-    i_q = Var("i_q")
-    v_d = Var("v_d")
-    v_q = Var("v_q")
-    te = Var("te")
-    et = Var("et")
-    tm = Var("tm")
-    P_g = Var("P_g")
-    Q_g = Var("Q_g")
-
-    R1 = Var("R1")
-    X1 = Var("X1")
-    freq = Var("frequ")
-    M = Var("M")
-    D = Var("D")
-    omega_ref = Var("omega_ref")
-    Kp = Var("Kp")
-    Ki = Var("Ki")
-
-    # vf = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
-    # vf.name ="vf" # this will disappear when the generator and the exciter model are decoupled
-    # tm0 = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
-    # tm0.name = "tm0" # this will disappear when the generator and the exciter model are decoupled
-
-    vf = Var("Vf")
-    tm0 = Var("tm0")
-    event_dict = {R1: Const(0.0),
-                  X1: Const(0.3),
-                  freq: Const(60.0),
-                  M: Const(4.0),
-                  D: Const(1.0),
-                  omega_ref: Const(1.0),
-                  Kp: Const(0.0),
-                  Ki: Const(0.0)}
-
-    gen_block = Block(
-        state_eqs=[
-            (2 * np.pi * freq) * (omega - omega_ref),
-            (tm - te - D * (omega - omega_ref)) / M,
-        ],
-        state_vars=[delta, omega],
-        algebraic_eqs=[
-            psid - (R1 * i_q + v_q),
-            psiq + (R1 * i_d + v_d),
-            0 - (psid + X1 * i_d - inputs[1]),
-            0 - (psiq + X1 * i_q),
-            v_d - (inputs[0] * sin(delta - inputs[1])),
-            v_q - (inputs[0] * cos(delta - inputs[1])),
-            te - (psid * i_q - psiq * i_d),
-            P_g - (v_d * i_d + v_q * i_q),
-            Q_g - (v_q * i_d - v_d * i_q),
-            tm - (tm0 + Kp * (omega - omega_ref) + Ki * et),
-            2 * np.pi * freq * et - delta,  #
-        ],
-        algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
-        init_eqs={
-            delta: imag(
-                log((inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
-                    conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))))) / (
-                        abs(inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
-                            conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1])))))))),
-            omega: omega_ref,
-            v_d: real((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
-            v_q: imag((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
-            i_d: real(conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
-            i_q: imag(conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
-            psid: R1 * i_q + v_q,
-            psiq: -R1 * i_d - v_d,
-            te: psid * i_q - psiq * i_d,
-            tm: te,
-            et: Const(0),
-        },
-        event_dict=event_dict,
-        in_vars=inputs,
-        out_vars=[P_g, Q_g],
-        external_mapping={
-            VarPowerFlowRefferenceType.P: P_g,
-            VarPowerFlowRefferenceType.Q: Q_g
-        }
-    )
-
-    return gen_block
-
-
-def load(name: str = "load") -> Block:
-    """
-
-    :param name:
-    :return:
-    """
-    Ql = Var("Ql")
-    Pl = Var("Pl")
-
-    load_block = Block(
-        algebraic_eqs=[
-            # Pl - load_object.Pl0,
-            # Ql - load_object.Ql0
-        ],
-        algebraic_vars=[Pl, Ql],
-        init_eqs={},
-        external_mapping={
-            VarPowerFlowRefferenceType.P: Pl,
-            VarPowerFlowRefferenceType.Q: Ql
-        }
-    )
-
-    return load_block
-
-
-def line(item_name: str, api_object: Any) -> Block:
-    """
-
-    :param item_name:
-    :param api_object:
-    :return:
-    """
-    line_object = api_object
-    Qf = Var("Qf_" + item_name)
-    Qt = Var("Qt_" + item_name)
-    Pf = Var("Pf_" + item_name)
-    Pt = Var("Pt_" + item_name)
-
-    g = Const(1.0 / complex(line_object.R, line_object.X).real)
-    b = Const(1.0 / complex(line_object.R, line_object.X).imag)
-    bsh = Const(line_object.B)
-
-    Vmf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-    Vaf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-    Vmt = line_object.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-    Vat = line_object.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-
-    line_block = Block(
-        algebraic_eqs=[
-            Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-            Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(
-                Vaf - Vat + np.pi / 2)),
-            Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-            Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(
-                Vat - Vaf + np.pi / 2)),
-        ],
-        algebraic_vars=[Pf, Pt, Qf, Qt],
-        init_eqs={},
-        parameters=[],
-        external_mapping={
-            VarPowerFlowRefferenceType.Pf: Pf,
-            VarPowerFlowRefferenceType.Pt: Pt,
-            VarPowerFlowRefferenceType.Qf: Qf,
-            VarPowerFlowRefferenceType.Qt: Qt,
-        }
-    )
-
-    return line_block
 
 
 def generic(state_inputs: int,
