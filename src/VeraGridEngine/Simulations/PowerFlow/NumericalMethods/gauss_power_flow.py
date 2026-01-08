@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
-
+import os
 import time
 import numpy as np
 import VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions as cf
@@ -13,6 +13,8 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.basic_structures import Logger, CxVec, IntVec, Vec, CscMat
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def gausspf(nc: NumericalCircuit,
@@ -73,6 +75,7 @@ def gausspf(nc: NumericalCircuit,
                                        loading=np.zeros(nc.nbr, dtype=float),
                                        losses=np.zeros(nc.nbr, dtype=float),
                                        Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
+                                       Pfn_vsc=np.zeros(nc.nvsc, dtype=float),
                                        St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                        If_vsc=np.zeros(nc.nvsc, dtype=float),
                                        It_vsc=np.zeros(nc.nvsc, dtype=complex),
