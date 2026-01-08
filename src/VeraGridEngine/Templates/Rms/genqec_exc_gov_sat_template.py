@@ -341,7 +341,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             V_dag : (Vd + Id * Ra - Iq * Xl),
             V_qag : (Vq + Iq * Ra + Id * Xl),
 
-            #We initialize the states
+            #We initialize the states Eq', Ed', Psid', Psiq'
             Psid_prime: (Vq + Xd_2prime_sat*Id + Ra*Iq)/(omega) - (Xd_2prime - Xl)*Id/Sat,
             Ed_prime: (Xq - Xq_prime)*Iq/Sat,
             Psiq_prime: (Xq - Xl)*Iq/Sat,
@@ -510,7 +510,6 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     templ.block = Block(
         children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block],
-        parameters=parameters,
         out_vars=[Tm],
         in_vars=inputs,
         event_dict=events_dict,
@@ -619,7 +618,6 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         in_vars=inputs,
         out_vars=[Vpss],
         event_dict=events_dict,
-        parameters=parameters,
         name="stabilizer",
 
         init_eqs={

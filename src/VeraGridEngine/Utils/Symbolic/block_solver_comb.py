@@ -1167,6 +1167,7 @@ class DiffBlockSolver(BlockSolver):
                         for i in non_zero_indexes:
                             eq = all_eq[i]
                             print(f"eq {eq} with error {rhs[i]}")
+                        exit()
                 else:
                     max_iter = max_iter_0
                     # Jf = self.jacobian_implicit(xnew_lags, params_current, h)
