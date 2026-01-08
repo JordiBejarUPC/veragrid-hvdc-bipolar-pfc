@@ -237,6 +237,8 @@ class ShortCircuitResults(ResultsTemplate):
         self.vsc_It = np.zeros((n_vsc, nsc), dtype=complex)
         self.vsc_Pf = np.zeros((n_vsc, nsc))
         self.vsc_St = np.zeros((n_vsc, nsc), dtype=complex)
+        self.vsc_losses = np.zeros((n_vsc, nsc), dtype=float)
+        self.vsc_loading = np.zeros((n_vsc, nsc), dtype=float)
 
         self.SCpower = np.zeros((n, nsc), dtype=complex)
         self.SCpowerA = np.zeros((n, nsc), dtype=complex)
@@ -341,6 +343,8 @@ class ShortCircuitResults(ResultsTemplate):
         self.register(name='vsc_It', tpe=CxVec)
         self.register(name='vsc_Pf', tpe=Vec)
         self.register(name='vsc_St', tpe=CxVec)
+        self.register(name='vsc_losses', tpe=Vec)
+        self.register(name='vsc_loading', tpe=Vec)
 
         self.register(name='SCpower', tpe=CxVec)
         self.register(name='SCpowerA', tpe=CxVec)
@@ -457,6 +461,8 @@ class ShortCircuitResults(ResultsTemplate):
         self.vsc_It[vsc_idx, sc_idx] = results.vsc_It[:, 0]
         self.vsc_Pf[vsc_idx, sc_idx] = results.vsc_Pf[:, 0]
         self.vsc_St[vsc_idx, sc_idx] = results.vsc_St[:, 0]
+        self.vsc_losses[vsc_idx, sc_idx] = results.vsc_losses[:, 0]
+        self.vsc_loading[vsc_idx, sc_idx] = results.vsc_loading[:, 0]
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """

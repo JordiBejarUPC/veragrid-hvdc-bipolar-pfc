@@ -881,19 +881,28 @@ def short_circuit_vsc(nc: NumericalCircuit,
 
     sc_results.SCpower[:, 0] = pf_results.voltage[fault_bus] * pf_results.voltage[fault_bus] * Yfault[fault_bus]
     sc_results.ICurrent[:, 0] = pf_results.voltage[fault_bus] * Yfault[fault_bus]
+
     sc_results.Sbus1[:, 0] = nc.get_power_injections_pu() * nc.Sbase  # MVA
     sc_results.voltage1[:, 0] = pf_results.voltage
     sc_results.Sf1[:, 0] = pf_results.Sf  # in MVA already
     sc_results.St1[:, 0] = pf_results.St  # in MVA already
-    sc_results.vsc_Pf[:, 0] = pf_results.Pf_vsc  # in MVA already
-    sc_results.vsc_St[:, 0] = pf_results.St_vsc  # in MVA already
     sc_results.If1[:, 0] = pf_results.If  # in p.u.
     sc_results.It1[:, 0] = pf_results.It  # in p.u.
-    sc_results.vsc_If[:, 0] = pf_results.If_vsc  # in p.u.
-    sc_results.vsc_It[:, 0] = pf_results.It_vsc  # in p.u.
     sc_results.Vbranch1[:, 0] = pf_results.Vbranch
     sc_results.loading1[:, 0] = pf_results.loading
     sc_results.losses1[:, 0] = pf_results.losses
+
+    sc_results.hvdc_losses[:, 0] = pf_results.losses_hvdc
+    sc_results.hvdc_Pf[:, 0] = pf_results.Pf_hvdc
+    sc_results.hvdc_Pt[:, 0] = pf_results.Pt_hvdc
+    sc_results.hvdc_loading[:, 0] = pf_results.loading_hvdc
+
+    sc_results.vsc_Pf[:, 0] = pf_results.Pf_vsc  # in MVA already
+    sc_results.vsc_St[:, 0] = pf_results.St_vsc  # in MVA already
+    sc_results.vsc_If[:, 0] = pf_results.If_vsc  # in p.u.
+    sc_results.vsc_It[:, 0] = pf_results.It_vsc  # in p.u.
+    sc_results.vsc_losses[:, 0] = pf_results.losses_vsc # in MVA already
+    sc_results.vsc_loading[:, 0] = pf_results.loading_vsc
 
     # Restore original generator control flags
     nc.bus_data.is_vm_controlled[bus_gen_idx] = original_is_vm_controlled

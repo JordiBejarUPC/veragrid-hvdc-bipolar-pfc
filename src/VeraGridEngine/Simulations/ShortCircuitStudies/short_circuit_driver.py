@@ -394,6 +394,8 @@ class ShortCircuitDriver(DriverTemplate):
                                  options: PowerFlowOptions,
                                  logger: Logger):
 
+        options.limit_i_vsc = True
+
         adm = nc.get_admittance_matrices()
         # compute Zbus
         # is dense, so no need to store it as sparse
