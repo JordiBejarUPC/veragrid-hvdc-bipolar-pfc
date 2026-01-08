@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import VeraGridEngine.Devices as dev
 from VeraGridEngine import BusGraphicType
 from VeraGridEngine.enumerations import SwitchGraphicType
@@ -116,7 +116,9 @@ def transform_bus_into_voltage_level(
         skip_injections_reconnection: bool = True,
         enable_transfer_bus: bool = False,
         reducible_branches: bool = False,
-        bay_assignments: List[Tuple[str, int, str]] = None
+        bay_assignments: List[Tuple[str, int, str]] = None,
+        x0: float = 0.0,
+        y0: float = 0.0,
 ) -> Tuple[
     List[dev.Bus],
     List[dev.Bus],
@@ -130,11 +132,13 @@ def transform_bus_into_voltage_level(
     :param bus: Bus device to transform
     :param vl_type: VoltageLevelTypes
     :param add_disconnectors: add voltage level disconnectors?
-    :param bar_by_segments: Have the bar with connectivities and impedances instead of a single bus-bar?
+    :param bar_by_segments: Have the bar with connectivity and impedance instead of a single bus-bar?
     :param skip_injections_reconnection: if true the injections are not included in the reconnections list
     :param enable_transfer_bus: if true, adds a transfer bus (JBPT) connected to all position buses if it makes sense
     :param reducible_branches: if true, mark new branches as reducible for topology processing
     :param bay_assignments: list of (device_name, bay_number, assigned_bus) tuples for custom bay order
+    :param x0: base x coordinate
+    :param y0: base y coordinate
     :return:
     - List of all voltage level buses,
     - List of bay buses,
@@ -144,7 +148,7 @@ def transform_bus_into_voltage_level(
     """
 
     associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
-    
+
     # Calculate required bays, default is one position per device
     n_positions = len(associated_branches) + len(associated_injections)
     n_bays = n_positions
@@ -155,7 +159,7 @@ def transform_bus_into_voltage_level(
         for _, bay_num, _ in bay_assignments:
             if bay_num > max_bay_num:
                 max_bay_num = bay_num
-        
+
         # For breaker and a half, each bay has 2 positions
         # If we have Bay N, we need at least 2*N positions worth of sizing logic in the loop 
         if vl_type == VoltageLevelTypes.BreakerAndAHalf:
@@ -182,8 +186,8 @@ def transform_bus_into_voltage_level(
                 substation=bus.substation,
                 country=bus.country,
                 bar_by_segments=bar_by_segments,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar(
@@ -194,8 +198,8 @@ def transform_bus_into_voltage_level(
                 substation=bus.substation,
                 country=bus.country,
                 bar_by_segments=bar_by_segments,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     # Invisible since not requested by REE
@@ -209,8 +213,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass(
@@ -220,23 +224,24 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     # Invisible since not requested by REE
     elif vl_type == VoltageLevelTypes.SingleBarWithSplitter:
 
         if add_disconnectors:
-            vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter_with_disconnectors(
+            (vl, conn_buses, all_buses,
+             offset_total_x, offset_total_y) = create_single_bar_with_splitter_with_disconnectors(
                 name=bus.name,
                 grid=grid,
                 n_bays=n_bays,
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_splitter(
@@ -246,8 +251,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     elif vl_type == VoltageLevelTypes.DoubleBar:
@@ -260,8 +265,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar(
@@ -271,8 +276,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     # Invisible since not requested by REE
@@ -292,8 +297,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_double_bar_with_transference_bar(
@@ -303,8 +308,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     # Invisible since not requested by REE
@@ -322,8 +327,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_ring(
@@ -333,8 +338,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     elif vl_type == VoltageLevelTypes.BreakerAndAHalf:
@@ -347,8 +352,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
         else:
             vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_breaker_and_a_half(
@@ -358,8 +363,8 @@ def transform_bus_into_voltage_level(
                 v_nom=bus.Vnom,
                 substation=bus.substation,
                 country=bus.country,
-                offset_x=bus.x,
-                offset_y=bus.y,
+                offset_x=x0,
+                offset_y=y0,
             )
 
     else:
@@ -454,7 +459,7 @@ def transform_bus_into_voltage_level(
             # Special handling for breaker and a half to respect JBP1/JBP2 assignment
             for elem, bay_num, assigned_bus in sorted_elements:
                 if bay_num <= 0: bay_num = 1 # just for safety
-                 
+
                 # Calculate target index
                 # Bay num is 1-based.
                 # i in breaker_and_a_half loop corresponds to position index.
@@ -462,10 +467,10 @@ def transform_bus_into_voltage_level(
                 base_idx = (bay_num - 1) * 2
                 offset = 0 if assigned_bus == "JBP1" else 1
                 final_idx = base_idx + offset
-                 
+
                 if final_idx < len(conn_buses):
                     target_bus = conn_buses[final_idx]
-                     
+
                     if elem in associated_branches:
                         if elem.bus_from == bus:
                             elem.bus_from = target_bus
@@ -486,7 +491,7 @@ def transform_bus_into_voltage_level(
             for elem, bay_num, assigned_bus in sorted_elements:
                 if j < len(conn_buses):
                     target_bus = conn_buses[j]
-    
+
                     if elem in associated_branches:
                         if elem.bus_from == bus:
                             elem.bus_from = target_bus
@@ -499,7 +504,7 @@ def transform_bus_into_voltage_level(
                         elem.bus = target_bus
                         if not skip_injections_reconnection:
                             reconnection_list.append((elem, old_bus, target_bus))
-    
+
                     j += 1
     else:
         # Default behavior is to reconnect in original order
@@ -571,7 +576,9 @@ def create_substation(
         lat: float,
         lon: float,
         vl_templates: List[dev.VoltageLevelTemplate],
-        buses_to_replace: List[dev.Bus] = None
+        buses_to_replace: List[dev.Bus] = None,
+        x0: float = 0.0,
+        y0: float = 0.0,
 ) -> Tuple[dev.Substation, List[dev.VoltageLevel]]:
     """
     Create a complete substation
@@ -582,22 +589,32 @@ def create_substation(
     :param lon: Longitude
     :param vl_templates: List of VoltageLevelTemplates to convert
     :param buses_to_replace: Optional list of buses to merge
+    :param x0: x offset
+    :param y0: y offset
     :return: se_object, [vl list]
     """
     # Collect connections from buses to replace before creating the substation
-    bus_connections = {}  # Maps bus -> (associated_branches, associated_injections)
+    # Maps bus -> (associated_branches, associated_injections)
+    bus_connections: Dict[dev.Bus, Tuple[List[BRANCH_TYPES], List[INJECTION_DEVICE_TYPES]]] = dict()
+
     # Group buses to replace by voltage level for matching with templates
-    buses_by_voltage = {}  # Maps voltage -> list of buses
+    buses_by_voltage: Dict[float, List[dev.Bus]] = dict()  # Maps voltage -> list of buses
 
     if buses_to_replace:
         for bus in buses_to_replace:
             associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
             bus_connections[bus] = (associated_branches, associated_injections)
 
-            v_nom = bus.Vnom
-            if v_nom not in buses_by_voltage:
-                buses_by_voltage[v_nom] = []
-            buses_by_voltage[v_nom].append(bus)
+            # v_nom = bus.Vnom
+            # if v_nom not in buses_by_voltage:
+            #     buses_by_voltage[v_nom] = list()
+            # buses_by_voltage[v_nom].append(bus)
+
+            bus_lst = buses_by_voltage.get(bus.Vnom, None)
+            if bus_lst is None:
+                buses_by_voltage[bus.Vnom] = [bus]
+            else:
+                bus_lst.append(bus)
 
     # create the SE
     se_object = dev.Substation(name=se_name,
@@ -610,14 +627,14 @@ def create_substation(
 
     voltage_levels = list()
     # Track connection buses by voltage level for reconnecting
-    conn_buses_by_voltage = {}  # Maps voltage -> list of connection buses
+    conn_buses_by_voltage = dict()  # Maps voltage -> list of connection buses
     # Track bars by voltage level for renaming
-    bars_by_voltage = {}  # Maps voltage -> list of bars (BusGraphicType.BusBar)
+    bars_by_voltage = dict()  # Maps voltage -> list of bars (BusGraphicType.BusBar)
     # Track voltage level type by voltage for renaming
-    vl_type_by_voltage = {}  # Maps voltage -> VoltageLevelTypes
+    vl_type_by_voltage = dict()  # Maps voltage -> VoltageLevelTypes
 
-    offset_x = 0
-    offset_y = 0
+    offset_x = x0
+    offset_y = y0
     for vl_template in vl_templates:
 
         # True if config is known, hence we have to store voltage level info
@@ -655,7 +672,8 @@ def create_substation(
         elif vl_template.vl_type == VoltageLevelTypes.SingleBarWithBypass:
 
             if vl_template.add_disconnectors:
-                vl, conn_buses, all_buses, offset_total_x, offset_total_y = create_single_bar_with_bypass_with_disconnectors(
+                (vl, conn_buses, all_buses,
+                 offset_total_x, offset_total_y) = create_single_bar_with_bypass_with_disconnectors(
                     name=f"{se_object.name}-@{vl_template.name} @{vl_template.voltage} kV VL",
                     grid=grid,
                     n_bays=vl_template.n_bays,
@@ -741,7 +759,8 @@ def create_substation(
 
         elif vl_template.vl_type == VoltageLevelTypes.DoubleBarWithBypass:
             # TODO: Implement
-            pass
+            conn_buses = list()
+            all_buses = list()
 
         elif vl_template.vl_type == VoltageLevelTypes.DoubleBarWithTransference:
 
@@ -775,7 +794,8 @@ def create_substation(
 
         elif vl_template.vl_type == VoltageLevelTypes.DoubleBarDuplex:
             # TODO: Implement
-            pass
+            conn_buses = list()
+            all_buses = list()
 
         elif vl_template.vl_type == VoltageLevelTypes.Ring:
 
@@ -837,6 +857,8 @@ def create_substation(
 
         else:
             print(f"{vl_template.vl_type} not implemented :/")
+            conn_buses = list()
+            all_buses = list()
 
         if known_config:
             _store_voltage_level_data(
@@ -853,7 +875,7 @@ def create_substation(
             # Nothing to store
             pass
 
-    # Rename bars (busbars) based on original bus names, following REE instructions
+    # Rename bars (bus bars) based on original bus names, following REE instructions
     # Track which voltage levels have been renamed to avoid duplicate renaming
     renamed_voltage_levels = set()
     if buses_to_replace:

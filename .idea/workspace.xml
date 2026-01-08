@@ -30,6 +30,10 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="made the elmgenstat conversion optional">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/single_bar.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/single_bar.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/vl_creation_common_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/VoltageLevels/vl_creation_common_functions.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -229,7 +233,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "#137Make-the-to__veragrid-and-from__veragrid-functions-for-dgs__circuit",
+    "git-widget-placeholder": "devel",
     "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/src/tests/data/grids",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -703,13 +707,20 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.power_factory_parser_example" />
+      <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest for test_power_flow.test_controllable_shunt" />
+      <item itemvalue="Python tests.pytest for test_power_flow.test_generator_Q_lims" />
+      <item itemvalue="Python tests.pytest in tests" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for test_power_flow.test_generator_Q_lims" />
         <item itemvalue="Python tests.pytest for test_power_flow.test_controllable_shunt" />
         <item itemvalue="Python.power_factory_parser_example" />
-        <item itemvalue="Python.ExecuteVeraGrid" />
       </list>
     </recent_temporary>
   </component>
@@ -2428,7 +2439,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
-          <line>4809</line>
+          <line>4811</line>
           <option name="timeStamp" value="3065" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

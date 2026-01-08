@@ -4756,7 +4756,9 @@ class SchematicWidget(BaseDiagramWidget):
                 skip_injections_reconnection=True,
                 enable_transfer_bus=vl_wizard.enable_transfer_bus_checkbox.isChecked(),
                 reducible_branches=vl_wizard.reducible_branches_checkbox.isChecked(),
-                bay_assignments=vl_wizard.get_bay_assignments()
+                bay_assignments=vl_wizard.get_bay_assignments(),
+                x0=bus_graphics.x(),
+                y0=bus_graphics.y()
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
@@ -4814,6 +4816,12 @@ class SchematicWidget(BaseDiagramWidget):
             self.diagram_scene.invalidate()
             self.diagram_scene.update()
             self.editor_graphics_view.viewport().update()
+
+            # select the new buses
+            for new_bus in new_buses:
+                new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
+                if new_bus_graphic is not None:
+                    new_bus_graphic.setSelected(True)
 
             # Process events to ensure updates are applied immediately
             from PySide6.QtWidgets import QApplication
