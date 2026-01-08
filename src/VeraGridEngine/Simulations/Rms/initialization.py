@@ -319,7 +319,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = 0
-                            tol = 1e-8
+                            tol = 1e-5
                             error = 1
                             alpha = 0.5
                             x0 = 0.9

@@ -273,24 +273,20 @@ plt.show()
 
 Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
 Ed_prime = find_name_in_block("Ed_prime", genqec1_mdl)
-Eq_2prime = find_name_in_block("Eq_2prime", genqec1_mdl)
-Ed_2prime = find_name_in_block("Ed_2prime", genqec1_mdl)
+Psiq_prime = find_name_in_block("Psiq_prime", genqec1_mdl)
+Psid_prime = find_name_in_block("Psid_prime", genqec1_mdl)
 
 Ed1 = find_name_in_block("Ed1", genqec1_mdl)
 Eq1 = find_name_in_block("Eq1", genqec1_mdl)
-Ed2 = find_name_in_block("Ed2", genqec1_mdl)
-Eq2 = find_name_in_block("Eq2", genqec1_mdl)
 
 # Generator state variables
 plt.plot(t, y[:, slv.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Eq_2prime)], label="Eq_2prime (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Ed_2prime)], label="Ed_2prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
+
 plt.plot(t, y[:, slv.get_var_idx(Ed1)], label="Ed1 (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Eq1)], label="Eq1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Ed2)], label="Ed2 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Eq2)], label="Eq2 (pu)")
-
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
 plt.ylabel("Values (pu)")

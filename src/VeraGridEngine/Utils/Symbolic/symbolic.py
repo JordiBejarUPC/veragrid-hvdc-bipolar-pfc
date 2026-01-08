@@ -75,6 +75,7 @@ def f_exc(In: Expr) -> Expr:
     b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2 + Const(1e-5))))*heaviside(Const(0.433)-In)
     c = ((sqrt(Const(0.75)-In**2 + Const(1e-5)) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
     d = (Const(1.732) - In*Const(1.732))*(Const(1)*heaviside(Const(1.0)-In))
+    return Const(1) - In
     return b + c + d
 
 

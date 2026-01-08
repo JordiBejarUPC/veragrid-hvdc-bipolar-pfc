@@ -1095,7 +1095,7 @@ class DiffBlockSolver(BlockSolver):
             # dx = self.compute_dx(x_new, lag, h)
             # print(f'Step {step_idx} read')
             if step_idx == 0:
-                tol = 1e-6
+                tol = 1e-4
                 initial_step_start = time.time()
             else:
                 tol = 1e-7
@@ -1141,11 +1141,11 @@ class DiffBlockSolver(BlockSolver):
                 converged = residual < tol
 
                 if step_idx == 0:
-                    alpha_update = 0.5
+                    alpha_update = 1.0
                     old_lag = lag
                     if not steady_state:
                         print("We are in steady state")
-                        alpha_update = 0.5
+                        alpha_update = 1.0
                     lag = self.build_initial_lag_variables(x_new, dx0, h)
                     lag = (1 - alpha_update) * old_lag + alpha_update * lag
                     max_iter = 5e5
@@ -1167,7 +1167,6 @@ class DiffBlockSolver(BlockSolver):
                         for i in non_zero_indexes:
                             eq = all_eq[i]
                             print(f"eq {eq} with error {rhs[i]}")
-                        exit()
                 else:
                     max_iter = max_iter_0
                     # Jf = self.jacobian_implicit(xnew_lags, params_current, h)
