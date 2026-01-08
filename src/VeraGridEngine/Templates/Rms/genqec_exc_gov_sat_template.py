@@ -342,7 +342,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             V_dag : (Vd + Id * Ra - Iq * Xl),
             V_qag : (Vq + Iq * Ra + Id * Xl),
 
-            #We initialize the states
+            #We initialize the states Eq', Ed', Psid', Psiq'
             Psid_prime: (Vq + Xd_2prime_sat*Id + Ra*Iq)/(omega) - (Xd_2prime - Xl)*Id/Sat,
             Ed_prime: (Xq - Xq_prime)*Iq/Sat,
             Psiq_prime: (Xq - Xl)*Iq/Sat,
