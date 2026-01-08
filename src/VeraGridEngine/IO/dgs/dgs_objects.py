@@ -255,6 +255,7 @@ class ElmAsm(DGSElement):
         DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
     ]
 
     def __init__(self) -> None:
@@ -267,6 +268,7 @@ class ElmAsm(DGSElement):
         self.ngnum: int = 0
         self.outserv: int = 0
         self.pgini: float = 0.0
+        self.qgini: float = 0.0
 
 
 class ElmCoup(DGSElement):
@@ -358,6 +360,7 @@ class ElmGenstat(DGSElement):
         self.cCategory: str = ""
         self.c_pmod: str = ""
 
+
 class ElmLne(DGSElement):
     element_type = 'ElmLne'
     properties_list = [
@@ -392,6 +395,64 @@ class ElmLne(DGSElement):
         self.GPScoords_SIZECOL: int = 0
         self.nlnum: int = 1
         self.inAir: int = 0
+
+
+class ElmSind(DGSElement):
+    element_type = 'ElmSind'
+    properties_list = [
+        # test_export_v5.dgs uses FID(...) not ID(...)
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        # Optional alias (harmless if missing)
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('ucn', 'r', 'Rated Voltage in kV', py_name='ucn'),
+        DgsProperty('Sn', 'r', 'Rated Power in MVA', py_name='Sn'),
+        DgsProperty('uk', 'r', 'Short-Circuit Voltage uk in %', py_name='uk'),
+        DgsProperty('Pcu', 'r', 'Copper Losses in kW', py_name='Pcu'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+    ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+
+        self.ucn: float = 0.0
+        self.Sn: float = 0.0
+        self.uk: float = 0.0
+        self.Pcu: float = 0.0
+
+        self.outserv: int = 0
+
+
+class TypSind(DGSElement):
+    """PowerFactory Series Reactor type (TypSind)."""
+    element_type = 'TypSind'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+
+        # Type impedance parameters (same naming as ElmSind in many exports)
+        DgsProperty('Re', 'r', 'Type series resistance (Re)', py_name='Re'),
+        DgsProperty('Xe', 'r', 'Type series reactance (Xe)', py_name='Xe'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.Re: float = 0.0
+        self.Xe: float = 0.0
 
 
 class ElmLnesec(DGSElement):
@@ -564,6 +625,58 @@ class ElmShnt(DGSElement):
         self.qtotn: float = 0.0
 
 
+class ElmSvs(DGSElement):
+    element_type = 'ElmSvs'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+
+        # Reactive limits (MVAr @ v=1 p.u.)
+        DgsProperty('qmin', 'r', 'DGS field qmin (r)', py_name='qmin'),
+        DgsProperty('qmax', 'r', 'DGS field qmax (r)', py_name='qmax'),
+
+        # PF SVS/SVC model-specific fields (kept for completeness)
+        DgsProperty('tcrmax', 'r', 'DGS field tcrmax (r)', py_name='tcrmax'),
+        DgsProperty('nxcap', 'i', 'DGS field nxcap (i)', py_name='nxcap'),
+        DgsProperty('nfixcap', 'i', 'DGS field nfixcap (i)', py_name='nfixcap'),
+        DgsProperty('Qfixcap', 'r', 'DGS field Qfixcap (r)', py_name='Qfixcap'),
+
+        # Out of service flag (0/1)
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+
+        # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
+        # If absent in the file, it will remain at its default value (1.0).
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+    ]
+
+    def __init__(self) -> None:
+        # Identifiers
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+
+        # Operating limits (MVAr @ v=1 p.u.)
+        self.qmin: float = 0.0
+        self.qmax: float = 0.0
+
+        # Thyristor controlled reactor max (PF SVC/SVS model-specific, may be unused in VeraGrid)
+        self.tcrmax: float = 0.0
+
+        # Step / block data (PF model-specific, may be used to infer an equivalent stepped model)
+        self.nxcap: int = 0
+        self.nfixcap: int = 0
+        self.Qfixcap: float = 0.0
+
+        # Status
+        self.outserv: int = 0
+
+        # Voltage setpoint (p.u.) for controlled shunts
+        self.usetp: float = 1.0
+
+
 class ElmSite(DGSElement):
     element_type = 'ElmSite'
     properties_list = [
@@ -701,6 +814,7 @@ class ElmTerm(DGSElement):
         DgsProperty('uknom', 'r', 'DGS field uknom (r)', py_name='uknom'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('cpZone', 'p', 'DGS field cpZone (p)', py_name='cpZone'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('systype', 'i', 'DGS field systype (i)', py_name='systype'),
@@ -732,6 +846,7 @@ class ElmTerm(DGSElement):
         self.vtarget: float = 0.0
         self.m_u: float = 0.0
         self.m_phiu: float = 0.0
+        self.cpZone: str = ""
 
 
 class ElmTr2(DGSElement):
@@ -1203,6 +1318,10 @@ class TypAsmo(DGSElement):
         DgsProperty('i_cage', 'i', 'DGS field i_cage (i)', py_name='i_cage'),
         DgsProperty('nppol', 'i', 'DGS field nppol (i)', py_name='nppol'),
         DgsProperty('pgn', 'r', 'DGS field pgn (r)', py_name='pgn'),
+        DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
+        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        DgsProperty('xm', 'r', 'DGS field xm (r)', py_name='xm'),
         DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
         DgsProperty('xmrtr', 'r', 'DGS field xmrtr (r)', py_name='xmrtr'),
         DgsProperty('xstr', 'r', 'DGS field xstr (r)', py_name='xstr'),
@@ -1226,6 +1345,10 @@ class TypAsmo(DGSElement):
         self.ugn: float = 0.0
         self.xmrtr: float = 0.0
         self.xstr: float = 0.0
+        self.sgn: float = 0.0
+        self.nslty: int = 0
+        self.rstr: float = 0.0
+        self.xm: float = 0.0
 
 
 class TypFuse(DGSElement):

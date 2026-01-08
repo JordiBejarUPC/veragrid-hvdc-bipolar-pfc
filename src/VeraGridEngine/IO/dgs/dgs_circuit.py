@@ -57,12 +57,15 @@ class DgsCircuit:
         ElmFeeder,
         ElmGenstat,
         ElmLne,
+        ElmSind,
         ElmLnesec,
         ElmLod,
         ElmLodlv,
         ElmLodlvp,
         ElmNet,
         ElmShnt,
+        ElmSvs,
+        ElmSind,
         ElmSite,
         ElmSubstat,
         ElmSym,
@@ -82,6 +85,7 @@ class DgsCircuit:
         TypAsmo,
         TypFuse,
         TypLne,
+        TypSind,
         TypLod,
         TypSym,
         TypTr2,
@@ -106,12 +110,15 @@ class DgsCircuit:
         self.elmfeeders: List[ElmFeeder] = list()
         self.elmgenstats: List[ElmGenstat] = list()
         self.elmlnes: List[ElmLne] = list()
+        self.elmsinds: List[ElmSind] = list()
         self.elmlnesecs: List[ElmLnesec] = list()
         self.elmlods: List[ElmLod] = list()
         self.elmlodlvs: List[ElmLodlv] = list()
         self.elmlodlvps: List[ElmLodlvp] = list()
         self.elmnets: List[ElmNet] = list()
         self.elmshnts: List[ElmShnt] = list()
+        self.elmsvss: List[ElmSvs] = list()
+        self.elmsinds: List[ElmSind] = list()
         self.elmsites: List[ElmSite] = list()
         self.elmsubstats: List[ElmSubstat] = list()
         self.elmsyms: List[ElmSym] = list()
@@ -130,6 +137,7 @@ class DgsCircuit:
         self.typasmos: List[TypAsmo] = list()
         self.typfuses: List[TypFuse] = list()
         self.typlnes: List[TypLne] = list()
+        self.typsinds: List[TypSind] = list()
         self.typlods: List[TypLod] = list()
         self.typsyms: List[TypSym] = list()
         self.typtr2s: List[TypTr2] = list()
@@ -146,12 +154,14 @@ class DgsCircuit:
             ElmFeeder: self.elmfeeders,
             ElmGenstat: self.elmgenstats,
             ElmLne: self.elmlnes,
+            ElmSind: self.elmsinds,
             ElmLnesec: self.elmlnesecs,
             ElmLod: self.elmlods,
             ElmLodlv: self.elmlodlvs,
             ElmLodlvp: self.elmlodlvps,
             ElmNet: self.elmnets,
             ElmShnt: self.elmshnts,
+            ElmSvs: self.elmsvss,
             ElmSite: self.elmsites,
             ElmSubstat: self.elmsubstats,
             ElmSym: self.elmsyms,
@@ -170,6 +180,7 @@ class DgsCircuit:
             TypAsmo: self.typasmos,
             TypFuse: self.typfuses,
             TypLne: self.typlnes,
+            TypSind: self.typsinds,
             TypLod: self.typlods,
             TypSym: self.typsyms,
             TypTr2: self.typtr2s,
