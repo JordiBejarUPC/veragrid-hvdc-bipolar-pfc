@@ -237,7 +237,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl
     Vrag_expr = inputs[0] * cos(inputs[1]) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra - imag(
                 conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *(Xl)
 
     A = Var('A')
@@ -257,7 +257,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         Xd_prime: Const(0.3),
         Xq_prime: Const(0.55),
         Xd_2prime: Const(0.25),
-        Xq_2prime: Const(0.25),
+        Xq_2prime: Const(0.35),
         Xl: Const(0.15),
 
         # Time constants
@@ -270,6 +270,27 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         B: Const(1.0)
     }
 
+    Ad = (Xd_sat - Xd_prime_sat)
+    Aq = (Xq_sat - Xq_prime_sat)
+    Bd = (Xd_sat - Xd_2prime_sat)
+    Bq = (Xq_sat - Xq_2prime_sat)
+    Eq_2prime_expr = (    
+        Eq1
+    + ((Xd_sat - Xd_2prime_sat)**2 / (Xd_sat - Xd_prime_sat)**2)
+    * (Id * (Xd_sat - Xd_2prime_sat) + Eq2))
+
+    Eq_prime_expr = (
+        Eq1 + ((Xd_sat - Xd_2prime_sat) * (Xd_prime_sat - Xd_2prime_sat)/ (Xd_sat - Xd_prime_sat)**2)
+        * (Id * (Xd_sat - Xd_2prime_sat) + Eq2))
+    
+    Ed_2prime_expr = (
+        Ed1 + ((Xq_sat - Xq_2prime_sat)**2 / (Xq_sat - Xq_prime_sat)**2)
+        * (Iq * (Xq_sat - Xq_2prime_sat) + Ed2))
+    
+    Ed_prime_expr = (
+        Ed1 + ((Xq_sat - Xq_2prime_sat) * (Xq_prime_sat - Xq_2prime_sat)/ (Xq_sat - Xq_prime_sat)**2)
+        * (Iq * (Xq_sat - Xq_2prime_sat) + Ed2) )
+    
     templ.block = Block(
         state_eqs=[
             (omega - Const(1)) * ws,  # dδ/dt
@@ -285,25 +306,24 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Vq - (inputs[0] * cos(inputs[1] - delta)),  # from input block
             Pg - (Vd * Id + Vq * Iq),  # from input block
             Qg - (Vq * Id - Vd * Iq),  # from input block
-            Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
-            Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
-            Psid - (Eq_prime - Id * Xd_2prime_sat),
-            Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
+            Vd - (omega*Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
+            Vq - (omega*Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
+            Psid - (Eq_2prime - Id * Xd_2prime_sat),
+            Psiq - (-Ed_2prime - Iq * Xq_2prime_sat),
             Te - (Psid * Iq - Psiq * Id),
-            (Xd_sat - Xd_prime_sat) * Eq1 - (
-                    (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
-            # Eq1 definition
-            (Xq_sat - Xq_prime_sat) * Ed1 - (
-                    (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
-            # Ed1 definition
-            (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
-                    (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
-            # Ed2 definition
-            (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
-                    (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
-            # Eq2 definition
-            Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
-            Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
+
+            # Eq1, Ed1, Eq2, Ed2 definition
+            Eq_2prime - (Eq1 + Eq2 - Id * (Xd_sat - Xd_2prime_sat)),
+            Ed_2prime - (Ed1 + Ed2 + Iq * (Xq_sat - Xq_2prime_sat)),
+            Eq_prime - (
+                Eq1 + Eq2 - ((Xd_prime_sat - Xd_2prime_sat) / (Xd_sat - Xd_2prime_sat)) * Eq2
+                - Id * (Xd_sat - Xd_prime_sat)),
+            Ed_prime - (
+                Ed1 + Ed2 - ((Xq_prime_sat - Xq_2prime_sat) / (Xq_sat - Xq_2prime_sat)) * Ed2
+                + Iq * (Xq_sat - Xq_prime_sat)),
+            Eq2_coef * (Td0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
+            Ed2_coef * (Tq0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
+            
             # saturated resistance
             Sat_d * Xd_2prime_sat - (Xd_2prime - Xl + Xl * Sat_d),
             Sat_q * Xq_2prime_sat - (Xq_2prime - Xl + Xl * Sat_q),
@@ -312,8 +332,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Sat_d * Xd_sat - (Xd - Xl + Xl * Sat_d),
             Sat_q * Xq_sat - (Xq - Xl + Xl * Sat_q),
             # flux
-            V_dag - (Vd + Iq * Ra + Id * Xl),
-            V_qag - (Vq + Id * Ra - Iq * Xl),
+            V_dag - (Vd + Id * Ra - Iq * Xl),
+            V_qag - (Vq + Iq * Ra + Id * Xl),
             omega * Psi_ag - ws * sqrt(V_qag * V_qag + V_dag * V_dag),
             Sat_d - (Const(1) + Sa),
             Sat_q - (Const(1) + Sa),
@@ -334,18 +354,16 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             #Air Gap Voltages and delta
             omega: Const(1),
             Psi_ag: sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A * (Psi_ag - B) ** 2,
+            Sa: A / 2 * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))) ** 2,
             delta: atan(
                 (inputs[0] * sin(inputs[1]) + imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
                 (inputs[0] * cos(inputs[1]) + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra - imag(
                     conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
                  ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            V_dag: Vrag_expr*sin(delta - inputs[1]) - Viag_expr*cos(delta - inputs[1]),
-            V_qag: Vrag_expr*cos(delta - inputs[1]) + Viag_expr*sin(delta - inputs[1]),
 
             #Saturated Resistances
             Sat_d: 1 + Sa,
@@ -360,29 +378,34 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             #Terminal Voltages and Intensities in dq frame
             Vd: -(inputs[0] * sin(inputs[1] - delta)),
             Vq: (inputs[0] * cos(inputs[1] - delta)),
-            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            Eq_prime: -(Vd + Ra*Id - Xq_2prime_sat*Iq) - (Xq_2prime - Xl) * (Id / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-                    Id / (Const(1) + Sa)),
-            Eq_2prime: Vq + Xd_2prime_sat*Id - Ra*Iq,
-            Ed_2prime: Vd + Ra*Id - Xq_2prime_sat*Iq,
+            Id: (Pg*Vd + Qg*Vq)/(Vd**2 + Vq**2),
+            Iq: (Pg*Vq - Qg*Vd)/(Vd**2 + Vq**2),
+            V_dag : (Vd + Id * Ra - Iq * Xl),
+            V_qag : (Vq + Iq * Ra + Id * Xl),
 
-            Psid: (Eq_prime - Id * Xd_2prime_sat),
-            Psiq:(-Ed_prime - Iq * Xq_2prime_sat),
-            Te:(Psid * Iq - Psiq * Id),
+
 
             #Eq1, Eq2, Ed1, Ed2 definitions
-            Eq1 : ((Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat))/(Xd_sat - Xd_prime_sat),
-            Ed1 : ((Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat))/(Xd_sat - Xd_prime_sat),
-            Eq2 : (-1) * ((Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
-            Ed2 : (-1) * ((Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2)/(Xd_sat - Xd_prime_sat),
-            IRPu: Sat_q * Eq1,
+            Eq_prime: (Vq + Ra*Iq + Xd_2prime_sat*Id) - (Xd_2prime - Xl) * (Id / (Const(1) + Sa)) + (Xd_prime - Xl) * (
+            Id / (Const(1) + Sa)),
+            Ed1 : Const(0),
+            Eq2 : Const(0),
+            Ed2 : Const(0),
+            Eq1 : Eq_prime - (Bd*(Bd-Ad)/Ad**2)*(Iq*Bq+Ed2),
 
-            Eq2_coef: ((Xq_prime_sat - Xq_2prime_sat) * Sat_q)/(Tq0_2prime * (Xq_sat - Xq_2prime_sat)),
-            Ed2_coef:((Xd_prime_sat - Xd_2prime_sat) * Sat_d)/(Td0_2prime * (Xd_sat - Xd_2prime_sat)),
+            #Ed prime init expressions
+            Ed_prime: Ed_prime_expr,
+            #Eq_prime: Eq_prime_expr,
+            Ed_2prime: Ed_2prime_expr,
+            Eq_2prime: Eq_2prime_expr,
+
+            Psid:(Eq_2prime - Id * Xd_2prime_sat),
+            Psiq:(-Ed_2prime - Iq * Xq_2prime_sat),
+            Te:(Psid * Iq - Psiq * Id),
+            
+            IRPu: Eq1 * (1 + Sa),
+            Eq2_coef: ((Xq_prime_sat - Xq_2prime_sat) * Sat_q)/(Td0_2prime * (Xq_sat - Xq_2prime_sat)),
+            Ed2_coef: ((Xd_prime_sat - Xd_2prime_sat) * Sat_d)/(Tq0_2prime * (Xd_sat - Xd_2prime_sat)),
         },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
@@ -460,10 +483,10 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
         omega_ref: Const(1),
         # Governor parameters
         K: Const(10.0),  # governor gain (inverse droop)
-        Pmax: Const(2.0),  # max mechanical power (pu)
-        Pmin: Const(0.0),  # min mechanical power (pu)
-        Uc: Const(-0.1),  # max valve closing rate (pu/s)
-        Uo: Const(0.1),  # max valve opening rate (pu/s)
+        Pmax: Const(12.0),  # max mechanical power (pu)
+        Pmin: Const(-1.0),  # min mechanical power (pu)
+        Uc: Const(-0.5),  # max valve closing rate (pu/s)
+        Uo: Const(0.5),  # max valve opening rate (pu/s)
         T_aux: Const(0.0),
 
     }
@@ -550,8 +573,8 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
             y1: Const(0.0),
             x1: inputs[0] - omega_ref,
             u_gov1: Const(0),
-            y2_3: Const(0),
-            y2_2: Const(0),
+            y2_2: Pm_ref,
+            y2_3: Pm_ref,
             y3_1: Pm_ref,
             y3_2: Pm_ref,
             y3_3: Pm_ref,
@@ -678,7 +701,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     parameters = {
         # Exciter (AVR) parameters
-        "Ka": Const(200.0),  # AVR gain
+        "Ka": Const(50.0),  # AVR gain
         "Kf": Const(0.03),  # exciter rate feedback gain
 
         # Time constants
@@ -687,12 +710,13 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         "tC": Const(1.0),  # lead-lag: lead time constant (s)
         "tE": Const(0.5),  # exciter field time constant (s)
         "tF": Const(1.0),  # rate feedback time constant (s)
-        "tR": Const(0.02),  # stator voltage filter time constant (s)
+        "tR": Const(0.08),  # stator voltage filter time constant (s)
 
         # Exciter submodel parameters
         "Kc": Const(0.2),  # rectifier loading factor
         "Kd": Const(0.1),  # demagnetizing factor
         "Ke": Const(1.0),  # field resistance constant
+        "Kfd": Const(0.5),  # converting factor
 
     }
 
@@ -766,10 +790,9 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         AEx: Const(0.02),  # saturation gain
         BEx: Const(0.01),  # exponential coeff of saturation function
         ToLLi: Const(0.05),  # tolerance on limit crossing
-        VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
+        VeMinPu_submodel: Const(-5.1),  # minimum exciter output voltage
         VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
     }
-
     # ---Internal Blocks---
     tf1, y1 = tf_to_diffblock(
         num=np.array([1]),
@@ -855,28 +878,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     y_subexciter1 = find_name_in_block('y_subexciter1', tf1_sub)
 
     Ve_sat = hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
-    Se_expr = AEx * Ve_sat * exp(BEx * (Ve_sat - Se_threshold)) \
-                  * heaviside(Ve_sat - Se_threshold)
-
-    # #Equations to find the reference
-    # Ka = parameters["Ka"]
-    # Kc = parameters["Kc"]
-    # Kd = parameters["Kd"]
-    # Ke = parameters["Ke"]
-    # UsRef_init_parameters = [UsRefPu, inputs[0], inputs[1], inputs[2], Ka, Ke, Kd, Kc, VeMinPu,
-    #                          VeMaxPu, EfeMinPu, EfeMaxPu, AEx, BEx, Se_threshold]
-    # def UsRef_init(x):
-    #     UsRef_sol = fsolve(
-    #         Efd_diff,
-    #         x0=1.0,
-    #         args=(x,),
-    #         xtol=1e-6,
-    #         maxfev=500,
-    #     )[0]
-    #     return UsRef_sol
-    #
-
-    Efe_ref = hard_sat(-inputs[1] + UsRefPu, min_const, max_const)
+    Ve = hard_sat(y_subexciter1, VeMinPu, Const(1000))
+    aux_expr = parameters['Ke']*Ve + AEx*Ve*(exp(BEx*(Ve-Se_threshold))- Const(1))*heaviside(Ve-Se_threshold) 
 
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],
@@ -885,9 +888,9 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         init_eqs={
             Vf:inputs[0],
-            y_subexciter1: inputs[0]*(1/f_exc(inputs[0] * parameters["Kd"]/y_subexciter1) ),
-            VeMaxPu: (VfeMaxPu -inputs[0]*parameters["Kd"])/(parameters["Ke"] + AEx*exp(BEx*(Ve-Se_threshold))*heaviside(Ve-Se_threshold)),
-            u_aux: parameters["Ke"] * y_subexciter1 + y_subexciter1*Se_expr,
+            y_subexciter1: inputs[0]*(1/f_exc(inputs[0] * parameters["Kc"]/y_subexciter1) ),
+            VeMaxPu: (VfeMaxPu -inputs[0]*parameters["Kd"])/(parameters["Ke"] + AEx*(exp(BEx*(Ve-Se_threshold))-Const(1))*heaviside(Ve-Se_threshold)),
+            u_aux: aux_expr,
             Efe: inputs[0]*parameters["Kd"] + u_aux,
             UsRefPu: Efe/parameters['Ka'] + inputs[1],
             y1: inputs[1],
@@ -898,7 +901,6 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             u_subexciter1: Const(0.0),
             f_input: parameters['Kc']*inputs[0]/y_subexciter1,
             f_output: f_exc(f_input),   
-            #Vf: f_output*Ve_sat,
         },
     )
 

@@ -40,6 +40,11 @@ def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars:
         if name == var.name:
             return var
+        
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
 
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
@@ -63,7 +68,7 @@ grid.add_line(line0)
 
 
 # load
-load = gce.Load(P= 10, Q= 10)
+load = gce.Load(P= 9.999999, Q= 0.999999)
 grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
@@ -144,8 +149,7 @@ line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
 line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
 
-
-
+u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
@@ -215,9 +219,10 @@ x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
 dx0 = np.zeros(len(slv._diff_vars))
 
-t, y = slv.simulate(
+xlim = 1.0
+t, y, _ = slv.simulate(
     t0=0,
-    t_end=20,
+    t_end=xlim,
     h=0.001,
     x0=x0,
     dx0=dx0,
@@ -230,3 +235,83 @@ t, y = slv.simulate(
     verbose = False,
 
 )
+
+slv.save_simulation_to_csv("init_explicit_res", t, y)
+
+
+omega = genqec1_mdl.out_vars[2]
+Pg = genqec1_mdl.out_vars[0]
+Qg = genqec1_mdl.out_vars[1]
+Ir = genqec1_mdl.out_vars[3]
+Vm = genqec1_mdl.in_vars[0]
+Efd = genqec1_mdl.in_vars[3]
+Te = genqec1_mdl.out_vars[4]
+
+u_gov1 = find_name_in_block("u_gov1", gov1_mdl)
+y_subexciter = find_name_in_block("y_subexciter1", exc1_mdl)
+y_exciter1 = find_name_in_block("y_exciter1", exc1_mdl)
+Efe = find_name_in_block("Efe", exc1_mdl)
+
+
+# Generator state variables
+plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Efd)], label="Efd (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Te)], label="Te (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
+Ed_prime = find_name_in_block("Ed_prime", genqec1_mdl)
+Eq_2prime = find_name_in_block("Eq_2prime", genqec1_mdl)
+Ed_2prime = find_name_in_block("Ed_2prime", genqec1_mdl)
+
+Ed1 = find_name_in_block("Ed1", genqec1_mdl)
+Eq1 = find_name_in_block("Eq1", genqec1_mdl)
+Ed2 = find_name_in_block("Ed2", genqec1_mdl)
+Eq2 = find_name_in_block("Eq2", genqec1_mdl)
+
+# Generator state variables
+plt.plot(t, y[:, slv.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Eq_2prime)], label="Eq_2prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Ed_2prime)], label="Ed_2prime (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Ed1)], label="Ed1 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Eq1)], label="Eq1 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Ed2)], label="Ed2 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Eq2)], label="Eq2 (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+Tm = gov1_mdl.out_vars[0]
+# Generator state variables
+plt.plot(t, y[:, slv.get_var_idx(u_gov1)], label="u_gov1 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Efe)], label="Efe (pu)")
+plt.plot(t, y[:, slv.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()

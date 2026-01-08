@@ -319,13 +319,17 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_params)
                             init_val = 0
-                            tol = 1e-5
+                            tol = 1e-8
                             error = 1
                             alpha = 0.5
-                            x0 = -1.0
+                            x0 = 0.9
                             x[uid2idx_vars[var.uid]] = x0
                             while error>tol:
-                                init_val = float(eq_fn(x, params_array))
+                                try:
+                                    init_val = float(eq_fn(x, params_array))
+                                except:
+                                    x[uid2idx_vars[var.uid]] = -0.1
+                                    init_val = float(eq_fn(x, params_array))
                                 x[uid2idx_vars[var.uid]] = (1-alpha)*x0 + alpha*init_val
                                 error = np.linalg.norm(init_val - x0)
                                 x0 = x[uid2idx_vars[var.uid]]

@@ -772,9 +772,9 @@ class Func(Expr):
         "exp": np.exp,
         "log": math.log,
         "sqrt": math.sqrt,
-        "arcsin": math.asin,
-        "arccos": math.acos,
-        "arctan": math.atan,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
         "sinh": math.sinh,
         "cosh": math.cosh,
         "real": np.real,
@@ -811,11 +811,11 @@ class Func(Expr):
             return du / u
         if self.name == "sqrt":
             return du / (Const(2) * sqrt(u))
-        if self.name == "arcsin":
+        if self.name == "asin":
             return du / sqrt(Const(1) - u ** Const(2))
-        if self.name == "arccos":
+        if self.name == "acos":
             return -du / sqrt(Const(1) - u ** Const(2))
-        if self.name == "arctan":
+        if self.name == "atan":
             return du / (Const(1) + u ** Const(2))
         if self.name == "sinh":
             return cosh(u) * du
@@ -846,9 +846,89 @@ class Func(Expr):
     def __repr__(self) -> str:
         return self.__str__()
 
+@dataclass(frozen=True)
+class Func2(Expr):
+    name: str
+    arg1: Expr
+    arg2: Expr
+    uid: int = field(default_factory=_new_uid, init=False)
 
+    _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
+        "atan2": np.atan2,
+        "min": np.minimum,
+        "max": np.maximum,
+    })
+
+    def eval(self, **bindings: NUMBER) -> NUMBER:
+        return self._impl[self.name](
+            self.arg1.eval(**bindings),
+            self.arg2.eval(**bindings),
+        )
+
+    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+        return self._impl[self.name](
+            self.arg1.eval_uid(uid_bindings),
+            self.arg2.eval_uid(uid_bindings),
+        )
+
+    def _diff1(self, var: Var | str) -> Expr:
+        x = self.arg1
+        y = self.arg2
+
+        dx = x._diff1(var)
+        dy = y._diff1(var)
+
+        # short-circuit: constant
+        if (
+            isinstance(dy, Const) and dy.value == 0 and
+            isinstance(dx, Const) and dx.value == 0
+        ):
+            return Const(0)
+
+        if self.name == "atan2":
+            return (x * dy - y * dx) / (x**Const(2) + y**Const(2))
+        if self.name == "min":
+            return heaviside(x - y) * dx + heaviside(x - y) * dy
+        if self.name == "max":
+            return heaviside(y - x) * dx + heaviside(x - y) * dy
+
+        raise ValueError(f"Unknown binary function '{self.name}'")
+   
+    # --- simplification ------------------------------------------------------
+    def simplify(self) -> "Expr":
+        a_s = self.a.simplify()
+        b_s = self.b.simplify()
+
+        # constant folding
+        if isinstance(a_s, Const) and isinstance(b_s, Const):
+            try:
+                return Const(Func2._impl[self.name](a_s.value, b_s.value))
+            except ValueError:
+                pass  # domain error – keep symbolic
+        
+        # min(x, x) → x ; max(x, x) → x
+        if (a_s == b_s) and self.name in ("min", "max"):
+            return a_s
+
+        # return simplified symbolic form
+        return Func2(self.name, a_s, b_s)
+
+    def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
+        if self in mapping:
+            return mapping[self]
+        return Func2(
+            self.name,
+            self.a.subs(mapping),
+            self.b.subs(mapping),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.name}({self.a}, {self.b})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+    
 # Helpers for functions not primitive nodes (sec for tan derivative)
-
 def sec(x: Any) -> Expr:
     return Const(1) / cos(x)
 
@@ -867,9 +947,9 @@ tan = _make_unary("tan")
 exp = _make_unary("exp")
 log = _make_unary("log")
 sqrt = _make_unary("sqrt")
-asin = _make_unary("arcsin")
-acos = _make_unary("arccos")
-atan = _make_unary("arctan")
+asin = _make_unary("asin")
+acos = _make_unary("acos")
+atan = _make_unary("atan")
 sinh = _make_unary("sinh")
 cosh = _make_unary("cosh")
 real = _make_unary("real")
@@ -880,6 +960,8 @@ abs = _make_unary("abs")
 arcsin = asin
 arccos = acos
 arctan = atan
+
+
 heaviside = _make_unary("heaviside")
 
 
@@ -1107,7 +1189,7 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
 
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
+                         "exp", "log", "sqrt", "asin", "acos", "atan", "atan2"
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
         elif expr.name == "heaviside":
@@ -1142,7 +1224,7 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     if isinstance(expr, Func):
         # Use numpy functions for standard numeric functions
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
+                         "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_params_eq(expr.arg, uid_map_t)})"
         elif expr.name == "heaviside":
@@ -1175,7 +1257,7 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
         return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "atan",
-                         "exp", "log", "sqrt", "arcsin", "arccos", "arctan",
+                         "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
         elif expr.name == "heaviside":
@@ -1277,9 +1359,9 @@ _FUNC_MAP = {
     "exp": exp,
     "log": log,
     "sqrt": sqrt,
-    "arcsin": asin,
-    "arccos": acos,
-    "arctan": atan,
+    "asin": asin,
+    "acos": acos,
+    "atan": atan,
     "sinh": sinh,
     "cosh": cosh,
     "real": real,
@@ -1367,7 +1449,7 @@ def symbolic_to_string(expr: Expr) -> str:
 __all__ = [
     "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison",
     "sin", "cos", "tan", "exp", "log", "sqrt",
-    "arcsin", "arccos", "arctan", "sinh", "cosh",
+    "asin", "acos", "atan", "sinh", "cosh",
     "diff", "eval_uid",
     "find_vars_order",
     "real",
