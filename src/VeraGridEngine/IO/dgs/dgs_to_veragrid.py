@@ -10,47 +10,7 @@ from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-from VeraGridEngine.IO.dgs.dgs_objects import (DGSElement,
-                                               ChaRef,
-                                               ChaVec,
-                                               ElmAsm,
-                                               ElmCoup,
-                                               ElmFeeder,
-                                               ElmGenstat,
-                                               ElmLne,
-                                               ElmSind,
-                                               ElmLnesec,
-                                               ElmLod,
-                                               ElmLodlv,
-                                               ElmLodlvp,
-                                               ElmNet,
-                                               ElmShnt,
-                                               ElmSvs,
-                                               ElmSite,
-                                               ElmSubstat,
-                                               ElmSym,
-                                               ElmTerm,
-                                               ElmTr2,
-                                               ElmTr3,
-                                               ElmXnet,
-                                               ElmZone,
-                                               General,
-                                               IntFolder,
-                                               IntGrf,
-                                               IntGrfcon,
-                                               IntGrfnet,
-                                               IntGrfnet,
-                                               RelFuse,
-                                               StaCubic,
-                                               StaSwitch,
-                                               TypAsmo,
-                                               TypFuse,
-                                               TypLne,
-                                               TypLod,
-                                               TypSym,
-                                               TypTr2,
-                                               TypTr3,
-                                               TypSind)
+from VeraGridEngine.IO.dgs.dgs_objects import *
 
 
 def _ref_id(x: str | None) -> str | None:
@@ -733,10 +693,10 @@ def convert_dgs_to_line(lne: ElmLne,
 
 
 def convert_dgs_to_series_reactance(
-        element: DGSElement,
+        element: ElmSind,
         buses: List[dev.Bus],
         bus_by_terminal_id: Dict[str, dev.Bus],
-        stacubic_dict: Dict[str, StaCubic],
+        stacubic_dict: Dict[str, List[int]],
         cubics_by_obj_id: Dict[str, List[StaCubic]],
         typsind_dict: Dict[str, TypSind],
         logger: Logger,
@@ -1097,6 +1057,7 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
 
     return bus, cshunt
 
+
 def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
     """
     Compute power factor from (P, Q).
@@ -1242,6 +1203,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
             gen.X1 = float(x1)
 
     return bus, gen
+
 
 def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                                  stacubic_dict: Dict[str, List[int]],
@@ -1422,7 +1384,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if zid is not None:
             zone_by_id[zid] = zone
 
-
     # Buses
     bus_by_term_id: Dict[str, dev.Bus] = dict()
     for elmterm in dgs_grid.elmterms:
@@ -1462,7 +1423,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typasmo_dict[tid] = typasmo
 
-
     # Generators
     for elmsym in dgs_grid.elmsyms:
         bus, gen = convert_dgs_to_generator(
@@ -1478,10 +1438,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_generator(bus=bus, api_obj=gen)
 
-
     # Asynchronous machines (ElmAsm) -> model as PQ Generators
     for elmasm in dgs_grid.elmasms:
-
         bus, gen = convert_dgs_to_asm_generator(
             elmasm=elmasm,
             stacubic_dict=stacubic_dict,
@@ -1494,7 +1452,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
 
         grid.add_generator(bus=bus, api_obj=gen)
-
 
     # Loads
     for elmlod in dgs_grid.elmlods:
@@ -1560,7 +1517,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
 
-
     # Loads (LV)
     if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:
         logger.add_warning("ElmLodlv/ElmLodlvp found but not converted: no P/Q fields available in DGS schema.")
@@ -1593,7 +1549,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typtr3_dict[tid] = typtr3
 
-
     # Series reactance / impedance types (raw DGS objects, used as templates)
     typsind_raw_dict: Dict[str, TypSind] = dict()
     for typsind in dgs_grid.typsinds:
@@ -1616,7 +1571,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             bus_by_term_id=bus_by_term_id
         )
         grid.add_line(obj=line, logger=logger)
-
 
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:

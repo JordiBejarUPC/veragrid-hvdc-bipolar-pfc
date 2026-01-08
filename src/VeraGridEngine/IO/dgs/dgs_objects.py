@@ -360,6 +360,7 @@ class ElmGenstat(DGSElement):
         self.cCategory: str = ""
         self.c_pmod: str = ""
 
+
 class ElmLne(DGSElement):
     element_type = 'ElmLne'
     properties_list = [
@@ -396,15 +397,13 @@ class ElmLne(DGSElement):
         self.inAir: int = 0
 
 
-
-
 class ElmSind(DGSElement):
     element_type = 'ElmSind'
     properties_list = [
         # test_export_v5.dgs uses FID(...) not ID(...)
         DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
         # Optional alias (harmless if missing)
-        DgsProperty('ID',  'a:40', 'DGS field ID (a:40)',  py_name='ID'),
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
 
         DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
         DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
@@ -435,7 +434,6 @@ class ElmSind(DGSElement):
         self.outserv: int = 0
 
 
-
 class TypSind(DGSElement):
     """PowerFactory Series Reactor type (TypSind)."""
     element_type = 'TypSind'
@@ -448,6 +446,14 @@ class TypSind(DGSElement):
         DgsProperty('Re', 'r', 'Type series resistance (Re)', py_name='Re'),
         DgsProperty('Xe', 'r', 'Type series reactance (Xe)', py_name='Xe'),
     ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.Re: float = 0.0
+        self.Xe: float = 0.0
+
 
 class ElmLnesec(DGSElement):
     element_type = 'ElmLnesec'
@@ -617,6 +623,7 @@ class ElmShnt(DGSElement):
         self.greaf0: float = 0.0
         self.iswitch: int = 0
         self.qtotn: float = 0.0
+
 
 class ElmSvs(DGSElement):
     element_type = 'ElmSvs'
