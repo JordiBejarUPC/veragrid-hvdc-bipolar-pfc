@@ -1646,7 +1646,8 @@ class ResultTypes(Enum):
     HvdcPowerToC = 'HVDC power "to" C'
 
     VscLosses = 'Vsc losses'
-    VscPowerFrom = 'Vsc power "from"'
+    VscPowerFromPositive = 'Vsc power "from" positive pole'
+    VscPowerFromNegative = 'Vsc power "from" negative pole'
     VscLoading = 'Vsc loading'
 
     VscPowerTo = 'Vsc power "to"'
