@@ -1287,8 +1287,7 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
                 # power flow parameters
-                #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters.
-                #Todo: create parameters dict for block and update it here with values from correspondant line
+                #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters without using strings
 
                 R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
                 for param in self.selected_template.block.parameters.keys():

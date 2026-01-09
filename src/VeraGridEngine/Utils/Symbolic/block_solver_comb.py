@@ -390,6 +390,7 @@ class DiffBlockSolver(BlockSolver):
         self._parameters_values: List[Const] = list()
         self._stability_eqs: List[Expr] = list()
 
+        self.v_glob_name2uid = block_system.vars_glob_name2uid
         self.glob_time: Var = glob_time
         self.substitute = True
 

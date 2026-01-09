@@ -126,7 +126,7 @@ class RmsSimulationDriver(DriverTemplate):
 
             dx0 = np.zeros(len(slv._diff_vars))
 
-            t, y = slv.simulate(
+            t, y, timings = slv.simulate(
                 t0=0,
                 t_end=self.options.simulation_time,
                 h=self.options.time_step,

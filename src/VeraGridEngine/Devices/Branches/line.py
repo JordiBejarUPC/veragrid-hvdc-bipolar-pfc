@@ -272,6 +272,8 @@ class Line(BranchParent):
     @R.setter
     def R(self, value):
         self._R = float(value)
+        if self.auto_update_enabled:
+            self.rms_model.custom_model.parameters
 
     @property
     def X(self):
