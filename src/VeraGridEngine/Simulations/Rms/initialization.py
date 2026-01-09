@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
-    LagVar, BinOp, UNDEFINED, heaviside
+    LagVar, BinOp, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import SymbolicParamsVector
 
@@ -269,7 +269,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         # compute and assign event parameters non undefined value
         for event_param in comp_model.event_dict.keys():
             eq = comp_model.event_dict[event_param]
-            if isinstance(eq, Const) and eq.value is UNDEFINED:
+            if isinstance(eq, Const) and eq.value is None:
                 continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
             param_val = float(eq_fn(0.0)[0])
@@ -312,7 +312,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     elif v_init.uid == var.uid:
                         continue
                     elif v_init in comp_model.event_dict.keys():
-                        if comp_model.event_dict[v_init] is not UNDEFINED:
+                        if comp_model.event_dict[v_init] is not None:
                             continue
                     else:
                         calculate_now = False
@@ -322,7 +322,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                     #We initialize the params with value UNDEFINED
                     if var in comp_model.event_dict.keys():
-                        if isinstance(eq, Const) and eq.value is not UNDEFINED:
+                        if isinstance(eq, Const) and eq.value is not None:
 
                             raise ValueError(f"Parameter {var.name} already initialized")
 

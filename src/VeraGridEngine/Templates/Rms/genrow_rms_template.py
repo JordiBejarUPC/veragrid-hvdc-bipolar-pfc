@@ -8,7 +8,7 @@ import numpy as np
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, exp, imag, log, conj, real, abs, UNDEFINED
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, exp, imag, log, conj, real, abs
 
 def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     """
@@ -57,8 +57,8 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     templ.block.event_dict[omega_ref] = Const(1.0)
     templ.block.event_dict[Kp] = Const(0.0)
     templ.block.event_dict[Ki] = Const(0.0)
-    templ.block.event_dict[vf] = Const(UNDEFINED)
-    templ.block.event_dict[tm0] = Const(UNDEFINED)
+    templ.block.event_dict[vf] = Const(None)
+    templ.block.event_dict[tm0] = Const(None)
     
     templ.block.algebraic_vars = [P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et]
 

@@ -231,25 +231,14 @@ class Expr:
     def __repr__(self):
         return self.__str__()
 
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Atomic nodes
 # ----------------------------------------------------------------------------------------------------------------------
 
-class Undefined:
-    __slots__ = ()
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __repr__(self):
-        return "Undefined"
-
-
-UNDEFINED = Undefined()
 
 
 class Const(Expr):
@@ -262,10 +251,10 @@ class Const(Expr):
     def __deepcopy__(self, memo):
         return Const(self.value, self.uid, self.name)
 
-    def eval(self, **bindings: NUMBER) -> NUMBER | Undefined:
+    def eval(self, **bindings: NUMBER) -> NUMBER | None:
         return self.value
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER | Undefined:
+    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER | None:
         return self.value
 
     def _diff1(self, var: Var | str) -> "Expr":
@@ -374,6 +363,8 @@ class Var(Expr):
         return hash(repr(self))
 
 
+
+
 class LagVar(Expr):
     __slots__ = ("name", "uid", "base_var", "lag")
 
@@ -393,8 +384,21 @@ class LagVar(Expr):
         if not isinstance(self.base_var, Var):
             raise TypeError(f"base_var must be an argument")
 
+    def subs(self, mapping: Dict[Any, Expr]) -> Expr:
+        if self in mapping:
+            return mapping[self]
+        if self.name in mapping:
+            return mapping[self.name]
+        return self
+
     def __eq__(self, other):
         return isinstance(other, LagVar) and self.base_var.uid == other.base_var.uid and self.lag == other.lag
+
+    def __str__(self) -> str:
+        return self.name
+
+    def __repr__(self) -> str:
+        return self.name
 
     def __hash__(self):
         return hash((self.base_var, self.lag))
@@ -422,6 +426,9 @@ class LagVar(Expr):
             val = (diff_order + 1 - i) * (dt ** i) * ((-1) ** i) * dx0[i - 1]
             res += val
         return res.eval(dt=h)
+
+    def _diff1(self, var: Var | str) -> Expr:
+        return Const(1 if self.uid == _var_uid(var) else 0)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -1659,7 +1666,6 @@ __all__ = [
     "DiffVar",
     "hard_sat",
     "f_exc",
-    "UNDEFINED",
     'expression2numba',
     '_emit_event_params_eq',
     '_heaviside'

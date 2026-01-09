@@ -499,7 +499,7 @@ class DiffBlockSolver:
                 deriv = eq.diff(var)
                 if getattr(deriv, 'value', 1) == 0:
                     continue
-                lag_var = LagVar.get_or_create(var.name + '_lag_' + str(1),
+                lag_var = LagVar(var.name + '_lag_' + str(1),
                                                base_var=var, lag=1)
                 approximation = alpha * var + (1 - alpha) * lag_var
                 self._lag_vars_set.add(lag_var)

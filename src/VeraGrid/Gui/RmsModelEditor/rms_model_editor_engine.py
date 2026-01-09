@@ -45,10 +45,9 @@ from VeraGridEngine.Utils.Symbolic.block import (
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string, \
-    VarPowerFlowRefferenceType, UNDEFINED
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -1322,7 +1321,7 @@ class TemplateEditor(QtWidgets.QWidget):
         self._vars_order = []
 
         for var, const in event_dict.items():
-            if const.value is not UNDEFINED:
+            if const.value is not None:
                 row = self.params_table.rowCount()
                 self.params_table.insertRow(row)
 
@@ -1439,14 +1438,14 @@ class ParameterEditorDialog(QDialog):
 
         # --- event_dict ---
         for var, const in self.event_dict.items():
-            if const.value != "Undefined":
+            if const.value is not None:
                 name = getattr(var, "name", str(var))
                 self.add_row(row, name, getattr(const, "value", const))
                 # store metadata
                 self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, ("event", var))
                 row += 1
             else:
-                self.new_event_dict[var] = UNDEFINED
+                self.new_event_dict[var] = None
 
     # --------------------------------------------------------
 
