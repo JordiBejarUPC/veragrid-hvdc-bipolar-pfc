@@ -23,24 +23,27 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 
-def check_if_diff_vars(system):
 
-
-    diff_vars = system.diff_vars
-    if len(diff_vars) != 0:
-        return True
-
-
-    if system.children:
-        for child in system.children:
-            if  check_if_diff_vars(child):
-                return True
-            else:
-                continue
-        return False
-
-    else:
-        return False
+# def check_if_diff_vars(system):
+#     """
+#
+#     :param system:
+#     :return:
+#     """
+#     diff_vars = system.diff_vars
+#     if len(diff_vars) != 0:
+#         return True
+#
+#     if system.children:
+#         for child in system.children:
+#             if check_if_diff_vars(child):
+#                 return True
+#             else:
+#                 continue
+#         return False
+#
+#     else:
+#         return False
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -98,74 +101,46 @@ class RmsSimulationDriver(DriverTemplate):
         """
         self.tic()
         # Get integration method
-        if self.options.integration_method == "trapezoid":
-            integrator = "trapezoid"
-        elif self.options.integration_method == "implicit euler":
-            integrator = "implicit_euler"
-        else:
+        if self.options.integration_method not in [DynamicIntegrationMethod.BackEuler,
+                                                   DynamicIntegrationMethod.Trapezoid]:
             raise ValueError(f"integrator not implemented :( {self.options.integration_method}")
 
         # TODO: Check if there is a cleaner way to get all the devices in a list
-
-        buses = [bus for bus in self.grid.get_buses()]
-        branches = [branch for branch in self.grid.get_branches_iter()]
-        injections = [injection for injection in self.grid.get_injection_devices_iter()]
-
-        devices = buses + branches + injections
-
         params_mapping: Dict = dict()
 
         sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
+        slv = DiffBlockSolver(ss, sim_time)
 
-        diff_vars = check_if_diff_vars(ss)
-        if diff_vars:
-            slv = DiffBlockSolver(ss, sim_time)
+        params0 = slv.build_init_params_vector(params_mapping)
+        x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
-            params0 = slv.build_init_params_vector(params_mapping)
-            x0 = slv.build_init_vars_vector_from_uid(init_guess)
+        dx0 = np.zeros(slv.diff_vars_number)
 
-            dx0 = np.zeros(len(slv._diff_vars))
+        t, y, timings = slv.simulate(
+            t0=0,
+            t_end=self.options.simulation_time,
+            h=self.options.time_step,
+            x0=x0,
+            dx0=dx0,
+            params0=params0,
+            method=self.options.integration_method,
+            newton_tol=self.options.tolerance,
+            newton_max_iter=1000,
+            followed_vars=None,
+            initialized=False,
+            verbose=False,
+        )
 
-            t, y, timings = slv.simulate(
-                t0=0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                x0=x0,
-                dx0=dx0,
-                params0=params0,
-                method="implicit_euler",
-                newton_tol=self.options.tolerance,
-                newton_max_iter=1000,
-                followed_vars=None,
-                initialized=False,
-                verbose=False,
-            )
-
-        else:
-            slv = BlockSolver(ss, sim_time)
-
-            params0 = slv.build_init_params_vector(params_mapping)
-            x0 = slv.build_init_vars_vector_from_uid(init_guess)
-
-            t, y = slv.simulate(
-                t0=0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                x0=x0,
-                params0=params0,
-                method="implicit_euler",
-            )
-
-
-
-
+        buses = self.grid.get_buses()
+        branches = self.grid.get_branches()
+        injections = self.grid.get_injection_devices()
+        devices = buses + branches + injections
         self.results = RmsResults(values=y,
                                   time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
-                                  stat_vars=slv._state_vars,
-                                  algeb_vars=slv._algebraic_vars,
+                                  stat_vars=slv.state_vars,
+                                  algeb_vars=slv.algebraic_vars,
                                   uid2idx=slv.uid2idx_vars,
                                   vars_glob_name2uid=slv.v_glob_name2uid,
                                   devices=devices)
 
         self.toc()
-

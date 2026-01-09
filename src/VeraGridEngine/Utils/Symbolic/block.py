@@ -16,8 +16,7 @@ from enum import Enum, auto
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
-    real, sqrt, atan, _dict_to_expr, imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -577,12 +576,9 @@ class Block:
             variables.extend(blk.get_vars())
         return variables
 
-
-
     def update_equations(self, old, new):
         """
         this function changes the variable old for the variable new in a block
-        :param blk:
         :param old:
         :param new:
         :return:

@@ -14,8 +14,7 @@ from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
@@ -107,7 +106,7 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
-                 init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  ###
+                 init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  # TODO: Delete
                  build_status: BuildStatus = BuildStatus.Commissioned,
                  must_run: bool = False):
         """

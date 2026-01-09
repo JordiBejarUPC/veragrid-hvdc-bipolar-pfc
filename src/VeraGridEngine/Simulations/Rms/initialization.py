@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 import uuid
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one, sin, cos
+from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, _emit_one, sin, cos
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2diff
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_event_params_eq, _heaviside, piecewise, \
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
     LagVar, BinOp, UNDEFINED, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 from VeraGridEngine.Utils.Symbolic.block_solver_comb import SymbolicParamsVector
@@ -64,7 +64,7 @@ def _compile_equations(eqs: Sequence[Expr],
     # src = f"@nb.njit()\n"
     src = f"def {fname}(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -121,8 +121,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     # Build source
     src = f"def _f(glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join(
-        [f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
@@ -137,7 +136,14 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
         fn.__doc__ = "def _f(vars)"
     return fn
 
+
 def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
+    """
+
+    :param block:
+    :param deleted_vars:
+    :return:
+    """
     deleted_vars_uid = set(var.uid for var in deleted_vars)
     for b in block.get_all_blocks():
         algebraic_vars_copy = b.algebraic_vars.copy()
@@ -266,7 +272,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             if isinstance(eq, Const) and eq.value is UNDEFINED:
                 continue
             eq_fn = _compile_parameters_equations([eq], uid2sym_t)
-            param_val = float(eq_fn(0.0))
+            param_val = float(eq_fn(0.0)[0])
             event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
         # initialize array for model params

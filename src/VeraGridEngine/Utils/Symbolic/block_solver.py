@@ -24,7 +24,7 @@ from matplotlib import pyplot as plt
 from typing import Dict, List, Any, Callable, Sequence
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, _emit, _emit_event_params_eq, _heaviside
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec
@@ -61,7 +61,7 @@ def _compile_equations(eqs: Sequence[Expr],
     # src = f"@nb.njit()\n"
     src = f"def {fname}(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -168,7 +168,7 @@ class SymbolicJacobian:
 
         # Build source
         src = f"def {fname}(vars, event_params, params, out):\n"
-        src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}"
+        src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
 
         # compile to python
@@ -227,7 +227,7 @@ class SymbolicVector:
 
             # Build source
             src = f"def {fname}(vars, event_params, params, out):\n"
-            src += "\n".join([f"    out[{i}] = {_emit(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+            src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
 
             # compile in python namespace
             exec(src, self.namespace)
