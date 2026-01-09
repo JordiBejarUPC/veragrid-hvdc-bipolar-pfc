@@ -314,7 +314,7 @@ class DynamicModelHost(EditableDevice):
         self._template: Block | None = None
 
         # a custom model always exits although it may be empty
-        self._custom_model: Block = Block()
+        self._model: Block = Block()
         self._diagram: BlockDiagram = BlockDiagram()
 
     @property
@@ -332,51 +332,34 @@ class DynamicModelHost(EditableDevice):
         :param val:
         :return:
         """
+        # prop template is a pointer and prop model is a copy
         if isinstance(val, Block):
             self._template = val
+            self._model = val.copy()
         elif val is None:
             self._template = None
         else:
             raise ValueError(f"Cannot set template with {val}")
 
     @property
-    def custom_model(self):
+    def model(self):
         """
         Return custom
         :return:
         """
-        return self._custom_model
+        return self._model
 
-    @custom_model.setter
-    def custom_model(self, val: Block):
+    @model.setter
+    def model(self, val: Block):
         """
 
         :param val:
         :return:
         """
         if isinstance(val, Block):
-            self._custom_model = val
-        elif val is None:
-            self._custom_model = None
+            self._model = val
         else:
             raise ValueError(f"Cannot set template with {val}")
-
-    @property
-    def model(self) -> Block:
-        """
-        Returns whatever is available with preference to the custom model if any
-        :return: DynamicModel (even if it is empty)
-        """
-        if self.template is None:
-            return self.custom_model
-        else:
-            return self.template
-
-    @model.setter
-    def model(self, val: Block):
-        if not isinstance(val, Block):
-            raise ValueError(f"Cannot set model with {val}")
-        self._custom_model = val
 
     @property
     def diagram(self) -> BlockDiagram:
@@ -410,7 +393,7 @@ class DynamicModelHost(EditableDevice):
         """
         return {
             "template": self.template.to_dict() if self.template is not None else None,
-            "custom_model": self.custom_model.to_dict(),
+            "model": self._model.to_dict(),
             "diagram": self.diagram.to_dict()
         }
 
@@ -430,10 +413,12 @@ class DynamicModelHost(EditableDevice):
         if template_data is not None:
             self._template = Block.parse(data=template_data)
 
-        custom_data = data.get("custom_model", None)
+        custom_data = data.get("model", None)
+        if custom_data is None:
+            custom_data = data.get("custom_model", None)
 
         if custom_data is not None:
-            self._custom_model = Block.parse(data=custom_data)
+            self._model = Block.parse(data=custom_data)
 
         diagram_data = data.get("diagram", None)
         if diagram_data is not None:
@@ -444,10 +429,8 @@ class DynamicModelHost(EditableDevice):
 
         :return:
         """
-        if self._template is None:
-            return self._custom_model.empty()
-        else:
-            return self._template.empty()
+
+        return self._model.empty()
 
     def __eq__(self, other: "DynamicModelHost") -> bool:
         """
@@ -459,7 +442,7 @@ class DynamicModelHost(EditableDevice):
 
             if self.template is None:
                 if other.template is None:
-                    return self.custom_model == other.custom_model
+                    return self.model == other.model
                 else:
                     return False
             else:
@@ -480,6 +463,6 @@ class DynamicModelHost(EditableDevice):
             idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
             code=self.code
         )
-        obj._custom_model = self._custom_model.copy()
+        obj._model = self._model.copy()
         obj._template = self._template
         return obj

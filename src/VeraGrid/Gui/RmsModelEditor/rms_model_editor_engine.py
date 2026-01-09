@@ -2664,7 +2664,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(
             api_object_name=self.api_object_name,
-            block=self.model_host.custom_model,  # .copy(),
+            block=self.model_host.model,  # .copy(),
             diagram=self.model_host.diagram,  # .copy(),
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue,
@@ -2763,7 +2763,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             if self.blockboxes_editor.main_block is not None:
                 self.model_host.template = None
                 self.model_host.diagram = self.blockboxes_editor.diagram
-                # self.model_host.custom_model = self.blockboxes_editor.block_system
+                # self.model_host.model = self.blockboxes_editor.block_system
             else:
                 error_msg("Empty model :(", "Model apply")
                 return
