@@ -38,6 +38,8 @@ def _to_expr(val: Any) -> "Expr":
         return val
     if isinstance(val, (int, float, complex)):
         return Const(val)
+    if val is None:
+        return Const(None)
     raise TypeError(f"Cannot convert {val!r} to Expr")
 
 
