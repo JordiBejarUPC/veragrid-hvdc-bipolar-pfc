@@ -2328,6 +2328,7 @@ class CascadeType(Enum):
 class DynamicIntegrationMethod(Enum):
     Trapezoid = "Trapezoid",
     BackEuler = "BackEuler"
+    RungeKutta4 = "Runge-Kutta 4"
 
     def __str__(self) -> str:
         return str(self.value)
