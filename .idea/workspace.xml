@@ -28,8 +28,18 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Refactors">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixed _to_expr for None">
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/Info.plist" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/MacOS/VeraGrid" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/Resources/VeraGrid.icns" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/_CodeSignature/CodeDirectory" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/_CodeSignature/CodeRequirements" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/_CodeSignature/CodeResources" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/osx_dist/VeraGrid.app/Contents/_CodeSignature/CodeSignature" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pics/VeraGrid.icns" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/make_osx_app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -230,7 +240,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids",
+    "last_opened_file_path": "/Users/santi/Git/eRoots/VeraGrid/pics",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -248,11 +258,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/pics" />
       <recent name="$PROJECT_DIR$/Grids_and_profiles/grids" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids" />
       <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
       <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
-      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
@@ -262,7 +272,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.rms_driver_call">
+  <component name="RunManager" selected="Python.make_osx_app">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -532,6 +542,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="make_osx_app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/osx_dist/make_osx_app.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="rms_driver_call" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -652,23 +684,6 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for test_power_flow.test_controllable_shunt" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_power_flow.test_controllable_shunt&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
     <configuration name="pytest for test_power_flow.test_generator_Q_lims" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -704,19 +719,19 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.make_osx_app" />
       <item itemvalue="Python.rms_driver_call" />
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python tests.pytest for test_power_flow.test_controllable_shunt" />
       <item itemvalue="Python tests.pytest for test_power_flow.test_generator_Q_lims" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.make_osx_app" />
         <item itemvalue="Python.rms_driver_call" />
         <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for test_power_flow.test_generator_Q_lims" />
-        <item itemvalue="Python tests.pytest for test_power_flow.test_controllable_shunt" />
       </list>
     </recent_temporary>
   </component>
@@ -1848,7 +1863,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="692" />
+    <option name="localTasksCounter" value="693" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1909,7 +1924,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
     <MESSAGE value="Added more ContingencyFilteringMethods" />
     <MESSAGE value="Several fixes when selecting by country, community, etc" />
     <MESSAGE value="5.6.3" />
@@ -1934,7 +1948,8 @@
     <MESSAGE value="added move_behind_converter" />
     <MESSAGE value="Implemented changes clicking to show the different short circuits" />
     <MESSAGE value="Refactors" />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactors" />
+    <MESSAGE value="fixed _to_expr for None" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed _to_expr for None" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2512,11 +2527,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
           <line>4674</line>
           <option name="timeStamp" value="3156" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>275</line>
-          <option name="timeStamp" value="3167" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

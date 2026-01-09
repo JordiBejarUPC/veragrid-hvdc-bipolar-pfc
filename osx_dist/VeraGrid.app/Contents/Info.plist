@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>VeraGrid</string>
+	<key>CFBundleDisplayName</key>
+	<string>VeraGrid</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.eroots.veragrid.cli</string>
+	<key>CFBundleVersion</key>
+	<string>5.6.11</string>
+	<key>CFBundleShortVersionString</key>
+	<string>5.6.11</string>
+	<key>CFBundleExecutable</key>
+	<string>VeraGrid</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>CFBundleIconFile</key>
+	<string>VeraGrid</string>
+</dict>
+</plist>

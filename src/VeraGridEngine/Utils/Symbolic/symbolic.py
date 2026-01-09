@@ -1097,7 +1097,10 @@ class Func(PrimaryFunction):
         if isinstance(du, Const) and du.value == 0:
             return Const(0)
         else:
-            self.fnd(u, du)
+            if self.fnd is not None:
+                self.fnd(u, du)
+            else:
+                raise Exception(f"No derivative defined for {self.op}")
 
     # --- simplification ------------------------------------------------------
     def simplify(self) -> "Expr":
