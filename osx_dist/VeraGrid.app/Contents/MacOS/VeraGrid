@@ -1,8 +1,0 @@
-#!/bin/bash
-
-/usr/bin/osascript <<EOF
-tell application "Terminal"
-    activate
-    do script "veragrid; exec $SHELL"
-end tell
-EOF
