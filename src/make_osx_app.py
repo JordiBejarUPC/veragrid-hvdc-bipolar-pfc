@@ -32,7 +32,7 @@ MIN_MACOS = "13.0"
 
 # System Python distribution to copy
 SYSTEM_PYTHON_ROOT = Path(
-    "/Library/Frameworks/Python.framework/Versions/3.13"
+    "../osx_resources/python_3.13.11_standalone"
 )
 
 # Name of the directory inside Resources
@@ -138,32 +138,9 @@ def copy_python_distribution(dst: Path):
     )
 
 
-def rebase_python_to_venv(python_root: Path):
-    system_python = python_root / "bin" / "python3"
-
-    venv_dir = python_root / "venv"
-
-    run([
-        system_python,
-        "-m", "venv",
-        "--copies",
-        str(venv_dir)
-    ])
-
-    return venv_dir / "bin" / "python3"
 
 
-def create_embedded_venv(python_base: Path, venv_dir: Path) -> Path:
-    base_python = python_base / "bin" / "python3"
 
-    run([
-        base_python,
-        "-m", "venv",
-        "--copies",          # critical: no symlinks back to system
-        str(venv_dir)
-    ])
-
-    return venv_dir / "bin" / "python3"
 
 
 def install_veragrid(python_bin: Path):
@@ -187,7 +164,7 @@ def create_launcher(launcher_path: Path):
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-PYTHON="$APP_DIR/../Resources/python/venv/bin/python"
+PYTHON="$APP_DIR/../Resources/python/bin/python"
 
 CMD="$PYTHON -c 'from VeraGrid.ExecuteVeraGrid import runVeraGrid; runVeraGrid()'; exec \\$SHELL"
 
@@ -263,12 +240,11 @@ def main():
     resources.mkdir(parents=True)
 
     # Copy Python
-    python_base = resources / "python" / "base"
-    python_venv = resources / "python" / "venv"
+    python_base = resources / "python"
 
     copy_python_distribution(python_base)
 
-    python_bin = create_embedded_venv(python_base, python_venv)
+    python_bin = python_base / "bin" / "python3"
 
     run([
         python_bin, "-c",

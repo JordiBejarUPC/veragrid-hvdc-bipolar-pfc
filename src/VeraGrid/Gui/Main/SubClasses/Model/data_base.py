@@ -36,7 +36,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, make_
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
-from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue
+from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, CheckListDialogue
 from VeraGrid.Gui.Diagrams.Editors.transformer_editor import TransformerEditor
 from VeraGrid.Gui.Diagrams.Editors.transformer3w_editor import Transformer3WEditor
 from VeraGrid.Gui.Diagrams.Editors.controllable_shunt_editor import ControllableShuntEditor
@@ -619,14 +619,42 @@ class DataBaseTableMain(DiagramsMain):
         """
         Create a New map from a buses selection
         """
+
+        # from whatever, get the selected substations
         selected_substations, selected_objects = self.get_selected_substations()
 
+        subgrid = self.circuit.sub
+
         if len(selected_substations):
+
+            tpes = [
+                DeviceType.SubstationDevice,
+                DeviceType.LineDevice,
+                DeviceType.DCLineDevice,
+                DeviceType.HVDCLineDevice,
+                DeviceType.GeneratorDevice,
+                DeviceType.BatteryDevice,
+                DeviceType.LoadDevice,
+                DeviceType.StaticGeneratorDevice,
+                DeviceType.ExternalGridDevice
+            ]
+
+            self.new_se_dlg = CheckListDialogue(
+                objects_list=[e.value for e in tpes]
+            )
+
+            if self.circuit.get_substation_number() > 0:
+                # showing this menu only makes sense if there is anything there
+                self.new_se_dlg.exec()
+            else:
+                self.show_warning_toast("No substations to draw...")
+                return
+
             cmap_text = self.ui.palette_comboBox.currentText()
             cmap = self.cmap_dict[cmap_text]
 
-            expand_outside = yes_no_question(text="Expand outside of the given selection using the branches?",
-                                             title="Expand outside")
+            # expand_outside = yes_no_question(text="Expand outside of the given selection using the branches?",
+            #                                  title="Expand outside")
 
             diagram = make_diagram_from_substations(
                 circuit=self.circuit,
@@ -639,7 +667,7 @@ class DataBaseTableMain(DiagramsMain):
                 arrow_size=self.ui.arrow_size_size_spinBox.value(),
                 palette=cmap,
                 default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                expand_outside=expand_outside,
+                expand_outside=True,
                 name=f"{selected_objects[0].name} diagram"
             )
 

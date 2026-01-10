@@ -207,7 +207,7 @@ class IoMain(ConfigurationMain):
 
         if create_default_diagrams:
             self.add_complete_bus_branch_diagram()
-            self.add_map_diagram(ask=False)
+            self.add_map_diagram()
             self.set_diagram_widget(self.diagram_widgets_list[0])
 
         self.collect_memory()

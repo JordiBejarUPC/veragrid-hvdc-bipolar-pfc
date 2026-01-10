@@ -2077,7 +2077,7 @@ class DiagramsMain(CompiledArraysMain):
             diagram = self.diagram_widgets_list[0]
             self.set_diagram_widget(diagram)
 
-    def add_map_diagram(self, ask: bool = True) -> None:
+    def add_map_diagram(self) -> None:
         """
         Adds a Map diagram
         """
@@ -2103,6 +2103,7 @@ class DiagramsMain(CompiledArraysMain):
             self.new_se_dlg.exec()
         else:
             self.show_warning_toast("No substations to draw...")
+            return
 
         # if ok:
         cmap_text = self.ui.palette_comboBox.currentText()
@@ -2989,7 +2990,7 @@ class DiagramsMain(CompiledArraysMain):
         gf.add_menu_entry(menu=context_menu,
                           text="New map",
                           icon_path=":/Icons/icons/map (add).png",
-                          function_ptr=lambda: self.add_map_diagram(True))
+                          function_ptr=self.add_map_diagram)
 
         gf.add_menu_entry(menu=context_menu,
                           text="Duplicate",
