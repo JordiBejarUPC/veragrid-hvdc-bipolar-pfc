@@ -838,7 +838,7 @@ functions_dict: Mapping[str, Callable[[NUMBER], NUMBER]] = {
 }
 
 
-class PrimaryFunction(Expr):
+class Func(Expr):
     __slots__ = ("op", "arg", "fn", "fnd")
 
     def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
@@ -851,7 +851,8 @@ class PrimaryFunction(Expr):
         self.op: str = op
         self.arg: Expr = arg
 
-        self.fnd: Callable[[NUMBER], NUMBER] = functions_dict[self.op]
+        self.fn : Callable[[NUMBER], NUMBER] = functions_dict[self.op]
+        self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
 
     # --- evaluation ----------------------------------------------------------
     def eval(self, **bindings: NUMBER) -> NUMBER:
@@ -871,6 +872,7 @@ class PrimaryFunction(Expr):
         d["arg"] = self.arg.to_dict()
         return d
 
+    # --- differentiation (chain rule) ---------------------------------------
     def _diff1(self, var: Var | str) -> "Expr":
         u = self.arg
         du = u._diff1(var)
@@ -878,33 +880,33 @@ class PrimaryFunction(Expr):
             return Const(0)
         else:
             if self.fnd is not None:
-                self.fnd(u, du)
+                return self.fnd(u, du)
             else:
                 raise Exception(f"No derivative defined for {self.op}")
 
 
 def abs(x: Expr):  # TODO: Rename to not shadow
-    return PrimaryFunction(_to_expr(x), "abs")
+    return Func(_to_expr(x), "abs")
 
 
 def real(x: Expr):
-    return PrimaryFunction(_to_expr(x), "real")
+    return Func(_to_expr(x), "real")
 
 
 def imag(x: Expr):
-    return PrimaryFunction(_to_expr(x), "imag")
+    return Func(_to_expr(x), "imag")
 
 
 def conj(x: Expr):
-    return PrimaryFunction(_to_expr(x), "conj")
+    return Func(_to_expr(x), "conj")
 
 
 def angle(x: Expr):
-    return PrimaryFunction(_to_expr(x), "angle")
+    return Func(_to_expr(x), "angle")
 
 
 def sin(x: Expr):
-    return PrimaryFunction(_to_expr(x), "sin")
+    return Func(_to_expr(x), "sin")
 
 
 def sin_diff(u: Expr, du: Expr) -> Expr:
@@ -912,7 +914,7 @@ def sin_diff(u: Expr, du: Expr) -> Expr:
 
 
 def cos(x: Expr):
-    return PrimaryFunction(_to_expr(x), "cos")
+    return Func(_to_expr(x), "cos")
 
 
 def cos_diff(u: Expr, du: Expr) -> Expr:
@@ -924,7 +926,7 @@ def sec(x: Any) -> Expr:
 
 
 def tan(x: Expr):
-    return PrimaryFunction(_to_expr(x), "tan")
+    return Func(_to_expr(x), "tan")
 
 
 def tan_diff(u: Expr, du: Expr):
@@ -932,7 +934,7 @@ def tan_diff(u: Expr, du: Expr):
 
 
 def exp(x: Expr):
-    return PrimaryFunction(_to_expr(x), "exp")
+    return Func(_to_expr(x), "exp")
 
 
 def exp_diff(u: Expr, du: Expr):
@@ -940,7 +942,7 @@ def exp_diff(u: Expr, du: Expr):
 
 
 def log(x: Expr):
-    return PrimaryFunction(_to_expr(x), "log")
+    return Func(_to_expr(x), "log")
 
 
 def log_diff(u: Expr, du: Expr):
@@ -948,7 +950,7 @@ def log_diff(u: Expr, du: Expr):
 
 
 def sqrt(x: Expr):
-    return PrimaryFunction(_to_expr(x), "sqrt")
+    return Function(_to_expr(x), "sqrt")
 
 
 def sqrt_diff(u: Expr, du: Expr):
@@ -956,7 +958,7 @@ def sqrt_diff(u: Expr, du: Expr):
 
 
 def asin(x: Expr):
-    return PrimaryFunction(_to_expr(x), "asin")
+    return Func(_to_expr(x), "asin")
 
 
 def asin_diff(u: Expr, du: Expr) -> Expr:
@@ -964,7 +966,7 @@ def asin_diff(u: Expr, du: Expr) -> Expr:
 
 
 def acos(x: Expr):
-    return PrimaryFunction(_to_expr(x), "acos")
+    return Func(_to_expr(x), "acos")
 
 
 def acos_diff(u: Expr, du: Expr) -> Expr:
@@ -972,7 +974,7 @@ def acos_diff(u: Expr, du: Expr) -> Expr:
 
 
 def atan(x: Expr):
-    return PrimaryFunction(_to_expr(x), "atan")
+    return Function(_to_expr(x), "atan")
 
 
 def atan_diff(u: Expr, du: Expr) -> Expr:
@@ -980,11 +982,11 @@ def atan_diff(u: Expr, du: Expr) -> Expr:
 
 
 def sinh(x: Expr):
-    return PrimaryFunction(_to_expr(x), "sinh")
+    return Func(_to_expr(x), "sinh")
 
 
 def cosh(x: Expr):
-    return PrimaryFunction(_to_expr(x), "cosh")
+    return Func(_to_expr(x), "cosh")
 
 
 def sinh_diff(u: Expr, du: Expr) -> Expr:
@@ -996,7 +998,7 @@ def cosh_diff(u: Expr, du: Expr) -> Expr:
 
 
 def heaviside(x: Expr):
-    return PrimaryFunction(_to_expr(x), "heaviside")
+    return Func(_to_expr(x), "heaviside")
 
 
 def heaviside_diff(u: Expr, du: Expr) -> Expr:
@@ -1050,6 +1052,51 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
     return result
 
 
+# class Func(PrimaryFunction):
+#     __slots__ = ("op", "arg", "fn", "fnd")
+#     def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
+#         """
+#         :param op:
+#         :param uid:
+#         """
+#         super().__init__(arg=arg, op=op, uid=uid)
+#         # optional derivative function pointer        
+#         self.fn : Callable[[NUMBER], NUMBER] = functions_dict[self.op]
+#         self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
+#     # --- evaluation ----------------------------------------------------------
+#     def eval(self, **bindings: NUMBER) -> NUMBER:
+#         return self.fn(self.arg.eval(**bindings))
+#     def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+#         return self.fn(self.arg.eval_uid(uid_bindings))
+#     # --- differentiation (chain rule) ---------------------------------------
+#     def _diff1(self, var: Var | str) -> "Expr":
+#         u = self.arg
+#         du = u._diff1(var)
+#         if isinstance(du, Const) and du.value == 0:
+#             return Const(0)
+#         else:
+#             if self.fnd is not None:
+#                 return self.fnd(u, du)
+#             else:
+#                 raise Exception(f"No derivative defined for {self.op}")
+#     # --- simplification ------------------------------------------------------
+#     def simplify(self) -> "Expr":
+#         a = self.arg.simplify()
+#         if isinstance(a, Const):
+#             try:
+#                 return Const(self.fn(a.value))
+#             except ValueError:
+#                 pass  # domain error – keep symbolic
+#         return Func(a, self.op)
+#     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
+#         if self in mapping:
+#             return mapping[self]
+#         return Func(self.arg.subs(mapping), self.op)
+#     def __str__(self) -> str:
+#         return f"{self.op}({self.arg})"
+#     def __repr__(self) -> str:
+#         return self.__str__()
+    
 functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "sin": sin_diff,
     "cos": cos_diff,
@@ -1064,61 +1111,6 @@ functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "cosh": cosh_diff,
     "heaviside": heaviside_diff
 }
-
-
-class Func(PrimaryFunction):
-    __slots__ = ("op", "arg", "fn", "fnd")
-
-    def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
-        """
-
-        :param op:
-        :param uid:
-        """
-        super().__init__(arg=arg, op=op, uid=uid)
-
-        # optional derivative function pointer
-        self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
-
-    # --- evaluation ----------------------------------------------------------
-    def eval(self, **bindings: NUMBER) -> NUMBER:
-        return self.fn(self.arg.eval(**bindings))
-
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
-        return self.fn(self.arg.eval_uid(uid_bindings))
-
-    # --- differentiation (chain rule) ---------------------------------------
-    def _diff1(self, var: Var | str) -> "Expr":
-        u = self.arg
-        du = u._diff1(var)
-        if isinstance(du, Const) and du.value == 0:
-            return Const(0)
-        else:
-            if self.fnd is not None:
-                self.fnd(u, du)
-            else:
-                raise Exception(f"No derivative defined for {self.op}")
-
-    # --- simplification ------------------------------------------------------
-    def simplify(self) -> "Expr":
-        a = self.arg.simplify()
-        if isinstance(a, Const):
-            try:
-                return Const(self.fn(a.value))
-            except ValueError:
-                pass  # domain error – keep symbolic
-        return Func(a, self.op)
-
-    def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
-        if self in mapping:
-            return mapping[self]
-        return Func(self.arg.subs(mapping), self.op)
-
-    def __str__(self) -> str:
-        return f"{self.op}({self.arg})"
-
-    def __repr__(self) -> str:
-        return self.__str__()
 
 
 @dataclass(frozen=True)

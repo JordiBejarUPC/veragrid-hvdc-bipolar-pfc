@@ -134,7 +134,7 @@ class RmsSimulationDriver(DriverTemplate):
         buses = self.grid.get_buses()
         branches = self.grid.get_branches()
         injections = self.grid.get_injection_devices()
-        devices = buses + branches + injections
+        devices = list(buses) + list(branches) + list(injections)
         self.results = RmsResults(values=y,
                                   time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
                                   stat_vars=slv.state_vars,

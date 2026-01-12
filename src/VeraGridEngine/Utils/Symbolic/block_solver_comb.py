@@ -1041,7 +1041,6 @@ class DiffBlockSolver:
             discontinuity = np.linalg.norm(params_current - params_previous, np.inf) > 1e-10
             xn = y[step_idx]
             x_last = y[step_idx - 1] if step_idx > 0 else y[step_idx]
-            x_last_lags = np.r_[x_last, lag]
             x_new = xn.copy()  # initial guess
             converged = False
             n_iter = 0
@@ -1060,13 +1059,9 @@ class DiffBlockSolver:
 
                 # ---------------- lag update ----------------
                 lag_update_start = time.time()
-                self._update_0_lags(x_new, lag)
                 lag_update_end = time.time()
                 timings["lag_update_time"] += lag_update_end - lag_update_start
                 # ------------------------------------------------
-
-                xn_lags = np.r_[xn, lag]
-                xnew_lags = np.r_[x_new, lag]
 
                 if discontinuity:
                     tol = 1e-8
@@ -1079,7 +1074,7 @@ class DiffBlockSolver:
                 params_current = np.asarray(params_current, dtype=np.float64)
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
-                rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, params, step_idx + 1, h)
+                rhs = self.rhs_implicit(x_new, dx, xn, params_current, params, step_idx + 1, h)
                 # print(rhs)
                 rhs_end = time.time()
                 timings["rhs_time"] += rhs_end - rhs_start
@@ -1099,7 +1094,7 @@ class DiffBlockSolver:
 
                 if step_idx == 0:
                     
-                    Jf = self.jacobian_implicit(xnew_lags, dx, params_current, params, h)
+                    Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
                     if converged:
                         print("System well initialized.")
@@ -1124,7 +1119,7 @@ class DiffBlockSolver:
 
                 solved = False
                 linear_start = time.time()
-                Jf = self.jacobian_implicit(xnew_lags, dx, params_current, params, h)
+                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
                 delta = sp.linalg.spsolve(Jf, -rhs)
 
                 linear_end = time.time()
