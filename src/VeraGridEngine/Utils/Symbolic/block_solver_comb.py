@@ -21,7 +21,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const,
                                                     expression2numba, _heaviside, _emit_event_params_eq)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
-from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.basic_structures import Vec, IntVec
 
 
 # -----------------------------------------------------------------------------
@@ -37,11 +37,8 @@ class SymbolicJacobian:
                  eqs: List[Expr],
                  variables: List[Var],
                  diff_variables: List[DiffVar],
-                 lag_variables: List[LagVar],
-                 lag_vars_set: Set[LagVar],
                  compiler_names_dict: Dict[int, str],
                  uid2idx_vars: Dict[int, int],
-                 uid2idx_lag: Dict[int, int],
                  dt: Var = Const(0.001),
                  delta: Const = Const(1),
                  substitute: bool = True,
@@ -56,11 +53,11 @@ class SymbolicJacobian:
                 :param uid2sym_params:
                 :param use_jit: if true, the function is compiled by numba
                 :return:
-                        jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
+                        jac_fn : callable(values: Vec, params: Vec) -> scipy.sparse.csc_matrix
                             Fast evaluator in which *values* is a 1‑D NumPy vector of length
                             ``len(variables)``and *params* is a 1‑D NumPy vector of length
                             ``len(parameters)``
-                        sparsity_pattern : tuple(np.ndarray, np.ndarray)
+                        sparsity_pattern : tuple(Vec, Vec)
                             Row/col indices of structurally non‑zero entries.
                 """
 
@@ -80,9 +77,6 @@ class SymbolicJacobian:
 
         for row, eq in enumerate(eqs):
             # substitude lag_var for lag_var.base_var
-            for lag_var in lag_variables:
-                if lag_var.lag == 0:
-                    eq = eq.subs({lag_var: lag_var.base_var})
 
             for col, var in enumerate(variables):
 
@@ -91,32 +85,14 @@ class SymbolicJacobian:
                 # We substitute the remaining diff vars in d_expression
                 for diff_var in diff_variables:
                     deriv = d_expression.diff(diff_var)
-                    if getattr(deriv, 'value', 1) != 0:
-                        if not substitute:
-                            d_expression = d_expression.subs({diff_var: diff_var / delta})
-                        else:
-                            dx_dt, lag = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)
-                            d_expression = d_expression.subs({diff_var: dx_dt / delta})
-                            new_lag = LagVar(diff_var.origin_var.name + '_lag_' + str(lag),
-                                                           base_var=diff_var.origin_var, lag=lag)
-                            ## add new lag
-                            i = len(uid2idx_vars)
-                            l = len(uid2idx_lag)
-                            if new_lag not in lag_vars_set:
-                                compiler_names_dict[new_lag.uid] = f"vars[{i}]"
-                                uid2idx_vars[new_lag.uid] = i
-                                uid2idx_lag[new_lag.uid] = l
-                                lag_variables.append(new_lag)
-                                lag_vars_set.add(new_lag)
-                                i += 1
-                                l += 1
+                    if not isinstance(deriv, Const):
+                        d_expression = d_expression.subs({diff_var: diff_var / delta})
+                    else:
+                        d_expression = 0
 
-                if isinstance(d_expression, Const) and d_expression.value == 0:
-                    continue  # structural zero
-
+                
                 triplets.append((col, row, d_expression))
-                if not substitute:
-                    _ = 0
+
         # Sort by column, then row for CSC layout
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
@@ -148,7 +124,7 @@ class SymbolicJacobian:
         fname = f"jac"  # since we compile into a namespace, there won't be repeated names
 
         # Build source
-        src = f"def {fname}(vars, event_params, params, out):\n"
+        src = f"def {fname}(vars, diff, event_params, params, out):\n"
         src += "\n".join([f"    out[{i}] = {expression2numba(e, compiler_names_dict)}"
                           for i, e in enumerate(equations_sorted)]) + "\n"
 
@@ -157,23 +133,24 @@ class SymbolicJacobian:
 
         if use_jit:
             # compile with numba
-            self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = nb.njit(nb.void(nb.float64[:],  nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             # just pick the python pointer from the namespace
-            self.func = self.namespace[fname]
+            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = self.namespace[fname]
 
-    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> csc_matrix:
+    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> csc_matrix:
         """
         Update the jacobian data
         :param values:
+        :param diff:
         :param params:
         :return: Updated jacobian structure
         """
         # assert len(values) >= self.nvar
 
         # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
-        self.func(values, event_params, params, self.J.data)
+        self.func(values, diff_values, event_params, params, self.J.data)
 
         return self.J
 
@@ -193,7 +170,7 @@ class SymbolicVector:
         :param uid2sym_params:
         :return: Function pointer that returns an array
         """
-        self.func: Callable[[Vec, Vec, Vec, Vec], csc_matrix]| None = None
+        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None]| None = None
         if len(eqs):
             self.namespace: Dict[str, Any] = {
                 "math": math,
@@ -205,7 +182,7 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-            src = f"def {fname}(vars, event_params, params, out):\n"
+            src = f"def {fname}(vars, diff, event_params, params, out):\n"
             src += "\n".join(
                 [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in
                  enumerate(eqs)]) + "\n"
@@ -215,7 +192,7 @@ class SymbolicVector:
 
             # compile in numba
             if use_jit:
-                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                                     fastmath=True)(self.namespace[fname])
             else:
                 self.func = self.namespace[fname]
@@ -224,15 +201,17 @@ class SymbolicVector:
 
         self.data: Vec = np.zeros(len(eqs))
 
-    def __call__(self, values: Vec, event_params: Vec, params: Vec) -> Vec:
+    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> Vec:
         """
         Call the compiled function
         :param values:
+        :param diff_values:
+        :param event_params:
         :param params:
         :return:
         """
         if self.func is not None:
-            self.func(values, event_params, params, self.data)
+            self.func(values, diff_values, event_params, params, self.data)
         return self.data
 
 
@@ -289,6 +268,58 @@ class SymbolicParamsVector:
         if self.func is not None:
             self.func(glob_time, self.data)
         return self.data
+
+class SymbolicDerivative:
+    """
+    SymbolicFunction
+    """
+
+    def __init__(self, 
+                 vars: Sequence[Var],
+                 diff_vars: Sequence[DiffVar],
+                 compiler_names_dict: Dict[int, str],
+                 use_jit: bool = True):
+        self.func: Callable[[Vec, Vec], None] | None = None
+        self.data: Vec = np.zeros(len(diff_vars))
+        self.index_map: IntVec = np.zeros(len(diff_vars), dtype=np.int32)
+
+        self.namespace: Dict[str, Any] = {
+            "math": math,
+            "np": np,
+            "nb": nb,
+            "_heaviside": _heaviside,
+        }
+        fname = f"func"  # since we compile into a namespace, there won't be repeated names
+        # Build source
+        src = f"def {fname}(vars, lagvars, h, out):\n"
+        j = 0
+        for i, var in enumerate(vars):
+            if var.diff_var is not None:
+                src += f"    out[{j}] = (vars[{i}] - lagvars[{i}]) / h\n"
+                self.index_map[j] = i
+                j += 1
+
+        src += f"    return out"
+        # compile in python namespace
+        exec(src, self.namespace)
+        # compile in numba
+        if use_jit:
+            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
+                                fastmath=True)(self.namespace[fname])
+        else:
+            self.func = self.namespace[fname]
+    
+    def __call__(self, x: Vec, xn: Vec, h: float) -> Vec:
+        """
+        Call the compiled function
+        :param x:
+        :param xn:
+        :param h:
+        :return:
+        """
+        self.func(x, xn, h, self.data)
+        return self.data
+
 
 
 def _new_uid() -> int:
@@ -374,8 +405,6 @@ class DiffBlockSolver:
         self._state_eqs_substituted: List[Expr] = list()
         self._diff_vars: List[DiffVar] = list()
         self._differential_eqs: List[Expr] = list()
-        self._lag_vars: List[LagVar] = list()
-        self._lag_vars_set: Set[LagVar] = set()
         self._reformulated_vars: List[Var] = list()
         self._event_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Expr] = list()
@@ -409,7 +438,7 @@ class DiffBlockSolver:
             # self._differential_eqs.extend(b.differential_eqs)
             # self._reformulated_vars.extend(b.reformulated_vars)
 
-        self._lag_vars_set = set(self._lag_vars)
+        self._state_algeb_vars = self._state_vars + self._algebraic_vars
         self._state_eqs_substituted = self._state_eqs.copy()
 
         # We define the parameter dt and delta
@@ -441,11 +470,10 @@ class DiffBlockSolver:
         self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_params: Dict[int, int] = dict()
         self.uid2idx_diff: Dict[int, int] = dict()
-        self.uid2idx_lag: Dict[int, int] = dict()
+        #self.uid2idx_lag: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
 
         i = 0
-
         for v in self._state_vars:
             self.compiler_names_dict[v.uid] = f"vars[{i}]"
             self.uid2idx_vars[v.uid] = i
@@ -478,7 +506,9 @@ class DiffBlockSolver:
         self.compiler_names_dict[self.glob_time.uid] = f"glob_time"
         self.uid2idx_t[self.glob_time.uid] = k
 
-        # We substitute the differential variable by the Forward Approximation:
+        for it, eq in enumerate(self._event_parameters_eqs):
+            if isinstance(eq, Const) and eq.value is None:
+                raise Exception(f' Event parameter {self._event_parameters[it]} has None Value')
 
         # define parameters
         self.alpha = 1
@@ -490,73 +520,10 @@ class DiffBlockSolver:
             lag_init = 1
 
         # Substitute in state eqs
-        # vars
-        for it, eq in enumerate(self._state_eqs_substituted):
-            for lst in (self._algebraic_vars, self._state_vars):
-                for var in lst:
-                    if self.substitute:
-                        deriv = eq.diff(var)
-                        if not isinstance(deriv, Const):
-                            lag_var = LagVar(var.name + '_lag_' + str(1),
-                                                           base_var=var, lag=1)
-                            self._lag_vars.append(lag_var)
-                            approximation = alpha * var + (1 - alpha) * lag_var
-
-                            eq = eq.subs({var: approximation})
-
-            self._state_eqs_substituted[it] = eq
-
-        # find vars
-        for it, eq in enumerate(self._state_eqs_substituted):
-            for var in self._diff_vars:
-                deriv = eq.diff(var)
-                if getattr(deriv, 'value', 1) == 0:
-                    continue
-
-                approximation, total_lag = var.approximation_expr(self.dt, lag_can_be_0=lag_can_be_0)
-
-                eq = eq.subs({var: approximation})
-                self._lag_vars_set.update(LagVar(var.origin_var.name + '_lag_' + str(lag),
-                                                               base_var=var.origin_var, lag=lag) for lag in
-                                          range(lag_init, max(2, total_lag + 1)))
-            self._state_eqs_substituted[it] = eq
 
         # Substitute in algebraic eqs
         self._stability_eqs = list()
         self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
-        for it, eq in enumerate(self._algebraic_eqs_substituted):
-
-            # vars
-            for lst in [self._algebraic_vars, self._state_vars]:
-                for var in lst:
-                    if self.substitute:
-                        deriv = eq.diff(var)
-                        if not isinstance(deriv, Const):  # must not be a constant
-                            if var in self._reformulated_vars:
-                                lag_var_0 = LagVar(var.name + '_lag_' + str(0),
-                                                                 base_var=var, lag=0)
-                                lag_var = LagVar(var.name + '_lag_' + str(1),
-                                                               base_var=var, lag=1)
-                                if it < n_algebraic:
-                                    approximation = alpha * var + (1 - alpha) * lag_var
-                                else:
-                                    alpha2 = 0.5
-                                    approximation = alpha2 * var + (1 - alpha2) * lag_var
-                                self._lag_vars_set.add(lag_var)
-                                self._lag_vars_set.add(lag_var_0)
-                                eq = eq.subs({var: approximation})
-
-            # diff vars
-            for var in self._diff_vars:
-                deriv = eq.diff(var)
-                approximation, total_lag = var.approximation_expr(self.dt, lag_can_be_0=lag_can_be_0, central=False)
-                eq = eq.subs({var: approximation / self.delta})
-                self._lag_vars_set.update(
-                    LagVar(var.origin_var.name + '_lag_' + str(lag),
-                                         base_var=var.origin_var, lag=lag) for lag in
-                    range(lag_init, total_lag + 1)
-                )
-            self._algebraic_eqs_substituted[it] = eq
 
         # fill stability equations by putting algebraic equations equal zero
         for it, eq in enumerate(self._algebraic_eqs):
@@ -567,15 +534,6 @@ class DiffBlockSolver:
 
         i = len(self.uid2idx_vars)
         l = 0
-        # create dict for lag vars
-        self._lag_vars = sorted(self._lag_vars_set, key=lambda x: (x.base_var.uid, x.lag))
-        for v in self._lag_vars:  # deterministic
-            self.compiler_names_dict[v.uid] = f"vars[{i}]"
-            self.uid2idx_vars[v.uid] = i
-            self.uid2idx_lag[v.uid] = l
-            i += 1
-            l += 1
-
         # Compile RHS and Jacobian
 
         """
@@ -587,57 +545,53 @@ class DiffBlockSolver:
                  |           |           |    |            |    |            |
         """
         print("Compiling...")
-
-        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs_substituted,
+        self._derivative_fn = SymbolicDerivative(vars=self._state_algeb_vars,
+                                                diff_vars=self._diff_vars,
+                                                  compiler_names_dict=self.compiler_names_dict)
+        
+        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
                                             compiler_names_dict=self.compiler_names_dict)
 
         self._event_params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs,
                                             compiler_names_dict=self.compiler_names_dict)
 
         if len(self._state_eqs) != 0:
-            self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs_substituted,
+            self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
                                             compiler_names_dict=self.compiler_names_dict)
 
-            self._j11_fn = SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._state_vars,
+            self._j11_fn = SymbolicJacobian(eqs=self._state_eqs, variables=self._state_vars,
                                             diff_variables=self._diff_vars,
-                                            lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                             compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag, dt=self.dt)
-            self._j12_fn = SymbolicJacobian(eqs=self._state_eqs_substituted, variables=self._algebraic_vars,
+                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
+            self._j12_fn = SymbolicJacobian(eqs=self._state_eqs, variables=self._algebraic_vars,
                                             diff_variables=self._diff_vars,
-                                            lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                             compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag, dt=self.dt)
+                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
 
-            self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._state_vars,
+            self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._state_vars,
                                             diff_variables=self._diff_vars,
-                                            lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                             compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag, dt=self.dt)
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,
+                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
+            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._algebraic_vars,
                                             diff_variables=self._diff_vars,
-                                            lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                             compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag, dt=self.dt)
+                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
 
         else:
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs_substituted, variables=self._algebraic_vars,
+            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._algebraic_vars,
                                             diff_variables=self._diff_vars,
-                                            lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                             compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag,
+                                            uid2idx_vars=self.uid2idx_vars,
                                             dt=self.dt)
 
         # stability equations for initialization
         self._j_stable = SymbolicJacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,
                                           diff_variables=self._diff_vars,
-                                          lag_variables=self._lag_vars, lag_vars_set=self._lag_vars_set,
                                           compiler_names_dict=self.compiler_names_dict,
-                                          uid2idx_vars=self.uid2idx_vars, uid2idx_lag=self.uid2idx_lag,
+                                          uid2idx_vars=self.uid2idx_vars, 
                                           dt=self.dt)
         print(
             f"Model compiled with {self._n_vars} variables, "
-            f"{len(self._lag_vars)} lags, "
             f"{len(self._algebraic_eqs_substituted)}  algebraic eqs and "
             f"{len(self._state_eqs_substituted)} state eqs")
 
@@ -669,10 +623,10 @@ class DiffBlockSolver:
         :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
         :param uid2sym_params:
         :return:
-                jac_fn : callable(values: np.ndarray) -> scipy.sparse.csc_matrix
+                jac_fn : callable(values: Vec) -> scipy.sparse.csc_matrix
                     Fast evaluator in which *values* is a 1‑D NumPy vector of length
                     ``len(variables)``.
-                sparsity_pattern : tuple(np.ndarray, np.ndarray)
+                sparsity_pattern : tuple(Vec, Vec)
                     Row/col indices of structurally non‑zero entries.
         """
 
@@ -747,8 +701,8 @@ class DiffBlockSolver:
             indptr[c + 1] += 1
         np.cumsum(indptr, out=indptr)
 
-        def jac_fn(values: np.ndarray, event_params: np.ndarray,
-                   params: np.ndarray) -> sp.csc_matrix:  # noqa: D401 – simple
+        def jac_fn(values: Vec, event_params: Vec,
+                   params: Vec) -> sp.csc_matrix:  # noqa: D401 – simple
             assert len(values) >= len(variables)
             ##print(f'Signtures are {functions_ptr.signatures}')
 
@@ -759,8 +713,8 @@ class DiffBlockSolver:
 
         return jac_fn
 
-    def rhs_pseudo_transient(self, x: np.ndarray, xn: np.ndarray, event_params: np.ndarray, params: np.ndarray,
-                             sim_step, h: float) -> np.ndarray:
+    def rhs_pseudo_transient(self, x: Vec, xn: Vec, event_params: Vec, params: Vec,
+                             sim_step, h: float) -> Vec:
         # returns algeb rhs is there is no states, is there is states, returns states and algebs rhs
 
         """
@@ -791,10 +745,32 @@ class DiffBlockSolver:
 
         else:
             return f_algeb
+        
+    def rhs_implicit(self, x: Vec, dx:Vec, xn: Vec, event_params: Vec, params: Vec, sim_step, h: float) -> Vec:
+        """
+        Return 𝑑x/dt given the current *state* vector.
+        :param x: get the right-hand-side give a state vector
+        :param xn:
+        :param event_params:
+        :param params: params array
+        :param sim_step: simulation step
+        :param h: simulation step
+        :return [f_state_update, f_algeb]
+        """
+        f_algeb = self._rhs_algeb_fn(x, dx, event_params, params)
 
-    def jacobian_implicit(self, x: np.ndarray, event_params: np.ndarray, params: np.ndarray, h: float) -> sp.csc_matrix:
+        if self._n_state > 0:
+            f_state = self._rhs_state_fn(x, dx, event_params, params)
+            f_state_update = x[:self._n_state] - xn[:self._n_state] - h * f_state
+            return np.r_[f_state_update, f_algeb]
+
+        else:
+            return f_algeb
+
+    def jacobian_implicit(self, x: Vec, dx: Vec, event_params: Vec, params: Vec, h: float) -> sp.csc_matrix:
         """
         :param x: vector or variables' values
+        :param dx: vector of diff values
         :param event_params:
         :param params: params array
         :param h: step
@@ -813,13 +789,13 @@ class DiffBlockSolver:
         # returns only j22 if no states, returns J if states
 
         if len(self._state_eqs) == 0:
-            j22: sp.csc_matrix = self._j22_fn(x, event_params, params)
+            j22: sp.csc_matrix = self._j22_fn(x, dx, event_params, params)
             return j22
 
-        j11_val: csc_matrix = self._j11_fn(x, event_params, params)
-        j12_val: csc_matrix = self._j12_fn(x, event_params, params)
-        j21_val: csc_matrix = self._j21_fn(x, event_params, params)
-        j22_val: csc_matrix = self._j22_fn(x, event_params, params)
+        j11_val: csc_matrix = self._j11_fn(x, dx, event_params, params)
+        j12_val: csc_matrix = self._j12_fn(x, dx, event_params, params)
+        j21_val: csc_matrix = self._j21_fn(x, dx, event_params, params)
+        j22_val: csc_matrix = self._j22_fn(x, dx, event_params, params)
 
         I = sp.eye(m=self._n_state, n=self._n_state)
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -833,7 +809,7 @@ class DiffBlockSolver:
 
     #### initialization
 
-    def jacobian_pseudo_transient(self, x: np.ndarray, event_params: np.ndarray, params: np.ndarray,
+    def jacobian_pseudo_transient(self, x: Vec, event_params: Vec, params: Vec,
                                   h: float) -> sp.csc_matrix:
         """
         #We want to build an equivalent of the following Jacobian:
@@ -846,7 +822,7 @@ class DiffBlockSolver:
         params[-2] = h
 
         # Now we have J = -delta^-1 * I - Jf so we need to multiply J by -1.
-        J = self.jacobian_implicit(x, event_params, params, h)
+        J = self.jacobian_implicit(x, dx, event_params, params, h)
 
         flip_index = self._diff_eq_index
         J = J.tolil()
@@ -854,7 +830,7 @@ class DiffBlockSolver:
         J = J.tocsr()
         return J
 
-    def build_init_params_vector(self, mapping: dict[Var, float]) -> np.ndarray:
+    def build_init_params_vector(self, mapping: dict[Var, float]) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -869,7 +845,7 @@ class DiffBlockSolver:
 
         return x
 
-    def build_init_vars_vector_from_uid(self, mapping: dict[tuple[int, str], float]) -> np.ndarray:
+    def build_init_vars_vector_from_uid(self, mapping: dict[tuple[int, str], float]) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -887,7 +863,7 @@ class DiffBlockSolver:
 
         return x
 
-    def sort_vars_from_uid(self, mapping: dict[tuple[int, str], float]) -> np.ndarray:
+    def sort_vars_from_uid(self, mapping: dict[tuple[int, str], float]) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -908,7 +884,7 @@ class DiffBlockSolver:
         self.jacobian_implicit(dummy_vals, dummy_params, 0.001)  # triggers compilation once
         self._rhs_algeb_fn(dummy_vals, dummy_params)  # triggers compilation once
 
-    def sort_vars(self, mapping: dict[Var, float], permissive: bool = False) -> np.ndarray:
+    def sort_vars(self, mapping: dict[Var, float], permissive: bool = False) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -922,7 +898,7 @@ class DiffBlockSolver:
 
         return x
 
-    def build_init_diffvars_vector(self, mapping: dict[Var, float]) -> np.ndarray:
+    def build_init_diffvars_vector(self, mapping: dict[Var, float]) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -939,7 +915,7 @@ class DiffBlockSolver:
 
         return x
 
-    def build_init_lagvars_vector(self, mapping: dict[Var, float]) -> np.ndarray:
+    def build_init_lagvars_vector(self, mapping: dict[Var, float]) -> Vec:
         """
         Helper function to build the initial vector
         :param mapping: var->initial value mapping
@@ -959,68 +935,8 @@ class DiffBlockSolver:
 
         return x
 
-    def build_initial_lag_variables(self, x0: np.ndarray, dx0: np.ndarray, h) -> np.ndarray:
-        """
 
-        :param x0:
-        :param dx0:
-        :param h:
-        :return:
-        """
-        if len(self._lag_vars) == 0:
-            return np.array([])
-
-        x_lag = np.zeros(len(self._lag_vars), dtype=np.float64)
-
-        lag_registry = self._lag_vars[0]._registry
-        diff_registry = self._diff_vars[0]._absolute_registry
-
-        max_order = max(var.diff_order for var in self._diff_vars)
-        max_order = max(2, max_order)
-        filtered_lag_dict = {key: value for key, value in lag_registry.items() if key[1] <= max_order}
-        sorted_lag_dict = sorted(filtered_lag_dict.items(), key=lambda item: (item[0][0], item[0][1]))
-
-        for key, lag_var in sorted_lag_dict:
-            base_var_uid, lag = key
-
-            uid = lag_var.uid
-
-            if base_var_uid not in self.uid2idx_vars or lag_var not in self._lag_vars:
-                continue
-            idx = self.uid2idx_lag[uid]
-            x0_uid = self.uid2idx_vars[base_var_uid]
-            if lag == 0:
-                x_lag[idx] = x0[x0_uid]
-                continue
-            # Collect previous dx0 and x_lag values for this lag_var
-            dx0_slice = np.zeros(lag_var.lag)
-            x_lag_last = 0
-
-            for (prev_uid, prev_lag), prev_var in lag_registry.items():
-                if prev_uid == base_var_uid and prev_lag <= lag and prev_lag != 0:
-                    try:
-                        prev_diff = diff_registry[base_var_uid, prev_lag]
-                        prev_idx_diff = self.uid2idx_diff[prev_diff.uid]
-                        dx0_slice[prev_lag - 1] = dx0[prev_idx_diff]
-
-                    except:
-                        if (base_var_uid, 1) in diff_registry and diff_registry[base_var_uid, 1] in self._diff_vars:
-                            prev_diff = diff_registry[base_var_uid, 1]
-                            prev_idx_diff = self.uid2idx_diff[prev_diff.uid]
-                            print(f'index is {prev_idx_diff} and var is {prev_diff}')
-                            dx0_slice[prev_lag - 1] = dx0[prev_idx_diff]
-                        else:
-                            dx0_slice[prev_lag - 1] = 0
-
-            lag_i = lag_var.populate_initial_lag(x0[x0_uid], dx0_slice, x_lag_last, self.dt, h)
-            if isinstance(lag_i, Expr):
-                x_lag[idx] = lag_i.eval(dt=h)
-            else:
-                x_lag[idx] = lag_i
-            _ = 0
-        return x_lag
-
-    def build_initial_guess(self, x0: np.ndarray, dx0: np.ndarray, h) -> np.ndarray:
+    def build_initial_guess(self, x0: Vec, dx0: Vec, h) -> Vec:
         res = x0.copy()
         for diff_var in self._diff_vars:
             if diff_var.diff_order > 1:
@@ -1037,9 +953,9 @@ class DiffBlockSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 x0: np.ndarray,
-                 dx0: np.ndarray,
-                 params0: np.ndarray,
+                 x0: Vec,
+                 dx0: Vec,
+                 params0: Vec,
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.RungeKutta4,
                  newton_tol: float = 1e-8,
                  newton_max_iter: int = 1000,
@@ -1064,15 +980,12 @@ class DiffBlockSolver:
 
         if initialized:
             x0 = x0[:self._n_alg]
-            lag0 = x0[self._n_alg:]
-            print(f'lag0 is {lag0}')
         else:
-            lag0 = self.build_initial_lag_variables(x0, dx0, h)
             x0 = self.build_initial_guess(x0, dx0, h)
 
         if method == DynamicIntegrationMethod.BackEuler:
             return self._simulate_implicit_euler_diff(
-                t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, lag0=lag0, params0=params0,
+                t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, params0=params0,
                 max_iter=newton_max_iter, verbose=verbose,
                 followed_vars=followed_vars,
             )
@@ -1080,7 +993,7 @@ class DiffBlockSolver:
         else:
             raise ValueError(f"Unknown method '{method}'")
 
-    def _simulate_implicit_euler_diff(self, t0, t_end, h, x0, dx0, lag0, params0: np.ndarray,
+    def _simulate_implicit_euler_diff(self, t0:float, t_end:float, h:float, x0:Vec, dx0:Vec, params0: Vec,
                                       max_iter=1e6, verbose=False, followed_vars=None):
         """
         :param t0:
@@ -1113,9 +1026,12 @@ class DiffBlockSolver:
         t[0] = t0
         y[0] = x0.copy()
         dx = dx0.copy()
-        lag = np.asarray(lag0, dtype=np.float64)
         for step_idx in range(steps):
             self.step_idx = step_idx
+            if step_idx == 0:
+                dx = dx0.copy()
+            else:
+                dx = self._derivative_fn(x_new, y[step_idx -1], h)
             params_previous = params_current.copy()
             discontinuity = np.linalg.norm(params_current - params_previous, np.inf) > 1e-10
             xn = y[step_idx]
@@ -1129,9 +1045,7 @@ class DiffBlockSolver:
             params_current = self._event_params_fn(float(current_time))
             params_current[-2] = h
             params = np.array([const.value for const in self._parameters_values])
-            # We compute dx for the next step
-            # dx = self.compute_dx(x_new, lag, h)
-            # print(f'Step {step_idx} read')
+
             if step_idx == 0:
                 tol = 1e-4
                 initial_step_start = time.time()
@@ -1160,7 +1074,7 @@ class DiffBlockSolver:
                 params_current = np.asarray(params_current, dtype=np.float64)
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
-                rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, params, step_idx + 1, h)
+                rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, params, step_idx + 1, h)
                 # print(rhs)
                 rhs_end = time.time()
                 timings["rhs_time"] += rhs_end - rhs_start
@@ -1179,19 +1093,8 @@ class DiffBlockSolver:
                 converged = residual < tol
 
                 if step_idx == 0:
-                    alpha_update = 1.0
-                    old_lag = lag
-                    if not steady_state:
-                        print("We are in steady state")
-                        alpha_update = 1.0
-                    lag = self.build_initial_lag_variables(x_new, dx0, h)
-                    lag = (1 - alpha_update) * old_lag + alpha_update * lag
-                    max_iter = 5e5
-                    for i, num in enumerate(xnew_lags):
-                        if num == 0:
-                            xnew_lags[i] = 1
-                    print(xnew_lags)
-                    Jf = self.jacobian_implicit(xnew_lags, params_current, params, h)
+                    
+                    Jf = self.jacobian_implicit(xnew_lags, dx, params_current, params, h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
                     if converged:
                         print("System well initialized.")
@@ -1216,7 +1119,7 @@ class DiffBlockSolver:
 
                 solved = False
                 linear_start = time.time()
-                Jf = self.jacobian_implicit(xnew_lags, params_current, params, h)
+                Jf = self.jacobian_implicit(xnew_lags, dx, params_current, params, h)
                 delta = sp.linalg.spsolve(Jf, -rhs)
 
                 linear_end = time.time()
@@ -1276,21 +1179,7 @@ class DiffBlockSolver:
                     y[step_idx + 1] = x_new
                 t[step_idx + 1] = t[step_idx] + h
 
-                for i, lag_var in enumerate(self._lag_vars):
-                    if lag_var.lag == 0:
-                        uid = lag_var.base_var.uid
-                        idx = self.uid2idx_vars[uid]
-                        lag[i] = x_new[idx]
-                    elif step_idx + 1 - (lag_var.lag - 1) >= 0:
-                        uid = lag_var.base_var.uid
-                        idx = self.uid2idx_vars[uid]
-                        lag[i] = y[step_idx + 1 - (lag_var.lag - 1), idx]
-                    else:
-                        lag_name = lag_var.base_var.name + '_lag_' + str(lag_var.lag - 1)
-                        next_lag_var = LagVar.get_or_create(lag_name, base_var=lag_var.base_var, lag=lag_var.lag - 1)
-                        uid = next_lag_var.uid
-                        idx = self.uid2idx_lag[uid]
-                        lag[i] = lag[idx]
+                dx_last = dx.copy() 
                 lag_update_end = time.time()
                 timings["lag_update_time"] += lag_update_end - lag_update_start
 
@@ -1308,72 +1197,40 @@ class DiffBlockSolver:
                 idx = self.uid2idx_vars[uid]
                 lag[i] = x_new[idx]
 
-    def compute_dx(self, x: np.ndarray, lag: np.ndarray, h: float) -> np.ndarray:
+    def compute_dx(self, xn: Vec, x: Vec, h: float) -> Vec:
         """
         Compute the numerical derivative (dx) for all differential variables
         using symbolic approximation expressions and lagged variables.
 
         Parameters
         ----------
-        y : np.ndarray
+        y : Vec
             State variable trajectory. `y[-1, :]` corresponds to the most recent
             values of the system variables.
-        lag : np.ndarray
+        lag : Vec
             Array containing lagged values of variables (delayed states).
         h : float
             Time step (dt) used in the approximation.
 
         Returns
         -------
-        np.ndarray
+        Vec
             Array with computed derivatives for each differential variable,
             indexed consistently with `self._diff_vars`.
         """
-        lag_uids = [uid for uid in self.uid2idx_lag.keys()]
-        res = np.zeros(len(self._diff_vars), dtype=np.float64)
+        res = np.zeros(len(self._diff_vars))
+        #TODO: implement for higher order diff vars
         for diff_var in self._diff_vars:
-            uid = diff_var.uid
-            idx = self.uid2idx_diff[uid]
-            dx_expression, lag_number = diff_var.approximation_expr(self.dt)
+            uid_diff_var = diff_var.uid
+            uid_var = diff_var.base_var.uid
+            idx_diff_var = self.uid2idx_diff[uid_diff_var]
 
-            # We substitute the origin variable and dt
-            lag_0 = LagVar.get_or_create(diff_var.origin_var.name + '_lag_' + str(0),
-                                         base_var=diff_var.origin_var, lag=0)
-            subs = {diff_var.origin_var: Const(x[self.uid2idx_vars[diff_var.origin_var.uid]])}
-            subs[lag_0] = Const(x[self.uid2idx_vars[diff_var.origin_var.uid]])
-            subs[self.dt] = Const(h)
-
-            # We substitute the lag variables
-            i = 1
-            lag_in_expression = True
-            while lag_in_expression or i <= 2:
-                lag_i = LagVar.get_or_create(diff_var.origin_var.name + '_lag_' + str(i),
-                                             base_var=diff_var.origin_var, lag=i)
-                dx_expression = dx_expression.subs({self.dt: Const(h)})
-                deriv = dx_expression.diff(lag_i)
-                if getattr(deriv, 'value', 1) == 0:
-                    if i > 2:
-                        lag_in_expression = False
-                        i = i + 1
-                        break
-                    i += 1
-                    continue
-                if lag_i.uid not in lag_uids:
-                    break
-                lag_idx = self.uid2idx_lag[lag_i.uid]
-
-                subs[lag_i] = Const(lag[lag_idx])
-                i += 1
-
-            deriv_value = dx_expression.subs(subs)
-            # print(dx_expression)
-            # print(diff_var)
-            deriv_value = deriv_value.eval()
-            res[idx] = deriv_value
+            dx_value = (xn[uid_var] - x[uid_var]) / h
+            res[idx_diff_var] = dx_value
 
         return res
 
-    def pseudo_transient(self, x0: np.ndarray, init_guess: dict[Var, float], res, grid: MultiCircuit,
+    def pseudo_transient(self, x0: Vec, init_guess: dict[Var, float], res, grid: MultiCircuit,
                          fix='V', dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                          type: str = None):
         """
@@ -1897,7 +1754,7 @@ class DiffBlockSolver:
 
             xn_lags = np.r_[xn, lag]
             xnew_lags = np.r_[x_new, lag]
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
+            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
             if tries > 1:
@@ -1935,7 +1792,7 @@ class DiffBlockSolver:
             x_new = y[-1]
 
             # save history
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_outer, 1, dtau)
+            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_outer, 1, dtau)
             dtau_hist.append(dtau)
             dx_hist.append(self.compute_dx(x_new, lag, dtau).copy())
             dx_error_hist.append(np.linalg.norm(dx_hist[-1]))
@@ -2086,7 +1943,7 @@ class DiffBlockSolver:
 
             xn_lags = np.r_[xn, lag]
             xnew_lags = np.r_[x_new, lag]
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
+            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
             if tries > 1:
