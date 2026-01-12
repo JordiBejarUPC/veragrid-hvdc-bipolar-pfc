@@ -664,12 +664,12 @@ class BinOp(Expr):
             if self.op == "+":
                 return Const(r.value + l.value)
             elif self.op == "-":
-                return Const(r.value - l.value)
+                return Const(l.value - r.value)
             elif self.op == "*":
                 return Const(r.value * l.value)
             elif self.op == "/":
-                if l.value != 0.0:
-                    return Const(r.value / l.value)
+                if r.value != 0:
+                    return Const(l.value / r.value)
                 else:
                     raise Exception("Division by zero :/")
             elif self.op == "**":
@@ -1398,50 +1398,39 @@ def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
 
 
 def expression2numba(expr: Expr,
-                     uid_map_vars: Dict[int, str],
-                     uid_map_event_params: Dict[int, str],
-                     uid_map_params: Dict[int, str]) -> str:
+                     compiler_names_dict: Dict[int, str]) -> str:
     """
     Create a pure-Python (Numba-friendly) expression string for the function compilation
     :param expr: Expr (expression)
-    :param uid_map_vars: relate UID with compilation name i.e. {1: "vars[1]", 2: vars[2], ...}
-    :param uid_map_event_params: relate UID with compilation name i.e. {1: "event[1]", 2: event[2], ...}
-    :param uid_map_params:  relate UID with fixed param compilation name i.e. {1: "param[1]", 2: param[2], ...}
+    :param compiler_names_dict: relate UID with compilation name i.e. {1: "vars[1]", 2: vars[2], ...}
     :return: string expression
     """
 
     if isinstance(expr, Const):
         return repr(expr.value)
 
-    if isinstance(expr, Var):
-        if expr.uid in uid_map_vars.keys():
-            return uid_map_vars[expr.uid]  # positional variable
-        elif expr.uid in uid_map_params.keys():
-            return uid_map_params[expr.uid]
-        elif expr.uid in uid_map_event_params.keys():
-            return uid_map_event_params[expr.uid]
-        else:
-            raise ValueError(f'{expr} not found')
+    elif isinstance(expr, (Var, LagVar)):
+        return compiler_names_dict[expr.uid]  # positional variable
 
-    if isinstance(expr, UnOp):
-        return f"-({expression2numba(expr.operand, uid_map_vars, uid_map_event_params, uid_map_params)})"
+    elif isinstance(expr, UnOp):
+        return f"-({expression2numba(expr.operand, compiler_names_dict)})"
 
-    if isinstance(expr, BinOp):
-        return (f"({expression2numba(expr.left, uid_map_vars, uid_map_event_params, uid_map_params)} "
+    elif isinstance(expr, BinOp):
+        return (f"({expression2numba(expr.left, compiler_names_dict)} "
                 f"{expr.op} "
-                f"{expression2numba(expr.right, uid_map_vars, uid_map_event_params, uid_map_params)})")
+                f"{expression2numba(expr.right, compiler_names_dict)})")
 
-    if isinstance(expr, Func):
+    elif isinstance(expr, Func):
         # if expr.op in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
         #                "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
         #                "sinh", "cosh", "abs"):
         #     return f"np.{expr.op}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         if expr.op == "heaviside":
-            return f"_heaviside({expression2numba(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
+            return f"_heaviside({expression2numba(expr.arg, compiler_names_dict)})"
         else:
-            return f"np.{expr.op}({expression2numba(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
-
-    raise TypeError(type(expr))
+            return f"np.{expr.op}({expression2numba(expr.arg, compiler_names_dict)})"
+    else:
+        raise TypeError(type(expr))
 
 
 def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
@@ -1672,7 +1661,6 @@ __all__ = [
     "hard_sat",
     "f_exc",
     'expression2numba',
-    '_emit_event_params_eq',
     '_heaviside'
 ]
 #

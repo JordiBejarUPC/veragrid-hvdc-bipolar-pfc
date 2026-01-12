@@ -121,7 +121,7 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     # Build source
     src = f"def _f(glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_event_params_eq(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
