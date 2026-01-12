@@ -40,7 +40,7 @@ class SymbolicJacobian:
                  compiler_names_dict: Dict[int, str],
                  uid2idx_vars: Dict[int, int],
                  dt: Var = Const(0.001),
-                 delta: Const = Const(1),
+                 delta: Var = Const(1),
                  substitute: bool = True,
                  use_jit: bool = True,
                  add_delta: bool = True):
@@ -86,7 +86,9 @@ class SymbolicJacobian:
                 for diff_var in diff_variables:
                     deriv = d_expression.diff(diff_var)
                     if not isinstance(deriv, Const):
-                        d_expression = d_expression.subs({diff_var: diff_var / delta})
+                        h_t = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)[0]
+                        dh_dt = h_t.diff(var)
+                        d_expression = d_expression*dh_dt
                     else:
                         d_expression = 0
 
@@ -123,10 +125,10 @@ class SymbolicJacobian:
 
         fname = f"jac"  # since we compile into a namespace, there won't be repeated names
 
-        # Build source
+        # Build source #TODO: Include DH/DT !!! for differential variables
         src = f"def {fname}(vars, diff, event_params, params, out):\n"
-        src += "\n".join([f"    out[{i}] = {expression2numba(e, compiler_names_dict)}"
-                          for i, e in enumerate(equations_sorted)]) + "\n"
+        for i, e in enumerate(equations_sorted): 
+            src += f"   out[{i}] = {expression2numba(e, compiler_names_dict)}\n"
 
         # compile to python
         exec(src, self.namespace)
@@ -667,7 +669,7 @@ class DiffBlockSolver:
                         else:
                             dx_dt, lag = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)
                             d_expression = d_expression.subs({diff_var: dx_dt / self.delta})
-                            new_lag = LagVar.get_or_create(diff_var.origin_var.name + '_lag_' + str(lag),
+                            new_lag = LagVar(diff_var.origin_var.name + '_lag_' + str(lag),
                                                            base_var=diff_var.origin_var, lag=lag)
                             i = len(self.uid2idx_vars)
                             l = len(self.uid2idx_lag)

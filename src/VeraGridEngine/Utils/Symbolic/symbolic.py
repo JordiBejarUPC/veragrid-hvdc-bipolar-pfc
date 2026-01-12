@@ -518,23 +518,12 @@ class DiffVar(Var):
         using the closed-form backward difference formula.
         """
         origin_name = self.origin_var.name
-        if lag_can_be_0:
-            lag_var_0 = LagVar(
-                name=f"{origin_name}_lag_{0}",
-                base_var=self.origin_var,
-                lag=0
-            )
-        else:
-            lag_var_0 = self.origin_var
+        lag_var_0 = self.origin_var
 
         origin_name = self.origin_var.name
         lag_total = self.diff_order
         if self.diff_order == 1 and central:
-            lag_var_2 = LagVar(
-                name=f"{origin_name}_lag_{2}",
-                base_var=self.origin_var,
-                lag=2
-            )
+            lag_var_2 = Var("aux_2")
             return (lag_var_0 - lag_var_2) / (2 * dt), lag_total
 
         # Compute the sum: ∑_{i=0}^{n} (-1)^i * C(n, i) * f(x - i*dt)
@@ -545,11 +534,7 @@ class DiffVar(Var):
             if i == 0:
                 lag_var = lag_var_0
             else:
-                lag_var = LagVar(
-                    name=f"{origin_name}_lag_{i}",
-                    base_var=self.origin_var,
-                    lag=i
-                )
+                lag_var = Var(name=f"{origin_name}_lag_{i}")
             coeff = minus1 ** i * Const(math.comb(lag_total, i))
             terms.append(coeff * lag_var)
 
