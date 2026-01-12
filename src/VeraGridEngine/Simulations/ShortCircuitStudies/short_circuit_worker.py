@@ -813,6 +813,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
         nbus = nc.nbus
 
         S0_linear = np.zeros(shape=nbus, dtype=complex)
+        S0_non_gen = S0 - nc.generator_data.get_injections_per_bus() / nc.Sbase
+        S0_gen = S_pf / nc.Sbase - S0_non_gen - I0 + Y0
 
         Yfault = np.zeros(shape=nbus, dtype=complex)
         Yfault[fault_bus] = 1 / Z_fault[fault_bus]
@@ -820,17 +822,17 @@ def short_circuit_vsc(nc: NumericalCircuit,
         Ygen = np.zeros(shape=nbus, dtype=complex)
         gen_idx = nc.generator_data.original_idx
         for gen_i in range(len(gen_idx)):
-            Ygen[bus_gen_idx[gen_i]] = 1 / (nc.generator_data.r1[gen_i] + 1j * nc.generator_data.x1[gen_i])
+            Ygen[bus_gen_idx[gen_i]] += 1 / (nc.generator_data.r1[gen_i] + 1j * nc.generator_data.x1[gen_i])
 
-        Y0_linear = np.conj(S0 / (np.conj(V_pf) * V_pf)) + I0 / V_pf + Y0 + Ygen + Yfault
+        Y0_linear = - np.conj(S0_non_gen / (np.conj(V_pf) * V_pf)) - I0 / V_pf + Y0 + Ygen + Yfault
 
         I0_linear = np.zeros(shape=nbus, dtype=complex) # Add generator's norton
         for gen_i in range(len(bus_gen_idx)):
             Ugen = V_pf[bus_gen_idx[gen_i]]
-            Sgen = S_pf[bus_gen_idx[gen_i]] / nc.Sbase
+            Sgen = S0_gen[bus_gen_idx[gen_i]]
             Igen = np.conj(Sgen / Ugen)
             Egen = Ugen + Igen / Ygen[bus_gen_idx[gen_i]]
-            I0_linear[bus_gen_idx[gen_i]] = Ygen[bus_gen_idx[gen_i]] * Egen
+            I0_linear[bus_gen_idx[gen_i]] += Ygen[bus_gen_idx[gen_i]] * Egen
 
         if len(indices.vd) > 0:
 
@@ -897,7 +899,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
     sc_results.hvdc_Pt[:, 0] = pf_results.Pt_hvdc
     sc_results.hvdc_loading[:, 0] = pf_results.loading_hvdc
 
-    sc_results.vsc_Pf[:, 0] = pf_results.Pf_vsc  # in MVA already
+    sc_results.vsc_Pfp[:, 0] = pf_results.Pfp_vsc  # in MVA already
+    sc_results.vsc_Pfn[:, 0] = pf_results.Pfn_vsc  # in MVA already
     sc_results.vsc_St[:, 0] = pf_results.St_vsc  # in MVA already
     sc_results.vsc_If[:, 0] = pf_results.If_vsc  # in p.u.
     sc_results.vsc_It[:, 0] = pf_results.It_vsc  # in p.u.

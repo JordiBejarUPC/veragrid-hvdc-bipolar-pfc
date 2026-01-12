@@ -2525,14 +2525,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         loading = Sf / (self.nc.passive_branch_data.rates + 1e-9)
 
         # VSC ----------------------------------------------------------------------------------------------------------
-        Pf_vsc = self.Pfp_vsc * self.nc.Sbase
+        Pfp_vsc = self.Pfp_vsc * self.nc.Sbase
+        Pfn_vsc = self.Pfn_vsc * self.nc.Sbase
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase
         If_vsc = self.Pfp_vsc / self.Vm[self.nc.vsc_data.F]
         It_vsc = St_vsc / self.Vm[self.nc.vsc_data.T]
         Uac_vsc = self.V[self.nc.vsc_data.T]
         loading_vsc = np.abs(make_complex(self.Pt_vsc, self.Qt_vsc) / Uac_vsc + 1e-20) / (self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Pfp_vsc + self.Pfn_vsc) * self.nc.Sbase
-        # losses_vsc = Pf_vsc + St_vsc.real
 
         # HVDC ---------------------------------------------------------------------------------------------------------
         Sf_hvdc = make_complex(self.Pf_hvdc, self.Qf_hvdc) * self.nc.Sbase
@@ -2556,8 +2556,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Fdcp_vsc=self.nc.vsc_data.F,
             Fdcn_vsc=self.nc.vsc_data.F_dcn,
             T_vsc=self.nc.vsc_data.T,
-            Pfp_vsc=self.Pfp_vsc,
-            Pfn_vsc=self.Pfn_vsc,
+            Pfp_vsc=Pfp_vsc,
+            Pfn_vsc=Pfn_vsc,
             St_vsc=St_vsc
         )
 
@@ -2579,7 +2579,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             It=It,
             loading=loading,
             losses=losses,
-            Pf_vsc=Pf_vsc,
+            Pfp_vsc=Pfp_vsc,
+            Pfn_vsc=Pfn_vsc,
             St_vsc=St_vsc,
             If_vsc=If_vsc,
             It_vsc=It_vsc,

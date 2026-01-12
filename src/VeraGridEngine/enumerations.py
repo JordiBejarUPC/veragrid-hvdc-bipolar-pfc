@@ -1646,7 +1646,8 @@ class ResultTypes(Enum):
     HvdcPowerToC = 'HVDC power "to" C'
 
     VscLosses = 'Vsc losses'
-    VscPowerFrom = 'Vsc power "from"'
+    VscPowerFromPositive = 'Vsc power "from" positive pole'
+    VscPowerFromNegative = 'Vsc power "from" negative pole'
     VscLoading = 'Vsc loading'
 
     VscPowerTo = 'Vsc power "to"'
@@ -2062,6 +2063,10 @@ class SimulationTypes(Enum):
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
     SmallSignal_run = "Small Signal stability"
+
+    FileOpen = "file open"
+    FileSave = "file save"
+    ExportAll = "export all"
 
     NoSim = "No simulation"
 

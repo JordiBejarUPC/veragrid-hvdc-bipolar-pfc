@@ -95,8 +95,8 @@ def test_short_circuit_vsc_3buses():
 
     Usc_reference = np.array([
         [1.0],
-        [0.7785034],
-        [0.87455041]
+        [0.79744135],
+        [0.88393066]
     ])
 
     assert np.allclose(abs(res_sc.voltage1), Usc_reference, atol=1e-6)
