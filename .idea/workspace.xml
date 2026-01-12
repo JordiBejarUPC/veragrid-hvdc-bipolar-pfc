@@ -28,8 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactored sym dicts">
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="initialization none fixed">
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1880,7 +1881,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="634" />
+    <option name="localTasksCounter" value="635" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1926,7 +1927,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.4.0 b" />
     <MESSAGE value="Improved contingency docs" />
     <MESSAGE value="added lat and lon to the injection" />
     <MESSAGE value="improved icons" />
@@ -1951,7 +1951,8 @@
     <MESSAGE value="deleted custom_model" />
     <MESSAGE value="deleted UNDEFINED" />
     <MESSAGE value="refactored sym dicts" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactored sym dicts" />
+    <MESSAGE value="initialization none fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="initialization none fixed" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2292,7 +2293,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>1542</line>
+          <line>1402</line>
           <option name="timeStamp" value="3086" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2337,13 +2338,38 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
-          <line>382</line>
+          <line>383</line>
           <option name="timeStamp" value="3237" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
-          <line>427</line>
-          <option name="timeStamp" value="3238" />
+          <line>573</line>
+          <option name="timeStamp" value="3242" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>577</line>
+          <option name="timeStamp" value="3243" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>103</line>
+          <option name="timeStamp" value="3253" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>85</line>
+          <option name="timeStamp" value="3259" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py</url>
+          <line>84</line>
+          <option name="timeStamp" value="3260" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
+          <line>1106</line>
+          <option name="timeStamp" value="3261" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

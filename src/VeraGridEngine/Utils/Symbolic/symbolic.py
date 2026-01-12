@@ -144,7 +144,8 @@ class Expr:
             expr = expr._diff1(var).simplify()
         return expr
 
-    def _diff1(self, var: Var | str) -> "Expr":  # pragma: no cover
+    def _diff1(self, var: Var | str) -> "Expr":
+        # return # pragma: no cover
         raise NotImplementedError
 
     def simplify(self) -> "Expr":
@@ -850,7 +851,7 @@ class PrimaryFunction(Expr):
         self.op: str = op
         self.arg: Expr = arg
 
-        self.fn: Callable[[NUMBER], NUMBER] = functions_dict[self.op]
+        self.fnd: Callable[[NUMBER], NUMBER] = functions_dict[self.op]
 
     # --- evaluation ----------------------------------------------------------
     def eval(self, **bindings: NUMBER) -> NUMBER:
@@ -869,6 +870,17 @@ class PrimaryFunction(Expr):
         d["op"] = self.op
         d["arg"] = self.arg.to_dict()
         return d
+
+    def _diff1(self, var: Var | str) -> "Expr":
+        u = self.arg
+        du = u._diff1(var)
+        if isinstance(du, Const) and du.value == 0:
+            return Const(0)
+        else:
+            if self.fnd is not None:
+                self.fnd(u, du)
+            else:
+                raise Exception(f"No derivative defined for {self.op}")
 
 
 def abs(x: Expr):  # TODO: Rename to not shadow

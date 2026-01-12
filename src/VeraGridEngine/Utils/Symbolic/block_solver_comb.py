@@ -78,9 +78,12 @@ class SymbolicJacobian:
         for row, eq in enumerate(eqs):
             # substitude lag_var for lag_var.base_var
 
-            for col, var in enumerate(variables):
 
-                d_expression = eq.diff(var).simplify()
+            for col, var in enumerate(variables):
+                eq = cos(var)
+
+                d_expression = eq.diff(var)
+                print("")
 
                 # We substitute the remaining diff vars in d_expression
                 for diff_var in diff_variables:
@@ -90,7 +93,7 @@ class SymbolicJacobian:
                         dh_dt = h_t.diff(var)
                         d_expression = d_expression*dh_dt
                     else:
-                        d_expression = 0
+                        d_expression = Const(0)
 
                 
                 triplets.append((col, row, d_expression))
