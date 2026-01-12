@@ -269,11 +269,11 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         # compute and assign event parameters non undefined value
         for event_param in comp_model.event_dict.keys():
             eq = comp_model.event_dict[event_param]
-            if isinstance(eq, Const) and eq.value is None:
-                continue
-            eq_fn = _compile_parameters_equations([eq], uid2sym_t)
-            param_val = float(eq_fn(0.0)[0])
-            event_params_array[uid2idx_event_params[event_param.uid]] = param_val
+            if isinstance(eq, Const) and eq.value is not None:
+
+                eq_fn = _compile_parameters_equations([eq], uid2sym_t)
+                param_val = float(eq_fn(0.0)[0])
+                event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
         # initialize array for model params
         params_array = np.zeros(len(comp_model.parameters.keys()))
