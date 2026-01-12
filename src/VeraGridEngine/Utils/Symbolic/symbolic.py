@@ -673,7 +673,7 @@ class BinOp(Expr):
                 else:
                     raise Exception("Division by zero :/")
             elif self.op == "**":
-                return Const(r.value ** l.value)
+                return Const(l.value ** r.value)
             else:
                 raise Exception(f"operation {self.op} not implemented")
 
