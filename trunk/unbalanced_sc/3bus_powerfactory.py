@@ -9,40 +9,56 @@ grid = vge.MultiCircuit()
 # ----------------------------------------------------------------------------------------------------------------------
 #   Buses
 # ----------------------------------------------------------------------------------------------------------------------
-bus_dc = vge.Bus(name='Bus DC', Vnom=0.75, xpos=0, ypos=0, is_dc=True)
-grid.add_bus(obj=bus_dc)
+bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=900, is_slack=True)
+grid.add_bus(obj=bus_slack)
 
-bus_ac = vge.Bus(name='Bus AC', Vnom=0.4, xpos=0, ypos=300, r_fault=0.2)
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=12.5)
 grid.add_bus(obj=bus_ac)
 
-bus_slack = vge.Bus(name='Bus Slack', Vnom=0.4, xpos=0, ypos=600, is_slack=True)
-grid.add_bus(obj=bus_slack)
+bus_wt = vge.Bus(name='Bus WT', Vnom=0.69, xpos=0, ypos=300)
+grid.add_bus(obj=bus_wt)
+
+bus_dc = vge.Bus(name='Bus DC', Vnom=0.69, xpos=0, ypos=0, is_dc=True, is_slack=True)
+grid.add_bus(obj=bus_dc)
+
+# ----------------------------------------------------------------------------------------------------------------------
+#   Transformer
+# ----------------------------------------------------------------------------------------------------------------------
+trafo_wt_ac = vge.Transformer2W(name='Trafo WT-AC',
+                                bus_from=bus_wt, bus_to=bus_ac,
+                                nominal_power=2.5)
+trafo_wt_ac.fill_design_properties(Pcu=22.0,
+                                   Pfe=0.0,
+                                   I0=0.1,
+                                   Vsc=6.0,
+                                   Sbase=grid.Sbase)
+grid.add_transformer2w(obj=trafo_wt_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Line
 # ----------------------------------------------------------------------------------------------------------------------
-line_slack_ac = vge.Line(name='AC - Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.01, x=0.1, rate=20.0)
+line_slack_ac = vge.Line(name='Line AC-Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.01, x=0.1, rate=2.5)
 grid.add_line(line_slack_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   VSC
 # ----------------------------------------------------------------------------------------------------------------------
 vsc = vge.VSC(bus_from=bus_dc,
-              bus_to=bus_ac,
-              rate=12.0,
+              bus_to=bus_wt,
+              rate=2.5,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
               control1=ConverterControlType.Vm_dc,
               control2=ConverterControlType.Qac,
               control1_val=1.0,
-              control2_val=-1.2824305436)
+              control2_val=0.0)
 grid.add_vsc(vsc)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Generators
 # ----------------------------------------------------------------------------------------------------------------------
-generator_dc = vge.Generator(P=9.0, power_factor=1.0, r1=0.005)
+generator_dc = vge.Generator(P=2.0, power_factor=1.0, r1=0.005)
 grid.add_generator(bus_dc, generator_dc)
 
 generator_ac = vge.Generator(r1=0.005, x1=0.05)
