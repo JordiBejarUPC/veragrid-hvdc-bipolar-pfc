@@ -87,12 +87,12 @@ class SymbolicJacobian:
                 # We substitute the remaining diff vars in d_expression
                 for diff_var in diff_variables:
                     deriv = d_expression.diff(diff_var)
-                    if not isinstance(deriv, Const):
+                    if not isinstance(deriv, Const) and deriv.value != 0:
                         h_t = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)[0]
                         dh_dt = h_t.diff(var)
                         d_expression = d_expression*dh_dt
                     else:
-                        d_expression = Const(0)
+                        d_expression = d_expression
 
                 
                 triplets.append((col, row, d_expression))
@@ -280,6 +280,7 @@ class SymbolicDerivative:
 
     def __init__(self, 
                  vars: Sequence[Var],
+                 uid2idx_vars: Dict[int, int],
                  diff_vars: Sequence[DiffVar],
                  compiler_names_dict: Dict[int, str],
                  use_jit: bool = True):
@@ -295,33 +296,41 @@ class SymbolicDerivative:
         }
         fname = f"func"  # since we compile into a namespace, there won't be repeated names
         # Build source
-        src = f"def {fname}(vars, lagvars, h, out):\n"
-        j = 0
-        for i, var in enumerate(vars):
-            if var.diff_var is not None:
-                src += f"    out[{j}] = (vars[{i}] - lagvars[{i}]) / h\n"
-                self.index_map[j] = i
-                j += 1
+        uid2dx_expression = {}
+        #TODO: order diff vars by order
+        src = f"def {fname}(vars, lagvars, dx, h, out):\n"
+        for i, diff_var in enumerate(diff_vars):
+            base_var_uid = diff_var.base_var.uid
+            uid = diff_var.uid
+            j = uid2idx_vars[base_var_uid]
+            if diff_var.diff_order == 0:
+                to_src = f"    out[{i}] = (vars[{j}] - lagvars[{j}]) / h\n"
+            else:
+                dx_expression = uid2dx_expression[diff_var.base_var.uid]
+                to_src = f"    out[{i}] = ({dx_expression}- dx[{i}]) / h\n"
+            uid2dx_expression[uid] = to_src
+            src += to_src
 
         src += f"    return out"
         # compile in python namespace
         exec(src, self.namespace)
         # compile in numba
         if use_jit:
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
+            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
                                 fastmath=True)(self.namespace[fname])
         else:
             self.func = self.namespace[fname]
-    
-    def __call__(self, x: Vec, xn: Vec, h: float) -> Vec:
+
+    def __call__(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         """
         Call the compiled function
         :param x:
         :param xn:
+        :param dx:
         :param h:
         :return:
         """
-        self.func(x, xn, h, self.data)
+        self.func(x, xn, dx, h, self.data)
         return self.data
 
 
@@ -442,6 +451,7 @@ class DiffBlockSolver:
             # self._differential_eqs.extend(b.differential_eqs)
             # self._reformulated_vars.extend(b.reformulated_vars)
 
+        self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.order)
         self._state_algeb_vars = self._state_vars + self._algebraic_vars
         self._state_eqs_substituted = self._state_eqs.copy()
 
@@ -550,8 +560,9 @@ class DiffBlockSolver:
         """
         print("Compiling...")
         self._derivative_fn = SymbolicDerivative(vars=self._state_algeb_vars,
+                                                uid2idx_vars=self.uid2idx_vars,
                                                 diff_vars=self._diff_vars,
-                                                  compiler_names_dict=self.compiler_names_dict)
+                                                compiler_names_dict=self.compiler_names_dict)
         
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
                                             compiler_names_dict=self.compiler_names_dict)
@@ -717,7 +728,7 @@ class DiffBlockSolver:
 
         return jac_fn
 
-    def rhs_pseudo_transient(self, x: Vec, xn: Vec, event_params: Vec, params: Vec,
+    def rhs_pseudo_transient(self, x: Vec, xn: Vec, dx: Vec, event_params: Vec, params: Vec,
                              sim_step, h: float) -> Vec:
         # returns algeb rhs is there is no states, is there is states, returns states and algebs rhs
 
@@ -731,19 +742,11 @@ class DiffBlockSolver:
         :param h: simulation step
         :return [f_state_update, f_algeb]
         """
-        # we set delta = h
-        params[-1] = 1
 
-        # we set dt = 1.0
-        params[-2] = 1e50
-        f_algeb = np.array(self._rhs_algeb_fn(x, event_params, params))
-        x_aux = x.copy()
-        dx = np.zeros(len(self.compiler_names_dict))
-        params = np.r_[params, dx]
-        # f_algeb = self._rhs_predictor(x_aux, params)
+        f_algeb = self._rhs_algeb_fn(x, dx, event_params, params)
         sim_step = sim_step
         if self._n_state > 0:
-            f_state = np.array(self._rhs_state_fn(x, event_params, params))
+            f_state = self._rhs_state_fn(x, dx, event_params, params)
             f_state_update = (x[:self._n_state] - xn[:self._n_state]) / h - f_state
             return np.r_[f_state_update, f_algeb]
 
@@ -771,6 +774,23 @@ class DiffBlockSolver:
         else:
             return f_algeb
 
+    def rhs_fixed(self, x: Vec, dx: Vec, event_params: np.ndarray, params: Vec) -> np.ndarray:
+        """
+        Return 𝑑x/dt given the current *state* vector.
+        :param event_params:
+        :param params:
+        :param x: get the right-hand-side give a state vector
+        :return [f_state_update, f_algeb]
+        """
+        f_algeb = np.array(self._rhs_algeb_fn(x, dx, event_params, params))
+
+        if self._n_state > 0:
+            f_state = np.array(self._rhs_state_fn(x, dx, event_params, params))
+            return np.r_[f_state, f_algeb]
+        else:
+            return f_algeb
+
+
     def jacobian_implicit(self, x: Vec, dx: Vec, event_params: Vec, params: Vec, h: float) -> sp.csc_matrix:
         """
         :param x: vector or variables' values
@@ -791,7 +811,6 @@ class DiffBlockSolver:
         """
 
         # returns only j22 if no states, returns J if states
-
         if len(self._state_eqs) == 0:
             j22: sp.csc_matrix = self._j22_fn(x, dx, event_params, params)
             return j22
@@ -813,25 +832,15 @@ class DiffBlockSolver:
 
     #### initialization
 
-    def jacobian_pseudo_transient(self, x: Vec, event_params: Vec, params: Vec,
+    def jacobian_pseudo_transient(self, x: Vec, dx: Vec, event_params: Vec, params: Vec,
                                   h: float) -> sp.csc_matrix:
         """
         #We want to build an equivalent of the following Jacobian:
                 J11 = delta^-1 * I + Jf
         """
-        # We set delta = 1.0
-        params[-1] = 1.0
-
-        # We set dt = h
-        params[-2] = h
-
         # Now we have J = -delta^-1 * I - Jf so we need to multiply J by -1.
         J = self.jacobian_implicit(x, dx, event_params, params, h)
 
-        flip_index = self._diff_eq_index
-        J = J.tolil()
-        J[flip_index, :] *= 1
-        J = J.tocsr()
         return J
 
     def build_init_params_vector(self, mapping: dict[Var, float]) -> Vec:
@@ -1035,7 +1044,7 @@ class DiffBlockSolver:
             if step_idx == 0:
                 dx = dx0.copy()
             else:
-                dx = self._derivative_fn(x_new, y[step_idx -1], h)
+                dx = self._derivative_fn(x_new, y[step_idx -1], dx, h)
             params_previous = params_current.copy()
             discontinuity = np.linalg.norm(params_current - params_previous, np.inf) > 1e-10
             xn = y[step_idx]
@@ -1189,12 +1198,39 @@ class DiffBlockSolver:
 
         return t, y, timings
 
-    def _update_0_lags(self, x_new, lag):
-        for i, lag_var in enumerate(self._lag_vars):
-            if lag_var.lag == 0:
-                uid = lag_var.base_var.uid
-                idx = self.uid2idx_vars[uid]
-                lag[i] = x_new[idx]
+    def _simulate_fixed(self, t0, t_end, h, x0, event_params, stepper="euler"):
+        """
+        Fixed‑step helpers (Euler, RK‑4)
+        :param t0:
+        :param t_end:
+        :param h:
+        :param x0:
+        :param stepper:
+        :return:
+        """
+        steps = int(np.ceil((t_end - t0) / h))
+        t = np.empty(steps + 1)
+        y = np.empty((steps + 1, self._n_vars))
+        t[0] = t0
+        y[0, :] = x0.copy()
+        params = np.array([const.value for const in self._parameters_values])
+
+        for i in range(steps):
+            tn = t[i]
+            xn = y[i]
+            if stepper == "euler":
+                k1 = self.rhs_fixed(xn, event_params, params)
+                y[i + 1] = xn + h * k1
+            elif stepper == "rk4":
+                k1 = self.rhs_fixed(xn, event_params, params)
+                k2 = self.rhs_fixed(xn + 0.5 * h * k1, event_params, params)
+                k3 = self.rhs_fixed(xn + 0.5 * h * k2, event_params, params)
+                k4 = self.rhs_fixed(xn + h * k3, event_params, params)
+                y[i + 1] = xn + (h / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
+            else:
+                raise RuntimeError("unknown stepper")
+            t[i + 1] = tn + h
+        return t, y
 
     def compute_dx(self, xn: Vec, x: Vec, h: float) -> Vec:
         """
@@ -1368,7 +1404,6 @@ class DiffBlockSolver:
                                          predictor=False, max_iter=8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
 
-        lag = np.zeros(len(self.uid2idx_lag))
         dtau = dtau0
         dtau_max = 1e3
         dtau_min = 1e-7
@@ -1384,30 +1419,18 @@ class DiffBlockSolver:
             if x0[i] == 0:
                 _ = 0
                 x0[i] = 0.1 + 0.5 * np.random.rand()
-        for i in range(len(lag)):
-            base_var = self._lag_vars[i].base_var
-            try:
-                lag[i] = x0[self.uid2idx_vars[base_var.uid]]
-            except:
-                lag[i] = 0.2
-            if lag[i] == 0:
-                lag[i] += 0.21 + np.random.rand()
 
+        dx0 = np.zeros(self._n_diff)
         y = np.empty((5, self._n_vars))
         step_idx = 0
         x_new = x0.copy()
         tries = 0
-        current_time = 0
-        params_current = self._event_params_fn(float(current_time))
-
-        # We set dt = 1
-        params_current[-1] = 1
-        params_outer = params_current.copy()
+        params = np.array([const.value for const in self._parameters_values])
+        event_params = self._event_params_fn(float(0))
 
         dx_error = 1
         residual = 10
         old_residual = 10
-        old_dx_error = 10
 
         # history containers
         dtau_hist = []
@@ -1416,102 +1439,34 @@ class DiffBlockSolver:
         x_hist = []
         dx_hist = []
 
-        x_old_iter = np.r_[x_new, lag]
         while step_idx < max_iter:
             tries += 1
             xn = y[-1]
-            params_current[-2] = 0.001
 
-            xn_lags = np.r_[xn, lag]
-            xnew_lags = np.r_[x_new, lag]
             # rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
-            # if (tries == 1 or (tries < 10 and predictor)) and False:
-            if step_idx < 2 and tries == 1 and False:
-                x_predicted, x_feasible = self.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
-                for i in range(0):
-                    _ = 0
-                    x_corrected, x_feasible = self.corrector(x_predicted, x_old_iter, x_feasible, params_current)
-                    x_predicted = x_corrected
 
-                xnew_lags[:len(x_feasible)] = x_feasible
-
-                # 1 Handle first-order derivatives first
-                for i, var in enumerate(self._diff_vars):
-                    if var.diff_order != 1:
-                        continue
-                    base_var_uid = self.uid2idx_vars[var.base_var.uid]
-                    xnew_lags[base_var_uid] = x_predicted[i]
-
-                # 2 Sort differential variables by diff_order before building lags
-                diff_vars_sorted = sorted(self._diff_vars, key=lambda v: v.diff_order)
-
-                # 3 Build lag variables in increasing order of diff_order
-                for i, var in enumerate(diff_vars_sorted):
-                    if var.diff_order <= 1:
-                        continue
-
-                    origin_var = var.origin_var
-                    diff_order = var.diff_order
-
-                    # Previous lag (order-1)
-                    prev_lag = LagVar.get_or_create(
-                        name=f"{origin_var.name}_lag{diff_order - 1}",
-                        base_var=origin_var,
-                        lag=diff_order - 1,
-                    )
-                    prev_lag_uid = self.uid2idx_vars[prev_lag.uid]
-
-                    # Current lag
-                    lag_var = LagVar.get_or_create(
-                        name=f"{origin_var.name}_lag{diff_order}",
-                        base_var=origin_var,
-                        lag=diff_order,
-                    )
-                    lag_uid = self.uid2idx_vars[lag_var.uid]
-
-                    # Recursive lag update: x_lag_n = x_lag_(n-1) − h * x^(n)
-                    xnew_lags[lag_uid] = xnew_lags[prev_lag_uid] - params_current[-1] * x_predicted[i]
-
-                print(f'xnew_lags is {xnew_lags}')
-                rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
-                Jf = self.jacobian_implicit(xnew_lags, params_current, dtau)
-                dx_previous = self.compute_dx(xnew_lags[:self._n_alg], lag, dtau)
-                residual_dx = np.linalg.norm(dx_previous)
-                residual = np.linalg.norm(rhs)
-                x_new = xnew_lags[:len(x_new)]
-                xnew_lags = np.r_[x_new, lag]
-                print(f'xnew_lags is {xnew_lags}')
-
-                if verbose:
-                    print(f'residual is {residual}')
-                if residual_dx < tol and residual < tol:
-                    x_new = xnew_lags[:self._n_alg]
-                    dx = self.compute_dx(xnew_lags[:self._n_alg], lag, 1e-3)
-                    residual_dx = np.linalg.norm(dx)
-            else:
-                rhs = self.rhs_pseudo_transient(xnew_lags, xn_lags, params_current, 1, dtau)
-                Jf = self.jacobian_pseudo_transient(xnew_lags, params_current, dtau)
-                residual = np.linalg.norm(rhs)
-
-                try:
-                    delta = sp.linalg.spsolve(Jf, -rhs)
-                except Exception as e:
-                    raise SingularJacobianError(f"Linear solver failed at try {tries}: {e}")
-                if not np.all(np.isfinite(delta)):  # or not np.all(np.isfinite(delta)):
-                    print(f'jacobian is {Jf.toarray()}')
-                    print(f'delta is {delta}')
-                    print(f'x_new is {x_new}')
-                    print(f'rhs is {rhs}')
-                    print(f'residual is {np.linalg.norm(rhs)} try is {tries} and step is {step_idx}')
-                    raise NaNError(
-                        f"Newton step failed at try {tries} and step {step_idx}: delta has NaN/Inf values with dtau {dtau}")
-                print(f'delta shape is {delta.shape}')
-                print(f'x_new shape is {x_new.shape}')
-                x_new += delta
-                xnew_lags = np.r_[x_new, lag]
-                rhs = self.rhs_pseudo_transient(xnew_lags, xn_lags, params_current, 1, dtau)
+            dx = self._derivative_fn(x_new, xn, dx0, 1e-3)
+            rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, params, 1, dtau)
+            Jf = self.jacobian_pseudo_transient(x_new, dx, event_params, params, dtau)
+            residual = np.linalg.norm(rhs)
+            try:
+                delta = sp.linalg.spsolve(Jf, -rhs)
+            except Exception as e:
+                raise SingularJacobianError(f"Linear solver failed at try {tries}: {e}")
+            if not np.all(np.isfinite(delta)):  # or not np.all(np.isfinite(delta)):
+                print(f'jacobian is {Jf.toarray()}')
+                print(f'delta is {delta}')
+                print(f'x_new is {x_new}')
+                print(f'rhs is {rhs}')
+                print(f'residual is {np.linalg.norm(rhs)} try is {tries} and step is {step_idx}')
+                raise NaNError(
+                    f"Newton step failed at try {tries} and step {step_idx}: delta has NaN/Inf values with dtau {dtau}")
+            print(f'delta shape is {delta.shape}')
+            print(f'x_new shape is {x_new.shape}')
+            x_new += delta
+            rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, 1, dtau)
 
             if step_idx == 0 and tries % 10 == 1:
                 i = np.argmax(rhs)
@@ -1531,12 +1486,12 @@ class DiffBlockSolver:
                 if step_idx > 2:
                     y[-1] = alpha * x_new + (1 - alpha) * y[-1]
                 else:
-                    y[-1] = alpha * x_new
+                    y[-1] = x_new
                 x_new = y[-1]
 
-                dx = self.compute_dx(x_new, lag, dtau)
+                dx = self._derivative_fn(x_new, xn, dx, 1e-3)
                 dx_error = np.linalg.norm(dx)
-                rhs = self.rhs_pseudo_transient(xnew_lags, xn_lags, params_current, 1, dtau)
+                rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, 1, dtau)
                 residual = np.linalg.norm(rhs)
 
                 # save history
@@ -1611,25 +1566,7 @@ class DiffBlockSolver:
                     dtau = -min(dtau_max, max(dtau_min, -dtau * beta))
                 print(f'Updated dtau: {dtau}')
 
-                # update lags
-                for i, lag_var in enumerate(self._lag_vars):
-                    if lag_var.lag == 0:
-                        uid = lag_var.base_var.uid
-                        idx = self.uid2idx_vars[uid]
-                        lag[i] = x_new[idx]
-                    elif step_idx + 1 - (lag_var.lag - 1) >= 0:
-                        uid = lag_var.base_var.uid
-                        idx = self.uid2idx_vars[uid]
-                        lag[i] = y[-1 - lag_var.lag, idx]
-                    else:
-                        lag_name = lag_var.base_var.name + '_lag_' + str(lag_var.lag - 1)
-                        next_lag_var = LagVar.get_or_create(lag_name, base_var=lag_var.base_var, lag=lag_var.lag - 1)
-                        uid = next_lag_var.uid
-                        idx = self.uid2idx_lag[uid]
-                        lag[i] = lag[idx]
                 old_residual = residual
-                old_dx_error = dx_error
-                x_old_iter = np.r_[x_new, lag]
 
             elif tries > max_tries:
                 print(f'failed with dtau = {dtau}')
@@ -1704,410 +1641,15 @@ class DiffBlockSolver:
 
         return x_new, init_guess
 
-    def pseudo_transient_daes(self, x0, init_guess=dict(), plot=True, dtau0=1e-3, h=1e-3, beta=0.8, tol=1e-5,
-                              predictor=False, max_iter: float = 8e4, max_tries=200, verbose=False):
-        # Init pseudo transient method, Block only has algebraic eqs
-        lag = np.zeros(len(self.uid2idx_lag))
-        dtau = dtau0
-        init_guess_uid = [var.uid for var in init_guess.keys()]
-
-        for var in self._algebraic_vars:
-            if not var.uid in init_guess_uid:
-                continue
-            idx = self.uid2idx_vars[var.uid]
-            x0[idx] = init_guess[var]
-        for i in range(len(x0)):
-            if x0[i] == 0:
-                _ = 0
-                x0[i] = 0.1 + 0.5 * np.random.rand()
-        for i in range(len(lag)):
-            base_var = self._lag_vars[i].base_var
-            lag[i] = x0[self.uid2idx_vars[base_var.uid]]
-            if lag[i] == 0:
-                lag[i] += 0.1 + np.random.rand()
-
-        y = np.empty((5, self._n_vars))
-        step_idx = 0
-        x_new = x0.copy()
-        tries = 0
-        current_time = 0
-        params_current = self._event_params_fn(float(current_time))
-        params_outer = params_current.copy()
-        params_outer[-1] = 1e-3
-        dx_error = 1
-        residual = 10
-        newton_residual = 10
-        old_residual = 10
-
-        # history containers
-        dtau_hist = []
-        dx_error_hist = []
-        residual_hist = []
-        x_hist = []
-        dx_hist = []
-
-        x_old_iter = np.r_[x_new, lag]
-        while step_idx < max_iter:
-            xn = y[-1]
-            params_current[-1] = dtau
-
-            xn_lags = np.r_[xn, lag]
-            xnew_lags = np.r_[x_new, lag]
-            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, 1, dtau)
-            if verbose:
-                print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
-            if tries > 1:
-                x_predicted, x_feasible = self.predictor(x_old=xnew_lags, max_step=5e3, params=params_current)
-            else:
-                x_predicted, x_feasible = self.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
-            for i in range(1):
-                _ = 0
-                if tries > 1:
-                    x_corrected, x_feasible = self.corrector(x_predicted, x_feasible, x_feasible, params_current)
-                else:
-                    x_corrected, x_feasible = self.corrector(x_predicted, x_old_iter, x_feasible, params_current)
-                x_predicted = x_corrected
-            xnew_lags[:len(x_feasible)] = x_feasible
-            # 1 Handle first-order derivatives first
-            for i, var in enumerate(self._diff_vars):
-                if var.diff_order != 1:
-                    continue
-                base_var_uid = self.uid2idx_vars[var.base_var.uid]
-                xnew_lags[base_var_uid] = x_predicted[i]
-
-            newton_residual = np.linalg.norm(rhs)
-            converged = newton_residual < tol
-            if verbose:
-                _ = 0
-                print(f'residual is {rhs} try is {tries} and x is {x_new}')
-
-            step_idx += 1
-            y = np.roll(y, shift=-1, axis=0)
-            alpha = 1.0
-            if step_idx > 2:
-                y[-1] = alpha * x_new + (1 - alpha) * y[-1]
-            else:
-                y[-1] = alpha * x_new
-            x_new = y[-1]
-
-            # save history
-            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_outer, 1, dtau)
-            dtau_hist.append(dtau)
-            dx_hist.append(self.compute_dx(x_new, lag, dtau).copy())
-            dx_error_hist.append(np.linalg.norm(dx_hist[-1]))
-            residual_hist.append(np.linalg.norm(rhs))
-            x_hist.append(x_new.copy())
-            print(
-                f'Convergence achieved for dtau={dtau:.2e}, ||dx||={dx_error:.2e}, residual={residual:.2e}, step {step_idx}')
-
-            for i, lag_var in enumerate(self._lag_vars):
-                if lag_var.lag == 0:
-                    uid = lag_var.base_var.uid
-                    idx = self.uid2idx_vars[uid]
-                    lag[i] = x_new[idx]
-                elif step_idx + 1 - (lag_var.lag - 1) >= 0:
-                    uid = lag_var.base_var.uid
-                    idx = self.uid2idx_vars[uid]
-                    lag[i] = y[-1 - lag_var.lag, idx]
-                else:
-                    lag_name = lag_var.base_var.name + '_lag_' + str(lag_var.lag - 1)
-                    next_lag_var = LagVar.get_or_create(lag_name, base_var=lag_var.base_var, lag=lag_var.lag - 1)
-                    uid = next_lag_var.uid
-                    idx = self.uid2idx_lag[uid]
-                    lag[i] = lag[idx]
-            old_residual = residual
-            x_old_iter = np.r_[x_new, lag]
-
-            if converged:
-                break
-            elif tries > max_tries:
-                raise ConvergenceError(f"Max tries reached at dtau={dtau:.2e}, residual={residual:.2e}")
-
-        init_guess = {var: x_new[self.uid2idx_vars[var.uid]] for var in self._algebraic_vars}
-
-        if not plot:
-            return x_new, init_guess
-        # --- Plotting section ---
-        fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-
-        axs[0].semilogy(dx_error_hist, label="||dx||")
-        axs[0].set_ylabel("dx error (log)")
-        axs[0].legend()
-
-        axs[1].semilogy(residual_hist, label="Residual norm")
-        axs[1].set_ylabel("Residual (log)")
-        axs[1].legend()
-
-        axs[2].semilogy(dtau_hist, label="dtau")
-        axs[2].set_ylabel("dtau")
-        axs[2].set_xlabel("Step index")
-        axs[2].legend()
-
-        # --- Plot actual variables ---
-        x_hist = np.array(x_hist)  # shape: (n_steps, n_vars)
-        dx_hist = np.array(dx_hist)  # shape: (n_steps, n_vars)
-
-        nvars = len(self._algebraic_vars)
-        vars_per_plot = 5
-        nplots = (nvars + vars_per_plot - 1) // vars_per_plot
-
-        fig, axs = plt.subplots(nplots, 1, figsize=(10, 2.5 * nplots), sharex=True)
-
-        # if there’s only one subplot, axs won’t be a list
-        if nplots == 1:
-            axs = [axs]
-        if x_hist.ndim == 1:
-            # print('Pseudo Transient finished')
-            return x_new, init_guess
-
-        for i in range(nplots):
-            start = i * vars_per_plot
-            end = min((i + 1) * vars_per_plot, nvars)
-            for var in self._algebraic_vars[start:end]:
-                axs[i].plot(x_hist[:, self.uid2idx_vars[var.uid]], label=var.name)
-            axs[i].set_ylabel("Value")
-            axs[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-        axs[-1].set_xlabel("Step index")
-
-        nvars = len(self._diff_vars)
-        vars_per_plot = 5
-        nplots = (nvars + vars_per_plot - 1) // vars_per_plot
-
-        fig, axs = plt.subplots(nplots, 1, figsize=(10, 2.5 * nplots), sharex=True)
-        if nplots == 1:
-            axs = [axs]
-
-        for i in range(nplots):
-            start = i * vars_per_plot
-            end = min((i + 1) * vars_per_plot, nvars)
-            for var in self._diff_vars[start:end]:
-                axs[i].plot(dx_hist[:, self.uid2idx_diff[var.uid]], label=f"d{var.base_var.name}")
-            axs[i].set_ylabel("dx")
-            axs[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-        axs[-1].set_xlabel("Step index")
-        plt.tight_layout()
-        plt.show()
-        # print('Pseudo Transient finished')
-
-        return x_new, init_guess
-
-    def pseudo_transient_explicit(self, x0, init_guess={}, plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
-                                  predictor=False, max_iter=8e4, max_tries=200, verbose=False):
-        # Init pseudo transient method, Block only has algebraic eqs
-        if self._n_state == 0:
-            raise ('System is not in explicit form')
-        lag = np.zeros(len(self.uid2idx_lag))
-        dtau = dtau0
-        init_guess_uid = [var.uid for var in init_guess.keys()]
-
-        for var in self._algebraic_vars:
-            if not var.uid in init_guess_uid:
-                continue
-            idx = self.uid2idx_vars[var.uid]
-            x0[idx] = init_guess[var]
-        for i in range(len(x0)):
-            if x0[i] == 0:
-                _ = 0
-                x0[i] = 0.1 + 0.5 * np.random.rand()
-        for i in range(len(lag)):
-            base_var = self._lag_vars[i].base_var
-            lag[i] = x0[self.uid2idx_vars[base_var.uid]]
-            if lag[i] == 0:
-                lag[i] += 0.1 + np.random.rand()
-
-        y = np.empty((5, self._n_vars))
-        step_idx = 0
-        x_new = x0.copy()
-        tries = 0
-        current_time = 0
-        params_current = self._event_params_fn(float(current_time))
-        params_outer = params_current.copy()
-        params_outer[-1] = 1e-3
-        dx_error = 1
-        residual = 10
-        newton_residual = 10
-        old_residual = 10
-
-        # history containers
-        dtau_hist = []
-        dx_error_hist = []
-        residual_hist = []
-        x_hist = []
-        dx_hist = []
-
-        x_old_iter = np.r_[x_new, lag]
-        while step_idx < max_iter:
-            xn = y[-1]
-            params_current[-1] = dtau
-
-            xn_lags = np.r_[xn, lag]
-            xnew_lags = np.r_[x_new, lag]
-            rhs = self.rhs_implicit(xnew_lags, dx, xn_lags, params_current, 1, dtau)
-            if verbose:
-                print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
-            if tries > 1:
-                x_predicted, x_feasible = self.predictor(x_old=xnew_lags, max_step=5e3, params=params_current)
-            else:
-                x_predicted, x_feasible = self.predictor(x_old=x_old_iter, max_step=5e3, params=params_current)
-            for i in range(1):
-                _ = 0
-                if tries > 1:
-                    x_corrected, x_feasible = self.corrector(x_predicted, x_feasible, x_feasible, params_current)
-                else:
-                    x_corrected, x_feasible = self.corrector(x_predicted, x_old_iter, x_feasible, params_current)
-                x_predicted = x_corrected
-            xnew_lags[:len(x_feasible)] = x_feasible
-            # 1 Handle first-order derivatives first
-            for i, var in enumerate(self._diff_vars):
-                if var.diff_order != 1:
-                    continue
-                base_var_uid = self.uid2idx_vars[var.base_var.uid]
-                xnew_lags[base_var_uid] = x_predicted[i]
-
-            newton_residual = np.linalg.norm(rhs)
-            converged = newton_residual < tol
-            if verbose:
-                _ = 0
-                print(f'residual is {rhs} try is {tries} and x is {x_new}')
-
-            step_idx += 1
-            y = np.roll(y, shift=-1, axis=0)
-            alpha = 1.0
-            if step_idx > 2:
-                y[-1] = alpha * x_new + (1 - alpha) * y[-1]
-            else:
-                y[-1] = alpha * x_new
-            x_new = y[-1]
-
-            # save history
-            rhs = self.rhs_implicit(xnew_lags, xn_lags, params_outer, 1, dtau)
-            dtau_hist.append(dtau)
-            dx_hist.append(self.compute_dx(x_new, lag, dtau).copy())
-            dx_error_hist.append(np.linalg.norm(dx_hist[-1]))
-            residual_hist.append(np.linalg.norm(rhs))
-            x_hist.append(x_new.copy())
-            print(
-                f'Convergence achieved for dtau={dtau:.2e}, ||dx||={dx_error:.2e}, residual={residual:.2e}, step {step_idx}')
-
-            for i, lag_var in enumerate(self._lag_vars):
-                if lag_var.lag == 0:
-                    uid = lag_var.base_var.uid
-                    idx = self.uid2idx_vars[uid]
-                    lag[i] = x_new[idx]
-                elif step_idx + 1 - (lag_var.lag - 1) >= 0:
-                    uid = lag_var.base_var.uid
-                    idx = self.uid2idx_vars[uid]
-                    lag[i] = y[-1 - lag_var.lag, idx]
-                else:
-                    lag_name = lag_var.base_var.name + '_lag_' + str(lag_var.lag - 1)
-                    next_lag_var = LagVar.get_or_create(lag_name, base_var=lag_var.base_var, lag=lag_var.lag - 1)
-                    uid = next_lag_var.uid
-                    idx = self.uid2idx_lag[uid]
-                    lag[i] = lag[idx]
-            old_residual = residual
-            x_old_iter = np.r_[x_new, lag]
-
-            if converged:
-                break
-            elif tries > max_tries:
-                raise ConvergenceError(f"Max tries reached at dtau={dtau:.2e}, residual={residual:.2e}")
-
-        init_guess = {var: x_new[self.uid2idx_vars[var.uid]] for var in self._algebraic_vars}
-
-        if not plot:
-            return x_new, init_guess
-        # --- Plotting section ---
-        fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
-
-        axs[0].semilogy(dx_error_hist, label="||dx||")
-        axs[0].set_ylabel("dx error (log)")
-        axs[0].legend()
-
-        axs[1].semilogy(residual_hist, label="Residual norm")
-        axs[1].set_ylabel("Residual (log)")
-        axs[1].legend()
-
-        axs[2].semilogy(dtau_hist, label="dtau")
-        axs[2].set_ylabel("dtau")
-        axs[2].set_xlabel("Step index")
-        axs[2].legend()
-
-        # --- Plot actual variables ---
-        x_hist = np.array(x_hist)  # shape: (n_steps, n_vars)
-        dx_hist = np.array(dx_hist)  # shape: (n_steps, n_vars)
-
-        nvars = len(self._algebraic_vars)
-        vars_per_plot = 5
-        nplots = (nvars + vars_per_plot - 1) // vars_per_plot
-
-        fig, axs = plt.subplots(nplots, 1, figsize=(10, 2.5 * nplots), sharex=True)
-
-        # if there’s only one subplot, axs won’t be a list
-        if nplots == 1:
-            axs = [axs]
-        if x_hist.ndim == 1:
-            # print('Pseudo Transient finished')
-            return x_new, init_guess
-
-        for i in range(nplots):
-            start = i * vars_per_plot
-            end = min((i + 1) * vars_per_plot, nvars)
-            for var in self._algebraic_vars[start:end]:
-                axs[i].plot(x_hist[:, self.uid2idx_vars[var.uid]], label=var.name)
-            axs[i].set_ylabel("Value")
-            axs[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-        axs[-1].set_xlabel("Step index")
-
-        nvars = len(self._diff_vars)
-        vars_per_plot = 5
-        nplots = (nvars + vars_per_plot - 1) // vars_per_plot
-
-        fig, axs = plt.subplots(nplots, 1, figsize=(10, 2.5 * nplots), sharex=True)
-        if nplots == 1:
-            axs = [axs]
-
-        for i in range(nplots):
-            start = i * vars_per_plot
-            end = min((i + 1) * vars_per_plot, nvars)
-            for var in self._diff_vars[start:end]:
-                axs[i].plot(dx_hist[:, self.uid2idx_diff[var.uid]], label=f"d{var.base_var.name}")
-            axs[i].set_ylabel("dx")
-            axs[i].legend(loc="best", fontsize="x-small", ncol=2, frameon=False)
-        axs[-1].set_xlabel("Step index")
-        plt.tight_layout()
-        plt.show()
-        # print('Pseudo Transient finished')
-
-        return x_new, init_guess
-
     def compile_implicit_predictor(self):
+        self._rhs_predictor = self.rhs_implicit
 
-        uid2sym_diffvars = dict()
-        uid2sym_vars = self.compiler_names_dict.copy()
-        uid2sym_params = self.uid2sym_params.copy()
-        uid2sym_params_predictor = self.uid2sym_params.copy()
+        self._Jf_predictor = SymbolicJacobian(eqs=self._algebraic_eqs, 
+                                            variables=self._diff_vars,
+                                            diff_variables= [],
+                                            compiler_names_dict = self.compiler_names_dict,
+                                            uid2idx_vars= self.uid2idx_vars,)
 
-        i = 0
-        j = len(uid2sym_params)
-        for ep in self._diff_vars:
-            uid2sym_diffvars[ep.uid] = f"vars[{i}]"
-            uid2sym_params[ep.uid] = f"params[{j}]"
-            i += 1
-            j += 1
-
-        j = len(uid2sym_params_predictor)
-        for ep in self._algebraic_vars:
-            uid2sym_params_predictor[ep.uid] = f"params[{j}]"
-            j += 1
-
-        self._rhs_predictor = _compile_equations(eqs=self._algebraic_eqs, uid2sym_vars=uid2sym_vars,
-                                                 uid2sym_params=uid2sym_params)
-
-        self._Jf_predictor = self._get_jacobian(eqs=self._algebraic_eqs, variables=self._diff_vars,
-                                                uid2sym_vars=uid2sym_diffvars,
-                                                uid2sym_params=uid2sym_params_predictor, dt=self.dt, substitute=False)
-
-        self._algebraic_eqs_stable = []
         self._diff_eq_index = []
         for i, eq in enumerate(self._algebraic_eqs):
             eq_save = eq
@@ -2116,144 +1658,42 @@ class DiffBlockSolver:
             if str(eq_save) != str(eq):
                 continue
             eq = eq.simplify()
-            self._algebraic_eqs_stable.append(eq)
             self._diff_eq_index.append(i)
 
-        print(len(self._algebraic_eqs_stable))
-        self._Jf_feasible = self._get_jacobian(eqs=self._algebraic_eqs_stable, variables=self._algebraic_vars,
-                                               uid2sym_vars=self.compiler_names_dict,
-                                               uid2sym_params=self.uid2sym_params, dt=self.dt, substitute=False)
-        self._rhs_feasible = _compile_equations(eqs=self._algebraic_eqs_stable, uid2sym_vars=self.compiler_names_dict,
-                                                uid2sym_params=self.uid2sym_params)
+        self._rhs_feasible = self.rhs_implicit
+        self._Jf_feasible  = self.jacobian_implicit
 
-        def rhs_predictor(x_new, x_old, params):
-            dt = params[-1]
-            dx = np.zeros(len(self._diff_vars))
-            x_aux = np.zeros(len(self.compiler_names_dict))
-            x_aux[:len(x_old)] = x_old
-            for i, var in enumerate(self._diff_vars):
-                id = self.uid2idx_vars[var.origin_var.uid]
-                if var.base_var.uid == var.origin_var.uid:
-                    dx[i] = (x_new[i] - x_old[id]) / dt
-                else:
-                    xold_expression, _ = var.approximation_expr(dt, lag_can_be_0=False)
-                    vars_to_substitute = [var.origin_var]
-                    vars_to_substitute += [LagVar.get_or_create(name='a', base_var=var.origin_var, lag=i) for i in
-                                           range(1, var.diff_order + 1)]
-                    subs = {}
-                    for var_to_sub in vars_to_substitute:
-                        var_idx = self.uid2idx_vars[var_to_sub.uid]
-                        subs[var_to_sub] = Const(x_old[var_idx])
-                    xold_value = xold_expression.subs(subs).simplify().value
-                    dx[i] = (x_new[i] - xold_value) / dt
-
-            params = np.r_[params, dx]
-            rhs = self._rhs_predictor(x_aux, params)
+        #TODO: adapt to explicit DAE systems
+        def rhs_predictor(x_new:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+            dx = self._derivative_fn(x_new, x_old, dx, h)
+            rhs = self._rhs_predictor(x_old, x_old, dx, params, event_params, h)
             return rhs
 
-        def Jf_predictor(x_new, x_old, params):
-            dt = params[-1]
-            dx = np.zeros(len(self._diff_vars))
-            for i, var in enumerate(self._diff_vars):
-                id = self.uid2idx_vars[var.origin_var.uid]
-                if var.base_var.uid == var.origin_var.uid:
-                    dx[i] = (x_new[i] - x_old[id]) / dt
-                else:
-                    xold_expression, _ = var.approximation_expr(dt, lag_can_be_0=False)
-                    vars_to_substitute = [var.origin_var]
-                    vars_to_substitute += [LagVar.get_or_create(name='a', base_var=var.origin_var, lag=i) for i in
-                                           range(1, var.diff_order + 1)]
-                    subs = {}
-                    for var_to_sub in vars_to_substitute:
-                        var_idx = self.uid2idx_vars[var_to_sub.uid]
-                        subs[var_to_sub] = Const(x_old[var_idx])
-                    xold_value = xold_expression.subs(subs).simplify().value
-                    dx[i] = (x_new[i] - xold_value) / dt
-
-            x_old = x_old[:self._n_alg]
-            params = np.r_[params, x_old]
-            Jf = self._Jf_predictor(dx, params) * (1 / dt)
+        def Jf_predictor(x_new:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+            dx = self._derivative_fn(x_new, x_old, dx, h)
+            Jf = self._Jf_predictor(x_old, x_old, dx, params, event_params, h) * (1 / h)
             return Jf
 
-        def rhs_corrector(x_new, x_mid, x_old, params):
-            dt = params[-1]
-            dx = np.zeros(len(self._diff_vars))
-            x_aux = np.zeros(len(self.compiler_names_dict))
-            x_aux[:len(x_mid)] = x_mid
-            for i, var in enumerate(self._diff_vars):
-                id = self.uid2idx_vars[var.origin_var.uid]
-                if var.base_var.uid == var.origin_var.uid:
-                    dx[i] = (x_new[i] - x_old[id]) / dt
-                else:
-                    xold_expression = var.approximation_expr(dt)
-                    vars_to_substitute = [var.origin_var]
-                    vars_to_substitute += [LagVar.get_or_create(base_var=var.origin_var, lag=i) for i in
-                                           range(1, var.diff_order + 1)]
-                    subs = {}
-                    for var_to_sub in vars_to_substitute:
-                        var_idx = self.uid2idx_vars[var_to_sub.uid]
-                        subs[var_to_sub] = x_old[var_idx]
-                    xold_value = xold_expression.subs(subs).simplify()
-                    dx[i] = (x_new[i] - xold_value) / dt
-
-            params = np.r_[params, dx]
-            rhs = self._rhs_predictor(x_aux, params)
+        def rhs_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+            dx = self._derivative_fn(x_new, x_old, dx, h)
+            rhs = self._rhs_predictor(x_predicted, x_predicted, dx, params, event_params, h)
             return rhs
 
-        def Jf_corrector(x_new, x_mid, x_old, params):
-            dt = params[-1]
-            dx = np.zeros(len(self._diff_vars))
-            for i, var in enumerate(self._diff_vars):
-                id = self.uid2idx_vars[var.origin_var.uid]
-                if var.base_var.uid == var.origin_var.uid:
-                    dx[i] = (x_new[i] - x_old[id]) / dt
-                else:
-                    xold_expression = var.approximation_expr(dt)
-                    vars_to_substitute = [var.origin_var]
-                    vars_to_substitute += [LagVar.get_or_create(base_var=var.origin_var, lag=i) for i in
-                                           range(1, var.diff_order + 1)]
-                    subs = {}
-                    for var_to_sub in vars_to_substitute:
-                        var_idx = self.uid2idx_vars[var_to_sub.uid]
-                        subs[var_to_sub] = x_old[var_idx]
-                    xold_value = xold_expression.subs(subs).simplify()
-                    dx[i] = (x_new[i] - xold_value) / dt
-
-            x_mid = x_mid[:self._n_alg]
-            params = np.r_[params, x_mid]
-            Jf = self._Jf_predictor(dx, params) * (1 / dt)
+        def Jf_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+            dx = self._derivative_fn(x_new, x_old, dx, h)
+            Jf = self._Jf_predictor(x_predicted, x_predicted, dx, params, event_params, h) * (1 / h)
             return Jf
 
-        def Jf_feasible(x, params):
-            x_aux = np.zeros(len(self.compiler_names_dict))
-            x_aux[:len(x)] = x
-            Jf = self._Jf_feasible(x_aux, params)
+        def rhs_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
+            dx = 0*np.zeros(self._n_diff)
+            Jf = self._rhs_predictor(x, x, 0*dx, params, event_params, h)[self._diff_eq_index]
             return Jf
 
-        def rhs_feasible(x, params):
-            x_aux = np.zeros(len(self.compiler_names_dict))
-            x_aux[:len(x)] = x
-            rhs = self._rhs_feasible(x_aux, params)
-            return rhs
+        def Jf_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
+            dx = 0*np.zeros(self._n_diff)
+            Jf = self._j22_fn(x, x, 0*dx, params, event_params, h)[self._diff_eq_index]
+            return Jf
 
-        def Jf_with_fix_x(x, params, fix_idx):
-            # Create an auxiliary array (same length as the full set of variables)
-            fix_idx = np.array(fix_idx)
-            x_aux = np.zeros(len(self.compiler_names_dict))
-            x_aux[:len(x)] = x  # Fill with the given values of x
-
-            # Compute the full Jacobian
-            Jf = self._Jf_feasible(x_aux, params)
-
-            # Sparse case → mask unwanted columns
-            Jf = Jf.tocsc()
-            mask = np.ones(Jf.shape[1], dtype=bool)
-            mask[fix_idx] = False
-
-            # Keep only the non-fixed columns
-            Jf_reduced = Jf[:, mask]
-
-            return Jf_reduced
 
         self.rhs_predictor = rhs_predictor
         self.Jf_predictor = Jf_predictor
@@ -2261,7 +1701,6 @@ class DiffBlockSolver:
         self.rhs_feasible = rhs_feasible
         self.Jf_corrector = Jf_corrector
         self.rhs_corrector = rhs_corrector
-        self.Jf_feasible_fixed_x = Jf_with_fix_x
 
         # print("Predictor-Corrector Compiled")
         return
@@ -2574,48 +2013,3 @@ class DiffBlockSolver:
             residual = np.linalg.norm(x_new - x)
             x = x_new
         return x
-
-    def T_operator(self, params_current):
-
-        def operator(lags, h=1e-3):
-            residual = 10
-            x_n = np.zeros(self._n_vars)
-            dtau = 1e-6
-            for lag in self._lag_vars:
-                base_var = lag.base_var
-                base_var_idx = self.uid2idx_vars[base_var.uid]
-                x_n[base_var_idx] = lags[self.uid2idx_lag[lag.uid]] + 2 * np.random.rand()
-
-            x_new = x_n.copy()
-
-            while residual > 1e-4:
-                xn_lags = np.r_[x_n, lags]
-                xnew_lags = np.r_[x_new, lags]
-                params_current[-1] = dtau
-
-                rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
-                Jf = self.jacobian_implicit(xnew_lags, params_current, dtau)
-                delta = sp.linalg.spsolve(Jf, -rhs)
-
-                if np.isnan(delta).any() or np.isinf(delta).any():
-                    delta = sp.linalg.lsqr(Jf, -rhs)[0]
-
-                x_new += delta
-                residual = np.linalg.norm(rhs)
-                # print(f'residual is {residual}')
-            x_states = np.zeros(len(self._lag_vars))
-
-            # We project onto the state variables
-            # TODO: return should also be lags
-            for lag in self._lag_vars:
-                base_var = lag.base_var
-                base_var_idx = self.uid2idx_vars[base_var.uid]
-                if lag.lag == 1:
-                    x_states[self.uid2idx_lag[lag.uid]] = x_new[base_var_idx]
-                else:
-                    lag_var = LagVar.get_or_create('name', base_var=base_var, lag=lag.lag - 1)
-                    x_states[self.uid2idx_lag[lag.uid]] = lags[self.uid2idx_lag[lag_var.uid]]
-
-            return x_states
-
-        return operator

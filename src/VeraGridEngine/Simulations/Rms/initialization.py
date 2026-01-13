@@ -424,7 +424,7 @@ def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
 
 def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res,
                      grid: MultiCircuit, uid2idx_vars: Dict[int, int],
-                     fix='P&V', dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
+                     dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                      type: str = None):
     """
     :param uid2idx_vars:
@@ -462,58 +462,13 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
             continue
         bus_block = Block()
 
-        if fix == 'P':
-            delete_vars_from_block(block, [Pg, Qg])
-            bus_block = Block()
-            bus_block = Block(
-                algebraic_vars=[Vm, Va])
-            bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
-                                    Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase)))}
+        delete_vars_from_block(block, [Pg, Qg])
+        bus_block = Block()
 
-        elif fix == 'V':
-            # delete_vars_from_block(block, [Va, Vm])
-            bus_block = Block()
-            # bus_block = DiffBlock(
-            #     algebraic_vars=[Pg, Qg])
-            bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                    Va: Const(float(np.angle(res.voltage[bus_index])))}
-
-        elif fix == 'I':
-            Im = Var('Im')
-            Ia = Var('Ia')
-            delta = find_name_in_block('delta', block)
-            Id = find_name_in_block('Id', block)
-            Iq = find_name_in_block('Iq', block)
-            v = res.voltage[bus_index]
-            Sb = res.Sbus[bus_index] / grid.Sbase
-
-            # Current from power and voltage
-            i = np.conj(Sb / v)  # ī = (p - jq) / v̄*
-
-            bus_block = Block(
-                algebraic_eqs=[
-                    Id - (-Im * sin(Ia - delta)),
-                    Iq - Im * cos(Ia - delta),
-                ],
-                algebraic_vars=[Pg, Qg, Vm, Va])
-            bus_block.event_dict = {Im: Const(float(np.abs(i))),
-                                    Ia: Const(float(np.angle(i)))}
-
-        elif fix == 'P&V':
-            delete_vars_from_block(block, [Pg, Qg])
-            bus_block = Block()
-
-            bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
-                                    Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
-                                    Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                    Va: Const(float(np.angle(res.voltage[bus_index])))}
-
-        elif fix == 'mixed':
-            delete_vars_from_block(block, [Vm, Va, Pg, Qg])
-            bus_block = Block(
-                algebraic_vars=[Va, Qg])
-            bus_block.event_dict = {Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                    Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase)))}
+        bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
+                                Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
+                                Vm: Const(float(np.abs(res.voltage[bus_index]))),
+                                Va: Const(float(np.angle(res.voltage[bus_index])))}
 
         init_block = Block(
             children=[block, bus_block]
