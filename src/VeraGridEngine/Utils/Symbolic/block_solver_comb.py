@@ -439,7 +439,7 @@ class DiffBlockSolver:
             # self._differential_eqs.extend(b.differential_eqs)
             # self._reformulated_vars.extend(b.reformulated_vars)
 
-        self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.order)
+        self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.diff_order)
         self._state_algeb_vars = self._state_vars + self._algebraic_vars
         self._state_eqs_substituted = self._state_eqs.copy()
 

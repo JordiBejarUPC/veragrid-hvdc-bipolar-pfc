@@ -837,6 +837,9 @@ class BinOp(Expr):
 
     def __repr__(self) -> str:
         return self.__str__()
+    
+    def __print__(self) -> str:
+        return self.__str__()
 
     @staticmethod
     def parse(data: Dict[str, Any]) -> Expr:
@@ -1034,6 +1037,17 @@ class Func(Expr):
                 return self.fnd(u, du)
             else:
                 raise Exception(f"No derivative defined for {self.op}")
+        
+    def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
+        if self in mapping:
+            return mapping[self]
+        return Func(self.arg.subs(mapping), self.op)
+    
+    def __str__(self) -> str:
+        return f"{self.op}({self.arg})"
+    
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 def abs(x: Expr):  # TODO: Rename to not shadow
