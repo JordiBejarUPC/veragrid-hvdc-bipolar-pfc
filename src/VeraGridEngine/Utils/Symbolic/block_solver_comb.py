@@ -290,13 +290,15 @@ class SymbolicDerivative:
         for i, diff_var in enumerate(diff_vars):
             base_var_uid = diff_var.base_var.uid
             uid = diff_var.uid
-            j = uid2idx_vars[base_var_uid]
-            if diff_var.diff_order == 0:
-                to_src = f"    out[{i}] = (vars[{j}] - lagvars[{j}]) / h\n"
+            if diff_var.diff_order == 1:
+                j = uid2idx_vars[base_var_uid]
+                rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
             else:
                 dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                to_src = f"    out[{i}] = ({dx_expression}- dx[{i}]) / h\n"
-            uid2dx_expression[uid] = to_src
+                rhs = f" ({dx_expression}- dx[{i}]) / h\n"
+            to_src = f"    out[{i}] = {rhs}\n"
+            uid2dx_expression[uid] = rhs
+
             src += to_src
 
         src += f"    return out"
