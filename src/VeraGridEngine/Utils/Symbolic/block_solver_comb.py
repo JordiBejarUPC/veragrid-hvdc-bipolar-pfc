@@ -83,7 +83,6 @@ class SymbolicJacobian:
                 eq = cos(var)
 
                 d_expression = eq.diff(var)
-                print("")
 
                 # We substitute the remaining diff vars in d_expression
                 for diff_var in diff_variables:
@@ -657,7 +656,7 @@ class DiffBlockSolver:
                     eq = eq.subs({lag_var: lag_var.base_var})
 
             for col, var in enumerate(variables):
-                diff_var = DiffVar.get_or_create(var.name + '_diff', base_var=var)
+                diff_var = DiffVar(var.name + '_diff', base_var=var)
                 # d_expression = eq.diff(var).simplify() + (1/self.dt)*eq.diff(diff_var).simplify()
                 d_expression = eq.diff(var).simplify()
                 for diff_var in diff_vars:

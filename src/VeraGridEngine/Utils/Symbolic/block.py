@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import copy
-import pdb
 import uuid
 import numpy as np
 from dataclasses import dataclass, field
@@ -105,8 +104,8 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
     """
     if len(num) > len(den):
         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    if num[-1] == 0 or den[-1] == 0:
-        raise ValueError("Leading coefficient of cannot be zero.")
+    # if num[-1] == 0 or den[-1] == 0:
+    #     raise ValueError("Leading coefficient of cannot be zero.")
 
     if y is None:
         y = Var('y_' + name)
@@ -125,20 +124,18 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
     diff_vars = []
     base_var = x
     for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
-        diff_vars_x.append(new_diff)
-        if not in_registry:
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
-        base_var = new_diff
+        diff_vars_x.append(x.diff_var)
+        base_var = x.diff_var
     base_var = y
     for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
-        diff_vars_y.append(new_diff)
-        if not in_registry:
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
-        base_var = new_diff
+        diff_vars_y.append(y.diff_var)
+        base_var = y.diff_var
 
     # Create the diff equation
     rhs = np.array(diff_vars_x) @ np.array(num)
@@ -180,20 +177,19 @@ def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr,
     diff_vars = []
     base_var = x
     for i in range(1, len(num)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + x.name, base_var=base_var)
-        diff_vars_x.append(new_diff)
-        if not in_registry:
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
-        base_var = new_diff
+        diff_vars_x.append(x.diff_var)
+        base_var = x.diff_var
     base_var = y
     for i in range(1, len(den)):
-        in_registry = base_var.uid in DiffVar._registry
-        new_diff = DiffVar.get_or_create(name=f'dt_{i}_' + y.name, base_var=base_var)
-        diff_vars_y.append(new_diff)
-        if not in_registry:
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
+
             diff_vars.append(new_diff)
-        base_var = new_diff
+        diff_vars_y.append(y.diff_var)
+        base_var = y.diff_var
 
     # Create the diff equation
     rhs = np.array(diff_vars_x) @ np.array(num)
@@ -245,18 +241,16 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
     diff_eqs = []
     diff_vars = []
     for i in range(len(y_states) - 1):
-        in_registry = y_states[i].uid in DiffVar._registry
-        dy = DiffVar.get_or_create(f"d_{y_states[i].name}", base_var=y_states[i])
-        diff_eqs.append(y_states[i + 1] - dy)
-        if not in_registry:
+        if y_states[i].diff_var is None:
+            dy = DiffVar(f"d_{y_states[i].name}", base_var=y_states[i])
             diff_vars.append(dy)
+        diff_eqs.append(y_states[i + 1] - y_states[i].diff_var)
 
     for i in range(len(num) - 1):
-        in_registry = x_states[i].uid in DiffVar._registry
-        dx = DiffVar.get_or_create(f"d^{i}_{x.name}", base_var=x_states[i])
-        diff_eqs.append(x_states[i + 1] - dx)
-        if not in_registry:
+        if x_states[i].diff_var is None:
+            dx = DiffVar(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
             diff_vars.append(dx)
+        diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
 
             # Last equation: linear combination
     last_eq = (
@@ -712,7 +706,7 @@ class Block:
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+            var = Var(name=var_dict["name"], uid=var_dict["uid"])
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr
 

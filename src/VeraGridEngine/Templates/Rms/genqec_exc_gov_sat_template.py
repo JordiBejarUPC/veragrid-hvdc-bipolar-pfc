@@ -341,8 +341,8 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     u1 = inputs[0] - omega_ref
     lead_lag_block, y1, x1 = tf_to_diffblock_with_output(
-        num=np.array([1, parameters["T2"]]),
-        den=np.array([1, parameters["T1"]]),
+        num=np.array([1, parameters["T2"].value]),
+        den=np.array([1, parameters["T1"].value]),
         x=u1,
         name='gov0',
     )
@@ -353,7 +353,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     algebraic_vars.append(y2_3)
     x2 = Pm_ref - K * y1 - y2_3
 
-    y2 = x2 * (1 / parameters["T3"])
+    y2 = x2 * (1 / parameters["T3"].value)
     y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
         num=np.array([1]),
@@ -367,31 +367,31 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     # We compute different outputs for every tf
     tf2, y3_1 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T4"]]),
+        den=np.array([1, parameters["T4"].value]),
         x=y2_3,
         name='gov2',
     )
     tf3, y3_2 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T5"]]),
+        den=np.array([1, parameters["T5"].value]),
         x=y3_1,
         name='gov3',
     )
     tf4, y3_3 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T6"]]),
+        den=np.array([1, parameters["T6"].value]),
         x=y3_2,
         name='gov4',
     )
     tf5, y3_4 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["T7"]]),
+        den=np.array([1, parameters["T7"].value]),
         x=y3_3,
         name='gov5',
     )
 
-    u = parameters["K1"] * y3_1 + parameters["K2"] * y3_2 + parameters["K3"] * y3_3 + \
-        parameters["K4"] * y3_4
+    u = parameters["K1"].value * y3_1 + parameters["K2"].value * y3_2 + parameters["K3"].value * y3_3 + \
+        parameters["K4"].value * y3_4
     aux_block = Block(
         algebraic_eqs=[u - Tm] + algebraic_eqs,
         algebraic_vars=[Tm] + algebraic_vars,
@@ -466,32 +466,32 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
 
     tf, y = tf_to_diffblock(
         num=np.array([1.0]),
-        den=np.array([1, parameters["t6"]]),
+        den=np.array([1, parameters["t6"].value]),
         x=inputs[0],
         name='stabilizer1',
     )
 
     tf2, y2 = tf_to_diffblock(
-        num=np.array([0, Ks * parameters["t5"]]),
-        den=np.array([1, parameters["t5"]]),
+        num=np.array([0, Ks * parameters["t5"].value]),
+        den=np.array([1, parameters["t5"].value]),
         x=y,
         name='stabilizer2',
     )
     tf3, y3 = tf_to_diffblock(
         num=np.array([1]),
-        den=np.array([1, parameters["A1"], parameters["A2"]]),
+        den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
         x=y2,
         name='stabilizer3',
     )
     tf4, y4 = tf_to_diffblock(
-        num=np.array([1, parameters["t1"]]),
-        den=np.array([1, parameters["t2"]]),
+        num=np.array([1, parameters["t1"].value]),
+        den=np.array([1, parameters["t2"].value]),
         x=y3,
         name='stabilizer4',
     )
     tf5, y5 = tf_to_diffblock(
-        num=np.array([1, parameters["t3"]]),
-        den=np.array([1, parameters["t4"]]),
+        num=np.array([1, parameters["t3"].value]),
+        den=np.array([1, parameters["t4"].value]),
         x=y4,
         name='stabilizer5',
     )
@@ -669,8 +669,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     algebraic_eqs_submodel = []
     algebraic_vars_submodel = []
 
-    x1 = VfeMaxPu - inputs[0] * parameters["Kd"]
-    error1 = Efe - (inputs[0] * parameters["Kd"] + u_aux)
+    x1 = VfeMaxPu - inputs[0] * parameters["Kd"].value
+    error1 = Efe - (inputs[0] * parameters["Kd"].value + u_aux)
 
     tf1_sub, Ve_presat = tf_to_diffblock(
         num=np.array([1]),
@@ -680,8 +680,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     )
 
     Ve = sym.hard_sat(Ve_presat, VeMinPu, Const(1000))
-    Se_threshold = parameters['Ke']
-    aux_expr = parameters['Ke'] * Ve + AEx * Ve * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
+    Se_threshold = parameters['Ke'].value
+    aux_expr = parameters['Ke'].value * Ve + AEx * Ve * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
         Ve - Se_threshold)
     algebraic_eqs_submodel.append(u_aux - aux_expr)
     algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1 * Ve)
@@ -691,7 +691,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     f_output_res = sym.f_exc(f_input)
     algebraic_vars_submodel.append(f_input)
     algebraic_vars_submodel.append(f_output)
-    algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * parameters["Kc"])
+    algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * parameters["Kc"].value)
 
     algebraic_eqs_submodel.append(Vf - f_output * Ve)
     algebraic_eqs_submodel.append(f_output_res - f_output)
@@ -714,7 +714,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Ve_sat = sym.hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
     Ve = sym.hard_sat(y_subexciter1, VeMinPu, Const(1000))
-    aux_expr = parameters['Ke'] * Ve + AEx * Ve * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
+    aux_expr = parameters['Ke'].value * Ve + AEx * Ve * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
         Ve - Se_threshold)
 
     templ.block = Block(
@@ -724,20 +724,20 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         init_eqs={
             Vf: inputs[0],
-            y_subexciter1: inputs[0] * (1 / sym.f_exc(inputs[0] * parameters["Kc"] / y_subexciter1)),
-            VeMaxPu: (VfeMaxPu - inputs[0] * parameters["Kd"]) / (
-                    parameters["Ke"] + AEx * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
+            y_subexciter1: inputs[0] * (1 / sym.f_exc(inputs[0] * parameters["Kc"].value / y_subexciter1)),
+            VeMaxPu: (VfeMaxPu - inputs[0] * parameters["Kd"].value) / (
+                    parameters["Ke"].value + AEx * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
                 Ve - Se_threshold)),
             u_aux: aux_expr,
-            Efe: inputs[0] * parameters["Kd"] + u_aux,
-            UsRefPu: Efe / parameters['Ka'] + inputs[1],
+            Efe: inputs[0] * parameters["Kd"].value + u_aux,
+            UsRefPu: Efe / parameters['Ka'].value + inputs[1],
             y1: inputs[1],
             y2: Const(0.0),
             y3: -y1 + UsRefPu,
             u_exciter3: y3,
-            y4: y3 * parameters["Ka"],
+            y4: y3 * parameters["Ka"].value,
             u_subexciter1: Const(0.0),
-            f_input: parameters['Kc'] * inputs[0] / y_subexciter1,
+            f_input: parameters['Kc'].value * inputs[0] / y_subexciter1,
             f_output: sym.f_exc(f_input),
         },
     )

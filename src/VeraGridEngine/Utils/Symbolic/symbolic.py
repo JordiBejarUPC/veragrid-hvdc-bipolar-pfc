@@ -32,6 +32,123 @@ def _new_uid() -> int:
 # Generic helpers
 # -----------------------------------------------------------------------------
 
+def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
+    """
+    Serialise any `Expr` tree into a plain Python dictionary that’s
+    JSON-friendly.  Each node type becomes a small dict that records:
+
+        • its own type      (\"Const\", \"Var\", \"BinOp\", …)
+        • the data it carries (value, name, operator…)
+        • its unique uid     (string, so it survives round-trip)
+        • nested children    (recursively serialised)
+
+    The reverse operation is handled by `_dict_to_expr`.
+    """
+    # ------------------------------------------------------------------
+    # Atomic nodes
+    # ------------------------------------------------------------------
+    if isinstance(expr, Const):
+        val = expr.value
+        if isinstance(val, complex):
+            return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
+        return {"type": "Const", "value": expr.value, "uid": expr.uid}
+
+    if isinstance(expr, Var) and not isinstance(expr, DiffVar):
+        return {"type": "Var", "name": expr.name, "uid": expr.uid}
+
+    if isinstance(expr, DiffVar):
+        return {"type": "DiffVar",
+                "name": expr.name,
+                "uid": expr.uid,
+                "base_var": _expr_to_dict(expr.base_var),
+                }
+
+    # ------------------------------------------------------------------
+    # Composite nodes
+    # ------------------------------------------------------------------
+    if isinstance(expr, BinOp):
+        return {
+            "type": "BinOp",
+            "op": expr.op,
+            "left": _expr_to_dict(expr.left),
+            "right": _expr_to_dict(expr.right),
+            "uid": expr.uid,
+        }
+
+    if isinstance(expr, UnOp):
+        return {
+            "type": "UnOp",
+            "op": expr.op,  # only \"-\" for now
+            "operand": _expr_to_dict(expr.operand),
+            "uid": expr.uid,
+        }
+
+    if isinstance(expr, Func):
+        return {
+            "type": "Func",
+            "name": expr.op,  # sin, cos, log, …
+            "arg": _expr_to_dict(expr.arg),
+            "uid": expr.uid,
+        }
+
+    # ------------------------------------------------------------------
+    # Anything else is an API bug
+    # ------------------------------------------------------------------
+    raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
+
+
+def _dict_to_expr(data: Dict[str, Any]) -> Expr:
+    """
+    De-Serialize expression from dictionary
+    :param data:
+    :return:
+    """
+    t = data["type"]
+    if t == "Const":
+        if data.get("kind") == "complex":
+            arr = data["value"]
+            obj = Const(complex(arr[0], arr[1]))
+        else:
+            obj = Const(data["value"])
+    elif t == "Var":
+        obj = Var(data["name"])
+        obj.uid = data["uid"]
+
+
+    elif t == "DiffVar":
+
+        # reconstruct base_var
+        base_data = data["base_var"]
+        base_var = _dict_to_expr(base_data)
+        if not isinstance(base_var, Var):
+            raise TypeError("base_var must be a Var")
+
+        obj = DiffVar(name=data["name"], base_var=base_var)
+        obj.uid = data["uid"]
+
+    elif t == "BinOp":
+        obj = BinOp(_dict_to_expr(data["left"]), data["op"], _dict_to_expr(data["right"]))
+        obj.uid = data["uid"]
+
+    elif t == "UnOp":
+        obj = UnOp(data["op"], _dict_to_expr(data["operand"]))
+        obj.uid = data["uid"]
+
+    elif t == "Func":
+        op = data["op"]
+        if op is None:
+            op = data["name"]
+        obj = Func(_dict_to_expr(data["arg"]), op)
+        obj.uid = data["uid"]
+
+    else:
+        raise ValueError(f"Unknown type '{t}' in deserialisation")
+
+    return obj
+
+
+
+
 
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
@@ -41,14 +158,6 @@ def _to_expr(val: Any) -> "Expr":
     if val is None:
         return Const(None)
     raise TypeError(f"Cannot convert {val!r} to Expr")
-
-
-def _var_name(sym: Var | str) -> str:
-    return sym.name if isinstance(sym, Var) else sym
-
-
-def _var_uid(sym: Var | str) -> str:
-    return sym.uid if isinstance(sym, Var) else sym
 
 
 # ----------------------------------------------------------------------------
@@ -159,8 +268,8 @@ class Expr:
         return mapping.get(self, self)
 
     def to_dict(self) -> Dict[str, Any]:
-        # return _expr_to_dict(self)
-        return dict()
+        return _expr_to_dict(self)
+
 
     def to_json(self, **json_kwargs: Any) -> str:
         return json.dumps(self.to_dict(), **json_kwargs)
@@ -235,7 +344,7 @@ class Expr:
         return self.__str__()
 
     def __hash__(self) -> int:
-        return hash(repr(self))
+        return hash(self.uid)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -282,7 +391,6 @@ class Const(Expr):
 
         d["type"] = "Const"
 
-        # return _expr_to_dict(self)
         if isinstance(self.value, complex):
             d["value"] = [self.value.real, self.value.imag]
             d["kind"] = "complex"
@@ -332,7 +440,7 @@ class Var(Expr):
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
 
     def _diff1(self, var: Var | str) -> Expr:
-        return Const(1 if self.uid == _var_uid(var) else 0)
+        return Const(1 if self.uid == var.uid else 0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
         if self in mapping:
@@ -352,6 +460,12 @@ class Var(Expr):
             return self.uid == other.uid
         return False
 
+    @staticmethod
+    def parse(data: Dict[str, Any]) -> "Var":
+        obj = Var(data["name"])
+        obj.uid = data["uid"]
+        return obj
+
     def to_dict(self) -> Dict[str, Any]:
         """
 
@@ -360,6 +474,7 @@ class Var(Expr):
         d = super().to_dict()
         d["type"] = "Var"
         d["name"] = self.name
+        d["uid"] = self.uid
         return d
 
     def __hash__(self) -> int:
@@ -431,7 +546,7 @@ class LagVar(Expr):
         return res.eval(dt=h)
 
     def _diff1(self, var: Var | str) -> Expr:
-        return Const(1 if self.uid == _var_uid(var) else 0)
+        return Const(1 if self.uid == var.uid else 0)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -441,7 +556,7 @@ class LagVar(Expr):
         d = super().to_dict()
         d["type"] = "Var"
         d["name"] = self.name
-        d["base_var"] = self.base_var.uid
+        d["base_var"] = self.base_var.to_dict()
         d["lag"] = self.lag
         return d
 
@@ -470,6 +585,18 @@ class DiffVar(Var):
     def __hash__(self):
         return hash(self.base_var)
 
+    @staticmethod
+    def parse(data: Dict[str, Any]) -> "DiffVar":
+        # reconstruct base_var
+        base_data = data["base_var"]
+        base_var = _dict_to_expr(base_data)
+        if not isinstance(base_var, Var):
+            raise TypeError("base_var must be a Var")
+
+        obj = DiffVar(name=data["name"], base_var=base_var)
+        obj.uid = data["uid"]
+        return obj
+
     def to_dict(self) -> Dict[str, Any]:
         """
 
@@ -477,7 +604,7 @@ class DiffVar(Var):
         """
         d = super().to_dict()
         d["type"] = "DiffVar"
-        d["base_var"] = self.base_var.uid
+        d["base_var"] = self.base_var.to_dict()
         return d
 
     @property
@@ -565,14 +692,6 @@ class BinOp(Expr):
         self.op: str = op
         self.left: Expr = left
         self.right: Expr = right
-
-    # _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
-    #     "+": lambda a, b: a + b,
-    #     "-": lambda a, b: a - b,
-    #     "*": lambda a, b: a * b,
-    #     "/": lambda a, b: a / b,
-    #     "**": lambda a, b: a ** b,
-    # })
 
     def eval(self, **bindings: NUMBER) -> NUMBER:
         """
@@ -708,6 +827,12 @@ class BinOp(Expr):
     def __repr__(self) -> str:
         return self.__str__()
 
+    @staticmethod
+    def parse(data: Dict[str, Any]) -> Expr:
+        obj = BinOp(_dict_to_expr(data["left"]), data["op"], _dict_to_expr(data["right"]))
+        obj.uid = data["uid"]
+        return obj
+
     def to_dict(self) -> Dict[str, Any]:
         """
 
@@ -797,6 +922,12 @@ class UnOp(Expr):
     def __repr__(self) -> str:
         return self.__str__()
 
+    @staticmethod
+    def parse(data: Dict[str, Any]) -> Expr:
+        obj = UnOp(data["op"], _dict_to_expr(data["operand"]))
+        obj.uid = data["uid"]
+        return obj
+
     def to_dict(self) -> Dict[str, Any]:
         """
 
@@ -860,6 +991,15 @@ class Func(Expr):
 
     def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
         return self.fn(self.arg.eval_uid(uid_bindings))
+
+    @staticmethod
+    def parse(data: Dict[str, Any]) -> Expr:
+        op = data["op"]
+        if op is None:
+            op = data["name"]
+        obj = Func(_dict_to_expr(data["arg"]), op)
+        obj.uid = data["uid"]
+        return obj
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -950,7 +1090,7 @@ def log_diff(u: Expr, du: Expr):
 
 
 def sqrt(x: Expr):
-    return Function(_to_expr(x), "sqrt")
+    return Func(_to_expr(x), "sqrt")
 
 
 def sqrt_diff(u: Expr, du: Expr):
@@ -974,7 +1114,7 @@ def acos_diff(u: Expr, du: Expr) -> Expr:
 
 
 def atan(x: Expr):
-    return Function(_to_expr(x), "atan")
+    return Func(_to_expr(x), "atan")
 
 
 def atan_diff(u: Expr, du: Expr) -> Expr:
@@ -1201,71 +1341,69 @@ class Func2(Expr):
 # -----------------------------------------------------------------------------
 
 
-# def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
-#     """
-#     Serialise any `Expr` tree into a plain Python dictionary that’s
-#     JSON-friendly.  Each node type becomes a small dict that records:
-#
-#         • its own type      (\"Const\", \"Var\", \"BinOp\", …)
-#         • the data it carries (value, name, operator…)
-#         • its unique uid     (string, so it survives round-trip)
-#         • nested children    (recursively serialised)
-#
-#     The reverse operation is handled by `_dict_to_expr`.
-#     """
-#     # ------------------------------------------------------------------
-#     # Atomic nodes
-#     # ------------------------------------------------------------------
-#     if isinstance(expr, Const):
-#         val = expr.value
-#         if isinstance(val, complex):
-#             return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
-#         if val is UNDEFINED:
-#             return {"type": "Const", "value": None, "kind": "undefined", "uid": expr.uid}
-#         return {"type": "Const", "value": expr.value, "uid": expr.uid}
-#
-#     if isinstance(expr, Var) and not isinstance(expr, DiffVar):
-#         return {"type": "Var", "name": expr.name, "uid": expr.uid}
-#
-#     if isinstance(expr, DiffVar):
-#         return {"type": "DiffVar",
-#                 "name": expr.name,
-#                 "uid": expr.uid,
-#                 "base_var": _expr_to_dict(expr.base_var),
-#                 }
-#
-#     # ------------------------------------------------------------------
-#     # Composite nodes
-#     # ------------------------------------------------------------------
-#     if isinstance(expr, BinOp):
-#         return {
-#             "type": "BinOp",
-#             "op": expr.op,
-#             "left": _expr_to_dict(expr.left),
-#             "right": _expr_to_dict(expr.right),
-#             "uid": expr.uid,
-#         }
-#
-#     if isinstance(expr, UnOp):
-#         return {
-#             "type": "UnOp",
-#             "op": expr.op,  # only \"-\" for now
-#             "operand": _expr_to_dict(expr.operand),
-#             "uid": expr.uid,
-#         }
-#
-#     if isinstance(expr, Func):
-#         return {
-#             "type": "Func",
-#             "name": expr.name,  # sin, cos, log, …
-#             "arg": _expr_to_dict(expr.arg),
-#             "uid": expr.uid,
-#         }
-#
-#     # ------------------------------------------------------------------
-#     # Anything else is an API bug
-#     # ------------------------------------------------------------------
-#     raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
+def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
+    """
+    Serialise any `Expr` tree into a plain Python dictionary that’s
+    JSON-friendly.  Each node type becomes a small dict that records:
+
+        • its own type      (\"Const\", \"Var\", \"BinOp\", …)
+        • the data it carries (value, name, operator…)
+        • its unique uid     (string, so it survives round-trip)
+        • nested children    (recursively serialised)
+
+    The reverse operation is handled by `_dict_to_expr`.
+    """
+    # ------------------------------------------------------------------
+    # Atomic nodes
+    # ------------------------------------------------------------------
+    if isinstance(expr, Const):
+        val = expr.value
+        if isinstance(val, complex):
+            return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
+        return {"type": "Const", "value": expr.value, "uid": expr.uid}
+
+    if isinstance(expr, Var) and not isinstance(expr, DiffVar):
+        return {"type": "Var", "name": expr.name, "uid": expr.uid}
+
+    if isinstance(expr, DiffVar):
+        return {"type": "DiffVar",
+                "name": expr.name,
+                "uid": expr.uid,
+                "base_var": _expr_to_dict(expr.base_var),
+                }
+
+    # ------------------------------------------------------------------
+    # Composite nodes
+    # ------------------------------------------------------------------
+    if isinstance(expr, BinOp):
+        return {
+            "type": "BinOp",
+            "op": expr.op,
+            "left": _expr_to_dict(expr.left),
+            "right": _expr_to_dict(expr.right),
+            "uid": expr.uid,
+        }
+
+    if isinstance(expr, UnOp):
+        return {
+            "type": "UnOp",
+            "op": expr.op,  # only \"-\" for now
+            "operand": _expr_to_dict(expr.operand),
+            "uid": expr.uid,
+        }
+
+    if isinstance(expr, Func):
+        return {
+            "type": "Func",
+            "op": expr.op,
+            "arg": _expr_to_dict(expr.arg),
+            "uid": expr.uid,
+        }
+
+    # ------------------------------------------------------------------
+    # Anything else is an API bug
+    # ------------------------------------------------------------------
+    raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
 
 def _dict_to_expr(data: Dict[str, Any]) -> Expr:
@@ -1285,6 +1423,7 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
             obj = Const(data["value"])
     elif t == "Var":
         obj = Var(data["name"])
+
 
     elif t == "DiffVar":
 
