@@ -439,7 +439,7 @@ class Var(Expr):
         except KeyError as exc:
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
 
-    def _diff1(self, var: Var | str) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var|None) -> Expr:
         return Const(1 if self.uid == var.uid else 0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
