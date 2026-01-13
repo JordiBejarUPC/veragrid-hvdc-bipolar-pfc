@@ -2357,6 +2357,36 @@ class DynamicIntegrationMethod(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class RmsInitializationMethod(Enum):
+    Explicit = "Explicit",
+    PseudoTransient = "PseudoTransient"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return RmsInitializationMethod[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
 class GridReductionMethod(Enum):
     """
     GridReductionMethod

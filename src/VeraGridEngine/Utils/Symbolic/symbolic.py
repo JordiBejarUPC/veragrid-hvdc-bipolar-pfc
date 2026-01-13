@@ -239,7 +239,7 @@ class Expr:
 
     __call__ = eval  # allow f(x=…)
 
-    def diff(self, var: Var | str, order: int = 1) -> "Expr":
+    def diff(self, var: Var | str, order: int = 1, dt:Var|None = None) -> "Expr":
         """
         Differentiation (higher‑order)
         :param var:
@@ -250,10 +250,10 @@ class Expr:
             raise ValueError("order must be >= 0")
         expr: Expr = self
         for _ in range(order):
-            expr = expr._diff1(var).simplify()
+            expr = expr._diff1(var, dt).simplify()
         return expr
 
-    def _diff1(self, var: Var | str) -> "Expr":
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
         # return # pragma: no cover
         raise NotImplementedError
 
@@ -369,7 +369,7 @@ class Const(Expr):
     def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER | None:
         return self.value
 
-    def _diff1(self, var: Var | str) -> "Expr":
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
         return Const(0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -545,7 +545,7 @@ class LagVar(Expr):
             res += val
         return res.eval(dt=h)
 
-    def _diff1(self, var: Var | str) -> Expr:
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
         return Const(1 if self.uid == var.uid else 0)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -623,6 +623,17 @@ class DiffVar(Var):
             origin = origin.base_var
         return origin
 
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
+        if var.uid == self.base_var.uid:
+            h_t = self.approximation_expr(dt=dt)[0]
+            dh_dt = h_t.diff(var, dt)
+            return dh_dt
+        elif var.uid == self.origin_var.uid:
+            h_t = self.approximation_expr(dt=dt)[0]
+            dh_dt = h_t.diff(self.base_var, dt)
+            return dh_dt
+        return Const(1 if self.uid == var.uid else 0)
+
     def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
         """
 
@@ -640,7 +651,7 @@ class DiffVar(Var):
             res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
         return res.eval()
 
-    def approximation_expr(self, dt: Optional[Var], lag_can_be_0=True, central=False) -> Tuple:
+    def approximation_expr(self, dt: Optional[Var], central=False) -> Tuple:
         """
         Computes the n-th backward finite difference approximation of the derivative
         using the closed-form backward difference formula.
@@ -733,14 +744,14 @@ class BinOp(Expr):
         else:
             raise Exception(f"operation {self.op} not implemented")
 
-    def _diff1(self, var: Var | str) -> Expr:
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
         """
         Differentiation of this expression w.r.t var
         :param var: variable to differentiate with respect to
         :return: Expression
         """
         u, v = self.left, self.right
-        du, dv = u._diff1(var), v._diff1(var)
+        du, dv = u._diff1(var, dt), v._diff1(var, dt)
         if self.op == "+":
             return du + dv
         if self.op == "-":
@@ -885,14 +896,14 @@ class UnOp(Expr):
         else:
             raise Exception(f"Unknown operand {self.op}")
 
-    def _diff1(self, var: Var | str) -> "Expr":
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
         """
 
         :param var:
         :return:
         """
         if self.op == "-":
-            return -self.operand._diff1(var)
+            return -self.operand._diff1(var, dt)
         else:
             raise Exception(f"Unknown operand {self.op}")
 
@@ -1013,9 +1024,9 @@ class Func(Expr):
         return d
 
     # --- differentiation (chain rule) ---------------------------------------
-    def _diff1(self, var: Var | str) -> "Expr":
+    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
         u = self.arg
-        du = u._diff1(var)
+        du = u._diff1(var, dt)
         if isinstance(du, Const) and du.value == 0:
             return Const(0)
         else:

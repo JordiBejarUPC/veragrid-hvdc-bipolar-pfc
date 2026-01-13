@@ -14,7 +14,7 @@ import uuid
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, _emit_one, sin, cos
-from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2diff
+from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2implicit
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -442,26 +442,30 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
     :param type:
 
     """
+    solved:bool = False
+    alpha:float = 0.8
+    reference_vars:List[Var] = list()
 
     for block in region_system.children:
         found = False
         for child_block in block.get_all_blocks():
-            child_block = block2diff(child_block)
-            if not hasattr(child_block, 'external_mapping'):
-                continue
-            if not VarPowerFlowRefferenceType.P in child_block.external_mapping.keys():
-                continue
-            Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
-            Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
-            Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-            Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
-            found = True
-            break
+            child_block = block2implicit(child_block)
+            if hasattr(child_block, 'external_mapping'):
+                Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
+                Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
+                Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
+                Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
+                found = True
+            for param, eq in child_block.event_dict.items():
+                #We add the non initialized parameters to the algebraic variables to be solved
+                if isinstance(eq, Const) and eq.value is None:
+                    child_block.algebraic_vars.append(param)
+                    reference_vars.append(param)
+                    del child_block.event_dict[param]
 
         if not found:
-            continue
-        bus_block = Block()
-
+            raise Exception("Couldnt find bus connection in region block")
+        
         delete_vars_from_block(block, [Pg, Qg])
         bus_block = Block()
 
@@ -474,25 +478,13 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
             children=[block, bus_block]
         )
         # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
+        init_block = block2implicit(init_block)
         solver = DiffBlockSolver(init_block, region_time)
 
-        # init_guess_copy = init_guess.copy()
-
-        # init_guess_copy.update(
-        #     {Vm: float(np.real(res.Sbus[bus_index] / grid.Sbase)), Va: float(np.imag(res.Sbus[bus_index] / grid.Sbase))})
-        # x0_init_guess = build_init_vars_vector(uid2idx_vars, init_guess_copy)
-
-        solved = False
-        alpha = 0.9
         while not solved:
             try:
                 print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
-                if type == 'dae':
-                    x0_mdl, init_guess_mdl = solver.pseudo_transient_daes(x0.copy(), dtau0=dtau0, max_iter=max_iter,
-                                                                          max_tries=1e3, plot=plot,
-                                                                          predictor=predictor)
-                else:
-                    x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(x0.copy(), dtau0=dtau0,
+                x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0,
                                                                                      max_iter=max_iter, max_tries=1e3,
                                                                                      plot=plot,
                                                                                      predictor=predictor)
@@ -507,9 +499,10 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
                 dtau0 *= alpha
             except Exception as e:
                 # print(f"❌ Unexpected error: {e}")
-                raise
-        for i, var in enumerate(solver._algebraic_vars):
-            x0[uid2idx_vars[var.uid]] = x0_mdl[uid2idx_vars[var.uid]]
+                raise e
+
+        for var in reference_vars:
+            block.event_dict[var] = Const(x0[uid2idx_vars[var.uid]])
 
         init_guess.update(init_guess_mdl)
 

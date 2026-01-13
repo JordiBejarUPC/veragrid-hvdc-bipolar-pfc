@@ -74,23 +74,25 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
     return result
 
 
-def block2diff(block: Block):
+def block2implicit(block: Block):
     diff_block = Block.from_block(block)
 
     for i, eq in enumerate(block.state_eqs):
         state_var = block.state_vars[i] # Todo: not robust, order has to be followed
-        dt_var = DiffVar.get_or_create(name='dt_' + state_var.name, base_var=state_var)
+        if state_var.diff_var is None:
+            dt_var = DiffVar(name='dt_' + state_var.name, base_var=state_var)
+            diff_block.diff_vars.append(dt_var)
+        else:
+            dt_var = state_var.diff_var
         eq = eq - dt_var
         diff_block.algebraic_eqs.append(eq)
         diff_block.algebraic_vars.append(state_var)
-        if dt_var not in diff_block.diff_vars:
-            diff_block.diff_vars.append(dt_var)
 
     diff_block.state_eqs = []
     diff_block.state_vars = []
 
     for i, child_block in enumerate(diff_block.children):
-        diff_block.children[i] = block2diff(child_block)
+        diff_block.children[i] = block2implicit(child_block)
 
     return diff_block
 

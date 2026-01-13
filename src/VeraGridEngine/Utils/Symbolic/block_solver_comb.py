@@ -80,21 +80,8 @@ class SymbolicJacobian:
 
 
             for col, var in enumerate(variables):
-                eq = cos(var)
 
                 d_expression = eq.diff(var)
-
-                # We substitute the remaining diff vars in d_expression
-                for diff_var in diff_variables:
-                    deriv = d_expression.diff(diff_var)
-                    if not isinstance(deriv, Const) and deriv.value != 0:
-                        h_t = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)[0]
-                        dh_dt = h_t.diff(var)
-                        d_expression = d_expression*dh_dt
-                    else:
-                        d_expression = d_expression
-
-                
                 triplets.append((col, row, d_expression))
 
         # Sort by column, then row for CSC layout
@@ -143,7 +130,7 @@ class SymbolicJacobian:
             # just pick the python pointer from the namespace
             self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = self.namespace[fname]
 
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> csc_matrix:
+    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, h:float) -> csc_matrix:
         """
         Update the jacobian data
         :param values:
@@ -154,6 +141,7 @@ class SymbolicJacobian:
         # assert len(values) >= self.nvar
 
         # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
+        event_params[-2] = h  # dt
         self.func(values, diff_values, event_params, params, self.J.data)
 
         return self.J
@@ -812,13 +800,13 @@ class DiffBlockSolver:
 
         # returns only j22 if no states, returns J if states
         if len(self._state_eqs) == 0:
-            j22: sp.csc_matrix = self._j22_fn(x, dx, event_params, params)
+            j22: sp.csc_matrix = self._j22_fn(x, dx, event_params, params, h)
             return j22
 
-        j11_val: csc_matrix = self._j11_fn(x, dx, event_params, params)
-        j12_val: csc_matrix = self._j12_fn(x, dx, event_params, params)
-        j21_val: csc_matrix = self._j21_fn(x, dx, event_params, params)
-        j22_val: csc_matrix = self._j22_fn(x, dx, event_params, params)
+        j11_val: csc_matrix = self._j11_fn(x, dx, event_params, params, h)
+        j12_val: csc_matrix = self._j12_fn(x, dx, event_params, params, h)
+        j21_val: csc_matrix = self._j21_fn(x, dx, event_params, params, h)
+        j22_val: csc_matrix = self._j22_fn(x, dx, event_params, params, h)
 
         I = sp.eye(m=self._n_state, n=self._n_state)
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -1377,7 +1365,7 @@ class DiffBlockSolver:
                                 x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                                 predictor=predictor)
                         else:
-                            x0_mdl, init_guess_mdl = solver.init_pseudo_transient_individual(
+                            x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(
                                 x0_init_guess.copy(), dtau0=dtau0, max_iter=max_iter, max_tries=1e3, plot=plot,
                                 predictor=predictor)
                         solved = True
@@ -1400,7 +1388,7 @@ class DiffBlockSolver:
         # print('Pseudo-Transient ended')
         return x0, init_guess
 
-    def init_pseudo_transient_individual(self, x0, init_guess=dict(), plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
+    def pseudo_transient_routine(self, x0, init_guess=dict(), plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
                                          predictor=False, max_iter=8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
 
@@ -1676,22 +1664,24 @@ class DiffBlockSolver:
 
         def rhs_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
-            rhs = self._rhs_predictor(x_predicted, x_predicted, dx, params, event_params, h)
+            x_mid = (x_predicted + x_old)/2
+            rhs = self._rhs_predictor(x_mid, x_mid, dx, params, event_params, h)
             return rhs
 
         def Jf_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
-            Jf = self._Jf_predictor(x_predicted, x_predicted, dx, params, event_params, h) * (1 / h)
+            x_mid = (x_predicted + x_old)/2
+            Jf = self._Jf_predictor(x_mid, x_mid, dx, params, event_params, h) * (1 / h)
             return Jf
 
         def rhs_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
-            dx = 0*np.zeros(self._n_diff)
-            Jf = self._rhs_predictor(x, x, 0*dx, params, event_params, h)[self._diff_eq_index]
+            dx = np.zeros(self._n_diff)
+            Jf = self._rhs_predictor(x, x, dx, params, event_params, h)[self._diff_eq_index]
             return Jf
 
         def Jf_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
             dx = 0*np.zeros(self._n_diff)
-            Jf = self._j22_fn(x, x, 0*dx, params, event_params, h)[self._diff_eq_index]
+            Jf = self._j22_fn(x, x, dx, params, event_params, h)[self._diff_eq_index]
             return Jf
 
 
