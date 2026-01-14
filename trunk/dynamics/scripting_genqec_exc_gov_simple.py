@@ -30,6 +30,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -236,8 +237,6 @@ t, y, _ = slv.simulate(
 
 )
 
-slv.save_simulation_to_csv("init_explicit_res", t, y)
-
 
 omega = genqec1_mdl.out_vars[2]
 Pg = genqec1_mdl.out_vars[0]
@@ -258,9 +257,6 @@ plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Efd)], label="Efd (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Te)], label="Te (pu)")
 
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
@@ -270,6 +266,8 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+exit()
 
 Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
 Ed_prime = find_name_in_block("Ed_prime", genqec1_mdl)

@@ -117,7 +117,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     B = Var("B")
     event_dict = {
         fn: Const(50.0),
-        ws: Const(1.0),
+        ws: Const(1),
         M: Const(3.5),
         D: Const(10.0),
         Rs: Const(0.003),
@@ -162,7 +162,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             inputs[3] / Td0_prime - Sat * Eq1 / Td0_prime,  # dEq'/dt
             -Sat * Ed1 / Tq0_prime,  # dEd'/dt
             (-Psiq_prime + Iq * (Xq_prime - Xl) / Sat + Ed_prime),  # dPsiq'/dt
-            (-Psid_prime + Id * (Xd_prime - Xl) / Sat + Eq_prime),  # dPsid'/dt
+            (-Psid_prime - Id * (Xd_prime - Xl) / Sat + Eq_prime),  # dPsid'/dt
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Psiq_prime, Psid_prime],
         algebraic_eqs=[
@@ -232,7 +232,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Psid_prime: (Vq + Xd_2prime_sat * Id + Ra * Iq) / omega - (Xd_2prime - Xl) * Id / Sat,
             Ed_prime: (Xq - Xq_prime) * Iq / Sat,
             Psiq_prime: (Xq - Xl) * Iq / Sat,
-            Eq_prime: Psid_prime + (Xq_prime - Xl) * Id / Sat,
+            Eq_prime: Psid_prime + (Xd_prime - Xl) * Id / Sat,
             Ed1: (Ed_prime - (Xq - Xq_prime) * (
                     Iq / Sat - (Ed_prime - Psiq_prime + Iq * (Xq_prime - Xl) / Sat) * Xqaux)),
             Eq1: (Eq_prime + (Xd - Xd_prime) * (

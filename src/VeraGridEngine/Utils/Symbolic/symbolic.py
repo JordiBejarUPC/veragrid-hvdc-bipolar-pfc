@@ -624,13 +624,15 @@ class DiffVar(Var):
         return origin
 
     def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
-        if var.uid == self.base_var.uid:
+        if dt is None:
+            return Const(1 if self.uid == var.uid else 0)
+        elif var.uid == self.base_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(var, dt)
+            dh_dt = h_t.diff(var, dt = dt)
             return dh_dt
         elif var.uid == self.origin_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(self.base_var, dt)
+            dh_dt = h_t.diff(self.base_var, dt = dt)
             return dh_dt
         return Const(1 if self.uid == var.uid else 0)
 
@@ -651,14 +653,15 @@ class DiffVar(Var):
             res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
         return res.eval()
 
-    def approximation_expr(self, dt: Optional[Var], central=False) -> Tuple:
+    def approximation_expr(self, dt: Optional[Var|None], central=False) -> Tuple:
         """
         Computes the n-th backward finite difference approximation of the derivative
         using the closed-form backward difference formula.
         """
         origin_name = self.origin_var.name
         lag_var_0 = self.origin_var
-
+        if dt is None:
+            dt = Const(1.0)
         origin_name = self.origin_var.name
         lag_total = self.diff_order
         if self.diff_order == 1 and central:
@@ -680,9 +683,32 @@ class DiffVar(Var):
         finite_diff_sum = sum(terms)
 
         # Divide by dt^n for n-th derivative
-        result = finite_diff_sum / dt ** lag_total
+        result = finite_diff_sum / (dt ** lag_total)
         return result.simplify(), lag_total
 
+def factors(expr: Expr) -> List[Expr]:
+    if isinstance(expr, BinOp) and expr.op == '*':
+        return factors(expr.left.simplify()) + factors(expr.right.simplify())
+  # Limited expansion of integer powers
+    elif isinstance(expr, BinOp) and expr.op == '**':
+        base, exp = expr.left.simplify(), expr.right.simplify()
+
+        if isinstance(exp, Const):
+            n = exp.value
+            if isinstance(n, int) and n >= 1:
+                return factors(base) * n
+
+        # otherwise: keep power atomic
+        return [expr]
+    return [expr]
+
+def build_mul(factors: List[Expr]) -> Expr:
+    if not factors:
+        return Const(1)
+    expr = factors[0]
+    for f in factors[1:]:
+        expr = expr * f
+    return expr
 
 class BinOp(Expr):
     """
@@ -798,6 +824,14 @@ class BinOp(Expr):
                 return r
             if isinstance(r, Const) and r.value == 0:
                 return l
+            
+        if self.op == "-":
+            if isinstance(l, Const) and l.value == 0:
+                return -r
+            if isinstance(r, Const) and r.value == 0:
+                return l
+            if l.uid == r.uid:
+                return Const(0)
 
         if self.op == "*":
             for a, b in ((l, r), (r, l)):
@@ -813,13 +847,35 @@ class BinOp(Expr):
             if r.value == 0:
                 return Const(1)
 
-        if self.op == '/' and isinstance(l, Const):
-            if l.value == 0:
-                return l
         if self.op == '/':
-            if l.uid == r.uid:
+            if isinstance(l, Const) and l.value == 0:
+                return Const(0)
+            elif isinstance(r, Const) and r.value == 1:
+                return l
+            elif l.uid == r.uid:
                 return Const(1)
+            else:
+                num_factors = factors(l)
+                den_factors = factors(r)
 
+                new_num = []
+                new_den = den_factors.copy()
+
+                for f in num_factors:
+                    for g in new_den:
+                        if f.uid == g.uid:   # or f == g if structural equality
+                            new_den.remove(g)
+                            break
+                    else:
+                        new_num.append(f)
+
+                num_expr = build_mul(new_num)
+                den_expr = build_mul(new_den)
+
+                if isinstance(den_expr, Const) and den_expr.value == 1:
+                    return num_expr
+                return BinOp(num_expr, '/', den_expr)
+                
         return BinOp(l, self.op, r)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -1186,7 +1242,6 @@ def f_exc(In: Expr) -> Expr:
     b = ((Const(1) - Const(0.577) * In) - (sqrt(Const(0.75) - In ** 2 + Const(1e-5)))) * heaviside(Const(0.433) - In)
     c = ((sqrt(Const(0.75) - In ** 2 + Const(1e-5)) - (Const(1.732) - In * Const(1.732))) * heaviside(Const(0.75) - In))
     d = (Const(1.732) - In * Const(1.732)) * (Const(1) * heaviside(Const(1.0) - In))
-
     return b + c + d
 
 
