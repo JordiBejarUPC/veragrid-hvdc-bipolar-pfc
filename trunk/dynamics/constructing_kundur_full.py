@@ -25,7 +25,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 import VeraGridEngine.api as gce
 
@@ -1166,7 +1166,7 @@ sys = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys, t)
+slv = BlockSolverNoDiff(sys, t)
 
 params_mapping = {
     Pl0_7: Sb7.real,

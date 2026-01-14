@@ -10,14 +10,14 @@ from typing import Dict
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic import Var
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem import RmsProblem
 from VeraGridEngine.Simulations.Rms.numerical.integration_methods import Trapezoid, BackEuler
-from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
@@ -109,7 +109,7 @@ class RmsSimulationDriver(DriverTemplate):
         params_mapping: Dict = dict()
 
         sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
-        slv = DiffBlockSolver(ss, sim_time)
+        slv = BlockSolver(ss, sim_time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)

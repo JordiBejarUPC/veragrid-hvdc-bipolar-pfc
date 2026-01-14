@@ -6,7 +6,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, Dict, Tuple, TYPE_CHECKING
 
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Compilers.circuit_to_data import VALID_OPF_RESULTS

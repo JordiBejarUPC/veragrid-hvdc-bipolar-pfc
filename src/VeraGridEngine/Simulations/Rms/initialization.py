@@ -21,8 +21,8 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
     LagVar, BinOp, heaviside
-from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
-from VeraGridEngine.Utils.Symbolic.block_solver_comb import SymbolicParamsVector
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver import SymbolicParamsVector
 
 
 class SolverError(Exception):
@@ -479,7 +479,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
         )
         # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
         init_block = block2implicit(init_block)
-        solver = DiffBlockSolver(init_block, region_time)
+        solver = BlockSolver(init_block, region_time)
 
         while not solved:
             try:

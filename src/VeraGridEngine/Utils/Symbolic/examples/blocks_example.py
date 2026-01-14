@@ -21,7 +21,7 @@ def demo_oscillator():
 
     sys = Block(name="oscillator", children=[blk_x, blk_v])
 
-    slv = BlockSolver(sys)
+    slv = BlockSolverNoDiff(sys)
     x0 = np.array([1.0, 0.0])
 
     t_rk4, y_rk4 = slv.simulate(0, 10, 0.01, x0, method="rk4")
@@ -67,7 +67,7 @@ def demo_power_system():
     blk_omega.state_eqs[0] = (Const(Pm) - Pe - Const(D) * omega) / Const(M)
 
     sys = Block(children=[blk_delta, blk_omega, blk_angles])
-    slv = BlockSolver(sys)
+    slv = BlockSolverNoDiff(sys)
 
     x0 = slv.build_init_vector({delta: 0.0, omega: 0.0})
 
@@ -100,7 +100,7 @@ def demo_pi_controller():
 
     sys = Block(children=[blk_r, blk_err, blk_y, pi_block])
 
-    slv = BlockSolver(sys)
+    slv = BlockSolverNoDiff(sys)
     x0 = slv.build_init_vector({y: 0.0})
 
     t, y_hist = slv.simulate(0, 10, 0.02, x0, method="implicit_euler")

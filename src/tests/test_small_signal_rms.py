@@ -35,7 +35,7 @@ from VeraGridEngine.Templates.Rms.trafo3_rms_template import get_trafo3_rms_temp
 from VeraGridEngine.Templates.Rms.trafo4_rms_template import get_trafo4_rms_template
 from VeraGridEngine.Utils.Symbolic import Block
 
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
@@ -498,7 +498,7 @@ def stability_kundur_no_shunt():
 
     params_mapping = {}
 
-    slv = BlockSolver(ss, sim_time, use_jit=False)
+    slv = BlockSolverNoDiff(ss, sim_time, use_jit=False)
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 

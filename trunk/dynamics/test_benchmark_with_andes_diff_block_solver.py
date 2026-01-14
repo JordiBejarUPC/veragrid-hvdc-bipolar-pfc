@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Utils.Symbolic.block_solver_comb import DiffBlockSolver
 import VeraGridEngine.api as gce
 
 
@@ -387,7 +387,7 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
 
     params_mapping = {}
 
-    slv = DiffBlockSolver(ss, sim_time)
+    slv = BlockSolver(ss, sim_time)
     dx0 = np.zeros(len(slv._diff_vars))
 
     params0 = slv.build_init_params_vector(params_mapping)

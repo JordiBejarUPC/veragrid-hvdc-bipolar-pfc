@@ -12,7 +12,7 @@ import math
 
 from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import SmallSignalStabilityResults
@@ -23,7 +23,7 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
 
 
-def compute_state_matrix(slv: BlockSolver, x: Vec, time: float,):
+def compute_state_matrix(slv: BlockSolverNoDiff, x: Vec, time: float, ):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -174,7 +174,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolverNoDiff, x: Vec, time: float, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -294,7 +294,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
         params_mapping: Dict = dict()
 
         time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        slv = BlockSolver(ss, time)
+        slv = BlockSolverNoDiff(ss, time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)

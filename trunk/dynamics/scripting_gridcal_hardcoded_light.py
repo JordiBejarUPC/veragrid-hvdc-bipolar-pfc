@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability, plot_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -294,7 +294,7 @@ params_mapping = {}
 # # Solver
 start_building_system = time.time()
 
-slv = BlockSolver(ss, grid.time, use_jit=False)
+slv = BlockSolverNoDiff(ss, grid.time, use_jit=False)
 
 end_building_system = time.time()
 print(f"Automatic build system time = {end_building_system - start_building_system:.6f} [s]")

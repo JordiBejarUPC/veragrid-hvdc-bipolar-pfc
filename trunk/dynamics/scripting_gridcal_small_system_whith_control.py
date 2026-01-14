@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver  # compose_system_block
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff  # compose_system_block
 import VeraGridEngine.api as gce
 
 # In this script a small system in build with a Generator a Load and a line. Generator is connected to bus 1 and Load is connected to bus 2.
@@ -517,7 +517,7 @@ print(init_guess)
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys, grid.time)
+slv = BlockSolverNoDiff(sys, grid.time)
 
 
 

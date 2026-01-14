@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 import VeraGridEngine.api as gce
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ print(init_guess)
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys_block)
+slv = BlockSolverNoDiff(sys_block)
 
 params_mapping = {
     # Pl0: 0.1,

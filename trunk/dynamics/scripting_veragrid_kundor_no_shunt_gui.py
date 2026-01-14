@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
@@ -59,7 +59,7 @@ params_mapping = {}
 
 
 # # Solver
-slv = BlockSolver(ss, grid.time)
+slv = BlockSolverNoDiff(ss, grid.time)
 
 
 params0 = slv.build_init_params_vector(params_mapping)
