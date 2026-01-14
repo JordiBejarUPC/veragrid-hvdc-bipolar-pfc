@@ -28,9 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="3 bus system comparison against PowerFactory">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="updated 3 bus system comparison against PowerFactory">
+      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/reec_d.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/regc_a.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -213,6 +214,7 @@
     &quot;Python.python_console.executor&quot;: &quot;Run&quot;,
     &quot;Python.raw_imp_exp_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reec_d.executor&quot;: &quot;Debug&quot;,
     &quot;Python.rms_model_editor_engine.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_andes.executor&quot;: &quot;Run&quot;,
     &quot;Python.scripting_gridcal.executor&quot;: &quot;Run&quot;,
@@ -239,6 +241,7 @@
     &quot;Python.transformer_type.executor&quot;: &quot;Run&quot;,
     &quot;Python.update_gui_file.executor&quot;: &quot;Run&quot;,
     &quot;Python.upload_to_pypi.executor&quot;: &quot;Run&quot;,
+    &quot;Python.wecc_wt_control_system_type_4b.executor&quot;: &quot;Debug&quot;,
     &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
@@ -284,7 +287,7 @@
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python.3bus_powerfactory">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -1583,6 +1586,9 @@
       <workItem from="1768135059791" duration="17000" />
       <workItem from="1768207783031" duration="2780000" />
       <workItem from="1768221181399" duration="10397000" />
+      <workItem from="1768238270160" duration="3180000" />
+      <workItem from="1768293815531" duration="22759000" />
+      <workItem from="1768381027688" duration="4000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1927,7 +1933,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="698" />
+    <option name="localTasksCounter" value="699" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1988,7 +1994,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.6.5" />
     <MESSAGE value="Fixed important bug" />
     <MESSAGE value="minimal changes" />
     <MESSAGE value="some comments" />
@@ -2013,7 +2018,8 @@
     <MESSAGE value="updated -&gt; test_short_circuit_vsc_3buses" />
     <MESSAGE value="admittance loads" />
     <MESSAGE value="3 bus system comparison against PowerFactory" />
-    <option name="LAST_COMMIT_MESSAGE" value="3 bus system comparison against PowerFactory" />
+    <MESSAGE value="updated 3 bus system comparison against PowerFactory" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated 3 bus system comparison against PowerFactory" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2567,15 +2573,16 @@
           <option name="timeStamp" value="3105" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py</url>
-          <line>86</line>
-          <option name="timeStamp" value="3112" />
+          <url>file://$PROJECT_DIR$/trunk/unbalanced_sc/reec_d.py</url>
+          <line>188</line>
+          <option name="timeStamp" value="3110" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VeraGrid$3bus_powerfactory.coverage" NAME="3bus_powerfactory Coverage Results" MODIFIED="1768235647443" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
+    <SUITE FILE_PATH="coverage/VeraGrid$reec_d.coverage" NAME="reec_d Coverage Results" MODIFIED="1768328167017" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
     <SUITE FILE_PATH="coverage/VeraGrid$shortcircuit_vsc.coverage" NAME="shortcircuit_vsc Coverage Results" MODIFIED="1767890714533" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_power_flow_test_fubm.coverage" NAME="pytest for tests.test_power_flow.test_fubm Coverage Results" MODIFIED="1767289866495" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_for_tests_test_topology_processor_test_nc_active_works.coverage" NAME="pytest for tests.test_topology_processor.test_nc_active_works Coverage Results" MODIFIED="1767887825051" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
@@ -2588,5 +2595,6 @@
     <SUITE FILE_PATH="coverage/VeraGrid$short_circuit_worker.coverage" NAME="short_circuit_worker Coverage Results" MODIFIED="1767206551422" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies" />
     <SUITE FILE_PATH="coverage/VeraGrid$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1768207799796" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/VeraGrid$test_linear_time_series.coverage" NAME="test_linear_time_series Coverage Results" MODIFIED="1767299503913" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid$wecc_wt_control_system_type_4b.coverage" NAME="wecc_wt_control_system_type_4b Coverage Results" MODIFIED="1768297890444" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/unbalanced_sc" />
   </component>
 </project>
