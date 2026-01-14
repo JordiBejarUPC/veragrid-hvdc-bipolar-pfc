@@ -28,7 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="minimal ui update">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added bus color">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -1858,7 +1858,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="688" />
+    <option name="localTasksCounter" value="689" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1919,7 +1919,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="some more refactor to the block save and parse logic" />
     <MESSAGE value="Fixed minor error in the small signal test" />
     <MESSAGE value="fixing convert_busbar_to_voltage_level" />
     <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
@@ -1944,7 +1943,8 @@
     <MESSAGE value="Commented out the HELM contingency" />
     <MESSAGE value="Some refactors" />
     <MESSAGE value="dgs handle of FID" />
-    <option name="LAST_COMMIT_MESSAGE" value="dgs handle of FID" />
+    <MESSAGE value="added bus color" />
+    <option name="LAST_COMMIT_MESSAGE" value="added bus color" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
