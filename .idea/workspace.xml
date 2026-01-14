@@ -28,46 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixing symbolic parse and to_dict">
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_no_diff.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="renamed blocksolver and blocksolverdiff">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/doc/md_source/small_signal_stability.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/small_signal_stability.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver_comb.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/examples/blocks_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/examples/blocks_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_small_signal_rms.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_small_signal_rms.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/benchmark_with_andes.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/benchmark_with_andes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/constructing_kundur_full.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/constructing_kundur_full.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded_light.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded_light.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded_no_shunt.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_hardcoded_no_shunt.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system_whith_control.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system_whith_control.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system_whith_control_automatic_init.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_gridcal_small_system_whith_control_automatic_init.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_initialization_check.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_initialization_check.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_initialization_check_automatic_init.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_initialization_check_automatic_init.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic_framework_0.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic_framework_0.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic_framework_0_automatic_init.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_simbolic_framework_0_automatic_init.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_simple_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_simple_system.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_veragrid_kundor_no_shunt_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_veragrid_kundor_no_shunt_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/test_benchmark_with_andes.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/test_benchmark_with_andes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/test_benchmark_with_andes_diff_block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/test_benchmark_with_andes_diff_block_solver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/benchmark_with_andes.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/benchmark_with_andes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test3.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test_2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test_4.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_test_4.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/dae_tests.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/diff_variables_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/diff_variables_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_tensor/scripting_tensors.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_tensor/scripting_tensors.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1918,7 +1881,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="637" />
+    <option name="localTasksCounter" value="638" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1964,7 +1927,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="improved icons" />
     <MESSAGE value="improved pkg function" />
     <MESSAGE value="several refactors" />
     <MESSAGE value="formatted" />
@@ -1989,7 +1951,8 @@
     <MESSAGE value="initialization none fixed" />
     <MESSAGE value="fixing simbolic derivatives" />
     <MESSAGE value="fixing symbolic parse and to_dict" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixing symbolic parse and to_dict" />
+    <MESSAGE value="renamed blocksolver and blocksolverdiff" />
+    <option name="LAST_COMMIT_MESSAGE" value="renamed blocksolver and blocksolverdiff" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

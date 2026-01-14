@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 
-from VeraGridEngine import VarPowerFlowRefferenceType, power_flow
+from VeraGridEngine import VarPowerFlowRefferenceType, power_flow, DynamicIntegrationMethod
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -227,7 +227,7 @@ t, y, _ = slv.simulate(
     x0=x0,
     dx0=dx0,
     params0=params0,
-    method="implicit_euler",
+    method=DynamicIntegrationMethod.BackEuler,
     newton_tol = 1e-8,
     newton_max_iter = 1000,
     followed_vars = None,
