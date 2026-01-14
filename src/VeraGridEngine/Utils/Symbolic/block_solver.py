@@ -81,7 +81,7 @@ class SymbolicJacobian:
 
             for col, var in enumerate(variables):
 
-                d_expression = eq.diff(var)
+                d_expression = eq.diff(var, dt = dt)
                 triplets.append((col, row, d_expression))
 
         # Sort by column, then row for CSC layout
@@ -611,6 +611,22 @@ class BlockSolver:
     @property
     def algebraic_vars(self):
         return self._algebraic_vars
+    
+    def get_var_idx(self, v: Var) -> int:
+        """
+
+        :param v:
+        :return:
+        """
+        return self.uid2idx_vars[v.uid]
+
+    def get_vars_idx(self, variables: Sequence[Var]) -> np.ndarray:
+        """
+
+        :param variables:
+        :return:
+        """
+        return np.array([self.uid2idx_vars[v.uid] for v in variables])
 
     def _get_jacobian(self,
                       eqs: List[Expr],
@@ -984,13 +1000,13 @@ class BlockSolver:
         if initialized:
             x0 = x0[:self._n_alg]
         else:
-            x0 = self.build_initial_guess(x0, dx0, h)
+            x0 = x0
 
         if method == DynamicIntegrationMethod.BackEuler:
             return self._simulate_implicit_euler_diff(
                 t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, params0=params0,
                 max_iter=newton_max_iter, verbose=verbose,
-                followed_vars=followed_vars,
+                followed_vars=followed_vars, 
             )
 
         else:
@@ -1029,17 +1045,11 @@ class BlockSolver:
         t[0] = t0
         y[0] = x0.copy()
         dx = dx0.copy()
+        x_new = x0.copy()
         for step_idx in range(steps):
             self.step_idx = step_idx
-            if step_idx == 0:
-                dx = dx0.copy()
-            else:
-                dx = self._derivative_fn(x_new, y[step_idx -1], dx, h)
             params_previous = params_current.copy()
-            discontinuity = np.linalg.norm(params_current - params_previous, np.inf) > 1e-10
-            xn = y[step_idx]
-            x_last = y[step_idx - 1] if step_idx > 0 else y[step_idx]
-            x_new = xn.copy()  # initial guess
+            discontinuity = False
             converged = False
             n_iter = 0
             current_time = t[step_idx]
@@ -1049,11 +1059,17 @@ class BlockSolver:
             params = np.array([const.value for const in self._parameters_values])
 
             if step_idx == 0:
-                tol = 1e-4
+                tol = 1e-7
+                xn = x0.copy()
                 initial_step_start = time.time()
             else:
+                xn = y[step_idx]
                 tol = 1e-7
             while not converged and n_iter < 1e5:
+                if step_idx == 0:
+                    dx = dx0.copy()
+                else:
+                    dx = self._derivative_fn(x_new, xn, dx, h)
 
                 # ---------------- lag update ----------------
                 lag_update_start = time.time()
@@ -1065,9 +1081,6 @@ class BlockSolver:
                     tol = 1e-8
                     max_iter = 5e5
 
-                if followed_vars is not None:
-                    for var in followed_vars:
-                        idx = self.get_var_idx(var)
 
                 params_current = np.asarray(params_current, dtype=np.float64)
                 # ---------------- rhs calculation ----------------
@@ -1089,9 +1102,11 @@ class BlockSolver:
 
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
+                print(np.linalg.norm(x_new - xn, np.inf))
+                print(f'residua is {residual} at step {step_idx} and iter {n_iter}')
+                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
 
                 if step_idx == 0:
-                    
                     Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
                     if converged:
@@ -1100,7 +1115,7 @@ class BlockSolver:
                     else:
                         print(f"System bad initialized. DAE resiudal is {residual}.")
                         print(f'rhs is {rhs}')
-                        non_zero_indexes = np.where(np.abs(rhs) > 0.00001)[0]
+                        non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
                         all_eq = self._state_eqs + self._algebraic_eqs
                         print("eqs are")
                         for i in non_zero_indexes:
@@ -1109,17 +1124,14 @@ class BlockSolver:
                         exit()
                 else:
                     max_iter = max_iter_0
-                    # Jf = self.jacobian_implicit(xnew_lags, params_current, h)
-                    # delta = sp.linalg.spsolve(Jf, -rhs)
 
                 if converged:
                     break
 
                 solved = False
                 linear_start = time.time()
-                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
                 delta = sp.linalg.spsolve(Jf, -rhs)
-
+                print(f'delta is {delta}')
                 linear_end = time.time()
                 timings["linear_solver_time"] += linear_end - linear_start
                 solved = np.all(np.isfinite(delta))
