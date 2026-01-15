@@ -150,7 +150,7 @@ class UcteTransformer:
                                    expected_value=13)
 
             else:
-                logger.add_error("Incorrect number of parameters",
+                logger.add_error("Completely incorrect number of parameters",
                                  device_class=device,
                                  value=len(chunks),
                                  expected_value=13)

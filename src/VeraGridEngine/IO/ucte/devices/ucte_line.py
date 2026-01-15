@@ -62,7 +62,7 @@ class UcteLine:
 
         device = "Line"
         if len(line) == 66:
-            # cannonical parsing
+            # canonical parsing
             self.node1 = sub_str(line, 0, 8, device, "node1", logger)
             self.node2 = sub_str(line, 9, 17, device, "node2", logger)
             self.order_code = sub_str(line, 18, 19, device, "", logger)
@@ -102,7 +102,7 @@ class UcteLine:
                 self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
                 self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
                 self.current_limit = try_float(chunks[7].strip(), device, "current_limit", logger, 9999.0)
-                self.name = "No name provided"
+                self.name = f"{self.node1}_{self.node2}_{self.order_code}"
 
                 logger.add_warning("Incorrect number of parameters",
                                    device_class=device,
@@ -117,3 +117,5 @@ class UcteLine:
 
         if self.current_limit < 0:
             self.current_limit = 9999.0
+
+
