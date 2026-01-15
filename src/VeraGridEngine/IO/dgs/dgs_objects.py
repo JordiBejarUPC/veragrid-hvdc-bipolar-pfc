@@ -299,6 +299,34 @@ class ElmCoup(DGSElement):
         self.for_name: str = ""
 
 
+class ElmBranch(DGSElement):
+    """
+    Branch element container (PowerFactory/DGS).
+
+    Notes
+    -----
+    ElmBranch is a hierarchical container used to organize the project/model and
+    the single-line diagram. It does NOT define electrical connectivity.
+    """
+    element_type = 'ElmBranch'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'DGS field for_name (a:100)', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('iDatCon0', 'i', 'DGS field iDatCon0 (i)', py_name='iDatCon0'),
+        DgsProperty('iDatCon1', 'i', 'DGS field iDatCon1 (i)', py_name='iDatCon1'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+        self.iDatCon0: int = 0
+        self.iDatCon1: int = 0
+
+
 class ElmFeeder(DGSElement):
     element_type = 'ElmFeeder'
     properties_list = [

@@ -449,11 +449,12 @@ def build_switch_by_cubic_id(staswitchs: List[StaSwitch]) -> Dict[str, StaSwitch
         d[cubic_id] = sw
     return d
 
+
 def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
-                                        cubics_by_objid: Dict[str, List[StaCubic]],
-                                        bus_by_term_id: Dict[str, dev.Bus],
-                                        switch_by_cubic_id: Dict[str, StaSwitch],
-                                        logger: Logger) -> List[dev.Switch]:
+                                         cubics_by_objid: Dict[str, List[StaCubic]],
+                                         bus_by_term_id: Dict[str, dev.Bus],
+                                         switch_by_cubic_id: Dict[str, StaSwitch],
+                                         logger: Logger) -> List[dev.Switch]:
     """
     Create VeraGrid Switch devices from ElmCoup.
 
@@ -539,6 +540,7 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
         switches.append(sw)
 
     return switches
+
 
 def _convert_pf_switch_graphic_type(iuse: int, ausage: str) -> SwitchGraphicType:
     """
@@ -1370,6 +1372,25 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if zid is not None:
             zone_by_id[zid] = zone
 
+    # Branch groups (ElmBranch)
+    # ElmBranch is a hierarchical container in PowerFactory and does not define electrical connectivity.
+    # We map it to VeraGridEngine BranchGroup for metadata/grouping only.
+    branch_group_by_id: Dict[str, dev.BranchGroup] = dict()
+    for elmbranch in dgs_grid.elmbranches:
+        bid = _ref_id(elmbranch.ID)
+        name = elmbranch.loc_name if elmbranch.loc_name != "" else f"BranchGroup_{bid}"
+
+        bg = dev.BranchGroup(
+            name=name,
+            code="",
+            idtag=bid
+        )
+
+        grid.add_branch_group(obj=bg)
+
+        if bid is not None and bid != "":
+            branch_group_by_id[bid] = bg
+
     # Buses
     bus_by_term_id: Dict[str, dev.Bus] = dict()
     for elmterm in dgs_grid.elmterms:
@@ -1556,6 +1577,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             cubics_by_objid=cubics_by_objid,
             bus_by_term_id=bus_by_term_id
         )
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmlne.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                line.group = bg
+
         grid.add_line(obj=line, logger=logger)
 
     # series reactances / impedances
@@ -1571,6 +1600,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             sbase_mva=baseMVA
         )
         # MultiCircuit supports generic branch insertion
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmsind.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                sr.group = bg
+
         grid.add_series_reactance(obj=sr)
 
     # switches (PowerFactory/DGS: ElmCoup is the real device; StaCubic resolves connectivity)
@@ -1600,6 +1637,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             cubics_by_objid=cubics_by_objid,
             bus_by_term_id=bus_by_term_id
         )
+
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmtr2.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                trafo.group = bg
 
         grid.add_transformer2w(obj=trafo)
 
@@ -1636,6 +1681,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         )
 
         grid.add_bus(obj=trafo3w.bus0)
+        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+        # IMPORTANT: this does not affect electrical connectivity.
+        fold_id = _ref_id(elmtr3.fold_id)
+        if fold_id is not None and fold_id != "":
+            bg = branch_group_by_id.get(fold_id)
+            if bg is not None:
+                trafo3w.group = bg
+
         grid.add_transformer3w(obj=trafo3w)
 
     return grid
@@ -1648,7 +1701,7 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
                                         bus_by_term_id: Dict[str, dev.Bus],
                                         tr3_ids: Set[str],
                                         logger: Logger) -> List[dev.Switch]:
-    
+
     Create one VeraGrid Switch per 2-terminal element (line/trafo/etc.) when both ends have StaSwitch.
     This function filters out "internal" PowerFactory switches (closed and without type) unless
     they belong to a 3-Winding Transformer.
@@ -1659,7 +1712,7 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
     :param tr3_ids: Set of IDs belonging to 3-Winding Transformers (to force visibility)
     :param logger: Logger object
     :return: List of VeraGrid Switch objects
-   
+
     switches: List[dev.Switch] = list()
 
     for obj_id, cubics in cubics_by_objid.items():

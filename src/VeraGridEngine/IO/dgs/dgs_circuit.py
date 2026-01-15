@@ -40,6 +40,11 @@ def parse_header(line: str) -> Tuple[str, Dict[str, int]]:
         prop_name = stubs[0] if len(stubs) > 0 else name_stub
         header_map[prop_name] = i
 
+        # PowerFactory exports commonly use 'FID' as the unique identifier column.
+        # The schema in dgs_objects.py uses the python attribute name 'ID'. Map both.
+        if prop_name == 'FID':
+            header_map['ID'] = i
+
     return element_type, header_map
 
 
@@ -52,6 +57,7 @@ class DgsCircuit:
         ChaVec,
         ElmComp,
         ElmDsl,
+        ElmBranch,
         ElmAsm,
         ElmCoup,
         ElmFeeder,
@@ -103,6 +109,7 @@ class DgsCircuit:
         self.generals: List[General] = list()
         self.elmcomps: List[ElmComp] = list()
         self.elmdsls: List[ElmDsl] = list()
+        self.elmbranches: List[ElmBranch] = list()
         self.charefs: List[ChaRef] = list()
         self.chavecs: List[ChaVec] = list()
         self.elmasms: List[ElmAsm] = list()
@@ -149,6 +156,7 @@ class DgsCircuit:
             ChaVec: self.chavecs,
             ElmComp: self.elmcomps,
             ElmDsl: self.elmdsls,
+            ElmBranch: self.elmbranches,
             ElmAsm: self.elmasms,
             ElmCoup: self.elmcoups,
             ElmFeeder: self.elmfeeders,
