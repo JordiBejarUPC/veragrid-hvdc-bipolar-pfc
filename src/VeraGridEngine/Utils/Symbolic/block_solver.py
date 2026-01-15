@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Set, Literal
+from collections import defaultdict
 import numpy as np
 import uuid
 import numba as nb
@@ -24,6 +25,12 @@ from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
 
 
+def _tic():
+    return time.perf_counter()
+
+def _toc(t0):
+    return time.perf_counter() - t0
+
 # -----------------------------------------------------------------------------
 # UUID helper
 # -----------------------------------------------------------------------------
@@ -38,12 +45,10 @@ class SymbolicJacobian:
                  variables: List[Var],
                  diff_variables: List[DiffVar],
                  compiler_names_dict: Dict[int, str],
+                 alias_names_dict: Dict[int, str],
                  uid2idx_vars: Dict[int, int],
                  dt: Var = Const(0.001),
-                 delta: Var = Const(1),
-                 substitute: bool = True,
-                 use_jit: bool = True,
-                 add_delta: bool = True):
+                 use_jit: bool = True):
 
         """
                 JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
@@ -61,67 +66,42 @@ class SymbolicJacobian:
                             Row/col indices of structurally non‑zero entries.
                 """
 
-        if not substitute:
-            _ = 0
-            # diff_vars = []
-        # check if there are repeated variables, this is done befor in block solver
-        check_set = set()
-        for v in variables:
-            if v in check_set:
-                raise ValueError(f"Repeated var {v.name} in the variables' list :(")
-            else:
-                check_set.add(v)
-        ############################################################################
 
-        triplets: List[Tuple[int, int, Callable]] = []  # (col, row, fn)
+        used_vars_count = defaultdict(int)
 
+        triplets: List[Tuple[int, int, Callable]] = []
         for row, eq in enumerate(eqs):
-            # substitude lag_var for lag_var.base_var
-
-
             for col, var in enumerate(variables):
+                d_expression = eq.diff(var, dt=dt)
+                if not (isinstance(d_expression, Const) and d_expression.value == 0):
+                    triplets.append((col, row, d_expression))
 
-                d_expression = eq.diff(var, dt = dt)
-                triplets.append((col, row, d_expression))
+                for v in d_expression.get_vars():
+                    used_vars_count[v.uid] += 1
 
-        # Sort by column, then row for CSC layout
+
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
 
-        # Assemble the jacobian structure
-        nnz = len(cols_sorted)
+        # --- codegen -------------------------------------------------------------
 
-        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
+        self.namespace: Dict[str, Any] = { "math": math, "np": np, "nb": nb, "_heaviside": _heaviside, }
+        final_names_dict: Dict[int, str] = {}
 
-        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
-        for c in cols_sorted:
-            indptr[c + 1] += 1
-        np.cumsum(indptr, out=indptr)
-
-        self.nvar = len(variables)
-        neq = len(eqs)
-
-        self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
-
-        # compilation --------------------------------------------------------------------------------------------------
-
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
-
-        fname = f"jac"  # since we compile into a namespace, there won't be repeated names
-
-        # Build source #TODO: Include DH/DT !!! for differential variables
+        fname = "jac"
         src = f"def {fname}(vars, diff, event_params, params, out):\n"
-        for i, e in enumerate(equations_sorted): 
-            src += f"   out[{i}] = {expression2numba(e, compiler_names_dict)}\n"
+        for uid, count in used_vars_count.items():
+            if count > 1:
+                final_names_dict[uid] = alias_names_dict[uid]
+                src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+            else:
+                final_names_dict[uid] = compiler_names_dict[uid]
 
-        # compile to python
+        for i, e in enumerate(equations_sorted):
+            src += f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
         exec(src, self.namespace)
 
+        start_time = time.time()
         if use_jit:
             # compile with numba
             self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = nb.njit(nb.void(nb.float64[:],  nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
@@ -129,6 +109,9 @@ class SymbolicJacobian:
         else:
             # just pick the python pointer from the namespace
             self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = self.namespace[fname]
+        end_time = time.time()
+        
+        print(f"Jacobian source compile time: {end_time - start_time} seconds") 
 
     def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, h:float) -> csc_matrix:
         """
@@ -154,6 +137,7 @@ class SymbolicVector:
 
     def __init__(self, eqs: Sequence[Expr],
                  compiler_names_dict: Dict[int, str],
+                 alias_names_dict:  Dict[int, str],
                  use_jit: bool = True):
         """
         Compile the array of expressions to a function that returns an array of values for those expressions
@@ -163,6 +147,11 @@ class SymbolicVector:
         :return: Function pointer that returns an array
         """
         self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None]| None = None
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in eq.get_vars():
+                used_vars_count[var.uid] += 1
+
         if len(eqs):
             self.namespace: Dict[str, Any] = {
                 "math": math,
@@ -174,12 +163,21 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
+
+            fname = "jac"
             src = f"def {fname}(vars, diff, event_params, params, out):\n"
+            final_names_dict = compiler_names_dict.copy()
+            for uid, count in used_vars_count.items():
+                if count > 1:
+                    final_names_dict[uid] = alias_names_dict[uid]
+                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
             src += "\n".join(
-                [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in
+                [f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}" for i, e in
                  enumerate(eqs)]) + "\n"
 
             # compile in python namespace
+            for e in eqs:
+                print(e.simplify())
             exec(src, self.namespace)
 
             # compile in numba
@@ -214,6 +212,7 @@ class SymbolicParamsVector:
 
     def __init__(self, eqs: Sequence[Expr],
                  compiler_names_dict: Dict[int, str],
+                 alias_names_dict: Dict[int, str],
                  use_jit: bool = True):
         """
         Compile the array of expressions to a function that returns an array of values for those expressions
@@ -222,6 +221,11 @@ class SymbolicParamsVector:
         :return: Function pointer that returns an array
         """
         self.func: Callable[[Vec, Vec], csc_matrix] | None = None
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in eq.get_vars():
+                used_vars_count[var.uid] += 1
+
         if len(eqs):
             self.namespace: Dict[str, Any] = {
                 "math": math,
@@ -233,7 +237,12 @@ class SymbolicParamsVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-            src = f"def {fname}(glob_time, out):\n"
+            src = f"def {fname}(event_params, glob_time, out):\n"
+            final_names_dict = compiler_names_dict.copy()
+            for uid, count in used_vars_count.items():
+                if count > 1:
+                    final_names_dict[uid] = alias_names_dict[uid]
+                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
             src += "\n".join(
                 [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in enumerate(eqs)]) + "\n"
 
@@ -242,7 +251,7 @@ class SymbolicParamsVector:
 
             # compile in numba
             if use_jit:
-                self.func = nb.njit(nb.void(nb.float64, nb.float64[:]),
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64, nb.float64[:]),
                                     fastmath=True)(self.namespace[fname])
             else:
                 self.func = self.namespace[fname]
@@ -251,14 +260,14 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, glob_time: Vec) -> Vec:
+    def __call__(self, events_param:Vec, glob_time: Vec) -> Vec:
         """
         Call the compiled function
         :param glob_time:
         :return:
         """
         if self.func is not None:
-            self.func(glob_time, self.data)
+            self.func(events_param, glob_time, self.data)
         return self.data
 
 class SymbolicDerivative:
@@ -300,10 +309,10 @@ class SymbolicDerivative:
             uid2dx_expression[uid] = rhs
 
             src += to_src
-
         src += f"    return out"
-        # compile in python namespace
         exec(src, self.namespace)
+
+        # compile in python namespace
         # compile in numba
         if use_jit:
             self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
@@ -466,6 +475,7 @@ class BlockSolver:
         # going to be represented by an array called vars[]
 
         self.compiler_names_dict: Dict[int, str] = dict()
+        self.alias_names_dict: Dict[int, str] = dict()
         # self.uid2sym_event_params: Dict[int, str] = dict()
         # self.uid2sym_params: Dict[int, str] = dict()
         # self.uid2sym_diff: Dict[int, str] = dict()
@@ -480,29 +490,34 @@ class BlockSolver:
         i = 0
         for v in self._state_vars:
             self.compiler_names_dict[v.uid] = f"vars[{i}]"
+            self.alias_names_dict[v.uid] = f"vars_{i}"
             self.uid2idx_vars[v.uid] = i
             i += 1
 
         for v in self._algebraic_vars:
             self.compiler_names_dict[v.uid] = f"vars[{i}]"
+            self.alias_names_dict[v.uid] = f"vars_{i}"
             self.uid2idx_vars[v.uid] = i
             i += 1
 
         j = 0
         for j, ep in enumerate(self._parameters):
             self.compiler_names_dict[ep.uid] = f"params[{j}]"
+            self.alias_names_dict[ep.uid] = f"params_{j}"
             self.uid2idx_params[ep.uid] = j
             j += 1
 
         l = 0
         for l, ep in enumerate(self._event_parameters):
             self.compiler_names_dict[ep.uid] = f"event_params[{l}]"
+            self.alias_names_dict[ep.uid] = f"event_params_{l}"
             self.uid2idx_event_params[ep.uid] = l
             l += 1
 
         k = 0
         for ep in self._diff_vars:
             self.compiler_names_dict[ep.uid] = f"diff[{k}]"
+            self.alias_names_dict[ep.uid] = f"diff_{k}"
             self.uid2idx_diff[ep.uid] = k
             k += 1
 
@@ -548,57 +563,120 @@ class BlockSolver:
         algeb eq |J21        | J22       |    | ∆ algeb var|    | ∆ algeb eq |
                  |           |           |    |            |    |            |
         """
-        print("Compiling...")
-        self._derivative_fn = SymbolicDerivative(vars=self._state_algeb_vars,
-                                                uid2idx_vars=self.uid2idx_vars,
-                                                diff_vars=self._diff_vars,
-                                                compiler_names_dict=self.compiler_names_dict)
-        
-        self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
-                                            compiler_names_dict=self.compiler_names_dict)
+        timings = dict()
 
-        self._event_params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs,
-                                            compiler_names_dict=self.compiler_names_dict)
+        print("Compiling...")
+
+        t0 = _tic()
+        self._derivative_fn = SymbolicDerivative(
+            vars=self._state_algeb_vars,
+            uid2idx_vars=self.uid2idx_vars,
+            diff_vars=self._diff_vars,
+            compiler_names_dict=self.compiler_names_dict
+        )
+        timings["SymbolicDerivative"] = _toc(t0)
+
+
+        t0 = _tic()
+        self._rhs_algeb_fn = SymbolicVector(
+            eqs=self._algebraic_eqs,
+            compiler_names_dict=self.compiler_names_dict,
+            alias_names_dict=self.alias_names_dict,
+        )
+        timings["RHS algebraic"] = _toc(t0)
+
+
+        t0 = _tic()
+        self._event_params_fn = SymbolicParamsVector(
+            eqs=self._event_parameters_eqs,
+            compiler_names_dict=self.compiler_names_dict,
+            alias_names_dict=self.alias_names_dict,
+        )
+        timings["Event parameters"] = _toc(t0)
+
 
         if len(self._state_eqs) != 0:
-            self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
-                                            compiler_names_dict=self.compiler_names_dict)
 
-            self._j11_fn = SymbolicJacobian(eqs=self._state_eqs, variables=self._state_vars,
-                                            diff_variables=self._diff_vars,
-                                            compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
-            self._j12_fn = SymbolicJacobian(eqs=self._state_eqs, variables=self._algebraic_vars,
-                                            diff_variables=self._diff_vars,
-                                            compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
+            t0 = _tic()
+            self._rhs_state_fn = SymbolicVector(
+                eqs=self._state_eqs,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+            )
+            timings["RHS state"] = _toc(t0)
 
-            self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._state_vars,
-                                            diff_variables=self._diff_vars,
-                                            compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._algebraic_vars,
-                                            diff_variables=self._diff_vars,
-                                            compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars, dt=self.dt)
+            t0 = _tic()
+            self._j11_fn = SymbolicJacobian(
+                eqs=self._state_eqs,
+                variables=self._state_vars,
+                diff_variables=self._diff_vars,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+                uid2idx_vars=self.uid2idx_vars,
+                dt=self.dt
+            )
+            timings["J11 (dF/dx)"] = _toc(t0)
+
+            t0 = _tic()
+            self._j12_fn = SymbolicJacobian(
+                eqs=self._state_eqs,
+                variables=self._algebraic_vars,
+                diff_variables=self._diff_vars,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+                uid2idx_vars=self.uid2idx_vars,
+                dt=self.dt
+            )
+            timings["J12 (dF/dy)"] = _toc(t0)
+
+            t0 = _tic()
+            self._j21_fn = SymbolicJacobian(
+                eqs=self._algebraic_eqs,
+                variables=self._state_vars,
+                diff_variables=self._diff_vars,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+                uid2idx_vars=self.uid2idx_vars,
+                dt=self.dt
+            )
+            timings["J21 (dG/dx)"] = _toc(t0)
+
+            t0 = _tic()
+            self._j22_fn = SymbolicJacobian(
+                eqs=self._algebraic_eqs,
+                variables=self._algebraic_vars,
+                diff_variables=self._diff_vars,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+                uid2idx_vars=self.uid2idx_vars,
+                dt=self.dt
+            )
+            timings["J22 (dG/dy)"] = _toc(t0)
 
         else:
-            self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs, variables=self._algebraic_vars,
-                                            diff_variables=self._diff_vars,
-                                            compiler_names_dict=self.compiler_names_dict,
-                                            uid2idx_vars=self.uid2idx_vars,
-                                            dt=self.dt)
+            t0 = _tic()
+            self._j22_fn = SymbolicJacobian(
+                eqs=self._algebraic_eqs,
+                variables=self._algebraic_vars,
+                diff_variables=self._diff_vars,
+                compiler_names_dict=self.compiler_names_dict,
+                alias_names_dict=self.alias_names_dict,
+                uid2idx_vars=self.uid2idx_vars,
+                dt=self.dt
+            )
+            timings["J22 only (no states)"] = _toc(t0)
 
-        # stability equations for initialization
-        self._j_stable = SymbolicJacobian(eqs=self._stability_eqs, variables=self._algebraic_vars,
-                                          diff_variables=self._diff_vars,
-                                          compiler_names_dict=self.compiler_names_dict,
-                                          uid2idx_vars=self.uid2idx_vars, 
-                                          dt=self.dt)
         print(
             f"Model compiled with {self._n_vars} variables, "
-            f"{len(self._algebraic_eqs_substituted)}  algebraic eqs and "
-            f"{len(self._state_eqs_substituted)} state eqs")
+            f"{len(self._algebraic_eqs_substituted)} algebraic eqs and "
+            f"{len(self._state_eqs_substituted)} state eqs"
+        )
+
+        print("\nCompilation timing summary:")
+        for k, v in timings.items():
+            print(f"  {k:30s}: {v:8.4f} s")
+
+        print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
 
     @property
     def diff_vars_number(self):
@@ -1041,7 +1119,7 @@ class BlockSolver:
             "initial_step_time": 0.0,
         }
 
-        params_current = params0
+        params_current = self._event_params_fn(np.zeros(len(self._event_parameters)), float(current_time))
         t[0] = t0
         y[0] = x0.copy()
         dx = dx0.copy()
@@ -1054,7 +1132,7 @@ class BlockSolver:
             n_iter = 0
             current_time = t[step_idx]
 
-            params_current = self._event_params_fn(float(current_time))
+            params_current = self._event_params_fn(params_current, float(current_time))
             params_current[-2] = h
             params = np.array([const.value for const in self._parameters_values])
 
@@ -1428,7 +1506,8 @@ class BlockSolver:
         x_new = x0.copy()
         tries = 0
         params = np.array([const.value for const in self._parameters_values])
-        event_params = self._event_params_fn(float(0))
+        event_params = np.zeros(len(self._event_parameters))
+        event_params = self._event_params_fn(event_params, float(0))
 
         dx_error = 1
         residual = 10

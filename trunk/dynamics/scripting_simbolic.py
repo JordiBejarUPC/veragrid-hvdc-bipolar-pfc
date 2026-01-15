@@ -96,5 +96,9 @@ def test_diff_block_in_harmonic_oscillator():
     assert np.allclose(y_sim, y_ref, atol=1e-2)
 
 if __name__ == "__main__":
-    test_diff_block_in_harmonic_oscillator()
+    #test_diff_block_in_harmonic_oscillator()
+    a = Var('a')
+    b = Var('b')
+    c = Var('b')
+    print(a*b*c)
     print("All tests passed.")
