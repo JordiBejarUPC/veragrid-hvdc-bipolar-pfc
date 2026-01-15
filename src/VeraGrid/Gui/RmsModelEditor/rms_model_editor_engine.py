@@ -1303,9 +1303,14 @@ class TemplateEditor(QtWidgets.QWidget):
         self.template_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # call editable parameters dialog
+        self.selected_template.block.unify_blocks()
         if hasattr(self.selected_template.block, 'event_dict'):
             if self.selected_template.block.event_dict:
                 self.load_params_table()
+        # call non-editable parameters dialog
+        if hasattr(self.selected_template.block, 'parameters'):
+            if self.selected_template.block.parameters:
+                self.load_fix_params_table()
 
     def load_params_table(self):
         """
@@ -1333,6 +1338,33 @@ class TemplateEditor(QtWidgets.QWidget):
 
                 value_item = QtWidgets.QTableWidgetItem(str(const.value))
                 self.params_table.setItem(row, 1, value_item)
+
+        self.params_table.blockSignals(False)
+        self.params_table.resizeColumnsToContents()
+
+    def load_fix_params_table(self):
+        """
+        Fills the parameters table with non-editable (fixed) parameters
+        """
+
+        parameters = self.selected_template.block.parameters  # {Param: Const}
+
+        self.params_table.blockSignals(True)
+
+        for param, const in parameters.items():
+            row = self.params_table.rowCount()
+            self.params_table.insertRow(row)
+
+            # Parameter name (non-editable)
+            name_item = QtWidgets.QTableWidgetItem(param.name)
+            name_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.params_table.setItem(row, 0, name_item)
+
+            # Parameter value (non-editable)
+            value = "" if const.value is None else str(const.value)
+            value_item = QtWidgets.QTableWidgetItem(value)
+            value_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.params_table.setItem(row, 1, value_item)
 
         self.params_table.blockSignals(False)
         self.params_table.resizeColumnsToContents()

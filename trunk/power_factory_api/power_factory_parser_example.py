@@ -7,4 +7,6 @@ dgs_grid = DgsCircuit()
 dgs_grid.parse_dgs(fname)
 dgs_grid.write_dgs("example.dgs")
 
+grid = dgs_grid.to_veragrid()
+
 print()

@@ -128,6 +128,10 @@ class DGSElement:
 
             idx = header_map.get(prop.name, None)
 
+            # Fix ID vs FID thing, internally it is always ID, and we handle the FID issue
+            if idx is None and prop.name == "ID":
+                idx = header_map.get("FID", None)
+
             if idx is not None:
 
                 if -1 < idx < len(parts):
@@ -203,6 +207,42 @@ class ChaVec(DGSElement):
         self.vector_2: float = 0.0
 
 
+class ElmComp(DGSElement):
+    element_type = 'ElmComp'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+        self.outserv: int = 0
+
+
+class ElmDsl(DGSElement):
+    element_type = 'ElmDsl'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a', 'DGS field loc_name (a)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+        self.outserv: int = 0
+
+
 class ElmAsm(DGSElement):
     element_type = 'ElmAsm'
     properties_list = [
@@ -215,6 +255,7 @@ class ElmAsm(DGSElement):
         DgsProperty('ngnum', 'i', 'DGS field ngnum (i)', py_name='ngnum'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('pgini', 'r', 'DGS field pgini (r)', py_name='pgini'),
+        DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
     ]
 
     def __init__(self) -> None:
@@ -227,6 +268,7 @@ class ElmAsm(DGSElement):
         self.ngnum: int = 0
         self.outserv: int = 0
         self.pgini: float = 0.0
+        self.qgini: float = 0.0
 
 
 class ElmCoup(DGSElement):
@@ -252,7 +294,7 @@ class ElmCoup(DGSElement):
         self.chr_name: str = ""
         self.aUsage: str = ""
         self.nneutral: int = 0
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.on_off: int = 0
         self.for_name: str = ""
 
@@ -298,6 +340,8 @@ class ElmGenstat(DGSElement):
         DgsProperty('qgini', 'r', 'DGS field qgini (r)', py_name='qgini'),
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('ip_ctrl', 'i', 'DGS field ip_ctrl (i)', py_name='ip_ctrl'),
+        DgsProperty('cCategory', 'a:40', 'plant types', py_name='cCategory'),
+        DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
     ]
 
     def __init__(self) -> None:
@@ -313,6 +357,8 @@ class ElmGenstat(DGSElement):
         self.qgini: float = 0.0
         self.av_mode: str = ""
         self.ip_ctrl: int = 0
+        self.cCategory: str = ""
+        self.c_pmod: str = ""
 
 
 class ElmLne(DGSElement):
@@ -324,7 +370,7 @@ class ElmLne(DGSElement):
         DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
         DgsProperty('dline', 'r', 'DGS field dline (r)', py_name='dline'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('fline', 'r', 'DGS field fline (r)', py_name='fline'),
+        DgsProperty('fline', 'r', 'Derating factor', py_name='fline'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('pStoch', 'p', 'DGS field pStoch (p)', py_name='pStoch'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
@@ -341,14 +387,72 @@ class ElmLne(DGSElement):
         self.typ_id: str = ""
         self.dline: float = 0.0
         self.chr_name: str = ""
-        self.fline: float = 0.0
+        self.fline: float = 1.0
         self.outserv: int = 0
         self.pStoch: str = ""
         self.for_name: str = ""
         self.GPScoords_SIZEROW: int = 0
         self.GPScoords_SIZECOL: int = 0
-        self.nlnum: int = 0
+        self.nlnum: int = 1
         self.inAir: int = 0
+
+
+class ElmSind(DGSElement):
+    element_type = 'ElmSind'
+    properties_list = [
+        # test_export_v5.dgs uses FID(...) not ID(...)
+        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='ID'),
+        # Optional alias (harmless if missing)
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
+        DgsProperty('for_name', 'a:100', 'Foreign Key', py_name='for_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+
+        DgsProperty('ucn', 'r', 'Rated Voltage in kV', py_name='ucn'),
+        DgsProperty('Sn', 'r', 'Rated Power in MVA', py_name='Sn'),
+        DgsProperty('uk', 'r', 'Short-Circuit Voltage uk in %', py_name='uk'),
+        DgsProperty('Pcu', 'r', 'Copper Losses in kW', py_name='Pcu'),
+
+        DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
+    ]
+
+    def __init__(self):
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+        self.typ_id: str = ""
+
+        self.ucn: float = 0.0
+        self.Sn: float = 0.0
+        self.uk: float = 0.0
+        self.Pcu: float = 0.0
+
+        self.outserv: int = 0
+
+
+class TypSind(DGSElement):
+    """PowerFactory Series Reactor type (TypSind)."""
+    element_type = 'TypSind'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+
+        # Type impedance parameters (same naming as ElmSind in many exports)
+        DgsProperty('Re', 'r', 'Type series resistance (Re)', py_name='Re'),
+        DgsProperty('Xe', 'r', 'Type series reactance (Xe)', py_name='Xe'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.Re: float = 0.0
+        self.Xe: float = 0.0
 
 
 class ElmLnesec(DGSElement):
@@ -469,9 +573,9 @@ class ElmNet(DGSElement):
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
+        DgsProperty('frnom', 'r', 'Nominal Frequency in Hz', py_name='frnom'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
-        DgsProperty('pDiagram', 'p', 'DGS field pDiagram (p)', py_name='pDiagram'),
+        DgsProperty('pDiagram', 'p', 'Diagram in IntGrfnet', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -519,6 +623,58 @@ class ElmShnt(DGSElement):
         self.greaf0: float = 0.0
         self.iswitch: int = 0
         self.qtotn: float = 0.0
+
+
+class ElmSvs(DGSElement):
+    element_type = 'ElmSvs'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+
+        # Reactive limits (MVAr @ v=1 p.u.)
+        DgsProperty('qmin', 'r', 'DGS field qmin (r)', py_name='qmin'),
+        DgsProperty('qmax', 'r', 'DGS field qmax (r)', py_name='qmax'),
+
+        # PF SVS/SVC model-specific fields (kept for completeness)
+        DgsProperty('tcrmax', 'r', 'DGS field tcrmax (r)', py_name='tcrmax'),
+        DgsProperty('nxcap', 'i', 'DGS field nxcap (i)', py_name='nxcap'),
+        DgsProperty('nfixcap', 'i', 'DGS field nfixcap (i)', py_name='nfixcap'),
+        DgsProperty('Qfixcap', 'r', 'DGS field Qfixcap (r)', py_name='Qfixcap'),
+
+        # Out of service flag (0/1)
+        DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+
+        # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
+        # If absent in the file, it will remain at its default value (1.0).
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
+    ]
+
+    def __init__(self) -> None:
+        # Identifiers
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+
+        # Operating limits (MVAr @ v=1 p.u.)
+        self.qmin: float = 0.0
+        self.qmax: float = 0.0
+
+        # Thyristor controlled reactor max (PF SVC/SVS model-specific, may be unused in VeraGrid)
+        self.tcrmax: float = 0.0
+
+        # Step / block data (PF model-specific, may be used to infer an equivalent stepped model)
+        self.nxcap: int = 0
+        self.nfixcap: int = 0
+        self.Qfixcap: float = 0.0
+
+        # Status
+        self.outserv: int = 0
+
+        # Voltage setpoint (p.u.) for controlled shunts
+        self.usetp: float = 1.0
 
 
 class ElmSite(DGSElement):
@@ -597,6 +753,8 @@ class ElmSym(DGSElement):
         DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
+        DgsProperty('phtech', 'i', 'Reference machine', py_name='ip_ctrl'),
+        DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
     ]
 
     def __init__(self) -> None:
@@ -604,7 +762,7 @@ class ElmSym(DGSElement):
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.typ_id: str = ""
-        self.ngnum: int = 0
+        self.ngnum: int = 1
         self.i_mot: int = 0
         self.chr_name: str = ""
         self.outserv: int = 0
@@ -623,9 +781,29 @@ class ElmSym(DGSElement):
         self.pf_recap: int = 0
         self.av_mode: str = ""
         self.phtech: int = 0
+        self.ip_ctrl: int = 0
+        self.c_pmod: str = ""
 
 
 class ElmTerm(DGSElement):
+    """
+
+    *  FID: Unique identifier for DGS file
+    *  OP: Operation (C=create, U=update, D=delete, M=merge, I=ignore)
+    *  loc_name: Name
+    *  fold_id: In Folder
+    *  typ_id: Type in TypBar
+    *  systype: System Type:AC:DC:AC/BI
+    *  iUsage: Usage:Busbar:Junction Node:Internal Node
+    *  uknom: Nominal Voltage: Line-Line in kV
+    *  unknom: Nominal Voltage: Line-Ground in kV
+    *  iminus: Nominal Voltage: DC-Polarity:positive (+):negative (-):neutral
+    *  outserv: Out of Service
+    *  GPSlat: Geographical Position: Latitude / Northing in deg
+    *  GPSlon: Geographical Position: Longitude / Easting in deg
+    *  vtarget: Voltage Control: Target Voltage in p.u.
+
+    """
     element_type = 'ElmTerm'
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
@@ -636,6 +814,7 @@ class ElmTerm(DGSElement):
         DgsProperty('uknom', 'r', 'DGS field uknom (r)', py_name='uknom'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('cpZone', 'p', 'DGS field cpZone (p)', py_name='cpZone'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('systype', 'i', 'DGS field systype (i)', py_name='systype'),
@@ -667,6 +846,7 @@ class ElmTerm(DGSElement):
         self.vtarget: float = 0.0
         self.m_u: float = 0.0
         self.m_phiu: float = 0.0
+        self.cpZone: str = ""
 
 
 class ElmTr2(DGSElement):
@@ -681,8 +861,10 @@ class ElmTr2(DGSElement):
         DgsProperty('sernum', 'a:20', 'Serial Number (a:20)', py_name='sernum'),
         DgsProperty('constr', 'i', 'Year of Construction', py_name='constr'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected', py_name='cgnd_h'),
-        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected', py_name='cgnd_l'),
+        DgsProperty('cgnd_h', 'i', 'Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected',
+                    py_name='cgnd_h'),
+        DgsProperty('cgnd_l', 'i', 'Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected',
+                    py_name='cgnd_l'),
         DgsProperty('i_auto', 'i', 'Auto Transformer', py_name='i_auto'),
         DgsProperty('ntrcn', 'i', 'Controller, Tap Changer 1: Automatic Tap Changing', py_name='ntrcn'),
         DgsProperty('ratfac', 'r', 'Rating Factor', py_name='ratfac'),
@@ -710,9 +892,9 @@ class ElmTr2(DGSElement):
         self.cgnd_l: int = 0
         self.i_auto: int = 0
         self.ntrcn: int = 0
-        self.ratfac: float = 0.0
+        self.ratfac: float = 1.0
         self.for_name: str = ""
-        self.ntnum: int = 0
+        self.ntnum: int = 1
         self.usetp: float = 0.0
         self.usp_low: float = 0.0
         self.usp_up: float = 0.0
@@ -895,14 +1077,12 @@ class General(DGSElement):
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('Descr', 'a:40', 'DGS field Descr (a:40)', py_name='Descr'),
         DgsProperty('Val', 'a:40', 'DGS field Val (a:40)', py_name='Val'),
-        DgsProperty('FID', 'a:40', 'DGS field FID (a:40)', py_name='FID'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
         self.Descr: str = ""
         self.Val: str = ""
-        self.FID: str = ""
 
 
 class IntFolder(DGSElement):
@@ -1064,7 +1244,7 @@ class RelFuse(DGSElement):
         self.typ_id: str = ""
         self.chr_name: str = ""
         self.aUsage: str = ""
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.on_off: int = 0
         self.outserv: int = 0
 
@@ -1138,6 +1318,10 @@ class TypAsmo(DGSElement):
         DgsProperty('i_cage', 'i', 'DGS field i_cage (i)', py_name='i_cage'),
         DgsProperty('nppol', 'i', 'DGS field nppol (i)', py_name='nppol'),
         DgsProperty('pgn', 'r', 'DGS field pgn (r)', py_name='pgn'),
+        DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
+        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        DgsProperty('xm', 'r', 'DGS field xm (r)', py_name='xm'),
         DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
         DgsProperty('xmrtr', 'r', 'DGS field xmrtr (r)', py_name='xmrtr'),
         DgsProperty('xstr', 'r', 'DGS field xstr (r)', py_name='xstr'),
@@ -1161,6 +1345,10 @@ class TypAsmo(DGSElement):
         self.ugn: float = 0.0
         self.xmrtr: float = 0.0
         self.xstr: float = 0.0
+        self.sgn: float = 0.0
+        self.nslty: int = 0
+        self.rstr: float = 0.0
+        self.xm: float = 0.0
 
 
 class TypFuse(DGSElement):
@@ -1201,7 +1389,7 @@ class TypLne(DGSElement):
         DgsProperty('rtemp', 'r', 'DGS field rtemp (r)', py_name='rtemp'),
         DgsProperty('Ithr', 'r', 'DGS field Ithr (r)', py_name='Ithr'),
         DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
-        DgsProperty('nlnph', 'i', 'DGS field nlnph (i)', py_name='nlnph'),
+        DgsProperty('nlnph', 'i', 'Phases:1:2:3', py_name='nlnph'),
         DgsProperty('nneutral', 'i', 'DGS field nneutral (i)', py_name='nneutral'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('InomAir', 'r', 'DGS field InomAir (r)', py_name='InomAir'),
@@ -1220,22 +1408,22 @@ class TypLne(DGSElement):
         self.fold_id: str = ""
         self.uline: float = 0.0
         self.sline: float = 0.0
-        self.aohl_: str = ""
+        self.aohl_: str = "cab"  # allowed values are "cab" and "ohl"
         self.rline: float = 0.0
         self.xline: float = 0.0
         self.cline: float = 0.0
         self.rline0: float = 0.0
         self.xline0: float = 0.0
         self.cline0: float = 0.0
-        self.rtemp: float = 0.0
+        self.rtemp: float = 20.0
         self.Ithr: float = 0.0
         self.chr_name: str = ""
-        self.nlnph: int = 0
+        self.nlnph: int = 3
         self.nneutral: int = 0
         self.for_name: str = ""
         self.InomAir: float = 0.0
         self.cohl_: int = 0
-        self.tmax: float = 0.0
+        self.tmax: float = 80.0
         self.systp: int = 0
         self.frnom: float = 0.0
         self.mlei: str = ""
@@ -1285,48 +1473,50 @@ class TypLod(DGSElement):
 
 class TypSym(DGSElement):
     element_type = 'TypSym'
+
+    # We comment out the dynamic stuff because it will trigger errors at import
     properties_list = [
         DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
         DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('sgn', 'r', 'DGS field sgn (r)', py_name='sgn'),
-        DgsProperty('ugn', 'r', 'DGS field ugn (r)', py_name='ugn'),
+        DgsProperty('ugn', 'r', 'Rated voltage in kV', py_name='ugn'),
         DgsProperty('cosn', 'r', 'DGS field cosn (r)', py_name='cosn'),
-        DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
-        DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
-        DgsProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
-        DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
-        DgsProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
-        DgsProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
+        # DgsProperty('xd', 'r', 'DGS field xd (r)', py_name='xd'),
+        # DgsProperty('xq', 'r', 'DGS field xq (r)', py_name='xq'),
+        # DgsProperty('xdsss', 'r', 'DGS field xdsss (r)', py_name='xdsss'),
+        # DgsProperty('rstr', 'r', 'DGS field rstr (r)', py_name='rstr'),
+        # DgsProperty('xdsat', 'r', 'DGS field xdsat (r)', py_name='xdsat'),
+        # DgsProperty('satur', 'i', 'DGS field satur (i)', py_name='satur'),
         DgsProperty('Q_min', 'r', 'DGS field Q_min (r)', py_name='Q_min'),
         DgsProperty('Q_max', 'r', 'DGS field Q_max (r)', py_name='Q_max'),
         DgsProperty('q_min', 'r', 'DGS field q_min (r)', py_name='q_min'),
         DgsProperty('q_max', 'r', 'DGS field q_max (r)', py_name='q_max'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('nphase', 'i', 'DGS field nphase (i)', py_name='nphase'),
-        DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
-        DgsProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
-        DgsProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
-        DgsProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
-        DgsProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
-        DgsProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
-        DgsProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
-        DgsProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
-        DgsProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
-        DgsProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
-        DgsProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
-        DgsProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
-        DgsProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
-        DgsProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
-        DgsProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
-        DgsProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
+        # DgsProperty('nslty', 'i', 'DGS field nslty (i)', py_name='nslty'),
+        # DgsProperty('x0sy', 'r', 'DGS field x0sy (r)', py_name='x0sy'),
+        # DgsProperty('r0sy', 'r', 'DGS field r0sy (r)', py_name='r0sy'),
+        # DgsProperty('x2sy', 'r', 'DGS field x2sy (r)', py_name='x2sy'),
+        # DgsProperty('r2sy', 'r', 'DGS field r2sy (r)', py_name='r2sy'),
+        # DgsProperty('iopt_data', 'i', 'DGS field iopt_data (i)', py_name='iopt_data'),
+        # DgsProperty('xds', 'r', 'DGS field xds (r)', py_name='xds'),
+        # DgsProperty('xqs', 'r', 'DGS field xqs (r)', py_name='xqs'),
+        # DgsProperty('xl', 'r', 'DGS field xl (r)', py_name='xl'),
+        # DgsProperty('xdss', 'r', 'DGS field xdss (r)', py_name='xdss'),
+        # DgsProperty('xqss', 'r', 'DGS field xqss (r)', py_name='xqss'),
+        # DgsProperty('xrlq', 'r', 'DGS field xrlq (r)', py_name='xrlq'),
+        # DgsProperty('tds', 'r', 'DGS field tds (r)', py_name='tds'),
+        # DgsProperty('tqs', 'r', 'DGS field tqs (r)', py_name='tqs'),
+        # DgsProperty('tdss', 'r', 'DGS field tdss (r)', py_name='tdss'),
+        # DgsProperty('tqss', 'r', 'DGS field tqss (r)', py_name='tqss'),
     ]
 
     def __init__(self) -> None:
         self.ID: str = ""
         self.loc_name: str = ""
         self.fold_id: str = ""
-        self.sgn: float = 0.0
+        self.sgn: float = 0.1
         self.ugn: float = 0.0
         self.cosn: float = 0.0
         self.xd: float = 0.0
@@ -1340,7 +1530,7 @@ class TypSym(DGSElement):
         self.q_min: float = 0.0
         self.q_max: float = 0.0
         self.for_name: str = ""
-        self.nphase: int = 0
+        self.nphase: int = 3
         self.nslty: int = 0
         self.x0sy: float = 0.0
         self.r0sy: float = 0.0
@@ -1362,31 +1552,31 @@ class TypSym(DGSElement):
 class TypTr2(DGSElement):
     element_type = 'TypTr2'
     properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
-        DgsProperty('strn', 'r', 'DGS field strn (r)', py_name='strn'),
-        DgsProperty('frnom', 'r', 'DGS field frnom (r)', py_name='frnom'),
-        DgsProperty('utrn_h', 'r', 'DGS field utrn_h (r)', py_name='utrn_h'),
-        DgsProperty('utrn_l', 'r', 'DGS field utrn_l (r)', py_name='utrn_l'),
-        DgsProperty('uktr', 'r', 'DGS field uktr (r)', py_name='uktr'),
-        DgsProperty('pcutr', 'r', 'DGS field pcutr (r)', py_name='pcutr'),
-        DgsProperty('uk0tr', 'r', 'DGS field uk0tr (r)', py_name='uk0tr'),
-        DgsProperty('ur0tr', 'r', 'DGS field ur0tr (r)', py_name='ur0tr'),
-        DgsProperty('tr2cn_h', 'a:2', 'DGS field tr2cn_h (a:2)', py_name='tr2cn_h'),
-        DgsProperty('tr2cn_l', 'a:2', 'DGS field tr2cn_l (a:2)', py_name='tr2cn_l'),
-        DgsProperty('nt2ag', 'r', 'DGS field nt2ag (r)', py_name='nt2ag'),
-        DgsProperty('curmg', 'r', 'DGS field curmg (r)', py_name='curmg'),
-        DgsProperty('pfe', 'r', 'DGS field pfe (r)', py_name='pfe'),
-        DgsProperty('zx0hl_n', 'r', 'DGS field zx0hl_n (r)', py_name='zx0hl_n'),
-        DgsProperty('tap_side', 'i', 'DGS field tap_side (i)', py_name='tap_side'),
-        DgsProperty('dutap', 'r', 'DGS field dutap (r)', py_name='dutap'),
-        DgsProperty('phitr', 'r', 'DGS field phitr (r)', py_name='phitr'),
-        DgsProperty('nntap0', 'i', 'DGS field nntap0 (i)', py_name='nntap0'),
-        DgsProperty('ntpmn', 'i', 'DGS field ntpmn (i)', py_name='ntpmn'),
-        DgsProperty('ntpmx', 'i', 'DGS field ntpmx (i)', py_name='ntpmx'),
-        DgsProperty('manuf', 'a:20', 'DGS field manuf (a:20)', py_name='manuf'),
-        DgsProperty('chr_name', 'a:20', 'DGS field chr_name (a:20)', py_name='chr_name'),
+        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
+        DgsProperty('loc_name', 'a:40', 'Name', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
+        DgsProperty('strn', 'r', 'Rated Power in MVA', py_name='strn'),
+        DgsProperty('frnom', 'r', 'Nominal Frequency in Hz', py_name='frnom'),
+        DgsProperty('utrn_h', 'r', 'Rated Voltage: HV-Side in kV', py_name='utrn_h'),
+        DgsProperty('utrn_l', 'r', 'Rated Voltage: LV-Side in kV', py_name='utrn_l'),
+        DgsProperty('uktr', 'r', 'Positive Sequence Impedance: Short-Circuit Voltage uk in %', py_name='uktr'),
+        DgsProperty('pcutr', 'r', 'Positive Sequence Impedance: Copper Losses in kW', py_name='pcutr'),
+        DgsProperty('uk0tr', 'r', 'Zero Sequence Impedance: Short-Circuit Voltage uk0 in %', py_name='uk0tr'),
+        DgsProperty('ur0tr', 'r', 'Zero Sequence Impedance: SHC-Voltage (Re(uk0)) uk0r in %', py_name='ur0tr'),
+        DgsProperty('tr2cn_h', 'a:2', 'Vector Group: HV-Side:Y :YN:Z :ZN:D', py_name='tr2cn_h'),
+        DgsProperty('tr2cn_l', 'a:2', 'Vector Group: LV-Side:Y :YN:Z :ZN:D', py_name='tr2cn_l'),
+        DgsProperty('nt2ag', 'r', 'Vector Group: Phase Shift in *30deg', py_name='nt2ag'),
+        DgsProperty('curmg', 'r', 'Magnetizing Impedance: No Load Current in %', py_name='curmg'),
+        DgsProperty('pfe', 'r', 'Magnetizing Impedance: No Load Losses in kW', py_name='pfe'),
+        DgsProperty('zx0hl_n', 'r', 'Zero Sequence Magnetizing Impedance: Mag. Impedance/uk0', py_name='zx0hl_n'),
+        DgsProperty('tap_side', 'i', 'Tap Changer 1: at Side:HV:LV', py_name='tap_side'),
+        DgsProperty('dutap', 'r', 'Additional Voltage per Tap in %', py_name='dutap'),
+        DgsProperty('phitr', 'r', 'Phase of du in deg', py_name='phitr'),
+        DgsProperty('nntap0', 'i', 'Neutral Position', py_name='nntap0'),
+        DgsProperty('ntpmn', 'i', 'Minimum Position', py_name='ntpmn'),
+        DgsProperty('ntpmx', 'i', 'Maximum Position', py_name='ntpmx'),
+        DgsProperty('manuf', 'a:20', 'Manufacturer', py_name='manuf'),
+        DgsProperty('chr_name', 'a:20', 'Characteristic Name', py_name='chr_name'),
         DgsProperty('for_name', 'a:50', 'DGS field for_name (a:50)', py_name='for_name'),
         DgsProperty('nt2ph', 'i', 'DGS field nt2ph (i)', py_name='nt2ph'),
         DgsProperty('itapch', 'i', 'DGS field itapch (i)', py_name='itapch'),
@@ -1404,8 +1594,8 @@ class TypTr2(DGSElement):
         self.pcutr: float = 0.0
         self.uk0tr: float = 0.0
         self.ur0tr: float = 0.0
-        self.tr2cn_h: str = ""
-        self.tr2cn_l: str = ""
+        self.tr2cn_h: str = "D"  # Y,YN,Z,ZN,D.
+        self.tr2cn_l: str = "Y"
         self.nt2ag: float = 0.0
         self.curmg: float = 0.0
         self.pfe: float = 0.0
@@ -1419,7 +1609,7 @@ class TypTr2(DGSElement):
         self.manuf: str = ""
         self.chr_name: str = ""
         self.for_name: str = ""
-        self.nt2ph: int = 0
+        self.nt2ph: int = 3  # 3-phase
         self.itapch: int = 0
 
 

@@ -535,23 +535,30 @@ class Block:
         -------
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
         """
-        mdl = Block()
+        mdl_placeholder = Block()
         for b in self.get_all_blocks():
-            mdl.algebraic_vars.extend(b.algebraic_vars)
-            mdl.algebraic_eqs.extend(b.algebraic_eqs)
-            mdl.state_vars.extend(b.state_vars)
-            mdl.state_eqs.extend(b.state_eqs)
-            mdl.diff_vars.extend(b.diff_vars)
+            mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
+            mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)
+            mdl_placeholder.state_vars.extend(b.state_vars)
+            mdl_placeholder.state_eqs.extend(b.state_eqs)
+            mdl_placeholder.diff_vars.extend(b.diff_vars)
             for event_param, eq in b.event_dict.items():
-                mdl.event_dict[event_param] = eq
+                mdl_placeholder.event_dict[event_param] = eq
 
             for param, const in b.parameters.items():
-                mdl.parameters[param] = const
+                mdl_placeholder.parameters[param] = const
 
             for var, init_eq in b.init_eqs.items():
-                mdl.init_eqs[var] = init_eq
-
-        return mdl
+                mdl_placeholder.init_eqs[var] = init_eq
+        self.algebraic_vars = mdl_placeholder.algebraic_vars
+        self.algebraic_eqs = mdl_placeholder.algebraic_eqs
+        self.state_vars = mdl_placeholder.state_vars
+        self.state_eqs = mdl_placeholder.state_eqs
+        self.diff_vars = mdl_placeholder.diff_vars
+        self.event_dict = mdl_placeholder.event_dict
+        self.parameters = mdl_placeholder.parameters
+        self.init_eqs = mdl_placeholder.init_eqs
+        self.children = list()
 
     def get_vars(self) -> List[Var]:
         """

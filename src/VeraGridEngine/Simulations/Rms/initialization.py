@@ -213,7 +213,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     # already known variables:
 
     for mdl in region.children:
-        comp_model = mdl.unify_blocks()
+        mdl.unify_blocks()
         bus_rms_mdl = bus.rms_model.model
 
         # fill general init guess
@@ -226,7 +226,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
              bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-        mdl_vars = comp_model.algebraic_vars + comp_model.state_vars + comp_model.diff_vars
+        mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
 
         for var in mdl_vars:
             key = (var.uid, var.name)
@@ -241,14 +241,14 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 array_index += 1
 
         event_params_array_index = 0
-        for event_param in comp_model.event_dict.keys():
+        for event_param in mdl.event_dict.keys():
             if event_param.uid not in uid2sym_event_params:
                 uid2sym_event_params[event_param.uid] = f"event_params[{event_params_array_index}]"
                 uid2idx_event_params[event_param.uid] = event_params_array_index
                 event_params_array_index += 1
 
         params_array_index = 0
-        for param in comp_model.parameters.keys():
+        for param in mdl.parameters.keys():
             if param.uid not in uid2sym_params:
                 uid2sym_params[param.uid] = f"params[{params_array_index}]"
                 uid2idx_params[param.uid] = params_array_index
@@ -264,11 +264,11 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 x[uid2idx_vars[uid]] = init_guess[key]
 
         # initialize array for model event params
-        event_params_array = np.zeros(len(comp_model.event_dict.keys()))
+        event_params_array = np.zeros(len(mdl.event_dict.keys()))
 
         # compute and assign event parameters non undefined value
-        for event_param in comp_model.event_dict.keys():
-            eq = comp_model.event_dict[event_param]
+        for event_param in mdl.event_dict.keys():
+            eq = mdl.event_dict[event_param]
             if isinstance(eq, Const) and eq.value is not None:
 
                 eq_fn = _compile_parameters_equations([eq], uid2sym_t)
@@ -276,23 +276,23 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
         # initialize array for model params
-        params_array = np.zeros(len(comp_model.parameters.keys()))
+        params_array = np.zeros(len(mdl.parameters.keys()))
 
         # compute and assign parameters value
-        for param, const in comp_model.parameters.items():
+        for param, const in mdl.parameters.items():
             param_val = const.value
             params_array[uid2idx_params[param.uid]] = param_val
 
 
         # compute and assign missing init_vars and undefined parameters
         vars_initialized: set[tuple[int, str]] = set()
-        parameters_list = list(comp_model.event_dict.keys())
+        parameters_list = list(mdl.event_dict.keys())
 
-        while len(vars_initialized) < len(comp_model.init_eqs):
+        while len(vars_initialized) < len(mdl.init_eqs):
             progress = False
 
             vars_init_at_start = len(vars_initialized)
-            for var, eq in comp_model.init_eqs.items():
+            for var, eq in mdl.init_eqs.items():
 
                 key = (var.uid, var.name)
                 if key in vars_initialized:
@@ -305,23 +305,25 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                 calculate_now = True
                 for v_init in vars_needed:
-                    key_deps = (v_init.uid, v_init.name)
                     # check if this variable is already initialized
-                    if key_deps in init_guess:
-                        continue
-                    elif v_init.uid == var.uid:
-                        continue
-                    elif v_init in comp_model.event_dict.keys():
-                        if comp_model.event_dict[v_init] is not None:
-                            continue
+                    key_deps = (v_init.uid, v_init.name)
+
+                    if v_init in mdl.event_dict.keys():
+                        if mdl.event_dict[v_init].value is None:
+                            calculate_now = False
+                            break
+
                     else:
-                        calculate_now = False
-                        break
+                        if key_deps not in init_guess and v_init.uid != var.uid:
+                            calculate_now = False
+                            break
+
+
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
 
                     #We initialize the params with value UNDEFINED
-                    if var in comp_model.event_dict.keys():
+                    if var in mdl.event_dict.keys():
                         if isinstance(eq, Const) and eq.value is not None:
 
                             raise ValueError(f"Parameter {var.name} already initialized")
@@ -329,7 +331,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = float(eq_fn(x, event_params_array, params_array))
-                            comp_model.event_dict[var] = Const(init_val)
+                            mdl.event_dict[var] = Const(init_val)
                             event_params_array[uid2idx_event_params[var.uid]] = init_val
 
                     #We initialize the algebraic values
@@ -369,10 +371,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
 
             if not progress:
-                unresolved = [v.name for v in comp_model.init_eqs if (v.uid, v.name) not in vars_initialized]
+                unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
                 raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
-        sys_block.add(comp_model)
+        sys_block.add(mdl)
 
     return init_guess, sys_block
 
