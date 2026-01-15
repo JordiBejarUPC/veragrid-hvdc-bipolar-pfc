@@ -1604,41 +1604,111 @@ def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
         _collect_vars(e, res)
     return list(res)
 
+_OP_PRECEDENCE = {
+    '+': 10,
+    '-': 10,
+    '*': 20,
+    '/': 20,
+    '**': 30,
+}
+
+def _precedence(expr):
+    if isinstance(expr, BinOp):
+        return _OP_PRECEDENCE[expr.op]
+    if isinstance(expr, UnOp):
+        return 40
+    if isinstance(expr, (Const, Var, LagVar)):
+        return 100
+    if isinstance(expr, Func):
+        return 50
+    return 0
 
 def expression2numba(expr: Expr,
-                     compiler_names_dict: Dict[int, str]) -> str:
+                     compiler_names_dict: Dict[int, str],
+                     parent_prec: int = 0) -> str:
     """
-    Create a pure-Python (Numba-friendly) expression string for the function compilation
-    :param expr: Expr (expression)
-    :param compiler_names_dict: relate UID with compilation name i.e. {1: "vars[1]", 2: vars[2], ...}
-    :return: string expression
+    Emit a precedence-aware, Numba-friendly Python expression.
+    Parentheses are added only when required.
     """
+
+    my_prec = _precedence(expr)
 
     if isinstance(expr, Const):
-        return repr(expr.value)
+        s = repr(expr.value)
 
     elif isinstance(expr, (Var, LagVar)):
-        return compiler_names_dict[expr.uid]  # positional variable
+        s = compiler_names_dict[expr.uid]
 
     elif isinstance(expr, UnOp):
-        return f"-({expression2numba(expr.operand, compiler_names_dict)})"
+        operand = expression2numba(expr.operand,
+                                   compiler_names_dict,
+                                   my_prec)
+        s = f"-{operand}"
 
     elif isinstance(expr, BinOp):
-        return (f"({expression2numba(expr.left, compiler_names_dict)} "
-                f"{expr.op} "
-                f"{expression2numba(expr.right, compiler_names_dict)})")
+        left = expression2numba(expr.left,
+                                compiler_names_dict,
+                                my_prec)
+
+        # +1 enforces left associativity
+        right = expression2numba(expr.right,
+                                 compiler_names_dict,
+                                 my_prec + 1)
+
+        s = f"{left} {expr.op} {right}"
 
     elif isinstance(expr, Func):
-        # if expr.op in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-        #                "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
-        #                "sinh", "cosh", "abs"):
-        #     return f"np.{expr.op}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
+        arg = expression2numba(expr.arg,
+                               compiler_names_dict,
+                               0)
         if expr.op == "heaviside":
-            return f"_heaviside({expression2numba(expr.arg, compiler_names_dict)})"
+            s = f"_heaviside({arg})"
         else:
-            return f"np.{expr.op}({expression2numba(expr.arg, compiler_names_dict)})"
+            s = f"np.{expr.op}({arg})"
+
     else:
         raise TypeError(type(expr))
+
+    # Add parentheses only if this expression binds weaker than the parent
+    if my_prec < parent_prec:
+        return f"({s})"
+    else:
+        return s
+
+# def expression2numba(expr: Expr,
+#                      compiler_names_dict: Dict[int, str]) -> str:
+#     """
+#     Create a pure-Python (Numba-friendly) expression string for the function compilation
+#     :param expr: Expr (expression)
+#     :param compiler_names_dict: relate UID with compilation name i.e. {1: "vars[1]", 2: vars[2], ...}
+#     :return: string expression
+#     """
+
+#     if isinstance(expr, Const):
+#         return repr(expr.value)
+
+#     elif isinstance(expr, (Var, LagVar)):
+#         return compiler_names_dict[expr.uid]  # positional variable
+
+#     elif isinstance(expr, UnOp):
+#         return f"-({expression2numba(expr.operand, compiler_names_dict)})"
+
+#     elif isinstance(expr, BinOp):
+#         return (f"({expression2numba(expr.left, compiler_names_dict)} "
+#                 f"{expr.op} "
+#                 f"{expression2numba(expr.right, compiler_names_dict)})")
+
+#     elif isinstance(expr, Func):
+#         # if expr.op in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
+#         #                "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
+#         #                "sinh", "cosh", "abs"):
+#         #     return f"np.{expr.op}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
+#         if expr.op == "heaviside":
+#             return f"_heaviside({expression2numba(expr.arg, compiler_names_dict)})"
+#         else:
+#             return f"np.{expr.op}({expression2numba(expr.arg, compiler_names_dict)})"
+#     else:
+#         raise TypeError(type(expr))
 
 
 def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:

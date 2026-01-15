@@ -176,10 +176,6 @@ line0.rms_model.model = line0_mdl
 
 load.rms_model.model = load_mdl
 
-import os
-print(os.environ.get("PYDEVD_DISABLE_SYS_MONITORING"))
-print(os.environ.get("PYDEVD_DISABLE_GUI_EVENT_LOOP"))
-
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
