@@ -142,8 +142,6 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         Xd_2prime: Const(0.25),
         Xq_2prime: Const(0.35),
         Xl: Const(0.15),
-        Xd_prime_minus_Xl: Xd_prime-Xl,
-        Xq_prime_minus_Xl: Xq_prime-Xl,
 
         # Time constants
         Td0_prime: Const(8.0),
@@ -151,12 +149,14 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         Td0_2prime: Const(0.03),
         Tq0_2prime: Const(0.05),
 
-        Xdaux  : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2),
-        Xdaux2 : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)),
-        Xdaux3 : ((Xd_2prime - Xl) / (Xd_prime_minus_Xl)),
-        Xqaux  : ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
-        Xqaux2 : (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
-        Xqaux3 : ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
+        Xd_prime_minus_Xl: Const(None),
+        Xq_prime_minus_Xl: Const(None),
+        Xdaux  : Const(None),
+        Xdaux2 : Const(None),
+        Xdaux3 : Const(None),
+        Xqaux  : Const(None),
+        Xqaux2 : Const(None),
+        Xqaux3 : Const(None),
 
         A: Const(5.0),
         B: Const(1.0)
@@ -271,6 +271,17 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Sat: Const(1) + Sa,
             Iq_sat: Iq/Sat,
             Id_sat: Id/Sat,
+
+            #We initialize some specific parameters:
+            Xd_prime_minus_Xl: Xd_prime-Xl,
+            Xq_prime_minus_Xl: Xq_prime-Xl,
+            Xdaux  : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2),
+            Xdaux2 : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)),
+            Xdaux3 : ((Xd_2prime - Xl) / (Xd_prime_minus_Xl)),
+            Xqaux  : ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
+            Xqaux2 : (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
+            Xqaux3 : ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
+
         },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,

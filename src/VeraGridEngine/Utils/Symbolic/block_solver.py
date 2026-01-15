@@ -82,6 +82,20 @@ class SymbolicJacobian:
 
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
+        # Assemble the jacobian structure
+        nnz = len(cols_sorted)
+
+        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
+
+        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
+        for c in cols_sorted:
+            indptr[c + 1] += 1
+        np.cumsum(indptr, out=indptr)
+
+        self.nvar = len(variables)
+        neq = len(eqs)
+
+        self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
 
         # --- codegen -------------------------------------------------------------
 
@@ -163,8 +177,6 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-
-            fname = "jac"
             src = f"def {fname}(vars, diff, event_params, params, out):\n"
             final_names_dict = compiler_names_dict.copy()
             for uid, count in used_vars_count.items():
@@ -1119,7 +1131,7 @@ class BlockSolver:
             "initial_step_time": 0.0,
         }
 
-        params_current = self._event_params_fn(np.zeros(len(self._event_parameters)), float(current_time))
+        params_current = self._event_params_fn(np.ones(len(self._event_parameters)), float(0.0))
         t[0] = t0
         y[0] = x0.copy()
         dx = dx0.copy()

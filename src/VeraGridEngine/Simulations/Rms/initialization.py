@@ -309,7 +309,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     key_deps = (v_init.uid, v_init.name)
 
                     if v_init in mdl.event_dict.keys():
-                        if mdl.event_dict[v_init].value is None:
+                        if (isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None):
                             calculate_now = False
                             break
 
