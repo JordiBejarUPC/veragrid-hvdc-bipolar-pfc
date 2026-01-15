@@ -424,7 +424,7 @@ class Block:
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
-        self.event_dict: Dict[Var, Expr] = dict() if event_dict is None else event_dict
+        self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
 
     def __deepcopy__(self, memo):
         cls = self.__class__

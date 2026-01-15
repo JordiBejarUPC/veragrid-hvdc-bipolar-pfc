@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import math
-
+import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -37,6 +37,9 @@ import VeraGridEngine.api as gce
 # Build VeraGrid object
 ###########################################################################################################################
 
+pr = profile.Profile()
+pr.disable()
+
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars:
         if name == var.name:
@@ -46,7 +49,6 @@ def find_name_in_block(name: str, block: Block):
         res = find_name_in_block(name, mdl)
         if res is not None:
             return res
-
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
@@ -207,6 +209,8 @@ print(res.get_branch_df())
 
 params_mapping = dict()
 
+pr.enable()
+
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
 slv = BlockSolver(ss, sim_time)
@@ -232,6 +236,8 @@ t, y, _ = slv.simulate(
     verbose = False,
 
 )
+
+pr.disable()
 
 
 omega = genqec1_mdl.out_vars[2]
@@ -305,3 +311,5 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+pr.dump_stats('profile.pstat')
