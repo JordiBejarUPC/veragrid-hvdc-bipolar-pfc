@@ -1,4 +1,5 @@
 import numpy as np
+import bisect
 
 def current_blocking(Vt):
 
@@ -117,6 +118,64 @@ def pi_freeze_signals_steady(freeze, yi4, iqmin, iqmax):
     return yo, freeze_up, freeze_low
 
 
+def current_limit_logic(Iqcmd, vdlq, vdlp, Ipcmd, is_blocked):
+
+    PqFlag = 0.0 # Priority flag on current limit
+    Imax = 1.3 # Maximum converter current limit in [pu]
+    Ke = 0.0 # Ipmin scaling factor
+
+    if is_blocked > 0.0:
+        blocking_factor = 0.0
+    else:
+        blocking_factor = 1.0
+
+    # Reactive limits
+    if PqFlag > 0.0:
+        ip_used = min(vdlp, Imax, Ipcmd)
+        iqmax = min(vdlq, np.sqrt(max(Imax ** 2 - ip_used ** 2, 0.0))) * blocking_factor
+    else:
+        iqmax = min(vdlq, Imax) * blocking_factor
+
+    if iqmax < 0.0:
+        iqmin = iqmax * blocking_factor
+    else:
+        iqmin = -iqmax * blocking_factor
+
+    # Reactive limits
+    if PqFlag > 0.0:
+        ipmax = min(vdlp, Imax) * blocking_factor
+    else:
+        iq_used = min(vdlq, Imax, Iqcmd)
+        ipmax = min(vdlp, np.sqrt(max(Imax ** 2 - iq_used ** 2, 0.0)))
+
+    ipmin = -Ke * ipmax * blocking_factor
+
+    return iqmin, iqmax, ipmin, ipmax
+
+
+def vdl(x, points):
+    """
+    Linear approximation with clamping.
+    points: list of (x_i, y_i), sorted by x_i
+    """
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+
+    # Clamp
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+
+    # Find segment
+    i = bisect.bisect_right(xs, x) - 1
+    x0, y0 = xs[i], ys[i]
+    x1, y1 = xs[i + 1], ys[i + 1]
+
+    # Linear interpolation
+    return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+
+
 def reec_d(ur,
            ui,
            u,
@@ -164,6 +223,10 @@ def reec_d(ur,
 
     o3 = qv_limitation(PFAref, Pe, Qext)
 
+    yi9 = o3 / max(0.01, Vt)
+
+    yi8 = yi9
+
     yi1 = o3 - Qgen
 
     yi2 = voltage_limitation(yi1)
@@ -180,11 +243,27 @@ def reec_d(ur,
 
     yi4 = o4 - Vcmp
 
-    # Quitar!!! Tengo que calcular primero iqmin e iqmax
-    iqmin = -1.1
-    iqmax = 1.1
+    oarray_vdlq = [(1.10, 1.10), (1.15, 1.00), (1.30, 0.00)]
+    vdlq = vdl(Vt, oarray_vdlq)
+
+    oarray_vdlp = [(1.10, 1.10), (1.15, 1.00), (1.30, 0.00)]
+    vdlp = vdl(Vt, oarray_vdlp)
+
+    Iq_unlim, Ip_unlim = 0.05269481, 1.075758 # TO CALCULATE FIRST
+
+    iqmin, iqmax, i_in1, i_in = current_limit_logic(Iq_unlim, vdlq, vdlp, Ip_unlim, is_blocked)
+
     yi5, freeze_up_sig, freeze_low_sig = pi_freeze_signals_steady(freeze_Voltage_Dip, yi4, iqmin, iqmax)
 
+    QFlag = 0.0 # Q control flag: 1 = voltage/Q, 0 = constant PF or Q control
+    if QFlag > 0.0:
+        o5 = yi5
+    else:
+        o5 = yi8
+
+    y_in = Iqinj + o5
+
+    # FOLLOW WITH Freeze Iq after dip
 
     return Iqcmd, Ipcmd, is_blocked
 
