@@ -158,7 +158,7 @@ load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 # external mapping
 
 
-big_gen1 = Block(children = [exc1_mdl, gov1_mdl, stabil1_mdl, genqec1_mdl])
+big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
 
 
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
