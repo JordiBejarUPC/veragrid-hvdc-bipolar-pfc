@@ -775,10 +775,11 @@ def get_complete_generator_template(name="complete generator rms template") -> R
 
     governor_mdl.connect([governor_mdl.in_vars[1]], [genqec_mdl.out_vars[4]])
 
+
+    templ.block.children.append(genqec_mdl)
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
-    templ.block.children.append(genqec_mdl)
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
@@ -786,5 +787,9 @@ def get_complete_generator_template(name="complete generator rms template") -> R
         VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0],
         VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1],
     }
+
+    templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]
+    templ.block.out_vars = [genqec_mdl.out_vars[0], genqec_mdl.out_vars[1]]
+
 
     return templ

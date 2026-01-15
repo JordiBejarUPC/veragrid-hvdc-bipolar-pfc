@@ -81,8 +81,9 @@ class SymbolicJacobian:
 
             for col, var in enumerate(variables):
 
-                d_expression = eq.diff(var, dt = dt)
-                triplets.append((col, row, d_expression))
+                d_expression = eq.diff(var, dt=dt)
+                if not (isinstance(d_expression, Const) and d_expression.value == 0):
+                    triplets.append((col, row, d_expression))
 
         # Sort by column, then row for CSC layout
         triplets.sort(key=lambda t: (t[0], t[1]))

@@ -305,18 +305,20 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                 calculate_now = True
                 for v_init in vars_needed:
-                    key_deps = (v_init.uid, v_init.name)
                     # check if this variable is already initialized
-                    if key_deps in init_guess:
-                        continue
-                    elif v_init.uid == var.uid:
-                        continue
-                    elif v_init in comp_model.event_dict.keys():
-                        if comp_model.event_dict[v_init] is not None:
-                            continue
+                    key_deps = (v_init.uid, v_init.name)
+
+                    if v_init in comp_model.event_dict.keys():
+                        if comp_model.event_dict[v_init].value is None:
+                            calculate_now = False
+                            break
+
                     else:
-                        calculate_now = False
-                        break
+                        if key_deps not in init_guess and v_init.uid != var.uid:
+                            calculate_now = False
+                            break
+
+
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
 
