@@ -63,6 +63,7 @@ class DgsCircuit:
         ElmFeeder,
         ElmGenstat,
         ElmLne,
+        ElmTow,
         ElmSind,
         ElmLnesec,
         ElmLod,
@@ -90,7 +91,9 @@ class DgsCircuit:
         StaSwitch,
         TypAsmo,
         TypFuse,
+        TypCon,
         TypLne,
+        TypTow,
         TypSind,
         TypLod,
         TypSym,
@@ -117,6 +120,7 @@ class DgsCircuit:
         self.elmfeeders: List[ElmFeeder] = list()
         self.elmgenstats: List[ElmGenstat] = list()
         self.elmlnes: List[ElmLne] = list()
+        self.elmtows: List[ElmTow] = list()
         self.elmsinds: List[ElmSind] = list()
         self.elmlnesecs: List[ElmLnesec] = list()
         self.elmlods: List[ElmLod] = list()
@@ -143,7 +147,9 @@ class DgsCircuit:
         self.staswitchs: List[StaSwitch] = list()
         self.typasmos: List[TypAsmo] = list()
         self.typfuses: List[TypFuse] = list()
+        self.typcons: List[TypCon] = list()
         self.typlnes: List[TypLne] = list()
+        self.typtows: List[TypTow] = list()
         self.typsinds: List[TypSind] = list()
         self.typlods: List[TypLod] = list()
         self.typsyms: List[TypSym] = list()
@@ -162,6 +168,7 @@ class DgsCircuit:
             ElmFeeder: self.elmfeeders,
             ElmGenstat: self.elmgenstats,
             ElmLne: self.elmlnes,
+            ElmTow: self.elmtows,
             ElmSind: self.elmsinds,
             ElmLnesec: self.elmlnesecs,
             ElmLod: self.elmlods,
@@ -187,7 +194,9 @@ class DgsCircuit:
             StaSwitch: self.staswitchs,
             TypAsmo: self.typasmos,
             TypFuse: self.typfuses,
+            TypCon: self.typcons,
             TypLne: self.typlnes,
+            TypTow: self.typtows,
             TypSind: self.typsinds,
             TypLod: self.typlods,
             TypSym: self.typsyms,

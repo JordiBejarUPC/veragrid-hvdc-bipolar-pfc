@@ -8,6 +8,8 @@ import numpy as np
 from typing import Dict, List, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
+from VeraGridEngine.Devices.Branches.wire import Wire
+from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType, WireInTower
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
@@ -144,6 +146,170 @@ def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
     )
 
     return elm
+
+
+def _bundle_offsets(n_sub: int, spacing_m: float) -> List[Tuple[float, float]]:
+    """Generate bundle offsets (dx, dy) in meters for a bundle of subconductors.
+
+    The arrangement is assumed to be evenly spaced on a circle, such that the
+    distance between adjacent subconductors is approximately ``spacing_m``.
+
+    Notes
+    -----
+    - This is a geometric approximation used when PowerFactory provides only
+      ``ncsub`` (number of subconductors) and ``dsubc`` (bundle spacing).
+    - If ``n_sub <= 1`` or ``spacing_m <= 0``, a single conductor at (0, 0) is returned.
+    """
+    if n_sub <= 1:
+        return [(0.0, 0.0)]
+    if spacing_m <= 0.0:
+        return [(0.0, 0.0)]
+
+    # Radius of the circumcircle for a regular n-gon with side length = spacing.
+    # r = s / (2*sin(pi/n))
+    radius = spacing_m / (2.0 * math.sin(math.pi / float(n_sub)))
+
+    offsets: List[Tuple[float, float]] = list()
+    for k in range(n_sub):
+        ang = 2.0 * math.pi * float(k) / float(n_sub)
+        dx = radius * math.cos(ang)
+        dy = radius * math.sin(ang)
+        offsets.append((dx, dy))
+
+    return offsets
+
+
+def convert_dgs_to_wire(typcon: TypCon) -> Wire:
+    """Convert a PowerFactory TypCon into a VeraGrid Wire."""
+    tid = _ref_id(typcon.ID)
+    name = typcon.loc_name if typcon.loc_name is not None and str(typcon.loc_name).strip() != '' else f"Wire_{tid}"
+
+    # PowerFactory: diatub may be 0/empty for non-tubular conductors.
+    diatub = float(typcon.diatub)
+    is_tube = diatub > 0.0
+
+    # Keep a compact but informative stranding label.
+    stranding = f"ncsub={int(typcon.ncsub)}, dsubc={float(typcon.dsubc)}"
+
+    wire = Wire(
+        name=name,
+        idtag=tid,
+        r=float(typcon.rpha),
+        max_current=float(typcon.sline),
+        stranding=stranding,
+        material=str(typcon.mlei),
+        diameter=float(typcon.diaco),
+        diameter_internal=diatub,
+        is_tube=is_tube,
+        code=str(typcon.loc_name),
+    )
+
+    return wire
+
+
+def _convert_gearth_us_per_cm_to_resistivity_ohm_m(gearth_us_per_cm: float) -> float:
+    """Convert PowerFactory earth conductivity (uS/cm) to resistivity (Ohm*m)."""
+    # uS/cm -> S/m: 1 uS = 1e-6 S; 1/cm = 100/m
+    conductivity_s_per_m = float(gearth_us_per_cm) * 1e-4
+    if conductivity_s_per_m <= 0.0:
+        return 100.0
+    return 1.0 / conductivity_s_per_m
+
+
+def convert_dgs_to_overhead_line_type(
+        typtow: TypTow,
+        typcon_by_id: Dict[str, TypCon],
+        wire_by_id: Dict[str, Wire],
+        default_frequency_hz: float,
+) -> OverheadLineType:
+    """Convert a PowerFactory TypTow into a VeraGrid OverheadLineType.
+
+    This conversion builds the wire geometry (positions) and assigns Wire templates.
+    It supports multi-circuit towers by defining phases 1..3 for circuit 1,
+    4..6 for circuit 2, etc (as required by VeraGrid's OverheadLineType).
+    """
+    tid = _ref_id(typtow.ID)
+    name = typtow.loc_name if typtow.loc_name is not None and str(typtow.loc_name).strip() != '' else f"Tower_{tid}"
+
+    # Frequency / earth parameters
+    freq = float(typtow.frnom) if typtow.frnom is not None and float(typtow.frnom) > 0.0 else float(default_frequency_hz)
+    earth_res = _convert_gearth_us_per_cm_to_resistivity_ohm_m(float(typtow.gearth))
+
+    # Determine nominal voltage from referenced conductor types.
+    v_candidates: List[float] = list()
+    for ptr in typtow.pcond_c:
+        if ptr is None:
+            continue
+        cid = _ref_id(ptr)
+        tc = typcon_by_id.get(cid)
+        if tc is not None:
+            v_candidates.append(float(tc.uline))
+    for ptr in typtow.pcond_e:
+        if ptr is None:
+            continue
+        cid = _ref_id(ptr)
+        tc = typcon_by_id.get(cid)
+        if tc is not None:
+            v_candidates.append(float(tc.uline))
+
+    vnom = max(v_candidates) if len(v_candidates) > 0 else 0.0
+
+    ohl_type = OverheadLineType(
+        name=name,
+        idtag=tid,
+        Vnom=vnom,
+        earth_resistivity=earth_res,
+        frequency=freq,
+    )
+
+    # Earth wires (phase 0)
+    for ew_idx, ptr in enumerate(typtow.pcond_e):
+        if ptr is None:
+            continue
+        cid = _ref_id(ptr)
+        wire = wire_by_id.get(cid)
+        tc = typcon_by_id.get(cid)
+        if wire is None or tc is None:
+            continue
+        if ew_idx < len(typtow.xy_e) and len(typtow.xy_e[ew_idx]) >= 2:
+            x0 = float(typtow.xy_e[ew_idx][0])
+            y0 = float(typtow.xy_e[ew_idx][1])
+        else:
+            x0 = 0.0
+            y0 = 0.0
+
+        offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
+        for dx, dy in offsets:
+            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=x0 + dx, ypos=y0 + dy, phase=0))
+
+    # Phase wires per circuit
+    # Expected xy_c row format: [xA, xB, xC, yA, yB, yC]
+    for c_idx, ptr in enumerate(typtow.pcond_c):
+        if ptr is None:
+            continue
+        cid = _ref_id(ptr)
+        wire = wire_by_id.get(cid)
+        tc = typcon_by_id.get(cid)
+        if wire is None or tc is None:
+            continue
+
+        if c_idx < len(typtow.xy_c) and len(typtow.xy_c[c_idx]) >= 6:
+            row = typtow.xy_c[c_idx]
+            xA, xB, xC = float(row[0]), float(row[1]), float(row[2])
+            yA, yB, yC = float(row[3]), float(row[4]), float(row[5])
+        else:
+            xA, xB, xC = 0.0, 0.0, 0.0
+            yA, yB, yC = 0.0, 0.0, 0.0
+
+        offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
+
+        base_phase = 3 * int(c_idx)  # circuit 0 -> 0, circuit 1 -> 3, ...
+        for dx, dy in offsets:
+            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xA + dx, ypos=yA + dy, phase=base_phase + 1))
+            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xB + dx, ypos=yB + dy, phase=base_phase + 2))
+            ohl_type.wires_in_tower.append(WireInTower(wire=wire, xpos=xC + dx, ypos=yC + dy, phase=base_phase + 3))
+
+    return ohl_type
 
 
 def _convert_pf_tr2_connection(code: str) -> WindingType | None:
@@ -1647,6 +1813,41 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         grid.add_sequence_line(obj=seq_lne)
         typlne_dict[typlne.ID] = seq_lne
 
+    # Conductor / tower catalogues (overhead line modelling)
+    typcon_raw_dict: Dict[str, TypCon] = dict()
+    wire_type_dict: Dict[str, Wire] = dict()
+    for typcon in dgs_grid.typcons:
+        # Map both raw pointer and ref-id variant
+        cid = _ref_id(typcon.ID)
+        if cid is None:
+            continue
+        typcon_raw_dict[cid] = typcon
+        typcon_raw_dict[typcon.ID] = typcon
+
+        wire = convert_dgs_to_wire(typcon=typcon)
+        wire_type_dict[cid] = wire
+        wire_type_dict[typcon.ID] = wire
+
+        # MultiCircuit stores these templates under Assets (catalogue)
+        grid.wire_types.append(wire)
+
+    overhead_line_type_dict: Dict[str, OverheadLineType] = dict()
+    for typtow in dgs_grid.typtows:
+        tow_id = _ref_id(typtow.ID)
+        if tow_id is None:
+            continue
+
+        ohl_type = convert_dgs_to_overhead_line_type(
+            typtow=typtow,
+            typcon_by_id=typcon_raw_dict,
+            wire_by_id=wire_type_dict,
+            default_frequency_hz=frequency,
+        )
+        overhead_line_type_dict[tow_id] = ohl_type
+        overhead_line_type_dict[typtow.ID] = ohl_type
+
+        grid.overhead_line_types.append(ohl_type)
+
     # Transformer types
     typtr2_dict: Dict[str, dev.TransformerType] = dict()
     typtr2_raw_dict: Dict[str, TypTr2] = dict()
@@ -1677,6 +1878,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             typsind_raw_dict[tid] = typsind
 
     # lines
+    line_by_dgs_id: Dict[str, dev.Line] = dict()
     for elmlne in dgs_grid.elmlnes:
         line = convert_dgs_to_line(
             lne=elmlne,
@@ -1698,6 +1900,56 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 line.group = bg
 
         grid.add_line(obj=line, logger=logger)
+
+        # Keep a lookup table to later link ElmTow (tower coupling) to the corresponding Line objects.
+        lid_raw = elmlne.ID
+        lid = _ref_id(lid_raw)
+        if lid is not None:
+            line_by_dgs_id[lid] = line
+        if lid_raw is not None and lid_raw != "":
+            line_by_dgs_id[lid_raw] = line
+
+    # Tower coupling (ElmTow): bind the created Line objects to OverheadLineType templates.
+    # IMPORTANT: the Line objects must exist first (created above).
+    for elmtow in dgs_grid.elmtows:
+        if int(elmtow.outserv) != 0:
+            continue
+
+        if len(elmtow.pGeo) == 0:
+            logger.add_warning(f"ElmTow '{elmtow.loc_name}': no pGeo specified, skipping tower binding.")
+            continue
+
+        geo_ptr = elmtow.pGeo[0]
+        if geo_ptr is None:
+            logger.add_warning(f"ElmTow '{elmtow.loc_name}': pGeo[0] is empty, skipping tower binding.")
+            continue
+
+        geo_id = _ref_id(geo_ptr)
+        ohl_type = overhead_line_type_dict.get(geo_id)
+        if ohl_type is None:
+            ohl_type = overhead_line_type_dict.get(geo_ptr)
+
+        if ohl_type is None:
+            logger.add_warning(f"ElmTow '{elmtow.loc_name}': referenced tower type '{geo_ptr}' not found.")
+            continue
+
+        for idx, line_ptr in enumerate(elmtow.plines):
+            if line_ptr is None:
+                continue
+
+            line_id = _ref_id(line_ptr)
+            api_line = line_by_dgs_id.get(line_id)
+            if api_line is None:
+                api_line = line_by_dgs_id.get(line_ptr)
+
+            if api_line is None:
+                logger.add_warning(f"ElmTow '{elmtow.loc_name}': referenced line '{line_ptr}' not found.")
+                continue
+
+            # VeraGrid OverheadLineType uses a 1-based circuit index.
+            circuit_idx = int(idx) + 1
+            api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
+            api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
 
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:
