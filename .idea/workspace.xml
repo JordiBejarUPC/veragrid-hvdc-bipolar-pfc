@@ -28,16 +28,18 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="research of grid manager">
-      <change afterPath="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/powsybl_stuff/ucte_parser_micro.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/ucte/ucte_parser.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Improved UCT parsing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_comment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_comment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_tap_table.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_tap_table.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/powsybl_stuff/ucte_parser_micro.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -263,11 +265,11 @@
       <recent name="$PROJECT_DIR$/src/trunk/anarede" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/trunk/ucte" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
       <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
-      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
   <component name="RunManager" selected="Python.ExecuteVeraGrid">
@@ -540,7 +542,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="ucte_line" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="base_example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -548,12 +550,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/powsybl_stuff" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -562,7 +564,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="ucte_parser" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="iidm_parser" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -570,12 +572,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/ucte" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/ucte/ucte_parser.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -592,12 +594,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/powsybl_stuff" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/ucte" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/powsybl_stuff/ucte_parser_micro.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -606,7 +608,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="ucte_to_veragrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -614,12 +616,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -727,19 +729,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.ucte_line" />
-      <item itemvalue="Python.ucte_parser" />
+      <item itemvalue="Python.base_example" />
+      <item itemvalue="Python.iidm_parser" />
       <item itemvalue="Python.ucte_parser_micro" />
-      <item itemvalue="Python.ucte_to_veragrid" />
+      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python.ExecuteVeraGrid" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python.ucte_to_veragrid" />
-        <item itemvalue="Python.ucte_parser" />
         <item itemvalue="Python.ucte_parser_micro" />
-        <item itemvalue="Python.ucte_line" />
+        <item itemvalue="Python.iidm_parser" />
+        <item itemvalue="Python.base_example" />
+        <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
   </component>
@@ -1871,7 +1873,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="691" />
+    <option name="localTasksCounter" value="692" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1932,7 +1934,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
     <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
     <MESSAGE value="Added more ContingencyFilteringMethods" />
     <MESSAGE value="Several fixes when selecting by country, community, etc" />
@@ -1957,7 +1958,8 @@
     <MESSAGE value="added bus color" />
     <MESSAGE value="Updated discord link" />
     <MESSAGE value="research of grid manager" />
-    <option name="LAST_COMMIT_MESSAGE" value="research of grid manager" />
+    <MESSAGE value="Improved UCT parsing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Improved UCT parsing" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2526,7 +2528,7 @@
           <option name="timeStamp" value="3138" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/powsybl_stuff/ucte_parser_micro.py</url>
+          <url>file://$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py</url>
           <line>9</line>
           <option name="timeStamp" value="3142" />
         </line-breakpoint>
@@ -2564,6 +2566,31 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_circuit.py</url>
           <line>73</line>
           <option name="timeStamp" value="3160" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py</url>
+          <line>196</line>
+          <option name="timeStamp" value="3161" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py</url>
+          <line>83</line>
+          <option name="timeStamp" value="3162" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py</url>
+          <line>16</line>
+          <option name="timeStamp" value="3163" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py</url>
+          <line>141</line>
+          <option name="timeStamp" value="3164" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py</url>
+          <line>140</line>
+          <option name="timeStamp" value="3165" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
