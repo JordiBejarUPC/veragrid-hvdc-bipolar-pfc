@@ -28,16 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="5.6.15">
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Projects/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Projects/projects.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Projects/projects_logic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/README.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/README.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Scripting/scripting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Scripting/scripting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/VeraGridMain.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/VeraGridMain.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Initial works of the project manager">
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Projects/projects.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Projects/projects.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1871,7 +1863,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="694" />
+    <option name="localTasksCounter" value="695" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1932,7 +1924,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added more ContingencyFilteringMethods" />
     <MESSAGE value="Several fixes when selecting by country, community, etc" />
     <MESSAGE value="5.6.3" />
     <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
@@ -1957,7 +1948,8 @@
     <MESSAGE value="research of grid manager" />
     <MESSAGE value="Improved UCT parsing" />
     <MESSAGE value="5.6.15" />
-    <option name="LAST_COMMIT_MESSAGE" value="5.6.15" />
+    <MESSAGE value="Initial works of the project manager" />
+    <option name="LAST_COMMIT_MESSAGE" value="Initial works of the project manager" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

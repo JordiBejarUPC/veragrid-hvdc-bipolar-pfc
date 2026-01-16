@@ -2,39 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import os
-import sys
-import uuid
-import sqlite3
-from dataclasses import dataclass
+
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Iterable
-
-import requests
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QTableWidget,
-    QTableWidgetItem,
-    QTextEdit,
-    QPushButton,
-    QVBoxLayout,
-    QSplitter,
-    QMessageBox,
-)
+from typing import Optional, Dict
+from PySide6.QtWidgets import QTreeWidgetItem, QTableWidgetItem,  QMessageBox
 from PySide6.QtGui import Qt
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import Qt
-
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
-from VeraGridEngine.IO.file_system import scripts_path
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
-from VeraGrid.Gui.gui_functions import CustomFileSystemModel
-import VeraGrid.Gui.gui_functions as gf
-from VeraGrid.Gui.messages import error_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.Projects.projects_logic import GridEntry, GridDatabase, GridDownloadWorker
 
 
