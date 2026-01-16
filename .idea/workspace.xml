@@ -31,7 +31,6 @@
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="init algorithm small change">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -231,7 +230,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock__comp__optim",
+    "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
     "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/trunk/dynamics",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -1930,7 +1929,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added verbose" />
     <MESSAGE value="5.5.1" />
     <MESSAGE value="Improved BlockSolver compilation" />
     <MESSAGE value="more improvements to the block solver" />
@@ -1955,7 +1953,8 @@
     <MESSAGE value="fixed initialization algorithm bug" />
     <MESSAGE value="kundur working and events working again" />
     <MESSAGE value="init algorithm small change" />
-    <option name="LAST_COMMIT_MESSAGE" value="init algorithm small change" />
+    <MESSAGE value="compilation in batches and paralelization" />
+    <option name="LAST_COMMIT_MESSAGE" value="compilation in batches and paralelization" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2296,7 +2295,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
-          <line>1536</line>
+          <line>1540</line>
           <option name="timeStamp" value="3086" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
