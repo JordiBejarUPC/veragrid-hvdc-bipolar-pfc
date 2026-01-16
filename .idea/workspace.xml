@@ -30,16 +30,7 @@
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Improved UCT parsing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/iidm/iidm_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_comment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_comment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_exchange_power.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_tap_table.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_tap_table.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/powsybl_stuff/ucte_parser_micro.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_pow2pp.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_pow2pp.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -272,7 +263,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteVeraGrid">
+  <component name="RunManager" selected="Python.ucte_parser_micro">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -542,28 +533,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="base_example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/trunk/powsybl_stuff" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/powsybl_stuff/base_example.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="iidm_parser" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -600,28 +569,6 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/ucte/ucte_parser_micro.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid (eRoots)" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -728,20 +675,54 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for test_pow2pp.test_transnet_exmple_net" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;test_pow2pp.test_transnet_exmple_net&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
     <list>
-      <item itemvalue="Python.base_example" />
       <item itemvalue="Python.iidm_parser" />
       <item itemvalue="Python.ucte_parser_micro" />
-      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest for test_pow2pp.test_transnet_exmple_net" />
+      <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.ucte_parser_micro" />
+        <item itemvalue="Python tests.pytest for test_pow2pp.test_transnet_exmple_net" />
+        <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.iidm_parser" />
-        <item itemvalue="Python.base_example" />
-        <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
   </component>
@@ -1873,7 +1854,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="692" />
+    <option name="localTasksCounter" value="693" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

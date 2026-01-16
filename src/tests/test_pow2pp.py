@@ -22,7 +22,7 @@ def test_transnet_exmple_net():
         return
 
     pow = pypowsybl.network.load(
-        "/home/ankur/Dokumente/githubdev/GridCal/src/tests/data/grids/state-estimation/19700101T0000Z_.zip"
+        "tests/data/grids/state-estimation/19700101T0000Z_.zip"
     )
     net = convert_to_pandapower(pow)
     print(net)
