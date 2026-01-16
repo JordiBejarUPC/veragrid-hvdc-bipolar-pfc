@@ -3,21 +3,15 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
-import numpy as np
-import rlcompleter
-from PySide6.QtGui import QFont, QFontMetrics, Qt
+from PySide6.QtGui import Qt
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QCompleter, QPlainTextEdit
-from PySide6.QtCore import Qt, QStringListModel
-from PySide6.QtGui import QTextCursor
+from PySide6.QtCore import Qt
 
 from VeraGridEngine.IO.file_system import scripts_path
 from VeraGrid.Gui.Main.SubClasses.io import IoMain
-from VeraGrid.Gui.python_highlighter import PythonHighlighter
 from VeraGrid.Gui.gui_functions import CustomFileSystemModel
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import error_msg, yes_no_question
-from VeraGrid.Gui.font_config import CONSOLE_TEXT_SIZE
 
 
 class ScriptingMain(IoMain):
@@ -58,21 +52,6 @@ class ScriptingMain(IoMain):
 
         # Set context menu policy to CustomContextMenu
         self.ui.sourceCodeTreeView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-
-    # def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent):
-    #     """
-    #     Event filter to capture Ctrl + Enter
-    #     :param watched:
-    #     :param event:
-    #     :return:
-    #     """
-    #
-    #     if watched == self.ui.sourceCodeTextEdit and event.type() == QtCore.QEvent.Type.KeyPress:
-    #         if event.key() == Qt.Key.Key_Return and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-    #             self.run_source_code()
-    #             return True
-    #
-    #     return super().eventFilter(watched, event)
 
     def append_output(self, text: str):
         """
