@@ -28,10 +28,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="fixed initialization algorithm bug">
-      <change afterPath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="init algorithm small change">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +74,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="86_Dynamic_simulations_V1_DiffBlock" />
+        <entry key="$PROJECT_DIR$" value="profiling_147_86_Dynamic_simulations_V1_DiffBlock" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -202,7 +204,7 @@
     "Python.readme_checks.executor": "Run",
     "Python.rms_driver.executor": "Run",
     "Python.rms_driver_call.executor": "Run",
-    "Python.rms_kundur.executor": "Debug",
+    "Python.rms_kundur.executor": "Run",
     "Python.scripting_andes.executor": "Run",
     "Python.scripting_genqec_exc_gov_simple.executor": "Debug",
     "Python.scripting_gridcal.executor": "Run",
@@ -1884,7 +1886,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="639" />
+    <option name="localTasksCounter" value="641" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1930,8 +1932,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="several refactors" />
-    <MESSAGE value="formatted" />
     <MESSAGE value="added verbose" />
     <MESSAGE value="5.5.1" />
     <MESSAGE value="Improved BlockSolver compilation" />
@@ -1955,7 +1955,9 @@
     <MESSAGE value="fixing symbolic parse and to_dict" />
     <MESSAGE value="renamed blocksolver and blocksolverdiff" />
     <MESSAGE value="fixed initialization algorithm bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed initialization algorithm bug" />
+    <MESSAGE value="kundur working and events working again" />
+    <MESSAGE value="init algorithm small change" />
+    <option name="LAST_COMMIT_MESSAGE" value="init algorithm small change" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2296,7 +2298,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
-          <line>1429</line>
+          <line>1522</line>
           <option name="timeStamp" value="3086" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2341,28 +2343,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
-          <line>498</line>
-          <option name="timeStamp" value="3237" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
           <line>1333</line>
           <option name="timeStamp" value="3261" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>296</line>
-          <option name="timeStamp" value="3342" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/dynamics/rms_kundur.py</url>
-          <line>491</line>
-          <option name="timeStamp" value="3352" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/dynamics/rms_kundur.py</url>
-          <line>495</line>
-          <option name="timeStamp" value="3353" />
+          <url>file://$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py</url>
+          <line>215</line>
+          <option name="timeStamp" value="3343" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

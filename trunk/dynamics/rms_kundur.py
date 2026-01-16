@@ -1,4 +1,8 @@
+
+
 from __future__ import annotations
+
+import cProfile as profile
 
 import numpy as np
 
@@ -37,11 +41,15 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 
+pr = profile.Profile()
+pr.disable()
+
 
 def rms_kundur():
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
+
 
     grid = gce.MultiCircuit()
 
@@ -489,11 +497,15 @@ def rms_kundur():
     power_flow.run()
     res = power_flow.results
 
+    pr.enable()
+
     sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
     params_mapping = {}
 
     slv = BlockSolver(ss, sim_time)
+
+    pr.disable()
 
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
@@ -515,6 +527,7 @@ def rms_kundur():
         verbose=False,
     )
 
+    pr.dump_stats('profile.pstat')
 
 
 if __name__ == '__main__':

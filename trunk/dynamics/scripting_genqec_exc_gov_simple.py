@@ -269,6 +269,8 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
+pr.dump_stats('profile.pstat')
+
 exit()
 
 Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
@@ -312,4 +314,3 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-pr.dump_stats('profile.pstat')

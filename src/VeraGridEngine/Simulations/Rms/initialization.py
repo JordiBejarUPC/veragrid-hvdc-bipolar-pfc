@@ -300,9 +300,6 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
             vars_init_at_start = len(vars_initialized)
             for var, eq in mdl.init_eqs.items():
-                if var.name == 'y_subexciter1':
-                    print('stop')
-
                 key = (var.uid, var.name)
                 if key in vars_initialized:
                     continue

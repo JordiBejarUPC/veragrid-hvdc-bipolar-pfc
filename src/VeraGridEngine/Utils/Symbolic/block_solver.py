@@ -701,6 +701,10 @@ class BlockSolver:
     @property
     def algebraic_vars(self):
         return self._algebraic_vars
+
+    @property
+    def diff_vars(self):
+        return self._diff_vars
     
     def get_var_idx(self, v: Var) -> int:
         """
