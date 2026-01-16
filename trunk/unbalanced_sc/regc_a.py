@@ -108,3 +108,6 @@ id_ref, iq_ref = regc_a(Qgen0=0.0,
                         Vt=0.93,
                         Lvplsw0=9999.0,
                         Ipcmd=1.08)
+
+print('\nid_ref =', id_ref)
+print('\niq_ref =', iq_ref)

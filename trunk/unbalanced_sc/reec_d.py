@@ -275,6 +275,18 @@ def reec_d(ur,
 
     Iq_unlim = freeze_iq_after_dip(Voltage_Dip, Iq_frz, y_in)
 
+    Iqcmd = max(min(Iq_unlim, iqmax), iqmin)
+
+    WGO_active = 0.0 # Weak Grid Option
+    if WGO_active > 0.0:
+        yi13 = Pref_WGO
+    else:
+        yi13 = Pref
+
+    dPmin = -2.0 # Ramp rate on power reference in [pu/s]
+    dPmax = 2.0  # Ramp rate on power reference in [pu/s]
+    Iqcmd = max(min(yi13, dPmax), dPmin)
+
     return Iqcmd, Ipcmd, is_blocked
 
 
