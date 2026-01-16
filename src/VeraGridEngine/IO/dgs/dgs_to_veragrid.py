@@ -979,6 +979,106 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     return bus, shunt
 
 
+
+def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndarray, int, float, float]:
+    """
+    Build the step model (b_steps, initial_step, Bmin, Bmax) for an ElmShnt with ncapx > 1.
+
+    Notes
+    -----
+    - The ControllableShunt step setter sums step increments up to index 'step' (inclusive).
+      To represent an OFF state (0 MVAr), we insert an explicit 0.0 increment as the first entry.
+    - PowerFactory exports qcapn as MVAr per step at v=1 p.u. and ncapa as connected steps.
+    """
+    name: str = elmshnt.loc_name or _ref_id(elmshnt.ID) or "ElmShnt"
+    ncapx: int = int(elmshnt.ncapx)
+    q_step: float = float(elmshnt.qcapn)
+    qtotn: float = float(elmshnt.qtotn)
+    if q_step == 0.0 and qtotn != 0.0:
+        q_step = qtotn / float(ncapx)
+        logger.add_warning(
+            f"ElmShnt '{name}': qcapn=0.0 but qtotn={qtotn}; using q_step=qtotn/ncapx={q_step}."
+        )
+
+    # Step increments: [0.0, q_step, q_step, ..., q_step] with length ncapx+1
+    b_steps: np.ndarray = np.concatenate((np.array([0.0], dtype=float), np.full(ncapx, q_step, dtype=float)))
+
+    # Initial step index equals the number of connected steps (ncapa) because b_steps[0] is OFF (0 MVAr).
+    n_on: int = int(elmshnt.ncapa)
+
+    initial_step: int = n_on
+
+    # Bounds (MVAr @ v=1 p.u.) inferred from the step size sign
+    total: float = q_step * float(ncapx)
+    if total >= 0.0:
+        bmin: float = 0.0
+        bmax: float = total
+    else:
+        bmin = total
+        bmax = 0.0
+
+    return b_steps, initial_step, bmin, bmax
+
+
+def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
+                                                  stacubic_dict: Dict[str, List[int]],
+                                                  buses: List[dev.Bus],
+                                                  logger: Logger,
+                                                  cubics_by_objid: Dict[str, List[StaCubic]],
+                                                  bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+    """
+    Convert stepped ElmShnt (ncapx > 1) to VeraGrid ControllableShunt.
+
+    Mapping
+    -------
+    - Steps: ncapa (connected steps) is mapped to the initial ControllableShunt.step.
+    - Reactive increments: qcapn is used as MVAr per step at v=1 p.u. (positive = capacitor, negative = reactor).
+    - Voltage control: If 'iswitch' indicates controlled operation and the DGS provides 'usetp', we propagate it.
+      Otherwise, the device is modeled as an operator-controllable stepped shunt (no automatic control).
+    """
+    name: str = elmshnt.loc_name or f"ElmShnt_{_ref_id(elmshnt.ID)}"
+
+    bus: dev.Bus = get_injection_bus(elm_id=elmshnt.ID,
+                                     stacubic_dict=stacubic_dict,
+                                     buses=buses,
+                                     cubics_by_objid=cubics_by_objid,
+                                     bus_by_term_id=bus_by_term_id)
+
+    b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
+
+    # DGS does not reliably encode automatic voltage control semantics for ElmShnt.
+    # Stepped shunts are imported as operator-controlled devices (no automatic regulation).
+    is_controlled: bool = False
+    vset: float = float(elmshnt.usetp)
+
+    cshunt: dev.ControllableShunt = dev.ControllableShunt(
+        name=name,
+        idtag=_ref_id(elmshnt.ID),
+        is_nonlinear=False,
+        number_of_steps=int(len(b_steps)),
+        step=int(initial_step),
+        g_per_step=0.0,
+        b_per_step=0.0,
+        Bmin=bmin,
+        Bmax=bmax,
+        Gmin=0.0,
+        Gmax=0.0,
+        active=(elmshnt.outserv == 0),
+        vset=vset,
+        is_controlled=is_controlled,
+        control_bus=bus,
+    )
+
+    # Override step arrays to match the DGS stepped-bank model (OFF + ncapx identical increments).
+    cshunt.b_steps = b_steps
+    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+
+    # Ensure B/G are coherent with the initial step after overriding arrays
+    cshunt.step = int(initial_step)
+
+    return bus, cshunt
+
 def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
                                       stacubic_dict: Dict[str, List[int]],
                                       buses: List[dev.Bus],
@@ -1500,16 +1600,28 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Shunts (fixed)
     for elmshnt in dgs_grid.elmshnts:
-        bus, shunt = convert_dgs_to_shunt(
-            elmshnt=elmshnt,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        if int(elmshnt.ncapx) > 1:
+            bus, cshunt = convert_dgs_to_controllable_shunt_from_elmshnt(
+                elmshnt=elmshnt,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
 
-        grid.add_shunt(bus=bus, api_obj=shunt)
+            grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
+        else:
+            bus, shunt = convert_dgs_to_shunt(
+                elmshnt=elmshnt,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
+
+            grid.add_shunt(bus=bus, api_obj=shunt)
 
     # Controllable shunts (SVC/SVS)
     for elmsvs in dgs_grid.elmsvss:

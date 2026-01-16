@@ -633,6 +633,9 @@ class ElmShnt(DGSElement):
         DgsProperty('greaf0', 'r', 'DGS field greaf0 (r)', py_name='greaf0'),
         DgsProperty('iswitch', 'i', 'DGS field iswitch (i)', py_name='iswitch'),
         DgsProperty('qtotn', 'r', 'DGS field qtotn (r)', py_name='qtotn'),
+        # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
+        # If absent in the file, it will remain at its default value (1.0).
+        DgsProperty('usetp', 'r', 'DGS field usetp (r)', py_name='usetp'),
     ]
 
     def __init__(self) -> None:
@@ -651,6 +654,7 @@ class ElmShnt(DGSElement):
         self.greaf0: float = 0.0
         self.iswitch: int = 0
         self.qtotn: float = 0.0
+        self.usetp: float = 1.0
 
 
 class ElmSvs(DGSElement):
