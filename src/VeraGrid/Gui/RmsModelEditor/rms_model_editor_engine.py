@@ -47,7 +47,7 @@ from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -1281,21 +1281,17 @@ class TemplateEditor(QtWidgets.QWidget):
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
                 Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
-                # power flow parameters
-                #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters without using strings
 
-                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
-                for param in self.selected_template.block.parameters.keys():
-                    if param.name == 'g':
-                        self.selected_template.block.parameters[param] = Const(R/(R**2 + X**2))
-                    if param.name == 'b':
-                        self.selected_template.block.parameters[param] = Const(-X/(R**2 + X**2))
-                    if param.name == 'bsh':
-                        self.selected_template.block.parameters[param] = Const(B)
+                # power flow parameters
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.R]] = Const(self.api_object.R)
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.X]] = Const(self.api_object.X)
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.B]] = Const(self.api_object.B)
+
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
@@ -2029,6 +2025,23 @@ class BlockBoxesEditor(QSplitter):
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
 
+    def add_api_obj_mapping(self):
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            R = Var("R")
+            X = Var("X")
+            B = Var("B")
+
+            self.main_block.parameters[R] = Const(0.029585)
+            self.main_block.parameters[X] = Const(0.0710059)
+            self.main_block.parameters[B] = Const(0.03)
+
+            self.main_block.api_obj_mapping = {
+            ParamPowerFlowRefferenceType.R: R,
+            ParamPowerFlowRefferenceType.X: X,
+            ParamPowerFlowRefferenceType.B: B,
+               }
+
     def open_inspect_dialog(self):
         """
 
@@ -2708,6 +2721,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         if not self.blockboxes_editor.diagram.node_data and self.main_editor:
             self.blockboxes_editor.add_connection_vars()
             self.blockboxes_editor.add_external_mapping_block()
+            self.blockboxes_editor.add_api_obj_mapping()
         # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena

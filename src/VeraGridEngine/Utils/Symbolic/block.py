@@ -16,7 +16,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar)
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -368,6 +368,7 @@ class Block:
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
+                 api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
                  name: str = ""):
         """
         This represents a group of equations or a group of blocks
@@ -416,6 +417,9 @@ class Block:
 
         self.external_mapping: Dict[
             VarPowerFlowRefferenceType, Var] = dict() if external_mapping is None else external_mapping
+
+        self.api_obj_mapping: Dict[
+            ParamPowerFlowRefferenceType, Var] = dict() if api_obj_mapping is None else api_obj_mapping
 
         # initialization
         self.init_values: Dict[Var, Const] = dict()
@@ -664,6 +668,7 @@ class Block:
                 for var, value in self.parameters.items()
             ],
             "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
+            "api_obj_mapping": {str(dynparamtype): param.to_dict() for dynparamtype, param in self.api_obj_mapping.items()},
             "event_dict": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
                 for var, expr in self.event_dict.items()
@@ -737,6 +742,11 @@ class Block:
             key = VarPowerFlowRefferenceType(key_str)
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             block.external_mapping[key] = var
+
+        for key_str, param_dict in data.get("api_obj_mapping", {}).items():
+            key = ParamPowerFlowRefferenceType(key_str)
+            param = Var(name=param_dict["name"], uid=param_dict.get("uid"))
+            block.api_obj_mapping[key] = param
 
         for pair in data.get("event_dict", []):
             var_dict = pair["var"]

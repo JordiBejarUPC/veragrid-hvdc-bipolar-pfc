@@ -2450,7 +2450,7 @@ class BusReductionMethod(Enum):
 
 class VarPowerFlowRefferenceType(Enum):
     """
-    GridReductionMethod
+    VarPowerFlowRefferenceType
     """
     NOTHING = "nothing"
     Vm = "Vm"  # Bus voltage module in p.u.
@@ -2481,6 +2481,33 @@ class VarPowerFlowRefferenceType(Enum):
         """
         try:
             return VarPowerFlowRefferenceType[s]
+        except KeyError:
+            return s
+
+class ParamPowerFlowRefferenceType(Enum):
+    """
+    ParamPowerFlowRefferenceType
+    """
+    NOTHING = "nothing"
+    R = "R"  # Branch resistance in per unit
+    X = "X"  # Branch reactance in per unit
+    B = "B"  # Branch shunt susceptance in per unit
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ParamPowerFlowRefferenceType[s]
         except KeyError:
             return s
 
