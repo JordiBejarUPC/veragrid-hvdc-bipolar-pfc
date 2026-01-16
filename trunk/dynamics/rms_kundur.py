@@ -507,6 +507,8 @@ def rms_kundur():
 
     pr.disable()
 
+    pr.dump_stats('profile.pstat')
+
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
@@ -527,7 +529,7 @@ def rms_kundur():
         verbose=False,
     )
 
-    pr.dump_stats('profile.pstat')
+
 
 
 if __name__ == '__main__':

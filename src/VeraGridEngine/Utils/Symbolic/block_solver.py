@@ -10,6 +10,7 @@ import uuid
 import numba as nb
 import math
 import scipy.sparse as sp
+import concurrent.futures
 import time
 import matplotlib.pyplot as plt
 from scipy.sparse.linalg import gmres
@@ -37,39 +38,28 @@ def _toc(t0):
 
 class SymbolicJacobian:
     """
-    Class to store and evaluate a symbolic jacobian
+    Symbolic Jacobian with batched and parallel compilation.
     """
 
     def __init__(self,
-                 eqs: List[Expr],
-                 variables: List[Var],
-                 diff_variables: List[DiffVar],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 uid2idx_vars: Dict[int, int],
-                 dt: Var = Const(0.001),
-                 use_jit: bool = True):
+                 eqs: list,
+                 variables: list,
+                 diff_variables: list,
+                 compiler_names_dict: dict,
+                 alias_names_dict: dict,
+                 uid2idx_vars: dict,
+                 dt=None,
+                 use_jit=True,
+                 batch_size=500,
+                 n_jobs=4):  # número de threads para compilación paralela
 
-        """
-                JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
-                :param eqs: Array of equations
-                :param variables: Array of variables to differentiate against
-                :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-                :param uid2sym_params:
-                :param use_jit: if true, the function is compiled by numba
-                :return:
-                        jac_fn : callable(values: Vec, params: Vec) -> scipy.sparse.csc_matrix
-                            Fast evaluator in which *values* is a 1‑D NumPy vector of length
-                            ``len(variables)``and *params* is a 1‑D NumPy vector of length
-                            ``len(parameters)``
-                        sparsity_pattern : tuple(Vec, Vec)
-                            Row/col indices of structurally non‑zero entries.
-                """
+        if dt is None:
+            dt = Const(0.001)
 
-
+        # --- Build triplets and count variable usage ---------------------------------
         used_vars_count = defaultdict(int)
+        triplets = []
 
-        triplets: List[Tuple[int, int, Callable]] = []
         for row, eq in enumerate(eqs):
             for col, var in enumerate(variables):
                 d_expression = eq.diff(var, dt=dt)
@@ -79,12 +69,11 @@ class SymbolicJacobian:
                 for v in d_expression.get_vars():
                     used_vars_count[v.uid] += 1
 
-
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-        # Assemble the jacobian structure
-        nnz = len(cols_sorted)
 
+        # --- Assemble sparse CSC Jacobian structure ---------------------------------
+        nnz = len(cols_sorted)
         indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
 
         indptr = np.zeros(len(variables) + 1, dtype=np.int32)
@@ -94,52 +83,78 @@ class SymbolicJacobian:
 
         self.nvar = len(variables)
         neq = len(eqs)
-
         self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
 
-        # --- codegen -------------------------------------------------------------
+        # --- Batch compilation ------------------------------------------------------
+        self.namespace: Dict[str, Any] = {
+            "math": math,
+            "np": np,
+            "nb": nb,
+            "_heaviside": _heaviside,
+        }
 
-        self.namespace: Dict[str, Any] = { "math": math, "np": np, "nb": nb, "_heaviside": _heaviside, }
-        final_names_dict: Dict[int, str] = {}
+        blocks = [
+            equations_sorted[i:i + batch_size]
+            for i in range(0, len(equations_sorted), batch_size)
+        ]
+        self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
 
-        fname = "jac"
-        src = f"def {fname}(vars, diff, event_params, params, out):\n"
-        for uid, count in used_vars_count.items():
-            if count > 1:
-                final_names_dict[uid] = alias_names_dict[uid]
-                src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+        self.funcs = []
+
+        # --- Función auxiliar para compilar un bloque --------------------------------
+        def compile_block(block_id, block_eqs):
+            fname = f"jac_block_{block_id}"
+            src = f"def {fname}(vars, diff, event_params, params, out):\n"
+            final_names_dict = {}
+            for uid, count in used_vars_count.items():
+                if count > 1:
+                    final_names_dict[uid] = alias_names_dict[uid]
+                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+                else:
+                    final_names_dict[uid] = compiler_names_dict[uid]
+
+            offset = self.block_offsets[block_id]
+            for i, e in enumerate(block_eqs):
+                src += f"    out[{offset + i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
+
+            exec(src, self.namespace)
+
+            if use_jit:
+                func = nb.njit(
+                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+                    fastmath=True,
+                    cache=False
+                )(self.namespace[fname])
             else:
-                final_names_dict[uid] = compiler_names_dict[uid]
+                func = self.namespace[fname]
 
-        for i, e in enumerate(equations_sorted):
-            src += f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
-        exec(src, self.namespace)
+            return func
 
-        start_time = time.time()
-        if use_jit:
-            # compile with numba
-            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = nb.njit(nb.void(nb.float64[:],  nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
-        else:
-            # just pick the python pointer from the namespace
-            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = self.namespace[fname]
-        end_time = time.time()
-        
-        print(f"Jacobian source compile time: {end_time - start_time} seconds") 
+        # --- Parallel compilation ---------------------------------------------------
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            future_funcs = [executor.submit(compile_block, i, block) for i, block in enumerate(blocks)]
+            for f in concurrent.futures.as_completed(future_funcs):
+                self.funcs.append(f.result())
 
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, h:float) -> csc_matrix:
-        """
-        Update the jacobian data
-        :param values:
-        :param diff:
-        :param params:
-        :return: Updated jacobian structure
-        """
-        # assert len(values) >= self.nvar
+        # Order funcs by block_id (as_completed puede desordenarlas)
+        self.funcs.sort(key=lambda f: int(f.__name__.split('_')[-1]))
 
-        # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
+    # --------------------------------------------------------------------------
+    def __call__(self, values, diff_values, event_params, params, h: float):
         event_params[-2] = h  # dt
-        self.func(values, diff_values, event_params, params, self.J.data)
+        for func in self.funcs:
+            func(values, diff_values, event_params, params, self.J.data)
+        return self.J
+
+    # --------------------------------------------------------------------------
+    def __call__(self, values, diff_values, event_params, params, h: float):
+        """
+        Update the Jacobian data
+        """
+        event_params[-2] = h  # dt
+
+        for func in self.funcs:
+            func(values, diff_values, event_params, params, self.J.data)
 
         return self.J
 
@@ -215,7 +230,6 @@ class SymbolicVector:
         if self.func is not None:
             self.func(values, diff_values, event_params, params, self.data)
         return self.data
-
 
 class SymbolicParamsVector:
     """
