@@ -28,9 +28,14 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="init algorithm small change">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="compilation in batches and parallelization">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -175,7 +180,7 @@
     "Python tests.pytest in tests.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Run",
+    "Python.ExecuteVeraGrid.executor": "Debug",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -230,7 +235,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
+    "git-widget-placeholder": "144__86__Dynamic__simulations__V1__DiffBlock",
     "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/trunk/dynamics",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -1883,7 +1888,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="642" />
+    <option name="localTasksCounter" value="643" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1929,7 +1934,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.5.1" />
     <MESSAGE value="Improved BlockSolver compilation" />
     <MESSAGE value="more improvements to the block solver" />
     <MESSAGE value="Fixed test" />
@@ -1954,7 +1958,8 @@
     <MESSAGE value="kundur working and events working again" />
     <MESSAGE value="init algorithm small change" />
     <MESSAGE value="compilation in batches and paralelization" />
-    <option name="LAST_COMMIT_MESSAGE" value="compilation in batches and paralelization" />
+    <MESSAGE value="compilation in batches and parallelization" />
+    <option name="LAST_COMMIT_MESSAGE" value="compilation in batches and parallelization" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2342,11 +2347,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
           <line>1333</line>
           <option name="timeStamp" value="3261" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py</url>
-          <line>215</line>
-          <option name="timeStamp" value="3343" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
