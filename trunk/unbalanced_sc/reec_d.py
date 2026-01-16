@@ -176,6 +176,16 @@ def vdl(x, points):
     return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
 
 
+def freeze_iq_after_dip(Voltage_Dip, Iq_frz, y_in):
+
+    if Voltage_Dip == 0.0:
+        Iq_unlim = y_in
+    else:
+        Iq_unlim = Iq_frz
+
+    return Iq_unlim
+
+
 def reec_d(ur,
            ui,
            u,
@@ -263,7 +273,7 @@ def reec_d(ur,
 
     y_in = Iqinj + o5
 
-    # FOLLOW WITH Freeze Iq after dip
+    Iq_unlim = freeze_iq_after_dip(Voltage_Dip, Iq_frz, y_in)
 
     return Iqcmd, Ipcmd, is_blocked
 
