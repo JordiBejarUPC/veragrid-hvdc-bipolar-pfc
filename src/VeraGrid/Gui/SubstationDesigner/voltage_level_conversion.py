@@ -210,10 +210,15 @@ class ReorderableTableWidget(QTableWidget):
 
     def _update_bay_numbers(self) -> None:
         """Update bay numbers to match row positions."""
+        bay_num = 1
         for row in range(self.rowCount()):
             bay_item = self.item(row, 1)
             if bay_item:
-                bay_item.setText(f"Bay{row + 1}")
+                # Skip visual indicator rows (like "Double bar connection" with "-")
+                if bay_item.text() == "-":
+                    continue
+                bay_item.setText(f"Bay{bay_num}")
+                bay_num += 1
 
 
 class VoltageLevelConversionWizard(QDialog):
@@ -443,6 +448,25 @@ class VoltageLevelConversionWizard(QDialog):
             self.table.setItem(row, 1, bay_item)
             self.table.setItem(row, 2, main_bar_item)
 
+        # Add visual indicator row for Double bar scheme
+        if vl_type == VoltageLevelTypes.DoubleBar:
+            connection_row = self.table.rowCount()
+            self.table.insertRow(connection_row)
+
+            connection_device_item = QTableWidgetItem("Double bar connection")
+            connection_bay_item = QTableWidgetItem("-")
+            connection_bus_item = QTableWidgetItem("JBP1")
+
+            # Make all cells non-editable and non-selectable for this visual indicator row
+            non_interactive_flags = Qt.ItemFlag.ItemIsEnabled  # Only enabled, not editable or selectable
+            connection_device_item.setFlags(non_interactive_flags)
+            connection_bay_item.setFlags(non_interactive_flags)
+            connection_bus_item.setFlags(non_interactive_flags)
+
+            self.table.setItem(connection_row, 0, connection_device_item)
+            self.table.setItem(connection_row, 1, connection_bay_item)
+            self.table.setItem(connection_row, 2, connection_bus_item)
+
     def add_spare_position(self) -> None:
         """
         Add a spare position row to the table.
@@ -538,6 +562,11 @@ class VoltageLevelConversionWizard(QDialog):
             main_bar_item = self.table.item(row, 2)
 
             device = device_item.text() if device_item else ""
+
+            # Skip visual indicator rows (like "Double bar connection")
+            if device == "Double bar connection":
+                continue
+
             bay_str = bay_item.text() if bay_item else "Bay1"
             main_bar = main_bar_item.text() if main_bar_item else "JBP1"
 
