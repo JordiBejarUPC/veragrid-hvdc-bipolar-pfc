@@ -11,7 +11,7 @@ from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferen
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
-def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
+def get_line_rms_template(name="Line rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Line
     :return: RmsModelTemplate
@@ -24,8 +24,6 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
                          Var("Vaf_" + name),
                          Var("Vmt_" + name),
                          Var("Vat_" + name)]
-
-
 
     Qf = Var("Qf")
     Qt = Var("Qt")
@@ -44,10 +42,18 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
 
     pi2 = np.pi / 2
     templ.block.algebraic_eqs = [
-        Pf - ((inputs[0] ** 2 * Const(R/(R**2 + X**2))) - Const(R/(R**2 + X**2)) * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3]) + Const(-X/(R**2 + X**2)) * inputs[0] * inputs[2] * cos(inputs[1] - inputs[3] + pi2)),
-        Qf - (inputs[0] ** 2 * (-Const(B) / 2 - Const(-X/(R**2 + X**2))) - Const(R/(R**2 + X**2)) * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3]) + Const(-X/(R**2 + X**2)) * inputs[0] * inputs[2] * sin(inputs[1] - inputs[3] + pi2)),
-        Pt - ((inputs[2] ** 2 * Const(R/(R**2 + X**2))) - Const(R/(R**2 + X**2)) * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1]) + Const(-X/(R**2 + X**2)) * inputs[2] * inputs[0] * cos(inputs[3] - inputs[1] + pi2)),
-        Qt - (inputs[2] ** 2 * (-Const(B) / 2 - Const(-X/(R**2 + X**2))) - Const(R/(R**2 + X**2)) * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1]) + Const(-X/(R**2 + X**2)) * inputs[2] * inputs[0] * sin(inputs[3] - inputs[1] + pi2)),
+        Pf - ((inputs[0] ** 2 * (R / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[0] * inputs[
+            2] * cos(inputs[1] - inputs[3]) + (-X / (R ** 2 + X ** 2)) * inputs[0] * inputs[2] * cos(
+            inputs[1] - inputs[3] + pi2)),
+        Qf - (inputs[0] ** 2 * (-(B) / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
+            0] * inputs[2] * sin(inputs[1] - inputs[3]) + (-X / (R ** 2 + X ** 2)) * inputs[0] * inputs[2] * sin(
+            inputs[1] - inputs[3] + pi2)),
+        Pt - ((inputs[2] ** 2 * (R / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[2] * inputs[
+            0] * cos(inputs[3] - inputs[1]) + (-X / (R ** 2 + X ** 2)) * inputs[2] * inputs[0] * cos(
+            inputs[3] - inputs[1] + pi2)),
+        Qt - (inputs[2] ** 2 * (-(B) / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
+            2] * inputs[0] * sin(inputs[3] - inputs[1]) + (-X / (R ** 2 + X ** 2)) * inputs[2] * inputs[0] * sin(
+            inputs[3] - inputs[1] + pi2)),
     ]
 
     templ.block.external_mapping = {
@@ -65,7 +71,7 @@ def get_line_rms_template(name = "Line rms template") -> RmsModelTemplate:
         ParamPowerFlowRefferenceType.R: R,
         ParamPowerFlowRefferenceType.X: X,
         ParamPowerFlowRefferenceType.B: B,
-           }
+    }
 
     templ.block.in_vars = inputs
 

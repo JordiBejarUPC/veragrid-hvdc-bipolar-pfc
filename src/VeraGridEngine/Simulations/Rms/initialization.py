@@ -19,7 +19,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, \
+    _heaviside, piecewise, \
     LagVar, BinOp, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Utils.Symbolic.block_solver import SymbolicParamsVector
@@ -64,7 +65,8 @@ def _compile_equations(eqs: Sequence[Expr],
     # src = f"@nb.njit()\n"
     src = f"def {fname}(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join(
+        [f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -90,14 +92,15 @@ def _compile_equation(eqs: Sequence[Expr],
     # Build source
     src = f"def _f(vars, event_params, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in
+                      enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
         "np": np,
         "nb": nb,
         "_heaviside": _heaviside,
-        "heaviside":heaviside
+        "heaviside": heaviside
     }
     exec(src, ns)
     fn = nb.njit(ns["_f"], fastmath=True)
@@ -280,8 +283,6 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 param_val = float(eq_fn(0.0)[0])
                 event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
-
-
         # initialize array for model params
         params_array = np.zeros(len(mdl.parameters.keys()))
 
@@ -289,7 +290,6 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         for param, const in mdl.parameters.items():
             param_val = const.value
             params_array[uid2idx_params[param.uid]] = param_val
-
 
         # compute and assign missing init_vars and undefined parameters
         vars_initialized: set[tuple[int, str]] = set()
@@ -304,7 +304,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 if key in vars_initialized:
                     continue
 
-                #get all the variables inside de initialization equation
+                # get all the variables inside de initialization equation
 
                 vars_needed = eq.get_vars()
                 ######################################################
@@ -324,11 +324,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             calculate_now = False
                             break
 
-
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
 
-                    #We initialize the params with value UNDEFINED
+                    # We initialize the params with value UNDEFINED
                     if var in mdl.event_dict.keys():
                         if isinstance(eq, Const) and eq.value is not None:
 
@@ -340,9 +339,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             mdl.event_dict[var] = Const(init_val)
                             event_params_array[uid2idx_event_params[var.uid]] = init_val
 
-                    #We initialize the algebraic values
+                    # We initialize the algebraic values
                     else:
                         vars_in_eqs = eq.get_vars()
+
                         if var not in vars_in_eqs:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = float(eq_fn(x, event_params_array, params_array))
@@ -356,13 +356,13 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             alpha = 0.5
                             x0 = 0.9
                             x[uid2idx_vars[var.uid]] = x0
-                            while error>tol:
+                            while error > tol:
                                 try:
                                     init_val = float(eq_fn(x, event_params_array, params_array))
                                 except:
                                     x[uid2idx_vars[var.uid]] = -0.1
                                     init_val = float(eq_fn(x, event_params_array, params_array))
-                                x[uid2idx_vars[var.uid]] = (1-alpha)*x0 + alpha*init_val
+                                x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
                                 error = np.linalg.norm(init_val - x0)
                                 x0 = x[uid2idx_vars[var.uid]]
                             init_guess[key] = init_val
@@ -370,11 +370,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                     vars_initialized.add(key)
 
-
             vars_init_at_end = len(vars_initialized)
             if vars_init_at_end > vars_init_at_start:
                 progress = True
-
 
             if not progress:
                 unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
@@ -450,9 +448,9 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
     :param type:
 
     """
-    solved:bool = False
-    alpha:float = 0.8
-    reference_vars:List[Var] = list()
+    solved: bool = False
+    alpha: float = 0.8
+    reference_vars: List[Var] = list()
 
     for block in region_system.children:
         found = False
@@ -465,7 +463,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
                 Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
                 found = True
             for param, eq in child_block.event_dict.items():
-                #We add the non initialized parameters to the algebraic variables to be solved
+                # We add the non initialized parameters to the algebraic variables to be solved
                 if isinstance(eq, Const) and eq.value is None:
                     child_block.algebraic_vars.append(param)
                     reference_vars.append(param)
@@ -473,7 +471,7 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
 
         if not found:
             raise Exception("Couldnt find bus connection in region block")
-        
+
         delete_vars_from_block(block, [Pg, Qg])
         bus_block = Block()
 
@@ -493,9 +491,9 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
             try:
                 print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
                 x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0,
-                                                                                     max_iter=max_iter, max_tries=1e3,
-                                                                                     plot=plot,
-                                                                                     predictor=predictor)
+                                                                         max_iter=max_iter, max_tries=1e3,
+                                                                         plot=plot,
+                                                                         predictor=predictor)
                 solved = True
             except NaNError as e:
                 msg = str(e).lower()
@@ -546,7 +544,8 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     sys_block.vars_glob_name2uid = vars_glob_name2uid
 
     # initialize containers
-    init_guess: Dict[Tuple[int, str], float] = {} # this is the general init guess that will contain all the variables init value
+    init_guess: Dict[
+        Tuple[int, str], float] = {}  # this is the general init guess that will contain all the variables init value
     sys_vars: list[Tuple[int, str]] = []
     seen_vars: set[Tuple[int, str]] = set()
 
@@ -637,20 +636,17 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     for bus, region in bus_blocks_dict.items():
         # try:
-            # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-            #               array_index, use_init_values)
-        init_guess_region, sys_block_region = init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-                         vars_array_index, use_init_values)
+        # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+        #               array_index, use_init_values)
+        init_guess_region, sys_block_region = init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars,
+                                                            uid2sym_vars, uid2idx_vars, uid2sym_t,
+                                                            vars_array_index, use_init_values)
         init_guess.update(init_guess_region)
         sys_block = sys_block_region
-
-
-
 
         # except ValueError:
         #     print(f"Couldn't initialize system with explicit method")
         #     init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
-
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):

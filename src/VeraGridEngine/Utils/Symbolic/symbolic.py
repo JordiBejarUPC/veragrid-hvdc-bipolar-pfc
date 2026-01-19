@@ -32,122 +32,6 @@ def _new_uid() -> int:
 # Generic helpers
 # -----------------------------------------------------------------------------
 
-def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
-    """
-    Serialise any `Expr` tree into a plain Python dictionary that’s
-    JSON-friendly.  Each node type becomes a small dict that records:
-
-        • its own type      (\"Const\", \"Var\", \"BinOp\", …)
-        • the data it carries (value, name, operator…)
-        • its unique uid     (string, so it survives round-trip)
-        • nested children    (recursively serialised)
-
-    The reverse operation is handled by `_dict_to_expr`.
-    """
-    # ------------------------------------------------------------------
-    # Atomic nodes
-    # ------------------------------------------------------------------
-    if isinstance(expr, Const):
-        val = expr.value
-        if isinstance(val, complex):
-            return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
-        return {"type": "Const", "value": expr.value, "uid": expr.uid}
-
-    if isinstance(expr, Var) and not isinstance(expr, DiffVar):
-        return {"type": "Var", "name": expr.name, "uid": expr.uid}
-
-    if isinstance(expr, DiffVar):
-        return {"type": "DiffVar",
-                "name": expr.name,
-                "uid": expr.uid,
-                "base_var": _expr_to_dict(expr.base_var),
-                }
-
-    # ------------------------------------------------------------------
-    # Composite nodes
-    # ------------------------------------------------------------------
-    if isinstance(expr, BinOp):
-        return {
-            "type": "BinOp",
-            "op": expr.op,
-            "left": _expr_to_dict(expr.left),
-            "right": _expr_to_dict(expr.right),
-            "uid": expr.uid,
-        }
-
-    if isinstance(expr, UnOp):
-        return {
-            "type": "UnOp",
-            "op": expr.op,  # only \"-\" for now
-            "operand": _expr_to_dict(expr.operand),
-            "uid": expr.uid,
-        }
-
-    if isinstance(expr, Func):
-        return {
-            "type": "Func",
-            "name": expr.op,  # sin, cos, log, …
-            "arg": _expr_to_dict(expr.arg),
-            "uid": expr.uid,
-        }
-
-    # ------------------------------------------------------------------
-    # Anything else is an API bug
-    # ------------------------------------------------------------------
-    raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
-
-
-def _dict_to_expr(data: Dict[str, Any]) -> Expr:
-    """
-    De-Serialize expression from dictionary
-    :param data:
-    :return:
-    """
-    t = data["type"]
-    if t == "Const":
-        if data.get("kind") == "complex":
-            arr = data["value"]
-            obj = Const(complex(arr[0], arr[1]))
-        else:
-            obj = Const(data["value"])
-    elif t == "Var":
-        obj = Var(data["name"])
-        obj.uid = data["uid"]
-
-
-    elif t == "DiffVar":
-
-        # reconstruct base_var
-        base_data = data["base_var"]
-        base_var = _dict_to_expr(base_data)
-        if not isinstance(base_var, Var):
-            raise TypeError("base_var must be a Var")
-
-        obj = DiffVar(name=data["name"], base_var=base_var)
-        obj.uid = data["uid"]
-
-    elif t == "BinOp":
-        obj = BinOp(_dict_to_expr(data["left"]), data["op"], _dict_to_expr(data["right"]))
-        obj.uid = data["uid"]
-
-    elif t == "UnOp":
-        obj = UnOp(data["op"], _dict_to_expr(data["operand"]))
-        obj.uid = data["uid"]
-
-    elif t == "Func":
-        op = data["op"]
-        if op is None:
-            op = data["name"]
-        obj = Func(_dict_to_expr(data["arg"]), op)
-        obj.uid = data["uid"]
-
-    else:
-        raise ValueError(f"Unknown type '{t}' in deserialisation")
-
-    return obj
-
-
-
 
 
 def _to_expr(val: Any) -> "Expr":
@@ -201,7 +85,7 @@ class Expr:
         :return:
         """
         if vars_found is None:
-            vars_found = []
+            vars_found = set()
 
         if isinstance(self, Var):
             if self not in vars_found:
@@ -239,7 +123,7 @@ class Expr:
 
     __call__ = eval  # allow f(x=…)
 
-    def diff(self, var: Var | str, order: int = 1, dt:Var|None = None) -> "Expr":
+    def diff(self, var: Var | str, order: int = 1, dt: Var | None = None) -> "Expr":
         """
         Differentiation (higher‑order)
         :param var:
@@ -253,7 +137,7 @@ class Expr:
             expr = expr._diff1(var, dt).simplify()
         return expr
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
         # return # pragma: no cover
         raise NotImplementedError
 
@@ -269,7 +153,6 @@ class Expr:
 
     def to_dict(self) -> Dict[str, Any]:
         return _expr_to_dict(self)
-
 
     def to_json(self, **json_kwargs: Any) -> str:
         return json.dumps(self.to_dict(), **json_kwargs)
@@ -352,7 +235,6 @@ class Expr:
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-
 class Const(Expr):
 
     def __init__(self, value: NUMBER | None = None, uid: int | None = None, name: str = ""):
@@ -369,7 +251,7 @@ class Const(Expr):
     def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER | None:
         return self.value
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
         return Const(0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -439,7 +321,7 @@ class Var(Expr):
         except KeyError as exc:
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
 
-    def _diff1(self, var: Var | str, dt: Var|None) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
         return Const(1 if self.uid == var.uid else 0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -479,8 +361,6 @@ class Var(Expr):
 
     def __hash__(self) -> int:
         return hash(repr(self))
-
-
 
 
 class LagVar(Expr):
@@ -545,7 +425,7 @@ class LagVar(Expr):
             res += val
         return res.eval(dt=h)
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         return Const(1 if self.uid == var.uid else 0)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -623,16 +503,16 @@ class DiffVar(Var):
             origin = origin.base_var
         return origin
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         if dt is None:
             return Const(1 if self.uid == var.uid else 0)
         elif var.uid == self.base_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(var, dt = dt)
+            dh_dt = h_t.diff(var, dt=dt)
             return dh_dt
         elif var.uid == self.origin_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(self.base_var, dt = dt)
+            dh_dt = h_t.diff(self.base_var, dt=dt)
             return dh_dt
         return Const(1 if self.uid == var.uid else 0)
 
@@ -653,7 +533,7 @@ class DiffVar(Var):
             res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
         return res.eval()
 
-    def approximation_expr(self, dt: Optional[Var|None], central=False) -> Tuple:
+    def approximation_expr(self, dt: Optional[Var | None], central=False) -> Tuple:
         """
         Computes the n-th backward finite difference approximation of the derivative
         using the closed-form backward difference formula.
@@ -686,10 +566,11 @@ class DiffVar(Var):
         result = finite_diff_sum / (dt ** lag_total)
         return result.simplify(), lag_total
 
+
 def factors(expr: Expr) -> List[Expr]:
     if isinstance(expr, BinOp) and expr.op == '*':
         return factors(expr.left.simplify()) + factors(expr.right.simplify())
-  # Limited expansion of integer powers
+    # Limited expansion of integer powers
     elif isinstance(expr, BinOp) and expr.op == '**':
         base, exp = expr.left.simplify(), expr.right.simplify()
 
@@ -702,6 +583,7 @@ def factors(expr: Expr) -> List[Expr]:
         return [expr]
     return [expr]
 
+
 def build_mul(factors: List[Expr]) -> Expr:
     if not factors:
         return Const(1)
@@ -709,6 +591,7 @@ def build_mul(factors: List[Expr]) -> Expr:
     for f in factors[1:]:
         expr = expr * f
     return expr
+
 
 class BinOp(Expr):
     """
@@ -770,7 +653,7 @@ class BinOp(Expr):
         else:
             raise Exception(f"operation {self.op} not implemented")
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
         Differentiation of this expression w.r.t var
         :param var: variable to differentiate with respect to
@@ -824,7 +707,7 @@ class BinOp(Expr):
                 return r
             if isinstance(r, Const) and r.value == 0:
                 return l
-            
+
         if self.op == "-":
             if isinstance(l, Const) and l.value == 0:
                 return -r
@@ -863,7 +746,7 @@ class BinOp(Expr):
 
                 for f in num_factors:
                     for g in new_den:
-                        if f.uid == g.uid:   # or f == g if structural equality
+                        if f.uid == g.uid:  # or f == g if structural equality
                             new_den.remove(g)
                             break
                     else:
@@ -875,7 +758,7 @@ class BinOp(Expr):
                 if isinstance(den_expr, Const) and den_expr.value == 1:
                     return num_expr
                 return BinOp(num_expr, '/', den_expr)
-                
+
         return BinOp(l, self.op, r)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -893,7 +776,7 @@ class BinOp(Expr):
 
     def __repr__(self) -> str:
         return self.__str__()
-    
+
     def __print__(self) -> str:
         return self.__str__()
 
@@ -955,7 +838,7 @@ class UnOp(Expr):
         else:
             raise Exception(f"Unknown operand {self.op}")
 
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
         """
 
         :param var:
@@ -1052,7 +935,7 @@ class Func(Expr):
         self.op: str = op
         self.arg: Expr = arg
 
-        self.fn : Callable[[NUMBER], NUMBER] = functions_dict[self.op]
+        self.fn: Callable[[NUMBER], NUMBER] = functions_dict[self.op]
         self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
 
     # --- evaluation ----------------------------------------------------------
@@ -1083,7 +966,7 @@ class Func(Expr):
         return d
 
     # --- differentiation (chain rule) ---------------------------------------
-    def _diff1(self, var: Var | str, dt:Var|None = None) -> "Expr":
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
         u = self.arg
         du = u._diff1(var, dt)
         if isinstance(du, Const) and du.value == 0:
@@ -1093,15 +976,15 @@ class Func(Expr):
                 return self.fnd(u, du)
             else:
                 raise Exception(f"No derivative defined for {self.op}")
-        
+
     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
         if self in mapping:
             return mapping[self]
         return Func(self.arg.subs(mapping), self.op)
-    
+
     def __str__(self) -> str:
         return f"{self.op}({self.arg})"
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -1316,7 +1199,7 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
 #         return f"{self.op}({self.arg})"
 #     def __repr__(self) -> str:
 #         return self.__str__()
-    
+
 functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "sin": sin_diff,
     "cos": cos_diff,
@@ -1604,6 +1487,7 @@ def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
         _collect_vars(e, res)
     return list(res)
 
+
 _OP_PRECEDENCE = {
     '+': 10,
     '-': 10,
@@ -1611,6 +1495,7 @@ _OP_PRECEDENCE = {
     '/': 20,
     '**': 30,
 }
+
 
 def _precedence(expr):
     if isinstance(expr, BinOp):
@@ -1622,6 +1507,7 @@ def _precedence(expr):
     if isinstance(expr, Func):
         return 50
     return 0
+
 
 def expression2numba(expr: Expr,
                      compiler_names_dict: Dict[int, str],
@@ -1674,6 +1560,7 @@ def expression2numba(expr: Expr,
         return f"({s})"
     else:
         return s
+
 
 # def expression2numba(expr: Expr,
 #                      compiler_names_dict: Dict[int, str]) -> str:
