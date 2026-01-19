@@ -4,11 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import sys
 from typing import List, Tuple, Dict
 from collections import defaultdict
 from PySide6.QtWidgets import (
-    QWidget, QDialog, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel,
+    QDialog, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel,
     QComboBox, QCheckBox, QTableWidget, QTableWidgetItem, QMessageBox,
     QPushButton, QHeaderView, QStyledItemDelegate, QSpinBox, QAbstractItemView
 )
@@ -40,7 +39,7 @@ class SpinBoxDelegate(QStyledItemDelegate):
         spinbox.setMaximum(self.maximum)
         return spinbox
 
-    def setEditorData(self, editor: QWidget, index: QModelIndex | QPersistentModelIndex):
+    def setEditorData(self, editor: QSpinBox, index: QModelIndex | QPersistentModelIndex):
         """
 
         :param editor:
@@ -52,7 +51,7 @@ class SpinBoxDelegate(QStyledItemDelegate):
         else:
             editor.setValue(self.minimum)
 
-    def setModelData(self, editor, model, index):
+    def setModelData(self, editor: QSpinBox, model, index):
         """
 
         :param editor:
@@ -81,7 +80,7 @@ class ComboBoxDelegate(QStyledItemDelegate):
         combo.addItems(self.items)
         return combo
 
-    def setEditorData(self, editor, index):
+    def setEditorData(self, editor: QComboBox, index: QModelIndex | QPersistentModelIndex):
         """
 
         :param editor:
@@ -93,7 +92,7 @@ class ComboBoxDelegate(QStyledItemDelegate):
         else:
             editor.setCurrentIndex(0)
 
-    def setModelData(self, editor, model, index):
+    def setModelData(self, editor: QComboBox, model, index):
         """
 
         :param editor:
@@ -108,7 +107,7 @@ class TableEntry:
     Table entry
     """
 
-    def __init__(self, device, bay: str, main_bar: str):
+    def __init__(self, device: str, bay: str, main_bar: str):
         self.device = device
         self.bay = bay
         self.main_bar = main_bar
@@ -181,7 +180,8 @@ class ReorderableTableWidget(QTableWidget):
     def move_row_down(self) -> None:
         """Move the selected row down by one position."""
         current_row = self.currentRow()
-        if current_row < self.rowCount() - 1 and current_row >= 0:
+        # if current_row < self.rowCount() - 1 and current_row >= 0:
+        if self.rowCount() - 1 > current_row >= 0:
             self._swap_rows(current_row, current_row + 1)
             self.selectRow(current_row + 1)
             if self._auto_update_bay_numbers:
@@ -275,14 +275,15 @@ class VoltageLevelConversionWizard(QDialog):
 
         # First row of checkboxes
         row1_layout = QHBoxLayout()
-        self.add_brakers_checkbox = QCheckBox("Use breakers")
-        self.add_brakers_checkbox.setChecked(True)
-        self.add_brakers_checkbox.setToolTip("If disabled, connections are made using branches instead of breakers")
-        row1_layout.addWidget(self.add_brakers_checkbox)
+        self.add_breakers_checkbox = QCheckBox("Use breakers")
+        self.add_breakers_checkbox.setChecked(True)
+        self.add_breakers_checkbox.setToolTip("If disabled, connections are made using branches instead of breakers")
+        row1_layout.addWidget(self.add_breakers_checkbox)
 
-        self.keep_original_ratio_checkbox = QCheckBox("Keep original ratio")
+        self.keep_original_ratio_checkbox = QCheckBox("Keep original rates")
         self.keep_original_ratio_checkbox.setChecked(False)
-        self.keep_original_ratio_checkbox.setToolTip("If enabled, breakers inherit the ratio of the original branch. Otherwise, 9999 is assigned")
+        self.keep_original_ratio_checkbox.setToolTip("If enabled, breakers inherit the rates "
+                                                     "of the original branch. Otherwise, 9999 is assigned")
         row1_layout.addWidget(self.keep_original_ratio_checkbox)
         row1_layout.addStretch()
         options_layout.addLayout(row1_layout)
@@ -411,10 +412,7 @@ class VoltageLevelConversionWizard(QDialog):
         self.table.setRowCount(n_positions)
 
         # Collect device names
-        dev_names = []
-        for elm in self.bus_branches + self.bus_injections:
-            dev_names.append(elm.name)
-        dev_names.append("(Spare)")  # Always allow spare as an option
+        dev_names: List[str] = list()
 
         # Fill data. For Breaker-and-a-Half, alternate bus assignments in pairs
         data: List[TableEntry] = list()
@@ -427,7 +425,12 @@ class VoltageLevelConversionWizard(QDialog):
             else:
                 bay_num = i + 1
                 assigned_bus = "JBP1"
-            data.append(TableEntry(elm.name, f"Bay{bay_num}", assigned_bus))
+
+            name = f"{elm.name} ({elm.device_type.value})"
+            data.append(TableEntry(name, f"Bay{bay_num}", assigned_bus))
+            dev_names.append(name)
+
+        dev_names.append("(Spare)")  # Always allow spare as an option
 
         # Apply delegates
         self.table.setItemDelegateForColumn(0, ComboBoxDelegate(dev_names, self.table))
@@ -606,9 +609,12 @@ class VoltageLevelConversionWizard(QDialog):
 
 
 # if __name__ == "__main__":
+#     import sys
+#     from PySide6.QtWidgets import QApplication
 #     import VeraGridEngine as vg
 #
-#     fname = "/home/santi/Documentos/Git/GitHub/VeraGrid_bkup/src/tests/data/grids/lynn5node.gridcal"
+#     # fname = "/home/santi/Documentos/Git/GitHub/VeraGrid_bkup/src/tests/data/grids/lynn5node.gridcal"
+#     fname = "/Users/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/Lynn 5 Bus pv.gridcal"
 #     _grid = vg.open_file(fname)
 #
 #     app = QApplication(sys.argv)
