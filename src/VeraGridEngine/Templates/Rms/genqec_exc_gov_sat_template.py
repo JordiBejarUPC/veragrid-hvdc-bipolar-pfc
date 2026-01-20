@@ -772,7 +772,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         event_dict=events_dict,
         init_eqs={
             Vf: inputs[0],
-            y_subexciter1: inputs[0] * (1 / sym.f_exc(inputs[0] * parameters["Kc"].value / y_subexciter1)),
+            y_subexciter1: inputs[0] * (1 / (inputs[0] * parameters["Kc"].value / y_subexciter1)),
             Ve: sym.hard_sat(y_subexciter1, VeMinPu, Const(1000)),
             Sx: (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold),
             VeMaxPu: (VfeMaxPu - inputs[0] * parameters["Kd"].value) / (

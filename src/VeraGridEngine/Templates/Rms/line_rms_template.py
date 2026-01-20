@@ -45,13 +45,13 @@ def get_line_rms_template(name="Line rms template") -> RmsModelTemplate:
         Pf - ((inputs[0] ** 2 * (R / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[0] * inputs[
             2] * cos(inputs[1] - inputs[3]) + (-X / (R ** 2 + X ** 2)) * inputs[0] * inputs[2] * cos(
             inputs[1] - inputs[3] + pi2)),
-        Qf - (inputs[0] ** 2 * (-(B) / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
+        Qf - (inputs[0] ** 2 * (-B / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
             0] * inputs[2] * sin(inputs[1] - inputs[3]) + (-X / (R ** 2 + X ** 2)) * inputs[0] * inputs[2] * sin(
             inputs[1] - inputs[3] + pi2)),
         Pt - ((inputs[2] ** 2 * (R / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[2] * inputs[
             0] * cos(inputs[3] - inputs[1]) + (-X / (R ** 2 + X ** 2)) * inputs[2] * inputs[0] * cos(
             inputs[3] - inputs[1] + pi2)),
-        Qt - (inputs[2] ** 2 * (-(B) / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
+        Qt - (inputs[2] ** 2 * (-B / 2 - (-X / (R ** 2 + X ** 2))) - (R / (R ** 2 + X ** 2)) * inputs[
             2] * inputs[0] * sin(inputs[3] - inputs[1]) + (-X / (R ** 2 + X ** 2)) * inputs[2] * inputs[0] * sin(
             inputs[3] - inputs[1] + pi2)),
     ]

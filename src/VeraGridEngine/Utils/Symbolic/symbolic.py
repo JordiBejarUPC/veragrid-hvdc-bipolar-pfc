@@ -85,7 +85,7 @@ class Expr:
         :return:
         """
         if vars_found is None:
-            vars_found = set()
+            vars_found = list()
 
         if isinstance(self, Var):
             if self not in vars_found:

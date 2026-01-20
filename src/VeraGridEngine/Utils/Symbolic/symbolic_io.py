@@ -102,11 +102,12 @@ def parse_vars_dict(data_list: List[Dict[str, Any]]) -> Dict[int, Var]:
 
 
 def parse_diff_var_dict(data_list: List[Dict[str, Any]],
-                        var_dict: Dict[int, Var]) -> Dict[int, Var | Const | DiffVar]:
+                        var_dict: Dict[int, Var], diff_var_dict: Dict[int, DiffVar]) -> Dict[int, Var | Const | DiffVar]:
     """
 
     :param data_list: 
     :param var_dict: dictionary of vars
+    :param diff_var_dict: dictionary of diffVars
     :return: 
     """
     obj_dict: Dict[int, Var | Const | DiffVar] = dict()
@@ -121,10 +122,17 @@ def parse_diff_var_dict(data_list: List[Dict[str, Any]],
                 "base_var": _expr_to_dict(expr=expr.base_var, obj_dict=obj_dict),
             })
         """
+        if data["base_var"] in var_dict.keys():
+            base_var = var_dict[data["base_var"]]
+        elif data["base_var"] in diff_var_dict.keys():
+            base_var = diff_var_dict[data["base_var"]]
+        else:
+            base_var = obj_dict[data["base_var"]]
+
 
         obj = DiffVar(name=data["name"],
                       uid=data["uid"],
-                      base_var=var_dict[data["base_var"]])
+                      base_var=base_var)
 
         # at this point we can store the object
         obj_dict[obj.uid] = obj
@@ -340,7 +348,7 @@ class BlockSaver:
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
         self.diff_var_dict: Dict[int, DiffVar] = dict()
-        self.blocks: List[Dict[str, Any]] = list()
+        self.blocks: Dict[int, Dict[str, Any]] = dict()
 
     def get_const_to_save(self) -> List[Dict[str, Any]]:
         """
@@ -363,7 +371,7 @@ class BlockSaver:
         """
         return symbolic_objects_to_dict(self.diff_var_dict)
 
-    def get_blocks(self) -> List[Dict[str, Any]]:
+    def get_blocks(self) -> Dict[int, Dict[str, Any]]:
         return self.blocks
 
     def save_block(self, blk: Block, store: bool = False) -> Dict[str, Any]:
@@ -400,8 +408,10 @@ class BlockSaver:
 
             # TODO: this signals a code small somewhere else
             found_var = self.var_dict.get(var.uid, None)
-            if found_var is None:
+
+            if found_var is None :
                 self.var_dict[var.uid] = var
+
 
             init_eq_list.append(
                 {
@@ -473,6 +483,11 @@ class BlockSaver:
 
             parameters.append({"var": var.uid, "value": value.value})
 
+        # diff_vars: List[DiffVar] = list()
+        for diff_var in blk.diff_vars:
+            if diff_var.uid not in self.diff_var_dict:
+                self.diff_var_dict[diff_var.uid] = diff_var
+
         d = {
             "uid": blk.uid,
 
@@ -508,13 +523,14 @@ class BlockSaver:
 
             "event_dict": events_list,
             "name": blk.name,
-            "children": [child.uid for child in blk.children],
+            "children": [self.save_block(child) for child in blk.children],
             "in_vars": in_vars,
             "out_vars": out_vars
         }
 
         if store:
-            self.blocks.append(d)
+            self.blocks[blk.uid] = d
+
 
         return d
 
@@ -549,7 +565,7 @@ class BlockParser:
         :param data:
         :return:
         """
-        self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict)
+        self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict, diff_var_dict=self.diff_var_dict)
 
     def parse_block(self, data: Dict[Any, Any]) -> Block:
         """
@@ -571,8 +587,10 @@ class BlockParser:
                                         const_dict=self.const_dict,
                                         var_dict=self.var_dict,
                                         diff_var_dict=self.diff_var_dict)
-
-        diff_vars = [self.diff_var_dict[v] for v in data["diff_vars"]]
+        if data["diff_vars"]:
+            diff_vars = [self.diff_var_dict[v] for v in data["diff_vars"]]
+        else:
+            diff_vars = []
 
         differential_eqs = parse_expr_list(lst=data["differential_eqs"],
                                            const_dict=self.const_dict,
@@ -583,7 +601,7 @@ class BlockParser:
 
         out_vars = [self.var_dict[v] for v in data["out_vars"]]
 
-        # children = [Block.parse(child) for child in data.get("children", [])]
+        children = [self.parse_block(child) for child in data["children"]]
 
         init_eqs: Dict[Var, Expr] = dict()
         for entry in data["init_eqs"]:
@@ -621,6 +639,13 @@ class BlockParser:
             key = ParamPowerFlowRefferenceType(key_str)
             api_obj_mapping[key] = self.var_dict[var_uid]
 
+        # # parse children
+        # for child_uid in data["children"]:
+        #     child_data = self.block_dict[child_uid]
+        #     child_block = self.parse_block(data=child_data)
+
+
+
         block = Block(
             state_vars=state_vars,
             state_eqs=state_eqs,
@@ -632,7 +657,7 @@ class BlockParser:
             out_vars=out_vars,
             init_eqs=init_eqs,
             event_dict=event_dict,
-            children=[],  # TODO think about this
+            children=children,  # TODO think about this
             parameters=parameters,
             init_values=init_values,
             external_mapping=external_mapping,
