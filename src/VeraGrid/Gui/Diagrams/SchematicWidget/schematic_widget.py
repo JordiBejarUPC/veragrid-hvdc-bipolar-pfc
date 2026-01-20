@@ -4800,7 +4800,7 @@ class SchematicWidget(BaseDiagramWidget):
                 grid=self.circuit,
                 bus=bus_graphics.api_object,
                 vl_type=vl_wizard.get_vl_type(),
-                add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
+                add_disconnectors=vl_wizard.add_breakers_checkbox.isChecked(),
                 bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked(),
                 skip_injections_reconnection=True,
                 enable_transfer_bus=vl_wizard.enable_transfer_bus_checkbox.isChecked(),
