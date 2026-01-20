@@ -1288,9 +1288,12 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 # power flow parameters
-                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.R]] = Const(self.api_object.R)
-                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.X]] = Const(self.api_object.X)
-                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.B]] = Const(self.api_object.B)
+
+
+
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(self.api_object.R / (self.api_object.R**2 + self.api_object.X**2)))
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-self.api_object.X / (self.api_object.R ** 2 + self.api_object.X ** 2)))
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(self.api_object.B)
 
 
         # Update label above the table

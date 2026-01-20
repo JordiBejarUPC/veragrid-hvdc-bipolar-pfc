@@ -58,6 +58,13 @@ def get_line_rms_template(name="Line rms template") -> RmsModelTemplate:
         VarPowerFlowRefferenceType.Qf: Qf,
         VarPowerFlowRefferenceType.Qt: Qt,
     }
+
+    templ.block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.g: g,
+        ParamPowerFlowRefferenceType.b: b,
+        ParamPowerFlowRefferenceType.bsh: bsh,
+           }
+
     templ.block.in_vars = inputs
 
     return templ

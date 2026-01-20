@@ -2489,9 +2489,9 @@ class ParamPowerFlowRefferenceType(Enum):
     ParamPowerFlowRefferenceType
     """
     NOTHING = "nothing"
-    R = "R"  # Branch resistance in per unit
-    X = "X"  # Branch reactance in per unit
-    B = "B"  # Branch shunt susceptance in per unit
+    g = "g"  # Branch resistance in per unit
+    b = "b"  # Branch reactance in per unit
+    bsh = "bsh"  # Branch shunt susceptance in per unit
 
     def __str__(self):
         return self.value
