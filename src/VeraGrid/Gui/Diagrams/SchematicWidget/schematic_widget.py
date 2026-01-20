@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING
 from collections.abc import Callable
+from collections import defaultdict
 from warnings import warn
 import networkx as nx
 import pyproj
@@ -5119,6 +5120,17 @@ List[FluidPath]]:
     all_branches = circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True)
     branch_dict = {b: i for i, b in enumerate(all_branches)}
 
+    # Build index of branches by bus for O(1) lookup instead of scanning all branches
+    # This changes the algorithm complexity from O(n*m) to O(n+m) where n=buses, m=branches
+    # Hence drawing voltage level conversions should be much faster, thus fixing REE complaints
+    branches_by_bus = defaultdict(list)
+    has_winding = False
+    for br in all_branches:
+        branches_by_bus[br.bus_from].append(br)
+        branches_by_bus[br.bus_to].append(br)
+        if isinstance(br, Winding):
+            has_winding = True
+
     # create a pool of buses
     bus_pool = [(b, 0) for b in buses]  # store the bus objects and their level from the root
 
@@ -5134,7 +5146,8 @@ List[FluidPath]]:
     fluid_nodes = set()
     selected_branches = set()
     visited = set()
-    max_level_offset = 0
+    # If there are windings, we need an extra level to represent whole 3-winding transformers
+    max_level_offset = 1 if has_winding else 0
 
     while len(bus_pool) > 0:
 
@@ -5149,31 +5162,20 @@ List[FluidPath]]:
 
         if level < (max_level + max_level_offset):
 
-            for i, br in enumerate(all_branches):
+            # Use the built index for O(1) lookup of branches connected to this bus
+            for br in branches_by_bus.get(bus, []):
 
-                if isinstance(br, Winding):
-                    # if we find a winding, we need to add 1 extra search level
-                    # to be able to represent the whole 3-winding transformer
-                    max_level_offset = 1
+                # Always add the branch if connected to current bus
+                selected_branches.add(br)
 
+                # Determine the other bus and add if not visited
                 if br.bus_from == bus:
-                    # Always add the branch if connected to current bus
-                    selected_branches.add(br)
-                    # Only add the other bus to pool if not visited
-                    if br.bus_to not in visited:
-                        bus_pool.append((br.bus_to, level + 1))
-                        visited.add(br.bus_to)
-
-                elif br.bus_to == bus:
-                    # Always add the branch if connected to current bus
-                    selected_branches.add(br)
-                    # Only add the other bus to pool if not visited
-                    if br.bus_from not in visited:
-                        bus_pool.append((br.bus_from, level + 1))
-                        visited.add(br.bus_from)
-
+                    other_bus = br.bus_to
                 else:
-                    pass
+                    other_bus = br.bus_from
+                if other_bus not in visited:
+                    bus_pool.append((other_bus, level + 1))
+                    visited.add(other_bus)
 
     # sort Branches
     lines: List[Line] = list()
