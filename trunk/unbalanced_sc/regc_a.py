@@ -104,10 +104,10 @@ def regc_a(Qgen0,
 
 
 id_ref, iq_ref = regc_a(Qgen0=0.0,
-                        Iqcmd=0.05,
-                        Vt=0.93,
+                        Iqcmd=1.0679151999999998,
+                        Vt=0.4219674,
                         Lvplsw0=9999.0,
-                        Ipcmd=1.08)
+                        Ipcmd=0.7413212027245413)
 
 print('\nid_ref =', id_ref)
 print('\niq_ref =', iq_ref)

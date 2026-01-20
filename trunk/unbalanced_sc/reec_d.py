@@ -175,17 +175,6 @@ def vdl(x, points):
     # Linear interpolation
     return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
 
-
-def freeze_iq_after_dip(Voltage_Dip, Iq_frz, y_in):
-
-    if Voltage_Dip == 0.0:
-        Iq_unlim = y_in
-    else:
-        Iq_unlim = Iq_frz
-
-    return Iq_unlim
-
-
 def reec_d(ur,
            ui,
            u,
@@ -196,7 +185,10 @@ def reec_d(ur,
            Qext,
            Vref1,
            Pref,
-           Pref_out):
+           Pref_out,
+           Iq_unlim_0,
+           Ip_unlim_0,
+           ):
 
     Vt = u              # Input 0
     Vt_r = ur           # Input 1
@@ -208,7 +200,6 @@ def reec_d(ur,
     Pe = p              # Input 7
     Qext = Qext         # Input 8
     Qgen = q            # Input 9
-    p_flag = 1.0        # Input 10
     Paux = Paux         # Input 11
     Speed = 1.0         # Input 12
     Pref = Pref         # Input 13
@@ -259,9 +250,7 @@ def reec_d(ur,
     oarray_vdlp = [(1.10, 1.10), (1.15, 1.00), (1.30, 0.00)]
     vdlp = vdl(Vt, oarray_vdlp)
 
-    Iq_unlim, Ip_unlim = 0.05269481, 1.075758 # TO CALCULATE FIRST
-
-    iqmin, iqmax, i_in1, i_in = current_limit_logic(Iq_unlim, vdlq, vdlp, Ip_unlim, is_blocked)
+    iqmin, iqmax, i_in1, i_in = current_limit_logic(Iq_unlim_0, vdlq, vdlp, Ip_unlim_0, is_blocked)
 
     yi5, freeze_up_sig, freeze_low_sig = pi_freeze_signals_steady(freeze_Voltage_Dip, yi4, iqmin, iqmax)
 
@@ -271,9 +260,7 @@ def reec_d(ur,
     else:
         o5 = yi8
 
-    y_in = Iqinj + o5
-
-    Iq_unlim = freeze_iq_after_dip(Voltage_Dip, Iq_frz, y_in)
+    Iq_unlim = Iqinj + o5
 
     Iqcmd = max(min(Iq_unlim, iqmax), iqmin)
 
@@ -285,19 +272,108 @@ def reec_d(ur,
 
     dPmin = -2.0 # Ramp rate on power reference in [pu/s]
     dPmax = 2.0  # Ramp rate on power reference in [pu/s]
-    Iqcmd = max(min(yi13, dPmax), dPmin)
+    o6 = max(min(yi13, dPmax), dPmin)
 
-    return Iqcmd, Ipcmd, is_blocked
+    yi11 = Speed * o6
+
+    PFlag = 1.0
+    if PFlag > 0.0:
+        yi10 = yi11
+    else:
+        yi10 = o6
+
+    Pmin, Pmax = 0, 1 # Minimum and Maximum power reference in [pu]
+    Pord = max(min(yi10, Pmax), Pmin)
+
+    o12 = Paux + Pord
+
+    o7 = max(Vt, 0.01)
+
+    Ip_unlim = o12 / o7
+
+    Ipcmd = max(min(Ip_unlim, i_in), i_in1)
+
+    return Iqcmd, Ipcmd, is_blocked, Iq_unlim, Ip_unlim
 
 
-Iqcmd, Ipcmd, is_blocked = reec_d(ur=0.9097126,
-                                  ui=-0.1911462,
-                                  u=0.9295773,
-                                  q=0.1699287,
-                                  p=3.264566,
-                                  Paux=0.0,
-                                  PFAref=0.0,
-                                  Qext=0.0,
-                                  Vref1=0.0,
-                                  Pref=1.0,
-                                  Pref_out=1.0)
+Iq_unlim_0 = 0.0
+Ip_unlim_0 = 1.3
+Iq_error = 1
+Ip_error = 1
+
+while Iq_error > 1e-4 or Ip_error > 1e-4:
+
+    Iqcmd, Ipcmd, is_blocked, Iq_unlim, Ip_unlim = reec_d(ur=-0.1520085,
+                                                          ui=-0.3936368,
+                                                          u=0.4219674,
+                                                          q=0.4506251,
+                                                          p=0.00124213,
+                                                          Paux=0.0,
+                                                          PFAref=0.0,
+                                                          Qext=0.0,
+                                                          Vref1=0.0,
+                                                          Pref=1.0,
+                                                          Pref_out=0.5,
+                                                          Iq_unlim_0=Iq_unlim_0,
+                                                          Ip_unlim_0=Ip_unlim_0)
+
+    Iq_error = abs(Iq_unlim - Iq_unlim_0)
+    Ip_error = abs(Ip_unlim - Ip_unlim_0)
+
+    print('\n', Iq_error, ' ', Ip_error)
+
+    Iq_unlim_0 = Iq_unlim
+    Ip_unlim_0 = Ip_unlim
+
+
+print('\nIqcmd =', Iqcmd)
+print('Ipcmd =', Ipcmd)
+
+
+
+# Rf = 25
+# Iqcmd, Ipcmd, is_blocked, Iq_unlim, Ip_unlim = reec_d(ur=0.7396268,
+#                                                       ui=-0.2865623,
+#                                                       u=0.7931997,
+#                                                       q=0.6769068,
+#                                                       p=3.965501,
+#                                                       Paux=0.0,
+#                                                       PFAref=0.0,
+#                                                       Qext=0.0,
+#                                                       Vref1=0.0,
+#                                                       Pref=1.0,
+#                                                       Pref_out=1.0,
+#                                                       Iq_unlim_0=Iq_unlim_0,
+#                                                       Ip_unlim_0=Ip_unlim_0)
+
+
+# Rf = 50
+# Iqcmd, Ipcmd, is_blocked, Iq_unlim, Ip_unlim = reec_d(ur=0.9097126,
+#                                                       ui=-0.1911462,
+#                                                       u=0.9295773,
+#                                                       q=0.1699287,
+#                                                       p=3.264566,
+#                                                       Paux=0.0,
+#                                                       PFAref=0.0,
+#                                                       Qext=0.0,
+#                                                       Vref1=0.0,
+#                                                       Pref=1.0,
+#                                                       Pref_out=1.0,
+#                                                       Iq_unlim_0=Iq_unlim_0,
+#                                                       Ip_unlim_0=Ip_unlim_0)
+
+
+# Rf = 75
+# Iqcmd, Ipcmd, is_blocked, Iq_unlim, Ip_unlim = reec_d(ur=0.9592676,
+#                                                       ui=-0.1253987,
+#                                                       u=0.9674292,
+#                                                       q=0.04515313,
+#                                                       p=2.680939,
+#                                                       Paux=0.0,
+#                                                       PFAref=0.0,
+#                                                       Qext=0.0,
+#                                                       Vref1=0.0,
+#                                                       Pref=1.0,
+#                                                       Pref_out=1.0,
+#                                                       Iq_unlim_0=Iq_unlim_0,
+#                                                       Ip_unlim_0=Ip_unlim_0)
