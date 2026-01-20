@@ -28,14 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactor block save parse">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merging var and basevar">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/line_rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/enumerations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="147_86_Dynamic_simulations_V1_DiffBlock_comp_optim" />
+        <entry key="$PROJECT_DIR$" value="147_86_Dynamic_simulations_V1_DiffBlock" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -235,7 +230,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
+    "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock__rms__engine",
     "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/trunk/dynamics",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -1888,7 +1883,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="643" />
+    <option name="localTasksCounter" value="645" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1934,8 +1929,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.5.1" />
-    <MESSAGE value="Improved BlockSolver compilation" />
     <MESSAGE value="more improvements to the block solver" />
     <MESSAGE value="Fixed test" />
     <MESSAGE value="icon crazyness" />
@@ -1959,7 +1952,9 @@
     <MESSAGE value="kundur working and events working again" />
     <MESSAGE value="init algorithm small change" />
     <MESSAGE value="refactor block save parse" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactor block save parse" />
+    <MESSAGE value="changed line params back to g, b, bsh" />
+    <MESSAGE value="merging var and basevar" />
+    <option name="LAST_COMMIT_MESSAGE" value="merging var and basevar" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2300,7 +2295,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
-          <line>1540</line>
+          <line>1571</line>
           <option name="timeStamp" value="3086" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2314,18 +2309,13 @@
           <option name="timeStamp" value="3109" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py</url>
-          <line>2257</line>
-          <option name="timeStamp" value="3123" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/multi_circuit.py</url>
           <line>2897</line>
           <option name="timeStamp" value="3136" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic.py</url>
-          <line>1216</line>
+          <line>1259</line>
           <option name="timeStamp" value="3261" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
