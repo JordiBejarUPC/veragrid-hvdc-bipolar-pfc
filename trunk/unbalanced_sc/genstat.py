@@ -1,6 +1,6 @@
 import numpy as np
 
-def genstat(ur, ui, iq_ref, id_ref):
+def genstat(ur, ui, iq_ref, id_ref, Sn):
 
     u1 = ur + 1j * ui
 
@@ -11,15 +11,16 @@ def genstat(ur, ui, iq_ref, id_ref):
 
     s1 = u1 * np.conj(i1)
 
-    Pref = np.real(s1) * 2  # MW
-    Qref = np.imag(s1) * 2  # MVAr
+    Pref = np.real(s1) * Sn  # MW
+    Qref = np.imag(s1) * Sn  # MVAr
 
     return Pref, Qref
 
-Pref, Qref = genstat(ur = -0.1520085,
-                     ui = -0.3936368,
-                     iq_ref = -1.067915,
-                     id_ref = 0.00294366)
+Pref, Qref = genstat(ur = 0.3961233,
+                     ui = -0.7321879,
+                     iq_ref = -0.2469015,
+                     id_ref = 1.1,
+                     Sn = 2)
 
 print('\nP_ref =', Pref, 'MW')
 print('Q_ref =', Qref, 'MVAr')
