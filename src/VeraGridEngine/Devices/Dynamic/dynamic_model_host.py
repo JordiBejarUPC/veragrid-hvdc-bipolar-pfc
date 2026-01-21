@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import uuid
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import DeviceType
 
 
@@ -334,7 +335,7 @@ class DynamicModelHost(EditableDevice):
         # prop template is a pointer and prop model is a copy
         if isinstance(val, Block):
             self._template = val
-            self._model = val.copy()
+            self._model = block_deep_copy(val)
         elif val is None:
             self._template = None
         else:
@@ -462,6 +463,6 @@ class DynamicModelHost(EditableDevice):
             idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
             code=self.code
         )
-        obj._model = self._model.copy()
+        obj._model = block_deep_copy(self._model)
         obj._template = self._template
         return obj
