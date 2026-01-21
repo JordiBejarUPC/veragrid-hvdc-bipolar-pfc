@@ -10,6 +10,7 @@ import uuid
 import numba as nb
 import math
 import scipy.sparse as sp
+import concurrent.futures
 import time
 import matplotlib.pyplot as plt
 from scipy.sparse.linalg import gmres
@@ -28,27 +29,61 @@ from VeraGridEngine.basic_structures import Vec, IntVec
 def _tic():
     return time.perf_counter()
 
+
 def _toc(t0):
     return time.perf_counter() - t0
+
 
 # -----------------------------------------------------------------------------
 # UUID helper
 # -----------------------------------------------------------------------------
 
+def compile_jac_block(block_id, block_eqs, block_offsets, used_vars_count,
+                      compiler_names_dict, alias_names_dict, namespace, use_jit):
+    fname = f"jac_block_{block_id}"
+    src = f"def {fname}(vars, diff, event_params, params, out):\n"
+    final_names_dict = {}
+    for uid, count in used_vars_count.items():
+        if count > 1:
+            final_names_dict[uid] = alias_names_dict[uid]
+            src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+        else:
+            final_names_dict[uid] = compiler_names_dict[uid]
+
+    offset = block_offsets[block_id]
+    for i, e in enumerate(block_eqs):
+        src += f"    out[{offset + i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
+
+    exec(src, namespace)
+
+    if use_jit:
+        func = nb.njit(
+            nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+            fastmath=True,
+            cache=False
+        )(namespace[fname])
+    else:
+        func = namespace[fname]
+
+    return block_id, func
+
+
 class SymbolicJacobian:
     """
-    Class to store and evaluate a symbolic jacobian
-    """
+       Class to store and evaluate a symbolic jacobian
+       """
 
     def __init__(self,
-                 eqs: List[Expr],
-                 variables: List[Var],
-                 diff_variables: List[DiffVar],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 uid2idx_vars: Dict[int, int],
-                 dt: Var = Const(0.001),
-                 use_jit: bool = True):
+                 eqs: list,
+                 variables: list,
+                 diff_variables: list,
+                 compiler_names_dict: dict,
+                 alias_names_dict: dict,
+                 uid2idx_vars: dict,
+                 dt=None,
+                 use_jit=True,
+                 batch_size=500,
+                 n_jobs=4):  # número de threads para compilación paralela
 
         """
                 JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
@@ -58,35 +93,34 @@ class SymbolicJacobian:
                 :param uid2sym_params:
                 :param use_jit: if true, the function is compiled by numba
                 :return:
-                        jac_fn : callable(values: Vec, params: Vec) -> scipy.sparse.csc_matrix
+                        jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
                             Fast evaluator in which *values* is a 1‑D NumPy vector of length
                             ``len(variables)``and *params* is a 1‑D NumPy vector of length
                             ``len(parameters)``
-                        sparsity_pattern : tuple(Vec, Vec)
+                        sparsity_pattern : tuple(np.ndarray, np.ndarray)
                             Row/col indices of structurally non‑zero entries.
                 """
+        if dt is None:
+            dt = Const(0.001)
 
-
+        # --- Build triplets and count variable usage ---------------------------------
         used_vars_count = defaultdict(int)
+        triplets = []
 
-        triplets: List[Tuple[int, int, Callable]] = []
         for row, eq in enumerate(eqs):
             for col, var in enumerate(variables):
                 d_expression = eq.diff(var, dt=dt)
                 if not (isinstance(d_expression, Const) and d_expression.value == 0):
                     triplets.append((col, row, d_expression))
-
                 for v in d_expression.get_vars():
                     used_vars_count[v.uid] += 1
 
-
         triplets.sort(key=lambda t: (t[0], t[1]))
         cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-        # Assemble the jacobian structure
+
+        # --- Assemble sparse CSC Jacobian structure ---------------------------------
         nnz = len(cols_sorted)
-
         indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
-
         indptr = np.zeros(len(variables) + 1, dtype=np.int32)
         for c in cols_sorted:
             indptr[c + 1] += 1
@@ -94,53 +128,43 @@ class SymbolicJacobian:
 
         self.nvar = len(variables)
         neq = len(eqs)
-
         self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
 
-        # --- codegen -------------------------------------------------------------
+        # --- Batch compilation ------------------------------------------------------
+        self.namespace: Dict[str, Any] = {
+            "math": math,
+            "np": np,
+            "nb": nb,
+            "_heaviside": _heaviside,
+        }
 
-        self.namespace: Dict[str, Any] = { "math": math, "np": np, "nb": nb, "_heaviside": _heaviside, }
-        final_names_dict: Dict[int, str] = {}
+        blocks = [
+            equations_sorted[i:i + batch_size]
+            for i in range(0, len(equations_sorted), batch_size)
+        ]
+        self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
+        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
 
-        fname = "jac"
-        src = f"def {fname}(vars, diff, event_params, params, out):\n"
-        for uid, count in used_vars_count.items():
-            if count > 1:
-                final_names_dict[uid] = alias_names_dict[uid]
-                src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-            else:
-                final_names_dict[uid] = compiler_names_dict[uid]
+        # --- Compile blocks in parallel ---------------------------------------------
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            futures = [
+                executor.submit(
+                    compile_jac_block,
+                    i, block, self.block_offsets, used_vars_count,
+                    compiler_names_dict, alias_names_dict,
+                    self.namespace, use_jit
+                )
+                for i, block in enumerate(blocks)
+            ]
+            for f in concurrent.futures.as_completed(futures):
+                block_id, func = f.result()
+                self.funcs[block_id] = func
 
-        for i, e in enumerate(equations_sorted):
-            src += f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
-        exec(src, self.namespace)
-
-        start_time = time.time()
-        if use_jit:
-            # compile with numba
-            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = nb.njit(nb.void(nb.float64[:],  nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
-        else:
-            # just pick the python pointer from the namespace
-            self.func : Callable[[Vec, Vec, Vec, Vec, Vec], None] = self.namespace[fname]
-        end_time = time.time()
-        
-        print(f"Jacobian source compile time: {end_time - start_time} seconds") 
-
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, h:float) -> csc_matrix:
-        """
-        Update the jacobian data
-        :param values:
-        :param diff:
-        :param params:
-        :return: Updated jacobian structure
-        """
-        # assert len(values) >= self.nvar
-
-        # note: J.data is passed into the function and gets filled. This way we avoid new memory allocation
-        event_params[-2] = h  # dt
-        self.func(values, diff_values, event_params, params, self.J.data)
-
+    def __call__(self, values, diff_values, event_params, params, h: float):
+        event_params[-2] = h
+        for func in self.funcs:
+            if func is not None:
+                func(values, diff_values, event_params, params, self.J.data)
         return self.J
 
 
@@ -151,7 +175,7 @@ class SymbolicVector:
 
     def __init__(self, eqs: Sequence[Expr],
                  compiler_names_dict: Dict[int, str],
-                 alias_names_dict:  Dict[int, str],
+                 alias_names_dict: Dict[int, str],
                  use_jit: bool = True):
         """
         Compile the array of expressions to a function that returns an array of values for those expressions
@@ -160,7 +184,7 @@ class SymbolicVector:
         :param uid2sym_params:
         :return: Function pointer that returns an array
         """
-        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None]| None = None
+        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None] | None = None
         used_vars_count = defaultdict(int)
         for eq in eqs:
             for var in eq.get_vars():
@@ -270,7 +294,7 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, events_param:Vec, glob_time: Vec) -> Vec:
+    def __call__(self, events_param: Vec, glob_time: Vec) -> Vec:
         """
         Call the compiled function
         :param glob_time:
@@ -280,12 +304,13 @@ class SymbolicParamsVector:
             self.func(events_param, glob_time, self.data)
         return self.data
 
+
 class SymbolicDerivative:
     """
     SymbolicFunction
     """
 
-    def __init__(self, 
+    def __init__(self,
                  vars: Sequence[Var],
                  uid2idx_vars: Dict[int, int],
                  diff_vars: Sequence[DiffVar],
@@ -341,7 +366,6 @@ class SymbolicDerivative:
         """
         self.func(x, xn, dx, h, self.data)
         return self.data
-
 
 
 def _new_uid() -> int:
@@ -494,7 +518,7 @@ class BlockSolver:
         self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_params: Dict[int, int] = dict()
         self.uid2idx_diff: Dict[int, int] = dict()
-        #self.uid2idx_lag: Dict[int, int] = dict()
+        # self.uid2idx_lag: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
 
         i = 0
@@ -586,7 +610,6 @@ class BlockSolver:
         )
         timings["SymbolicDerivative"] = _toc(t0)
 
-
         t0 = _tic()
         self._rhs_algeb_fn = SymbolicVector(
             eqs=self._algebraic_eqs,
@@ -595,7 +618,6 @@ class BlockSolver:
         )
         timings["RHS algebraic"] = _toc(t0)
 
-
         t0 = _tic()
         self._event_params_fn = SymbolicParamsVector(
             eqs=self._event_parameters_eqs,
@@ -603,7 +625,6 @@ class BlockSolver:
             alias_names_dict=self.alias_names_dict,
         )
         timings["Event parameters"] = _toc(t0)
-
 
         if len(self._state_eqs) != 0:
 
@@ -699,7 +720,11 @@ class BlockSolver:
     @property
     def algebraic_vars(self):
         return self._algebraic_vars
-    
+
+    @property
+    def diff_vars(self):
+        return self._diff_vars
+
     def get_var_idx(self, v: Var) -> int:
         """
 
@@ -777,7 +802,7 @@ class BlockSolver:
                             dx_dt, lag = diff_var.approximation_expr(dt=dt, lag_can_be_0=False)
                             d_expression = d_expression.subs({diff_var: dx_dt / self.delta})
                             new_lag = LagVar(diff_var.origin_var.name + '_lag_' + str(lag),
-                                                           base_var=diff_var.origin_var, lag=lag)
+                                             base_var=diff_var.origin_var, lag=lag)
                             i = len(self.uid2idx_vars)
                             l = len(self.uid2idx_lag)
                             if new_lag not in self._lag_vars_set:
@@ -847,8 +872,8 @@ class BlockSolver:
 
         else:
             return f_algeb
-        
-    def rhs_implicit(self, x: Vec, dx:Vec, xn: Vec, event_params: Vec, params: Vec, sim_step, h: float) -> Vec:
+
+    def rhs_implicit(self, x: Vec, dx: Vec, xn: Vec, event_params: Vec, params: Vec, sim_step, h: float) -> Vec:
         """
         Return 𝑑x/dt given the current *state* vector.
         :param x: get the right-hand-side give a state vector
@@ -884,7 +909,6 @@ class BlockSolver:
             return np.r_[f_state, f_algeb]
         else:
             return f_algeb
-
 
     def jacobian_implicit(self, x: Vec, dx: Vec, event_params: Vec, params: Vec, h: float) -> sp.csc_matrix:
         """
@@ -1044,7 +1068,6 @@ class BlockSolver:
 
         return x
 
-
     def build_initial_guess(self, x0: Vec, dx0: Vec, h) -> Vec:
         res = x0.copy()
         for diff_var in self._diff_vars:
@@ -1096,13 +1119,13 @@ class BlockSolver:
             return self._simulate_implicit_euler_diff(
                 t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, params0=params0,
                 max_iter=newton_max_iter, verbose=verbose,
-                followed_vars=followed_vars, 
+                followed_vars=followed_vars,
             )
 
         else:
             raise ValueError(f"Unknown method '{method}'")
 
-    def _simulate_implicit_euler_diff(self, t0:float, t_end:float, h:float, x0:Vec, dx0:Vec, params0: Vec,
+    def _simulate_implicit_euler_diff(self, t0: float, t_end: float, h: float, x0: Vec, dx0: Vec, params0: Vec,
                                       max_iter=1e6, verbose=False, followed_vars=None):
         """
         :param t0:
@@ -1172,7 +1195,6 @@ class BlockSolver:
                 if discontinuity:
                     tol = 1e-8
                     max_iter = 5e5
-
 
                 params_current = np.asarray(params_current, dtype=np.float64)
                 # ---------------- rhs calculation ----------------
@@ -1278,7 +1300,7 @@ class BlockSolver:
                     y[step_idx + 1] = x_new
                 t[step_idx + 1] = t[step_idx] + h
 
-                dx_last = dx.copy() 
+                dx_last = dx.copy()
                 lag_update_end = time.time()
                 timings["lag_update_time"] += lag_update_end - lag_update_start
 
@@ -1345,7 +1367,7 @@ class BlockSolver:
             indexed consistently with `self._diff_vars`.
         """
         res = np.zeros(len(self._diff_vars))
-        #TODO: implement for higher order diff vars
+        # TODO: implement for higher order diff vars
         for diff_var in self._diff_vars:
             uid_diff_var = diff_var.uid
             uid_var = diff_var.base_var.uid
@@ -1730,41 +1752,40 @@ class BlockSolver:
             self._diff_eq_index.append(i)
 
         self._rhs_feasible = self.rhs_implicit
-        self._Jf_feasible  = self.jacobian_implicit
+        self._Jf_feasible = self.jacobian_implicit
 
-        #TODO: adapt to explicit DAE systems
-        def rhs_predictor(x_new:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+        # TODO: adapt to explicit DAE systems
+        def rhs_predictor(x_new: Vec, x_old: Vec, dx: Vec, params: Vec, event_params: Vec, h: float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
             rhs = self._rhs_predictor(x_old, x_old, dx, params, event_params, h)
             return rhs
 
-        def Jf_predictor(x_new:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+        def Jf_predictor(x_new: Vec, x_old: Vec, dx: Vec, params: Vec, event_params: Vec, h: float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
             Jf = self._Jf_predictor(x_old, x_old, dx, params, event_params, h) * (1 / h)
             return Jf
 
-        def rhs_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+        def rhs_corrector(x_new: Vec, x_predicted: Vec, x_old: Vec, dx: Vec, params: Vec, event_params: Vec, h: float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
-            x_mid = (x_predicted + x_old)/2
+            x_mid = (x_predicted + x_old) / 2
             rhs = self._rhs_predictor(x_mid, x_mid, dx, params, event_params, h)
             return rhs
 
-        def Jf_corrector(x_new:Vec, x_predicted:Vec, x_old:Vec, dx:Vec, params:Vec, event_params:Vec, h:float):
+        def Jf_corrector(x_new: Vec, x_predicted: Vec, x_old: Vec, dx: Vec, params: Vec, event_params: Vec, h: float):
             dx = self._derivative_fn(x_new, x_old, dx, h)
-            x_mid = (x_predicted + x_old)/2
+            x_mid = (x_predicted + x_old) / 2
             Jf = self._Jf_predictor(x_mid, x_mid, dx, params, event_params, h) * (1 / h)
             return Jf
 
-        def rhs_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
+        def rhs_feasible(x: Vec, params: Vec, event_params: Vec, h: float):
             dx = np.zeros(self._n_diff)
             Jf = self._rhs_predictor(x, x, dx, params, event_params, h)[self._diff_eq_index]
             return Jf
 
-        def Jf_feasible(x:Vec, params:Vec, event_params:Vec, h:float):
-            dx = 0*np.zeros(self._n_diff)
+        def Jf_feasible(x: Vec, params: Vec, event_params: Vec, h: float):
+            dx = 0 * np.zeros(self._n_diff)
             Jf = self._j22_fn(x, x, dx, params, event_params, h)[self._diff_eq_index]
             return Jf
-
 
         self.rhs_predictor = rhs_predictor
         self.Jf_predictor = Jf_predictor

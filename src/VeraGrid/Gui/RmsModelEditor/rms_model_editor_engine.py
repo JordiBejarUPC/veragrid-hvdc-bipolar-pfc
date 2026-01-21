@@ -47,7 +47,7 @@ from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -1111,88 +1111,183 @@ class DiagramScene(QGraphicsScene):
         else:
             super().mouseReleaseEvent(event)
 
+class BaseLibraryModel(QStandardItemModel):
+    """
+    Modelo base para librerías de bloques arrastrables
+    """
 
-class DynamicLibraryModel(QStandardItemModel):
-    """
-    Items model to host the draggable icons
-    This is the list of draggable items
-    """
+    MIME_TYPE = "component/name"
 
     def __init__(self) -> None:
-        """
-        Items model to host the draggable icons
-        """
-        QStandardItemModel.__init__(self)
-
+        super().__init__()
         self.setColumnCount(1)
+        self.mime_dict: dict[QByteArray, BlockType] = {}
 
-        self.mime_dict: Dict[object, BlockType] = dict()
+    def add(self, bt: BlockType, icon_name: str):
+        icon = QIcon(f":/Icons/icons/{icon_name}.png")
+        item = QStandardItem(icon, bt.name)
+        item.setToolTip(f"Drag & drop {bt.name}")
+        item.setFlags(
+            Qt.ItemFlag.ItemIsEnabled |
+            Qt.ItemFlag.ItemIsSelectable |
+            Qt.ItemFlag.ItemIsDragEnabled
+        )
+        self.appendRow(item)
 
-        for bt in BlockType:
-            self.add(name=bt.name, icon_name="dyn")
-            t = self.to_bytes_array(bt.name)
-            self.mime_dict[t] = bt
+        data = self.to_bytes_array(bt.name)
+        self.mime_dict[data] = bt
 
-    def get_type(self, t) -> BlockType | None:
-        """
+    def mimeData(self, idxs: list[QModelIndex]) -> QMimeData:
+        mimedata = QMimeData()
+        for idx in idxs:
+            if idx.isValid():
+                txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
+                data = self.to_bytes_array(txt)
+                mimedata.setData(self.MIME_TYPE, data)
+        return mimedata
 
-        :param t:
-        :return:
-        """
-
-        return self.mime_dict.get(t, None)
-
-    def add(self, name: str, icon_name: str):
-        """
-        Add element to the library
-        :param name: Name of the element
-        :param icon_name: Icon name, the path is taken care of
-        :return:
-        """
-        _icon = QIcon()
-        _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
-        _item = QStandardItem(_icon, name)
-        _item.setToolTip(f"Drag & drop {name} into the schematic")
-        self.appendRow(_item)
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        return (
+            Qt.ItemFlag.ItemIsEnabled |
+            Qt.ItemFlag.ItemIsSelectable |
+            Qt.ItemFlag.ItemIsDragEnabled
+        )
 
     @staticmethod
     def to_bytes_array(val: str) -> QByteArray:
-        """
-        Convert string to QByteArray
-        :param val: string
-        :return: QByteArray
-        """
         data = QByteArray()
         stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream.writeQString(val)
         return data
 
-    def mimeData(self, idxs: List[QModelIndex]) -> QMimeData:
-        """
+    def get_type(self, t: QByteArray) -> BlockType | None:
+        return self.mime_dict.get(t)
 
-        @param idxs:
-        @return:
-        """
-        mimedata = QMimeData()
-        for idx in idxs:
-            if idx.isValid():
-                txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
+class MathLibraryModel(BaseLibraryModel):
+    MIME_TYPE = "component/math"
 
-                data = QByteArray()
-                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
-                stream.writeQString(txt)
+    models: list[BlockType] = [
+        BlockType.CONST,
+        BlockType.GAIN,
+        BlockType.SUM,
+        BlockType.SUBSTR,
+        BlockType.PRODUCT,
+        BlockType.DIVIDE,
+        BlockType.ABS,
+    ]
 
-                mimedata.setData('component/name', data)
-        return mimedata
+    def __init__(self):
+        super().__init__()
+        for bt in self.models:
+            self.add(bt, "dyn")
 
-    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
-        """
 
-        :param index:
-        :return:
-        """
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
+class DevLibraryModel(BaseLibraryModel):
+    MIME_TYPE = "component/dev"
 
+    models: list[BlockType] = [
+        BlockType.GENRAW,
+        BlockType.GENQEC,
+        BlockType.GOV,
+        BlockType.STAB,
+        BlockType.EXCITER,
+        BlockType.LINE,
+        BlockType.LOAD,
+        BlockType.GENERIC,
+        BlockType.BUS_CONNECTION,
+        BlockType.EXTERNAL_MAPPING,
+    ]
+
+    def __init__(self):
+        super().__init__()
+        for bt in self.models:
+            self.add(bt, "dyn")
+
+
+
+
+
+# class DynamicLibraryModel(QStandardItemModel):
+#     """
+#     Items model to host the draggable icons
+#     This is the list of draggable items
+#     """
+#
+#     def __init__(self) -> None:
+#         """
+#         Items model to host the draggable icons
+#         """
+#         QStandardItemModel.__init__(self)
+#
+#         self.setColumnCount(1)
+#
+#         self.mime_dict: Dict[object, BlockType] = dict()
+#
+#         for bt in BlockType:
+#             self.add(name=bt.name, icon_name="dyn")
+#             t = self.to_bytes_array(bt.name)
+#             self.mime_dict[t] = bt
+#
+#     def get_type(self, t) -> BlockType | None:
+#         """
+#
+#         :param t:
+#         :return:
+#         """
+#
+#         return self.mime_dict.get(t, None)
+#
+#     def add(self, name: str, icon_name: str):
+#         """
+#         Add element to the library
+#         :param name: Name of the element
+#         :param icon_name: Icon name, the path is taken care of
+#         :return:
+#         """
+#         _icon = QIcon()
+#         _icon.addPixmap(QPixmap(f":/Icons/icons/{icon_name}.png"))
+#         _item = QStandardItem(_icon, name)
+#         _item.setToolTip(f"Drag & drop {name} into the schematic")
+#         self.appendRow(_item)
+#
+#     @staticmethod
+#     def to_bytes_array(val: str) -> QByteArray:
+#         """
+#         Convert string to QByteArray
+#         :param val: string
+#         :return: QByteArray
+#         """
+#         data = QByteArray()
+#         stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+#         stream.writeQString(val)
+#         return data
+#
+#     def mimeData(self, idxs: List[QModelIndex]) -> QMimeData:
+#         """
+#
+#         @param idxs:
+#         @return:
+#         """
+#         mimedata = QMimeData()
+#         for idx in idxs:
+#             if idx.isValid():
+#                 txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
+#
+#                 data = QByteArray()
+#                 stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
+#                 stream.writeQString(txt)
+#
+#                 mimedata.setData('component/name', data)
+#         return mimedata
+#
+#     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+#         """
+#
+#         :param index:
+#         :return:
+#         """
+#         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsDragEnabled
+#
 
 class TemplateEditor(QtWidgets.QWidget):
     """
@@ -1271,31 +1366,30 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
                 P, Q = self.api_object.P, self.api_object.Q
-                for param in self.selected_template.block.parameters.keys():
+                for param in self.selected_template.block.event_dict.keys():
                     if param.name == 'Pl0':
-                        self.selected_template.block.parameters[param] = Const(P)
+                        self.selected_template.block.event_dict[param] = Const(P)
                     if param.name == 'Ql0':
-                        self.selected_template.block.parameters[param] = Const(Q)
+                        self.selected_template.block.event_dict[param] = Const(Q)
 
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
                 Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
                 self.selected_template.block.update_model(self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
-                # power flow parameters
-                #Todo: we need to create a referencetype for parameters. Then we can change the value of the event dict parameters without using strings
 
-                R, X, B = self.api_object.R, self.api_object.X, self.api_object.B
-                for param in self.selected_template.block.parameters.keys():
-                    if param.name == 'g':
-                        self.selected_template.block.parameters[param] = Const(R/(R**2 + X**2))
-                    if param.name == 'b':
-                        self.selected_template.block.parameters[param] = Const(-X/(R**2 + X**2))
-                    if param.name == 'bsh':
-                        self.selected_template.block.parameters[param] = Const(B)
+                # power flow parameters
+
+
+
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(self.api_object.R / (self.api_object.R**2 + self.api_object.X**2)))
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-self.api_object.X / (self.api_object.R ** 2 + self.api_object.X ** 2)))
+                self.selected_template.block.parameters[self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(self.api_object.B)
+
 
         # Update label above the table
         self.template_name_label.setText(f"Selected template: {template_name}")
@@ -1776,15 +1870,28 @@ class BlockBoxesEditor(QSplitter):
         self.inspect_button.clicked.connect(self.open_inspect_dialog)
         left_layout.addWidget(self.inspect_button)
 
-        # Library
-        self.library_view = QListView(self)
-        self.library_view.setViewMode(self.library_view.ViewMode.ListMode)
-        self.library_view.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.library_model = DynamicLibraryModel()
-        self.library_view.setModel(self.library_model)
-        change_font_size(self.library_view, 9)
+        # Math Library
+        self.math_library_view = QListView(self)
+        self.math_library_view.setViewMode(QListView.ViewMode.ListMode)
+        self.math_library_view.setDragEnabled(True)
+        self.math_library_view.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
 
-        left_layout.addWidget(self.library_view)
+        self.math_library_model = MathLibraryModel()
+        self.math_library_view.setModel(self.math_library_model)
+
+        change_font_size(self.math_library_view, 9)
+
+        # Device Library
+        self.dev_library_view = QListView(self)
+        self.dev_library_view.setViewMode(QListView.ViewMode.ListMode)
+        self.dev_library_view.setDragEnabled(True)
+        self.dev_library_view.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
+
+        self.dev_library_model = DevLibraryModel()
+        self.dev_library_view.setModel(self.dev_library_model)
+
+        left_layout.addWidget(self.math_library_view)
+        left_layout.addWidget(self.dev_library_view)
 
         # === right part (diagram) ===
         self.scene = DiagramScene(self)
@@ -2029,6 +2136,23 @@ class BlockBoxesEditor(QSplitter):
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
 
+    def add_api_obj_mapping(self):
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            R = Var("R")
+            X = Var("X")
+            B = Var("B")
+
+            self.main_block.parameters[R] = Const(0.029585)
+            self.main_block.parameters[X] = Const(0.0710059)
+            self.main_block.parameters[B] = Const(0.03)
+
+            self.main_block.api_obj_mapping = {
+            ParamPowerFlowRefferenceType.R: R,
+            ParamPowerFlowRefferenceType.X: X,
+            ParamPowerFlowRefferenceType.B: B,
+               }
+
     def open_inspect_dialog(self):
         """
 
@@ -2133,8 +2257,15 @@ class BlockBoxesEditor(QSplitter):
         @param event:
         @return:
         """
-        if event.mimeData().hasFormat('component/name'):
-            event.accept()
+        md = event.mimeData()
+
+        if (
+                md.hasFormat("component/dev") or
+                md.hasFormat("component/math")
+        ):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
 
     def graphicsDragMoveEvent(self, event: QDragMoveEvent) -> None:
         """
@@ -2142,77 +2273,101 @@ class BlockBoxesEditor(QSplitter):
         @param event:
         @return:
         """
-        if event.mimeData().hasFormat('component/name'):
-            event.accept()
+        md = event.mimeData()
+
+        if (
+                md.hasFormat("component/dev") or
+                md.hasFormat("component/math")
+        ):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
 
     def graphicsDropEvent(self, event: QDropEvent) -> None:
+
         """
         Create an element
         @param event:
         @return:
         """
-        if event.mimeData().hasFormat('component/name'):
-            obj_type = event.mimeData().data('component/name')
+        md = event.mimeData()
 
-            point0 = self.view.mapToScene(int(event.position().x()), int(event.position().y()))
-            x0 = point0.x()
-            y0 = point0.y()
+        point0 = self.view.mapToScene(
+            int(event.position().x()),
+            int(event.position().y())
+        )
+        x0, y0 = point0.x(), point0.y()
 
-            tpe = self.library_model.get_type(obj_type)
+        if md.hasFormat("component/dev"):
+            obj_type = md.data("component/dev")
+            tpe = self.dev_library_model.get_type(obj_type)
 
-            if tpe == BlockType.GENERIC:
-                dialog = GenericBlockDialog(self)
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
+        elif md.hasFormat("component/math"):
+            obj_type = md.data("component/math")
+            tpe = self.math_library_model.get_type(obj_type)
 
-                    model_host: DynamicModelHost = DynamicModelHost()
+        else:
+            event.ignore()
+            return
 
-                    model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
-                    self.main_block.add(model_host.model)
-                    item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
-                                         self.templates_catalogue, self.api_object)
+        if tpe is None:
+            event.ignore()
+            return
 
-                    item.setPos(QPointF(x0, y0))
-                    self.scene.addItem(item)
-                    # save nodes in diagram
-                    self.diagram.add_node(
-                        name=name,
-                        x=x0,
-                        y=y0,
-                        device_uid=model_host.model.uid,
-                        api_object_name=self.api_object_name,
-                        tpe=tpe.name,
-                        state_ins=state_ins,
-                        state_outs=state_outs,
-                        algeb_ins=algeb_ins,
-                        algeb_outs=algeb_outs,
-                        subdiagram=model_host.diagram
-                    )
+        if tpe == BlockType.GENERIC:
+            dialog = GenericBlockDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
 
-            else:
+                model_host: DynamicModelHost = DynamicModelHost()
 
-                count = self.block_counters.get(tpe, 0) + 1
-                self.block_counters[tpe] = count
+                model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
+                self.main_block.add(model_host.model)
+                item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
+                                     self.templates_catalogue, self.api_object)
 
-                name = f"{tpe.name}_{count}"
-                item = BlockItem(name=name)
+                item.setPos(QPointF(x0, y0))
+                self.scene.addItem(item)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    device_uid=model_host.model.uid,
+                    api_object_name=self.api_object_name,
+                    tpe=tpe.name,
+                    state_ins=state_ins,
+                    state_outs=state_outs,
+                    algeb_ins=algeb_ins,
+                    algeb_outs=algeb_outs,
+                    subdiagram=model_host.diagram
+                )
 
-                block = create_block_of_type(block_type=tpe, item_name=name, api_object=self.api_object, )
-                item.set_subsystem(block)
-                item.build_item()
+        else:
 
-                if item.subsys is not None:
-                    self.main_block.add(item.subsys)
-                    self.scene.addItem(item)
-                    item.setPos(QPointF(x0, y0))
-                    # save nodes in diagram
-                    self.diagram.add_node(
-                        name=name,
-                        x=x0,
-                        y=y0,
-                        tpe=tpe.name,
-                        device_uid=item.subsys.uid,
-                    )
+            count = self.block_counters.get(tpe, 0) + 1
+            self.block_counters[tpe] = count
+
+            name = f"{tpe.name}_{count}"
+            item = BlockItem(name=name)
+
+            block = create_block_of_type(block_type=tpe, item_name=name, api_object=self.api_object, )
+            item.set_subsystem(block)
+            item.build_item()
+
+            if item.subsys is not None:
+                self.main_block.add(item.subsys)
+                self.scene.addItem(item)
+                item.setPos(QPointF(x0, y0))
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=item.subsys.uid,
+                )
 
     def rebuild_scene_from_diagram(self) -> None:
         """
@@ -2708,6 +2863,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         if not self.blockboxes_editor.diagram.node_data and self.main_editor:
             self.blockboxes_editor.add_connection_vars()
             self.blockboxes_editor.add_external_mapping_block()
+            self.blockboxes_editor.add_api_obj_mapping()
         # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena

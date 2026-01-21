@@ -19,7 +19,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, \
+    _heaviside, piecewise, \
     LagVar, BinOp, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, NaNError, SingularJacobianError, ConvergenceError, SolverError
 from VeraGridEngine.Utils.Symbolic.block_solver import SymbolicParamsVector
@@ -45,7 +46,8 @@ def _compile_equations(eqs: Sequence[Expr],
     # src = f"@nb.njit()\n"
     src = f"def {fname}(vars, params):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join(
+        [f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
 
     exec(src)
@@ -78,7 +80,7 @@ def _compile_equation(eqs: Sequence[Expr],
         "np": np,
         "nb": nb,
         "_heaviside": _heaviside,
-        "heaviside":heaviside
+        "heaviside": heaviside
     }
     exec(src, ns)
     fn = nb.njit(ns["_f"], fastmath=True)
@@ -273,14 +275,11 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
             vars_init_at_start = len(vars_initialized)
             for var, eq in mdl.init_eqs.items():
-                if var.name == 'y_subexciter1':
-                    print('stop')
-
                 key = (var.uid, var.name)
                 if key in vars_initialized:
                     continue
 
-                #get all the variables inside de initialization equation
+                # get all the variables inside de initialization equation
 
                 vars_needed = eq.get_vars()
                 ######################################################
@@ -300,11 +299,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             calculate_now = False
                             break
 
-
                 # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
 
-                    #We initialize the params with value UNDEFINED
+                    # We initialize the params with value UNDEFINED
                     if var in mdl.event_dict.keys():
                         if isinstance(eq, Const) and eq.value is not None:
 
@@ -316,9 +314,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             mdl.event_dict[var] = Const(init_val)
                             event_params_array[uid2idx_event_params[var.uid]] = init_val
 
-                    #We initialize the algebraic values
+                    # We initialize the algebraic values
                     else:
                         vars_in_eqs = eq.get_vars()
+
                         if var not in vars_in_eqs:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = float(eq_fn(x, event_params_array, params_array))
@@ -332,13 +331,13 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             alpha = 0.5
                             x0 = 0.9
                             x[uid2idx_vars[var.uid]] = x0
-                            while error>tol:
+                            while error > tol:
                                 try:
                                     init_val = float(eq_fn(x, event_params_array, params_array))
                                 except:
                                     x[uid2idx_vars[var.uid]] = -0.1
                                     init_val = float(eq_fn(x, event_params_array, params_array))
-                                x[uid2idx_vars[var.uid]] = (1-alpha)*x0 + alpha*init_val
+                                x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
                                 error = np.linalg.norm(init_val - x0)
                                 x0 = x[uid2idx_vars[var.uid]]
                             init_guess[key] = init_val
@@ -346,11 +345,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                     vars_initialized.add(key)
 
-
             vars_init_at_end = len(vars_initialized)
             if vars_init_at_end > vars_init_at_start:
                 progress = True
-
 
             if not progress:
                 unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
@@ -497,7 +494,8 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     sys_block.vars_glob_name2uid = vars_glob_name2uid
 
     # initialize containers
-    init_guess: Dict[Tuple[int, str], float] = {} # this is the general init guess that will contain all the variables init value
+    init_guess: Dict[
+        Tuple[int, str], float] = {}  # this is the general init guess that will contain all the variables init value
     sys_vars: list[Tuple[int, str]] = []
     seen_vars: set[Tuple[int, str]] = set()
 

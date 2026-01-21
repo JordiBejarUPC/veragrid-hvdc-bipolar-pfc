@@ -16,7 +16,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
 def _new_uid() -> int:
@@ -577,13 +577,16 @@ class Block:
                  reformulated_vars: List[DiffVar] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
+                 init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
-                 name: str = ""):
+                 api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
+                 name: str = "",
+                 uid: int | None = None):
         """
         This represents a group of equations or a group of blocks
 
@@ -603,7 +606,7 @@ class Block:
 
         self.name: str = name
 
-        self.uid: int = _new_uid()
+        self.uid: int = _new_uid() if uid is None else uid
         self.vars2device: Dict[int, PhysicalDevice] = dict()
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
@@ -629,17 +632,21 @@ class Block:
 
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
-        self.external_mapping: Dict[
-            VarPowerFlowRefferenceType, Var] = dict() if external_mapping is None else external_mapping
+        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = (dict()
+                                                                        if external_mapping is None
+                                                                        else external_mapping)
 
+        self.api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = (dict()
+                                                                         if api_obj_mapping is None
+                                                                         else api_obj_mapping)
         # initialization
-        self.init_values: Dict[Var, Const] = dict()
+        self.init_values: Dict[Var, Const] = dict() if init_values is None else init_values
 
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
-        self.event_dict: Dict[Var, Expr] = dict() if event_dict is None else event_dict
+        self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -851,137 +858,137 @@ class Block:
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
+    # def to_dict(self) -> Dict[str, Any]:
+    #     """
+    #
+    #     :return:
+    #     """
+    #     vars_dict: Dict[Var, str] = dict()
+    #     return {
+    #         "uid": self.uid,
+    #         "vars2device": {var_uid: dev.idtag for var_uid, dev in self.vars2device.items()},
+    #         "vars_glob_name2uid": self.vars_glob_name2uid,
+    #         "state_vars": _serialize_var_list(self.state_vars),
+    #         "state_eqs": _serialize_expr_list(self.state_eqs),
+    #         "algebraic_vars": _serialize_var_list(self.algebraic_vars),
+    #         "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
+    #         "diff_vars":  _serialize_var_list(self.diff_vars),
+    #         "differential_eqs": _serialize_expr_list(self.differential_eqs),
+    #         "reformulated_vars": _serialize_var_list(self.reformulated_vars),
+    #         "init_eqs": [
+    #             {"var": var.to_dict(), "expr": expr.to_dict()}
+    #             for var, expr in self.init_eqs.items()
+    #         ],
+    #         "init_values": [
+    #             {"var": var.to_dict(), "value": value.value}
+    #             for var, value in self.init_values.items()
+    #         ],
+    #         "parameters": [
+    #             {"var": var.to_dict(), "value": value.value}
+    #             for var, value in self.parameters.items()
+    #         ],
+    #         "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
+    #         "api_obj_mapping": {str(dynparamtype): param.to_dict() for dynparamtype, param in self.api_obj_mapping.items()},
+    #         "event_dict": [
+    #             {"var": var.to_dict(), "expr": expr.to_dict()}
+    #             for var, expr in self.event_dict.items()
+    #         ],
+    #         "name": self.name,
+    #         "children": [child.to_dict() for child in self.children],
+    #         "in_vars": [var.to_dict() for var in self.in_vars],
+    #         "out_vars": [var.to_dict() for var in self.out_vars]
+    #     }
 
-        :return:
-        """
-        return {
-            "uid": self.uid,
-            "vars2device": {var_uid: dev.idtag for var_uid, dev in self.vars2device.items()},
-            "vars_glob_name2uid": self.vars_glob_name2uid,
-            "state_vars": _serialize_var_list(self.state_vars),
-            "state_eqs": _serialize_expr_list(self.state_eqs),
-            "algebraic_vars": _serialize_var_list(self.algebraic_vars),
-            "algebraic_eqs": _serialize_expr_list(self.algebraic_eqs),
-            "diff_vars":  _serialize_var_list(self.diff_vars),
-            "differential_eqs": _serialize_expr_list(self.differential_eqs),
-            "lag_vars": _serialize_var_list(self.lag_vars),
-            "reformulated_vars": _serialize_var_list(self.reformulated_vars),
-            "init_eqs": [
-                {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.init_eqs.items()
-            ],
-            "init_values": [
-                {"var": var.to_dict(), "value": value.value}
-                for var, value in self.init_values.items()
-            ],
-            "parameters": [
-                {"var": var.to_dict(), "value": value.value}
-                for var, value in self.parameters.items()
-            ],
-            "external_mapping": {str(dynvartype): var.to_dict() for dynvartype, var in self.external_mapping.items()},
-            "event_dict": [
-                {"var": var.to_dict(), "expr": expr.to_dict()}
-                for var, expr in self.event_dict.items()
-            ],
-            "name": self.name,
-            "children": [child.to_dict() for child in self.children],
-            "in_vars": [var.to_dict() for var in self.in_vars],
-            "out_vars": [var.to_dict() for var in self.out_vars]
-        }
+    # @staticmethod
+    # def parse(data: Dict[str, Any]) -> "Block":
+    #     """
+    #
+    #     :param data:
+    #     :return:
+    #     """
+    #     state_vars = _deserialize_var_list(data.get("state_vars", []))
+    #     state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
+    #     algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
+    #     algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
+    #     diff_vars = _deserialize_var_list(data.get("diff_vars", []))
+    #     differential_eqs = _deserialize_expr_list(data.get("differential_eqs", []))
+    #     lag_vars = _deserialize_var_list(data.get("lag_vars", []))
+    #     reformulated_vars = _deserialize_var_list(data.get("reformulated_vars", []))
+    #     in_vars = _deserialize_var_list(data.get("in_vars", []))
+    #     out_vars = _deserialize_var_list(data.get("out_vars", []))
+    #     children = [Block.parse(child) for child in data.get("children", [])]
+    #
+    #     algebraic_vars_dict = {v.uid: v for v in algebraic_vars}
+    #
+    #     block = Block(
+    #         state_vars=state_vars,
+    #         state_eqs=state_eqs,
+    #         algebraic_vars=algebraic_vars,
+    #         algebraic_eqs=algebraic_eqs,
+    #         diff_vars = diff_vars,
+    #         in_vars=in_vars,
+    #         out_vars=out_vars,
+    #         init_eqs={},
+    #         children=children,
+    #         name=data.get("name", "")
+    #     )
+    #
+    #     block.uid = int(data.get("uid"))
+    #     block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
+    #     block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
+    #
+    #     for pair in data.get("init_eqs", []):
+    #         var_dict = pair["var"]
+    #         expr_dict = pair["expr"]
+    #         var = Var(name=var_dict["name"], uid=var_dict["uid"])
+    #         expr = Expr.from_dict(expr_dict)
+    #         block.init_eqs[var] = expr
+    #
+    #     for pair in data.get("init_values", []):
+    #         var_dict = pair["var"]
+    #         value = pair["value"]
+    #         var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+    #         const_value = Const(value)
+    #         block.init_values[var] = const_value
+    #
+    #     for pair in data.get("parameters", []):
+    #         var_dict = pair["var"]
+    #         value = pair["value"]
+    #         var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+    #         const_value = Const(value)
+    #         block.parameters[var] = const_value
+    #
+    #     for key_str, var_dict in data.get("external_mapping", {}).items():
+    #         key = VarPowerFlowRefferenceType(key_str)
+    #         var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+    #         block.external_mapping[key] = var
+    #
+    #     for key_str, param_dict in data.get("api_obj_mapping", {}).items():
+    #         key = ParamPowerFlowRefferenceType(key_str)
+    #         param = Var(name=param_dict["name"], uid=param_dict.get("uid"))
+    #         block.api_obj_mapping[key] = param
+    #
+    #     for pair in data.get("event_dict", []):
+    #         var_dict = pair["var"]
+    #         expr_dict = pair["expr"]
+    #         var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+    #         expr = Expr.from_dict(expr_dict)
+    #         block.event_dict[var] = expr
+    #
+    #     block.var_mapping = {v.name: v for v in block.algebraic_vars}
+    #     return block
 
-    @staticmethod
-    def parse(data: Dict[str, Any]) -> "Block":
-        """
+    # def __eq__(self, other: "Block") -> bool:
+    #     """
+    #     Equality check
+    #     :param other: another block
+    #     :return: True / False
+    #     """
+    #     if isinstance(other, Block):
+    #         return self.to_dict() == other.to_dict()
+    #     else:
+    #         return False
 
-        :param data:
-        :return:
-        """
-        state_vars = _deserialize_var_list(data.get("state_vars", []))
-        state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
-        algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
-        algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
-        diff_vars = _deserialize_var_list(data.get("diff_vars", []))
-        differential_eqs = _deserialize_expr_list(data.get("differential_eqs", []))
-        lag_vars = _deserialize_var_list(data.get("lag_vars", []))
-        reformulated_vars = _deserialize_var_list(data.get("reformulated_vars", []))
-        in_vars = _deserialize_var_list(data.get("in_vars", []))
-        out_vars = _deserialize_var_list(data.get("out_vars", []))
-        children = [Block.parse(child) for child in data.get("children", [])]
-
-        algebraic_vars_dict = {v.uid: v for v in algebraic_vars}
-
-        block = Block(
-            state_vars=state_vars,
-            state_eqs=state_eqs,
-            algebraic_vars=algebraic_vars,
-            algebraic_eqs=algebraic_eqs,
-            diff_vars = diff_vars,
-            in_vars=in_vars,
-            out_vars=out_vars,
-            init_eqs={},
-            children=children,
-            name=data.get("name", "")
-        )
-
-        block.uid = int(data.get("uid"))
-        block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
-        block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
-
-        for pair in data.get("init_eqs", []):
-            var_dict = pair["var"]
-            expr_dict = pair["expr"]
-            var = Var(name=var_dict["name"], uid=var_dict["uid"])
-            expr = Expr.from_dict(expr_dict)
-            block.init_eqs[var] = expr
-
-        for pair in data.get("init_values", []):
-            var_dict = pair["var"]
-            value = pair["value"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            const_value = Const(value)
-            block.init_values[var] = const_value
-
-        for pair in data.get("parameters", []):
-            var_dict = pair["var"]
-            value = pair["value"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            const_value = Const(value)
-            block.parameters[var] = const_value
-
-        for key_str, var_dict in data.get("external_mapping", {}).items():
-            key = VarPowerFlowRefferenceType(key_str)
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.external_mapping[key] = var
-
-        for pair in data.get("event_dict", []):
-            var_dict = pair["var"]
-            expr_dict = pair["expr"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            expr = Expr.from_dict(expr_dict)
-            block.event_dict[var] = expr
-
-        block.var_mapping = {v.name: v for v in block.algebraic_vars}
-        return block
-
-    def copy(self) -> "Block":
-        """
-        Make a deep copy of this
-        :return: deep copy Block
-        """
-        return Block.parse(data=self.to_dict())
-
-    def __eq__(self, other: "Block") -> bool:
-        """
-        Equality check
-        :param other: another block
-        :return: True / False
-        """
-        if isinstance(other, Block):
-            return self.to_dict() == other.to_dict()
-        else:
-            return False
 
 class BlockType(Enum):
     CONST = auto()

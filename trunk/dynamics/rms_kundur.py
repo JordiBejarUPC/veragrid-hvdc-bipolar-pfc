@@ -1,4 +1,8 @@
+
+
 from __future__ import annotations
+
+import cProfile as profile
 
 import numpy as np
 
@@ -36,12 +40,17 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+
+pr = profile.Profile()
+pr.disable()
 
 
 def rms_kundur():
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
+
 
     grid = gce.MultiCircuit()
 
@@ -253,36 +262,36 @@ def rms_kundur():
     # Build Rms models
     ######################################################################################################
     # generators
-    genrow_mdl1 = get_complete_generator_template().block.copy()
-    genrow_mdl2 = get_complete_generator_template().block.copy()
-    genrow_mdl3 = get_complete_generator_template().block.copy()
-    genrow_mdl4 = get_complete_generator_template().block.copy()
+    genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl3 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl4 = block_deep_copy(get_complete_generator_template().block)
 
     # lines
-    line0_mdl = get_line0_rms_template().block.copy()
-    line1_mdl = get_line1_rms_template().block.copy()
-    line2_mdl = get_line2_rms_template().block.copy()
-    line3_mdl = get_line3_rms_template().block.copy()
-    line4_mdl = get_line4_rms_template().block.copy()
-    line5_mdl = get_line5_rms_template().block.copy()
-    line6_mdl = get_line6_rms_template().block.copy()
-    line7_mdl = get_line7_rms_template().block.copy()
-    line8_mdl = get_line8_rms_template().block.copy()
-    line9_mdl = get_line9_rms_template().block.copy()
-    line10_mdl = get_line10_rms_template().block.copy()
-    line11_mdl = get_line11_rms_template().block.copy()
-    line12_mdl = get_line12_rms_template().block.copy()
-    line13_mdl = get_line13_rms_template().block.copy()
+    line0_mdl = block_deep_copy(get_line0_rms_template().block)
+    line1_mdl = block_deep_copy(get_line1_rms_template().block)
+    line2_mdl = block_deep_copy(get_line2_rms_template().block)
+    line3_mdl = block_deep_copy(get_line3_rms_template().block)
+    line4_mdl = block_deep_copy(get_line4_rms_template().block)
+    line5_mdl = block_deep_copy(get_line5_rms_template().block)
+    line6_mdl = block_deep_copy(get_line6_rms_template().block)
+    line7_mdl = block_deep_copy(get_line7_rms_template().block)
+    line8_mdl = block_deep_copy(get_line8_rms_template().block)
+    line9_mdl = block_deep_copy(get_line9_rms_template().block)
+    line10_mdl = block_deep_copy(get_line10_rms_template().block)
+    line11_mdl = block_deep_copy(get_line11_rms_template().block)
+    line12_mdl = block_deep_copy(get_line12_rms_template().block)
+    line13_mdl = block_deep_copy(get_line13_rms_template().block)
 
     #trafos
-    trafo1_mdl = get_trafo1_rms_template().block.copy()
-    trafo2_mdl = get_trafo2_rms_template().block.copy()
-    trafo3_mdl = get_trafo3_rms_template().block.copy()
-    trafo4_mdl = get_trafo4_rms_template().block.copy()
+    trafo1_mdl = block_deep_copy(get_trafo1_rms_template().block)
+    trafo2_mdl = block_deep_copy(get_trafo2_rms_template().block)
+    trafo3_mdl = block_deep_copy(get_trafo3_rms_template().block)
+    trafo4_mdl = block_deep_copy(get_trafo4_rms_template().block)
 
     #loads
-    load1_mdl = get_load1_rms_template().block.copy()
-    load2_mdl = get_load2_rms_template().block.copy()
+    load1_mdl = block_deep_copy(get_load1_rms_template().block)
+    load2_mdl = block_deep_copy(get_load2_rms_template().block)
 
     # connection with buses
 
@@ -489,11 +498,17 @@ def rms_kundur():
     power_flow.run()
     res = power_flow.results
 
+    pr.enable()
+
     sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
     params_mapping = {}
 
     slv = BlockSolver(ss, sim_time)
+
+    pr.disable()
+
+    pr.dump_stats('profile.pstat')
 
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
@@ -514,6 +529,7 @@ def rms_kundur():
         initialized=False,
         verbose=False,
     )
+
 
 
 

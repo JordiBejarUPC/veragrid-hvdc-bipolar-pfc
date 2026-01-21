@@ -5,8 +5,9 @@
 
 import numpy as np
 import pandas as pd
-from typing import Union, List
+from typing import Union, List, Dict
 
+from VeraGridEngine import ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -78,7 +79,7 @@ class Line(BranchParent):
         'Pf',
         'Pt',
         'Qf',
-        'Qt'
+        'Qt',
     )
 
     def __init__(self,
@@ -272,8 +273,14 @@ class Line(BranchParent):
     @R.setter
     def R(self, value):
         self._R = float(value)
-        # if self.auto_update_enabled:
-        #     self.rms_model.model.parameters
+        if self.auto_update_enabled:
+            if not self.rms_model.empty():
+                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R**2 + self._X**2)))
+                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def X(self):
@@ -282,6 +289,14 @@ class Line(BranchParent):
     @X.setter
     def X(self, value):
         self._X = float(value)
+        if self.auto_update_enabled:
+            if not self.rms_model.empty():
+                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def B(self):
@@ -290,6 +305,14 @@ class Line(BranchParent):
     @B.setter
     def B(self, value):
         self._B = float(value)
+        if self.auto_update_enabled:
+            if not self.rms_model.empty():
+                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def R0(self):
@@ -490,7 +513,6 @@ class Line(BranchParent):
         self.Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
         self.Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
         self.Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-
 
     def change_base(self, Sbase_old: float, Sbase_new: float):
         """
@@ -721,4 +743,3 @@ class Line(BranchParent):
         if self.rms_model.empty():
             line_template = get_line_rms_template()
             self.rms_model.model = line_template.block
-
