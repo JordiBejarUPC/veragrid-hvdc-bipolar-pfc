@@ -791,57 +791,127 @@ def convert_dgs_to_switch(stasw: StaSwitch,
     return sw
 
 
-def convert_dgs_to_line(lne: ElmLne,
-                        buses: List[dev.Bus],
-                        stacubic_dict: Dict[str, List[int]],
-                        templates_dict: Dict[str, dev.SequenceLineType],
-                        freq: float,
-                        baseMVA: float,
-                        logger: Logger,
-                        cubics_by_objid: Dict[str, List[StaCubic]],
-                        bus_by_term_id: Dict[str, dev.Bus]) -> dev.Line:
+def convert_dgs_to_line(
+        lne: ElmLne,
+        buses: List[dev.Bus],
+        stacubic_dict: Dict[str, List[int]],
+        templates_dict: Dict[str, dev.SequenceLineType],
+        overhead_line_type_dict: Dict[str, OverheadLineType],
+        line_type_by_line_id: Dict[str, str],
+        tower_template_by_line_id: Dict[str, OverheadLineType],
+        freq: float,
+        baseMVA: float,
+        logger: Logger,
+        cubics_by_objid: Dict[str, List[StaCubic]],
+        bus_by_term_id: Dict[str, dev.Bus]
+) -> dev.Line:
+    """Convert a PowerFactory/DGS ElmLne into a VeraGrid Line.
+
+    Template resolution order
+    -------------------------
+    1) Use ElmLne.typ_id if present.
+    2) If missing/empty, use ``line_type_by_line_id`` (built from ElmLnesec / IntFolder hierarchy).
+    3) First try TypLne -> SequenceLineType, otherwise try TypTow -> OverheadLineType.
+
+    Notes
+    -----
+    - Connectivity is resolved via StaCubic.fold_id -> ElmTerm.ID (preferred), with a legacy index-based fallback.
+    - This function must not reference the DGS container (dgs_grid). All required mappings are passed in.
     """
 
-    :param lne:
-    :param buses:
-    :param stacubic_dict:
-    :param templates_dict:
-    :param freq:
-    :param baseMVA:
-    :param logger:
-    :param cubics_by_objid:
-    :param bus_by_term_id:
-    :return:
-    """
+    # ------------------------------------------------------------
+    # Resolve typ_id (some PF exports store the type in ElmLnesec instead of ElmLne).
+    # If the line is part of an ElmTow (tower coupling), it may legitimately have no typ_id.
+    # In that case, we defer the template to the tower mapping.
+    # ------------------------------------------------------------
+    typ_id: str | None = lne.typ_id
+    if typ_id is None or typ_id == "":
+        # Try raw line ID and normalized pointer ID
+        typ_id = line_type_by_line_id.get(lne.ID, None)
+        if typ_id is None or typ_id == "":
+            lid = _ref_id(lne.ID)
+            if lid is not None and lid != "":
+                typ_id = line_type_by_line_id.get(lid, None)
 
-    template = templates_dict.get(lne.typ_id, None)
-    if template is None:
-        raise ValueError(f"No template for the line {lne.ID}")
+    # Tower-derived template (ElmTow -> TypTow). This is used only when typ_id is missing.
+    tower_template: OverheadLineType | None = None
+    if typ_id is None or typ_id == "":
+        tower_template = tower_template_by_line_id.get(lne.ID, None)
+        if tower_template is None:
+            lid = _ref_id(lne.ID)
+            if lid is not None and lid != "":
+                tower_template = tower_template_by_line_id.get(lid, None)
 
-    # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
+    if (typ_id is None or typ_id == "") and tower_template is None:
+        raise ValueError(
+            f"ElmLne '{lne.loc_name}' (ID={lne.ID}): missing typ_id in ElmLne and no ElmLnesec fallback found."
+        )
+
+    # ------------------------------------------------------------
+    # Resolve the line template (TypLne or TypTow)
+    # ------------------------------------------------------------
+    seq_template: dev.SequenceLineType | None = None
+    ohl_template: OverheadLineType | None = None
+
+    if typ_id is not None and typ_id != "":
+        seq_template = templates_dict.get(typ_id, None)
+        if seq_template is None:
+            tid = _ref_id(typ_id)
+            if tid is not None and tid != "":
+                seq_template = templates_dict.get(tid, None)
+
+        if seq_template is None:
+            ohl_template = overhead_line_type_dict.get(typ_id, None)
+            if ohl_template is None:
+                tid = _ref_id(typ_id)
+                if tid is not None and tid != "":
+                    ohl_template = overhead_line_type_dict.get(tid, None)
+    else:
+        # typ_id is missing: rely on tower coupling template
+        ohl_template = tower_template
+
+    if seq_template is None and ohl_template is None:
+        raise ValueError(
+            f"ElmLne '{lne.loc_name}' (ID={lne.ID}): no line template found for typ_id='{typ_id}'. "
+            f"Expected TypLne (SequenceLineType) or TypTow (OverheadLineType)."
+        )
+
+    # ------------------------------------------------------------
+    # Connectivity via StaCubic.fold_id -> ElmTerm.ID (preferred)
+    # ------------------------------------------------------------
     term_ids = get_terminal_ids(element_id=lne.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 2:
-        # Fall back to legacy check only if terminal mapping is not available
         bus_ids = stacubic_dict.get(_ref_id(lne.ID), None)
         if bus_ids is None:
             raise ValueError(f"No buses for the line {lne.ID}")
-
         if len(bus_ids) != 2:
             raise ValueError(f"Not exactly 2 buses for the line {lne.ID}")
 
-    bus_from, bus_to = get_branch_buses(elm_id=lne.ID,
-                                        stacubic_dict=stacubic_dict,
-                                        buses=buses,
-                                        cubics_by_objid=cubics_by_objid,
-                                        bus_by_term_id=bus_by_term_id)
+    bus_from, bus_to = get_branch_buses(
+        elm_id=lne.ID,
+        stacubic_dict=stacubic_dict,
+        buses=buses,
+        cubics_by_objid=cubics_by_objid,
+        bus_by_term_id=bus_by_term_id
+    )
 
-    line = dev.Line(bus_from=bus_from,
-                    bus_to=bus_to,
-                    name=lne.loc_name,
-                    active=not lne.outserv,
-                    length=lne.dline)
+    line = dev.Line(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=lne.loc_name,
+        active=not lne.outserv,
+        length=lne.dline
+    )
 
-    line.apply_template(obj=template, Sbase=baseMVA, freq=freq, logger=logger)
+    # ------------------------------------------------------------
+    # Apply the resolved template
+    # ------------------------------------------------------------
+    if seq_template is not None:
+        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
+    else:
+        # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
+        line.set_circuit_idx(val=1, obj=ohl_template)
+        line.apply_template(obj=ohl_template, Sbase=baseMVA, freq=freq, logger=logger)
 
     return line
 
@@ -1877,22 +1947,157 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if tid is not None:
             typsind_raw_dict[tid] = typsind
 
+    # ------------------------------------------------------------
+    # Fallback map: ElmLne.ID -> typ_id from ElmLnesec
+    # Some PowerFactory exports omit ElmLne.typ_id and store it in ElmLnesec.typ_id.
+    # In some cases, ElmLnesec.fold_id references an IntFolder chain; we climb until we reach an ElmLne.
+    # ------------------------------------------------------------
+    line_type_by_line_id: Dict[str, str] = dict()
+
+    # Fast lookup of line IDs (raw and normalized)
+    line_ids: Set[str] = set()
+    for elmlne in dgs_grid.elmlnes:
+        if elmlne.ID != "":
+            line_ids.add(elmlne.ID)
+            rid = _ref_id(elmlne.ID)
+            if rid is not None and rid != "":
+                line_ids.add(rid)
+
+    # Folder -> parent pointer map (raw and normalized keys)
+    folder_parent: Dict[str, str] = dict()
+    for folder in dgs_grid.intfolders:
+        if folder.ID == "":
+            continue
+        folder_parent[folder.ID] = folder.fold_id
+        fid = _ref_id(folder.ID)
+        if fid is not None and fid != "":
+            folder_parent[fid] = folder.fold_id
+
+    # Name-based helper maps. Some PF exports place ElmLnesec under folders that are not in the
+    # IntFolder chain of the ElmLne, so fold_id climbing cannot reach the line. In that case,
+    # the best available fallback is matching by loc_name / chr_name.
+    line_id_by_loc_name: Dict[str, str] = dict()
+    line_id_by_chr_name: Dict[str, str] = dict()
+    for elmlne in dgs_grid.elmlnes:
+        if elmlne.loc_name != "":
+            line_id_by_loc_name[elmlne.loc_name] = _ref_id(elmlne.ID) or elmlne.ID
+        if elmlne.chr_name != "":
+            line_id_by_chr_name[elmlne.chr_name] = _ref_id(elmlne.ID) or elmlne.ID
+
+    # Resolve each section to its owning line by climbing the folder chain
+    for sec in dgs_grid.elmlnesecs:
+        if sec.typ_id == "":
+            continue
+
+        current = sec.fold_id
+        if current == "":
+            continue
+
+        cur = _ref_id(current)
+        if cur is None or cur == "":
+            cur = current
+
+        owner_line_id: str = ""
+        for _ in range(25):
+            if cur in line_ids:
+                owner_line_id = cur
+                break
+
+            parent_ptr = folder_parent.get(cur)
+            if parent_ptr is None or parent_ptr == "":
+                break
+
+            nxt = _ref_id(parent_ptr)
+            cur = nxt if (nxt is not None and nxt != "") else parent_ptr
+
+        if owner_line_id == "":
+            # Fallback: try matching by section names.
+            if sec.loc_name != "" and sec.loc_name in line_id_by_loc_name:
+                owner_line_id = line_id_by_loc_name[sec.loc_name]
+            elif sec.chr_name != "" and sec.chr_name in line_id_by_chr_name:
+                owner_line_id = line_id_by_chr_name[sec.chr_name]
+
+        if owner_line_id == "":
+            # Name-based fallback: try to match the section to a line by loc_name or chr_name.
+            # This is used only if the folder-climb mechanism cannot resolve ownership.
+            if sec.loc_name != "":
+                owner_line_id = line_id_by_loc_name.get(sec.loc_name, "")
+            if owner_line_id == "" and sec.chr_name != "":
+                owner_line_id = line_id_by_chr_name.get(sec.chr_name, "")
+
+        if owner_line_id != "":
+            tid = _ref_id(sec.typ_id)
+            typ_id = tid if (tid is not None and tid != "") else sec.typ_id
+            line_type_by_line_id[owner_line_id] = typ_id
+            # Store a normalized key too, because lne.ID might come with or without PF path prefix.
+            oid = _ref_id(owner_line_id)
+            if oid is not None and oid != "":
+                line_type_by_line_id[oid] = typ_id
+
+    # ------------------------------------------------------------
+    # Tower coupling helper: ElmTow may define the line template (TypTow) instead of ElmLne.typ_id.
+    # We build a direct mapping Line.ID -> OverheadLineType so convert_dgs_to_line can proceed
+    # even when typ_id is missing, and apply the proper template immediately.
+    # ------------------------------------------------------------
+    tower_template_by_line_id: Dict[str, OverheadLineType] = dict()
+    for elmtow in dgs_grid.elmtows:
+        if len(elmtow.pGeo) == 0:
+            continue
+        geo_ptr = elmtow.pGeo[0]
+        if geo_ptr is None or geo_ptr == "":
+            continue
+
+        geo_id = _ref_id(geo_ptr)
+        ohl_type = overhead_line_type_dict.get(geo_id, None)
+        if ohl_type is None:
+            ohl_type = overhead_line_type_dict.get(geo_ptr, None)
+        if ohl_type is None:
+            continue
+
+        for line_ptr in elmtow.plines:
+            if line_ptr is None or line_ptr == "":
+                continue
+            tower_template_by_line_id[line_ptr] = ohl_type
+            lid = _ref_id(line_ptr)
+            if lid is not None and lid != "":
+                tower_template_by_line_id[lid] = ohl_type
+
     # lines
     line_by_dgs_id: Dict[str, dev.Line] = dict()
     for elmlne in dgs_grid.elmlnes:
+
+        # ------------------------------------------------------------
+        # Pre-check: skip orphan lines (no StaCubic connectivity)
+        # This avoids failing on missing typ_id for elements that are not
+        # electrically connected in the exported DGS (e.g., '*_2a' duplicates).
+        # ------------------------------------------------------------
+        term_ids: List[str] = get_terminal_ids(element_id=elmlne.ID, cubics_by_objid=cubics_by_objid)
+        if len(term_ids) != 2:
+            bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmlne.ID), None)
+            if bus_ids is None or len(bus_ids) != 2:
+                logger.add_warning(
+                    f"ElmLne '{elmlne.loc_name}' (ID={elmlne.ID}) skipped: "
+                    f"not connected to exactly 2 terminals (StaCubic terminals={len(term_ids)}). "
+                    f"typ_id='{elmlne.typ_id}'."
+                )
+                continue
+
         line = convert_dgs_to_line(
             lne=elmlne,
             buses=grid.buses,
             stacubic_dict=stacubic_dict,
             templates_dict=typlne_dict,
+            overhead_line_type_dict=overhead_line_type_dict,
+            line_type_by_line_id=line_type_by_line_id,
+            tower_template_by_line_id=tower_template_by_line_id,
             freq=frequency,
             baseMVA=baseMVA,
             logger=logger,
             cubics_by_objid=cubics_by_objid,
             bus_by_term_id=bus_by_term_id
         )
-        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
-        # IMPORTANT: this does not affect electrical connectivity.
+
+        # Optional grouping metadata...
         fold_id = _ref_id(elmlne.fold_id)
         if fold_id is not None and fold_id != "":
             bg = branch_group_by_id.get(fold_id)
@@ -1901,7 +2106,6 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_line(obj=line, logger=logger)
 
-        # Keep a lookup table to later link ElmTow (tower coupling) to the corresponding Line objects.
         lid_raw = elmlne.ID
         lid = _ref_id(lid_raw)
         if lid is not None:
