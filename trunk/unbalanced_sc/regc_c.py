@@ -56,19 +56,46 @@ def regc_c(Qgen0, Iqcmd, ir, ii, ur, ui, fref, Fnom, Vt, Ipcmd, is_blocked):
 
 
 iq_ref, id_ref = regc_c(Qgen0=0.0,
-                        Iqcmd=0.8257392,
-                        ir=-0.8601111,
-                        ii=-0.9747866,
-                        ur=-0.01885961,
-                        ui=-0.5427275,
+                        Iqcmd=0.0,
+                        ir=0.0,
+                        ii=0.0,
+                        ur=-0.00473188,
+                        ui=-0.01417763,
                         fref=1.0,
                         Fnom=50.0,
-                        Vt=0.5430551,
-                        Ipcmd=1.004069,
-                        is_blocked=0.0)
+                        Vt=0.01494643,
+                        Ipcmd=0.0,
+                        is_blocked=1.0)
 
 print('\nid_ref =', id_ref)
 print('\niq_ref =', iq_ref)
+
+
+# Rf = 1
+# iq_ref, id_ref = regc_c(Qgen0=0.0,
+#                         Iqcmd=0.0,
+#                         ir=0.0,
+#                         ii=0.0,
+#                         ur=-0.00473188,
+#                         ui=-0.01417763,
+#                         fref=1.0,
+#                         Fnom=50.0,
+#                         Vt=0.01494643,
+#                         Ipcmd=0.0,
+#                         is_blocked=1.0)
+
+# Rf = 10
+# iq_ref, id_ref = regc_c(Qgen0=0.0,
+#                         Iqcmd=1.1,
+#                         ir=-1.273975,
+#                         ii=-0.2588185,
+#                         ur=-0.08655887,
+#                         ui=-0.2288226,
+#                         fref=1.0,
+#                         Fnom=50.0,
+#                         Vt=0.2446471,
+#                         Ipcmd=0.6928203,
+#                         is_blocked=0.0)
 
 # Rf = 25
 # iq_ref, id_ref = regc_c(Qgen0=0.0,
