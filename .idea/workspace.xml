@@ -28,12 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added device type to the VoltageLevel conversion wizard">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Minor fixes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Grids_and_profiles/grids/GB Network.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/Grids_and_profiles/grids/GB Network.gridcal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_results.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -266,7 +262,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest in tests">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -726,8 +722,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python.voltage_level_conversion" />
         <item itemvalue="Python.scripting_genqec_exc_gov_simple" />
         <item itemvalue="Python.ceate_expression_and_save_load" />
@@ -1862,7 +1858,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="696" />
+    <option name="localTasksCounter" value="697" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1923,7 +1919,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.6.3" />
     <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
@@ -1948,7 +1943,8 @@
     <MESSAGE value="Implemented different way of saving models based on pointers instead of copies" />
     <MESSAGE value="added chance to reuse existing voltage levels" />
     <MESSAGE value="added device type to the VoltageLevel conversion wizard" />
-    <option name="LAST_COMMIT_MESSAGE" value="added device type to the VoltageLevel conversion wizard" />
+    <MESSAGE value="Minor fixes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor fixes" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
