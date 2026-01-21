@@ -21,14 +21,12 @@ from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
-from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem, QDialog,
-                               QPushButton)
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem)
 from PySide6.QtSvg import QSvgGenerator
 
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, BRANCH_TYPES
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -141,7 +139,7 @@ class SchematicLibraryModel(QStandardItemModel):
         :return: QByteArray
         """
         data = QByteArray()
-        stream = QDataStream(data, QIODevice.WriteOnly)
+        stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream.writeQString(val)
         return data
 
@@ -199,7 +197,7 @@ class SchematicLibraryModel(QStandardItemModel):
                 txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
 
                 data = QByteArray()
-                stream = QDataStream(data, QIODevice.WriteOnly)
+                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
                 stream.writeQString(txt)
 
                 mimedata.setData('component/name', data)
@@ -5171,8 +5169,11 @@ List[FluidPath]]:
                 # Determine the other bus and add if not visited
                 if br.bus_from == bus:
                     other_bus = br.bus_to
-                else:
+                elif br.bus_to == bus:
                     other_bus = br.bus_from
+                else:
+                    other_bus = None
+
                 if other_bus not in visited:
                     bus_pool.append((other_bus, level + 1))
                     visited.add(other_bus)
