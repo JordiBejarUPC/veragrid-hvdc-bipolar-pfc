@@ -9,17 +9,17 @@ grid = vge.MultiCircuit()
 # ----------------------------------------------------------------------------------------------------------------------
 #   Buses
 # ----------------------------------------------------------------------------------------------------------------------
-bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=900, is_slack=True)
-grid.add_bus(obj=bus_slack)
-
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=12.5)
-grid.add_bus(obj=bus_ac)
+bus_dc = vge.Bus(name='Bus DC', Vnom=0.69, xpos=0, ypos=0, is_dc=True, is_slack=True)
+grid.add_bus(obj=bus_dc)
 
 bus_wt = vge.Bus(name='Bus WT', Vnom=0.69, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-bus_dc = vge.Bus(name='Bus DC', Vnom=0.69, xpos=0, ypos=0, is_dc=True, is_slack=True)
-grid.add_bus(obj=bus_dc)
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/4)
+grid.add_bus(obj=bus_ac)
+
+bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=900, is_slack=True)
+grid.add_bus(obj=bus_slack)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Transformer
@@ -49,10 +49,10 @@ vsc = vge.VSC(bus_from=bus_dc,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
-              control1=ConverterControlType.Vm_dc,
+              control1=ConverterControlType.Pac,
               control2=ConverterControlType.Qac,
-              control1_val=1.0,
-              control2_val=0.0)
+              control1_val=1.999909,
+              control2_val=0.1704475)
 grid.add_vsc(vsc)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
 
 grid.add_short_circuit_definition(
     vge.ShortCircuitEvent(
-        device=grid.buses[1],
+        device=grid.buses[2],
         method=MethodShortCircuit.sequences_vsc
     )
 )
