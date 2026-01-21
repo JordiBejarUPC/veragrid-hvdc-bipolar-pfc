@@ -381,6 +381,8 @@ class LagVar(Expr):
         # Optionally, you could add checks here to ensure base_var is an instance of Var
         if not isinstance(self.base_var, Var):
             raise TypeError(f"base_var must be an argument")
+        if isinstance(self.base_var, DiffVar):
+            raise TypeError(f"Base variable must not be DiffVar")
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
         if self in mapping:
@@ -506,6 +508,18 @@ class DiffVar(Var):
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         if dt is None:
             return Const(1 if self.uid == var.uid else 0)
+        elif isinstance(self, DiffVar) or False:
+            # ∂(dx/dt)/∂x = 1/h
+            if var.uid == self.uid:
+                return Const(1)
+            elif var.uid == self.base_var.uid:
+                return Const(1) / dt
+            elif var.uid == self.origin_var.uid:
+                # recursive chain rule
+                return (Const(1) / dt) * self.base_var.diff(var, dt = dt)
+            else:
+                return Const(0)
+            
         elif var.uid == self.base_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
             dh_dt = h_t.diff(var, dt=dt)
@@ -1106,7 +1120,7 @@ def heaviside(x: Expr):
 
 
 def heaviside_diff(u: Expr, du: Expr) -> Expr:
-    return du * u
+    return du * heaviside(u)
 
 
 def max(x: Expr, y: Expr) -> Expr:
@@ -1122,9 +1136,12 @@ def hard_sat(x: Expr, x_min: Expr | float, x_max: Expr | float) -> Expr:
 
 
 def f_exc(In: Expr) -> Expr:
-    b = ((Const(1) - Const(0.577) * In) - (sqrt(Const(0.75) - In ** 2 + Const(1e-5)))) * heaviside(Const(0.433) - In)
-    c = ((sqrt(Const(0.75) - In ** 2 + Const(1e-5)) - (Const(1.732) - In * Const(1.732))) * heaviside(Const(0.75) - In))
-    d = (Const(1.732) - In * Const(1.732)) * (Const(1) * heaviside(Const(1.0) - In))
+    exp1 = (Const(1) - Const(0.577) * In)
+    exp2 = sqrt(max(Const(1e-6), Const(0.75) - In ** 2))
+    exp3 = (Const(1.732) - In * Const(1.732))
+    b = (exp1 - exp2) * heaviside(Const(0.433) - In)
+    c = (exp2 - exp3) * heaviside(Const(0.75) - In)
+    d =  exp3 * heaviside(Const(1.0) - In)
     return b + c + d
 
 

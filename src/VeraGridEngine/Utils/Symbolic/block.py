@@ -15,7 +15,7 @@ from enum import Enum, auto
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -75,7 +75,7 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
 
 
 def block2implicit(block: Block):
-    diff_block = Block.from_block(block)
+    diff_block = block.copy()
 
     for i, eq in enumerate(block.state_eqs):
         state_var = block.state_vars[i] # Todo: not robust, order has to be followed
@@ -325,6 +325,221 @@ def tf_to_block_with_states(num: np.ndarray, den: np.ndarray, x):
     )
     return block, y_states[0]
 
+def tf_to_diffblock_with_antiwindup(num: np.ndarray,
+                    den: np.ndarray,
+                    x,
+                    y: Var = None,
+                    name: Optional[str] = '',
+                    sat_min: Expr = Const(float(-1e6)),
+                    sat_max: Expr = Const(float( 1e6)),
+                    multilinear = False,
+                    PI:bool = False):
+    """
+    num: numerator coefficients [b0, ..., bm]
+    den: denominator coefficients [a0, ..., an]
+    x:   input (Var or Expr)
+    y:   output Var
+    sat_min, sat_max: saturation limits for anti-windup
+    """
+
+    if len(num) > len(den):
+        raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+    if num[-1] == 0 or den[-1] == 0:
+        raise ValueError("Leading coefficient cannot be zero.")
+
+    if y is None:
+        y = Var('y_' + name)
+
+    aux_eqs = []
+    aux_vars = []
+
+    # If x is an expression, wrap it in a Var
+    if not isinstance(x, Var):
+        u = Var('u_' + name)
+        aux_eqs.append((u - x).simplify())
+        aux_vars.append(u)
+        x = u
+
+    diff_vars_x = [x]
+    diff_vars_y = [y]
+    diff_vars = []
+
+    # Derivative chain for x
+    base_var = x
+    for i in range(1, len(num)):
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
+            diff_vars.append(new_diff)
+        diff_vars_x.append(x.diff_var)
+        base_var = x.diff_var
+
+    # Derivative chain for y
+    base_var = y
+    for i in range(1, len(den)):
+        if base_var.diff_var is None:
+            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
+            diff_vars.append(new_diff)
+        diff_vars_y.append(y.diff_var)
+        base_var = y.diff_var
+
+    # Base equations
+    rhs = np.array(diff_vars_x) @ np.array(num)
+    lhs = np.array(diff_vars_y) @ np.array(den)
+
+
+    # -----------------------------------------------------------
+    # ANTI-WINDUP BY MULTIPLYING ALL COEFFICIENTS BY h
+    # -----------------------------------------------------------
+    if not multilinear:
+        h1 = heaviside(y - sat_min)
+        h2 = heaviside(sat_max - y)
+    else:
+        h1, ml_block1 = heaviside(y - sat_min, name=f'h1_{name}')
+        h2, ml_block2 = heaviside(sat_max - y, name=f'h2_{name}')
+
+
+    # Build LHS term-by-term, skipping multiplication on dy
+    rhs = Const(0.0)
+    lhs = Const(0.0)
+    if not PI:
+        for i, term in enumerate(np.array(den) * np.array(diff_vars_y)):
+            if i != 1:
+                lhs += term
+        for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
+            rhs += term
+    else:
+        for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
+            rhs += term
+
+    f = (rhs-lhs)/Const(den[1])
+    hf = heaviside(rhs-lhs)
+    ha = h1*h2
+    hb = (1-h1)*hf
+    hc = (1-h2)*(1-hf)
+    h = heaviside(ha + hb + hc)
+    # Differential equation (single equation)
+    eq_main = (diff_vars_y[1] - h*f).simplify()
+
+    block = Block(
+        name=name,
+        algebraic_vars=[y] + aux_vars,
+        algebraic_eqs=[eq_main] + aux_eqs,
+        diff_vars=diff_vars,
+    )
+    if multilinear:
+        block.add(ml_block1)    
+        block.add(ml_block2)
+    return block, y
+
+def tf_to_diffblock_with_antiwindup_by_feedback(
+    num: np.ndarray,
+    den: np.ndarray,
+    x,
+    y: Var = None,
+    name: Optional[str] = '',
+    sat_min: Expr = Const(-1e6),
+    sat_max: Expr = Const( 1e6),
+    Kaw: Expr = Const(10.0),   # anti-windup gain (1/Tt)
+):
+    """
+    Implements a back-calculation anti-windup controller using (u_sat - u) as feedback input.
+    Works better for implicit solvers
+    num: numerator coefficients [b0, ..., bm]
+    den: denominator coefficients [a0, ..., an]
+    x:   input signal
+    y:   output (saturated)
+    """
+
+    if len(num) > len(den):
+        raise ValueError("Improper TF")
+
+    if y is None:
+        y = Var(f'y_{name}')
+
+    aux_eqs = []
+    aux_vars = []
+
+    # Wrap input expression
+    if not isinstance(x, Var):
+        u_in = Var(f'u_in_{name}')
+        aux_eqs.append((u_in - x).simplify())
+        aux_vars.append(u_in)
+        x = u_in
+
+    # --------------------------------------------------
+    # Build derivative chains
+    # --------------------------------------------------
+    diff_vars = []
+    diff_x = [x]
+    diff_y = [y]
+
+    base = x
+    for i in range(1, len(num)):
+        dv = DiffVar(f'dt_{i}_{x.name}', base)
+        diff_vars.append(dv)
+        diff_x.append(dv)
+        base = dv
+
+    base = y
+    for i in range(1, len(den)):
+        dv = DiffVar(f'dt_{i}_{y.name}', base)
+        diff_vars.append(dv)
+        diff_y.append(dv)
+        base = dv
+
+    # --------------------------------------------------
+    # Unsaturated output (internal)
+    # --------------------------------------------------
+    u = Var(f'u_{name}')
+    aux_vars.append(u)
+
+    tf_rhs = np.dot(num, diff_x)
+    tf_lhs = np.dot(den, diff_y)
+
+    aux_eqs.append((u - tf_rhs).simplify())
+
+    # --------------------------------------------------
+    # Saturation
+    # --------------------------------------------------
+    u_sat = Var(f'u_sat_{name}')
+    aux_vars.append(u_sat)
+
+    sat_expr = (
+        sat_min
+        + (u - sat_min) * heaviside(u - sat_min)
+        - (u - sat_max) * heaviside(u - sat_max)
+    )
+
+    aux_eqs.append((u_sat - sat_expr).simplify())
+
+    # --------------------------------------------------
+    # Main differential equation
+    # Add anti-windup ONLY to integrator (dy/dt term)
+    # --------------------------------------------------
+    lhs = Const(0)
+    rhs = Const(0)
+
+    for i, term in enumerate(den * np.array(diff_y)):
+       lhs += term
+
+    for term in num * np.array(diff_x):
+        rhs += term
+
+    # Anti-windup injection
+    rhs += Kaw * (u_sat - u)
+
+    eq_main = (lhs - rhs).simplify()
+
+    block = Block(
+        name=name,
+        algebraic_vars=[y, u, u_sat] + aux_vars,
+        algebraic_eqs=[eq_main] + aux_eqs,
+        diff_vars=diff_vars,
+    )
+
+    return block, y
+
+
 def compare_blocks_dict(dict1, dict2):
     logger = Logger()
 
@@ -549,6 +764,7 @@ class Block:
             mdl_placeholder.state_vars.extend(b.state_vars)
             mdl_placeholder.state_eqs.extend(b.state_eqs)
             mdl_placeholder.diff_vars.extend(b.diff_vars)
+            mdl_placeholder.external_mapping.update(b.external_mapping)
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
@@ -565,6 +781,7 @@ class Block:
         self.event_dict = mdl_placeholder.event_dict
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
+        self.external_mapping = mdl_placeholder.external_mapping
         self.children = list()
 
     def get_vars(self) -> List[Var]:

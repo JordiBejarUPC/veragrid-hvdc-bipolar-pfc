@@ -212,8 +212,6 @@ class SymbolicVector:
                  enumerate(eqs)]) + "\n"
 
             # compile in python namespace
-            for e in eqs:
-                print(e.simplify())
             exec(src, self.namespace)
 
             # compile in numba
@@ -331,8 +329,8 @@ class SymbolicDerivative:
         fname = f"func"  # since we compile into a namespace, there won't be repeated names
         # Build source
         uid2dx_expression = {}
-        # TODO: order diff vars by order
-        src = f"def {fname}(vars, lagvars, dx, h, out):\n"
+        #TODO: order diff vars by order
+        src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
         for i, diff_var in enumerate(diff_vars):
             base_var_uid = diff_var.base_var.uid
             uid = diff_var.uid
@@ -341,7 +339,7 @@ class SymbolicDerivative:
                 rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
             else:
                 dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                rhs = f" ({dx_expression}- dx[{i}]) / h\n"
+                rhs = f" ({dx_expression}- lagdx[{i}]) / h\n"
             to_src = f"    out[{i}] = {rhs}\n"
             uid2dx_expression[uid] = rhs
 
@@ -504,7 +502,7 @@ class BlockSolver:
         self._n_event_params = len(self._event_parameters)
         self._n_params = len(self._parameters)
         self._n_diff = len(self._diff_vars)
-        n_algebraic = len(self._algebraic_eqs)
+        self._n_algebraic = len(self._algebraic_eqs)
 
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
@@ -863,8 +861,9 @@ class BlockSolver:
         :param h: simulation step
         :return [f_state_update, f_algeb]
         """
+        event_params[-2] = 1e50
 
-        f_algeb = self._rhs_algeb_fn(x, dx, event_params, params)
+        f_algeb = self._rhs_algeb_fn(x, 0*dx, event_params, params)
         sim_step = sim_step
         if self._n_state > 0:
             f_state = self._rhs_state_fn(x, dx, event_params, params)
@@ -931,6 +930,7 @@ class BlockSolver:
         """
 
         # returns only j22 if no states, returns J if states
+        event_params[-2] = h
         if len(self._state_eqs) == 0:
             j22: sp.csc_matrix = self._j22_fn(x, dx, event_params, params, h)
             return j22
@@ -1155,9 +1155,11 @@ class BlockSolver:
         }
 
         params_current = self._event_params_fn(np.ones(len(self._event_parameters)), float(0.0))
+        params_current = self._event_params_fn(params_current, float(0.0))
         t[0] = t0
         y[0] = x0.copy()
         dx = dx0.copy()
+        dx_last = dx0.copy()
         x_new = x0.copy()
         for step_idx in range(steps):
             self.step_idx = step_idx
@@ -1182,7 +1184,7 @@ class BlockSolver:
                 if step_idx == 0:
                     dx = dx0.copy()
                 else:
-                    dx = self._derivative_fn(x_new, xn, dx, h)
+                    dx = self._derivative_fn(x_new, xn, dx_last, h)
 
                 # ---------------- lag update ----------------
                 lag_update_start = time.time()
@@ -1214,8 +1216,6 @@ class BlockSolver:
 
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
-                print(np.linalg.norm(x_new - xn, np.inf))
-                print(f'residua is {residual} at step {step_idx} and iter {n_iter}')
                 Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
 
                 if step_idx == 0:
@@ -1243,7 +1243,6 @@ class BlockSolver:
                 solved = False
                 linear_start = time.time()
                 delta = sp.linalg.spsolve(Jf, -rhs)
-                print(f'delta is {delta}')
                 linear_end = time.time()
                 timings["linear_solver_time"] += linear_end - linear_start
                 solved = np.all(np.isfinite(delta))
@@ -1514,13 +1513,13 @@ class BlockSolver:
         # print('Pseudo-Transient ended')
         return x0, init_guess
 
-    def pseudo_transient_routine(self, x0, init_guess=dict(), plot=True, dtau0=1e0, h=1e-3, beta=0.8, tol=1e-5,
-                                 predictor=False, max_iter=8e4, max_tries=200, verbose=False):
+    def pseudo_transient_routine(self, x0, init_guess=dict(), plot=True, dtau0=1e-3, h=1e-3, beta=0.8, tol=1e-5,
+                                         predictor=False, max_iter=8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
 
         dtau = dtau0
-        dtau_max = 1e3
-        dtau_min = 1e-7
+        dtau_max = 1e9
+        dtau_min = 1e-5
         init_guess_uid = [var.uid for var in init_guess.keys()]
         self.compile_implicit_predictor()
 
@@ -1532,15 +1531,18 @@ class BlockSolver:
         for i in range(len(x0)):
             if x0[i] == 0:
                 _ = 0
-                x0[i] = 0.1 + 0.5 * np.random.rand()
+                x0[i] = 1.0 + 0.5 * np.random.rand()
 
+        x0 = np.random.rand(self._n_algebraic)
         dx0 = np.zeros(self._n_diff)
         y = np.empty((5, self._n_vars))
         step_idx = 0
         x_new = x0.copy()
+        xn = x0.copy()
         tries = 0
         params = np.array([const.value for const in self._parameters_values])
-        event_params = np.zeros(len(self._event_parameters))
+        event_params = np.random.rand(len(self._event_parameters))
+        event_params = self._event_params_fn(event_params, float(0))
         event_params = self._event_params_fn(event_params, float(0))
 
         dx_error = 1
@@ -1556,21 +1558,36 @@ class BlockSolver:
 
         while step_idx < max_iter:
             tries += 1
-            xn = y[-1]
+            solved = False
+            if step_idx == 0:
+                xlast = xn
+                xn = x_new.copy()
+            else: 
+                xlast = xn
+                xn = y[-1]
 
             # rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
-
-            dx = self._derivative_fn(x_new, xn, dx0, 1e-3)
-            rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, params, 1, dtau)
+            
+            dx = self._derivative_fn(xn, xlast, dx0, 1e-3)
+            rhs = self.rhs_pseudo_transient(x_new, xlast, dx, event_params, params, 1, dtau)
+            if not np.all(np.isfinite(rhs)):
+                raise NaNError
             Jf = self.jacobian_pseudo_transient(x_new, dx, event_params, params, dtau)
             residual = np.linalg.norm(rhs)
             try:
                 delta = sp.linalg.spsolve(Jf, -rhs)
             except Exception as e:
                 raise SingularJacobianError(f"Linear solver failed at try {tries}: {e}")
-            if not np.all(np.isfinite(delta)):  # or not np.all(np.isfinite(delta)):
+            
+            solved = np.all(np.isfinite(delta))
+            if not solved:
+                print("Using LSQR")
+                delta, *_ = sp.linalg.lsqr(Jf, -rhs)
+                solved = np.all(np.isfinite(delta))
+
+            if not solved:  # or not np.all(np.isfinite(delta)):
                 print(f'jacobian is {Jf.toarray()}')
                 print(f'delta is {delta}')
                 print(f'x_new is {x_new}')
@@ -1578,22 +1595,20 @@ class BlockSolver:
                 print(f'residual is {np.linalg.norm(rhs)} try is {tries} and step is {step_idx}')
                 raise NaNError(
                     f"Newton step failed at try {tries} and step {step_idx}: delta has NaN/Inf values with dtau {dtau}")
-            print(f'delta shape is {delta.shape}')
-            print(f'x_new shape is {x_new.shape}')
+            dx0 = dx
             x_new += delta
-            rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, 1, dtau)
+            print(f'delta is {delta}')
 
             if step_idx == 0 and tries % 10 == 1:
                 i = np.argmax(rhs)
 
             newton_residual = np.linalg.norm(rhs, np.inf)
-            converged = (tries % 10 == 9) or (tries < 10) or True
             if verbose:
                 _ = 0
                 print(f'residual is {newton_residual}, step is {step_idx} try is {tries}')
                 print(f'dtau is {dtau}')
 
-            if converged:
+            if solved:
                 step_idx += 1
                 tries = 0
                 y = np.roll(y, shift=-1, axis=0)
@@ -1604,9 +1619,9 @@ class BlockSolver:
                     y[-1] = x_new
                 x_new = y[-1]
 
-                dx = self._derivative_fn(x_new, xn, dx, 1e-3)
+                dx = self._derivative_fn(xn, xlast, dx, dtau)
                 dx_error = np.linalg.norm(dx)
-                rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, 1, dtau)
+                rhs = self.rhs_pseudo_transient(x_new, xn, dx, event_params, params, 1, dtau)
                 residual = np.linalg.norm(rhs)
 
                 # save history
@@ -1616,12 +1631,11 @@ class BlockSolver:
                 x_hist.append(x_new.copy())
                 dx_hist.append(dx.copy())
 
-                if residual < 1e-5 and dx_error < 1e-5:
+                if residual < tol:
                     break
 
-                print(
-                    f'Convergence achieved for dtau={dtau:.2e}, ||dx||={dx_error:.2e}, residual={residual:.2e}, step {step_idx}')
-
+                print(f'Convergence achieved for dtau={dtau:.2e},residual={residual:.2e}, step {step_idx}')
+                print(f'rhs is {rhs}')
                 eps = 1e-14
                 avg_residual = 0.8 * old_residual + 0.2 * residual
                 ratio = (avg_residual + eps) / residual
@@ -1634,46 +1648,6 @@ class BlockSolver:
                 elif beta < 1.0:
                     beta = 0.5
 
-                # Residual increased → reduce time step
-                if dx_error < tol and residual > tol:
-                    print(f"Residual too big → reducing dtau and dx_error is {dx_error}")
-                    dtau = 1
-                    beta = 0.8
-                elif abs(1 - ratio) < 1e-5 and step_idx > 100 and False:
-                    # beta = 1.5
-                    print("System stalled → increasing dtau ")
-                elif len(dtau_hist) > 2 and abs(1 - dtau_hist[-1] / dtau_hist[-2]) < 1e-3 and dtau_hist[
-                    -1] < dtau_max and step_idx > 100 and False:
-                    # beta = 1.5
-                    print("System stalled → increasing dtau ")
-                elif residual < tol:
-                    beta = 5
-                    print("Residual already small → increasing dtau ")
-                else:
-                    # beta = np.clip(ratio, 0.5, 2.0)
-                    _ = 0
-
-                if residual < tol and dx_error < tol:
-                    beta = 2
-                    if np.abs(1 - dtau / h) < 1e-1:
-                        break
-                    elif (dtau * beta - h) * (beta - h) < 0:
-                        dtau = h
-                    elif (dtau / beta - h) * (beta - h) < 0:
-                        dtau = h
-                    elif dtau > h:
-                        dtau /= beta
-                    else:
-                        dtau *= beta
-                    beta = 1
-
-                # beta = ratio
-                print(f'Updating dtau: {dtau} * {beta}')
-                beta = min(max(0.5, beta), 2)
-                if residual < tol:
-                    beta = 2
-                    print("Residual already small → increasing dtau ")
-
                 print(f'Updating dtau: {dtau} * {beta}')
                 if dtau > 0:
                     dtau = min(dtau_max, max(dtau_min, dtau * beta))
@@ -1684,6 +1658,7 @@ class BlockSolver:
                 old_residual = residual
 
             elif tries > max_tries:
+                print(f'delta is {delta}')
                 print(f'failed with dtau = {dtau}')
                 raise ConvergenceError(f"Max tries reached at dtau={dtau:.2e}, residual={residual:.2e}")
 
@@ -1759,11 +1734,12 @@ class BlockSolver:
     def compile_implicit_predictor(self):
         self._rhs_predictor = self.rhs_implicit
 
-        self._Jf_predictor = SymbolicJacobian(eqs=self._algebraic_eqs,
-                                              variables=self._diff_vars,
-                                              diff_variables=[],
-                                              compiler_names_dict=self.compiler_names_dict,
-                                              uid2idx_vars=self.uid2idx_vars, )
+        self._Jf_predictor = SymbolicJacobian(eqs=self._algebraic_eqs, 
+                                            variables=self._diff_vars,
+                                            diff_variables= [],
+                                            compiler_names_dict = self.compiler_names_dict,
+                                            alias_names_dict= self.alias_names_dict,
+                                            uid2idx_vars= self.uid2idx_vars,)
 
         self._diff_eq_index = []
         for i, eq in enumerate(self._algebraic_eqs):

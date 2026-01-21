@@ -129,9 +129,9 @@ start_time = time.time()
 stabil1_mdl.algebraic_vars.extend(stabil1_mdl.in_vars)
 slv = BlockSolver(stabil1_mdl, sim_time)
 end_time = time.time()
-stabil_time = end_time - start_time
+stabil1_mdl_time = end_time - start_time
 
-times = [("Generator", gen_time), ("Exciter", exc_time), ("Governor", gov_time), ("Stabilizer", stabil_time)]
+times = [("Generator", gen_time), ("Exciter", exc_time), ("Governor", gov_time), ("Stabilizer", stabil1_mdl_time)]
 for name, t in times:
     print(f"{name} RMS model compilation time: {t} seconds")
 
