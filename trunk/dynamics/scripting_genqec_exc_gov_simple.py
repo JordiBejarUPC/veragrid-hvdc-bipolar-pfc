@@ -31,6 +31,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -38,7 +39,7 @@ import VeraGridEngine.api as gce
 ###########################################################################################################################
 
 def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars:
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
         if name == var.name:
             return var
         
@@ -70,6 +71,7 @@ grid.add_line(line0)
 
 # load
 load = gce.Load(P= 9.999999, Q= 0.999999)
+load_mdl = load.rms_model.model
 grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
@@ -141,7 +143,7 @@ genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]]
 
 
 
-exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[0]])
 
 
 line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
@@ -155,8 +157,6 @@ u_gov = find_name_in_block("u_gov1", gov1_mdl)
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
-# external mapping
-
 
 big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
 
@@ -165,6 +165,7 @@ big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
 
 
+# external mapping
 
 
 # attach rms models to Veragrid objects
@@ -176,6 +177,9 @@ line0.rms_model.model = line0_mdl
 
 load.rms_model.model = load_mdl
 
+Pl0 = find_name_in_block('Pl0', load_mdl)
+event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)
+grid.add_rms_event(event)
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -215,8 +219,9 @@ params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
 dx0 = np.zeros(len(slv._diff_vars))
+Vm = find_name_in_block("Vm", slv.block_system)
 
-xlim = 1.0
+xlim = 15.0
 t, y, _ = slv.simulate(
     t0=0,
     t_end=xlim,
@@ -238,18 +243,21 @@ omega = genqec1_mdl.out_vars[2]
 Pg = genqec1_mdl.out_vars[0]
 Qg = genqec1_mdl.out_vars[1]
 Ir = genqec1_mdl.out_vars[3]
-Vm = genqec1_mdl.in_vars[0]
 Efd = genqec1_mdl.in_vars[3]
 Te = genqec1_mdl.out_vars[4]
 
 u_gov1 = find_name_in_block("u_gov1", gov1_mdl)
 y_subexciter = find_name_in_block("y_subexciter1", exc1_mdl)
 y_exciter1 = find_name_in_block("y_exciter1", exc1_mdl)
+y_exciter4 = find_name_in_block("y_exciter4", exc1_mdl)
 Efe = find_name_in_block("Efe", exc1_mdl)
+delta = find_name_in_block("delta", genqec1_mdl)
 
 
 # Generator state variables
 plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
+plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
@@ -263,7 +271,6 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-exit()
 
 Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
 Ed_prime = find_name_in_block("Ed_prime", genqec1_mdl)
@@ -296,6 +303,7 @@ plt.plot(t, y[:, slv.get_var_idx(u_gov1)], label="u_gov1 (pu)")
 plt.plot(t, y[:, slv.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Efe)], label="Efe (pu)")
 plt.plot(t, y[:, slv.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
 
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")

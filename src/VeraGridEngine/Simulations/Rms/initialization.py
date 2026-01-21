@@ -21,28 +21,9 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside, piecewise, \
     LagVar, BinOp, heaviside
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, NaNError, SingularJacobianError, ConvergenceError, SolverError
 from VeraGridEngine.Utils.Symbolic.block_solver import SymbolicParamsVector
-
-
-class SolverError(Exception):
-    """Base class for all solver-related errors."""
-    pass
-
-
-class NaNError(SolverError):
-    """Raised when NaNs or Infs appear in the solution."""
-    pass
-
-
-class ConvergenceError(SolverError):
-    """Raised when solver fails to converge within max iterations."""
-    pass
-
-
-class SingularJacobianError(SolverError):
-    """Raised when Jacobian is singular or ill-conditioned."""
-    pass
+from VeraGridEngine.enumerations import RmsInitializationMethod
 
 
 def _compile_equations(eqs: Sequence[Expr],
@@ -108,7 +89,7 @@ def _compile_equation(eqs: Sequence[Expr],
 
 
 def _compile_parameters_equations(eqs: Sequence[Expr],
-                                  uid2sym_t: Dict[int, str],
+                                  compiler_tags: Dict[int, str],
                                   add_doc_string: bool = True) -> Callable[[float], np.ndarray]:
     """
     Compile the array of expressions to a function that returns an array of values for those expressions
@@ -119,9 +100,9 @@ def _compile_parameters_equations(eqs: Sequence[Expr],
     """
 
     # Build source
-    src = f"def _f(glob_time):\n"
+    src = f"def _f(event_params, params, glob_time):\n"
     src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {expression2numba(e, uid2sym_t)}" for i, e in enumerate(eqs)]) + "\n"
+    src += "\n".join([f"    out[{i}] = {expression2numba(e, compiler_tags)}" for i, e in enumerate(eqs)]) + "\n"
     src += f"    return out"
     ns: Dict[str, Any] = {
         "math": math,
@@ -263,25 +244,24 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
             if key in init_guess:
                 x[uid2idx_vars[uid]] = init_guess[key]
 
-        # initialize array for model event params
-        event_params_array = np.zeros(len(mdl.event_dict.keys()))
-
-        # compute and assign event parameters non undefined value
-        for event_param in mdl.event_dict.keys():
-            eq = mdl.event_dict[event_param]
-            if isinstance(eq, Const) and eq.value is not None:
-
-                eq_fn = _compile_parameters_equations([eq], uid2sym_t)
-                param_val = float(eq_fn(0.0)[0])
-                event_params_array[uid2idx_event_params[event_param.uid]] = param_val
-
         # initialize array for model params
         params_array = np.zeros(len(mdl.parameters.keys()))
-
         # compute and assign parameters value
         for param, const in mdl.parameters.items():
             param_val = const.value
             params_array[uid2idx_params[param.uid]] = param_val
+
+        # initialize array for model event params
+        event_params_array = np.zeros(len(mdl.event_dict.keys()))
+        # compute and assign event parameters non undefined value
+        compiler_tags = (uid2sym_t|uid2sym_params|uid2sym_event_params)
+        for event_param in mdl.event_dict.keys():
+            eq = mdl.event_dict[event_param]
+            if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq,Const):
+
+                eq_fn = _compile_parameters_equations([eq], compiler_tags)
+                param_val = float(eq_fn(event_params_array, params_array, 0.0)[0])
+                event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
 
         # compute and assign missing init_vars and undefined parameters
@@ -381,54 +361,33 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     return init_guess, sys_block
 
 
-def init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time):
+def init_pseudo_transient(bus, region:Block, grid, sys_block, res, init_guess, time):
     region_time = Var('region_time')
     uid2idx_region_vars: Dict[int, int] = dict()
     init_guess_region: Dict[Var, float] = dict()
-    vars_list: List[Var] = list()
     bus_index = grid.buses.index(bus)
-    region_system = Block()
-    region_dev_list = list()
+    bus_block = bus.rms_model.model
+    region.unify_blocks()
     # add bus variables to init_guess_region
-    # Vm, Va = bus.get_rms_algebraic_vars()
-    # init_guess_region.update({: float(np.abs(res.voltage[bus_index]))})
-    # init_guess_region.update({Va: float(np.angle(res.voltage[bus_index]))})
-    # init_guess_region.update({Vm: 1})
-    # init_guess_region.update({Va: 1})
-
-    region_system.children.extend(region.children)
-    for mdl in region_system:
-        init_guess_region, vars_list = parse_vars(mdl, init_guess_region, vars_list)
-
-    # uid2idx_region_vars[Vm.uid] = 0
-    # uid2idx_region_vars[Va.uid] = 1
-    region_array_index = 0
-    for var in vars_list:
-        uid2idx_region_vars[var.uid] = region_array_index
-        region_array_index += 1
-    ## if only generator
-    # for var in vars_list:
-    #     if "tm" in var.name :
-    #         init_guess_region[var] = 6.99999999999765
-    #     elif "vf" in var.name:
-    #         init_guess_region[var] = 1.2028205849036708
 
     x0_region = build_init_vars_vector(uid2idx_region_vars, init_guess_region)
 
-    # region_solver = DiffBlockSolver(region_system, region_time)
-
-    x0_pst, init_guess_pst = pseudo_transient(bus_index, region_system, region_time, x0_region, init_guess_region, res,
+    x0_pst, init_guess_pst = pseudo_transient(bus_index, bus_block, region, region_time, x0_region, init_guess_region, res,
                                               grid, uid2idx_region_vars)
-    for var, value in init_guess_pst:
-        init_guess.update({[var.uid, var.name], value})
-    sys_block.add(region_system)
+    for var, value in init_guess_pst.items():
+        init_guess[(var.uid, var.name)] = value
+    
+    for param, eq in region.event_dict.items():
+        if isinstance(eq, Const) and eq.value is None:
+            region.event_dict[param] = init_guess[(param.uid, param.name)]
+    sys_block.add(region)
 
     return time, sys_block, init_guess
 
 
-def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res,
+def pseudo_transient(bus_index, bus_block, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res,
                      grid: MultiCircuit, uid2idx_vars: Dict[int, int],
-                     dtau0=1, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
+                     dtau0=1e0, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                      type: str = None):
     """
     :param uid2idx_vars:
@@ -446,69 +405,63 @@ def pseudo_transient(bus_index, region_system, region_time, x0: np.ndarray, init
     :param type:
 
     """
+    uid2sym_t = {}
     solved:bool = False
     alpha:float = 0.8
     reference_vars:List[Var] = list()
 
-    for block in region_system.children:
-        found = False
-        for child_block in block.get_all_blocks():
-            child_block = block2implicit(child_block)
-            if hasattr(child_block, 'external_mapping'):
-                Pg = child_block.external_mapping[VarPowerFlowRefferenceType.P]
-                Qg = child_block.external_mapping[VarPowerFlowRefferenceType.Q]
-                Vm = child_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-                Va = child_block.external_mapping[VarPowerFlowRefferenceType.Va]
-                found = True
-            for param, eq in child_block.event_dict.items():
-                #We add the non initialized parameters to the algebraic variables to be solved
-                if isinstance(eq, Const) and eq.value is None:
-                    child_block.algebraic_vars.append(param)
-                    reference_vars.append(param)
-                    del child_block.event_dict[param]
+    #We add the buses variables to the model
+    Pg = region_system.external_mapping[VarPowerFlowRefferenceType.P]
+    Qg = region_system.external_mapping[VarPowerFlowRefferenceType.Q]
+    Vm = bus_block.external_mapping[VarPowerFlowRefferenceType.Vm]
+    Va = bus_block.external_mapping[VarPowerFlowRefferenceType.Va]
 
-        if not found:
-            raise Exception("Couldnt find bus connection in region block")
-        
-        delete_vars_from_block(block, [Pg, Qg])
-        bus_block = Block()
+    delete_vars_from_block(region_system, [Pg, Qg])
+    connection_block = Block()
+    connection_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
+                            Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
+                            Vm: Const(float(np.abs(res.voltage[bus_index]))),
+                            Va: Const(float(np.angle(res.voltage[bus_index])))}
+    
+    new_event_dict = {}
+    for key, val in region_system.event_dict.items():
+        if isinstance(val, Const) and val.value is None:
+            region_system.algebraic_vars.append(key)
+        else:
+            new_event_dict[key] = val
+    region_system.event_dict = new_event_dict
+    init_block = Block(
+        children=[region_system, connection_block]
+    )
+    # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
+    init_block = block2implicit(init_block)
+    solver = BlockSolver(init_block, region_time)
 
-        bus_block.event_dict = {Pg: Const(float(np.real(res.Sbus[bus_index] / grid.Sbase))),
-                                Qg: Const(float(np.imag(res.Sbus[bus_index] / grid.Sbase))),
-                                Vm: Const(float(np.abs(res.voltage[bus_index]))),
-                                Va: Const(float(np.angle(res.voltage[bus_index])))}
+    while not solved:
+        try:
+            print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
+            x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0,
+                                                                                    max_iter=max_iter, max_tries=1e2,
+                                                                                    plot=plot,
+                                                                                    predictor=predictor,
+                                                                                    verbose = True)
+            solved = True
+        except NaNError as e:
+            msg = str(e).lower()
+            # print(msg)
+            dtau0 /= alpha
+        except ConvergenceError as e:
+            msg = str(e).lower()
+            # print(msg)
+            dtau0 *= alpha
+        except Exception as e:
+            # print(f"❌ Unexpected error: {e}")
+            raise e
 
-        init_block = Block(
-            children=[block, bus_block]
-        )
-        # 2 out of [Pg, Qg, Vm, Va] need to be deleted from the algebraic vars to have a square system
-        init_block = block2implicit(init_block)
-        solver = BlockSolver(init_block, region_time)
+    for var in reference_vars:
+        init_block.event_dict[var] = Const(x0[uid2idx_vars[var.uid]])
 
-        while not solved:
-            try:
-                print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
-                x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0,
-                                                                                     max_iter=max_iter, max_tries=1e3,
-                                                                                     plot=plot,
-                                                                                     predictor=predictor)
-                solved = True
-            except NaNError as e:
-                msg = str(e).lower()
-                # print(msg)
-                dtau0 /= alpha
-            except ConvergenceError as e:
-                msg = str(e).lower()
-                # print(msg)
-                dtau0 *= alpha
-            except Exception as e:
-                # print(f"❌ Unexpected error: {e}")
-                raise e
-
-        for var in reference_vars:
-            block.event_dict[var] = Const(x0[uid2idx_vars[var.uid]])
-
-        init_guess.update(init_guess_mdl)
+    init_guess.update(init_guess_mdl)
 
     # print('Pseudo-Transient ended')
     return x0, init_guess
@@ -518,7 +471,9 @@ def compose_system_block(time: Var, grid: MultiCircuit,
                          power_flow_results: PowerFlowResults,
                          vars2device: Dict[int, PhysicalDevice],
                          vars_glob_name2uid: Dict[str, int],
-                         use_init_values: bool) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
+                         use_init_values: bool,
+                         method:RmsInitializationMethod = RmsInitializationMethod.Explicit
+                         ) -> Tuple[Var, Block, Dict[Tuple[int, str], float]]:
     """
     Compose all RMS models
     :param time: time of the simulation
@@ -635,17 +590,13 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         # try:
             # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
             #               array_index, use_init_values)
-        init_guess_region, sys_block_region = init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-                         vars_array_index, use_init_values)
+        if method == RmsInitializationMethod.Explicit:
+            init_guess_region, sys_block_region = init_explicit(bus, region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
+                             vars_array_index, use_init_values)
+        elif method == RmsInitializationMethod.PseudoTransient:
+            time, sys_block_region, init_guess_region = init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
         init_guess.update(init_guess_region)
         sys_block = sys_block_region
-
-
-
-
-        # except ValueError:
-        #     print(f"Couldn't initialize system with explicit method")
-        #     init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
 
 
     # del buses P, Q
@@ -691,7 +642,11 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
-def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool = False, logger: Logger = Logger()):
+def initialize_rms(grid: MultiCircuit, 
+                   power_flow_results, 
+                   use_init_values: bool = False, 
+                   logger: Logger = Logger(),
+                   method: RmsInitializationMethod = RmsInitializationMethod.Explicit):
     """
     Initialize all RMS models
     :param grid:
@@ -790,4 +745,4 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, use_init_values: bool
                 mdl.algebraic_eqs.append(P[i])
                 mdl.algebraic_eqs.append(Q[i])
 
-    return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid, use_init_values)
+    return compose_system_block(time, grid, power_flow_results, vars2device, vars_glob_name2uid, use_init_values, method)

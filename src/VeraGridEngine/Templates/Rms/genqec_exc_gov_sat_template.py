@@ -10,7 +10,7 @@ import math
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output)
+                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
@@ -128,7 +128,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
 
     event_dict = {
         fn: Const(50.0),
-        ws: Const(1),
+        ws: Const(2*pi*50),
         M: Const(3.5),
         D: Const(10.0),
         Rs: Const(0.003),
@@ -149,15 +149,14 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         Td0_2prime: Const(0.03),
         Tq0_2prime: Const(0.05),
 
-        Xd_prime_minus_Xl: Const(None),
-        Xq_prime_minus_Xl: Const(None),
-        Xdaux  : Const(None),
-        Xdaux2 : Const(None),
-        Xdaux3 : Const(None),
-        Xqaux  : Const(None),
-        Xqaux2 : Const(None),
-        Xqaux3 : Const(None),
-
+        Xd_prime_minus_Xl: Xd_prime-Xl,
+        Xq_prime_minus_Xl: Xq_prime-Xl,
+        Xdaux  : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2),
+        Xdaux2 : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)),
+        Xdaux3 : ((Xd_2prime - Xl) / (Xd_prime_minus_Xl)),
+        Xqaux  : ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
+        Xqaux2 : (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
+        Xqaux3 : ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
         A: Const(5.0),
         B: Const(1.0)
     }
@@ -213,7 +212,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             # flux
             V_dag - (Vd + Id * Ra - Iq * Xl),
             V_qag - (Vq + Iq * Ra + Id * Xl),
-            omega * Psi_ag - ws * sym.sqrt(V_qag * V_qag + V_dag * V_dag),
+            omega * Psi_ag - sym.sqrt(V_qag * V_qag + V_dag * V_dag),
             # saturations (quadratic)
             Sa - A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-5))) ** 2,
 
@@ -273,15 +272,12 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Id_sat: Id/Sat,
 
             #We initialize some specific parameters:
-            Xd_prime_minus_Xl: Xd_prime-Xl,
-            Xq_prime_minus_Xl: Xq_prime-Xl,
-            Xdaux  : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2),
-            Xdaux2 : ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)),
-            Xdaux3 : ((Xd_2prime - Xl) / (Xd_prime_minus_Xl)),
-            Xqaux  : ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
-            Xqaux2 : (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
-            Xqaux3 : ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
-
+        },
+        external_mapping={
+            VarPowerFlowRefferenceType.P: Pg,
+            VarPowerFlowRefferenceType.Q: Qg,
+            VarPowerFlowRefferenceType.Vm: inputs[0],
+            VarPowerFlowRefferenceType.Va: inputs[1],
         },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
@@ -578,7 +574,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         "Kf": Const(0.03),  # exciter rate feedback gain
 
         # Time constants
-        "tA": Const(0.02),  # AVR time constant (s)
+        "tA": Const(0.1),  # AVR time constant (s)
         "tB": Const(10.0),  # lead-lag: lag time constant (s)
         "tC": Const(1.0),  # lead-lag: lead time constant (s)
         "tE": Const(0.5),  # exciter field time constant (s)
@@ -598,7 +594,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [Var("IRPu_"), Var("Va_"), Var("Vpss_")]
+    inputs = [Var("IRPu_"), Var("Vm_"), Var("Vpss_")]
 
     algebraic_vars = []
 
@@ -654,9 +650,9 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
 
         # Limits
-        VaMaxPu: Const(20.0),  # AVR output max (pu)
-        VaMinPu: Const(-10.0),  # AVR output min (pu)
-        VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
+        VaMaxPu:  Const( 2.0),  # AVR output max (pu)
+        VaMinPu:  Const(-2.0),  # AVR output min (pu)
+        VeMinPu:  Const(-2.0),  # min exciter output voltage (pu)
         VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
 
         # Exciter submodel parameters
@@ -690,17 +686,17 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         x=error2,
         name='exciter3',
     )
-    tf4, y4 = tf_to_diffblock(
+    min_const = max(events_dict[VaMinPu].value, events_dict[EfeMinPu].value)
+    max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
+
+    tf4, y4 = tf_to_diffblock_with_antiwindup(
         num=np.array([parameters["Ka"].value]),
         den=np.array([1, parameters["tA"].value]),
         x=y3,
+        sat_min = min_const,
+        sat_max = max_const,
         name='exciter4',
     )
-
-    y5 = sym.hard_sat(y4, VaMinPu, VaMaxPu)
-
-    min_const = max(events_dict[VaMinPu].value, events_dict[EfeMinPu].value)
-    max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
     y6 = sym.hard_sat(y4, min_const, max_const)
 
     # exciter submodel
@@ -711,25 +707,18 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     x1 = VfeMaxPu - inputs[0] * parameters["Kd"].value
     error1 = Efe - (inputs[0] * parameters["Kd"].value + u_aux)
 
-    tf1_sub, Ve_presat = tf_to_diffblock(
+    tf1_sub, Ve = tf_to_diffblock(
         num=np.array([1]),
         den=np.array([0, parameters["tE"].value]),
         x=error1,
+        #sat_min= VeMinPu,
+        #sat_max= VeMaxPu,
         name='subexciter1',
     )
 
     Se_threshold = parameters['Ke'].value
-    Ve = Var('Ve')
-    Sx = Var('Sx')
 
-    Ve_eq = Ve - sym.hard_sat(Ve_presat, VeMinPu, Const(1000))
-    Sx_eq = Sx - ( (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold))
-    
-    algebraic_vars_submodel.append(Ve)
-    algebraic_vars_submodel.append(Sx)
-    algebraic_eqs_submodel.append(Ve_eq)
-    algebraic_eqs_submodel.append(Sx_eq)
-
+    Sx = ( (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold))
     aux_expr = parameters['Ke'].value * Ve + AEx * Ve * Sx
     algebraic_eqs_submodel.append(u_aux - aux_expr)
     algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1 * Ve)
@@ -773,8 +762,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         init_eqs={
             Vf: inputs[0],
             y_subexciter1: inputs[0] * (1 / sym.f_exc(inputs[0] * parameters["Kc"].value / y_subexciter1)),
-            Ve: sym.hard_sat(y_subexciter1, VeMinPu, Const(1000)),
-            Sx: (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold),
+            #Ve: sym.hard_sat(y_subexciter1, VeMinPu, Const(1000)),
+            #Sx: (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold),
             VeMaxPu: (VfeMaxPu - inputs[0] * parameters["Kd"].value) / (
                     parameters["Ke"].value + AEx * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
                 Ve - Se_threshold)),

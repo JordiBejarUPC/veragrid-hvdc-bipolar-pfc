@@ -95,10 +95,66 @@ def test_diff_block_in_harmonic_oscillator():
     assert np.allclose(x_sim, x_ref, atol=1e-2)
     assert np.allclose(y_sim, y_ref, atol=1e-2)
 
+def test_diff_block_second_order_oscillator():
+    x = Var('x')
+    dt = Const(0.001)
+
+    dx = DiffVar('dx', base_var=x)
+    d2x = DiffVar('d2x', base_var=dx)
+
+    # build system: d2x + dx + x = 0
+    diff_block = Block(
+        algebraic_eqs=[
+            d2x + dx + x,
+        ],
+        algebraic_vars=[x],
+        diff_vars=[dx, d2x],
+    )
+
+    t = Var('t')
+    slv = BlockSolver(diff_block, t)
+
+    # initial conditions:
+    # x(0) = 1
+    # dx(0) = 0
+    vars_mapping = {x: 1.0}
+    diff_vars_mapping = {dx: 0.0, d2x: -1.0}  # from d2x = -dx - x
+
+    x0 = np.array([1.0])
+    dx0 = slv.build_init_diffvars_vector(diff_vars_mapping)
+    params0 = np.array([0.001])
+
+    t, y, _ = slv.simulate(
+        t0=0.0,
+        t_end=10.0,
+        h=0.001,
+        x0=x0,
+        dx0=dx0,
+        params0=params0,
+        method=DynamicIntegrationMethod.BackEuler,
+        verbose=False
+    )
+
+    x_sim = y[:, slv.get_var_idx(x)]
+
+    # analytical solution of x'' + x' + x = 0
+    # overdamped/underdamped depending on coefficients;
+    # here: lambda = (-1 ± sqrt(1 - 4)) / 2 = complex
+    omega = np.sqrt(3) / 2
+    x_ref = np.exp(-0.5 * t) * np.cos(omega * t)
+
+    plt.figure()
+    plt.plot(t, x_sim, label="x (sim)")
+    plt.plot(t, x_ref, "--", label="x (ref)")
+    plt.xlabel("t")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    assert np.allclose(x_sim, x_ref, atol=1e-2)
+
+
 if __name__ == "__main__":
     #test_diff_block_in_harmonic_oscillator()
-    a = Var('a')
-    b = Var('b')
-    c = Var('b')
-    print(a*b*c)
+    test_diff_block_second_order_oscillator()
     print("All tests passed.")
