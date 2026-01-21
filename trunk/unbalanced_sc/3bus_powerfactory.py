@@ -2,6 +2,7 @@ import VeraGridEngine.api as vge
 from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
 from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
+import numpy as np
 
 logger = vge.Logger()
 grid = vge.MultiCircuit()
@@ -15,7 +16,9 @@ grid.add_bus(obj=bus_dc)
 bus_wt = vge.Bus(name='Bus WT', Vnom=0.69, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/4)
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=5/4) # Rf = 5
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/4) # Rf = 1
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/8) # Rf = 0,5
 grid.add_bus(obj=bus_ac)
 
 bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=900, is_slack=True)
@@ -24,12 +27,23 @@ grid.add_bus(obj=bus_slack)
 # ----------------------------------------------------------------------------------------------------------------------
 #   Transformer
 # ----------------------------------------------------------------------------------------------------------------------
+# Pcu = 22e3
+# Sn = 2.5e6
+# z1 = 0.06
+# r1 = Pcu / Sn
+# x1 = np.sqrt(z1**2 - r1**2)
+# trafo_wt_ac = vge.Transformer2W(name='Trafo WT-AC',
+#                                 bus_from=bus_wt, bus_to=bus_ac,
+#                                 nominal_power=Sn, rate=Sn,
+#                                 r=r1, x=x1)
+# grid.add_transformer2w(obj=trafo_wt_ac)
+
 trafo_wt_ac = vge.Transformer2W(name='Trafo WT-AC',
                                 bus_from=bus_wt, bus_to=bus_ac,
                                 nominal_power=2.5)
 trafo_wt_ac.fill_design_properties(Pcu=22.0,
                                    Pfe=0.0,
-                                   I0=0.1,
+                                   I0=0.0,
                                    Vsc=6.0,
                                    Sbase=grid.Sbase)
 grid.add_transformer2w(obj=trafo_wt_ac)
@@ -51,8 +65,8 @@ vsc = vge.VSC(bus_from=bus_dc,
               alpha3=0.0,
               control1=ConverterControlType.Pac,
               control2=ConverterControlType.Qac,
-              control1_val=1.999909,
-              control2_val=0.1704475)
+              control1_val=-2.0,
+              control2_val=-0.0)
 grid.add_vsc(vsc)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -106,7 +120,7 @@ sc_driver.run()
 res_sc = sc_driver.results
 
 print('Short-circuit results:')
-print(abs(res_sc.voltage1))
+print(np.round(np.abs(res_sc.voltage1), 6))
 
 print('\nPower flow St_vsc =', res_pf.St_vsc)
 print('\nPower flow St_line =', res_pf.Sf)
