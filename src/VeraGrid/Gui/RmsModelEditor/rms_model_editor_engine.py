@@ -13,7 +13,7 @@ from PySide6 import QtWidgets
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
-                               QListView, QAbstractItemView, QPushButton, QListWidget, QInputDialog, QWidget,
+                               QListView, QAbstractItemView, QPushButton, QListWidget, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem,
                                QColorDialog, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
@@ -41,7 +41,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string, Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, symbolic_to_string, Expr
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
@@ -750,7 +750,7 @@ class InspectModel(QWidget):
         for param, value in model.parameters.items():
             row = self.table_params.rowCount()
             self.table_params.insertRow(row)
-            self.table_params.setItem(row, 0, QTableWidgetItem(param))
+            self.table_params.setItem(row, 0, QTableWidgetItem(str(param)))
             self.table_params.setItem(row, 1, QTableWidgetItem(str(model.parameters[param])))
 
         for param, value in model.event_dict.items():
