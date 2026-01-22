@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from typing import Union, List, Dict
 
-from VeraGridEngine import ParamPowerFlowRefferenceType
+from VeraGridEngine import ParamPowerFlowRefferenceType, DynamicModelHost
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -416,6 +416,18 @@ class Line(BranchParent):
         :return:
         """
         self.set_length(val)
+
+    @BranchParent.rms_model.setter
+    def rms_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                float(self.R / (self.R ** 2 + self.X ** 2)))
+            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                    float(-self.X / (self.R ** 2 + self.X ** 2)))
+            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(
+                    self.B)
+            self._rms_model = value
+
 
     def set_length(self, val: float):
         """
