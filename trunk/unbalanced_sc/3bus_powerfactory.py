@@ -10,18 +10,18 @@ grid = vge.MultiCircuit()
 # ----------------------------------------------------------------------------------------------------------------------
 #   Buses
 # ----------------------------------------------------------------------------------------------------------------------
-bus_dc = vge.Bus(name='Bus DC', Vnom=0.69, xpos=0, ypos=0, is_dc=True, is_slack=True)
+bus_dc = vge.Bus(name='Bus DC', Vnom=20.0, xpos=0, ypos=0, is_dc=True, is_slack=True)
 grid.add_bus(obj=bus_dc)
 
-bus_wt = vge.Bus(name='Bus WT', Vnom=0.69, xpos=0, ypos=300)
+bus_wt = vge.Bus(name='Bus WT', Vnom=20.0, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=5/4) # Rf = 5
-# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/4) # Rf = 1
-# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=1/8) # Rf = 0,5
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=3.75) # Rf = 15
 grid.add_bus(obj=bus_ac)
 
-bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=900, is_slack=True)
+bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=1200, is_slack=True)
 grid.add_bus(obj=bus_slack)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -38,20 +38,23 @@ grid.add_bus(obj=bus_slack)
 #                                 r=r1, x=x1)
 # grid.add_transformer2w(obj=trafo_wt_ac)
 
-trafo_wt_ac = vge.Transformer2W(name='Trafo WT-AC',
-                                bus_from=bus_wt, bus_to=bus_ac,
-                                nominal_power=2.5)
-trafo_wt_ac.fill_design_properties(Pcu=22.0,
-                                   Pfe=0.0,
-                                   I0=0.0,
-                                   Vsc=6.0,
-                                   Sbase=grid.Sbase)
-grid.add_transformer2w(obj=trafo_wt_ac)
+# trafo_wt_ac = vge.Transformer2W(name='Trafo WT-AC',
+#                                 bus_from=bus_wt, bus_to=bus_ac,
+#                                 nominal_power=2.5)
+# trafo_wt_ac.fill_design_properties(Pcu=22.0,
+#                                    Pfe=0.0,
+#                                    I0=0.0,
+#                                    Vsc=6.0,
+#                                    Sbase=grid.Sbase)
+# grid.add_transformer2w(obj=trafo_wt_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   Line
 # ----------------------------------------------------------------------------------------------------------------------
-line_slack_ac = vge.Line(name='Line AC-Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.01, x=0.1, rate=2.5)
+line_wt_ac = vge.Line(name='Line WT-Slack', bus_from=bus_wt, bus_to=bus_ac, r=1, x=10, rate=2.5)
+grid.add_line(line_wt_ac)
+
+line_slack_ac = vge.Line(name='Line AC-Slack', bus_from=bus_ac, bus_to=bus_slack, r=1, x=10, rate=2.5)
 grid.add_line(line_slack_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -72,10 +75,10 @@ grid.add_vsc(vsc)
 # ----------------------------------------------------------------------------------------------------------------------
 #   Generators
 # ----------------------------------------------------------------------------------------------------------------------
-generator_dc = vge.Generator(P=2.0, power_factor=1.0, r1=0.005)
+generator_dc = vge.Generator(P=2.0, power_factor=1.0)
 grid.add_generator(bus_dc, generator_dc)
 
-generator_ac = vge.Generator(r1=0.005, x1=0.05)
+generator_ac = vge.Generator(r1=0.1, x1=1)
 grid.add_generator(bus_slack, generator_ac)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -92,15 +95,24 @@ pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
                                 verbose=1)
 res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 
-print('Power flow results:')
-print(abs(res_pf.voltage))
-
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation
 # ----------------------------------------------------------------------------------------------------------------------
+# Rf = 60 Ohm -> 15 pu
+# vsc.control1_val = -1.889298
+# vsc.control2_val = -0.1382573
+
+# Rf = 30 Ohm -> 7,5 pu
+# vsc.control1_val = -1.568277
+# vsc.control2_val = -0.5290306
+
+# Rf = 15 Ohm -> 3,75 pu
+vsc.control1_val = -1.104992
+vsc.control2_val = -0.7897642
+
 pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=True,
+                                limit_i_vsc=False,
                                 verbose=1)
 
 grid.add_short_circuit_definition(
@@ -119,11 +131,13 @@ sc_driver.run()
 
 res_sc = sc_driver.results
 
-print('Short-circuit results:')
-print(np.round(np.abs(res_sc.voltage1), 6))
-
-print('\nPower flow St_vsc =', res_pf.St_vsc)
-print('\nPower flow St_line =', res_pf.Sf)
-
-print('\nShort-circuit St_vsc =', res_sc.vsc_St)
-print('\nShort-circuit St_line =', res_sc.Sf1)
+print('\n --- Short-circuit Results --- ')
+print('\n Faulted Voltage =', np.round(np.abs(res_sc.voltage1[2]), 6))
+Sbase = 100e6
+Ubase = 20e3
+Ibase = Sbase / (np.sqrt(3) * Ubase)
+Sbase_pf = 2e6
+Ubase_pf = 20e3
+Ibase_pf = Sbase_pf / (np.sqrt(3) * Ubase_pf)
+print('\n VSC Current =', np.round(np.abs(res_sc.vsc_It[0]) * Ibase / Ibase_pf, 6))
+print('\n VSC Power =', np.round(res_sc.vsc_St[0], 6))

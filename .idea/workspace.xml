@@ -28,9 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="3bus system prepared">
-      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/graphics.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="graphics.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -169,6 +169,8 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest in test_3ph_pf_driver.py.executor": "Run",
+    "Python tests.pytest in test_3ph_pf_neutral_loads.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
@@ -180,7 +182,7 @@
     "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
-    "Python.3bus_powerfactory.executor": "Run",
+    "Python.3bus_powerfactory.executor": "Debug",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
     "Python.ExecuteVeraGrid.executor": "Run",
@@ -202,6 +204,7 @@
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
+    "Python.pf_full_acdc_with_negative_poles.executor": "Debug",
     "Python.profile.executor": "Debug",
     "Python.pymoo_example.executor": "Debug",
     "Python.pyside6-designer (1).executor": "Run",
@@ -1778,7 +1781,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="695" />
+    <option name="localTasksCounter" value="696" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1839,7 +1842,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Several fixes when selecting by country, community, etc" />
     <MESSAGE value="5.6.3" />
     <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
@@ -1864,7 +1866,8 @@
     <MESSAGE value="Improved UCT parsing" />
     <MESSAGE value="Implemented different way of saving models based on pointers instead of copies" />
     <MESSAGE value="added chance to reuse existing voltage levels" />
-    <option name="LAST_COMMIT_MESSAGE" value="added chance to reuse existing voltage levels" />
+    <MESSAGE value="graphics.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="graphics.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2409,8 +2412,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py</url>
-          <line>826</line>
-          <option name="timeStamp" value="3131" />
+          <line>810</line>
+          <option name="timeStamp" value="3135" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py</url>
+          <line>109</line>
+          <option name="timeStamp" value="3136" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

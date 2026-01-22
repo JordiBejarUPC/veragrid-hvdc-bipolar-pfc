@@ -2529,7 +2529,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Pfn_vsc = self.Pfn_vsc * self.nc.Sbase
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase
         If_vsc = self.Pfp_vsc / self.Vm[self.nc.vsc_data.F]
-        It_vsc = St_vsc / self.Vm[self.nc.vsc_data.T]
+        It_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) / self.Vm[self.nc.vsc_data.T]
         Uac_vsc = self.V[self.nc.vsc_data.T]
         loading_vsc = np.abs(make_complex(self.Pt_vsc, self.Qt_vsc) / Uac_vsc + 1e-20) / (self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Pfp_vsc + self.Pfn_vsc) * self.nc.Sbase
