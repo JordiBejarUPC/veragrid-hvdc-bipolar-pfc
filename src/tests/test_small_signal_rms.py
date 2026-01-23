@@ -13,34 +13,18 @@ from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_te
 from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
 from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
 
-from VeraGridEngine.Templates.Rms.line0_rms_template import get_line0_rms_template
-from VeraGridEngine.Templates.Rms.line10_rms_template import get_line10_rms_template
-from VeraGridEngine.Templates.Rms.line11_rms_template import get_line11_rms_template
-from VeraGridEngine.Templates.Rms.line12_rms_template import get_line12_rms_template
-from VeraGridEngine.Templates.Rms.line13_rms_template import get_line13_rms_template
-from VeraGridEngine.Templates.Rms.line1_rms_template import get_line1_rms_template
-from VeraGridEngine.Templates.Rms.line2_rms_template import get_line2_rms_template
-from VeraGridEngine.Templates.Rms.line3_rms_template import get_line3_rms_template
-from VeraGridEngine.Templates.Rms.line4_rms_template import get_line4_rms_template
-from VeraGridEngine.Templates.Rms.line5_rms_template import get_line5_rms_template
-from VeraGridEngine.Templates.Rms.line6_rms_template import get_line6_rms_template
-from VeraGridEngine.Templates.Rms.line7_rms_template import get_line7_rms_template
-from VeraGridEngine.Templates.Rms.line8_rms_template import get_line8_rms_template
-from VeraGridEngine.Templates.Rms.line9_rms_template import get_line9_rms_template
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
-from VeraGridEngine.Templates.Rms.trafo1_rms_template import get_trafo1_rms_template
-from VeraGridEngine.Templates.Rms.trafo2_rms_template import get_trafo2_rms_template
-from VeraGridEngine.Templates.Rms.trafo3_rms_template import get_trafo3_rms_template
-from VeraGridEngine.Templates.Rms.trafo4_rms_template import get_trafo4_rms_template
 from VeraGridEngine.Utils.Symbolic import Block
 
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
 
 def stability_kundur_no_shunt():
@@ -258,36 +242,36 @@ def stability_kundur_no_shunt():
     # Build Rms models
     ######################################################################################################
     # generators
-    genrow_mdl1 = get_genrow1_rms_template().block.copy()
-    genrow_mdl2 = get_genrow2_rms_template().block.copy()
-    genrow_mdl3 = get_genrow3_rms_template().block.copy()
-    genrow_mdl4 = get_genrow4_rms_template().block.copy()
+    genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
+    genrow_mdl2 = block_deep_copy(get_genrow2_rms_template().block)
+    genrow_mdl3 = block_deep_copy(get_genrow3_rms_template().block)
+    genrow_mdl4 = block_deep_copy(get_genrow4_rms_template().block)
 
     # lines
-    line0_mdl = get_line0_rms_template().block.copy()
-    line1_mdl = get_line1_rms_template().block.copy()
-    line2_mdl = get_line2_rms_template().block.copy()
-    line3_mdl = get_line3_rms_template().block.copy()
-    line4_mdl = get_line4_rms_template().block.copy()
-    line5_mdl = get_line5_rms_template().block.copy()
-    line6_mdl = get_line6_rms_template().block.copy()
-    line7_mdl = get_line7_rms_template().block.copy()
-    line8_mdl = get_line8_rms_template().block.copy()
-    line9_mdl = get_line9_rms_template().block.copy()
-    line10_mdl = get_line10_rms_template().block.copy()
-    line11_mdl = get_line11_rms_template().block.copy()
-    line12_mdl = get_line12_rms_template().block.copy()
-    line13_mdl = get_line13_rms_template().block.copy()
+    line0_mdl = block_deep_copy(get_line_rms_template().block)
+    line1_mdl = block_deep_copy(get_line_rms_template().block)
+    line2_mdl = block_deep_copy(get_line_rms_template().block)
+    line3_mdl = block_deep_copy(get_line_rms_template().block)
+    line4_mdl = block_deep_copy(get_line_rms_template().block)
+    line5_mdl = block_deep_copy(get_line_rms_template().block)
+    line6_mdl = block_deep_copy(get_line_rms_template().block)
+    line7_mdl =block_deep_copy(get_line_rms_template().block)
+    line8_mdl = block_deep_copy(get_line_rms_template().block)
+    line9_mdl = block_deep_copy(get_line_rms_template().block)
+    line10_mdl = block_deep_copy(get_line_rms_template().block)
+    line11_mdl = block_deep_copy(get_line_rms_template().block)
+    line12_mdl = block_deep_copy(get_line_rms_template().block)
+    line13_mdl = block_deep_copy(get_line_rms_template().block)
 
     #trafos
-    trafo1_mdl = get_trafo1_rms_template().block.copy()
-    trafo2_mdl = get_trafo2_rms_template().block.copy()
-    trafo3_mdl = get_trafo3_rms_template().block.copy()
-    trafo4_mdl = get_trafo4_rms_template().block.copy()
+    trafo1_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo2_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo3_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo4_mdl = block_deep_copy(get_line_rms_template().block)
 
     #loads
-    load1_mdl = get_load1_rms_template().block.copy()
-    load2_mdl = get_load2_rms_template().block.copy()
+    load1_mdl = block_deep_copy(get_load1_rms_template().block)
+    load2_mdl = block_deep_copy(get_load2_rms_template().block)
 
     # connection with buses
 
@@ -498,7 +482,7 @@ def stability_kundur_no_shunt():
 
     params_mapping = {}
 
-    slv = BlockSolverNoDiff(ss, sim_time, use_jit=False)
+    slv = BlockSolver(ss, sim_time, use_jit=False)
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 

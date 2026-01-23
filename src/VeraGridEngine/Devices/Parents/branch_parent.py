@@ -6,7 +6,6 @@ from __future__ import annotations
 import numpy as np
 from typing import Tuple, Union, TYPE_CHECKING
 
-from VeraGridEngine import ParamPowerFlowRefferenceType
 from VeraGridEngine.enumerations import SubObjectType
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.substation import Substation

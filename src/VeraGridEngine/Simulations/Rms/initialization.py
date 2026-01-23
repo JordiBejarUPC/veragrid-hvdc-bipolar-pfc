@@ -678,7 +678,7 @@ def initialize_rms(grid: MultiCircuit,
 
     # initialize buses
     for i, elm in enumerate(grid.buses):
-        elm.initialize_rms()
+        # elm.initialize_rms()
         bus_dict[elm] = i
         for var in elm.rms_model.model.get_all_vars():
             vars2device[var.uid] = elm
@@ -686,7 +686,7 @@ def initialize_rms(grid: MultiCircuit,
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        elm.initialize_rms()
+        # elm.initialize_rms()
         mdl = elm.rms_model.model
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
@@ -702,7 +702,7 @@ def initialize_rms(grid: MultiCircuit,
 
     # initialize injections
     for elm in grid.get_injection_devices_iter():
-        elm.initialize_rms()
+        # elm.initialize_rms()
         # create dictionary for collecting events of the same parameter
 
         if elm.rms_model.model.event_dict is not None:

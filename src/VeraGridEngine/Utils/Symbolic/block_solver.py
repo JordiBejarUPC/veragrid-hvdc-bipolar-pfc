@@ -189,6 +189,10 @@ class SymbolicVector:
         for eq in eqs:
             for var in eq.get_vars():
                 used_vars_count[var.uid] += 1
+                if var.uid not in compiler_names_dict.keys():
+                    print()
+                if var.uid not in alias_names_dict.keys():
+                    print()
 
         if len(eqs):
             self.namespace: Dict[str, Any] = {
@@ -294,14 +298,14 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, events_param: Vec, glob_time: Vec) -> Vec:
+    def __call__(self, event_params: Vec, glob_time: Vec) -> Vec:
         """
         Call the compiled function
         :param glob_time:
         :return:
         """
         if self.func is not None:
-            self.func(events_param, glob_time, self.data)
+            self.func(event_params, glob_time, self.data)
         return self.data
 
 

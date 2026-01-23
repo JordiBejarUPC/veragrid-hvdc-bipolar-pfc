@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 import math
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
                                                  tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
@@ -279,11 +279,48 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             VarPowerFlowRefferenceType.Vm: inputs[0],
             VarPowerFlowRefferenceType.Va: inputs[1],
         },
+
+        api_obj_mapping={
+            ParamPowerFlowRefferenceType.fn: fn,
+            ParamPowerFlowRefferenceType.ws: ws,
+            ParamPowerFlowRefferenceType.M: M,
+            ParamPowerFlowRefferenceType.D: D,
+            ParamPowerFlowRefferenceType.Rs: Rs,
+            ParamPowerFlowRefferenceType.Ra: Ra,
+
+            # Reactances
+            ParamPowerFlowRefferenceType.Xd: Xd,
+            ParamPowerFlowRefferenceType.Xq: Xq,
+            ParamPowerFlowRefferenceType.Xd_prime: Xd_prime,
+            ParamPowerFlowRefferenceType.Xq_prime: Xq_prime,
+            ParamPowerFlowRefferenceType.Xd_2prime: Xd_2prime,
+            ParamPowerFlowRefferenceType.Xq_2prime: Xq_2prime,
+            ParamPowerFlowRefferenceType.Xl: Xl,
+
+            # Time constants
+            ParamPowerFlowRefferenceType.Td0_prime: Td0_prime,
+            ParamPowerFlowRefferenceType.Tq0_prime: Tq0_prime,
+            ParamPowerFlowRefferenceType.Td0_2prime: Td0_2prime,
+            ParamPowerFlowRefferenceType.Tq0_2prime: Tq0_2prime,
+
+            ParamPowerFlowRefferenceType.Xd_prime_minus_Xl: Xd_prime_minus_Xl,
+            ParamPowerFlowRefferenceType.Xq_prime_minus_Xl: Xq_prime_minus_Xl,
+            ParamPowerFlowRefferenceType.Xdaux: Xdaux,
+            ParamPowerFlowRefferenceType.Xdaux2: Xdaux2,
+            ParamPowerFlowRefferenceType.Xdaux3: Xdaux3,
+            ParamPowerFlowRefferenceType.Xqaux: Xqaux,
+            ParamPowerFlowRefferenceType.Xqaux2: Xqaux2,
+            ParamPowerFlowRefferenceType.Xqaux3: Xqaux3,
+
+            ParamPowerFlowRefferenceType.A: A,
+            ParamPowerFlowRefferenceType.B: B,
+        },
+
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
         name="genqec"
-    )
+        )
 
     return templ
 
@@ -451,7 +488,24 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
             y3_3: Pm_ref,
             y3_4: Pm_ref,
             Tm: Pm_ref
-        }
+        },
+        api_obj_mapping = {
+            # Gains and limits
+            ParamPowerFlowRefferenceType.K: K,  # governor gain (inverse droop)
+            ParamPowerFlowRefferenceType.Pmax: Pmax,  # max mechanical power (pu)
+            ParamPowerFlowRefferenceType.Pmin: Pmin,  # min mechanical power (pu)
+            ParamPowerFlowRefferenceType.Uc: Uc,  # max valve closing rate (pu/s)
+            ParamPowerFlowRefferenceType.Uo: Uo,  # max valve opening rate (pu/s)
+            ParamPowerFlowRefferenceType.T_aux: T_aux,
+
+            # Control
+            ParamPowerFlowRefferenceType.Kp: Kp,
+            ParamPowerFlowRefferenceType.Ki: Ki,
+            ParamPowerFlowRefferenceType.omega_ref: omega_ref,
+            ParamPowerFlowRefferenceType.p0: p0,
+            ParamPowerFlowRefferenceType.P0: P0,
+    }
+
     )
 
     return templ

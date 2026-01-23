@@ -6,33 +6,20 @@ import cProfile as profile
 
 import numpy as np
 
-from VeraGridEngine import VarPowerFlowRefferenceType, DynamicIntegrationMethod
+from matplotlib import pyplot as plt
+
+from VeraGridEngine import VarPowerFlowRefferenceType, DynamicIntegrationMethod, DynamicModelHost
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
-from VeraGridEngine.Templates.Rms.line0_rms_template import get_line0_rms_template
-from VeraGridEngine.Templates.Rms.line10_rms_template import get_line10_rms_template
-from VeraGridEngine.Templates.Rms.line11_rms_template import get_line11_rms_template
-from VeraGridEngine.Templates.Rms.line12_rms_template import get_line12_rms_template
-from VeraGridEngine.Templates.Rms.line13_rms_template import get_line13_rms_template
-from VeraGridEngine.Templates.Rms.line1_rms_template import get_line1_rms_template
-from VeraGridEngine.Templates.Rms.line2_rms_template import get_line2_rms_template
-from VeraGridEngine.Templates.Rms.line3_rms_template import get_line3_rms_template
-from VeraGridEngine.Templates.Rms.line4_rms_template import get_line4_rms_template
-from VeraGridEngine.Templates.Rms.line5_rms_template import get_line5_rms_template
-from VeraGridEngine.Templates.Rms.line6_rms_template import get_line6_rms_template
-from VeraGridEngine.Templates.Rms.line7_rms_template import get_line7_rms_template
-from VeraGridEngine.Templates.Rms.line8_rms_template import get_line8_rms_template
-from VeraGridEngine.Templates.Rms.line9_rms_template import get_line9_rms_template
+
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
-from VeraGridEngine.Templates.Rms.trafo1_rms_template import get_trafo1_rms_template
-from VeraGridEngine.Templates.Rms.trafo2_rms_template import get_trafo2_rms_template
-from VeraGridEngine.Templates.Rms.trafo3_rms_template import get_trafo3_rms_template
-from VeraGridEngine.Templates.Rms.trafo4_rms_template import get_trafo4_rms_template
+
 from VeraGridEngine.Utils.Symbolic import Block
 
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
@@ -44,6 +31,16 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
 pr = profile.Profile()
 pr.disable()
+
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
+        if name == var.name:
+            return var
+
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
 
 
 def rms_kundur():
@@ -96,84 +93,82 @@ def rms_kundur():
 
     line0 = gce.Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
              r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-    grid.add_line(line0)
+
 
     line1 = gce.Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
              r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-    grid.add_line(line1)
+
 
     line2 = gce.Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line2)
+
 
     line3 = gce.Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line3)
+
 
     line4 = gce.Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line4)
+
 
     line5 = gce.Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
              r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-    grid.add_line(line5)
+
 
     line6 = gce.Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
              r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-    grid.add_line(line6)
+
 
     line7 = gce.Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
              r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-    grid.add_line(line7)
+
 
     line8 = gce.Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
              r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-    grid.add_line(line8)
+
 
     line9 = gce.Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line9)
+
 
     line10 = gce.Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line10)
+
 
     line11 = gce.Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
              r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-    grid.add_line(line11)
+
 
     line12 = gce.Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
              r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-    grid.add_line(line12)
+
 
     line13 = gce.Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
              r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-    grid.add_line(line13)
+
 
     # Transformers
     xt1 = 0.15 * (100.0 / 900.0)
     trafo_G1 = Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
              r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-    grid.add_line(trafo_G1)
+
 
     trafo_G2 = gce.Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
              r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-    grid.add_line(trafo_G2)
+
 
     trafo_G3 = gce.Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
              r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-    grid.add_line(trafo_G3)
+
 
     trafo_G4 = gce.Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
              r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-    grid.add_line(trafo_G4)
+
 
     # load
-    load1 = Load(name="load1", P=10.0, Q=1.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
-    load1_grid = grid.add_load(bus=bus7, api_obj=load1)
+    load1 = gce.Load(name="load1", P=9.999999, Q=0.999999)
 
-    load2 = Load(name="load2", P=10.0, Q=1.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
-    load2_grid = grid.add_load(bus=bus9, api_obj=load2)
+    load2 = gce.Load(name="load2", P=9.999999, Q=0.999999)
 
     # Generators
     fn_1 = 60.0
@@ -253,14 +248,42 @@ def rms_kundur():
         Kp=Kp_4, Ki=Ki_4
     )
 
-    grid.add_generator(bus=bus1, api_obj=gen1)
-    grid.add_generator(bus=bus2, api_obj=gen2)
-    grid.add_generator(bus=bus3, api_obj=gen3)
-    grid.add_generator(bus=bus4, api_obj=gen4)
+
 
     ######################################################################################################
     # Build Rms models
     ######################################################################################################
+
+    # Build dynamic_model_host
+
+    gen1_dynhost = DynamicModelHost()
+    gen2_dynhost = DynamicModelHost()
+    gen3_dynhost = DynamicModelHost()
+    gen4_dynhost = DynamicModelHost()
+
+    line0_dynhost = DynamicModelHost()
+    line1_dynhost = DynamicModelHost()
+    line2_dynhost = DynamicModelHost()
+    line3_dynhost = DynamicModelHost()
+    line4_dynhost = DynamicModelHost()
+    line5_dynhost = DynamicModelHost()
+    line6_dynhost = DynamicModelHost()
+    line7_dynhost = DynamicModelHost()
+    line8_dynhost = DynamicModelHost()
+    line9_dynhost = DynamicModelHost()
+    line10_dynhost = DynamicModelHost()
+    line11_dynhost = DynamicModelHost()
+    line12_dynhost = DynamicModelHost()
+    line13_dynhost = DynamicModelHost()
+
+    trafo1_dynhost = DynamicModelHost()
+    trafo2_dynhost = DynamicModelHost()
+    trafo3_dynhost = DynamicModelHost()
+    trafo4_dynhost = DynamicModelHost()
+
+    load1_dynhost = DynamicModelHost()
+    load2_dynhost = DynamicModelHost()
+
     # generators
     genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
     genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
@@ -268,26 +291,26 @@ def rms_kundur():
     genrow_mdl4 = block_deep_copy(get_complete_generator_template().block)
 
     # lines
-    line0_mdl = block_deep_copy(get_line0_rms_template().block)
-    line1_mdl = block_deep_copy(get_line1_rms_template().block)
-    line2_mdl = block_deep_copy(get_line2_rms_template().block)
-    line3_mdl = block_deep_copy(get_line3_rms_template().block)
-    line4_mdl = block_deep_copy(get_line4_rms_template().block)
-    line5_mdl = block_deep_copy(get_line5_rms_template().block)
-    line6_mdl = block_deep_copy(get_line6_rms_template().block)
-    line7_mdl = block_deep_copy(get_line7_rms_template().block)
-    line8_mdl = block_deep_copy(get_line8_rms_template().block)
-    line9_mdl = block_deep_copy(get_line9_rms_template().block)
-    line10_mdl = block_deep_copy(get_line10_rms_template().block)
-    line11_mdl = block_deep_copy(get_line11_rms_template().block)
-    line12_mdl = block_deep_copy(get_line12_rms_template().block)
-    line13_mdl = block_deep_copy(get_line13_rms_template().block)
+    line0_mdl = block_deep_copy(get_line_rms_template().block)
+    line1_mdl = block_deep_copy(get_line_rms_template().block)
+    line2_mdl = block_deep_copy(get_line_rms_template().block)
+    line3_mdl = block_deep_copy(get_line_rms_template().block)
+    line4_mdl = block_deep_copy(get_line_rms_template().block)
+    line5_mdl = block_deep_copy(get_line_rms_template().block)
+    line6_mdl = block_deep_copy(get_line_rms_template().block)
+    line7_mdl = block_deep_copy(get_line_rms_template().block)
+    line8_mdl = block_deep_copy(get_line_rms_template().block)
+    line9_mdl = block_deep_copy(get_line_rms_template().block)
+    line10_mdl = block_deep_copy(get_line_rms_template().block)
+    line11_mdl = block_deep_copy(get_line_rms_template().block)
+    line12_mdl = block_deep_copy(get_line_rms_template().block)
+    line13_mdl = block_deep_copy(get_line_rms_template().block)
 
     #trafos
-    trafo1_mdl = block_deep_copy(get_trafo1_rms_template().block)
-    trafo2_mdl = block_deep_copy(get_trafo2_rms_template().block)
-    trafo3_mdl = block_deep_copy(get_trafo3_rms_template().block)
-    trafo4_mdl = block_deep_copy(get_trafo4_rms_template().block)
+    trafo1_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo2_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo3_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo4_mdl = block_deep_copy(get_line_rms_template().block)
 
     #loads
     load1_mdl = block_deep_copy(get_load1_rms_template().block)
@@ -413,8 +436,8 @@ def rms_kundur():
     trafo4_mdl.connect([trafo4_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
     trafo4_mdl.connect([trafo4_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
 
-    trafo4_mdl.connect([trafo3_mdl.in_vars[2]], [bus4.rms_model.model.out_vars[0]])
-    trafo4_mdl.connect([trafo3_mdl.in_vars[3]], [bus4.rms_model.model.out_vars[1]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[2]], [bus4.rms_model.model.out_vars[0]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[3]], [bus4.rms_model.model.out_vars[1]])
 
 
 
@@ -443,34 +466,93 @@ def rms_kundur():
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl4.out_vars[0]})
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl4.out_vars[1]})
 
+    # add models to dyn_host
+
+    gen1_dynhost.model = big_gen1
+    gen2_dynhost.model = big_gen2
+    gen3_dynhost.model = big_gen3
+    gen4_dynhost.model = big_gen4
+
+    line0_dynhost.model = line0_mdl
+    line1_dynhost.model = line1_mdl
+    line2_dynhost.model = line2_mdl
+    line3_dynhost.model = line3_mdl
+    line4_dynhost.model = line4_mdl
+    line5_dynhost.model = line5_mdl
+    line6_dynhost.model = line6_mdl
+    line7_dynhost.model = line7_mdl
+    line8_dynhost.model = line8_mdl
+    line9_dynhost.model = line9_mdl
+    line10_dynhost.model = line10_mdl
+    line11_dynhost.model = line11_mdl
+    line12_dynhost.model = line12_mdl
+    line13_dynhost.model = line13_mdl
+
+    trafo1_dynhost.model = trafo1_mdl
+    trafo2_dynhost.model = trafo2_mdl
+    trafo3_dynhost.model = trafo3_mdl
+    trafo4_dynhost.model = trafo4_mdl
+
+    load1_dynhost.model = load1_mdl
+    load2_dynhost.model = load2_mdl
+
+
     # attach rms models to Veragrid objects
-    gen1.rms_model.model = big_gen1
-    gen2.rms_model.model = big_gen2
-    gen3.rms_model.model = big_gen3
-    gen4.rms_model.model = big_gen4
+    gen1.rms_model = gen1_dynhost
+    gen2.rms_model = gen2_dynhost
+    gen3.rms_model = gen3_dynhost
+    gen4.rms_model = gen4_dynhost
 
-    line0.rms_model.model = line0_mdl
-    line1.rms_model.model = line1_mdl
-    line2.rms_model.model = line2_mdl
-    line3.rms_model.model = line3_mdl
-    line4.rms_model.model = line4_mdl
-    line5.rms_model.model = line5_mdl
-    line6.rms_model.model = line6_mdl
-    line7.rms_model.model = line7_mdl
-    line8.rms_model.model = line8_mdl
-    line9.rms_model.model = line9_mdl
-    line10.rms_model.model = line10_mdl
-    line11.rms_model.model = line11_mdl
-    line12.rms_model.model = line12_mdl
-    line13.rms_model.model = line13_mdl
+    line0.rms_model = line0_dynhost
+    line1.rms_model = line1_dynhost
+    line2.rms_model = line2_dynhost
+    line3.rms_model = line3_dynhost
+    line4.rms_model = line4_dynhost
+    line5.rms_model = line5_dynhost
+    line6.rms_model = line6_dynhost
+    line7.rms_model = line7_dynhost
+    line8.rms_model = line8_dynhost
+    line9.rms_model = line9_dynhost
+    line10.rms_model = line10_dynhost
+    line11.rms_model = line11_dynhost
+    line12.rms_model = line12_dynhost
+    line13.rms_model = line13_dynhost
 
-    trafo_G1.rms_model.model = trafo1_mdl
-    trafo_G2.rms_model.model = trafo2_mdl
-    trafo_G3.rms_model.model = trafo3_mdl
-    trafo_G4.rms_model.model = trafo4_mdl
+    trafo_G1.rms_model = trafo1_dynhost
+    trafo_G2.rms_model = trafo2_dynhost
+    trafo_G3.rms_model = trafo3_dynhost
+    trafo_G4.rms_model = trafo4_dynhost
 
-    load1.rms_model.model = load1_mdl
-    load2.rms_model.model = load2_mdl
+    load1.rms_model = load1_dynhost
+    load2.rms_model = load2_dynhost
+
+    grid.add_line(line0)
+    grid.add_line(line1)
+    grid.add_line(line2)
+    grid.add_line(line3)
+    grid.add_line(line4)
+    grid.add_line(line5)
+    grid.add_line(line6)
+    grid.add_line(line7)
+    grid.add_line(line8)
+    grid.add_line(line9)
+    grid.add_line(line10)
+    grid.add_line(line11)
+    grid.add_line(line12)
+    grid.add_line(line13)
+
+    grid.add_line(trafo_G1)
+    grid.add_line(trafo_G2)
+    grid.add_line(trafo_G3)
+    grid.add_line(trafo_G4)
+
+    grid.add_load(bus=bus7, api_obj=load1)
+    grid.add_load(bus=bus9, api_obj=load2)
+
+    grid.add_generator(bus=bus1, api_obj=gen1)
+    grid.add_generator(bus=bus2, api_obj=gen2)
+    grid.add_generator(bus=bus3, api_obj=gen3)
+    grid.add_generator(bus=bus4, api_obj=gen4)
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -531,6 +613,32 @@ def rms_kundur():
     )
 
 
+    # plot
+
+    # omega = genrow_mdl1.out_vars[2]
+    Pg = genrow_mdl1.out_vars[0]
+    Qg = genrow_mdl1.out_vars[1]
+    # Ir = genrow_mdl1.out_vars[3]
+    # Efd = genrow_mdl1.in_vars[3]
+    # Te = genrow_mdl1.out_vars[4]
+
+    delta = find_name_in_block("delta", genrow_mdl1)
+
+    # Generator state variables
+    # plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
+    plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
+    plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
+    plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
+    # plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
+
+    plt.legend(loc='upper right', ncol=2)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Values (pu)")
+    plt.xlim([0, 15])
+    # plt.ylim([0.85, 1.15])
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':

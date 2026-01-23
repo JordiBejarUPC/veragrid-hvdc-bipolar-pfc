@@ -5,7 +5,7 @@
 
 from typing import List
 import numpy as np
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, exp, imag, log, conj, real, abs
@@ -37,6 +37,7 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     et = Var("et")
     tm = Var("tm")
 
+    # Parameters
     R1 = Var("R1")
     X1 = Var("X1")
     freq = Var("frequ")
@@ -110,6 +111,27 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
         VarPowerFlowRefferenceType.P: P_g,
         VarPowerFlowRefferenceType.Q: Q_g
     }
+
+    templ.block.api_obj_mapping = {
+        # Electrical parameters
+        ParamPowerFlowRefferenceType.R1: R1,
+        ParamPowerFlowRefferenceType.X1: X1,
+        ParamPowerFlowRefferenceType.freq: freq,
+
+        # Mechanical parameters
+        ParamPowerFlowRefferenceType.M: M,
+        ParamPowerFlowRefferenceType.D: D,
+
+        # Control parameters
+        ParamPowerFlowRefferenceType.omega_ref: omega_ref,
+        ParamPowerFlowRefferenceType.Kp: Kp,
+        ParamPowerFlowRefferenceType.Ki: Ki,
+
+        # Inputs / initial conditions
+        ParamPowerFlowRefferenceType.vf: vf,
+        ParamPowerFlowRefferenceType.tm0: tm0,
+    }
+
 
     templ.block.in_vars = inputs
     templ.block.out_vars = [P_g, Q_g]

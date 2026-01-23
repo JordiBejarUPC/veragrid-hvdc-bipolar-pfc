@@ -812,6 +812,7 @@ class Block:
         """
         init_eqs_new = dict()
         event_dict_new = dict()
+        external_mapping_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -838,6 +839,11 @@ class Block:
                 event_dict_new.update({var: new_expr})
 
         self.event_dict = event_dict_new
+
+        for var_pf_ref, mdl_var in self.external_mapping.items():
+            if mdl_var is old:
+                self.external_mapping.update({var_pf_ref: new})
+
 
     def update_model(self, old, new):
         """
