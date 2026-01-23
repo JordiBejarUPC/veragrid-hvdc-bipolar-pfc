@@ -394,7 +394,7 @@ class ShortCircuitDriver(DriverTemplate):
                                  options: PowerFlowOptions,
                                  logger: Logger):
 
-        options.limit_i_vsc = True
+        options.limit_i_vsc = False
 
         adm = nc.get_admittance_matrices()
         # compute Zbus
