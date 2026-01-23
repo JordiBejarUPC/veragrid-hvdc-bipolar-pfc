@@ -199,7 +199,7 @@ def parse_transformer(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict
                 tc_asymmetry_angle = 90
                 tc_type: TapChangerTypes = TapChangerTypes.NoRegulation
             else:
-                tc_total_positions: int = regulator.n1
+                tc_total_positions: int = regulator.n1 if regulator.n1 > 0 else 1
                 tc_neutral_position: int = int(regulator.n1 / 2) if regulator.n1 > 0 else 0
                 tc_normal_position: int = regulator.n1_prime
                 tc_dV: float = regulator.delta_u1

@@ -29,22 +29,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="More UCTE corrections&#10;fixed new pandas 3 breaking changes">
-      <change afterPath="$PROJECT_DIR$/trunk/ucte/ucte_parser_check.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Parents/editable_device.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/tap_changer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/tap_changer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_transformer_regulation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/ucte_to_veragrid.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/setup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_power_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_power_flow.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -281,7 +273,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.pytest in tests">
+  <component name="RunManager" selected="Python.upload_to_pypi">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -324,6 +316,19 @@
       <option name="ADDITIONAL_ARGS" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
+      <module name="GridCalEngine" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="ADDITIONAL_ARGS" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -459,6 +464,7 @@
     </configuration>
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -470,6 +476,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="TARGET" value="" />
       <option name="SETTINGS_FILE" value="" />
       <option name="CUSTOM_SETTINGS" value="false" />
@@ -477,34 +484,22 @@
       <option name="OPTIONS" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="ADDITIONAL_ARGS" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
-      <option name="SDK_NAME" value="Python 3.12 (VeraGrid)" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -513,20 +508,22 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
-      <module name="GridCalEngine" />
+    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -537,6 +534,7 @@
     </configuration>
     <configuration default="true" type="Python.FlaskServer">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -545,11 +543,13 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="launchJavascriptDebuger" value="false" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -558,10 +558,12 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -570,6 +572,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -579,6 +582,7 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Sphinx task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -587,6 +591,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -596,6 +601,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Doctests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -604,6 +610,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="CLASS_NAME" value="" />
       <option name="METHOD_NAME" value="" />
@@ -615,6 +622,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Nosetests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -623,6 +631,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;&quot;" />
@@ -631,6 +640,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="py.test">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -639,6 +649,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -648,6 +659,7 @@
     </configuration>
     <configuration name="pytest for src.tests.test_admittance_matrix.test3" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
@@ -657,6 +669,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -666,6 +679,7 @@
     </configuration>
     <configuration name="pytest for src.tests.test_load_all_grids.test_all_grids" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
@@ -675,6 +689,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -684,6 +699,7 @@
     </configuration>
     <configuration name="pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
@@ -693,6 +709,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -702,6 +719,7 @@
     </configuration>
     <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
@@ -711,6 +729,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -719,7 +738,7 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python tests.pytest for src.tests.test_load_all_grids.test_all_grids" />
       <item itemvalue="Python tests.pytest for src.tests.test_admittance_matrix.test3" />
       <item itemvalue="Python tests.pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt" />
@@ -727,11 +746,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for src.tests.test_admittance_matrix.test3" />
         <item itemvalue="Python tests.pytest for src.tests.test_load_all_grids.test_all_grids" />
         <item itemvalue="Python tests.pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt" />
-        <item itemvalue="Python.ExecuteVeraGrid" />
       </list>
     </recent_temporary>
   </component>
@@ -1525,7 +1544,8 @@
       <workItem from="1769163072237" duration="9549000" />
       <workItem from="1769175722580" duration="643000" />
       <workItem from="1769176373363" duration="10000" />
-      <workItem from="1769176807207" duration="920000" />
+      <workItem from="1769176807207" duration="1490000" />
+      <workItem from="1769178399525" duration="1911000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1870,7 +1890,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="697" />
+    <option name="localTasksCounter" value="698" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1931,7 +1951,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
     <MESSAGE value="small changes in dgs_parser.py" />
@@ -1956,7 +1975,8 @@
     <MESSAGE value="added chance to reuse existing voltage levels" />
     <MESSAGE value="added device type to the VoltageLevel conversion wizard" />
     <MESSAGE value="Minor fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor fixes" />
+    <MESSAGE value="More UCTE corrections&#10;fixed new pandas 3 breaking changes" />
+    <option name="LAST_COMMIT_MESSAGE" value="More UCTE corrections&#10;fixed new pandas 3 breaking changes" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2553,11 +2573,12 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_power_flow_acdc_generalized_test_controllable_shunt.coverage" NAME="pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt Coverage Results" MODIFIED="1769175359097" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_load_all_grids_test_all_grids.coverage" NAME="pytest for src.tests.test_load_all_grids.test_all_grids Coverage Results" MODIFIED="1769176306528" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ucte_parser_check.coverage" NAME="ucte_parser_check Coverage Results" MODIFIED="1769171208501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/ucte" />
     <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_admittance_matrix_test3.coverage" NAME="pytest for src.tests.test_admittance_matrix.test3 Coverage Results" MODIFIED="1769177024740" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
-    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_load_all_grids_test_all_grids.coverage" NAME="pytest for src.tests.test_load_all_grids.test_all_grids Coverage Results" MODIFIED="1769176306528" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1769179935509" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$upload_to_pypi.coverage" NAME="upload_to_pypi Coverage Results" MODIFIED="1769180289089" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1769171330480" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
-    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_power_flow_acdc_generalized_test_controllable_shunt.coverage" NAME="pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt Coverage Results" MODIFIED="1769175359097" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
-    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1769177708453" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
   </component>
 </project>
