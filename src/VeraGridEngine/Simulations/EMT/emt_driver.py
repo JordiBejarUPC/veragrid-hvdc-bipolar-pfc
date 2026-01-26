@@ -29,6 +29,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.basic_structures import Vec, IntVec, Mat, Vector, BoolVec
 
 from scipy.sparse.linalg import factorized
+from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator
 
 
 class EmtSolverProperties:
@@ -49,15 +50,14 @@ class EmtSolverProperties:
         associated with a single bus.
         :param bus : Bus object.
         :param bus_index: Float.
-        :param devices : Any injections attached to the bus
-        :param region_block : Block. Symbolic region block of the bus + injections of that bus
-        :param params0 : 1D array. Initial parameter values
-        :param alter_params0 : 1D array. Alternative initial parameter values
-        :param x0 : 1D array. Initial variables vector
-        :param dx0 : 1D array.  Initial state derivative variables vector
-        :params0 x : (steps , len(x0)) array. Solution container with the variables solution at each timestep.
-        :param dx : 1D array. Solution container with the State derivative variables solution at each timestep.
-        :param blocksolver : BlockSolver/DiffBlockSolver    Block solver instance.
+        :param bus_index: Float.
+        :param syst_blocks: .
+        :param bus_regions_dict: .
+        :param alter_params_mappings: .
+        :param init_guesses: .
+        :param t: .
+        :param steps:
+
         """
 
         self.bus = bus
@@ -382,7 +382,6 @@ class EmtSimulationDriver(DriverTemplate):
                         raise RuntimeError(
                             f"Invalid history index after masking for branch {branch.name}"
                         )
-                    Np = np.sum(mask)  # number of active phases
 
                     # voltages at ends (peak p.u.)
                     v_f = V_hist_buffer[idx_buf, idx_from]
@@ -630,7 +629,6 @@ def predict_Is(emt_simulation_driver: EmtSimulationDriver,
     :param h: float. time-step
     :param binary_bus_mask: BoolVec
     :param bus_idx_lookup : IntVec
-    :param init_guesses: List[Dict[int, float]]
     :param emt_vec: Vector
     :return Is_step: np array
     """
@@ -704,10 +702,6 @@ def predict_Is(emt_simulation_driver: EmtSimulationDriver,
 
                     Is_step[idx] += i_s_bus
                     if dev_type.name == 'GeneratorDevice':
-                        # plus the generator history component due to the interfacing resistor v(t-dt)/ Rp
-                        # Gp = (1 / elm.Rp) * np.eye(4)
-                        # Is_step[idx] += np.array([v_n, v_a, v_b, v_c], dtype=float) @ Gp
-                        # Is_step[idx] += elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
 
                         Is_step[idx] += elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
 
@@ -851,7 +845,7 @@ def update_Hist(nc: NumericalCircuit,
         # ---- lines history components ----
         if branch.device_type.value == 'Line':  # DeviceType.LineDevice:
 
-            model = getattr(branch, 'model_type', 'Bergeron')
+            model = branch.emt_model_type
 
             if model == "Bergeron":
                 delay = branch.Ndelay

@@ -2066,6 +2066,7 @@ class SimulationTypes(Enum):
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
     SmallSignal_run = "Small Signal stability"
+    EmtDynamic_run = "EMT Dynamic"
 
     FileOpen = "file open"
     FileSave = "file save"
