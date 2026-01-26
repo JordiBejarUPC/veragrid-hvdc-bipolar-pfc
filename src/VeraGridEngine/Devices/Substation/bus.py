@@ -18,6 +18,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.basic_structures import BoolVec
 
 
 class Bus(PhysicalDevice):
@@ -62,6 +63,7 @@ class Bus(PhysicalDevice):
         'graphic_type',
         '_bus_bar',
         '_rms_model',
+        '_emt_model',
     )
 
     def __init__(self, name="Bus",
@@ -238,6 +240,8 @@ class Bus(PhysicalDevice):
         # The model of the bus is fixed, then it can already be defined here
         self._rms_model: DynamicModelHost = DynamicModelHost()
 
+        self._emt_model: DynamicModelHost = DynamicModelHost()
+
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')
         self.register(key='is_slack', units='', tpe=bool, definition='Force the bus to be of slack type.',
@@ -291,14 +295,17 @@ class Bus(PhysicalDevice):
         self.register(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.')
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
+        self.register(key='emt_model', units='', tpe=SubObjectType.DynamicModelHostType,
+                      definition='EMT dynamic model', display=False)
         self.register(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
                       is_color=True)
+
 
     @property
     def rms_model(self) -> DynamicModelHost:
         """
         RMS model
-        :return: DynamicMOdelHost
+        :return: DynamicModelHost
         """
         return self._rms_model
 
@@ -306,6 +313,15 @@ class Bus(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
+
+    @property
+    def emt_model(self) -> DynamicModelHost:
+        return self._emt_model
+
+    @emt_model.setter
+    def emt_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._emt_model = value
 
     @property
     def active_prof(self) -> Profile:
@@ -535,6 +551,10 @@ class Bus(PhysicalDevice):
         else:
             raise ValueError("The value must be a BusBar")
 
+    def get_phases_array(self) -> BoolVec:
+
+        return np.array([self.ph_n, self.ph_a, self.ph_b, self.ph_c], dtype=bool)
+
     def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
         """
         Initializes rms model if not initialized
@@ -544,7 +564,6 @@ class Bus(PhysicalDevice):
             self.initialize_rms()
         assert len(self.rms_model.model.algebraic_vars) == 2
         return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
-
 
     def initialize_rms(self):
         """

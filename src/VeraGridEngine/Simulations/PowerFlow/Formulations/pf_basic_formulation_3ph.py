@@ -33,7 +33,7 @@ def lookup_from_mask(mask: BoolVec) -> IntVec:
     :param mask:
     :return:
     """
-    lookup = [-1] * len(mask)  # start with all -1
+    lookup = np.full(shape=len(mask), fill_value=-1)  # start with all -1
     # lookup = np.full(len(mask), -1, dtype=int)  # TODO: investigate why this change breaks the code
     counter = 0
     for i, m in enumerate(mask):
@@ -88,10 +88,75 @@ def is_yg(x) -> bool:
         return x.value == "Yg"
     return str(x) == "Yg"  # str u objeto que imprime 'Yg'
 
-
 def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matrix, CxVec, BoolVec, IntVec, IntVec]:
     """
-    Compute admittances and masks
+    Compute admittances
+    :param nc: NumericalCircuit
+    :return: Ybus, Yf, Yt, Yshunt_bus, binary_bus_mask, bus_idx_lookup, branch_lookup
+    """
+    binary_bus_mask, bus_idx_lookup, branch_lookup = compute_masks(nc)
+
+    n = nc.bus_data.nbus
+    m = nc.passive_branch_data.nelm
+    Cf = lil_matrix((4 * m, 4 * n), dtype=int)
+    Ct = lil_matrix((4 * m, 4 * n), dtype=int)
+    Yf = lil_matrix((4 * m, 4 * n), dtype=complex)
+    Yt = lil_matrix((4 * m, 4 * n), dtype=complex)
+
+    idx4 = np.array([0, 1, 2, 3])  # array that we use to generate the 3-phase indices
+
+    R = np.zeros(4 * m, dtype=bool)
+
+    F = np.array(nc.passive_branch_data.F, dtype=int)
+    T = np.array(nc.passive_branch_data.T, dtype=int)
+
+    for k in range(m):
+        f = F[k]
+        t = T[k]
+
+        f4 = 4 * f + idx4
+        t4 = 4 * t + idx4
+        k4 = 4 * k + idx4
+
+        Yf[np.ix_(k4, f4)] = nc.passive_branch_data.Yff3[k4, :]
+        Yf[np.ix_(k4, t4)] = nc.passive_branch_data.Yft3[k4, :]
+        Yt[np.ix_(k4, f4)] = nc.passive_branch_data.Ytf3[k4, :]
+        Yt[np.ix_(k4, t4)] = nc.passive_branch_data.Ytt3[k4, :]
+
+        R[4 * k + 0] = nc.passive_branch_data.phN[k]
+        R[4 * k + 1] = nc.passive_branch_data.phA[k]
+        R[4 * k + 2] = nc.passive_branch_data.phB[k]
+        R[4 * k + 3] = nc.passive_branch_data.phC[k]
+
+        Cf[k4, f4] = 1
+        Ct[k4, t4] = 1
+
+    Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)
+    for k in range(nc.shunt_data.nelm):
+        f = nc.shunt_data.bus_idx[k]
+        k4 = 4 * k + idx4
+        f4 = 4 * f + idx4
+        Ysh_bus[np.ix_(f4, f4)] += nc.shunt_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
+
+    for k in range(nc.load_data.nelm):
+        f = nc.load_data.bus_idx[k]
+        k4 = 4 * k + idx4
+        f4 = 4 * f + idx4
+        Ysh_bus[np.ix_(f4, f4)] += nc.load_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
+
+    Ybus = Cf.T @ Yf + Ct.T @ Yt + Ysh_bus
+    Ybus = Ybus[binary_bus_mask, :][:, binary_bus_mask]
+    Ysh_bus = Ysh_bus[binary_bus_mask, :][:, binary_bus_mask]
+    Yf = Yf[R, :][:, binary_bus_mask]
+    Yt = Yt[R, :][:, binary_bus_mask]
+
+    Ybus = csc_matrix(Ybus)
+
+    return Ybus.tocsc(), Yf.tocsc(), Yt.tocsc(), Ysh_bus, binary_bus_mask, bus_idx_lookup, branch_lookup
+
+def compute_masks(nc: NumericalCircuit) -> Tuple[BoolVec, IntVec, IntVec]:
+    """
+    Compute masks
 
     The mask is a boolean vector that indicates which bus phases are active
 
@@ -107,34 +172,29 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     And then it will be simple to get the sliced bus indices that we finally need:
     sliced_pq_buses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-
     :param nc: NumericalCircuit
-    :return: Ybus, Yf, Yt, Yshunt_bus, mask, bus_idx_lookup
+    :return: binary_bus_mask, bus_idx_lookup, branch_lookup
     """
 
     n = nc.bus_data.nbus
     m = nc.passive_branch_data.nelm
     Cf = lil_matrix((4 * m, 4 * n), dtype=int)
     Ct = lil_matrix((4 * m, 4 * n), dtype=int)
-    Yf = lil_matrix((4 * m, 4 * n), dtype=complex)
-    Yt = lil_matrix((4 * m, 4 * n), dtype=complex)
 
     idx4 = np.array([0, 1, 2, 3])  # array that we use to generate the 3-phase indices
 
     R = np.zeros(4 * m, dtype=bool)
 
+    F = np.array(nc.passive_branch_data.F, dtype=int)
+    T = np.array(nc.passive_branch_data.T, dtype=int)
+
     for k in range(m):
-        f = nc.passive_branch_data.F[k]
-        t = nc.passive_branch_data.T[k]
+        f = F[k]
+        t = T[k]
 
         f4 = 4 * f + idx4
         t4 = 4 * t + idx4
         k4 = 4 * k + idx4
-
-        Yf[np.ix_(k4, f4)] = nc.passive_branch_data.Yff3[k4, :]
-        Yf[np.ix_(k4, t4)] = nc.passive_branch_data.Yft3[k4, :]
-        Yt[np.ix_(k4, f4)] = nc.passive_branch_data.Ytf3[k4, :]
-        Yt[np.ix_(k4, t4)] = nc.passive_branch_data.Ytt3[k4, :]
 
         R[4 * k + 0] = nc.passive_branch_data.phN[k]
         R[4 * k + 1] = nc.passive_branch_data.phA[k]
@@ -154,9 +214,6 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     Ctot = Cfcopy + Ctcopy
     col_sums = np.array(Ctot.sum(axis=0))[0, :]
     binary_bus_mask = (col_sums > 0).astype(bool)
-
-    F = np.array(nc.passive_branch_data.F, dtype=int)
-    T = np.array(nc.passive_branch_data.T, dtype=int)
 
     bus_has_neutral = np.ones(4 * n, dtype=bool)  # por defecto el neutro del bus está activo
 
@@ -182,31 +239,10 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     # aplica la prioridad: si algún trafo aterra el neutro del bus, el neutro se elimina del solver
     binary_bus_mask[0::4] = binary_bus_mask[0::4] & bus_has_neutral[0::4]
 
-    Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)
-    for k in range(nc.shunt_data.nelm):
-        f = nc.shunt_data.bus_idx[k]
-        k4 = 4 * k + idx4
-        f4 = 4 * f + idx4
-        Ysh_bus[np.ix_(f4, f4)] += nc.shunt_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
-
-    for k in range(nc.load_data.nelm):
-        f = nc.load_data.bus_idx[k]
-        k4 = 4 * k + idx4
-        f4 = 4 * f + idx4
-        Ysh_bus[np.ix_(f4, f4)] += nc.load_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
-
-    Ybus = Cf.T @ Yf + Ct.T @ Yt + Ysh_bus
-    Ybus = Ybus[binary_bus_mask, :][:, binary_bus_mask]
-    Ysh_bus = Ysh_bus[binary_bus_mask, :][:, binary_bus_mask]
-    Yf = Yf[R, :][:, binary_bus_mask]
-    Yt = Yt[R, :][:, binary_bus_mask]
-
     bus_idx_lookup = lookup_from_mask(binary_bus_mask)
     branch_lookup = lookup_from_mask(R)
 
-    Ybus = csc_matrix(Ybus)
-
-    return Ybus.tocsc(), Yf.tocsc(), Yt.tocsc(), Ysh_bus, binary_bus_mask, bus_idx_lookup, branch_lookup
+    return binary_bus_mask, bus_idx_lookup, branch_lookup
 
 
 def compute_current_loads(bus_idx: IntVec,
@@ -631,11 +667,11 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
     n = len(V0)
     idx4 = np.array([0, 1, 2, 3])
 
-    magnitudes_slack = np.array([-1 + 1e-5, 0, 0, 0])
+    magnitudes_slack = np.array([-1 + 1e-10, 0, 0, 0])
     angles_slack = np.array([0, 0, -2 * np.pi / 3, 2 * np.pi / 3])
 
-    magnitudes = np.array([-1 + 1e-4, 0, 0, 0])
-    angles = np.array([10 * np.pi / 180, 0, -2 * np.pi / 3, 2 * np.pi / 3])
+    magnitudes = np.array([-1 + 1e-5, 0, 0, 0])
+    angles = np.array([1e-5 * np.pi / 180, 0, -2 * np.pi / 3, 2 * np.pi / 3])
 
     Vm = np.abs(V0)
     Va = np.angle(V0)

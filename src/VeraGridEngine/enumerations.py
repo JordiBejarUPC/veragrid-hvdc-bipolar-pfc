@@ -2589,3 +2589,29 @@ class TimeSeriesSearchPoint(Enum):
         except KeyError:
             return s
 
+
+
+class EmtLineTypes(Enum):
+    """
+    EmtLineTypes
+    """
+    Bergeron = "Bergeron"
+    J_Marti = "J_Marti"
+    PI = "Pi"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return EmtLineTypes[s]
+        except KeyError:
+            return s
