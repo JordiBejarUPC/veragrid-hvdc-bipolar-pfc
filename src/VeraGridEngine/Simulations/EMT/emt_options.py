@@ -5,6 +5,7 @@
 
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
 class EmtOptions(OptionsTemplate):
@@ -16,8 +17,7 @@ class EmtOptions(OptionsTemplate):
                  time_step: float = 0.0001,
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
-                 integration_method: str = "implicit euler"):
-                 # integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler):
+                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler):
         """
         EmtOptions
         :param time_step: time step of the simulations (s)
@@ -30,10 +30,10 @@ class EmtOptions(OptionsTemplate):
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance
-        self.integration_method: str = integration_method
+        self.integration_method: DynamicIntegrationMethod = integration_method
 
         self.register(key="time_step", tpe=float)
         self.register(key="simulation_time", tpe=float)
         self.register(key="tolerance", tpe=float)
-        self.register(key="integration_method", tpe=float)
+        self.register(key="integration_method", tpe=DynamicIntegrationMethod)
 

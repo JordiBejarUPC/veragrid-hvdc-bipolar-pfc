@@ -601,7 +601,6 @@ class Block:
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
         :param event_dict: Dictionary of parameters that can change during the simulations
         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
-        :param placeholder_eqs: Dictionary of placeholder variables and their equations
         :param name: name of the block
         """
 

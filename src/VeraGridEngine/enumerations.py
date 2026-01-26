@@ -2394,6 +2394,7 @@ class RmsInitializationMethod(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+
 class GridReductionMethod(Enum):
     """
     GridReductionMethod
@@ -2467,6 +2468,11 @@ class VarPowerFlowRefferenceType(Enum):
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
 
+    Ia = "Ia"  # Injection current at phase a in p.u.
+    Ib = "Ib"  # Injection current at phase b in p.u.
+    Ic = "Ic"  # Injection current at phase c in p.u.
+    theta = "theta"  # Rotor angle in a synchronous generator in rad
+
     def __str__(self):
         return self.value
 
@@ -2484,6 +2490,7 @@ class VarPowerFlowRefferenceType(Enum):
             return VarPowerFlowRefferenceType[s]
         except KeyError:
             return s
+
 
 class ParamPowerFlowRefferenceType(Enum):
     """
@@ -2651,7 +2658,6 @@ class TimeSeriesSearchPoint(Enum):
             return TimeSeriesSearchPoint[s]
         except KeyError:
             return s
-
 
 
 class EmtLineTypes(Enum):
