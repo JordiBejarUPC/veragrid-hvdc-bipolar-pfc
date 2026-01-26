@@ -69,7 +69,6 @@ class EmtSolverProperties:
         # Default initialisation (bus without region block)
         self.region_block: Block | None = None
         self.blocksolver: BlockSolver | None = None
-        self.params0: Vec | None = None
         self.alter_params0: Vec | None = None
         self.x0: Vec | None = None
         self.dx0: Vec | None = None
@@ -83,10 +82,6 @@ class EmtSolverProperties:
 
             # Solver
             self.blocksolver = BlockSolver(block_system=self.region_block, glob_time=t)
-
-            # Parameters
-            params_mapping = {}
-            self.params0 = self.blocksolver.build_init_params_vector(params_mapping)
 
             # alter parameters
             alter_params_mapping = alter_params_mappings[bus]
@@ -669,10 +664,9 @@ def predict_Is(emt_simulation_driver: EmtSimulationDriver,
                 h=h,
                 x0=emt.x0,
                 dx0=emt.dx0,
-                params0=emt.params0,  # not used
-                alter_params0=emt.alter_params0,
                 method=emt_simulation_driver.options.integration_method,
                 newton_tol=emt_simulation_driver.options.tolerance,
+                alter_params=emt.alter_params0,
                 newton_max_iter=1000,
                 followed_vars=None,
                 initialized=False,
@@ -1173,7 +1167,6 @@ def update_Is(emt_simulation_driver: EmtSimulationDriver,
                 h=h,
                 x0=emt.x0,
                 dx0=emt.dx0,
-                params0=emt.params0,  # not used
                 alter_params0=emt.alter_params0,
                 method=emt_simulation_driver.options.integration_method,
                 newton_tol=emt_simulation_driver.options.tolerance,

@@ -111,7 +111,7 @@ class RmsSimulationDriver(DriverTemplate):
         sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
         slv = BlockSolver(ss, sim_time)
 
-        params0 = slv.build_init_params_vector(params_mapping)
+
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
         dx0 = np.zeros(slv.diff_vars_number)
@@ -122,7 +122,6 @@ class RmsSimulationDriver(DriverTemplate):
             h=self.options.time_step,
             x0=x0,
             dx0=dx0,
-            params0=params0,
             method=self.options.integration_method,
             newton_tol=self.options.tolerance,
             newton_max_iter=1000,

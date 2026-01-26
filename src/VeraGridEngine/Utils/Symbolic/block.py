@@ -578,6 +578,7 @@ class Block:
                  reformulated_vars: List[DiffVar] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
+                 alter_params: List[Var] | None = None,
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
@@ -632,6 +633,8 @@ class Block:
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
+
+        self.alter_params: List[Var] = list() if alter_params is None else alter_params
 
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = (dict()
                                                                         if external_mapping is None

@@ -162,7 +162,7 @@ def test_load_save_load_rms() -> None:
     if not os.path.exists("output"):
         os.makedirs("output")
 
-    for name in ['rms_2_bus_gen_load.veragrid']:
+    for name in ['2bus_gen_load.veragrid']:
         fname = os.path.join(folder, name)
 
         # open the main grid

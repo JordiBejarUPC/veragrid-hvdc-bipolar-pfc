@@ -294,12 +294,10 @@ class SmallSignalStabilityDriver(DriverTemplate):
         """
         self.tic()
 
-        params_mapping: Dict = dict()
-
         time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        slv = BlockSolverNoDiff(ss, time)
+        slv = BlockSolver(ss, time)
 
-        params0 = slv.build_init_params_vector(params_mapping)
+
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
         if not self.options.ss_assessment_time == 0:
@@ -316,7 +314,6 @@ class SmallSignalStabilityDriver(DriverTemplate):
                 t_end=self.options.ss_assessment_time,
                 h=self.options.time_step,
                 x0=x0,
-                params0=params0,
                 method=integrator
             )
 

@@ -382,7 +382,7 @@ def init_pseudo_transient(bus, region:Block, grid, sys_block, res, init_guess, t
     return time, sys_block, init_guess
 
 
-def pseudo_transient(bus_index, bus_block, region_system, region_time, x0: np.ndarray, init_guess: dict[Var, float], res,
+def pseudo_transient(bus_index, bus_block, region_system, region_time, alter_params, x0: np.ndarray, init_guess: dict[Var, float], res,
                      grid: MultiCircuit, uid2idx_vars: Dict[int, int],
                      dtau0=1e0, max_iter: int = 1e3, plot: bool = False, predictor: bool = False,
                      type: str = None):
@@ -437,7 +437,7 @@ def pseudo_transient(bus_index, bus_block, region_system, region_time, x0: np.nd
     while not solved:
         try:
             print(f'Trying dtau0 = {dtau0} with max_iter {max_iter}')
-            x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0,
+            x0_mdl, init_guess_mdl = solver.pseudo_transient_routine(x0.copy(), dtau0=dtau0, alter_params=alter_params,
                                                                                     max_iter=max_iter, max_tries=1e2,
                                                                                     plot=plot,
                                                                                     predictor=predictor,
@@ -516,35 +516,35 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         # get model and model vars
         mdl = elm.rms_model.model
-        mdl_vars = mdl.state_vars + mdl.algebraic_vars
+        lists = [mdl.state_vars, mdl.algebraic_vars]
+        for lst in lists:
+            # fill system variables list
+            for var in lst:
+                key = (var.uid, var.name)
+                if key not in seen_vars:
+                    sys_vars.append(key)
+                    seen_vars.add(key)
 
-        # fill system variables list
-        for var in mdl_vars:
-            key = (var.uid, var.name)
-            if key not in seen_vars:
-                sys_vars.append(key)
-                seen_vars.add(key)
+            # fill uid2sym and uid2idx dicts
+            for v in lst:
+                uid2sym_vars[v.uid] = f"vars[{vars_array_index}]"
+                uid2idx_vars[v.uid] = vars_array_index
+                vars_array_index += 1
 
-        # fill uid2sym and uid2idx dicts
-        for v in mdl_vars:
-            uid2sym_vars[v.uid] = f"vars[{vars_array_index}]"
-            uid2idx_vars[v.uid] = vars_array_index
-            vars_array_index += 1
+            # fill init_guess
+            # TODO: initialization from power injections of PFlows results needs
+            #  to be addressed when multiple devices are connected to the same bus.
+            # (Shunt Load, for the benchmark case, two generators,...)
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(np.angle(res.voltage[i]))
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
+            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
 
-        # fill init_guess
-        # TODO: initialization from power injections of PFlows results needs
-        #  to be addressed when multiple devices are connected to the same bus.
-        # (Shunt Load, for the benchmark case, two generators,...)
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(np.angle(res.voltage[i]))
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
-
-        sys_block.add(mdl)
+            sys_block.add(mdl)
 
     # branches
     for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
