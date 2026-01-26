@@ -284,6 +284,7 @@ def rms_kundur():
     load1_dynhost = DynamicModelHost()
     load2_dynhost = DynamicModelHost()
 
+    # Build rms models from template
     # generators
     genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
     genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
