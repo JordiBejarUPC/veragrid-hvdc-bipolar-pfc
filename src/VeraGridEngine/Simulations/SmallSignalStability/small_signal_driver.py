@@ -12,7 +12,7 @@ import math
 
 from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import SmallSignalStabilityResults
@@ -23,7 +23,7 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
 
 
-def compute_state_matrix(slv: BlockSolverNoDiff, x: Vec, time: float, ):
+def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -39,14 +39,17 @@ def compute_state_matrix(slv: BlockSolverNoDiff, x: Vec, time: float, ):
         the A matrix is computed as:
         A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
     """
-
-    params_current = slv.params_fn(time)
+    event_params = np.zeros(len(slv._event_parameters))
+    params_current = slv._event_params_fn(event_params=event_params, glob_time=time)
     params = np.zeros(10)
+    diff_values = np.zeros(10)
+    h = 0.001
 
-    fx = slv.j11(x, params_current, params)  # ∂f/∂x
-    fy = slv.j12(x, params_current, params)  # ∂f/∂y
-    gx = slv.j21(x, params_current, params)  # ∂g/∂x
-    gy = slv.j22(x, params_current, params)  # ∂g/∂y
+
+    fx = slv._j11_fn(x, diff_values, params_current, params, h)  # ∂f/∂x
+    fy = slv._j12_fn(x, diff_values, params_current, params, h)  # ∂f/∂y
+    gx = slv._j21_fn(x, diff_values, params_current, params, h)  # ∂g/∂x
+    gy = slv._j22_fn(x, diff_values, params_current, params, h)  # ∂g/∂y
 
     gyx = spsolve(gy, gx)
     return fx - fy @ gyx
@@ -174,7 +177,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolverNoDiff, x: Vec, time: float, verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver

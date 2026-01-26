@@ -691,7 +691,9 @@ class Line(BranchParent):
                             LV=V1,
                             r=self.R,
                             x=self.X,
-                            b=self.B)
+                            b=self.B
+                            )
+        elm.rms_model = self.rms_model
 
         if index is not None:
             elm.ensure_profiles_exist(index=index)
@@ -757,6 +759,6 @@ class Line(BranchParent):
 
         :return:
         """
-        if self.rms_model.empty():
+        if self._rms_model.empty():
             line_template = get_line_rms_template()
             self.rms_model.model = line_template.block

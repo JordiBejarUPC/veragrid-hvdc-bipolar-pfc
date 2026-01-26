@@ -199,7 +199,7 @@ slv = BlockSolver(ss, sim_time)
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
-dx0 = np.zeros(len(slv._diff_vars))
+dx0 = np.zeros(len(slv.diff_vars))
 Vm = find_name_in_block("Vm", slv.block_system)
 
 xlim = 15.0

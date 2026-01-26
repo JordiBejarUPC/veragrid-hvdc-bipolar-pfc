@@ -11,7 +11,7 @@ from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferen
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
-def get_line_rms_template(name="Line rms template") -> RmsModelTemplate:
+def get_line_rms_template(name="Line_rms_template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Line
     :return: RmsModelTemplate

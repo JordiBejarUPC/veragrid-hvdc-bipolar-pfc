@@ -799,7 +799,7 @@ class Load(LoadParent):
         :param rms_event:
         :return:
         """
-        if self.rms_model.empty():
+        if self._rms_model.empty():
             load_template = get_load_rms_template()
             self.rms_model.model = load_template.block
 

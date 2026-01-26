@@ -2489,9 +2489,71 @@ class ParamPowerFlowRefferenceType(Enum):
     ParamPowerFlowRefferenceType
     """
     NOTHING = "nothing"
+    # Branch / load parameters
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
     bsh = "bsh"  # Branch shunt susceptance in per unit
+    Pl0 = "Pl0"  # Load active power
+    Ql0 = "Ql0"  # Load reactive power
+
+    # Machine / power flow parameters
+    fn = "fn"
+    ws = "ws"
+    M = "M"
+    D = "D"
+    Rs = "Rs"
+    Ra = "Ra"
+
+    # Reactances
+    Xd = "Xd"
+    Xq = "Xq"
+    Xd_prime = "Xd_prime"
+    Xq_prime = "Xq_prime"
+    Xd_2prime = "Xd_2prime"
+    Xq_2prime = "Xq_2prime"
+    Xl = "Xl"
+
+    # Time constants
+    Td0_prime = "Td0_prime"
+    Tq0_prime = "Tq0_prime"
+    Td0_2prime = "Td0_2prime"
+    Tq0_2prime = "Tq0_2prime"
+
+    # Auxiliary parameters
+    Xd_prime_minus_Xl = "Xd_prime_minus_Xl"
+    Xq_prime_minus_Xl = "Xq_prime_minus_Xl"
+    Xdaux = "Xdaux"
+    Xdaux2 = "Xdaux2"
+    Xdaux3 = "Xdaux3"
+    Xqaux = "Xqaux"
+    Xqaux2 = "Xqaux2"
+    Xqaux3 = "Xqaux3"
+
+    # Control / extra parameters
+    A = "A"
+    B = "B"
+
+    # Governor / control gains and limits
+    K = "K"  # governor gain (inverse droop)
+    Pmax = "Pmax"  # max mechanical power (pu)
+    Pmin = "Pmin"  # min mechanical power (pu)
+    Uc = "Uc"  # max valve closing rate (pu/s)
+    Uo = "Uo"  # max valve opening rate (pu/s)
+    T_aux = "T_aux"
+
+    # Control parameters
+    Kp = "Kp"
+    Ki = "Ki"
+    omega_ref = "omega_ref"
+    p0 = "p0"
+    P0 = "P0"
+
+    # Electrical / additional machine parameters
+    R1 = "R1"
+    X1 = "X1"
+    freq = "freq"  # corresponds to Var("frequ")
+    vf = "vf"
+    tm0 = "tm0"
 
     def __str__(self):
         return self.value
