@@ -53,7 +53,7 @@ def adapt_h(lines: List[dev.Line],
         if line.emt_model_type != EmtLineTypes.PI and line.length > max_length:
 
             max_length = line.length
-            n_delay = int(round(dta.tau / dt))
+            n_delay = int(round(dta.tau[ii] / dt))
 
             if verbose > 0:
                 print(f"tau = {dta.tau[ii] * 1e3}ms")
@@ -257,7 +257,7 @@ def compile_emt(grid: MultiCircuit,
     for ii, elm in enumerate(grid.loads):
         emt_elm: EmtLoad = initialize_emt_load(ii=ii,
                                                dta=dta.load_emt_data,
-                                               Sbase=grid.Sbase,
+                                               sbase=grid.Sbase,
                                                load=elm,
                                                verbose=verbose)
 
@@ -271,7 +271,7 @@ def compile_emt(grid: MultiCircuit,
 
         # record block into the bus block
         if not elm.emt_model.model.check_empty():
-            dta.syst_blocks[bus_idx].add(elm.emt_model.model)
+            dta.set_bus_block(i=bus_idx, block=elm.emt_model.model)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Generators
@@ -316,7 +316,7 @@ def compile_emt(grid: MultiCircuit,
                 vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
             # record block into the bus block
-            dta.syst_blocks[bus_idx].add(elm.emt_model.model)
+            dta.set_bus_block(i=bus_idx, block=elm.emt_model.model)
 
             # initialize generator variables ---------------------------------------------------------------------------
             init_guess: Dict[int, float] = dict()
@@ -366,8 +366,8 @@ def compile_emt(grid: MultiCircuit,
                 print(f"initial i_c = {i_c}")
 
             a = np.exp(1j * 2 * np.pi / 3)
-            V1 = (1 / 3) * (V_a + a * V_b + a * a * V_c)  # positive sequence voltage for the synchronous generator
-            theta = np.angle(V1)
+            V1 = (1.0 / 3.0) * (V_a + a * V_b + a * a * V_c)  # positive sequence voltage for the synchronous generator
+            theta: float = np.angle(V1)
 
             if verbose > 0:
                 print(f"theta initialization generator = {theta}")
