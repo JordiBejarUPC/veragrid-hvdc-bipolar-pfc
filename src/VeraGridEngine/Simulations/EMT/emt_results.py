@@ -28,13 +28,19 @@ class EmtResults(ResultsTemplate):
     def __init__(self,
                  values: np.ndarray,
                  time_array: DateVec,
-                 # stat_vars: List[Var],
-                 # algeb_vars: List[Var],
                  uid2idx: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
                  devices: List[Union[Bus, BranchParent, InjectionParent]],
-                 units: str = "",
-                 ):
+                 units: str = ""):
+        """
+
+        :param values:
+        :param time_array:
+        :param uid2idx:
+        :param vars_glob_name2uid:
+        :param devices:
+        :param units:
+        """
         ResultsTemplate.__init__(
             self,
             name='RMS simulation',

@@ -6,23 +6,6 @@
 import sys
 import os
 
-# =============================================================================
-# 1. CORRECCIÓN DE RUTAS (PATH FIX ROBUSTO)
-# =============================================================================
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 1. Agregar 'src' al path (Permite: import VeraGridEngine)
-# Ruta: .../VeraGrid/src
-src_path = os.path.abspath(os.path.join(current_dir, '..', '..'))
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
-
-# 2. Agregar raíz 'VeraGrid' al path (Permite: from src.trunk... en line.py)
-# Ruta: .../VeraGrid
-root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
-if root_path not in sys.path:
-    sys.path.insert(0, root_path)
-
 import numpy as np
 import pandas as pd
 
@@ -39,7 +22,7 @@ from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 
-from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 import VeraGridEngine.api as gce
 
@@ -47,34 +30,40 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 np.set_printoptions(
-            precision=10,  # number of digits
-            suppress=False,  # DO NOT suppress scientific notation
-            formatter={'float_kind': lambda x: f"{x: .3e}"}
-        )
+    precision=10,  # number of digits
+    suppress=False,  # DO NOT suppress scientific notation
+    formatter={'float_kind': lambda x: f"{x: .3e}"}
+)
 
 # =============================================================================
 # 2. CONFIGURACIÓN DEL SISTEMA
 # =============================================================================
 grid = MultiCircuit()
 
-Sbase  =160 #MVA
+Sbase = 160  # MVA
 # Sbase  = 1000 #MVA
 # Vbase = 15/np.sqrt(3) #kV
-Vbase = 15 #kV
-Zbase = Vbase*Vbase/(Sbase)
+Vbase = 15  # kV
+Zbase = Vbase * Vbase / (Sbase)
 Rbase = Zbase.real  # ohm
-f = 50 # Hz
+f = 50  # Hz
 # l1 = 1.0 # km
-l1 = 100.0 # km -------------
+l1 = 100.0  # km -------------
 
-grid.Sbase = Sbase #*1e6 # MVA
+grid.Sbase = Sbase  # *1e6 # MVA
 
 # --- Buses ---
 bus1 = Bus(name="Bus1", Vnom=Vbase, is_slack=True)
-bus1.ph_n = False; bus1.ph_a = True; bus1.ph_b = True; bus1.ph_c = True
+bus1.ph_n = False
+bus1.ph_a = True
+bus1.ph_b = True
+bus1.ph_c = True
 
 bus2 = Bus(name="Bus2", Vnom=Vbase)
-bus2.ph_n = False; bus2.ph_a = True; bus2.ph_b = True; bus2.ph_c = True
+bus2.ph_n = False
+bus2.ph_a = True
+bus2.ph_b = True
+bus2.ph_c = True
 
 # Asignar templates simbólicos a los buses
 bus1_template = get_bus_emt_template()
@@ -87,7 +76,7 @@ line0 = Line(name="line 1-2", bus_from=bus1, bus_to=bus2, rate=300, length=l1)
 
 # [CAMBIO IMPORTANTE] Selección del modelo numérico para el driver
 # Opciones: 'Bergeron', 'Pi', 'JMarti'
-line0.model_type = 'Bergeron'
+line0.emt_model_type = gce.EmtLineTypes.Bergeron
 
 # Configuración Física (Torre)
 tower = gce.OverheadLineType(name="Tower", Vnom=Vbase)
@@ -98,8 +87,8 @@ wire = gce.Wire(name="Panther 30/7 ACSR",
                 r=0.1363,
                 max_current=1)
 tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
-tower.add_wire_relationship(wire=wire, xpos=0,      ypos=27.5, phase=2)
-tower.add_wire_relationship(wire=wire, xpos=12.65,  ypos=27.5, phase=3)
+tower.add_wire_relationship(wire=wire, xpos=0, ypos=27.5, phase=2)
+tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
 
 # Aplicar física a la línea
@@ -118,8 +107,8 @@ gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
 # --- load ---
 # P = 10
 
-P = 0.004734676015622833 *Sbase  # per a lenght = 1km
-load1 = Load(name="load1", P1 =P/3 , P2 =P/3 , P3 =P/3, Q1= 0.0, Q2= 0.0, Q3= 0.0)
+P = 0.004734676015622833 * Sbase  # per a lenght = 1km
+load1 = Load(name="load1", P1=P / 3, P2=P / 3, P3=P / 3, Q1=0.0, Q2=0.0, Q3=0.0)
 # load1 = Load(name="load1", R= R, P1 =P/3 , P2 =P/3 , P3 =P/3, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 
 # Agregar elementos al grid
@@ -193,11 +182,10 @@ print(f"res:{res}")
 # =============================================================================
 # 4. SIMULACIÓN EMT
 # =============================================================================
-emt_opt = EmtOptions(time_step = 5e-06, # 3.957727297715481e-06,
-                     simulation_time = 0.005, # s
-                     tolerance = 1e-6,
-                     integration_method = "implicit_euler")
-
+emt_opt = EmtOptions(time_step=5e-06,  # 3.957727297715481e-06,
+                     simulation_time=0.005,  # s
+                     tolerance=1e-6,
+                     integration_method=DynamicIntegrationMethod.BackEuler)
 
 print(f"initial timestep:{emt_opt.time_step}s")
 drv = EmtSimulationDriver(grid, emt_opt, res)
@@ -227,10 +215,14 @@ df_V.to_csv("V_results.csv", index=False)
 # 2) Fuentes de Corriente (Is)
 Is_cols = []
 for bus in grid.get_buses():
-    if bus.ph_n: Is_cols.append(f"Is_n_{bus.name}")
-    if bus.ph_a: Is_cols.append(f"Is_a_{bus.name}")
-    if bus.ph_b: Is_cols.append(f"Is_b_{bus.name}")
-    if bus.ph_c: Is_cols.append(f"Is_c_{bus.name}")
+    if bus.ph_n:
+        Is_cols.append(f"Is_n_{bus.name}")
+    if bus.ph_a:
+        Is_cols.append(f"Is_a_{bus.name}")
+    if bus.ph_b:
+        Is_cols.append(f"Is_b_{bus.name}")
+    if bus.ph_c:
+        Is_cols.append(f"Is_c_{bus.name}")
 df_Is = pd.concat([time_df, pd.DataFrame(Is, columns=Is_cols)], axis=1)
 df_Is.to_csv("Is_results.csv", index=False)
 
@@ -238,10 +230,14 @@ df_Is.to_csv("Is_results.csv", index=False)
 Il_cols = []
 for line in grid.get_lines():
     bf = line.bus_from
-    if bf.ph_n: Il_cols += [f"Ifrom_n_{line.name}", f"Ito_n_{line.name}"]
-    if bf.ph_a: Il_cols += [f"Ifrom_a_{line.name}", f"Ito_a_{line.name}"]
-    if bf.ph_b: Il_cols += [f"Ifrom_b_{line.name}", f"Ito_b_{line.name}"]
-    if bf.ph_c: Il_cols += [f"Ifrom_c_{line.name}", f"Ito_c_{line.name}"]
+    if bf.ph_n:
+        Il_cols += [f"Ifrom_n_{line.name}", f"Ito_n_{line.name}"]
+    if bf.ph_a:
+        Il_cols += [f"Ifrom_a_{line.name}", f"Ito_a_{line.name}"]
+    if bf.ph_b:
+        Il_cols += [f"Ifrom_b_{line.name}", f"Ito_b_{line.name}"]
+    if bf.ph_c:
+        Il_cols += [f"Ifrom_c_{line.name}", f"Ito_c_{line.name}"]
 df_Il = pd.concat([time_df, pd.DataFrame(Ilines, columns=Il_cols)], axis=1)
 df_Il.to_csv("I_lines_results.csv", index=False)
 
@@ -249,10 +245,14 @@ df_Il.to_csv("I_lines_results.csv", index=False)
 hist_cols = []
 for line in grid.get_lines():
     bf = line.bus_from
-    if bf.ph_n: hist_cols += [f"Hfrom_n_{line.name}", f"Hto_n_{line.name}"]
-    if bf.ph_a: hist_cols += [f"Hfrom_a_{line.name}", f"Hto_a_{line.name}"]
-    if bf.ph_b: hist_cols += [f"Hfrom_b_{line.name}", f"Hto_b_{line.name}"]
-    if bf.ph_c: hist_cols += [f"Hfrom_c_{line.name}", f"Hto_c_{line.name}"]
+    if bf.ph_n:
+        hist_cols += [f"Hfrom_n_{line.name}", f"Hto_n_{line.name}"]
+    if bf.ph_a:
+        hist_cols += [f"Hfrom_a_{line.name}", f"Hto_a_{line.name}"]
+    if bf.ph_b:
+        hist_cols += [f"Hfrom_b_{line.name}", f"Hto_b_{line.name}"]
+    if bf.ph_c:
+        hist_cols += [f"Hfrom_c_{line.name}", f"Hto_c_{line.name}"]
 df_hist = pd.concat([time_df, pd.DataFrame(hist_lines, columns=hist_cols)], axis=1)
 df_hist.to_csv("hist_lines_results.csv", index=False)
 
@@ -298,49 +298,49 @@ mpl.rcParams.update({
 fig, axs = plt.subplots(2, 3, figsize=(12, 8))
 axs = axs.flatten()
 
-axs[0].plot(t, dx[:,0], label=r"$\dot{\psi}_d\;[\mathrm{p.u.}]$", color="b")
+axs[0].plot(t, dx[:, 0], label=r"$\dot{\psi}_d\[\mathrm{p.u.}]$", color="b")
 axs[0].set_xlabel(r"Time [ms]")
-axs[0].set_ylabel(r"$\dot{\psi}_d \;[\mathrm{p.u.}]$")
+axs[0].set_ylabel(r"$\dot{\psi}_d \[\mathrm{p.u.}]$")
 axs[0].set_title(r"Direct-axis flux derivative $\dot{\psi}_d$")
 axs[0].legend(loc="upper right")
 axs[0].set_ylim([-0.5, 1.0])
 axs[0].grid(True)
 
-axs[1].plot(t, dx[:,2], label=r"$\dot{\psi}_f\;[\mathrm{p.u.}]$", color="b")
+axs[1].plot(t, dx[:, 2], label=r"$\dot{\psi}_f\[\mathrm{p.u.}]$", color="b")
 axs[1].set_xlabel(r"Time [ms]")
-axs[1].set_ylabel(r"$\dot{\psi}_f \;[\mathrm{p.u.}]$")
+axs[1].set_ylabel(r"$\dot{\psi}_f \[\mathrm{p.u.}]$")
 axs[1].set_title(r"Field flux derivative $\dot{\psi}_f$")
 axs[1].legend(loc="upper right")
 axs[1].set_ylim([-0.2, 0.2])
 axs[1].grid(True)
 
-axs[2].plot(t, dx[:,1], label=r"$\dot{\psi}_q\;[\mathrm{p.u.}]$", color="b")
+axs[2].plot(t, dx[:, 1], label=r"$\dot{\psi}_q\[\mathrm{p.u.}]$", color="b")
 axs[2].set_xlabel(r"Time [ms]")
-axs[2].set_ylabel(r"$\dot{\psi}_q \;[\mathrm{p.u.}]$")
+axs[2].set_ylabel(r"$\dot{\psi}_q \[\mathrm{p.u.}]$")
 axs[2].set_title(r"Quadrature-axis flux derivative $\dot{\psi}_q$")
 axs[2].legend(loc="upper right")
 axs[2].set_ylim([-0.5, 1.0])
 axs[2].grid(True)
 
-axs[3].plot(t, dx[:,5], label=r"$\dot{\omega}\;[\mathrm{p.u.}]$", color="b")
+axs[3].plot(t, dx[:, 5], label=r"$\dot{\omega}\[\mathrm{p.u.}]$", color="b")
 axs[3].set_xlabel(r"Time [ms]")
-axs[3].set_ylabel(r"$\dot{\omega}$ $\;[\mathrm{p.u.}]$")
+axs[3].set_ylabel(r"$\dot{\omega}$ $\[\mathrm{p.u.}]$")
 axs[3].set_title(r"Angular frequency derivative $\dot{\omega}$")
 axs[3].legend(loc="upper right")
 axs[3].set_ylim([-5, 10])
 axs[3].grid(True)
 
-axs[4].plot(t, dx[:,4], label=r"$\dot{\theta}\;[\mathrm{rad/s}]$", color="b")
+axs[4].plot(t, dx[:, 4], label=r"$\dot{\theta}\[\mathrm{rad/s}]$", color="b")
 axs[4].set_xlabel(r"Time [ms]")
-axs[4].set_ylabel(r"$\dot{\theta} \;[\mathrm{rad/s}]$")
+axs[4].set_ylabel(r"$\dot{\theta} \[\mathrm{rad/s}]$")
 axs[4].set_title(r"Rotor angle derivative $\dot{\theta}$")
 axs[4].legend(loc="upper right")
 axs[4].set_ylim([-5, 320])
 axs[4].grid(True)
 
-axs[5].plot(t, dx[:,6], label=r"$\dot{e}_t\;[\mathrm{p.u.}]$", color="b")
+axs[5].plot(t, dx[:, 6], label=r"$\dot{e}_t\[\mathrm{p.u.}]$", color="b")
 axs[5].set_xlabel(r"Time [ms]")
-axs[5].set_ylabel(r"PI error derivative $\;[\mathrm{p.u.}]$")
+axs[5].set_ylabel(r"PI error derivative $\[\mathrm{p.u.}]$")
 axs[5].set_title(r"PI error derivative $\dot{e}_t$")
 axs[5].legend(loc="upper right")
 axs[5].set_ylim([-5, 10])
@@ -351,9 +351,5 @@ plt.suptitle(
     fontsize=14,
     fontweight="bold"
 )
-plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.tight_layout(rect=(0, 0, 1, 0.96))
 plt.show()
-
-
-
-

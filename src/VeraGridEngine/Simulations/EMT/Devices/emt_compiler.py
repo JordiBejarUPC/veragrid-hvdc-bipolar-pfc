@@ -26,13 +26,15 @@ from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator, i
 from VeraGridEngine.Simulations.EMT.Devices.emt_circuit import EmtCircuit
 
 
-def adapt_h(lines: List[dev.Line],
+def adapt_h(freq: float,
+            lines: List[dev.Line],
             dta: EmtLine,
             emt_options: EmtOptions,
             logger: Logger = Logger(),
             verbose: int = 0):
     """
     Find the simulation step such that it is a multiple of the largest line tau
+    :param freq:
     :param lines:
     :param dta:
     :param emt_options:
@@ -44,7 +46,7 @@ def adapt_h(lines: List[dev.Line],
     n_delay = 1
     dt = emt_options.time_step
     max_length = 0  # init counter
-
+    w = 2 * np.pi * freq
     for ii, line in enumerate(lines):
 
         # If model is Pi, tau is 0. We must skip the N_delay check
@@ -53,6 +55,8 @@ def adapt_h(lines: List[dev.Line],
         if line.emt_model_type != EmtLineTypes.PI and line.length > max_length:
 
             max_length = line.length
+            dta.tau[ii] = line.get_tau(w=w)
+
             n_delay = int(round(dta.tau[ii] / dt))
 
             if verbose > 0:
@@ -78,15 +82,13 @@ def adapt_h(lines: List[dev.Line],
 def compile_emt(grid: MultiCircuit,
                 emt_options: EmtOptions,
                 res_pf: PowerFlowResults3Ph,
-                logger: Logger,
-                verbose: int = 0) -> EmtCircuit:
+                logger: Logger) -> EmtCircuit:
     """
      Initialize all EMT models
     :param grid: (MultiCircuit)
     :param emt_options:
     :param res_pf: PowerFlowResults3Ph instance
     :param logger:
-    :param verbose: verbosity level
     :return: EmtCircuit
     """
 
@@ -111,11 +113,12 @@ def compile_emt(grid: MultiCircuit,
     rms_events = grid.rms_events
 
     # adapt time step, cannot be avoided because I need a final h for the EMT initialization
-    dta.h, dta.n_delay = adapt_h(lines=grid.lines,
+    dta.h, dta.n_delay = adapt_h(freq=grid.fBase,
+                                 lines=grid.lines,
                                  dta=dta.line_emt_data,
                                  emt_options=emt_options,
                                  logger=logger,
-                                 verbose=verbose)
+                                 verbose=emt_options.verbose)
 
     bus_dict = grid.get_bus_index_dict()
 
@@ -151,13 +154,13 @@ def compile_emt(grid: MultiCircuit,
     # Lines
     # ------------------------------------------------------------------------------------------------------------------
     for k, elm in enumerate(grid.lines):
-        emt_elm: EmtLine = initialize_emt_line(ii=k,
-                                               line=elm,
-                                               dta=dta.line_emt_data,
-                                               h=dta.h,
-                                               Sbase=grid.Sbase,
-                                               fbase=grid.fBase,
-                                               verbose=verbose)
+        Gff, Gft, Gtf, Gtt = initialize_emt_line(ii=k,
+                                                 line=elm,
+                                                 dta=dta.line_emt_data,
+                                                 h=dta.h,
+                                                 Sbase=grid.Sbase,
+                                                 fbase=grid.fBase,
+                                                 verbose=emt_options.verbose)
 
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
@@ -166,10 +169,10 @@ def compile_emt(grid: MultiCircuit,
         t4 = 4 * t + idx4
         k4 = 4 * k + idx4
 
-        Gf[np.ix_(k4, f4)] = emt_elm.Gff
-        Gf[np.ix_(k4, t4)] = emt_elm.Gft
-        Gt[np.ix_(k4, f4)] = emt_elm.Gtf
-        Gt[np.ix_(k4, t4)] = emt_elm.Gtt
+        Gf[np.ix_(k4, f4)] = Gff
+        Gf[np.ix_(k4, t4)] = Gft
+        Gt[np.ix_(k4, f4)] = Gtf
+        Gt[np.ix_(k4, t4)] = Gtt
 
         R[4 * k + 0] = elm.ys.phN
         R[4 * k + 1] = elm.ys.phA
@@ -184,10 +187,10 @@ def compile_emt(grid: MultiCircuit,
     # ------------------------------------------------------------------------------------------------------------------
 
     for k, elm in enumerate(grid.transformers2w):
-        emt_elm: EmtTransformer = initialize_emt_transformer(ii=k,
-                                                             h=dta.h,
-                                                             tr=elm,
-                                                             dta=dta.transformer_emt_data)
+        Gff, Gft, Gtf, Gtt = initialize_emt_transformer(ii=k,
+                                                        h=dta.h,
+                                                        tr=elm,
+                                                        dta=dta.transformer_emt_data)
 
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
@@ -196,10 +199,10 @@ def compile_emt(grid: MultiCircuit,
         t4 = 4 * t + idx4
         k4 = 4 * k + idx4
 
-        Gf[np.ix_(k4, f4)] = emt_elm.Gff
-        Gf[np.ix_(k4, t4)] = emt_elm.Gft
-        Gt[np.ix_(k4, f4)] = emt_elm.Gtf
-        Gt[np.ix_(k4, t4)] = emt_elm.Gtt
+        Gf[np.ix_(k4, f4)] = Gff
+        Gf[np.ix_(k4, t4)] = Gft
+        Gt[np.ix_(k4, f4)] = Gtf
+        Gt[np.ix_(k4, t4)] = Gtt
 
         (R[4 * k + 0],
          R[4 * k + 1],
@@ -255,11 +258,11 @@ def compile_emt(grid: MultiCircuit,
     # Loads
     # ------------------------------------------------------------------------------------------------------------------
     for ii, elm in enumerate(grid.loads):
-        emt_elm: EmtLoad = initialize_emt_load(ii=ii,
-                                               dta=dta.load_emt_data,
-                                               sbase=grid.Sbase,
-                                               load=elm,
-                                               verbose=verbose)
+        Gc = initialize_emt_load(ii=ii,
+                                 dta=dta.load_emt_data,
+                                 sbase=grid.Sbase,
+                                 load=elm,
+                                 verbose=emt_options.verbose)
 
         bus_idx = bus_dict[elm.bus]
 
@@ -267,7 +270,7 @@ def compile_emt(grid: MultiCircuit,
         idx = 4 * bus_idx + idx4
 
         # Stamp the 4×4 matrix
-        G_inj[np.ix_(idx, idx)] += emt_elm.Gc  # elm.Gc is now 4x4
+        G_inj[np.ix_(idx, idx)] += Gc  # elm.Gc is now 4x4
 
         # record block into the bus block
         if not elm.emt_model.model.check_empty():
@@ -277,11 +280,11 @@ def compile_emt(grid: MultiCircuit,
     # Generators
     # ------------------------------------------------------------------------------------------------------------------
     for ii, elm in enumerate(grid.generators):
-        emt_elm: EmtGenerator = initialize_emt_generator(ii=ii,
-                                                         h=dta.h,
-                                                         gen=elm,
-                                                         dta=dta.gen_emt_data,
-                                                         logger=logger)
+        Gc = initialize_emt_generator(ii=ii,
+                                      h=dta.h,
+                                      gen=elm,
+                                      dta=dta.gen_emt_data,
+                                      logger=logger)
 
         bus_idx = bus_dict[elm.bus]
 
@@ -289,7 +292,7 @@ def compile_emt(grid: MultiCircuit,
         idx = 4 * bus_idx + idx4
 
         # Stamp the 4×4 matrix
-        G_inj[np.ix_(idx, idx)] += emt_elm.Gc  # elm.Gc is now 4x4
+        G_inj[np.ix_(idx, idx)] += Gc  # elm.Gc is now 4x4
 
         if elm.emt_model.model.event_dict is not None:
             collect_events = {
@@ -360,7 +363,7 @@ def compile_emt(grid: MultiCircuit,
             dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Ib, i_b)
             dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Ic, i_c)
 
-            if verbose > 0:
+            if emt_options.verbose > 0:
                 print(f"initial i_a = {i_a}")
                 print(f"initial i_b = {i_b}")
                 print(f"initial i_c = {i_c}")
@@ -369,14 +372,14 @@ def compile_emt(grid: MultiCircuit,
             V1 = (1.0 / 3.0) * (V_a + a * V_b + a * a * V_c)  # positive sequence voltage for the synchronous generator
             theta: float = np.angle(V1)
 
-            if verbose > 0:
+            if emt_options.verbose > 0:
                 print(f"theta initialization generator = {theta}")
             # --------------------------------
             # theta = 0.0
             # --------------------------------
             dta.add_guess(bus_idx, VarPowerFlowRefferenceType.theta, theta)
 
-            if verbose > 0:
+            if emt_options.verbose > 0:
                 print(f"sanity check!")
                 # print(f"va*ia+vb*ib+vc*ic = {va0 * i_a + vb0 * i_b + vc0 * i_c}")
                 print(f"P from power flow = {P} [p.u.]")
@@ -386,7 +389,6 @@ def compile_emt(grid: MultiCircuit,
     # ------------------------------------------------------------------------------------------------------------------
 
     for ii, bus in enumerate(grid.buses):
-
         # store and initialize the block solver
         dta.init_solver(i=ii)
 

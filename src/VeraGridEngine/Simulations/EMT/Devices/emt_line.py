@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from typing import List
 import numpy as np
 import scipy as sp
 from VeraGridEngine.basic_structures import Mat, Vec, IntVec
@@ -16,10 +17,10 @@ class EmtLine:
         'n_delay',
         'H',
         'Gc',
-        'Gff',
-        'Gft',
-        'Gtf',
-        'Gtt',
+        'emt_model_type',
+        'pi_indices',
+        'bergeron_indices',
+        'j_marti_indices',
     )
 
     def __init__(self, n_elm: int):
@@ -29,10 +30,27 @@ class EmtLine:
         self.n_delay: IntVec = np.zeros(self.nelm, dtype=int)
         self.H: Mat = np.zeros((self.nelm * 4, 4))
         self.Gc: Mat = np.zeros((self.nelm * 4, 4))
-        self.Gff: Mat = np.zeros((self.nelm * 4, 4))
-        self.Gft: Mat = np.zeros((self.nelm * 4, 4))
-        self.Gtf: Mat = np.zeros((self.nelm * 4, 4))
-        self.Gtt: Mat = np.zeros((self.nelm * 4, 4))
+        # self.Gff: Mat = np.zeros((self.nelm * 4, 4))
+        # self.Gft: Mat = np.zeros((self.nelm * 4, 4))
+        # self.Gtf: Mat = np.zeros((self.nelm * 4, 4))
+        # self.Gtt: Mat = np.zeros((self.nelm * 4, 4))
+        self.emt_model_type: List[EmtLineTypes] = [EmtLineTypes.Bergeron] * self.nelm
+
+        self.pi_indices: List[int] = list()
+        self.bergeron_indices: List[int] = list()
+        self.j_marti_indices: List[int] = list()
+
+    def set_emt_model_type(self, ii: int, tpe: EmtLineTypes):
+        self.emt_model_type[ii] = tpe
+
+        if tpe == EmtLineTypes.PI:
+            self.pi_indices.append(ii)
+        elif tpe == EmtLineTypes.Bergeron:
+            self.bergeron_indices.append(ii)
+        elif tpe == EmtLineTypes.J_Marti:
+            self.j_marti_indices.append(ii)
+        else:
+            raise NotImplementedError(f"{tpe} is not implemented")
 
 
 def initialize_emt_line(ii: int,
@@ -73,6 +91,8 @@ def initialize_emt_line(ii: int,
 
     if verbose > 0:
         print(f"--- Initializing Line: {line.name} ({line.emt_model_type}) ---")
+
+    dta.set_emt_model_type(ii=ii, tpe=line.emt_model_type)
 
     idx4 = np.array(range(4))
     k4 = 4 * ii + idx4
@@ -186,7 +206,6 @@ def initialize_emt_line(ii: int,
 
         G_shunt = np.zeros_like(Gc)  # Bergeron doesn't have explicit shunt in G
 
-
     all_phases = ['n', 'a', 'b', 'c']
     # convert Gc to a 4x4 matrix with 0 in the rows and cols of nonexistent phases
     loc_index = {ph: i for i, ph in enumerate(phases)}
@@ -195,17 +214,23 @@ def initialize_emt_line(ii: int,
     H4: Mat = np.zeros((4, 4), dtype=float)
     G_shunt4: Mat = np.zeros((4, 4), dtype=float)  # Necesario para Pi
 
-    for i, phi in enumerate(all_phases):
-        if phi in phases:
-            i_small = loc_index[phi]
-            for j, phj in enumerate(all_phases):
-                if phj in phases:
-                    j_small = loc_index[phj]
-                    Gc4[i, j] = Gc[i_small, j_small]
-                    H4[i, j] = H[i_small, j_small]
-                    if line.emt_model_type == EmtLineTypes.PI:
-                        G_shunt4[i, j] = G_shunt[i_small, j_small]
+    phase_idx = np.where(phases)[0]
+    Gc4[np.ix_(phase_idx, phase_idx)] = Gc
+    H4[np.ix_(phase_idx, phase_idx)] = H
 
+    if line.emt_model_type == EmtLineTypes.PI:
+        G_shunt4[np.ix_(phase_idx, phase_idx)] = G_shunt
+
+    # for i, phi in enumerate(all_phases):
+    #     if phi in phases:
+    #         i_small = loc_index[phi]
+    #         for j, phj in enumerate(all_phases):
+    #             if phj in phases:
+    #                 j_small = loc_index[phj]
+    #                 Gc4[i, j] = Gc[i_small, j_small]
+    #                 H4[i, j] = H[i_small, j_small]
+    #                 if line.emt_model_type == EmtLineTypes.PI:
+    #                     G_shunt4[i, j] = G_shunt[i_small, j_small]
 
     dta.H[k4, :] = H4  # NxN H has no units
     dta.Gc[k4, :] = Gc4  # Device conductance (Serie en Pi, Característica en Bergeron)
@@ -213,40 +238,56 @@ def initialize_emt_line(ii: int,
     # nodal matrix (Gff, Gtt, Gft, Gtf)
     if line.emt_model_type == EmtLineTypes.PI:
         # For Pi, Gff = G_serie + G_shunt
-        dta.Gff[k4, :] = Gc4 + G_shunt4
-        dta.Gtt[k4, :] = Gc4 + G_shunt4
+        # dta.Gff[k4, :] = Gc4 + G_shunt4  # TODO: should this be G_shunt4 / 2 ?
+        # dta.Gtt[k4, :] = Gc4 + G_shunt4  # TODO: should this be G_shunt4 / 2 ?
 
         # In the π model, the nodes are COUPLED. Gft = -G_serie
-        dta.Gft[k4, :] = -1.0 * Gc4
-        dta.Gtf[k4, :] = -1.0 * Gc4
+        # dta.Gft[k4, :] = -1.0 * Gc4
+        # dta.Gtf[k4, :] = -1.0 * Gc4
 
         # In the π model,  Ndelay=1, τ=0 are enforced to prevent the driver from accessing distant buffers
         dta.tau[ii] = 0.0
         dta.n_delay[ii] = 1
 
+        Gff = Gc4 + G_shunt4
+        Gft = -Gc4
+
+        # Gff, Gft, Gtf, Gtt
+        return Gff, Gft, Gft, Gff
+
     elif line.emt_model_type == EmtLineTypes.Bergeron:
 
-        #Bergeron, Gff = Gc (Self components)
-        dta.Gff[k4, :] = Gc4
-        dta.Gtt[k4, :] = Gc4
+        # Bergeron, Gff = Gc (Self components)
+        # dta.Gff[k4, :] = Gc4
+        # dta.Gtt[k4, :] = Gc4
 
         # Bergeron, nodes are uncoupled  en t (Gft=0)
         # NOTE: No need since it is already zeroed
         # dta.Gft[k4, :] = np.zeros((4, 4), dtype=float)
         # dta.Gtf[k4, :] = np.zeros((4, 4), dtype=float)
 
+        Gff = Gc4
+        Gft = np.zeros((4, 4), dtype=float)
+
+        # Gff, Gft, Gtf, Gtt
+        return Gff, Gft, Gft, Gff
+
     elif line.emt_model_type == EmtLineTypes.J_Marti:
 
         # En Bergeron, Gff = Gc (Self components)
-        dta.Gff[k4, :] = Gc4
-        dta.Gtt[k4, :] = Gc4
+        # dta.Gff[k4, :] = Gc4
+        # dta.Gtt[k4, :] = Gc4
 
         # En Bergeron, nodes are uncoupled  en t (Gft=0)
         # NOTE: No need since it is already zeroed
         # dta.Gft[k4, :] = np.zeros((4, 4), dtype=float)
         # dta.Gtf[k4, :] = np.zeros((4, 4), dtype=float)
 
+        Gff = Gc4
+        Gft = np.zeros((4, 4), dtype=float)
+
+        # Gff, Gft, Gtf, Gtt
+        return Gff, Gft, Gft, Gff
+
     else:
         raise ValueError(f"Emt model type not implemented {line.emt_model_type.value}")
-
-

@@ -23,7 +23,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const
 
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtLineTypes, DeviceType
 from VeraGridEngine.Devices.Substation.bus import Bus
 
 from VeraGridEngine.basic_structures import Vec, IntVec, Mat, Vector, BoolVec, CxVec
@@ -254,11 +254,9 @@ def update_Hist(n_nodes: int,
         Np = np.sum(mask)  # number of active phases
 
         # ---- lines history components ----
-        if branch.device_type.value == 'Line':  # DeviceType.LineDevice:
+        if branch.device_type == DeviceType.LineDevice:
 
-            model = branch.emt_model_type
-
-            if model == "Bergeron":
+            if branch.emt_model_type == EmtLineTypes.Bergeron:
                 delay = branch.Ndelay
 
                 # k_delay = (step - delay) % (N_delay + 1)
@@ -272,13 +270,17 @@ def update_Hist(n_nodes: int,
                 i_delay_tf = I_lines_buffer[k_delay, idx_hist_t]
 
                 print(
-                    f"corriente linea en el step anterior from i_delay_ft= I_lines_buffer[k_delay, idx_hist_f] = {i_delay_ft} at step = {step}")
+                    f"corriente linea en el step anterior from "
+                    f"i_delay_ft= I_lines_buffer[k_delay, idx_hist_f] = {i_delay_ft} at step = {step}")
                 print(
-                    f"corriente linea en el step anterior to i_delay_tf = I_lines_buffer[k_delay, idx_hist_t] = {i_delay_tf} at step = {step}")
+                    f"corriente linea en el step anterior to "
+                    f"i_delay_tf = I_lines_buffer[k_delay, idx_hist_t] = {i_delay_tf} at step = {step}")
                 print(
-                    f"tensión buses en el step anterior from v_delay_f = V_buffer[k_delay, idx_from] = {v_delay_f} at step = {step}")
+                    f"tensión buses en el step anterior from "
+                    f"v_delay_f = V_buffer[k_delay, idx_from] = {v_delay_f} at step = {step}")
                 print(
-                    f"tensión buses en el step anterior from v_delay_t = V_buffer[k_delay, idx_to] = {v_delay_t} at step = {step}")
+                    f"tensión buses en el step anterior from "
+                    f"v_delay_t = V_buffer[k_delay, idx_to] = {v_delay_t} at step = {step}")
 
                 # Bergeron matrices
                 Gc_full = np.asarray(branch.Gc, dtype=float)  # 4x4
@@ -305,7 +307,7 @@ def update_Hist(n_nodes: int,
                 hist_step[idx_from] += I_hist_f
                 hist_step[idx_to] += I_hist_t
 
-            elif model == 'Pi':
+            elif branch.emt_model_type == EmtLineTypes.PI:
                 # --- MODELO PI HÍBRIDO (Correcto Físicamente) ---
                 # Serie RL: Trapecio (I_h = G_ser*v_diff_old + i_ser_old)
                 # Shunt C:  Backward Euler (I_h = -G_sh * v_old)
@@ -354,7 +356,7 @@ def update_Hist(n_nodes: int,
                 # Nodo To: Entra corriente serie (-I_h_ser), entra inyección shunt to
                 hist_step[idx_to] += (-I_h_ser + I_h_sh_t)
 
-            elif model == 'JMarti':
+            elif branch.emt_model_type == EmtLineTypes.J_Marti:
                 # --- J-MARTI (Frequency Dependent) ---
                 # Recuperar parámetros de ajuste (Vector Fitting)
                 # Se asume que 'branch' tiene estos atributos cargados
@@ -466,8 +468,11 @@ def update_Hist(n_nodes: int,
                 hist_step[idx_from] += I_hist_f_val.real
                 hist_step[idx_to] += I_hist_t_val.real
 
+            else:
+                raise NotImplementedError(f"{branch.emt_model_type} not implemented")
+
         # ---- transformers history components ----
-        elif branch.device_type.value == 'Transformer':  # Transformer2WDevice = 'Transformer'
+        elif branch.device_type == DeviceType.Transformer2WDevice:
             # k_delay = (step - 1)% (1 + 1)
             k_delay = 1
             # k_delay = (step - 1) % (N_delay + 1)
@@ -1025,18 +1030,18 @@ def set_I0_bus(emt_vec_bus: EmtSolverProperties,
     return Is0
 
 
-def initialize_buffers(#nc: NumericalCircuit,
-                       # grid: MultiCircuit,
-                       dta: EmtCircuit,
-                       pf_results: PowerFlowResults3Ph,
-                       N_delay: int,
-                       h: float,
-                       V_buffer: np.ndarray,
-                       I_lines_buffer: np.ndarray,
-                       binary_bus_mask: BoolVec,
-                       bus_idx_lookup: IntVec,
-                       branch_from_lookup: IntVec,
-                       branch_to_lookup: IntVec):
+def initialize_buffers(  # nc: NumericalCircuit,
+        # grid: MultiCircuit,
+        dta: EmtCircuit,
+        pf_results: PowerFlowResults3Ph,
+        N_delay: int,
+        h: float,
+        V_buffer: np.ndarray,
+        I_lines_buffer: np.ndarray,
+        binary_bus_mask: BoolVec,
+        bus_idx_lookup: IntVec,
+        branch_from_lookup: IntVec,
+        branch_to_lookup: IntVec):
     """
     Initialize history buffers with steady state AC solution
 
@@ -1070,7 +1075,6 @@ def initialize_buffers(#nc: NumericalCircuit,
     V_mag_C = np.abs(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(dta.n_bus)
     V_ang_C = np.angle(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(dta.n_bus)
 
-
     # --- PF branch currents (RMS p.u. phasors) ---
     m = dta.n_br
 
@@ -1091,7 +1095,6 @@ def initialize_buffers(#nc: NumericalCircuit,
     I_ang_t_B = np.angle(res.It_B) if hasattr(res, 'It_B') else np.zeros(dta.n_bus)
     I_mag_t_C = np.abs(res.It_C) if hasattr(res, 'It_C') else np.zeros(dta.n_bus)
     I_ang_t_C = np.angle(res.It_C) if hasattr(res, 'It_C') else np.zeros(dta.n_bus)
-
 
     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N,A,B,C
 
@@ -1251,17 +1254,17 @@ def simulate_emt(
     I_magn_buffer = np.zeros((dta.n_delay + 1, Nbranches_masked))
     print(f"Initial conditions are: V_buffer = {V_buffer}, I_lines_buffer = {I_lines_buffer}")
 
-    initialize_buffers( #nc= nc,
-                       #grid= grid,
-                       pf_results= PowerFlowResults3Ph,
-                       N_delay= dta.n_delay,
-                       h= dta.h,
-                       V_buffer= V_buffer,
-                       I_lines_buffer= I_lines_buffer,
-                       binary_bus_mask= dta.binary_bus_mask,
-                       bus_idx_lookup= dta.bus_idx_lookup,
-                       branch_from_lookup= IntVec,
-                       branch_to_lookup= IntVec)
+    initialize_buffers(  # nc= nc,
+        # grid= grid,
+        pf_results=PowerFlowResults3Ph,
+        N_delay=dta.n_delay,
+        h=dta.h,
+        V_buffer=V_buffer,
+        I_lines_buffer=I_lines_buffer,
+        binary_bus_mask=dta.binary_bus_mask,
+        bus_idx_lookup=dta.bus_idx_lookup,
+        branch_from_lookup=IntVec,
+        branch_to_lookup=IntVec)
 
     # Symbolic EmtSolverProperties association
     emt_vec = Vector(dta.n_bus)

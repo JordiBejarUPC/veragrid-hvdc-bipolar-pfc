@@ -15,8 +15,8 @@ class EmtLoad:
         :param n_elm:
         """
         self.n_elm = n_elm
-        self.Gc: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
-        self.G: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
+        # self.Gc: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
+        # self.G: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
 
 
 def initialize_emt_load(ii: int,
@@ -56,7 +56,6 @@ def initialize_emt_load(ii: int,
     if verbose:
         print(f"Zbase calculated at load.py = {Zbase}[ohm]")
 
-
     P = load.Pa * 1e6
     R = (V * V / 3) / P  # ohm
 
@@ -66,7 +65,8 @@ def initialize_emt_load(ii: int,
     R = R / Zbase  # p.u.
     Gc_val = 1.0 / R
 
-    dta.Gc[np.ix(k4[1:], k4[1:])] = Gc_val
+    Gc: Mat = np.zeros((4, 4), dtype=float)
+    Gc[np.ix_(k4[1:], k4[1:])] = Gc_val
 
     if verbose:
         print(f"Rload [p.u.] = {R}")
@@ -80,4 +80,6 @@ def initialize_emt_load(ii: int,
     # self.Gc = Zc_inv_4x4
 
     if verbose:
-        print('load.Gc = ', dta.Gc[np.ix(k4, k4)])  # p.u.
+        print('load.Gc = ', Gc_val)  # p.u.
+
+    return Gc

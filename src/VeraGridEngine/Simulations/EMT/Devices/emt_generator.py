@@ -15,8 +15,7 @@ class EmtGenerator:
         :param n_elm:
         """
         self.n_elm = n_elm
-
-        self.Gc: Vec = np.zeros(4 * self.n_elm, dtype=float)
+        self.Gc_list = [None] * self.n_elm
         self.Rp: Vec = np.zeros(self.n_elm, dtype=float)
 
 
@@ -49,9 +48,13 @@ def initialize_emt_generator(ii: int,
             print(f'Generator {gen.name}: '
                   f'Configured as Current Source with Snubber Rp={dta.Rp[ii]} p.u.')
 
-        for i, ph in enumerate(phases):
-            if ph:
-                dta.Gc[k4[i]] = Gc_val  # TODO, check this is ok
+        phases_idx = np.where(phases)[0]
+        Gc: Vec = np.zeros((4, 4), dtype=float)
+        Gc[np.ix_(phases_idx, phases_idx)] = Gc_val
+
+        dta.Gc_list[ii] = Gc
 
         if verbose > 0:
-            print(f"Generator.Gc= {dta.Gc[k4]}")
+            print(f"Generator.Gc= {Gc}")
+
+        return Gc

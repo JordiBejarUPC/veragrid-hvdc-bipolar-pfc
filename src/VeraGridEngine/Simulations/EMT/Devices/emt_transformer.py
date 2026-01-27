@@ -16,11 +16,6 @@ class EmtTransformer:
         self.L_ll: Vec = np.zeros(self.n_elm, dtype=float)
         self.L_hl: Vec = np.zeros(self.n_elm, dtype=float)
 
-        self.Gff: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
-        self.Gft: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
-        self.Gtf: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
-        self.Gtt: Mat = np.zeros((4 * self.n_elm, 4), dtype=float)
-
 
 def initialize_emt_transformer(ii: int,
                                dta: EmtTransformer,
@@ -44,8 +39,8 @@ def initialize_emt_transformer(ii: int,
     v_h = max(v_from, v_to)
     # v_l = min(v_from, v_to)
 
-    X_leack = tr.X # p.u.
-    X_magn = 1 / tr.B # p.u.
+    X_leack = tr.X  # p.u.
+    X_magn = 1 / tr.B  # p.u.
     # R_cooper = tr.R
     # R_iron = 1 / tr.G
 
@@ -88,7 +83,7 @@ def initialize_emt_transformer(ii: int,
     binary_bus_mask[2] = bool(tr.bus_from.ph_b)
     binary_bus_mask[3] = bool(tr.bus_from.ph_c)
 
-    dta.Gff[k4, :] = Gff[binary_bus_mask, binary_bus_mask]
-    dta.Gft[k4, :] = Gft[binary_bus_mask, binary_bus_mask]
-    dta.Gtf[k4, :] = Gtf[binary_bus_mask, binary_bus_mask]
-    dta.Gtt[k4, :] = Gtt[binary_bus_mask, binary_bus_mask]
+    return (Gff[binary_bus_mask, binary_bus_mask],
+            Gft[binary_bus_mask, binary_bus_mask],
+            Gtf[binary_bus_mask, binary_bus_mask],
+            Gtt[binary_bus_mask, binary_bus_mask])
