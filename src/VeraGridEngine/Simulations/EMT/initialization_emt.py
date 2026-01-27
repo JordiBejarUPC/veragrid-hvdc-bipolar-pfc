@@ -121,7 +121,7 @@ def initialize_emt(grid: MultiCircuit,
 
     for elm in grid.loads:
         emt_elm = EmtLoad()
-        emt_elm.initialize_emt(h=h, Sbase=grid.Sbase, load=elm)
+        emt_elm.initialize_emt_load(h=h, Sbase=grid.Sbase, load=elm)
 
         bus_idx = bus_dict[elm.bus]
 

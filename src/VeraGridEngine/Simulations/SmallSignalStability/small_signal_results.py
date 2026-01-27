@@ -23,9 +23,8 @@ class SmallSignalStabilityResults(ResultsTemplate):
                  participation_factors: np.ndarray,
                  damping_ratios: np.ndarray,
                  conjugate_frequencies: np.ndarray,
-                 state_matrix: np.array,
-                 stat_vars: List[Var],
-                 vars2device: Dict[int, PhysicalDevice]):
+                 state_matrix: np.ndarray,
+                 stat_vars: List[Var]):
         """
 
         :param stability:

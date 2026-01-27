@@ -86,18 +86,5 @@ def initialize_emt_load(ii: int,
     # Zc_inv_4x4[1:, 1:] = Zc_inv
     # self.Gc = Zc_inv_4x4
 
-    # short-circuited
-    # Zc_line = np.array([[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
-    #                     [0.0, 0.0, 0.0, 0.0]])
-    # self.Gc = Zc_line
-
-    # open-circuited
-    # Zc_line = np.array([[1e30, 0.0, 0.0], [0.0, 1e30, 0.0],
-    #                     [0.0, 0.0, 1e30]])
-    # Zc_inv = np.linalg.inv(Zc_line)
-    # Zc_inv_4x4 = np.zeros((4, 4))
-    # Zc_inv_4x4[1:, 1:] = Zc_inv
-    # self.Gc = Zc_inv_4x4
-
     if verbose:
         print('load.Gc = ', dta.Gc[np.ix(k4, k4)])  # p.u.
