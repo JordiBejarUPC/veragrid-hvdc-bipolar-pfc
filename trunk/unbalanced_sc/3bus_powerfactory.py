@@ -16,8 +16,8 @@ grid.add_bus(obj=bus_dc)
 bus_wt = vge.Bus(name='Bus WT', Vnom=20.0, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
-# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
 # bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=3.75) # Rf = 15
 grid.add_bus(obj=bus_ac)
 
