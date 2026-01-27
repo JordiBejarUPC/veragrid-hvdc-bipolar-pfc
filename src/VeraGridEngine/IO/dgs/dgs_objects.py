@@ -785,7 +785,7 @@ class ElmSym(DGSElement):
         DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
         DgsProperty('av_mode', 'a', 'DGS field av_mode (a)', py_name='av_mode'),
         DgsProperty('phtech', 'i', 'DGS field phtech (i)', py_name='phtech'),
-        DgsProperty('phtech', 'i', 'Reference machine', py_name='ip_ctrl'),
+        DgsProperty('ip_ctrl', 'i', 'Reference machine', py_name='ip_ctrl'),
         DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
     ]
 

@@ -537,20 +537,8 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
     if template is None:
         template = templates_dict.get(_ref_id(tr3.typ_id), None)
 
-    if template is None:
-        raise ValueError(f"No template for the transformer3w {tr3.ID}")
-
     # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
     term_ids = get_terminal_ids(element_id=tr3.ID, cubics_by_objid=cubics_by_objid)
-    if len(term_ids) != 3:
-        # Fall back to legacy check only if terminal mapping is not available
-        bus_ids = stacubic_dict.get(_ref_id(tr3.ID), None)
-        if bus_ids is None:
-            raise ValueError(f"No buses for the transformer3w {tr3.ID}")
-
-        if len(bus_ids) != 3:
-            raise ValueError(f"Not exactly 3 buses for the transformer3w {tr3.ID}")
-
     if len(term_ids) == 3:
         bus_a = bus_by_term_id[term_ids[0]]
         bus_b = bus_by_term_id[term_ids[1]]
@@ -1513,9 +1501,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         Pmax=pmax,
                         Sbase=baseMVA)
 
-    # slack
-    if elmsym.ip_ctrl == 1:
-        bus.is_slack = True
+
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
@@ -2369,3 +2355,5 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
     return switches
 
 """
+#TODO: For the test_v5_export grid, all buses with generators appear as Slacks. Fix this
+#TODO: There might be an error with 3W trafos impedances
