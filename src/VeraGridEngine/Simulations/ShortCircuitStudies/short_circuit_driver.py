@@ -23,7 +23,8 @@ from VeraGridEngine.Devices import Line, Bus
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_options import ShortCircuitOptions
-from VeraGridEngine.enumerations import FaultType, SimulationTypes, MethodShortCircuit, PhasesShortCircuit
+from VeraGridEngine.enumerations import FaultType, SimulationTypes, MethodShortCircuit, PhasesShortCircuit, \
+    ConverterFaultControlType
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 
 
@@ -393,8 +394,6 @@ class ShortCircuitDriver(DriverTemplate):
                                  fault_bus: int,
                                  options: PowerFlowOptions,
                                  logger: Logger):
-
-        options.limit_i_vsc = False
 
         adm = nc.get_admittance_matrices()
         # compute Zbus

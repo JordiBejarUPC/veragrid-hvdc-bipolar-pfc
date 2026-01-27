@@ -1895,6 +1895,7 @@ def get_vsc_data(
 
         data.control1[ii] = elm.get_control1_at(t_idx)
         data.control2[ii] = elm.get_control2_at(t_idx)
+        data.fault_control[ii] = elm.get_fault_control_at(t_idx)
         data.control1_val[ii] = elm.get_control1_val_at(t_idx)
         data.control2_val[ii] = elm.get_control2_val_at(t_idx)
 

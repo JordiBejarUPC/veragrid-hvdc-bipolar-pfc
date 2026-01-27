@@ -13,7 +13,7 @@ def current_blocking(Vt):
 def reactive_current_injection(Vt):
 
     Vref0 = 0.0 # Reference voltage, enter 0 for terminal voltage in [pu]
-    Vref = 1.005925
+    Vref = Vt
     dbd1 = -0.05
     dbd2 = 0.05
     Kqv = 2.0

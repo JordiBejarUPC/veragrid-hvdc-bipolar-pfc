@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import numpy as np
+
+from VeraGridEngine import ConverterFaultControlType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, Logger
@@ -33,6 +35,7 @@ class VscData(BranchParentData):
 
         self.control1: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Vm_dc, dtype=object)
         self.control2: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Pac, dtype=object)
+        self.fault_control: ObjVec = np.full(self.nelm, fill_value=ConverterFaultControlType.Standard, dtype=object)
 
         self.control1_val: Vec = np.ones(self.nelm, dtype=float)
         self.control2_val: Vec = np.ones(self.nelm, dtype=float)
@@ -67,6 +70,7 @@ class VscData(BranchParentData):
 
         data.control1 = self.control1[elm_idx]
         data.control2 = self.control2[elm_idx]
+        data.fault_control = self.fault_control[elm_idx]
 
         data.control1_val = self.control1_val[elm_idx]
         data.control2_val = self.control2_val[elm_idx]
@@ -115,6 +119,7 @@ class VscData(BranchParentData):
 
         data.control1 = self.control1.copy()
         data.control2 = self.control2.copy()
+        data.fault_control = self.fault_control.copy()
 
         data.control1_val = self.control1_val.copy()
         data.control2_val = self.control2_val.copy()

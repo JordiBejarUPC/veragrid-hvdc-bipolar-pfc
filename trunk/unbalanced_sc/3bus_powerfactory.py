@@ -1,6 +1,6 @@
 import VeraGridEngine.api as vge
 from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
-from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit
+from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 import numpy as np
 
@@ -16,9 +16,9 @@ grid.add_bus(obj=bus_dc)
 bus_wt = vge.Bus(name='Bus WT', Vnom=20.0, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
 # bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=3.75) # Rf = 15
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=3.75) # Rf = 15
 grid.add_bus(obj=bus_ac)
 
 bus_slack = vge.Bus(name='Bus Slack', Vnom=20.0, xpos=0, ypos=1200, is_slack=True)
@@ -62,14 +62,15 @@ grid.add_line(line_slack_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 vsc = vge.VSC(bus_from=bus_dc,
               bus_to=bus_wt,
-              rate=2.5,
+              rate=2,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
               control1=ConverterControlType.Pac,
               control2=ConverterControlType.Qac,
               control1_val=-2.0,
-              control2_val=-0.0)
+              control2_val=-0.0,
+              fault_control=ConverterFaultControlType.WECC_WT_Type_4B)
 grid.add_vsc(vsc)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -84,7 +85,7 @@ grid.add_generator(bus_slack, generator_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 #   Save Grid
 # ----------------------------------------------------------------------------------------------------------------------
-vge.save_file(grid=grid, filename='3bus_powerfactory.veragrid')
+# vge.save_file(grid=grid, filename='3bus_powerfactory.veragrid')
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
@@ -98,27 +99,17 @@ res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation
 # ----------------------------------------------------------------------------------------------------------------------
-# Rf = 60 Ohm -> 15 pu
-# vsc.control1_val = -1.889298
-# vsc.control2_val = -0.1382573
-
-# Rf = 30 Ohm -> 7,5 pu
-# vsc.control1_val = -1.568277
-# vsc.control2_val = -0.5290306
-
-# Rf = 15 Ohm -> 3,75 pu
-vsc.control1_val = -1.104992
-vsc.control2_val = -0.7897642
-
 pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=False,
-                                verbose=1)
+                                limit_i_vsc=True,
+                                verbose=1,
+                                max_iter=50,
+                                tolerance=1e-6)
 
 grid.add_short_circuit_definition(
     vge.ShortCircuitEvent(
         device=grid.buses[2],
-        method=MethodShortCircuit.sequences_vsc
+        method=MethodShortCircuit.sequences_vsc,
     )
 )
 
@@ -132,7 +123,7 @@ sc_driver.run()
 res_sc = sc_driver.results
 
 print('\n --- Short-circuit Results --- ')
-print('\n Faulted Voltage =', np.round(np.abs(res_sc.voltage1[2]), 6))
+print('\n Faulted Voltage =', np.round(np.abs(res_sc.voltage1[2]), 4))
 Sbase = 100e6
 Ubase = 20e3
 Ibase = Sbase / (np.sqrt(3) * Ubase)

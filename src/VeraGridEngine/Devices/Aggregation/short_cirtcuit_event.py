@@ -39,6 +39,9 @@ class ShortCircuitEvent(PointerDeviceParent):
         :param name: String. Contingency name
         :param code: String. Contingency code name
         :param active: If true the investment activates when applied, otherwise is deactivated
+        :param fault_type: The short-circuit type to be simulated, for instance, SLG means single-line to ground
+        :param method: The method used to perform the short-cicuit analysis
+        :param phases: The phases involved in the short-circuit, only needed if method = phases
         :param comment: Comment
         """
 

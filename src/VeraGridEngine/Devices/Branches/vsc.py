@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from typing import List, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
+from VeraGridEngine.enumerations import BuildStatus, ConverterControlType, ConverterFaultControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
@@ -29,6 +29,7 @@ class VSC(BranchParent):
         '_control1_prof',
         '_control2',
         '_control2_prof',
+        '_fault_control',
         '_control1_dev',
         '_control1_dev_prof',
         '_control2_dev',
@@ -37,6 +38,7 @@ class VSC(BranchParent):
         '_control1_val_prof',
         '_control2_val',
         '_control2_val_prof',
+        '_fault_control_prof',
         '_bus_dc_n',
         'x',
         'y'
@@ -67,6 +69,7 @@ class VSC(BranchParent):
                  build_status: BuildStatus = BuildStatus.Commissioned,
                  control1: ConverterControlType = ConverterControlType.Vm_dc,
                  control2: ConverterControlType = ConverterControlType.Pac,
+                 fault_control: ConverterFaultControlType = ConverterFaultControlType.Standard,
                  control1_val: float = 1.0,
                  control2_val: float = 0.0,
                  control1_dev: Bus | BRANCH_TYPES | None = None,
@@ -101,6 +104,7 @@ class VSC(BranchParent):
         :param build_status:
         :param control1:
         :param control2:
+        :param fault_control:
         :param x: graphical x position (px)
         :param y: graphical y position (px)
         """
@@ -197,6 +201,9 @@ class VSC(BranchParent):
         self._control2: ConverterControlType = control2
         self._control2_prof: Profile = Profile(default_value=control2, data_type=ConverterControlType)
 
+        self._fault_control: ConverterFaultControlType = fault_control
+        self._fault_control_prof: Profile = Profile(default_value=fault_control, data_type=ConverterFaultControlType)
+
         self._control1_dev: Bus | BRANCH_TYPES | None = control1_dev
         self._control1_dev_prof: Profile = Profile(default_value=control1_dev, data_type=DeviceType.BusOrBranch)
 
@@ -233,6 +240,9 @@ class VSC(BranchParent):
 
         self.register(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
                       definition='Control mode 2.')
+
+        self.register(key='fault_control', units='', tpe=ConverterFaultControlType, profile_name="fault_control_prof",
+                      definition='Fault control.')
 
         self.register(key='control1_val', units='', tpe=float, profile_name="control1_val_prof",
                       definition='Control value 1.'
@@ -425,6 +435,43 @@ class VSC(BranchParent):
         :return:
         """
         return get_at(self.control2, self.control2_prof, t)
+
+    @property
+    def fault_control(self):
+        """
+
+        :return:
+        """
+        return self._fault_control
+
+    @fault_control.setter
+    def fault_control(self, value: ConverterFaultControlType):
+
+        self._fault_control = value
+
+    @property
+    def fault_control_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._fault_control_prof
+
+    @fault_control_prof.setter
+    def fault_control_prof(self, val: Profile | np.ndarray):
+        if isinstance(val, Profile):
+            self._fault_control_prof = val
+        elif isinstance(val, np.ndarray):
+            self._fault_control_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a profile')
+
+    def get_fault_control_at(self, t: int | None) -> ConverterControlType:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.fault_control, self.fault_control_prof, t)
 
     @property
     def control1_val(self):

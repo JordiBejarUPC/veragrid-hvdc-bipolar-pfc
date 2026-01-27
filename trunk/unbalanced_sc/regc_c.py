@@ -12,7 +12,7 @@ def transformation_alpha_beta(ur, ui, fref, Fnom):
 
     return ur1, ui1, dphi_ref
 
-def pll(ir, ii, ur1, ui1, dphi, Vt):
+def pll(ir, ii, ur1, ui1, dphi):
 
     uq = 0
     phi = 2 * np.atan((-ur1 + np.sqrt(ui1**2 - uq**2 + ur1**2)) / (ui1 + uq))
@@ -30,7 +30,7 @@ def regc_c(Qgen0, Iqcmd, ir, ii, ur, ui, fref, Fnom, Vt, Ipcmd, is_blocked):
 
     ur1, ui1, dphi_ref = transformation_alpha_beta(ur, ui, fref, Fnom)
 
-    iq_pll, id_pll = pll(ir, ii, ur1, ui1, dphi_ref, Vt)
+    iq_pll, id_pll = pll(ir, ii, ur1, ui1, dphi_ref)
 
     Vt_fltr = max(Vt, 0.01)
 

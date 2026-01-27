@@ -693,6 +693,40 @@ class TimeFrame(Enum):
     Continuous = 'Continuous'
 
 
+class ConverterFaultControlType(Enum):
+    """
+    Converter fault control types
+    """
+    Standard = 'Standard'
+    WECC_WT_Type_4B = 'WECC_WT_Type_4B'
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ConverterFaultControlType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
 class FaultType(Enum):
     """
     Short circuit type
