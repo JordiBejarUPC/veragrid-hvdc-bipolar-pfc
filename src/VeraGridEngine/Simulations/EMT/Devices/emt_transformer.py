@@ -12,8 +12,6 @@ class EmtTransformer:
     def __init__(self, n_elm: int):
         self.n_elm = n_elm
 
-        self.X_leack: Vec = np.zeros(self.n_elm, dtype=float)
-        self.X_magn: Vec = np.zeros(self.n_elm, dtype=float)
         self.L_hh: Vec = np.zeros(self.n_elm, dtype=float)
         self.L_ll: Vec = np.zeros(self.n_elm, dtype=float)
         self.L_hl: Vec = np.zeros(self.n_elm, dtype=float)
@@ -27,7 +25,8 @@ class EmtTransformer:
 def initialize_emt_transformer(ii: int,
                                dta: EmtTransformer,
                                h: float,
-                               tr: Transformer2W):
+                               tr: Transformer2W,
+                               sbase: float):
     """
 
     :param ii:
@@ -45,14 +44,13 @@ def initialize_emt_transformer(ii: int,
     v_to = tr.bus_to.Vnom
     v_h = max(v_from, v_to)
     # v_l = min(v_from, v_to)
-    # a = v_h / v_l  # in p.u. a is 1
 
-    dta.X_leack[ii] = 0.01  # TODO: pick the transformer value
-    dta.X_magn[ii] = 0.01  # TODO: pick the transformer value
+    X_leack = tr.X # p.u.
+    X_magn = 1 / tr.B # p.u.
 
-    L1 = dta.X_leack[ii] / 2.0
+    L1 = X_leack / 2.0
     L2 = L1
-    L12 = dta.X_magn - L1
+    L12 = X_magn - L1
     L11 = L1 + L12
     L22 = L2 + L12
 

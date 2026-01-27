@@ -320,7 +320,7 @@ def update_Hist(n_nodes: int,
         # ---- lines history components ----
         if branch.device_type.value == 'Line':  # DeviceType.LineDevice:
 
-            model = getattr(branch, 'model_type', 'Bergeron')
+            model = branch.emt_model_type
 
             if model == "Bergeron":
                 delay = branch.Ndelay
@@ -809,7 +809,7 @@ def update_Ibranches(nc: NumericalCircuit,
         # ---- lines currents ----
         if branch.device_type.value == 'Line':  # DeviceType.LineDevice:
 
-            model = getattr(branch, 'model_type', 'Bergeron')
+            model = branch.emt_model_type
 
             V_f = V[idx_from]
             V_t = V[idx_to]
@@ -1089,200 +1089,6 @@ def set_I0_bus(emt_vec_bus: EmtSolverProperties,
     return Is0
 
 
-# def initialize_buffers(nc: NumericalCircuit,
-#                        grid: MultiCircuit,
-#                        pf_results: PowerFlowResults3Ph,
-#                        N_delay: int,
-#                        h: float,
-#                        V_buffer: np.ndarray,
-#                        I_lines_buffer: np.ndarray,
-#                        binary_bus_mask: BoolVec,
-#                        bus_idx_lookup: IntVec ,
-#                        branch_from_lookup: IntVec,
-#                        branch_to_lookup: IntVec):
-#     """
-#     Initialize history buffers with steady state AC solution
-#
-#     :param nc: NumericalCircuit
-#     :param grid: MultiCircuit
-#     :param N_delay: max delay in steps (for the longest line)
-#     :param h: time step
-#     :param V_buffer: array with voltage t-tau steps before (N_delay+1, total_cond)
-#     :param I_lines_buffer: array with currents at each branch termination t-tau steps before (N_delay+1, 2*max_phases_line*nl)
-#     :param binary_bus_mask: BoolVec
-#     :param bus_idx_lookup:  IntVec
-#     :param branch_from_lookup: IntVec
-#     :param branch_to_lookup: IntVec
-#     """
-#     print(f"binary bus mask = {binary_bus_mask}")
-#     # if pf_results is not None:
-#     omega = 2 * np.pi * grid.fBase
-#     res = pf_results
-#
-#     print("Initializing EMT history buffers with steady-state AC values.")
-#
-#     nbus4 = 4 * nc.bus_data.nbus
-#     sqrt2 = np.sqrt(2)
-#
-#     # --- PF voltages (RMS p.u. phasors) ---
-#     # V_mag_N = np.abs(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-#     # V_ang_N = np.angle(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-#     # V_mag_A = np.abs(res.voltage_A)
-#     # V_ang_A = np.angle(res.voltage_A)
-#     # V_mag_B = np.abs(res.voltage_B)
-#     # V_ang_B = np.angle(res.voltage_B)
-#     # V_mag_C = np.abs(res.voltage_C)
-#     # V_ang_C = np.angle(res.voltage_C)
-#
-#     V_mag_N = np.array([0.0, 0.0])
-#     V_ang_N = np.array([0.0, 0.0])
-#     V_mag_A = np.array([1.0, 1.0])
-#     V_ang_A = np.array([0.0, 0.0])
-#     V_mag_B = np.array([1.0, 1.0])
-#     V_ang_B = np.array([-2*np.pi/3, -2*np.pi/3])
-#     V_mag_C = np.array([1.0, 1.0])
-#     V_ang_C = np.array([2*np.pi/3, 2*np.pi/3])
-#
-#     # --- PF branch currents (RMS p.u. phasors) ---
-#     m = nc.passive_branch_data.nelm
-#     # S from power flow
-#     # S_N = getattr(res, 'SbusN', np.zeros(m, dtype=complex))
-#     # S_A = getattr(res, 'SbusA', np.zeros(m, dtype=complex))
-#     # S_B = getattr(res, 'SbusB', np.zeros(m, dtype=complex))
-#     # S_C = getattr(res, 'SbusC', np.zeros(m, dtype=complex))
-#     S_N = np.array([0.0, 0.0])
-#     S_A = np.array([160.0, 160.0])
-#     S_B = np.array([160.0, 160.0])
-#     S_C = np.array([160.0, 160.0])
-#     # Get the power flow results for each phase at each bus
-#     S_n = S_N / grid.Sbase  # Power in p.u. for phase A
-#     S_a = S_A / grid.Sbase  # Power in p.u. for phase A
-#     S_b = S_B / grid.Sbase  # Power in p.u. for phase B
-#     S_c = S_C / grid.Sbase  # Power in p.u. for phase C
-#
-#     V_n = V_mag_N * np.exp(1j * V_ang_N)
-#     V_a = V_mag_A* np.exp(1j * V_ang_A)  # Phase A voltage in p.u.
-#     V_b = V_mag_B* np.exp(1j * V_ang_B)  # Phase B voltage in p.u.
-#     V_c = V_mag_C* np.exp(1j * V_ang_C)  # Phase C voltage in p.u.
-#
-#     # Calculate active and reactive power
-#     P_n = np.real(S_n)
-#     P_a = np.real(S_a)
-#     P_b = np.real(S_b)
-#     P_c = np.real(S_c)
-#
-#     Q_n = np.imag(S_n)
-#     Q_a = np.imag(S_a)
-#     Q_b = np.imag(S_b)
-#     Q_c = np.imag(S_c)
-#
-#     # Compute the initial currents using S / V (conjugate for current)
-#     # I_n = np.conj(S_n / V_n) # array I[a1, b1, c1, a2, b2, c2...]
-#     I_n = np.array([0.0, 0.0])
-#     I_a = np.conj(S_a / V_a)
-#     I_b = np.conj(S_b / V_b)
-#     I_c = np.conj(S_c / V_c)
-#
-#     # Calculate RMS values and angles for currents
-#     In_mag, In_angle = np.abs(I_n), np.angle(I_n)
-#     Ia_mag, Ia_angle = np.abs(I_a), np.angle(I_a)
-#     Ib_mag, Ib_angle = np.abs(I_b), np.angle(I_b)
-#     Ic_mag, Ic_angle = np.abs(I_c), np.angle(I_c)
-#     I_mag = np.hstack([In_mag,Ia_mag,Ib_mag,Ic_mag])
-#     I_angle = np.hstack([In_angle, Ia_angle, Ib_angle, Ic_angle])
-#
-#
-#
-#     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N,A,B,C
-#
-#     # ---- fill buffers for negative times: t = -h, -2h, ... -N_delay*h ----
-#     for kdelay in range(1, N_delay + 1):
-#         t_val = -kdelay * h
-#         idx_buf = (-kdelay) % (N_delay + 1)
-#
-#         # ---------- VOLTAGES (peak p.u.) ----------
-#         V_inst_all = np.zeros(nbus4, dtype=float)
-#         V_inst_all[0::4] = sqrt2 * V_mag_N * np.cos(omega * t_val + V_ang_N)
-#         V_inst_all[1::4] = sqrt2 * V_mag_A * np.cos(omega * t_val + V_ang_A)
-#         V_inst_all[2::4] = sqrt2 * V_mag_B * np.cos(omega * t_val + V_ang_B)
-#         V_inst_all[3::4] = sqrt2 * V_mag_C * np.cos(omega * t_val + V_ang_C)
-#
-#         V_buffer[idx_buf, :] = V_inst_all[binary_bus_mask]
-#
-#         # ---------- HISTORY CURRENTS h(t) = i(t) - Gc*v(t) ----------
-#         # Initialize buffer row to zero first (optional but recommended)
-#         # I_lines_buffer[idx_buf, :] = 0.0
-#
-#         for br_k, branch in enumerate(grid.get_branches_iter()):
-#
-#             fro = nc.passive_branch_data.F[br_k]
-#             to = nc.passive_branch_data.T[br_k]
-#
-#             f4 = 4 * fro + idx4
-#             t4 = 4 * to + idx4
-#
-#             idx_from_red = bus_idx_lookup[f4]
-#             idx_to_red = bus_idx_lookup[t4]
-#
-#             mask_from = idx_from_red >= 0
-#             mask_to = idx_to_red >= 0
-#             mask = mask_from & mask_to
-#
-#             if not np.any(mask):
-#                 continue
-#
-#             idx_from = idx_from_red[mask]
-#             idx_to = idx_to_red[mask]
-#
-#             row_base = 4 * br_k + idx4
-#
-#             # Índexs originals (no usats)
-#             idx_hist_f = branch_from_lookup[row_base][mask]
-#             idx_hist_t = branch_to_lookup[row_base][mask]
-#
-#             # Índexs reordenats per obtenir [A1, B1, C1, A2, B2, C2]
-#             idx_hist_f = np.array([0, 1, 2])  # A1, B1, C1
-#             idx_hist_t = np.array([3, 4, 5])
-#
-#             # Magnituds i angles per fase (N, A, B, C)
-#             I_mag_f_N = I_mag[0]
-#             I_ang_f_N = I_angle[0]
-#             I_mag_f_A = I_mag[2]
-#             I_ang_f_A = I_angle[2]
-#             I_mag_f_B = I_mag[4]
-#             I_ang_f_B = I_angle[4]
-#             I_mag_f_C = I_mag[6]
-#             I_ang_f_C = I_angle[6]
-#
-#             I_mag_t_N = I_mag[1]
-#             I_ang_t_N = I_angle[1]
-#             I_mag_t_A = I_mag[3]
-#             I_ang_t_A = I_angle[3]
-#             I_mag_t_B = I_mag[5]
-#             I_ang_t_B = I_angle[5]
-#             I_mag_t_C = I_mag[7]
-#             I_ang_t_C = I_angle[7]
-#
-#             # Corrents instantanis (N, A, B, C)
-#             i_f_full = np.zeros(4, dtype=float)
-#             i_t_full = np.zeros(4, dtype=float)
-#
-#             i_f_full[0] = sqrt2 * I_mag_f_N * np.cos(omega * t_val + I_ang_f_N)
-#             i_f_full[1] = sqrt2 * I_mag_f_A * np.cos(omega * t_val + I_ang_f_A)
-#             i_f_full[2] = sqrt2 * I_mag_f_B * np.cos(omega * t_val + I_ang_f_B)
-#             i_f_full[3] = sqrt2 * I_mag_f_C * np.cos(omega * t_val + I_ang_f_C)
-#
-#             i_t_full[0] = sqrt2 * I_mag_t_N * np.cos(omega * t_val + I_ang_t_N)
-#             i_t_full[1] = sqrt2 * I_mag_t_A * np.cos(omega * t_val + I_ang_t_A)
-#             i_t_full[2] = sqrt2 * I_mag_t_B * np.cos(omega * t_val + I_ang_t_B)
-#             i_t_full[3] = sqrt2 * I_mag_t_C * np.cos(omega * t_val + I_ang_t_C)
-#
-#             # Escriure només fases A, B, C en l'ordre desitjat
-#             I_lines_buffer[idx_buf, idx_hist_f] = i_f_full[1:]  # [A1, B1, C1]
-#             I_lines_buffer[idx_buf, idx_hist_t] = i_t_full[1:]  # [A2, B2, C2]
-#
-
-
 def initialize_buffers(nc: NumericalCircuit,
                        grid: MultiCircuit,
                        pf_results: PowerFlowResults3Ph,
@@ -1382,56 +1188,6 @@ def initialize_buffers(nc: NumericalCircuit,
     I_mag_t_C = np.abs(res.It_C) if hasattr(res, 'It_C') else np.zeros(nc.bus_data.nbus)
     I_ang_t_C = np.angle(res.It_C) if hasattr(res, 'It_C') else np.zeros(nc.bus_data.nbus)
 
-    # trampilla per quan no hi ha powerflow --------------------
-    # I_mag_f_N = np.abs(res.If_N) if hasattr(res, 'If_N') else np.zeros(nc.bus_data.nbus)
-    # I_ang_f_N = np.angle(res.If_N) if hasattr(res, 'If_N') else np.zeros(nc.bus_data.nbus)
-    # If_A = np.array([0.0629927587 - 0.001350601j])
-    # If_B = np.array([-0.0325510978 - 0.0538147214j])
-    # If_C = np.array([-0.030231182 + 0.0550351597j])
-    #
-    # It_N = getattr(res, 'It_N', np.zeros(m, dtype=complex))
-    # It_A = np.array([-0.0629929497 + 0.0013539166j])
-    # It_B = np.array([0.0325541183 + 0.0538129368j])
-    # It_C = np.array([0.0302281793 - 0.055036591j])
-
-    # I_mag_f_N = np.abs(res.If_N)
-    # I_ang_f_N = np.angle(res.If_N)
-    # I_mag_f_A = np.abs(res.If_A)
-    # I_ang_f_A = np.angle(res.If_A)
-    # I_mag_f_B = np.abs(res.If_B)
-    # I_ang_f_B = np.angle(res.If_B)
-    # I_mag_f_C = np.abs(res.If_C)
-    # I_ang_f_C = np.angle(res.If_C)
-    #
-    # I_mag_t_N = np.abs([0.0])
-    # I_ang_t_N = np.angle([0.0])
-    # I_mag_t_A = np.abs([0.0])
-    # I_ang_t_A = np.angle([0.0])
-    # I_mag_t_B = np.abs([0.0])
-    # I_ang_t_B = np.angle([0.0])
-    # I_mag_t_C = np.abs([0.0])
-    # I_ang_t_C = np.angle([0.0])
-
-    ######################
-    # I_mag_f_N = np.abs([0.0])
-    # I_ang_f_N = np.angle([0.0])
-    # I_mag_f_A = np.abs([0.0])
-    # I_ang_f_A = np.angle([0.0])
-    # I_mag_f_B = np.abs([0.0])
-    # I_ang_f_B = np.angle([0.0])
-    # I_mag_f_C = np.abs([0.0])
-    # I_ang_f_C = np.angle([0.0])
-    #
-    # I_mag_t_N = np.abs(res.It_N)
-    # I_ang_t_N = np.angle(res.It_N)
-    # I_mag_t_A = np.abs(res.It_A)
-    # I_ang_t_A = np.angle(res.It_A)
-    # I_mag_t_B = np.abs(res.It_B)
-    # I_ang_t_B = np.angle(res.It_B)
-    # I_mag_t_C = np.abs(res.It_C)
-    # I_ang_t_C = np.angle(res.It_C)
-
-    # ----------------------------------------------------------
 
     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N,A,B,C
 

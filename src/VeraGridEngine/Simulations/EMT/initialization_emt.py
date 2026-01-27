@@ -23,10 +23,10 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Simulations.EMT.Devices.emt_load import EmtLoad
-from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator
-from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine
-from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import EmtTransformer
+from VeraGridEngine.Simulations.EMT.Devices.emt_load import EmtLoad, initialize_emt_load
+from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator, initialize_emt_generator
+from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine, initialize_emt_line
+from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import EmtTransformer, initialize_emt_transformer
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 
@@ -121,7 +121,7 @@ def initialize_emt(grid: MultiCircuit,
 
     for elm in grid.loads:
         emt_elm = EmtLoad()
-        emt_elm.initialize_emt_load(h=h, Sbase=grid.Sbase, load=elm)
+        initialize_emt_load(h=h, Sbase=grid.Sbase, load=elm)
 
         bus_idx = bus_dict[elm.bus]
 
@@ -240,7 +240,7 @@ def adapt_h(grid: MultiCircuit,
 
             # If model is Pi, tau is 0. We must skip the N_delay check
             # because Pi models don't impose travel time constraints.
-            model_type = getattr(line, 'model_type', 'Bergeron')
+            model_type = line.emt_model_type
             if model_type == 'Pi':
                 continue
 

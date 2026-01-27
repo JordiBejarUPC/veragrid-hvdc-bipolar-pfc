@@ -21,7 +21,7 @@ class EmtLoad:
 
 def initialize_emt_load(ii: int,
                         dta: EmtLoad,
-                        Sbase: float,
+                        sbase: float,
                         load: Load,
                         verbose: int = 0):
     """
@@ -47,10 +47,10 @@ def initialize_emt_load(ii: int,
     #     Zc += h / 2 * self.C
     # G = 1.0 / Zc
 
-    Vbase = load.bus.Vnom  # kV
+    vbase = load.bus.Vnom  # kV
     # Sbase in MVA
-    V = Vbase * 1e3  # kV
-    S = Sbase * 1e6  # VA
+    V = vbase * 1e3  # kV
+    S = sbase * 1e6  # VA
     Zbase = (V * V) / S
 
     if verbose:
