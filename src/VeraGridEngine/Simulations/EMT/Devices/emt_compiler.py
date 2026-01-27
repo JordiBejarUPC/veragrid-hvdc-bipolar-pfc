@@ -382,13 +382,13 @@ def compile_emt(grid: MultiCircuit,
                 print(f"P from power flow = {P} [p.u.]")
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Initis per-bus solvers
+    # Initialize per-bus solvers
     # ------------------------------------------------------------------------------------------------------------------
 
     for ii, bus in enumerate(grid.buses):
 
         # store and initialize the block solver
-        dta.set_bus_block(i=ii)
+        dta.init_solver(i=ii)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Conductance Assembly
