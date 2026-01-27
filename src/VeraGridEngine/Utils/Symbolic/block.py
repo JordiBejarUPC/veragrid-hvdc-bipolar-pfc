@@ -15,7 +15,7 @@ from enum import Enum, auto
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -75,7 +75,8 @@ def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
 
 
 def block2implicit(block: Block):
-    diff_block = block.copy()
+    from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+    diff_block = block
 
     for i, eq in enumerate(block.state_eqs):
         state_var = block.state_vars[i] # Todo: not robust, order has to be followed
@@ -617,7 +618,7 @@ class Block:
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
-        self.lag_vars: List[LagVar] = list() if lag_vars is None else lag_vars
+        self.lag_vars: List[Var] = list() if lag_vars is None else lag_vars
         self.reformulated_vars: List[DiffVar] = list() if reformulated_vars is None else reformulated_vars
         self.differential_eqs: List[Expr] = list() if differential_eqs is None else differential_eqs
 

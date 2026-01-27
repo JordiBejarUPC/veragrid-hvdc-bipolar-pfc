@@ -330,16 +330,16 @@ class SymbolicDerivative:
         # Build source
         uid2dx_expression = {}
         #TODO: order diff vars by order
-        src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
+        src = f"def {fname}(x, x_last, dx, h, out):\n"
         for i, diff_var in enumerate(diff_vars):
             base_var_uid = diff_var.base_var.uid
             uid = diff_var.uid
             if diff_var.diff_order == 1:
                 j = uid2idx_vars[base_var_uid]
-                rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
+                rhs = f" (x[{j}] - x_last[{j}]) / h\n"
             else:
                 dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                rhs = f" ({dx_expression}- lagdx[{i}]) / h\n"
+                rhs = f" ({dx_expression}- dx[{i}]) / h\n"
             to_src = f"    out[{i}] = {rhs}\n"
             uid2dx_expression[uid] = rhs
 
@@ -1174,7 +1174,7 @@ class BlockSolver:
             params = np.array([const.value for const in self._parameters_values])
 
             if step_idx == 0:
-                tol = 1e-7
+                tol = 1e-4
                 xn = x0.copy()
                 initial_step_start = time.time()
             else:
@@ -1182,6 +1182,7 @@ class BlockSolver:
                 tol = 1e-7
             while not converged and n_iter < 1e5:
                 if step_idx == 0:
+                    dx = dx0.copy()
                     dx = dx0.copy()
                 else:
                     dx = self._derivative_fn(x_new, xn, dx_last, h)
@@ -1216,11 +1217,12 @@ class BlockSolver:
 
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
-                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
 
                 if step_idx == 0:
-                    Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
-                    delta = sp.linalg.spsolve(Jf, -rhs)
+                    if steady_state:
+                        alpha = 0.5
+                        xn = (1-alpha)*x_new + alpha*xn
+                        _ = 0
                     if converged:
                         print("System well initialized.")
                         print(f"x is {x_new}")
@@ -1233,12 +1235,14 @@ class BlockSolver:
                         for i in non_zero_indexes:
                             eq = all_eq[i]
                             print(f"eq {eq} with error {rhs[i]}")
-                        exit()
                 else:
                     max_iter = max_iter_0
 
                 if converged:
                     break
+
+                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
+                delta = sp.linalg.spsolve(Jf, -rhs)
 
                 solved = False
                 linear_start = time.time()
@@ -1261,7 +1265,7 @@ class BlockSolver:
                             if j < len(self._algebraic_vars):
                                 var_name = self._algebraic_vars[j].name
                                 print(f"  {var_name:20s} {v[j]:+.3e}")
-                    print("Using LSQR")
+                    print(f"Using LSQR in step {step_idx}, iter {n_iter}")
 
                 if not solved:
                     nan_indices = np.where(np.isnan(rhs))[0]

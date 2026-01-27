@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
 
 
-def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
+def get_load_rms_template(name = "Load rms template", Pl0=-0.09999, Ql0 = -0.009999) -> RmsModelTemplate:
     """
     Get the RMS template model of the Load
     :return: RmsModelTemplate
@@ -28,8 +28,8 @@ def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
     Ql = Var("Ql")
     Pl = Var("Pl")
 
-    templ.block.event_dict[Pl0] = Const(-0.0999999)
-    templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
+    templ.block.event_dict[Pl0] = Const(Pl0)
+    templ.block.event_dict[Ql0] = Const(Ql0)
 
     templ.block.algebraic_vars = [Pl, Ql]
 

@@ -63,6 +63,15 @@ class Comparison:
     op: CmpOp  # "<=", ">=", "=="
     rhs: Union["Expr", NUMBER]
 
+    def to_expression(self) -> Expr:
+        if self.op == CmpOp.LE or self.op == CmpOp.LT:
+            return heaviside(self.rhs - self.lhs)
+        elif self.op == CmpOp.GE or self.op == CmpOp.GT:
+            return heaviside(self.lhs - self.rhs)
+        elif self.op == CmpOp.EQ:
+            eps = Const(1e-6)
+            return heaviside(self.lhs - self.rhs + eps)*heaviside(self.rhs - self.lhs + eps)
+
 
 class Expr:
     """
@@ -1006,6 +1015,8 @@ class Func(Expr):
 def abs(x: Expr):  # TODO: Rename to not shadow
     return Func(_to_expr(x), "abs")
 
+def abs_diff(u: Expr, du: Expr) -> Expr:
+    return heaviside(u) * du
 
 def real(x: Expr):
     return Func(_to_expr(x), "real")
@@ -1229,6 +1240,7 @@ functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "atan": atan_diff,
     "sinh": sinh_diff,
     "cosh": cosh_diff,
+    "abs": abs_diff,
     "heaviside": heaviside_diff
 }
 
@@ -1754,7 +1766,6 @@ _FUNC_MAP = {
     "heaviside": heaviside,
     "_dict_to_expression": _dict_to_expr
 }
-
 
 # TODO: eliminate with all its consequences -> Marina
 def make_symbolic(expr_str: str, variables: Dict[str, Var] | None = None) -> Expr:

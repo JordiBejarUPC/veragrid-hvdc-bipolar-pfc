@@ -29,6 +29,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, StabilizerBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.enumerations import RmsInitializationMethod
@@ -93,26 +94,20 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = GenqecBuild().block.copy()
+genqec1_mdl = block_deep_copy(GenqecBuild().block)
 
+exc1_mdl = block_deep_copy(ExciterBuild().block)
 
-exc1_mdl = ExciterBuild().block.copy()
+gov1_mdl = block_deep_copy(GovernorBuild().block)
 
+stabil1_mdl = block_deep_copy(StabilizerBuild().block)
 
-gov1_mdl = GovernorBuild().block.copy()
+# line
+line0_mdl = block_deep_copy(get_line_rms_template().block)
 
+# load
+load_mdl = block_deep_copy(get_load_rms_template().block)
 
-stabil1_mdl = StabilizerBuild().block.copy()
-
-
-
-
-#line
-line0_mdl = get_line_rms_template().block.copy()
-
-
-#load
-load_mdl = get_load_rms_template().block.copy()
 
 
 ## Build big generators by connecting elements

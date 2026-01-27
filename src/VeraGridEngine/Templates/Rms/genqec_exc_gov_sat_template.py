@@ -273,12 +273,12 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
 
             #We initialize some specific parameters:
         },
-        external_mapping={
-            VarPowerFlowRefferenceType.P: Pg,
-            VarPowerFlowRefferenceType.Q: Qg,
-            VarPowerFlowRefferenceType.Vm: inputs[0],
-            VarPowerFlowRefferenceType.Va: inputs[1],
-        },
+        # external_mapping={
+        #     VarPowerFlowRefferenceType.P: Pg,
+        #     VarPowerFlowRefferenceType.Q: Qg,
+        #     VarPowerFlowRefferenceType.Vm: inputs[0],
+        #     VarPowerFlowRefferenceType.Va: inputs[1],
+        # },
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
@@ -783,6 +783,237 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     return templ
 
+def OELBuild(name: str = "") -> RmsModelTemplate:
+    """
+    
+    :param name: 
+    :return: 
+    """
+    templ = RmsModelTemplate()
+
+    oel_block = Block(name='exciter_limiter_block')
+    algebraic_eqs = []
+    algebraic_vars = []
+    differential_vars = []
+
+    inputs = [Var("OEL_input")]
+    Input_OEL = inputs[0]
+    #OEL_input_options are Efd or I_f
+
+    #parameters
+    # time constants
+    T_en     = Var('T_en')
+    T_off    = Var('T_off')
+    T_roel   = Var('T_roel')
+    T_doel   = Var('T_doel')
+    T_b1oel  = Var('T_b1oel')
+    T_c1oel  = Var('T_c1oel')
+    T_b2oel  = Var('T_b2oel')
+    T_aoel   = Var('T_aoel')
+    T_fcl    = Var('T_fcl')
+
+    T_min    = Var('T_min')
+    T_max    = Var('T_max')
+
+    # voltage limits
+    V_oelmin = Var('V_oelmin')
+    V_oelmax = Var('V_oelmax')
+    V_invmin = Var('V_invmin')
+    V_invmax = Var('V_invmax')
+
+    # gains
+    K_poel   = Var('K_poel')
+    K_ioel   = Var('K_ioel')
+    K_doel   = Var('K_doel')
+    K_ru     = Var('K_ru')
+    K_zru    = Var('K_zru')
+    K_rd     = Var('K_rd')
+    K_act    = Var('K_act')
+    K1       = Var('K1')
+    K2       = Var('K2')
+    Kfb      = Var('Kfb')
+
+    # fixed ramps
+    Fixed_RU = Var('Fixed_RU')
+    Fixed_RD = Var('Fixed_RD')
+
+    # current-related parameters
+    I_tfpu   = Var('I_tfpu')
+    I_THoff  = Var('I_THoff')
+    I_reset  = Var('I_reset')
+    I_inst   = Var('I_inst')
+    I_lim    = Var('I_lim')
+
+    # scaling and auxiliary
+    K_scale  = Var('K_scale')
+    C1       = Var('C1')
+    C2       = Var('C2')
+
+    # switches
+    SW1      = Var('SW1')
+
+    
+    Ierr = Var('Ierr')
+    V_oel = Var('V_oel')
+    Ipu = Var('Ipu')
+    
+    event_dict = {
+    # time constants
+    T_en:    Const(1.0),
+    T_off:   Const(1.0),
+    T_roel:  Const(1.0),
+    T_doel:  Const(1.0),
+    T_b1oel: Const(1.0),
+    T_c1oel: Const(1.0),
+    T_b2oel: Const(1.0),
+    T_aoel:  Const(1.0),
+    T_fcl:   Const(1.0),
+    T_min:   Const(1.0),
+    T_max:   Const(1.0),
+
+    # voltage limits
+    V_oelmin: Const(-1.0),
+    V_oelmax: Const(1.0),
+    V_invmin: Const(-1.0),
+    V_invmax: Const(1.0),
+
+    # gains
+    K_poel: Const(1.0),
+    K_ioel: Const(1.0),
+    K_doel: Const(1.0),
+    K_ru:   Const(1.0),
+    K_zru:  Const(1.0),
+    K_rd:   Const(1.0),
+    K_act:  Const(1.0),
+    K1:     Const(1.0),
+    K2:     Const(1.0),
+    Kfb:    Const(1.0),
+
+    # ramp limits
+    Fixed_RU: Const(1.0),
+    Fixed_RD: Const(1.0),
+
+    # currents
+    I_tfpu:  Const(1.0),
+    I_THoff: Const(1.0),
+    I_reset: Const(1.0),
+    I_inst:  Const(1.0),
+    I_lim:   Const(0.0),
+
+    # scaling
+    K_scale: Const(4.6),  # Ifield rated / Ibase
+    C1:      Const(1.0),
+    C2:      Const(1.0),
+
+    # switches
+    SW1: Const(1.0),
+    }
+
+    oel_block.event_params = event_dict
+    #equations
+    block_Ipu, Ipu = tf_to_diffblock(
+        num = [K_scale],    
+        den = [1, T_roel],
+        x= Input_OEL,
+        name= 'exciter_limiter_Ipu',
+    )
+    oel_block.add(block_Ipu)
+    I_errinv1 = K1*((Ipu/I_tfpu)**C1 - 1)
+    I_errinv2_aux = K2*((Ipu/I_tfpu)**C2 - 1)
+
+    #OEL TIMER LOGIC
+    I_errinv2 = sym.hard_sat(I_errinv2_aux, V_invmin, V_invmax)
+    W = I_errinv2 + sym.heaviside(I_tfpu - Ipu)*Fixed_RU + (Const(1)-sym.heaviside(I_tfpu - Ipu))*Fixed_RD
+
+    
+
+    T = Var('T')
+    block4, T = tf_to_diffblock(
+        num = [1],
+        den = [0, 1],
+        x= W - Kfb*sym.hard_sat(T, T_min, T_max),
+        y = T,
+        name= 'exciter_limiter_T',
+    )        
+    oel_block.add(block4)
+
+    Terr = T_fcl - W - Kfb*sym.hard_sat(T, T_min, T_max)
+    
+    #OEL RAMP LOGIC
+    C = (Const(1) -SW1)*(K_ru) + I_errinv1*(SW1)
+    D = (Const(1) -SW1)*(K_rd) + I_errinv1*(SW1)
+    Z = C*sym.heaviside(Terr - K_zru*T_fcl) + D*(sym.heaviside(-Terr))
+
+    block5, I_a = tf_to_diffblock(
+        num = [1],
+        den = [0, 1],
+        x= Z,
+        name= 'exciter_limiter_Ipu',
+    )
+    oel_block.add(block5)
+
+    I_ref = sym.hard_sat(I_a, I_lim, I_inst)
+
+
+    block7, y_1 = tf_to_diffblock(
+        num = [1],
+        den = [1, T_aoel],
+        x= I_ref,
+        name= 'exciter_limiter_Iref',
+    )
+    oel_block.add(block7)
+
+    I_act = K_act*Ipu 
+    x = Var('x')
+    dx = Var('x', base_var=x)
+    algebraic_eqs.append(dx-(sym.heaviside(T_en-x)*sym.heaviside(I_act - I_ref) - (Const(1) - sym.heaviside(I_act - I_ref))*sym.heaviside(x)*Const(1000))) 
+    b1 = (x - T_en >= 0).to_expression()
+    b2 = (Terr <= 0).to_expression() #(Terr <= 0) when comparisons are supported
+    b3 = (T_en == 0).to_expression()
+
+    y = Var('y')
+    dy = Var('y', base_var=y)
+    algebraic_eqs.append(dy-(sym.heaviside(T_off-y)*sym.heaviside(I_ref - I_act - I_THoff) - (Const(1) - sym.heaviside(I_ref - I_act - I_THoff))*heaviside(y)*Const(1000))) 
+    c1 = (I_ref == I_inst).to_expression()
+    c2 = sym.heaviside(y - T_off + Const(1e-3))
+
+    I_bias = Var('I_bias')
+    algebraic_eqs.append(I_bias - (1 -(1-b1)*(1-b2)*(1-b3))*(c1*c2))
+    algebraic_vars.append(x)
+    algebraic_vars.append(y)
+    algebraic_vars.append(I_bias)
+    differential_vars.append(dx)
+    differential_vars.append(dy)
+
+
+    Ierr = y_1 - K_act*Ipu + I_bias
+
+
+    block8, V_oel = tf_to_diffblock(
+        num = [K_doel*K_poel],
+        den = [0, 1, T_doel],
+        x= K_poel*Ierr,
+        name= 'exciter_limiter_Voel',
+    )
+    oel_block.add(block8)
+
+    
+    V_oel_sat = Var('V_oel_sat')
+    algebraic_vars.append(V_oel_sat)
+    algebraic_eqs.append(sym.hard_sat(V_oel, V_oelmin, V_oelmax) - V_oel_sat)
+
+    end_block = Block(
+        algebraic_eqs = algebraic_eqs,
+        algebraic_vars = algebraic_vars,
+        diff_vars = differential_vars,
+    )       
+
+    oel_block.add(end_block)
+    
+    oel_block.in_vars = inputs
+    oel_block.out_vars = [V_oel_sat]
+    templ.block = oel_block
+    return oel_block, V_oel_sat
 
 def get_complete_generator_template(name="complete generator rms template") -> RmsModelTemplate:
     """
