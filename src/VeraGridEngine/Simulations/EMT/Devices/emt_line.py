@@ -111,37 +111,26 @@ def initialize_emt_line(ii: int,
     if line.length <= 0.0:
         raise ValueError(f"Line {line.name}: length must be defined for EMT simulations.")
 
+    if line.template is None:
+        raise ValueError("Line template must be present to be able to obtain 4x4 impedance matrices")
+
     phases = line.bus_from.get_phases_array()
 
     # Physical Parameters from Carson's
+    # TODO: consider using line.ys and line.ysh instead
     Z = line.template.z_nabc  # from Carson ohm/km
     Y = line.template.y_nabc  # from Carson ohm/km
-    print('Z tower [ohm/km] =', Z)  # ohm/km
-    print('Y tower [S/km] =', Y)  # S/km
+
+    if verbose:
+        print('Z tower [ohm/km] =', Z)  # ohm/km
+        print('Y tower [S/km] =', Y)  # S/km
 
     Z_phys_m = Z / 1e3  # ohm/m
     Y_phys_m = Y / 1e3  # S/m
 
-    # line parameters / meter
-    l_ = np.imag(Z_phys_m) / w  # H/m
-    c_ = np.imag(Y_phys_m) / w  # F/m
-    r_ = np.real(Z_phys_m)  # Ohm/m
-
-    # v_wave and tau from the travelling wave are taken only from the diagonal components
-    L_w = l_[0, 0]
-    C_w = c_[0, 0]
-    v_wave = 1 / np.sqrt(L_w * C_w)
-
     # line time delay (tau) (only relevant for Bergeron and JMartí)
-    dta.tau[ii] = line.length * 1e3 / v_wave  # s
+    dta.tau[ii] = line.get_tau(w=w)  # s
     dta.n_delay[ii] = max(1, int(round(dta.tau[ii] / h)))  # int
-
-    if verbose > 0:
-        print(f'l_ line= {l_[0, 0]:.3e}[H/m] (diag)')
-        print(f'c_ line= {c_[0, 0]:.3e}[F/m] (diag)')
-        print(f'v_wave= {v_wave:.2e}[m/s]')
-        print(f'tau line= {dta.tau[ii]}[s]')
-        print(f'Ndelay line= {dta.n_delay[ii]}[-]')
 
     # Per Unit parameters
     Z_pu = Z_phys_m / Zbase  # p.u./m

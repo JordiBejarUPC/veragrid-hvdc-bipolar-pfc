@@ -28,25 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added dynamic_emt_trunk">
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/bus_emt_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/emt_model_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/generator_emt_type_template.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/generator_emt_type_template_for_line.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/generator_simple_template.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactoring to compile_emt done (!)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/osx_resources/python_3.13.11_standalone/lib/python3.13/pydoc_data/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_options.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/initialization_emt.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/numerical_method/dommel.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/numerical_method/dommel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics_emt/scripting_emt_generator_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_emt/scripting_emt_generator_line.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1875,7 +1858,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="702" />
+    <option name="localTasksCounter" value="703" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1936,7 +1919,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="PowerFactory parser to VeraGrid" />
     <MESSAGE value="some more changes in PowerFactory parser to VeraGrid" />
     <MESSAGE value="added library list in the about window" />
     <MESSAGE value="minor changes" />
@@ -1961,7 +1943,8 @@
     <MESSAGE value="fixed small issue when calling gslv" />
     <MESSAGE value="added todo comments" />
     <MESSAGE value="added dynamic_emt_trunk" />
-    <option name="LAST_COMMIT_MESSAGE" value="added dynamic_emt_trunk" />
+    <MESSAGE value="refactoring to compile_emt done (!)" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactoring to compile_emt done (!)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2522,13 +2505,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_compiler.py</url>
-          <line>398</line>
+          <line>403</line>
           <option name="timeStamp" value="3667" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_compiler.py</url>
-          <line>159</line>
-          <option name="timeStamp" value="3668" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py</url>
@@ -2537,18 +2515,28 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py</url>
-          <line>254</line>
+          <line>260</line>
           <option name="timeStamp" value="3670" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py</url>
-          <line>265</line>
+          <line>277</line>
           <option name="timeStamp" value="3671" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_line.py</url>
-          <line>274</line>
+          <line>292</line>
           <option name="timeStamp" value="3672" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/Devices/emt_compiler.py</url>
+          <line>194</line>
+          <option name="timeStamp" value="3680" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/emt_worker.py</url>
+          <line>25</line>
+          <option name="timeStamp" value="3685" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

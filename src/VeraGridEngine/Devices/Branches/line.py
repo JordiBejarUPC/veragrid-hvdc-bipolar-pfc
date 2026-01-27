@@ -745,32 +745,32 @@ class Line(BranchParent):
 
     def get_tau(self, w: float) -> float:
         """
-
+        get EMT delay parameter (tau) in seconds
         :param w: 2 * pi * freq
         :return: tau value
         """
+        if self.template is None:
+            return 0.0
+        else:
+            # TODO: consider using line.ys and line.ysh instead
+            # Physical Parameters from Carson's
+            Z = self.template.z_nabc  # from Carson ohm/km
+            Y = self.template.y_nabc  # from Carson ohm/km
 
-        # Physical Parameters from Carson's
-        Z = self.template.z_nabc  # from Carson ohm/km
-        Y = self.template.y_nabc  # from Carson ohm/km
-        # print('Z tower [ohm/km] =', Z)  # ohm/km
-        # print('Y tower [S/km] =', Y)  # S/km
+            Z_phys_m = Z / 1e3  # ohm/m
+            Y_phys_m = Y / 1e3  # S/m
 
-        Z_phys_m = Z / 1e3  # ohm/m
-        Y_phys_m = Y / 1e3  # S/m
+            # line parameters / meter
+            l_ = np.imag(Z_phys_m) / w  # H/m
+            c_ = np.imag(Y_phys_m) / w  # F/m
 
-        # line parameters / meter
-        l_ = np.imag(Z_phys_m) / w  # H/m
-        c_ = np.imag(Y_phys_m) / w  # F/m
-        r_ = np.real(Z_phys_m)  # Ohm/m
+            # v_wave and tau from the travelling wave are taken only from the diagonal components
+            L_w = l_[0, 0]
+            C_w = c_[0, 0]
+            v_wave = 1 / np.sqrt(L_w * C_w)
 
-        # v_wave and tau from the travelling wave are taken only from the diagonal components
-        L_w = l_[0, 0]
-        C_w = c_[0, 0]
-        v_wave = 1 / np.sqrt(L_w * C_w)
-
-        # line time delay (tau) (only relevant for Bergeron and JMartí)
-        return self.length * 1e3 / v_wave  # s
+            # line time delay (tau) (only relevant for Bergeron and JMartí)
+            return self.length * 1e3 / v_wave  # s
 
     def fill_3_phase_from_sequence(self) -> None:
         """

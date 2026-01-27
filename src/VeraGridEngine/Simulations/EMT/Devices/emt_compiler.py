@@ -19,10 +19,10 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import EmtTransformer, initialize_emt_transformer
+from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import initialize_emt_transformer
 from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine, initialize_emt_line
-from VeraGridEngine.Simulations.EMT.Devices.emt_load import EmtLoad, initialize_emt_load
-from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator, initialize_emt_generator
+from VeraGridEngine.Simulations.EMT.Devices.emt_load import initialize_emt_load
+from VeraGridEngine.Simulations.EMT.Devices.emt_generator import initialize_emt_generator
 from VeraGridEngine.Simulations.EMT.Devices.emt_circuit import EmtCircuit
 
 
