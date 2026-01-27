@@ -88,6 +88,7 @@ def is_yg(x) -> bool:
         return x.value == "Yg"
     return str(x) == "Yg"  # str u objeto que imprime 'Yg'
 
+
 def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matrix, CxVec, BoolVec, IntVec, IntVec]:
     """
     Compute admittances
@@ -154,6 +155,7 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
 
     return Ybus.tocsc(), Yf.tocsc(), Yt.tocsc(), Ysh_bus, binary_bus_mask, bus_idx_lookup, branch_lookup
 
+
 def compute_masks(nc: NumericalCircuit) -> Tuple[BoolVec, IntVec, IntVec]:
     """
     Compute masks
@@ -217,6 +219,7 @@ def compute_masks(nc: NumericalCircuit) -> Tuple[BoolVec, IntVec, IntVec]:
 
     bus_has_neutral = np.ones(4 * n, dtype=bool)  # por defecto el neutro del bus está activo
 
+    # TODO: Alex blanco should refactor this
     for bus_idx in range(n):
         connected = np.where((F == bus_idx) | (T == bus_idx))[0]
         if connected.size == 0:

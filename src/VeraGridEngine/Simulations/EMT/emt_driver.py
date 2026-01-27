@@ -310,15 +310,15 @@ class EmtSimulationDriver(DriverTemplate):
             # --- PF branch currents (RMS p.u. phasors) ---
             m = nc.passive_branch_data.nelm
 
-            If_N = np.abs(res.If_N) if hasattr(res, 'If_N') else np.zeros(m)
-            If_A = np.abs(res.If_A) if hasattr(res, 'If_A') else np.zeros(m)
-            If_B = np.abs(res.If_B) if hasattr(res, 'If_B') else np.zeros(m)
-            If_C = np.abs(res.If_C) if hasattr(res, 'If_C') else np.zeros(m)
+            If_N = getattr(res, 'If_N', np.zeros(m, dtype=complex))
+            If_A = getattr(res, 'If_A', np.zeros(m, dtype=complex))
+            If_B = getattr(res, 'If_B', np.zeros(m, dtype=complex))
+            If_C = getattr(res, 'If_C', np.zeros(m, dtype=complex))
 
-            It_N = np.abs(res.It_N) if hasattr(res, 'It_N') else np.zeros(m)
-            It_A = np.abs(res.It_A) if hasattr(res, 'It_A') else np.zeros(m)
-            It_B = np.abs(res.It_B) if hasattr(res, 'It_B') else np.zeros(m)
-            It_C = np.abs(res.It_C) if hasattr(res, 'It_C') else np.zeros(m)
+            It_N = getattr(res, 'It_N', np.zeros(m, dtype=complex))
+            It_A = getattr(res, 'It_A', np.zeros(m, dtype=complex))
+            It_B = getattr(res, 'It_B', np.zeros(m, dtype=complex))
+            It_C = getattr(res, 'It_C', np.zeros(m, dtype=complex))
 
             I_mag_f_N, I_ang_f_N = np.abs(If_N), np.angle(If_N)
             I_mag_f_A, I_ang_f_A = np.abs(If_A), np.angle(If_A)
@@ -1281,7 +1281,7 @@ def update_Ibranches(nc: NumericalCircuit,
         # ---- lines currents ----
         if branch.device_type.value == 'Line':  # DeviceType.LineDevice:
 
-            model = branch.emt_model_type
+            model = getattr(branch, 'model_type', 'Bergeron')
 
             V_f = V[idx_from]
             V_t = V[idx_to]
