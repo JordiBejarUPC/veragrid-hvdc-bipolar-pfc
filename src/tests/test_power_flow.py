@@ -11,7 +11,6 @@ from VeraGridEngine.IO.file_handler import FileOpen
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions, multi_island_pf_nc
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 import VeraGridEngine.api as gce
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
