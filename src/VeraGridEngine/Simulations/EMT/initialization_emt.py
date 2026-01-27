@@ -133,7 +133,7 @@ def initialize_emt(grid: MultiCircuit,
 
     for elm in grid.generators:
         emt_elm = EmtGenerator()
-        emt_elm.initialize_emt(h=h, gen=elm, logger=logger)
+        initialize_emt_generator(h=h, gen=elm, logger=logger)
 
         bus_idx = bus_dict[elm.bus]
 
@@ -170,11 +170,11 @@ def initialize_emt(grid: MultiCircuit,
 
         if elm.device_type == DeviceType.LineDevice:
             emt_elm = EmtLine()
-            emt_elm.initialize_emt(line=elm, h=h, Sbase=grid.Sbase, fbase=grid.fBase)
+            initialize_emt_line(line=elm, h=h, Sbase=grid.Sbase, fbase=grid.fBase)
 
         elif elm.device_type == DeviceType.Transformer2WDevice:
             emt_elm = EmtTransformer()
-            emt_elm.initialize_emt(h=h, tr=elm)
+            initialize_emt_transformer(h=h, tr=elm)
 
         else:
             raise NotImplementedError(f"The branch type is not implemented in EMT {elm.device_type}")
@@ -236,7 +236,7 @@ def adapt_h(grid: MultiCircuit,
 
     if len(grid.get_lines()) > 0:
         for line in grid.get_lines():
-            line.initialize_emt(emt_options.time_step, grid.Sbase, grid.fBase)
+            initialize_emt_line(emt_options.time_step, grid.Sbase, grid.fBase)
 
             # If model is Pi, tau is 0. We must skip the N_delay check
             # because Pi models don't impose travel time constraints.

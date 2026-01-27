@@ -39,25 +39,10 @@ def initialize_emt_generator(ii: int,
         idx4 = np.array(range(4))
         k4: IntVec = 4 * ii + idx4
 
-        # --- CORRECCIÓN ---
-        # Ldpp = 0.245  # TODO: retrieve from emt_model
-        # Gc_val = h / (2 * Ldpp)
-        # AHORA: Usamos un Snubber de alta impedancia.
-
-        # Valor alto en p.u. (ej. 10,000 p.u).
-        # Esto actúa casi como circuito abierto para la física,
-        # pero evita matrices singulares numéricamente.
-        # self.Rp = 10000.0
-        Ldpp = 0.245
+        Ldpp = 0.245 #TODO: retrieve from the generator model
         N = 1.0
         dta.Rp[ii] = 2 * Ldpp / (N * h)
-        # self.Rp = 0.02
-        # self.Rp = 1000000000000
-        # Rp=123808.42921715266 p.u.
 
-        # Si tu matriz Ybus trabaja en p.u., usa 1/Rp.
-        # Si trabaja en Siemens reales, divide por Zbase (asumiendo que Sbase/Vbase están disponibles).
-        # Por seguridad, definimos Gc_val como una conductancia muy pequeña.
         Gc_val = 1.0 / dta.Rp[ii]
 
         if verbose > 0:

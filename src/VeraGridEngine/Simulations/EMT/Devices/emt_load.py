@@ -28,7 +28,7 @@ def initialize_emt_load(ii: int,
 
     :param ii:
     :param dta:
-    :param Sbase:
+    :param sbase:
     :param load:
     :param verbose:
     :return:
@@ -55,12 +55,8 @@ def initialize_emt_load(ii: int,
 
     if verbose:
         print(f"Zbase calculated at load.py = {Zbase}[ohm]")
-    #
-    # all_phases = ['n', 'a', 'b', 'c']
-    # phases = [p for p in all_phases if getattr(self.bus, f"ph_{p}")]
 
-    # Gc_val = 1.0 / self.R
-    # todo: si té L o C canviar Z a voltage source!
+
     P = load.Pa * 1e6
     R = (V * V / 3) / P  # ohm
 
@@ -70,15 +66,12 @@ def initialize_emt_load(ii: int,
     R = R / Zbase  # p.u.
     Gc_val = 1.0 / R
 
-    # CORRECT IMPLEMENTATION!!
-    # Gc4 = np.eye(4) * Gc_val
-    # Gc4[0, 0] = 0.0
     dta.Gc[np.ix(k4[1:], k4[1:])] = Gc_val
 
     if verbose:
         print(f"Rload [p.u.] = {R}")
 
-    # cutre fix to check lines with matched Zc todo: TEMPORARY!
+    # "cutre" fix to check lines with matched Zc TEMPORARY!
     # Zc_line = np.array([[4.213e2, 1.174e2, 8.758e1], [1.142e2, 4.217e2, 1.142e2],
     #                     [8.758e1, 1.174e2, 4.213e2]])
     # Zc_inv = np.linalg.inv(Zc_line)

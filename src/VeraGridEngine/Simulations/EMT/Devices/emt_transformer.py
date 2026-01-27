@@ -25,8 +25,7 @@ class EmtTransformer:
 def initialize_emt_transformer(ii: int,
                                dta: EmtTransformer,
                                h: float,
-                               tr: Transformer2W,
-                               sbase: float):
+                               tr: Transformer2W):
     """
 
     :param ii:
@@ -47,6 +46,8 @@ def initialize_emt_transformer(ii: int,
 
     X_leack = tr.X # p.u.
     X_magn = 1 / tr.B # p.u.
+    # R_cooper = tr.R
+    # R_iron = 1 / tr.G
 
     L1 = X_leack / 2.0
     L2 = L1

@@ -78,7 +78,6 @@ def initialize_emt_line(ii: int,
     k4 = 4 * ii + idx4
 
     w = 2 * np.pi * fbase
-    # Sbase = Sbase #VA
     Sbase = Sbase  # MVA
     Vbase = line.bus_from.Vnom  # kV
     V = Vbase * 1e3  # V
@@ -88,16 +87,13 @@ def initialize_emt_line(ii: int,
     if verbose > 0:
         print('Zbase calculated at line.py [ohm] = ', Zbase)
     Ybase = 1 / Zbase
-    # Lbase = Zbase / w  # H
-    # Rbase = Zbase
-    # Cbase = 1.0 / (w * Zbase)  # F
 
     if line.length <= 0.0:
         raise ValueError(f"Line {line.name}: length must be defined for EMT simulations.")
 
     phases = line.bus_from.get_phases_array()
 
-    # --- 1. PARAMETROS FÍSICOS (Physical Parameters) ---
+    # Physical Parameters from Carson's
     Z = line.template.z_nabc  # from Carson ohm/km
     Y = line.template.y_nabc  # from Carson ohm/km
     print('Z tower [ohm/km] =', Z)  # ohm/km
@@ -106,18 +102,17 @@ def initialize_emt_line(ii: int,
     Z_phys_m = Z / 1e3  # ohm/m
     Y_phys_m = Y / 1e3  # S/m
 
-    # Variables solicitadas en docstring para debug físico
+    # line parameters / meter
     l_ = np.imag(Z_phys_m) / w  # H/m
     c_ = np.imag(Y_phys_m) / w  # F/m
     r_ = np.real(Z_phys_m)  # Ohm/m
 
-    # Cálculo robusto de Zc físico y velocidad de onda
     # v_wave and tau from the travelling wave are taken only from the diagonal components
     L_w = l_[0, 0]
     C_w = c_[0, 0]
     v_wave = 1 / np.sqrt(L_w * C_w)
 
-    # Tau físico (solo relevante para Bergeron/J-Marti, pero se calcula siempre)
+    # line time delay (tau) (only relevant for Bergeron and JMartí)
     dta.tau[ii] = line.length * 1e3 / v_wave  # s
     dta.n_delay[ii] = max(1, int(round(dta.tau[ii] / h)))  # int
 
@@ -128,22 +123,20 @@ def initialize_emt_line(ii: int,
         print(f'tau line= {dta.tau[ii]}[s]')
         print(f'Ndelay line= {dta.n_delay[ii]}[-]')
 
-    # --- 2. PARAMETROS EN P.U. (Per Unit Matrices) ---
+    # Per Unit parameters
     Z_pu = Z_phys_m / Zbase  # p.u./m
     Y_pu = Y_phys_m / Ybase  # p.u./m
 
     R = np.real(Z_pu) * line.length  # p.u. Total
-    L = np.imag(Z_pu) * line.length  # p.u. Total (Reactancia inductiva total)
-    C = np.imag(Y_pu) * line.length  # p.u. Total (Susceptancia capacitiva total)
+    L = np.imag(Z_pu) * line.length  # p.u. Total  (total inductive reactance)
+    C = np.imag(Y_pu) * line.length  # p.u. Total  (total capacitive susceptance)
 
     if verbose > 0:
         print(f'R line= {R}[p.u.]')
         print(f'L line= {L}[p.u.]')
         print(f'C line= {C}[p.u.]')
 
-    # --- 3. CÁLCULO DE MATRICES Gc y H (n x n) SEGÚN MODELO ---
-
-    # Pre-calculo de Zc para impresión (útil para Bergeron)
+    # Gc y H (n x n) matrices calculation
     try:
         Zc = sp.linalg.sqrtm(L @ np.linalg.inv(C))
     except:
@@ -158,35 +151,32 @@ def initialize_emt_line(ii: int,
         if verbose > 0:
             print("  > Configuring Matrices for PI Model (Hybrid: Trapezoidal RL + BackEuler C)...")
 
-        # 1. RAMA SERIE (RL) -> Usamos TRAPECIO (Precisión)
-        # Factor L = 2.0 / (w*h)
+        # trapezoidal series (RL)
         factor_L = 2.0 / (w * h)
         Z_series = R + L * factor_L
         Gc_series = np.linalg.inv(Z_series)
 
-        # 2. RAMA SHUNT (C) -> Usamos BACKWARD EULER (Estabilidad)
-        # Factor C = 1.0 / (w*h).
-        # (Backward Euler amortigua oscilaciones numéricas en nodos de voltaje)
+        # shunt branch (C) with backward euler
+        # (The Backward Euler method damps numerical oscillations in voltage nodes)
         factor_C = 1.0 / (w * h)
         Gc_shunt = C * factor_C
 
-        # 3. ASIGNACIÓN DE MATRICES
+        # matrix assignation
 
-        # Gc: Solo la parte serie (para calcular historia serie en driver)
+        # Gc: only series part (calculate series history in driver)
         Gc = Gc_series
         H = np.zeros_like(Gc)
 
-        # G_shunt: Lo guardamos temporalmente para mapearlo
+        # G_shunt: stored temporally to map
         G_shunt = Gc_shunt
     else:
 
         if verbose > 0:
             print("  > Configuring Matrices for BERGERON/JMARTI Model...")
 
-        # Modelo Bergeron: Z = Zc + R/4
+        # Bergeron Model: Z = Zc + R/4
         Z_eq = np.real(Zc) + R / 4
         Gc = np.linalg.inv(Z_eq)
-        # H = (Zc - R/4) * Gc
         H = (np.real(Zc) - R / 4) @ Gc
 
         if verbose > 0:
@@ -194,9 +184,9 @@ def initialize_emt_line(ii: int,
             print(f'Gc line= {Gc}[p.u.]')
             print(f'H line= {H}[p.u.]')
 
-        G_shunt = np.zeros_like(Gc)  # Bergeron no tiene shunt explícito en G
+        G_shunt = np.zeros_like(Gc)  # Bergeron doesn't have explicit shunt in G
 
-    # --- 4. MAPEO A MATRICES 4x4 (Tu bucle original) ---
+
     all_phases = ['n', 'a', 'b', 'c']
     # convert Gc to a 4x4 matrix with 0 in the rows and cols of nonexistent phases
     loc_index = {ph: i for i, ph in enumerate(phases)}
@@ -216,44 +206,42 @@ def initialize_emt_line(ii: int,
                     if line.emt_model_type == EmtLineTypes.PI:
                         G_shunt4[i, j] = G_shunt[i_small, j_small]
 
-    # --- 5. ASIGNACIÓN FINAL (Con corrección para Pi) ---
 
-    # Gc4 = Gc4 * Zbase # to p.u.
     dta.H[k4, :] = H4  # NxN H has no units
-    dta.Gc[k4, :] = Gc4  # Esta es la conductancia "principal" (Serie en Pi, Característica en Bergeron)
+    dta.Gc[k4, :] = Gc4  # Device conductance (Serie en Pi, Característica en Bergeron)
 
-    # Matriz Nodal (Gff, Gtt, Gft, Gtf)
+    # nodal matrix (Gff, Gtt, Gft, Gtf)
     if line.emt_model_type == EmtLineTypes.PI:
-        # En Pi, Gff = G_serie + G_shunt
+        # For Pi, Gff = G_serie + G_shunt
         dta.Gff[k4, :] = Gc4 + G_shunt4
         dta.Gtt[k4, :] = Gc4 + G_shunt4
 
-        # CRITICO: En Pi, los nodos están ACOPLADOS. Gft = -G_serie
+        # In the π model, the nodes are COUPLED. Gft = -G_serie
         dta.Gft[k4, :] = -1.0 * Gc4
         dta.Gtf[k4, :] = -1.0 * Gc4
 
-        # En Pi, forzamos Ndelay=1 y Tau=0 para que el driver no busque buffers lejanos
+        # In the π model,  Ndelay=1, τ=0 are enforced to prevent the driver from accessing distant buffers
         dta.tau[ii] = 0.0
         dta.n_delay[ii] = 1
 
     elif line.emt_model_type == EmtLineTypes.Bergeron:
 
-        # En Bergeron, Gff = Gc (Resistencia equivalente a tierra)
+        #Bergeron, Gff = Gc (Self components)
         dta.Gff[k4, :] = Gc4
         dta.Gtt[k4, :] = Gc4
 
-        # En Bergeron, los nodos están DESACOPLADOS en t (Gft=0)
+        # Bergeron, nodes are uncoupled  en t (Gft=0)
         # NOTE: No need since it is already zeroed
         # dta.Gft[k4, :] = np.zeros((4, 4), dtype=float)
         # dta.Gtf[k4, :] = np.zeros((4, 4), dtype=float)
 
     elif line.emt_model_type == EmtLineTypes.J_Marti:
 
-        # En Bergeron, Gff = Gc (Resistencia equivalente a tierra)
+        # En Bergeron, Gff = Gc (Self components)
         dta.Gff[k4, :] = Gc4
         dta.Gtt[k4, :] = Gc4
 
-        # En Bergeron, los nodos están DESACOPLADOS en t (Gft=0)
+        # En Bergeron, nodes are uncoupled  en t (Gft=0)
         # NOTE: No need since it is already zeroed
         # dta.Gft[k4, :] = np.zeros((4, 4), dtype=float)
         # dta.Gtf[k4, :] = np.zeros((4, 4), dtype=float)

@@ -150,76 +150,12 @@ def predict_Is(n: int,
                     Is_step[idx] += i_s_bus
                     if dev_type.name == 'GeneratorDevice':
                         # plus the generator history component due to the interfacing resistor v(t-dt)/ Rp
-                        # Gp = (1 / elm.Rp) * np.eye(4)
-                        # Is_step[idx] += np.array([v_n, v_a, v_b, v_c], dtype=float) @ Gp
-                        # Is_step[idx] += elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
-
                         Is_step[idx] += elm.Gc @ v_nabc
 
     Is_step = Is_step[binary_bus_mask]
 
     return Is_step
 
-
-# ----------------------------------------------------------------------------------------------------------------------
-#     # GENERATOR AS VOLTAGE SOURCE (INITIAL IMPLEMENTATION)
-#     n = nc.bus_data.nbus
-#     Is_step = np.zeros(n*4, dtype=float)
-#
-#     # Balanced 3-phase reference angles (if needed)
-#     phase_angles = {
-#         'n': 0.0,  # not needed
-#         'a': 0.0,
-#         'b': -2.0 * np.pi / 3.0,
-#         'c': 2.0 * np.pi / 3.0,
-#     }
-#
-#     # generators #todo: adapt to all injections!
-#     idx4 = np.array([0, 1, 2, 3])
-#     Gc_gen = 0.0
-#     Gc_line = 0.0
-#     Gc_trafo = 0.0
-#     for elm in grid.get_generators():
-#         bus = elm.bus
-#         bus_idx = nc.bus_dict[bus]
-#
-#         Gc_gen = elm.Gc
-#         # Gc_gen = np.eye(4) * 1.0
-#
-#         # for line in grid.get_lines():
-#         #     Gc_line = line.Gc
-#         # for trafo in grid.get_transformers2w():
-#         #     Gc_trafo = trafo.Gff# - np.eye(4,4)*(1/0.01)
-#         #     # Gc_trafo = trafo.Gm
-#
-#         Gc = Gc_gen + Gc_line + Gc_trafo
-#
-#         # Build local source voltage vector v_src
-#         v_src = np.zeros((4,), dtype=float)
-#
-#         phases = ['n', 'a', 'b', 'c']
-#         for i, ph in enumerate(phases):
-#
-#             if ph == 'n':
-#                 # neutral usually at 0 V internally
-#                 v_src[i] = 0.0
-#                 continue
-#
-#             angle = phase_angles[ph]
-#             # Basic sinusoidal source
-#             t = step * h
-#             Vpeak = np.sqrt(2) #* 2.405
-#             # v_src[i] = Vpeak * np.sin(2 * np.pi * elm.freq * t + angle) #todo: working as voltage source.
-#             v_src[i] = Vpeak * np.cos(2 * np.pi * elm.freq * t + angle)  # todo: working as voltage source.
-#
-#         i_s_bus = Gc @ v_src
-#         idx = 4 * bus_idx + idx4
-#         Is_step[idx] += i_s_bus
-#         # Is_step[idx] += np.zeros_like(i_s_bus)
-#
-#     Is_step = Is_step[binary_bus_mask]
-#
-#     return Is_step
 
 def update_Hist(n_nodes: int,
                 nc: NumericalCircuit,
@@ -271,7 +207,7 @@ def update_Hist(n_nodes: int,
     :param bus_idx_lookup:
     :return: hist_step (1 x total_cond)
     """
-    n = nc.bus_data.nbus
+    n = dta.n_bus
 
     hist_step = np.zeros(n_nodes, dtype=float)
 
@@ -659,7 +595,7 @@ def update_Is(emt_simulation_driver: EmtSimulationDriver,
     :param emt_vec: Vector
     :return Is_step: np array
     """
-    n = nc.bus_data.nbus
+    n = dta.n_bus
     Is_step = np.zeros(n * 4, dtype=float)
 
     for i, bus in enumerate(
@@ -1089,8 +1025,9 @@ def set_I0_bus(emt_vec_bus: EmtSolverProperties,
     return Is0
 
 
-def initialize_buffers(nc: NumericalCircuit,
-                       grid: MultiCircuit,
+def initialize_buffers(#nc: NumericalCircuit,
+                       # grid: MultiCircuit,
+                       dta: EmtCircuit,
                        pf_results: PowerFlowResults3Ph,
                        N_delay: int,
                        h: float,
@@ -1120,73 +1057,40 @@ def initialize_buffers(nc: NumericalCircuit,
 
     print("Initializing EMT history buffers with steady-state AC values.")
 
-    nbus4 = 4 * nc.bus_data.nbus
+    nbus4 = 4 * dta.n_bus
     sqrt2 = np.sqrt(2)
 
     # --- PF voltages (RMS p.u. phasors) ---
-    V_mag_N = np.abs(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    V_ang_N = np.angle(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    V_mag_A = np.abs(res.voltage_A) if hasattr(res, 'voltage_A') else np.zeros(nc.bus_data.nbus)
-    V_ang_A = np.angle(res.voltage_A) if hasattr(res, 'voltage_A') else np.zeros(nc.bus_data.nbus)
-    V_mag_B = np.abs(res.voltage_B) if hasattr(res, 'voltage_B') else np.zeros(nc.bus_data.nbus)
-    V_ang_B = np.angle(res.voltage_B) if hasattr(res, 'voltage_B') else np.zeros(nc.bus_data.nbus)
-    V_mag_C = np.abs(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(nc.bus_data.nbus)
-    V_ang_C = np.angle(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(nc.bus_data.nbus)
+    V_mag_N = np.abs(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(dta.n_bus)
+    V_ang_N = np.angle(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(dta.n_bus)
+    V_mag_A = np.abs(res.voltage_A) if hasattr(res, 'voltage_A') else np.zeros(dta.n_bus)
+    V_ang_A = np.angle(res.voltage_A) if hasattr(res, 'voltage_A') else np.zeros(dta.n_bus)
+    V_mag_B = np.abs(res.voltage_B) if hasattr(res, 'voltage_B') else np.zeros(dta.n_bus)
+    V_ang_B = np.angle(res.voltage_B) if hasattr(res, 'voltage_B') else np.zeros(dta.n_bus)
+    V_mag_C = np.abs(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(dta.n_bus)
+    V_ang_C = np.angle(res.voltage_C) if hasattr(res, 'voltage_C') else np.zeros(dta.n_bus)
 
-    # trampilla per quan no hi ha powerflow --------------------
-    # V_mag_N = np.array([0.0, 0.0])
-    # V_ang_N = np.array([0.0, 0.0])
-    # V_mag_A = np.array([1.0, 1.0])
-    # V_ang_A = np.array([0.0, 0.0])
-    # V_mag_B = np.array([1.0, 1.0])
-    # V_ang_B = np.array([-2 * np.pi / 3, -2 * np.pi / 3])
-    # V_mag_C = np.array([1.0, 1.0])
-    # V_ang_C = np.array([2 * np.pi / 3, 2 * np.pi / 3])
-
-    # V_mag_N = np.abs(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    # V_ang_N = np.angle(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    # V_mag_A = np.abs([1. + 0.j,   0.0])
-    # V_ang_A = np.angle([1. + 0.j,   0.0])
-    # V_mag_B = np.abs([-0.5 - 0.8660254038j, 0.0])
-    # V_ang_B = np.angle([-0.5 - 0.8660254038j, 0.0])
-    # V_mag_C = np.abs([-0.5 + 0.8660254038j, 0.0])
-    # V_ang_C = np.angle([-0.5 + 0.8660254038j, 0.0])
-
-    #############
-    # V_mag_N = np.abs(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    # V_ang_N = np.angle(res.voltage_N) if hasattr(res, 'voltage_N') else np.zeros(nc.bus_data.nbus)
-    # V_mag_A = np.abs([0.0, 0.99989999 - 0.01j])
-    # V_ang_A = np.angle([0.0, 0.99989999 - 0.01j])
-    # V_mag_B = np.abs([ 0.0, -0.508610249-0.8609387926j])
-    # V_ang_B = np.angle([0.0, -0.508610249-0.8609387926j])
-    # V_mag_C = np.abs([0.0, - 0.491289741 + 0.8709387926j])
-    # V_ang_C = np.angle([0.0, - 0.491289741 + 0.8709387926j])
-    #
-    # [1. + 0.j   0.99989999 - 0.01j]
-    # res.voltage_B = [-0.5 - 0.8660254038j -0.508610249-0.8609387926j]
-    # res.voltage_C = [-0.5 + 0.8660254038j - 0.491289741 + 0.8709387926j]
-    # ----------------------------------------------------------
 
     # --- PF branch currents (RMS p.u. phasors) ---
-    m = nc.passive_branch_data.nelm
+    m = dta.n_br
 
-    I_mag_f_N = np.abs(res.If_N) if hasattr(res, 'If_N') else np.zeros(nc.bus_data.nbus)
-    I_ang_f_N = np.angle(res.If_N) if hasattr(res, 'If_N') else np.zeros(nc.bus_data.nbus)
-    I_mag_f_A = np.abs(res.If_A) if hasattr(res, 'If_A') else np.zeros(nc.bus_data.nbus)
-    I_ang_f_A = np.angle(res.If_A) if hasattr(res, 'If_A') else np.zeros(nc.bus_data.nbus)
-    I_mag_f_B = np.abs(res.If_B) if hasattr(res, 'If_B') else np.zeros(nc.bus_data.nbus)
-    I_ang_f_B = np.angle(res.If_B) if hasattr(res, 'If_B') else np.zeros(nc.bus_data.nbus)
-    I_mag_f_C = np.abs(res.If_C) if hasattr(res, 'If_C') else np.zeros(nc.bus_data.nbus)
-    I_ang_f_C = np.angle(res.If_C) if hasattr(res, 'If_C') else np.zeros(nc.bus_data.nbus)
+    I_mag_f_N = np.abs(res.If_N) if hasattr(res, 'If_N') else np.zeros(dta.n_bus)
+    I_ang_f_N = np.angle(res.If_N) if hasattr(res, 'If_N') else np.zeros(dta.n_bus)
+    I_mag_f_A = np.abs(res.If_A) if hasattr(res, 'If_A') else np.zeros(dta.n_bus)
+    I_ang_f_A = np.angle(res.If_A) if hasattr(res, 'If_A') else np.zeros(dta.n_bus)
+    I_mag_f_B = np.abs(res.If_B) if hasattr(res, 'If_B') else np.zeros(dta.n_bus)
+    I_ang_f_B = np.angle(res.If_B) if hasattr(res, 'If_B') else np.zeros(dta.n_bus)
+    I_mag_f_C = np.abs(res.If_C) if hasattr(res, 'If_C') else np.zeros(dta.n_bus)
+    I_ang_f_C = np.angle(res.If_C) if hasattr(res, 'If_C') else np.zeros(dta.n_bus)
 
-    I_mag_t_N = np.abs(res.It_N) if hasattr(res, 'It_N') else np.zeros(nc.bus_data.nbus)
-    I_ang_t_N = np.angle(res.It_N) if hasattr(res, 'It_N') else np.zeros(nc.bus_data.nbus)
-    I_mag_t_A = np.abs(res.It_A) if hasattr(res, 'It_A') else np.zeros(nc.bus_data.nbus)
-    I_ang_t_A = np.angle(res.It_A) if hasattr(res, 'It_A') else np.zeros(nc.bus_data.nbus)
-    I_mag_t_B = np.abs(res.It_B) if hasattr(res, 'It_B') else np.zeros(nc.bus_data.nbus)
-    I_ang_t_B = np.angle(res.It_B) if hasattr(res, 'It_B') else np.zeros(nc.bus_data.nbus)
-    I_mag_t_C = np.abs(res.It_C) if hasattr(res, 'It_C') else np.zeros(nc.bus_data.nbus)
-    I_ang_t_C = np.angle(res.It_C) if hasattr(res, 'It_C') else np.zeros(nc.bus_data.nbus)
+    I_mag_t_N = np.abs(res.It_N) if hasattr(res, 'It_N') else np.zeros(dta.n_bus)
+    I_ang_t_N = np.angle(res.It_N) if hasattr(res, 'It_N') else np.zeros(dta.n_bus)
+    I_mag_t_A = np.abs(res.It_A) if hasattr(res, 'It_A') else np.zeros(dta.n_bus)
+    I_ang_t_A = np.angle(res.It_A) if hasattr(res, 'It_A') else np.zeros(dta.n_bus)
+    I_mag_t_B = np.abs(res.It_B) if hasattr(res, 'It_B') else np.zeros(dta.n_bus)
+    I_ang_t_B = np.angle(res.It_B) if hasattr(res, 'It_B') else np.zeros(dta.n_bus)
+    I_mag_t_C = np.abs(res.It_C) if hasattr(res, 'It_C') else np.zeros(dta.n_bus)
+    I_ang_t_C = np.angle(res.It_C) if hasattr(res, 'It_C') else np.zeros(dta.n_bus)
 
 
     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N,A,B,C
@@ -1320,33 +1224,47 @@ def simulate_emt(
     steps = int(np.ceil(simulation_time / dta.h))
 
     # branch_lookup = np.asarray(branch_lookup)
-    Nbranches_masked = int(sum(branch_lookup >= 0))
+    Nbranches_masked = int(sum(dta.branch_lookup >= 0))
     total_branch_currents = 2 * Nbranches_masked
 
-    branch_from_lookup = np.full_like(branch_lookup, -1)
-    branch_to_lookup = np.full_like(branch_lookup, -1)
+    branch_from_lookup = np.full_like(dta.branch_lookup, -1)
+    branch_to_lookup = np.full_like(dta.branch_lookup, -1)
 
-    for r, base in enumerate(branch_lookup):
+    for r, base in enumerate(dta.branch_lookup):
         if base >= 0:
             branch_from_lookup[r] = 2 * base
             branch_to_lookup[r] = 2 * base + 1
 
     # initialize results vectors
+    n_nodes = sum(dta.binary_bus_mask)
+
     temp = np.zeros((steps, 1))  # time
-    V = np.zeros((steps, Nnodes))  # bus voltages vector
-    Is = np.zeros((steps, Nnodes))  # currents from current sources vector
-    hist = np.zeros((steps, Nnodes))  # I_history currents vector
+    V = np.zeros((steps, n_nodes))  # bus voltages vector
+    Is = np.zeros((steps, n_nodes))  # currents from current sources vector
+    hist = np.zeros((steps, n_nodes))  # I_history currents vector
 
     Ibranches = np.zeros((steps, total_branch_currents))
     hist_branches = np.zeros((steps, total_branch_currents))
     hist_magn_trafos = np.zeros((steps, Nbranches_masked))
-    V_buffer = np.zeros((N_delay + 1, Nnodes))
-    I_lines_buffer = np.zeros((N_delay + 1, total_branch_currents))
-    I_magn_buffer = np.zeros((N_delay + 1, Nbranches_masked))
+    V_buffer = np.zeros((dta.n_delay + 1, n_nodes))
+    I_lines_buffer = np.zeros((dta.n_delay + 1, total_branch_currents))
+    I_magn_buffer = np.zeros((dta.n_delay + 1, Nbranches_masked))
     print(f"Initial conditions are: V_buffer = {V_buffer}, I_lines_buffer = {I_lines_buffer}")
 
+    initialize_buffers( #nc= nc,
+                       #grid= grid,
+                       pf_results= PowerFlowResults3Ph,
+                       N_delay= dta.n_delay,
+                       h= dta.h,
+                       V_buffer= V_buffer,
+                       I_lines_buffer= I_lines_buffer,
+                       binary_bus_mask= dta.binary_bus_mask,
+                       bus_idx_lookup= dta.bus_idx_lookup,
+                       branch_from_lookup= IntVec,
+                       branch_to_lookup= IntVec)
+
     # Symbolic EmtSolverProperties association
-    emt_vec = Vector(grid.get_bus_number())
+    emt_vec = Vector(dta.n_bus)
     bus_regions_dict = grid.get_injection_devices_grouped_by_bus()  # dict with only injections (no bus blocks)
 
     # TODO
@@ -1357,7 +1275,7 @@ def simulate_emt(
         emt_vec[i] = EmtSolverProperties(
             bus=bus,
             bus_index=i,
-            syst_blocks=syst_blocks,
+            syst_blocks=dta.syst_blocks,
             bus_regions_dict=bus_regions_dict,
             alter_params_mappings=alter_params_mappings,
             init_guesses=init_guesses,
@@ -1371,7 +1289,7 @@ def simulate_emt(
                         bus=bus,
                         i=i,
                         nc=nc,
-                        binary_bus_mask=binary_bus_mask)
+                        binary_bus_mask=dta.binary_bus_mask)
         V[0, :] += V0
 
         if emt_vec[i].blocksolver is not None:  # else, it's 0
@@ -1459,7 +1377,7 @@ def simulate_emt(
         # check events that change G TODO
 
         # calculate current sources i_s: from active elements
-        Is[step, :] = predict_Is(n=nc.bus_data.nbus,
+        Is[step, :] = predict_Is(n=dta.n_bus,
                                  Vprev=V[step - 1, :],
                                  step=step,
                                  h=h,
