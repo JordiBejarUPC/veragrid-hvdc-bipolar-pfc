@@ -628,6 +628,7 @@ class ElmShnt(DGSElement):
         DgsProperty('ncapx', 'i', 'DGS field ncapx (i)', py_name='ncapx'),
         DgsProperty('ncapa', 'i', 'DGS field ncapa (i)', py_name='ncapa'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
+        DgsProperty('qrean', 'r', 'DGS field qrean (r)', py_name='qrean'),
         DgsProperty('ctech', 'i', 'DGS field ctech (i)', py_name='ctech'),
         DgsProperty('fres', 'r', 'DGS field fres (r)', py_name='fres'),
         DgsProperty('greaf0', 'r', 'DGS field greaf0 (r)', py_name='greaf0'),
@@ -649,6 +650,7 @@ class ElmShnt(DGSElement):
         self.ncapx: int = 0
         self.ncapa: int = 0
         self.outserv: int = 0
+        self.qrean: float = 0.0
         self.ctech: int = 0
         self.fres: float = 0.0
         self.greaf0: float = 0.0

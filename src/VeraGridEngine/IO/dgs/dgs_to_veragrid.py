@@ -1142,33 +1142,60 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
     Extract (G, B) from an ElmShnt.
     VeraGrid expects:
       - G in MW @ v=1 p.u.
-      - B in MVAr @ v=1 p.u.
-    PowerFactory DGS provides qcapn as MVAr per step and ncapa as connected steps.
+      - B in MVAr @ v=1 p.u. (positive capacitive, negative inductive)
+
+    PowerFactory DGS typically provides:
+      - qcapn / ncapa for capacitor steps
+      - qrean for reactor MVAr
+      - qtotn as total rated MVAr magnitude (often positive regardless of type)
+      - shtype: 1 = reactor, 2 = capacitor
     """
     name = elmshnt.loc_name or _ref_id(elmshnt.ID) or "Shunt"
 
     # Active losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
     g_mw: float = 0.0
 
-    # Reactive power per step (MVAr) and connected steps
-    q_step: float = elmshnt.qcapn
-    n_on: int = elmshnt.ncapa
-
-    if n_on <= 0:
-        n_on = 1
-
-    b_mvar: float = q_step * float(n_on)
-
-    # If total rated MVAr is present in schema, prefer it when non-zero
+    shtype: int = elmshnt.shtype  # 1 reactor, 2 capacitor
     qtotn: float = elmshnt.qtotn
+
+    # Default to 0.0 in case the element is not energized or data is missing
+    b_mvar: float = 0.0
+
+    # Prefer total rating when available, but apply sign from shtype (PF export often stores magnitude)
     if qtotn != 0.0:
-        b_mvar = qtotn
+        b_mvar = abs(qtotn)
+    else:
+        if shtype == 1:
+            # Reactor
+            b_mvar = abs(elmshnt.qrean)
+        elif shtype == 2:
+            # Capacitor (may be step-based)
+            q_step: float = elmshnt.qcapn
+            n_on: int = elmshnt.ncapa
+            if n_on <= 0:
+                n_on = 1
+            b_mvar = abs(q_step) * float(n_on)
+        else:
+            # Fallback: net MVAr = qcapn - qrean
+            q_step: float = elmshnt.qcapn
+            n_on: int = elmshnt.ncapa
+            if n_on <= 0:
+                n_on = 1
+            b_mvar = (q_step * float(n_on)) - elmshnt.qrean
+
+    # Apply sign convention
+    if shtype == 1:
+        b_mvar = -abs(b_mvar)
+    elif shtype == 2:
+        b_mvar = abs(b_mvar)
+    # else: keep computed sign (fallback branch)
 
     if b_mvar == 0.0:
-        logger.add_warning(f"Shunt '{name}': computed B=0.0 MVAr (qcapn={q_step}, ncapa={n_on}).")
+        logger.add_warning(
+            f"Shunt '{name}': computed B=0.0 MVAr (shtype={shtype}, qcapn={elmshnt.qcapn}, ncapa={elmshnt.ncapa}, qrean={elmshnt.qrean}, qtotn={qtotn})."
+        )
 
     return g_mw, b_mvar
-
 
 def convert_dgs_to_shunt(elmshnt: ElmShnt,
                          stacubic_dict: Dict[str, List[int]],
@@ -1180,12 +1207,6 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     Convert ElmShnt to VeraGrid fixed Shunt.
     """
     name = elmshnt.loc_name or f"Shunt_{_ref_id(elmshnt.ID)}"
-
-    # Fixed shunts only: if max steps > 1, the device is stepped/controllable in PF
-    ncapx: int = elmshnt.ncapx
-    if ncapx > 1:
-        logger.add_warning(f"ElmShnt '{name}': ncapx={ncapx} indicates stepped shunt. Skipping fixed conversion.")
-        raise ValueError("ElmShnt is stepped/controllable (ncapx>1).")
 
     bus = get_injection_bus(elm_id=elmshnt.ID,
                             stacubic_dict=stacubic_dict,
@@ -2357,3 +2378,4 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
 """
 #TODO: For the test_v5_export grid, all buses with generators appear as Slacks. Fix this
 #TODO: There might be an error with 3W trafos impedances
+#TODO: Shunt seem to always be in positive
