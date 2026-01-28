@@ -502,7 +502,10 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
     # gather the circuit
     circuit.model_version += 1
     data['circuit'] = circuit.to_dict()
-
+    blocks = block_saver.get_blocks()
+    vars = block_saver.get_vars_to_save()
+    consts = block_saver.get_const_to_save()
+    diff_vars = block_saver.get_diff_vars_to_save()
     # At this point I already have the symbolic data stored in block_saver
 
     return {

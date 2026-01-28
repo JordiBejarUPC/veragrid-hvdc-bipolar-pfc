@@ -289,7 +289,8 @@ def get_frames_from_zip(file_name_zip: str,
     :return: list of DataFrames
     """
     data = {'diagrams': list(),
-            'model_data': dict()}
+            'model_data': dict(),
+            'symbolic_data': dict()}
     json_files = dict()
 
     # open the zip file
