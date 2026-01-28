@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import math
+import re
 import numpy as np
 from typing import Dict, List, Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
@@ -384,6 +385,31 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     if va == 0.0 or vb == 0.0:
         logger.add_warning(f"Transformer '{tr_name}': one or both buses have Vnom=0.0 (va={va}, vb={vb}).")
         return bus_a, bus_b
+
+    if va > vb:
+        return bus_a, bus_b
+    if vb > va:
+        return bus_b, bus_a
+
+    # Equal-Vnom transformers: HV/LV is ambiguous. Make ordering deterministic so that
+    # RAW and DGS imports end up with the same 'from/to' orientation.
+    m = re.search(r"_(\d+)_(\d+)(?:_|$)", tr_name or "")
+    if m:
+        i = int(m.group(1))
+        j = int(m.group(2))
+
+        sa = (str(bus_a.name or "").strip().split() or [""])[0]
+        sb = (str(bus_b.name or "").strip().split() or [""])[0]
+        ida = int(sa) if sa.isdigit() else None
+        idb = int(sb) if sb.isdigit() else None
+
+        if ida == j and idb == i:
+            return bus_b, bus_a
+        if ida == i and idb == j:
+            return bus_a, bus_b
+
+    logger.add_warning(f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Keeping original order.")
+    return bus_a, bus_b
 
     if va > vb:
         return bus_a, bus_b
