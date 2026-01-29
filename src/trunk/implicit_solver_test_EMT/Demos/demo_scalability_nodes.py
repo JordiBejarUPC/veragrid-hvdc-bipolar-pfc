@@ -26,6 +26,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+
 def create_massive_chain(n_masses=1000):
     """
     Constructs a massive chain of oscillators.
@@ -85,7 +86,7 @@ def run_scalability_test():
 
     print(f" > Initializing BlockSolver (Compiling JIT Kernels)...")
 
-    #TODO(OPTIMIZATION): IMPLEMENT SPARSE FORWARD-MODE AD (ELIMINATE O(N^2) SETUP)
+    # TODO(OPTIMIZATION): IMPLEMENT SPARSE FORWARD-MODE AD (ELIMINATE O(N^2) SETUP)
 
     t_compile_start = time.perf_counter()
     solver = BlockSolver(system_block, glob_time)

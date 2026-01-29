@@ -49,6 +49,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("NewtonDiagnosticsDemo")
 
+
 # ---------------------------------------------------------------------
 # Fake Newton context (as block_solver would provide)
 # ---------------------------------------------------------------------
@@ -72,7 +73,7 @@ def dense_singular():
 
     A = np.array([
         [1.0, 2.0],
-        [0.0, 0.0],   # Rank-deficient row
+        [0.0, 0.0],  # Rank-deficient row
     ])
     b = np.array([1.0, 0.0])
 
@@ -132,7 +133,7 @@ def exploding_step():
     logger.warning("=== TEST: Exploding Newton step ===")
 
     A = np.eye(2)
-    b = np.array([1e8, -1e8])   # Huge RHS → huge dx
+    b = np.array([1e8, -1e8])  # Huge RHS → huge dx
 
     cfg = NewtonDiagnosticsConfig(
         step_norm_explode=1e6,

@@ -22,6 +22,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 
+
 def create_buck_converter_system():
     """
     Creates the symbolic Block representation of a Buck Converter.
@@ -116,8 +117,8 @@ def run_emt_demo():
     # Solver diagnostics (optional)
     collector = solver.newton_trace_collector
     print(f"Collected {len(collector.records)} Newton iterations")
-    df=collector.to_dataframe()
-    #df.to_csv("newton_diagnostics.csv")
+    df = collector.to_dataframe()
+    df.to_csv("newton_diagnostics.csv")
 
     idx_iL = solver.uid2idx_vars[sys_block.state_vars[0].uid]
     idx_vC = solver.uid2idx_vars[sys_block.state_vars[1].uid]

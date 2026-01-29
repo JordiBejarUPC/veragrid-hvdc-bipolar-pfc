@@ -39,7 +39,8 @@ from typing import Dict, List, Callable
 import hashlib
 
 # Importamos los componentes de tu framework simbólico
-from .symbolic import Expr, BinOp, UnOp, Func, Var, Const, DiffVar, LagVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, DiffVar, LagVar
+
 
 # ==============================================================================
 # 1. discretization strategy (Numerical Methods)
@@ -47,7 +48,7 @@ from .symbolic import Expr, BinOp, UnOp, Func, Var, Const, DiffVar, LagVar
 
 class DiscretizationMethod(ABC):
     """Abstract base class for discretization strategies."""
-    
+
     @abstractmethod
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         """
@@ -57,23 +58,28 @@ class DiscretizationMethod(ABC):
         """
         pass
 
+
 class TrapezoidalMethod(DiscretizationMethod):
     """
     Trapezoid rule (Implicit, Order 2, A-stable).
     Formula: dx_n = (2/h)*(x_n - x_{n-1}) - dx_{n-1}
     """
+
     def discretize(self, idx: int, h: str = 'h') -> str:
         # Require: states, history (x_prev), d_history (dx_prev)
         return f"((2.0/{h}) * (states[{idx}] - history[{idx}]) - d_history[{idx}])"
+
 
 class BackwardEulerMethod(DiscretizationMethod):
     """
     Backward Euler (Implicit, Order 1, L-stable).
     Fórmula: dx_n = (x_n - x_{n-1}) / h
     """
+
     def discretize(self, idx: int, h: str = 'h') -> str:
         # Require: states, history (x_prev)
         return f"((states[{idx}] - history[{idx}]) / {h})"
+
 
 class BDF2Method(DiscretizationMethod):
     """
@@ -81,8 +87,10 @@ class BDF2Method(DiscretizationMethod):
     Fórmula: dx_n = (1.5*x_n - 2*x_{n-1} + 0.5*x_{n-2}) / h
     Note: Requires an additional history buffer (history2).
     """
+
     def discretize(self, idx: int, h: str = 'h') -> str:
         return f"((1.5*states[{idx}] - 2.0*history[{idx}] + 0.5*history2[{idx}]) / {h})"
+
 
 # ==============================================================================
 # 2. CSE (Common Subexpression Elimination) Analyzer (large systems)
@@ -212,8 +220,9 @@ class SubexpressionAnalyzer:
             return f"L{node.lag}{node.base_var.name}"
         return str(node)
 
+
 # ==============================================================================
-#3. Conversion to string based on visitor pattern (sequentiality)
+# 3. Conversion to string based on visitor pattern (sequentiality)
 # ==============================================================================
 
 class SymbolicToPythonVisitor:
@@ -287,30 +296,34 @@ class SymbolicToPythonVisitor:
             return f"history[{self.var_map[node.base_var.name]}]"
         raise NotImplementedError("Complex LagVar not supported.")
 
+
 # ==============================================================================
 # 3. Compiler (sym-num)(discretized)
 # ==============================================================================
 
 class EquationCompiler:
     """Main interface for compiling symbolic equations into executable functions."""
-    
+
     METHODS = {
         'trapezoidal': TrapezoidalMethod(),
         'be': BackwardEulerMethod(),
         'bdf2': BDF2Method()
     }
 
-    def __init__(self, variables: List[str], parameters: List[str] = None, method: str = 'trapezoidal'):
+    def __init__(self,
+                 variables: List[str],
+                 parameters: List[str] = None,
+                 method: str = 'trapezoidal'):
         self.variables = variables
         self.parameters = parameters or []
-        
+
         if method not in self.METHODS:
             raise ValueError(f"Method '{method}' Unknown. Options: {list(self.METHODS.keys())}")
-            
+
         self.strategy = self.METHODS[method]
         self.var_map = {name: i for i, name in enumerate(variables)}
         self.param_map = {name: i for i, name in enumerate(self.parameters)}
-        
+
         self.visitor = SymbolicToPythonVisitor(self.var_map, self.param_map, self.strategy)
 
     def compile(self, equations: List[Expr], func_name: str = "step_fn", use_cse: bool = True) -> Callable:
