@@ -25,15 +25,16 @@ from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, 
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
 
 
-# @nb.njit(cache=True)
+@nb.njit(cache=True)
 def lookup_from_mask(mask: BoolVec) -> IntVec:
     """
-
-    :param mask:
-    :return:
+    This function builds the lookup vector based on the information provided by the mask vector.
+    The mask is a boolean vector with True for existing buses and False for non-existing buses.
+    The lookup vector will save a -1 for non-existing buses and will order the existing buses from 0 to n.
+    :param mask: Boolean vector with True for existing buses and False for non-existing buses.
+    :return: lookup
     """
-    lookup = [-1] * len(mask)  # start with all -1
-    # lookup = np.full(len(mask), -1, dtype=int)  # TODO: investigate why this change breaks the code
+    lookup = np.full(len(mask), -1, dtype=nb.int64)
     counter = 0
     for i, m in enumerate(mask):
         if m:
@@ -43,9 +44,10 @@ def lookup_from_mask(mask: BoolVec) -> IntVec:
     return lookup
 
 
-def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
+def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix]:
     """
-    Compute the Ybus matrix for a generator in a 3-phase system
+    Compute the Ybus matrix for a generator in a 3-phase system with neutral.
+    It is used only during the short-circuit analysis, not in power flow simulations.
     :param nc: NumericalCircuit
     :return: Ybus
     """
