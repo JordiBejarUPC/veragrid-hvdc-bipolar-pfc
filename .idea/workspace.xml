@@ -28,8 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="three-phase functions compute_current_loads and compute_power_loads are converted to numba">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="some TODOs in the pf_basic_formulation_3ph.py">
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -1809,7 +1808,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="705" />
+    <option name="localTasksCounter" value="706" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1875,7 +1874,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="minor changes" />
     <MESSAGE value="5.6.10" />
     <MESSAGE value="Fixed test issue with simplified linear analysis" />
     <MESSAGE value="merged" />
@@ -1900,7 +1898,8 @@
     <MESSAGE value="changes in compute_ybus_generator" />
     <MESSAGE value="changes in lookup_from_mask" />
     <MESSAGE value="three-phase functions compute_current_loads and compute_power_loads are converted to numba" />
-    <option name="LAST_COMMIT_MESSAGE" value="three-phase functions compute_current_loads and compute_power_loads are converted to numba" />
+    <MESSAGE value="some TODOs in the pf_basic_formulation_3ph.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="some TODOs in the pf_basic_formulation_3ph.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

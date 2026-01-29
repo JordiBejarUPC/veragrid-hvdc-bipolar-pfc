@@ -195,11 +195,10 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
 
     Ybus = Cf.T @ Yf + Ct.T @ Yt + Ysh_bus
 
-    # TODO: consider using np.ix?
-    Ybus = Ybus[binary_bus_mask, :][:, binary_bus_mask]
-    Ysh_bus = Ysh_bus[binary_bus_mask, :][:, binary_bus_mask]
-    Yf = Yf[R, :][:, binary_bus_mask]
-    Yt = Yt[R, :][:, binary_bus_mask]
+    Ybus = Ybus[np.ix_(binary_bus_mask, binary_bus_mask)]
+    Ysh_bus = Ysh_bus[np.ix_(binary_bus_mask, binary_bus_mask)]
+    Yf = Yf[np.ix_(R, binary_bus_mask)]
+    Yt = Yt[np.ix_(R, binary_bus_mask)]
 
     bus_idx_lookup = lookup_from_mask(binary_bus_mask)
     branch_lookup = lookup_from_mask(R)
@@ -1032,7 +1031,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, self.V)
 
-        self._f = compute_fx(Icalc, Ibus, self.idx_dP, self.idx_dQ)  # TODO: check what is up with Ibus
+        self._f = compute_fx(Icalc, Ibus, self.idx_dP, self.idx_dQ)
 
         return self._f
 
