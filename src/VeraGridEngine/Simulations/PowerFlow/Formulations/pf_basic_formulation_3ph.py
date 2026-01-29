@@ -16,14 +16,13 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_current,
-                                                                                    compute_current,
-                                                                                    compute_fx, polar_to_rect,
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_current,
+                                                                                    compute_fx,
+                                                                                    polar_to_rect,
                                                                                     fortescue_012_to_abc)
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
-from VeraGridEngine.enumerations import ShuntConnectionType
 
 
 # @nb.njit(cache=True)
@@ -56,7 +55,6 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
     Ybus_gen = lil_matrix((4 * n, 4 * n), dtype=complex)
     idx4 = np.array([0, 1, 2, 3])
-    # Yzeros = np.zeros((4 * n, 4 * n), dtype=complex)
 
     for k in range(m):
         f = nc.generator_data.bus_idx[k]
@@ -71,10 +69,7 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
         # Fortescue
         Zabc = fortescue_012_to_abc(complex(r0, x0), complex(r1, x1), complex(r2, x2))
-        Ynabc = np.zeros((4, 4), dtype=complex)
-        Ynabc[1:4, 1:4] = np.linalg.inv(Zabc)
-        Ybus_gen[np.ix_(f4, f4)] = Ynabc
-        # Yzeros[np.ix_(f4, f4)] = Ynabc
+        Ybus_gen[np.ix_(f4[1:4], f4[1:4])] = np.linalg.inv(Zabc)
 
     return Ybus_gen.tocsc()
 
@@ -84,6 +79,7 @@ def is_yg(x) -> bool:
     """
     Devuelve True si x representa conexión 'Yg' (acepta Enum o str).
     """
+    # TODO: What the F, hasattr must never be used
     if hasattr(x, "value"):  # Enum
         return x.value == "Yg"
     return str(x) == "Yg"  # str u objeto que imprime 'Yg'
@@ -161,7 +157,7 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     bus_has_neutral = np.ones(4 * n, dtype=bool)  # por defecto el neutro del bus está activo
 
     for bus_idx in range(n):
-        connected = np.where((F == bus_idx) | (T == bus_idx))[0]
+        connected = np.where((F == bus_idx) | (T == bus_idx))[0]  # TODO: where is very expensive
         if connected.size == 0:
             continue
 
@@ -196,6 +192,8 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
         Ysh_bus[np.ix_(f4, f4)] += nc.load_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
 
     Ybus = Cf.T @ Yf + Ct.T @ Yt + Ysh_bus
+
+    # TODO: consider using np.ix?
     Ybus = Ybus[binary_bus_mask, :][:, binary_bus_mask]
     Ysh_bus = Ysh_bus[binary_bus_mask, :][:, binary_bus_mask]
     Yf = Yf[R, :][:, binary_bus_mask]
@@ -222,6 +220,7 @@ def compute_current_loads(bus_idx: IntVec,
     :param V:
     :param Istar:
     :param Idelta:
+    :param Ifloating:
     :return:
     """
     n = len(V)
@@ -286,14 +285,14 @@ def compute_current_loads(bus_idx: IntVec,
 
             Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
 
-            I[a2] = -(Iab)
+            I[a2] = -Iab
             I[b2] = -(-Iab)
 
         elif delta and bc_connected:
 
             Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
 
-            I[b2] = -(Ibc)
+            I[b2] = -Ibc
             I[c2] = -(-Ibc)
 
         elif delta and ca_connected:
@@ -301,7 +300,7 @@ def compute_current_loads(bus_idx: IntVec,
             Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
 
             I[a2] = -(-Ica)
-            I[c2] = -(Ica)
+            I[c2] = -Ica
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 
@@ -375,8 +374,10 @@ def compute_current_loads(bus_idx: IntVec,
 
     Y_current_linear = I / V
 
-    return I, Y_current_linear, Un_floating
+    return I, Y_current_linear, Un_floating  # TODO: doesn't match
 
+
+# TODO: numba?
 
 def compute_power_loads(bus_idx: IntVec,
                         bus_lookup: IntVec,
@@ -385,11 +386,13 @@ def compute_power_loads(bus_idx: IntVec,
                         Sfloating: CxVec,
                         Sdelta: CxVec) -> Tuple[CxVec, CxVec, CxVec]:
     """
+
     :param bus_idx:
     :param bus_lookup:
     :param V:
-    :param Istar:
-    :param Idelta:
+    :param Sstar:
+    :param Sfloating:
+    :param Sdelta:
     :return:
     """
     n = len(V)
@@ -523,7 +526,7 @@ def compute_power_loads(bus_idx: IntVec,
 
     Y_power_linear = I / V
 
-    return I, Y_power_linear, Un_floating
+    return I, Y_power_linear, Un_floating  # TODO: doesn't match
 
 
 def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-6) -> CSC:
@@ -572,6 +575,7 @@ def expand3ph(x: np.ndarray):
     return x4
 
 
+# TODO: numba?
 def slice_indices(pq: IntVec, bus_lookup: IntVec) -> IntVec:
     """
     Slice the indices based on the bus_lookup
@@ -593,6 +597,7 @@ def slice_indices(pq: IntVec, bus_lookup: IntVec) -> IntVec:
     return vec[:counter]
 
 
+# TODO: numba?
 def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
     """
     Expands a numpy array to 3-pase copying the same values
@@ -609,6 +614,7 @@ def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
     return x4
 
 
+# TODO: numba?
 def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec):
     """
     Expands and slices a numpy array to 3-phase copying the same values
@@ -622,6 +628,7 @@ def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec):
     return np.sort(x3_final)
 
 
+# TODO: numba?
 def expandVoltage3ph(V0: CxVec) -> CxVec:
     """
     Expands a numpy array to 3-pase copying the same values
@@ -650,6 +657,7 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
     return x4
 
 
+# TODO: numba?
 def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
     """
     :param magnitude:
@@ -667,7 +675,8 @@ def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
     return magnitude_expanded
 
 
-def expand_matrix(magnitude: np.ndarray, lookup: IntVec):
+# TODO: numba?
+def expand_matrix(magnitude: np.ndarray, lookup: IntVec):  # TODO: return type?
     """
     Expands a matrix by adding zero rows and columns based on the lookup indices.
     If a lookup value is negative, the corresponding row and column in the matrix
@@ -811,19 +820,23 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
 
-        Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                             bus_lookup=self.bus_lookup,
-                                                                             V=V,
-                                                                             Sstar=self.nc.load_data.S3_star,
-                                                                             Sfloating=self.nc.load_data.S3_floatingstar,
-                                                                             Sdelta=self.nc.load_data.S3_delta)
+        (Ipower,
+         Y_power_linear,
+         self.Un_floating_power) = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                       bus_lookup=self.bus_lookup,
+                                                       V=V,
+                                                       Sstar=self.nc.load_data.S3_star,
+                                                       Sfloating=self.nc.load_data.S3_floatingstar,
+                                                       Sdelta=self.nc.load_data.S3_delta)
 
-        Icurrent, Y_current_linear, self.Un_floating_current = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                     bus_lookup=self.bus_lookup,
-                                                                                     V=V,
-                                                                                     Istar=self.nc.load_data.I3_star,
-                                                                                     Idelta=self.nc.load_data.I3_delta,
-                                                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+        (Icurrent,
+         Y_current_linear,
+         self.Un_floating_current) = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                           bus_lookup=self.bus_lookup,
+                                                           V=V,
+                                                           Istar=self.nc.load_data.I3_star,
+                                                           Idelta=self.nc.load_data.I3_delta,
+                                                           Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, V)
@@ -857,19 +870,23 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
 
-        Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                             bus_lookup=self.bus_lookup,
-                                                                             V=V,
-                                                                             Sstar=self.nc.load_data.S3_star,
-                                                                             Sfloating=self.nc.load_data.S3_floatingstar,
-                                                                             Sdelta=self.nc.load_data.S3_delta)
+        (Ipower,
+         Y_power_linear,
+         self.Un_floating_power) = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                       bus_lookup=self.bus_lookup,
+                                                       V=V,
+                                                       Sstar=self.nc.load_data.S3_star,
+                                                       Sfloating=self.nc.load_data.S3_floatingstar,
+                                                       Sdelta=self.nc.load_data.S3_delta)
 
-        Icurrent, Y_current_linear, self.Un_floating_current = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                     bus_lookup=self.bus_lookup,
-                                                                                     V=V,
-                                                                                     Istar=self.nc.load_data.I3_star,
-                                                                                     Idelta=self.nc.load_data.I3_delta,
-                                                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+        (Icurrent,
+         Y_current_linear,
+         self.Un_floating_current) = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                           bus_lookup=self.bus_lookup,
+                                                           V=V,
+                                                           Istar=self.nc.load_data.I3_star,
+                                                           Idelta=self.nc.load_data.I3_delta,
+                                                           Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, V)
@@ -899,22 +916,26 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # compute the function residual
         # Assumes the internal vars were updated already with self.x2var()
 
-        Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                             bus_lookup=self.bus_lookup,
-                                                                             V=self.V,
-                                                                             Sstar=self.nc.load_data.S3_star,
-                                                                             Sfloating=self.nc.load_data.S3_floatingstar,
-                                                                             Sdelta=self.nc.load_data.S3_delta)
+        (Ipower,
+         Y_power_linear,
+         self.Un_floating_power) = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                       bus_lookup=self.bus_lookup,
+                                                       V=self.V,
+                                                       Sstar=self.nc.load_data.S3_star,
+                                                       Sfloating=self.nc.load_data.S3_floatingstar,
+                                                       Sdelta=self.nc.load_data.S3_delta)
 
-        Icurrent, Y_current_linear, self.Un_floating_current = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
-                                                                                     bus_lookup=self.bus_lookup,
-                                                                                     V=self.V,
-                                                                                     Istar=self.nc.load_data.I3_star,
-                                                                                     Idelta=self.nc.load_data.I3_delta,
-                                                                                     Ifloating=self.nc.load_data.I3_floatingstar)
+        (Icurrent,
+         Y_current_linear,
+         self.Un_floating_current) = compute_current_loads(bus_idx=self.nc.load_data.bus_idx,
+                                                           bus_lookup=self.bus_lookup,
+                                                           V=self.V,
+                                                           Istar=self.nc.load_data.I3_star,
+                                                           Idelta=self.nc.load_data.I3_delta,
+                                                           Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
-        self.Icalc = compute_current(self.Ybus, self.V)
+        self.Icalc = compute_current(self.Ybus, self.V)  # TODO: attribute Icalc defined outside __init__
 
         dI = self.Icalc - Ibus  # compute the mismatch
         self._f = np.r_[
@@ -938,7 +959,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                 # check and adjust the reactive power
                 # this function passes pv buses to pq when the limits are violated,
                 # but not pq to pv because that is unstable
-                changed, pv, pq, pqv, p = control_q_inside_method(self.Scalc, self.S0,
+                changed, pv, pq, pqv, p = control_q_inside_method(self.Scalc,
+                                                                  self.S0,  # TODO:  attribute defined outside __init__
                                                                   self.pv, self.pq,
                                                                   self.pqv, self.p,
                                                                   self.Qmin,
@@ -961,7 +983,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                 if ok:
                     any_change = True
                     # Update the objective power to reflect the slack distribution
-                    self.S0 += delta
+                    self.S0 += delta  # TODO:  attribute defined outside __init__
 
             if any_change:
                 # recompute the error based on the new Scalc and S0
@@ -1072,9 +1094,9 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
-        self.Icalc = compute_current(self.Ybus, self.V)
+        self.Icalc = compute_current(self.Ybus, self.V)  # TODO:  attribute defined outside __init__
 
-        self._f = compute_fx(self.Icalc, Ibus, self.idx_dP, self.idx_dQ)
+        self._f = compute_fx(self.Icalc, Ibus, self.idx_dP, self.idx_dQ)  # TODO: check what is up with Ibus
 
         return self._f
 
