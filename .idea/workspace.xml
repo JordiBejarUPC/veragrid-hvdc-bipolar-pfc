@@ -28,12 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="changes in lookup_from_mask">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="three-phase functions compute_current_loads and compute_power_loads are converted to numba">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/common_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/common_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1812,7 +1809,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="704" />
+    <option name="localTasksCounter" value="705" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1878,7 +1875,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added library list in the about window" />
     <MESSAGE value="minor changes" />
     <MESSAGE value="5.6.10" />
     <MESSAGE value="Fixed test issue with simplified linear analysis" />
@@ -1903,7 +1899,8 @@
     <MESSAGE value="update_controls" />
     <MESSAGE value="changes in compute_ybus_generator" />
     <MESSAGE value="changes in lookup_from_mask" />
-    <option name="LAST_COMMIT_MESSAGE" value="changes in lookup_from_mask" />
+    <MESSAGE value="three-phase functions compute_current_loads and compute_power_loads are converted to numba" />
+    <option name="LAST_COMMIT_MESSAGE" value="three-phase functions compute_current_loads and compute_power_loads are converted to numba" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

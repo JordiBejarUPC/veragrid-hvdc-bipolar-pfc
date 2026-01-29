@@ -583,7 +583,7 @@ def expand3ph(x: np.ndarray):
     return x4
 
 
-# TODO: numba?
+@nb.njit(cache=True)
 def slice_indices(pq: IntVec, bus_lookup: IntVec) -> IntVec:
     """
     Slice the indices based on the bus_lookup
@@ -593,8 +593,7 @@ def slice_indices(pq: IntVec, bus_lookup: IntVec) -> IntVec:
     """
 
     max_nnz = len(pq)
-    vec = np.zeros(max_nnz, dtype=int)
-
+    vec = np.zeros(max_nnz, dtype=nb.int64)
     counter = 0
     for pq_idx in pq:
         val = bus_lookup[pq_idx]
@@ -605,7 +604,7 @@ def slice_indices(pq: IntVec, bus_lookup: IntVec) -> IntVec:
     return vec[:counter]
 
 
-# TODO: numba?
+@nb.njit(cache=True)
 def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
     """
     Expands a numpy array to 3-pase copying the same values
@@ -614,7 +613,7 @@ def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
     """
     n = len(x)
     idx4 = np.array([0, 1, 2, 3])
-    x4 = np.zeros(4 * n, dtype=x.dtype)
+    x4 = np.zeros(4 * n, dtype=nb.int64)
 
     for k in range(n):
         x4[4 * k + idx4] = 4 * x[k] + idx4
@@ -622,7 +621,7 @@ def expand_indices_3ph(x: np.ndarray) -> np.ndarray:
     return x4
 
 
-# TODO: numba?
+@nb.njit(cache=True)
 def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec):
     """
     Expands and slices a numpy array to 3-phase copying the same values
@@ -636,7 +635,7 @@ def expand_slice_indices_3ph(x: np.ndarray, bus_lookup: IntVec):
     return np.sort(x3_final)
 
 
-# TODO: numba?
+@nb.njit(cache=True)
 def expandVoltage3ph(V0: CxVec) -> CxVec:
     """
     Expands a numpy array to 3-pase copying the same values
@@ -644,17 +643,17 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
     :return: Array of three-phase voltages in 3-phase ABC
     """
     n = len(V0)
-    idx4 = np.array([0, 1, 2, 3])
+    idx4 = np.array([0, 1, 2, 3], dtype=nb.int64)
 
-    magnitudes_slack = np.array([-1 + 1e-5, 0, 0, 0])
-    angles_slack = np.array([0, 0, -2 * np.pi / 3, 2 * np.pi / 3])
+    magnitudes_slack = np.array([-1 + 1e-5, 0, 0, 0], dtype=nb.float64)
+    angles_slack = np.array([0, 0, -2 * np.pi / 3, 2 * np.pi / 3], dtype=nb.float64)
 
-    magnitudes = np.array([-1 + 1e-4, 0, 0, 0])
-    angles = np.array([10 * np.pi / 180, 0, -2 * np.pi / 3, 2 * np.pi / 3])
+    magnitudes = np.array([-1 + 1e-4, 0, 0, 0], dtype=nb.float64)
+    angles = np.array([10 * np.pi / 180, 0, -2 * np.pi / 3, 2 * np.pi / 3], dtype=nb.float64)
 
     Vm = np.abs(V0)
     Va = np.angle(V0)
-    x4 = np.zeros(4 * n, dtype=complex)
+    x4 = np.zeros(4 * n, dtype=nb.complex128)
 
     for k in range(n):
         if k == 0:
@@ -665,26 +664,28 @@ def expandVoltage3ph(V0: CxVec) -> CxVec:
     return x4
 
 
-# TODO: numba?
-def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
+@nb.njit(cache=True)
+def expand_magnitudes(magnitude: CxVec, lookup: IntVec) -> CxVec:
     """
-    :param magnitude:
-    :param lookup:
-    :return:
+    Expands the masked magnitude using the lookup saving zeros where the lookup is -1,
+    which means that this bus did not exist, and it was previously eliminated.
+    :param magnitude: The magnitude to expand, for instance, the voltage vector at each bus
+    :param lookup: The vector which contains the information about the existing and eliminated buses
+    :return: magnitude_expanded
     """
     n_buses_total = len(lookup)
-    magnitude_expanded = np.zeros(n_buses_total, dtype=complex)
+    magnitude_expanded = np.zeros(n_buses_total, dtype=nb.complex128)
     for i, value in enumerate(lookup):
         if value < 0:
-            magnitude_expanded[i] = 0.0 + 0.0j
+            magnitude_expanded[i] = nb.complex128(0.0)
         else:
             magnitude_expanded[i] = magnitude[value]
 
     return magnitude_expanded
 
 
-# TODO: numba?
-def expand_matrix(magnitude: np.ndarray, lookup: IntVec):  # TODO: return type?
+@nb.njit(cache=True)
+def expand_matrix(magnitude: np.ndarray, lookup: IntVec) -> CxMat:
     """
     Expands a matrix by adding zero rows and columns based on the lookup indices.
     If a lookup value is negative, the corresponding row and column in the matrix
@@ -697,7 +698,7 @@ def expand_matrix(magnitude: np.ndarray, lookup: IntVec):  # TODO: return type?
     n_buses_total = len(lookup)
 
     # Initialize the expanded matrix as a zero matrix of the same size as the lookup
-    magnitude_expanded = np.zeros((n_buses_total, n_buses_total), dtype=complex)
+    magnitude_expanded = np.zeros((n_buses_total, n_buses_total), dtype=nb.complex128)
 
     for i, value in enumerate(lookup):
         if value >= 0:
@@ -943,9 +944,9 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                            Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
-        self.Icalc = compute_current(self.Ybus, self.V)  # TODO: attribute Icalc defined outside __init__
+        Icalc = compute_current(self.Ybus, self.V)
 
-        dI = self.Icalc - Ibus  # compute the mismatch
+        dI = Icalc - Ibus  # compute the mismatch
         self._f = np.r_[
             dI[self.idx_dP].real,
             dI[self.idx_dQ].imag
@@ -1003,79 +1004,6 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
         # converged?
         self._converged = self._error < self.options.tolerance
 
-        # Test Impedance Loads
-        # C = self.Ybus[4:8,0:4]
-        # C = np.array(C.todense())
-        # D = self.Ybus[4:8,4:8]
-        # D = np.array(D.todense())
-        #
-        # Us = self.V[0:4]
-        # Ul = np.linalg.inv(D) @ ( -C @ Us )
-        # print(abs(Ul))
-
-        # End Test
-
-        # Test GroundedStar Current Loads
-        # C = self.Ybus[3:6,0:3]
-        # C = np.array(C.todense())
-        # D = self.Ybus[3:6,3:6]
-        # D = np.array(D.todense())
-        #
-        # Us = self.V[0:3] # Slack Voltage
-        #
-        # Il = Ipower[3:6] # Our Load Current
-        #
-        # Ul = np.linalg.inv(D) @ ((Il/ (self.nc.Sbase / 3)) - C @ Us)
-
-        # print('Ul_VG =', abs(Ul))
-        #
-        # Ul_DSS = np.array([
-        #     0.89869665706803647520 * np.exp(1j * -2.75657808574164953086 * np.pi/180),
-        #     0.90976740143101608727 * np.exp(1j * -122.31589929629066659800 * np.pi/180),
-        #     0.92107437826441029838 * np.exp(1j * 118.13640667650442139802 * np.pi/180)
-        # ]) # OpenDSS Load Voltage
-        #
-        # Il_DSS = C @ Us + D @ Ul_DSS
-        #
-        # print('Il_DSS =', abs(Il_DSS))
-
-        # End Test
-
-        # # Test NeutralStar Current Loads
-        # C = self.Ybus[4:8,0:4]
-        # C = np.array(C.todense())
-        # D = self.Ybus[4:8,4:8]
-        # D = np.array(D.todense())
-        #
-        # Us = self.V[0:4] # Slack Voltage
-        #
-        # Ul = self.V[4:8] # Our Load Voltage
-        #
-        # Il = C @ Us + D @ Ul
-        #
-        # print('Il_VG =', abs(Il))
-        #
-        # Ul_DSS = np.array([
-        #     0.00940211327784176015 * np.exp(1j * 11.25461655165200092199 * np.pi/180),
-        #     0.96547548407542327364 * np.exp(1j * -1.05302216982983520843 * np.pi/180),
-        #     0.98184724046804816577 * np.exp(1j * -121.39194761591437554671 * np.pi/180),
-        #     0.97803982649532672511 * np.exp(1j * 119.39091764083167390709 * np.pi / 180)
-        # ]) # OpenDSS Load Voltage
-        #
-        # Il_DSS = C @ Us + D @ Ul_DSS
-        #
-        # print('Il_DSS =', abs(Il_DSS))
-
-        # End Test
-
-        # Power Test
-        # print("\nPower Modules at VeraGrid UI*:")
-        # Svg = np.zeros(3)
-        # Ia = complex(Il[0])
-        # Ua = complex(self.V[3])
-        # Svg[0] = abs(np.conj(Ia) * (Ua - Un_p)) / (100/3)
-        # print(Svg)
-
         return self._error, self._converged, x, self.f
 
     def fx(self) -> Vec:
@@ -1102,9 +1030,9 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
         Ibus = (Ipower + Icurrent) / (self.nc.Sbase / 3)
-        self.Icalc = compute_current(self.Ybus, self.V)  # TODO:  attribute defined outside __init__
+        Icalc = compute_current(self.Ybus, self.V)
 
-        self._f = compute_fx(self.Icalc, Ibus, self.idx_dP, self.idx_dQ)  # TODO: check what is up with Ibus
+        self._f = compute_fx(Icalc, Ibus, self.idx_dP, self.idx_dQ)  # TODO: check what is up with Ibus
 
         return self._f
 
