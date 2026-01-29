@@ -57,7 +57,6 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
     Ybus_gen = lil_matrix((4 * n, 4 * n), dtype=complex)
     idx4 = np.array([0, 1, 2, 3])
-    # Yzeros = np.zeros((4 * n, 4 * n), dtype=complex)
 
     for k in range(m):
         f = nc.generator_data.bus_idx[k]
@@ -72,10 +71,7 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix, CxMat]:
 
         # Fortescue
         Zabc = fortescue_012_to_abc(complex(r0, x0), complex(r1, x1), complex(r2, x2))
-        Ynabc = np.zeros((4, 4), dtype=complex)
-        Ynabc[1:4, 1:4] = np.linalg.inv(Zabc)
-        Ybus_gen[np.ix_(f4, f4)] = Ynabc  # TODO: Avoid copying
-        # Yzeros[np.ix_(f4, f4)] = Ynabc
+        Ybus_gen[np.ix_(f4[1:4], f4[1:4])] = np.linalg.inv(Zabc)
 
     return Ybus_gen.tocsc()
 
