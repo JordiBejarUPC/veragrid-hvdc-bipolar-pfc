@@ -6,23 +6,22 @@
 import numpy as np
 import pandas as pd
 from typing import Union, List, Dict
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
+
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, SubObjectType, DeviceType
+from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType, EmtLineTypes,
+                                         ParamPowerFlowRefferenceType)
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType, get_line_impedances_with_c
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
-from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
+from VeraGridEngine.Utils.Symbolic.block import Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 
 
 def accept_line_connection(V1: float, V2: float, branch_connection_voltage_tolerance=0.1) -> float:
@@ -80,6 +79,7 @@ class Line(BranchParent):
         'Pt',
         'Qf',
         'Qt',
+        'emt_model_type'
     )
 
     def __init__(self,
@@ -216,6 +216,8 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
+        self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
+
         self.register(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.')
         self.register(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.')
         self.register(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.')
@@ -259,12 +261,16 @@ class Line(BranchParent):
                       display=False)
 
         self.register(key='possible_underground_line_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible underground line types (>1 to denote association), - to denote no association',
+                      definition='Possible underground line types (>1 to denote association), '
+                                 '- to denote no association',
                       display=False)
 
         self.register(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
                       definition='Possible sequence line types (>1 to denote association), - to denote no association',
                       display=False)
+
+        self.register(key='emt_model_type', units='', tpe=EmtLineTypes,
+                      definition='Line EMT model')
 
     @property
     def R(self):
@@ -276,7 +282,7 @@ class Line(BranchParent):
         if self.auto_update_enabled:
             if not self.rms_model.empty():
                 g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R**2 + self._X**2)))
+                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
                 b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
                 self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
                 bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
@@ -423,11 +429,10 @@ class Line(BranchParent):
             value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                 float(self.R / (self.R ** 2 + self.X ** 2)))
             value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
-                    float(-self.X / (self.R ** 2 + self.X ** 2)))
+                float(-self.X / (self.R ** 2 + self.X ** 2)))
             value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(
-                    self.B)
+                self.B)
             self._rms_model = value
-
 
     def set_length(self, val: float):
         """
@@ -738,6 +743,35 @@ class Line(BranchParent):
 
         return self
 
+    def get_tau(self, w: float) -> float:
+        """
+        get EMT delay parameter (tau) in seconds
+        :param w: 2 * pi * freq
+        :return: tau value
+        """
+        if self.template is None:
+            return 0.0
+        else:
+            # TODO: consider using line.ys and line.ysh instead
+            # Physical Parameters from Carson's
+            Z = self.template.z_nabc  # from Carson ohm/km
+            Y = self.template.y_nabc  # from Carson ohm/km
+
+            Z_phys_m = Z / 1e3  # ohm/m
+            Y_phys_m = Y / 1e3  # S/m
+
+            # line parameters / meter
+            l_ = np.imag(Z_phys_m) / w  # H/m
+            c_ = np.imag(Y_phys_m) / w  # F/m
+
+            # v_wave and tau from the travelling wave are taken only from the diagonal components
+            L_w = l_[0, 0]
+            C_w = c_[0, 0]
+            v_wave = 1 / np.sqrt(L_w * C_w)
+
+            # line time delay (tau) (only relevant for Bergeron and JMartí)
+            return self.length * 1e3 / v_wave  # s
+
     def fill_3_phase_from_sequence(self) -> None:
         """
         Fill the 3x3 from the sequence values
@@ -757,3 +791,4 @@ class Line(BranchParent):
         if self._rms_model.empty():
             line_template = get_line_rms_template()
             self.rms_model.model = line_template.block
+

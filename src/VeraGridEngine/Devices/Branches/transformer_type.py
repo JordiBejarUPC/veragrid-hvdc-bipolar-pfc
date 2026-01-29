@@ -337,7 +337,7 @@ def get_impedances(VH_bus: float, VL_bus: float, Sn: float, HV: float, LV: float
 
         z_series = (z_series_hv / z_base_hv_sys) + (z_series_lv / z_base_lv_sys)
 
-        # Shunt impedance (leakage) ----------------------------------------------------------------------------------------
+        # Shunt impedance (leakage) ------------------------------------------------------------------------------------
         if Pfe > 0.0 and I0 > 0.0:
 
             rm = Sbase / (Pfe / 1000.0)

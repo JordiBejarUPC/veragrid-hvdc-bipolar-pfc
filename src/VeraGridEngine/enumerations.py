@@ -2066,6 +2066,7 @@ class SimulationTypes(Enum):
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
     SmallSignal_run = "Small Signal stability"
+    EmtDynamic_run = "EMT Dynamic"
 
     FileOpen = "file open"
     FileSave = "file save"
@@ -2390,6 +2391,7 @@ class RmsInitializationMethod(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+
 class GridReductionMethod(Enum):
     """
     GridReductionMethod
@@ -2463,6 +2465,11 @@ class VarPowerFlowRefferenceType(Enum):
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
 
+    Ia = "Ia"  # Injection current at phase a in p.u.
+    Ib = "Ib"  # Injection current at phase b in p.u.
+    Ic = "Ic"  # Injection current at phase c in p.u.
+    theta = "theta"  # Rotor angle in a synchronous generator in rad
+
     def __str__(self):
         return self.value
 
@@ -2480,6 +2487,7 @@ class VarPowerFlowRefferenceType(Enum):
             return VarPowerFlowRefferenceType[s]
         except KeyError:
             return s
+
 
 class ParamPowerFlowRefferenceType(Enum):
     """
@@ -2655,8 +2663,27 @@ class SimulationBackend(Enum):
     SymbolicImplicit = "symbolic"
     LegacyExternal = "legacy"
 
+class EmtLineTypes(Enum):
+    """
+    EmtLineTypes
+    """
+    Bergeron = "Bergeron"
+    J_Marti = "J_Marti"
+    PI = "Pi"
+
     def __str__(self):
         return self.value
 
     def __repr__(self):
         return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return EmtLineTypes[s]
+        except KeyError:
+            return s

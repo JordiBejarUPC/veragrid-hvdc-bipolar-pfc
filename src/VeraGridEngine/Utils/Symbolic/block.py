@@ -8,15 +8,15 @@ from __future__ import annotations
 import copy
 import uuid
 import numpy as np
-from dataclasses import dataclass, field
 from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from enum import Enum, auto
 
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import Logger, Vec
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic, _dict_to_expr, abs,
+                                                    DiffVar, hard_sat, heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -79,7 +79,7 @@ def block2implicit(block: Block):
     diff_block = block.copy()
 
     for i, eq in enumerate(block.state_eqs):
-        state_var = block.state_vars[i] # Todo: not robust, order has to be followed
+        state_var = block.state_vars[i]  # Todo: not robust, order has to be followed
         if state_var.diff_var is None:
             dt_var = DiffVar(name='dt_' + state_var.name, base_var=state_var)
             diff_block.diff_vars.append(dt_var)
@@ -151,7 +151,9 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
 
     return block, y
 
-def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = None, name: Optional[str] = ''):
+
+def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = None,
+                                name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
     den: list of denominator coefficients [a0, a1, ..., an]
@@ -255,7 +257,7 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
             diff_vars.append(dx)
         diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
 
-            # Last equation: linear combination
+        # Last equation: linear combination
     last_eq = (
             sum(den[i] * y_states[i] for i in range(len(y_states)))
             - sum(num[i] * x_states[i] for i in range(len(x_states)))
@@ -318,23 +320,27 @@ def tf_to_block_with_states(num: np.ndarray, den: np.ndarray, x):
             - sum(num[i] * x_states[i] for i in range(len(num)))
     )
 
+    aux_eqs.append(last_eq)
+
     block = Block(
         state_eqs=state_eqs,
         state_vars=state_vars,
-        algebraic_eqs=[last_eq] + aux_eqs,
+        algebraic_eqs=aux_eqs,
+        # TODO: this is highly suspicious (better add vars to aux_vars)
         algebraic_vars=x_states[0] + y_states[0] + aux_vars,
     )
     return block, y_states[0]
 
-def tf_to_diffblock_with_antiwindup(num: np.ndarray,
-                    den: np.ndarray,
-                    x,
-                    y: Var = None,
-                    name: Optional[str] = '',
-                    sat_min: Expr = Const(float(-1e6)),
-                    sat_max: Expr = Const(float( 1e6)),
-                    multilinear = False,
-                    PI:bool = False):
+
+def tf_to_diffblock_with_antiwindup(num: Vec,
+                                    den: Vec,
+                                    x: Var,
+                                    y: Var = None,
+                                    name: Optional[str] = '',
+                                    sat_min: Expr = Const(float(-1e6)),
+                                    sat_max: Expr = Const(float(1e6)),
+                                    multilinear=False,
+                                    PI: bool = False):
     """
     num: numerator coefficients [b0, ..., bm]
     den: denominator coefficients [a0, ..., an]
@@ -387,17 +393,19 @@ def tf_to_diffblock_with_antiwindup(num: np.ndarray,
     rhs = np.array(diff_vars_x) @ np.array(num)
     lhs = np.array(diff_vars_y) @ np.array(den)
 
-
     # -----------------------------------------------------------
     # ANTI-WINDUP BY MULTIPLYING ALL COEFFICIENTS BY h
     # -----------------------------------------------------------
-    if not multilinear:
-        h1 = heaviside(y - sat_min)
-        h2 = heaviside(sat_max - y)
-    else:
-        h1, ml_block1 = heaviside(y - sat_min, name=f'h1_{name}')
-        h2, ml_block2 = heaviside(sat_max - y, name=f'h2_{name}')
 
+    # TODO: review multilinear implementation
+    # if not multilinear:
+    h1 = heaviside(y - sat_min)
+    h2 = heaviside(sat_max - y)
+
+    # TODO: review multilinear implementation
+    # else:
+    #     h1, ml_block1 = heaviside(y - sat_min, name=f'h1_{name}')
+    #     h2, ml_block2 = heaviside(sat_max - y, name=f'h2_{name}')
 
     # Build LHS term-by-term, skipping multiplication on dy
     rhs = Const(0.0)
@@ -412,14 +420,14 @@ def tf_to_diffblock_with_antiwindup(num: np.ndarray,
         for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
             rhs += term
 
-    f = (rhs-lhs)/Const(den[1])
-    hf = heaviside(rhs-lhs)
-    ha = h1*h2
-    hb = (1-h1)*hf
-    hc = (1-h2)*(1-hf)
+    f = (rhs - lhs) / Const(den[1])
+    hf = heaviside(rhs - lhs)
+    ha = h1 * h2
+    hb = (1 - h1) * hf
+    hc = (1 - h2) * (1 - hf)
     h = heaviside(ha + hb + hc)
     # Differential equation (single equation)
-    eq_main = (diff_vars_y[1] - h*f).simplify()
+    eq_main = (diff_vars_y[1] - h * f).simplify()
 
     block = Block(
         name=name,
@@ -427,20 +435,23 @@ def tf_to_diffblock_with_antiwindup(num: np.ndarray,
         algebraic_eqs=[eq_main] + aux_eqs,
         diff_vars=diff_vars,
     )
-    if multilinear:
-        block.add(ml_block1)    
-        block.add(ml_block2)
+
+    # TODO: review multilinear implementation
+    # if multilinear:
+    #     block.add(ml_block1)
+    #     block.add(ml_block2)
     return block, y
 
+
 def tf_to_diffblock_with_antiwindup_by_feedback(
-    num: np.ndarray,
-    den: np.ndarray,
-    x,
-    y: Var = None,
-    name: Optional[str] = '',
-    sat_min: Expr = Const(-1e6),
-    sat_max: Expr = Const( 1e6),
-    Kaw: Expr = Const(10.0),   # anti-windup gain (1/Tt)
+        num: np.ndarray,
+        den: np.ndarray,
+        x,
+        y: Var = None,
+        name: Optional[str] = '',
+        sat_min: Expr = Const(-1e6),
+        sat_max: Expr = Const(1e6),
+        Kaw: Expr = Const(10.0),  # anti-windup gain (1/Tt)
 ):
     """
     Implements a back-calculation anti-windup controller using (u_sat - u) as feedback input.
@@ -506,9 +517,9 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
     aux_vars.append(u_sat)
 
     sat_expr = (
-        sat_min
-        + (u - sat_min) * heaviside(u - sat_min)
-        - (u - sat_max) * heaviside(u - sat_max)
+            sat_min
+            + (u - sat_min) * heaviside(u - sat_min)
+            - (u - sat_max) * heaviside(u - sat_max)
     )
 
     aux_eqs.append((u_sat - sat_expr).simplify())
@@ -521,7 +532,7 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
     rhs = Const(0)
 
     for i, term in enumerate(den * np.array(diff_y)):
-       lhs += term
+        lhs += term
 
     for term in num * np.array(diff_x):
         rhs += term
@@ -543,7 +554,6 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
 
 def compare_blocks_dict(dict1, dict2):
     logger = Logger()
-
 
     for (prp_name1, prp1), (prp_name2, prp2) in zip(dict1.items(), dict2.items()):
         if prp_name1 == prp_name2 and prp_name1 == "children":
@@ -591,7 +601,7 @@ class Block:
         """
         This represents a group of equations or a group of blocks
 
-        :param algebraic_vars: List of non differential variables (AKA algebraic)
+        :param algebraic_vars: List of non-differential variables (AKA algebraic)
         :param algebraic_eqs: List of equations that provide values for the algebraic variables
         :param state_vars: List of differential variables (AKA state variables)
         :param state_eqs: List of equations that provide values for the state variables
@@ -601,7 +611,6 @@ class Block:
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
         :param event_dict: Dictionary of parameters that can change during the simulations
         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
-        :param placeholder_eqs: Dictionary of placeholder variables and their equations
         :param name: name of the block
         """
 
@@ -845,7 +854,6 @@ class Block:
             if mdl_var is old:
                 self.external_mapping.update({var_pf_ref: new})
 
-
     def update_model(self, old, new):
         """
         :param old:
@@ -864,6 +872,7 @@ class Block:
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
+
 
 class ParametersRefContainer(Enum):
     Container_Name = auto()
@@ -887,6 +896,8 @@ class BlockType(Enum):
     GENERIC = auto()
     BUS_CONNECTION = auto()
     EXTERNAL_MAPPING = auto()
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Pre defined blocks
 # ----------------------------------------------------------------------------------------------------------------------
