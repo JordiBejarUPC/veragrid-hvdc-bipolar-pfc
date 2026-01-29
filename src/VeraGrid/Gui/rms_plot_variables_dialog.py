@@ -33,7 +33,6 @@ class RmsPlotDialog(QDialog):
     def __init__(self, grid: MultiCircuit, results: RmsResults, parent=None):
         super().__init__(parent)
 
-        # --- Preparar dispositivos y variables ---
         buses = [bus for bus in grid.get_buses()]
         branches = [branch for branch in grid.get_branches_iter()]
         injections = [injection for injection in grid.get_injection_devices_iter()]

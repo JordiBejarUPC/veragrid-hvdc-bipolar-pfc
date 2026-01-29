@@ -488,6 +488,10 @@ class BlockSaver:
             if diff_var.uid not in self.diff_var_dict:
                 self.diff_var_dict[diff_var.uid] = diff_var
 
+        for dyn_var_type, var in blk.external_mapping.items():
+            if var.uid not in self.var_dict:
+                self.var_dict[var.uid] = var
+
         d = {
             "uid": blk.uid,
 
