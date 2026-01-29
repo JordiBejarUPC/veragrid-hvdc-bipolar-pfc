@@ -209,6 +209,7 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     return Ybus.tocsc(), Yf.tocsc(), Yt.tocsc(), Ysh_bus, binary_bus_mask, bus_idx_lookup, branch_lookup
 
 
+@nb.njit(cache=True)
 def compute_current_loads(bus_idx: IntVec,
                           bus_lookup: IntVec,
                           V: CxVec,
@@ -227,10 +228,10 @@ def compute_current_loads(bus_idx: IntVec,
     """
     n = len(V)
     nelm = len(bus_idx)
-    I = np.zeros(n, dtype=complex)
+    I = np.zeros(n, dtype=nb.complex128)
 
-    zero_load = 0.0 + 0.0j
-    Un_floating = np.zeros(len(V), dtype=complex)
+    zero_load = nb.complex128(0.0)
+    Un_floating = np.zeros(len(V), dtype=nb.complex128)
 
     for k in range(nelm):
 
@@ -374,13 +375,15 @@ def compute_current_loads(bus_idx: IntVec,
         else:
             pass
 
-    Y_current_linear = I / V
+    Y_current_linear = np.zeros_like(I, dtype=nb.complex128)
+    for i in range(len(V)):
+        if abs(V[i]) > 1e-12:
+            Y_current_linear[i] = I[i] / V[i]
 
-    return I, Y_current_linear, Un_floating  # TODO: doesn't match
+    return I, Y_current_linear, Un_floating
 
 
-# TODO: numba?
-
+@nb.njit(cache=True)
 def compute_power_loads(bus_idx: IntVec,
                         bus_lookup: IntVec,
                         V: CxVec,
@@ -399,10 +402,10 @@ def compute_power_loads(bus_idx: IntVec,
     """
     n = len(V)
     nelm = len(bus_idx)
-    I = np.zeros(n, dtype=complex)
+    I = np.zeros(n, dtype=nb.complex128)
 
-    zero_load = 0.0 + 0.0j
-    Un_floating = np.zeros(len(V), dtype=complex)
+    zero_load = nb.complex128(0.0)
+    Un_floating = np.zeros(len(V), dtype=nb.complex128)
 
     for k in range(nelm):
 
@@ -526,9 +529,12 @@ def compute_power_loads(bus_idx: IntVec,
         else:
             pass
 
-    Y_power_linear = I / V
+    Y_power_linear = np.zeros_like(I, dtype=nb.complex128)
+    for i in range(len(V)):
+        if abs(V[i]) > 1e-12:
+            Y_power_linear[i] = I[i] / V[i]
 
-    return I, Y_power_linear, Un_floating  # TODO: doesn't match
+    return I, Y_power_linear, Un_floating
 
 
 def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-6) -> CSC:
