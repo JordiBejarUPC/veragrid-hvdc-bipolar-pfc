@@ -74,7 +74,7 @@ grid.add_line(line0)
 
 # load
 load = gce.Load(P= 9.999999, Q= 0.999999)
-load_mdl = load.rms_model.model
+
 grid.add_load(bus=bus1, api_obj=load)
 
 # Generators

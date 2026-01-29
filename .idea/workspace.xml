@@ -28,12 +28,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Merge remote-tracking branch 'eRoots/devel' into 147_86_Dynamic_simulations_V1_DiffBlock&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;src/VeraGrid/Gui/Main/MainWindow.py">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="results plot working in gui">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/rms_plot_variables_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/rms_plot_variables_dialog.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/genqec_exc_gov_sat_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic_io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic_io.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/RmsModelEditor/rms_model_editor_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load1_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load1_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load2_rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Rms/load2_rms_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -267,7 +267,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Branches" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.rms_kundur">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -531,7 +531,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="rms_driver_call" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="rms_kundur" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -546,7 +546,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/dynamics/rms_driver_call.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -743,7 +743,7 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.rms_driver_call" />
+      <item itemvalue="Python.rms_kundur" />
       <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
       <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
       <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
@@ -751,11 +751,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.rms_kundur" />
         <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest for trunk.dynamics.scripting_testing.load_save_load_rms.test_load_save_load_rms" />
         <item itemvalue="Python tests.pytest for tests.test_symbolic.test_elementary_functions" />
         <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_xlsx" />
-        <item itemvalue="Python.rms_driver_call" />
       </list>
     </recent_temporary>
   </component>
@@ -1887,7 +1887,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="651" />
+    <option name="localTasksCounter" value="652" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1933,7 +1933,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="simple generator working" />
     <MESSAGE value="test small signal rebuilt" />
     <MESSAGE value="test small signal rms passing" />
     <MESSAGE value="solved saving with templates" />
@@ -1958,7 +1957,8 @@
     <MESSAGE value="cleaned rms_model_editor_engine.py" />
     <MESSAGE value="connected params from power flow in scripting mode" />
     <MESSAGE value="Kundur system working with complex generator model" />
-    <option name="LAST_COMMIT_MESSAGE" value="Kundur system working with complex generator model" />
+    <MESSAGE value="results plot working in gui" />
+    <option name="LAST_COMMIT_MESSAGE" value="results plot working in gui" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2346,11 +2346,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Injections/load.py</url>
           <line>802</line>
           <option name="timeStamp" value="3382" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/trunk/dynamics/rms_kundur.py</url>
-          <line>590</line>
-          <option name="timeStamp" value="3416" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
