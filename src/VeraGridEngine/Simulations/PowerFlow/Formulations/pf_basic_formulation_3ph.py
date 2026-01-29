@@ -16,15 +16,13 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_current,
-                                                                                    compute_current,
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_current,
                                                                                     compute_fx,
                                                                                     polar_to_rect,
                                                                                     fortescue_012_to_abc)
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
-from VeraGridEngine.enumerations import ShuntConnectionType
 
 
 # @nb.njit(cache=True)
