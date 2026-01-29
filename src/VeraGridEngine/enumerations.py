@@ -2330,11 +2330,18 @@ class CascadeType(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
-
 class DynamicIntegrationMethod(Enum):
-    Trapezoid = "Trapezoid",
-    BackEuler = "BackEuler"
-    RungeKutta4 = "Runge-Kutta 4"
+    """
+    Dynamic integration methods.
+    """
+    # Implicit time-stepping (DAE form)
+    Trapezoid = "trapezoidal"
+    BackEuler = "be"
+    BDF2 = "bdf2"
+
+    # Explicit time-stepping (ODE form)
+    RungeKutta4 = "rk4"
+    Euler = "euler"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2344,11 +2351,6 @@ class DynamicIntegrationMethod(Enum):
 
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return DynamicIntegrationMethod[s]
         except KeyError:
@@ -2356,12 +2358,7 @@ class DynamicIntegrationMethod(Enum):
 
     @classmethod
     def list(cls):
-        """
-
-        :return:
-        """
         return list(map(lambda c: c.value, cls))
-
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit",
@@ -2651,3 +2648,15 @@ class TimeSeriesSearchPoint(Enum):
         except KeyError:
             return s
 
+class SimulationBackend(Enum):
+    """
+    Solver Type for dynamic simulation
+    """
+    SymbolicImplicit = "symbolic"
+    LegacyExternal = "legacy"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
