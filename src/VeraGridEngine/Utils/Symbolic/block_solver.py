@@ -1225,13 +1225,9 @@ class BlockSolver:
         if not hasattr(self, 'jit_kernels'):
             self.jit_kernels = {}
 
-        # Use actual variable names for the compiler mapping
+        # Use actual variable (Objects) for the compiler mapping
         sorted_vars = self._state_vars + self._algebraic_vars
-        var_names = [v.name for v in sorted_vars]
-
-        event_param_names = [p.name for p in self._event_parameters]
-        static_param_names = [p.name for p in self._parameters]
-        all_param_names = event_param_names + static_param_names
+        all_params = self._event_parameters + self._parameters
 
         # Build residual equations: DiffVar - RHS = 0
         equations = []
@@ -1242,7 +1238,7 @@ class BlockSolver:
         equations.extend(self._algebraic_eqs)
 
         # Compile and cache
-        self.jit_compiler = EquationCompiler(var_names, all_param_names, method=method_str)
+        self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method_str)
         kernel = self.jit_compiler.compile(equations, func_name=f"jit_step_{method_str}", use_cse=True)
 
         self.jit_kernels[method_str] = kernel

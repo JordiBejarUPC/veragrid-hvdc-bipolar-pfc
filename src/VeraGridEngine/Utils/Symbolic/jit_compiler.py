@@ -228,7 +228,7 @@ class SubexpressionAnalyzer:
 class SymbolicToPythonVisitor:
     OP_PRECEDENCE = {'+': 10, '-': 10, '*': 20, '/': 20, '**': 30}
 
-    def __init__(self, var_map: Dict[str, int], param_map: Dict[str, int], method: DiscretizationMethod):
+    def __init__(self, var_map: Dict[int, int], param_map: Dict[int, int], method: DiscretizationMethod):
         self.var_map = var_map
         self.param_map = param_map or {}
         self.method = method
@@ -270,14 +270,18 @@ class SymbolicToPythonVisitor:
         return str(node.value)
 
     def visit_Var(self, node: Var, _) -> str:
-        if node.name in self.var_map: return f"states[{self.var_map[node.name]}]"
-        if node.name in self.param_map: return f"params[{self.param_map[node.name]}]"
-        raise ValueError(f"Variable '{node.name}' Not mapped in var_map or param_map.")
+        if node.uid in self.var_map: return f"states[{self.var_map[node.uid]}]"
+        if node.uid in self.param_map: return f"params[{self.param_map[node.uid]}]"
+
+        raise ValueError(f"Variable '{node.name}' (UID: {node.uid}) Not mapped in compiler.")
 
     def visit_DiffVar(self, node: DiffVar, prec: int) -> str:
-        if node.base_var.name not in self.var_map:
-            raise ValueError(f"Base var '{node.base_var.name}' DiffVar does not exist in states.")
-        term = self.method.discretize(self.var_map[node.base_var.name])
+        base_uid = node.base_var.uid
+        if base_uid not in self.var_map:
+            raise ValueError(f"Base var '{node.base_var.name}' (UID: {base_uid})"
+                             f" for DiffVar does not exist in states.")
+
+        term = self.method.discretize(self.var_map[base_uid])
         return f"({term})" if prec > 10 else term
 
     def visit_Func(self, node: Func, _) -> str:
@@ -292,8 +296,9 @@ class SymbolicToPythonVisitor:
         return f"np.{op}({arg})"
 
     def visit_LagVar(self, node: LagVar, _) -> str:
-        if node.lag == 1 and node.base_var.name in self.var_map:
-            return f"history[{self.var_map[node.base_var.name]}]"
+        base_uid = node.base_var.uid
+        if node.lag == 1 and base_uid in self.var_map:
+            return f"history[{self.var_map[base_uid]}]"
         raise NotImplementedError("Complex LagVar not supported.")
 
 
@@ -310,19 +315,17 @@ class EquationCompiler:
         'bdf2': BDF2Method()
     }
 
-    def __init__(self,
-                 variables: List[str],
-                 parameters: List[str] = None,
-                 method: str = 'trapezoidal'):
-        self.variables = variables
-        self.parameters = parameters or []
+    def __init__(self, variables: List[Var], parameters: List[Var] = None, method: str = 'trapezoidal'):
+        self.variables_objs = variables
+        self.parameters_objs = parameters or []
 
         if method not in self.METHODS:
             raise ValueError(f"Method '{method}' Unknown. Options: {list(self.METHODS.keys())}")
 
         self.strategy = self.METHODS[method]
-        self.var_map = {name: i for i, name in enumerate(variables)}
-        self.param_map = {name: i for i, name in enumerate(self.parameters)}
+
+        self.var_map = {v.uid: i for i, v in enumerate(self.variables_objs)}
+        self.param_map = {p.uid: i for i, p in enumerate(self.parameters_objs)}
 
         self.visitor = SymbolicToPythonVisitor(self.var_map, self.param_map, self.strategy)
 

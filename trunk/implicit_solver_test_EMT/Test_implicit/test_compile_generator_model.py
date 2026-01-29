@@ -23,6 +23,7 @@ from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 class EmtModelTemplate:
     """Mock container for the block model."""
+
     def __init__(self):
         self.block = None
 
@@ -152,10 +153,10 @@ def extract_parameters(equations, unknowns):
         for v in vars_in_eq:
             all_vars.add(v)
 
-    unknown_names = {u.name for u in unknowns}
+    unknown_uids = {u.uid for u in unknowns}
     params = []
     for v in all_vars:
-        if v.name not in unknown_names:
+        if v.uid not in unknown_uids:
             params.append(v)
 
     return sorted(params, key=lambda x: x.name)
@@ -176,18 +177,19 @@ class TestGeneratorModel(unittest.TestCase):
         # 2. Unified System (DAE)
         all_eqs = block.state_eqs + block.algebraic_eqs
         all_unknowns = block.state_vars + block.algebraic_vars
-        unknown_names = [v.name for v in all_unknowns]
+        unknown_names = [v.name for v in all_unknowns]  # Solo para impresión o debug
 
         # 3. Detect Parameters
         params = extract_parameters(all_eqs, all_unknowns)
-        param_names = [p.name for p in params]
+        param_names = [p.name for p in params]  # Solo para mapeo de valores
 
         print(f"States: {len(block.state_vars)}")
         print(f"Algebraics: {len(block.algebraic_vars)}")
         print(f"Parameters: {len(params)}")
 
         # 4. Compile (Using Trapezoidal)
-        compiler = EquationCompiler(variables=unknown_names, parameters=param_names, method='trapezoidal')
+        compiler = EquationCompiler(variables=all_unknowns, parameters=params, method='trapezoidal')
+
         step_fn = compiler.compile(all_eqs, func_name='generator_step_fn')
 
         print("\n[OK] Function compiled successfully.")
@@ -197,6 +199,7 @@ class TestGeneratorModel(unittest.TestCase):
         n_params = len(params)
 
         current_state = np.zeros(n_unknowns)
+
         # Avoid division by zero if omega is in denominator
         if 'omega' in unknown_names:
             idx_omega = unknown_names.index('omega')

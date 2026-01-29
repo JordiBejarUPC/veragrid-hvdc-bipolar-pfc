@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
+
 def estimate_big_o(ns, times):
     """
     Calculates the empirical time complexity using Log-Log regression.
@@ -97,8 +98,6 @@ def benchmark_scenario(n_oscillators, n_steps, run_naive=False):
     """
     # 1. System Generation
     variables, equations, params = create_coupled_system(n_oscillators)
-    var_names = [v.name for v in variables]
-    param_names = [p.name for p in params]
 
     n_vars = len(variables)
     states = np.zeros(n_vars)
@@ -126,7 +125,9 @@ def benchmark_scenario(n_oscillators, n_steps, run_naive=False):
     # --- 2. COMPILED SYMBOLIC (TARGET) ---
     # A. Compilation Time
     t0 = time.perf_counter()
-    compiler = EquationCompiler(var_names, parameters=param_names, method='trapezoidal')
+
+    compiler = EquationCompiler(variables, parameters=params, method='trapezoidal')
+
     step_fn = compiler.compile(equations)
     t_compile = time.perf_counter() - t0
 
@@ -147,7 +148,7 @@ def benchmark_scenario(n_oscillators, n_steps, run_naive=False):
         t0 = time.perf_counter()
         for _ in range(test_steps):
             # Re-compiling/Re-parsing at every step is the "Naive" approach
-            tc = EquationCompiler(var_names, parameters=param_names, method='trapezoidal')
+            tc = EquationCompiler(variables, parameters=params, method='trapezoidal')
             tf = tc.compile(equations)
             _ = tf(states, p_vals, hist, d_hist, h, history2)
         t_sample = time.perf_counter() - t0

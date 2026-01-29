@@ -36,7 +36,8 @@ class TestEquationCompiler(unittest.TestCase):
         """
         Verifies a single step calculation using the Trapezoidal rule.
         """
-        compiler = EquationCompiler(['x'], method='trapezoidal')
+        # FIX: Pass [self.x] (Var object), not ['x'] (string)
+        compiler = EquationCompiler([self.x], method='trapezoidal')
         step_fn = compiler.compile([self.decay_eq])
 
         print(f"\n[INFO] Test Trapezoidal")
@@ -58,7 +59,8 @@ class TestEquationCompiler(unittest.TestCase):
         """
         Verifies a single step calculation using the Backward Euler method.
         """
-        compiler = EquationCompiler(['x'], method='be')
+        # FIX: Pass [self.x], not ['x']
+        compiler = EquationCompiler([self.x], method='be')
         step_fn = compiler.compile([self.decay_eq])
 
         h2 = np.zeros(1)
@@ -77,7 +79,8 @@ class TestEquationCompiler(unittest.TestCase):
         """
         Verifies a single step calculation using the BDF2 method.
         """
-        compiler = EquationCompiler(['x'], method='bdf2')
+        # FIX: Pass [self.x], not ['x']
+        compiler = EquationCompiler([self.x], method='bdf2')
         step_fn = compiler.compile([self.decay_eq])
 
         res = step_fn(
@@ -103,7 +106,8 @@ class TestEquationCompiler(unittest.TestCase):
         eq1 = dx - y
         eq2 = dy + k * x
 
-        compiler = EquationCompiler(['x', 'y'], parameters=['k'], method='trapezoidal')
+        # FIX: Pass objects [x, y] and parameters [k]
+        compiler = EquationCompiler([x, y], parameters=[k], method='trapezoidal')
         step_fn = compiler.compile([eq1, eq2])
 
         h2 = np.zeros(2)
@@ -126,7 +130,8 @@ class TestEquationCompiler(unittest.TestCase):
         k = Var('k')
         eq = self.dx + k * self.x
 
-        compiler = EquationCompiler(['x'], parameters=['k'], method='be')
+        # FIX: Pass [self.x] and parameters [k]
+        compiler = EquationCompiler([self.x], parameters=[k], method='be')
         step_fn = compiler.compile([eq])
 
         states = np.array([1.0])
@@ -144,13 +149,9 @@ class TestEquationCompiler(unittest.TestCase):
     def test_truncation_error_order(self):
         """
         Advanced Test: Verifies that the numerical residual decreases with O(h^2).
-
-        Theoretical Note:
-        Although the Global Truncation Error (LTE) for the Trapezoidal rule is O(h^3),
-        the residual of the algebraic equation behaves as O(h^2). Therefore,
-        halving the step size 'h' should reduce the residual by a factor of approximately 4.
         """
-        compiler = EquationCompiler(['x'], method='trapezoidal')
+        # FIX: Pass [self.x]
+        compiler = EquationCompiler([self.x], method='trapezoidal')
         step_fn = compiler.compile([self.decay_eq])
 
         x0 = 1.0
@@ -190,7 +191,8 @@ class TestEquationCompiler(unittest.TestCase):
         eq1 = dx - v
         eq2 = dv + x
 
-        compiler = EquationCompiler(['x', 'v'], method='trapezoidal')
+        # FIX: Pass [x, v]
+        compiler = EquationCompiler([x, v], method='trapezoidal')
         step_fn = compiler.compile([eq1, eq2])
 
         # Initial state: x=1, v=0 -> Energy = 0.5
@@ -212,7 +214,6 @@ class TestEquationCompiler(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(res, np.zeros(2), decimal=4)
         self.assertAlmostEqual(energy_initial, energy_final, places=5)
-
 
 if __name__ == '__main__':
     unittest.main()

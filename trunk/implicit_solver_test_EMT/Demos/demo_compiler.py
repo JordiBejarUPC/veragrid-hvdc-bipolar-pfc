@@ -80,8 +80,8 @@ def run_demo():
 
     # 2. Compile equations (trapezoidal rule for improved stability)
     compiler = EquationCompiler(
-        ['pos', 'vel'],
-        parameters=['k', 'c'],
+        [pos, vel],
+        parameters=[k, c],
         method='trapezoidal'
     )
     step_fn = compiler.compile([eq1, eq2])
