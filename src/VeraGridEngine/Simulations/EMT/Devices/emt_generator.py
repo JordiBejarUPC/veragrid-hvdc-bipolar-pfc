@@ -50,7 +50,8 @@ def initialize_emt_generator(ii: int,
 
         phases_idx = np.where(phases)[0]
         Gc: Vec = np.zeros((4, 4), dtype=float)
-        Gc[np.ix_(phases_idx, phases_idx)] = Gc_val
+
+        Gc[np.ix_(phases_idx, phases_idx)] = np.eye(len(phases_idx)) * Gc_val
 
         dta.Gc_list[ii] = Gc
 
