@@ -88,7 +88,7 @@ def main():
     tds.config.shrinkt = 0
     tds.config.tstep = 0.001
     tds.config.tf = 20.0
-    tds.t = 0.0
+    tds.t_idx = 0.0
     tds.init()
     print(len(ss.dae.x))
     print(len(ss.dae.y))
@@ -100,13 +100,13 @@ def main():
     # Step-by-step simulation
     start_sim = time.time()
 
-    while tds.t < tds.config.tf:
+    while tds.t_idx < tds.config.tf:
 
-        if tds.t > 2.5 and one == True:
+        if tds.t_idx > 2.5 and one == True:
             # ss.PQ.set(src='Ppf', idx='PQ_1', attr='v', value=9.0)  #event
             one = False
             # Log current state
-        time_history.append(tds.t)
+        time_history.append(tds.t_idx)
         for i in range(len(ss.Bus)):
             v_history[i].append(ss.Bus.v.v[i])
             a_history[i].append(ss.Bus.a.v[i])
@@ -137,7 +137,7 @@ def main():
 
         # Advance one time step
         tds.itm_step()
-        tds.t += tds.config.tstep
+        tds.t_idx += tds.config.tstep
 
     end = time.time()
     print(f"ANDES - Execution time: {end - start_sim:.6f} [s]")
