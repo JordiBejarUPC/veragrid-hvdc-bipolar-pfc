@@ -15,7 +15,6 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
-from VeraGridEngine.Templates.Emt.generator_emt_type_template_for_line import get_generator_emt_template_for_line
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 

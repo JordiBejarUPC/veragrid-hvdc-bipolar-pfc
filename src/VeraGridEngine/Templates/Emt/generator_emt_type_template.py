@@ -6,7 +6,7 @@
 
 import numpy as np
 from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block import Var, DiffVar, Const
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
@@ -108,13 +108,13 @@ def get_generator_emt_template() -> EmtModelTemplate:
             psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),  # i_f
             psi_0 - L0 * i_0,  # i_0
 
-            v_d - (2 / 3) * (v_a * cos(theta) + v_b * cos(theta - 2 * np.pi / 3) + v_c * cos(theta + 2 * np.pi / 3)),  # v_d
-            v_q - (2 / 3) * (v_a * sin(theta) + v_b * sin(theta - 2 * np.pi / 3) + v_c * sin(theta + 2 * np.pi / 3)),  # v_q
+            v_d - (2 / 3) * (v_a * sym.cos(theta) + v_b * sym.cos(theta - 2 * np.pi / 3) + v_c * sym.cos(theta + 2 * np.pi / 3)),  # v_d
+            v_q - (2 / 3) * (v_a * sym.sin(theta) + v_b * sym.sin(theta - 2 * np.pi / 3) + v_c * sym.sin(theta + 2 * np.pi / 3)),  # v_q
             v_0 - (2 / 3) * (v_a * 0.5 + v_b * 0.5 + v_c * 0.5),  # v_0
 
-            i_a - (i_d * cos(theta) + i_q * sin(theta) + i_0),  # i_a
-            i_b - (i_d * cos(theta - 2 * np.pi / 3) + i_q * sin(theta - 2 * np.pi / 3) + i_0),  # i_b
-            i_c - (i_d * cos(theta + 2 * np.pi / 3) + i_q * sin(theta + 2 * np.pi / 3) + i_0),  # i_c
+            i_a - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),  # i_a
+            i_b - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),  # i_b
+            i_c - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),  # i_c
 
             Te + (3 / 2) * (psi_d * i_q - psi_q * i_d),  # T_e
             # Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),  # T_e
@@ -175,12 +175,12 @@ def get_generator_emt_template() -> EmtModelTemplate:
         Pm: Pe,
         et: Const(0.0),
 
-        v_d: 2 / 3 * (cos(theta) * v_a + cos(theta - 2 * np.pi / 3) * v_b + cos(theta + 2 * np.pi / 3) * v_c),
-        v_q: 2 / 3 * (sin(theta) * v_a + sin(theta - 2 * np.pi / 3) * v_b + sin(theta + 2 * np.pi / 3) * v_c),
+        v_d: 2 / 3 * (sym.cos(theta) * v_a + sym.cos(theta - 2 * np.pi / 3) * v_b + sym.cos(theta + 2 * np.pi / 3) * v_c),
+        v_q: 2 / 3 * (sym.sin(theta) * v_a + sym.sin(theta - 2 * np.pi / 3) * v_b + sym.sin(theta + 2 * np.pi / 3) * v_c),
         v_0: 2 / 3 * (0.5 * v_a + 0.5 * v_b + 0.5 * v_c),
 
-        i_d: 2 / 3 * (cos(theta) * i_a + cos(theta - 2 * np.pi / 3) * i_b + cos(theta + 2 * np.pi / 3) * i_c),
-        i_q: 2 / 3 * (sin(theta) * i_a + sin(theta - 2 * np.pi / 3) * i_b + sin(theta + 2 * np.pi / 3) * i_c),
+        i_d: 2 / 3 * (sym.cos(theta) * i_a + sym.cos(theta - 2 * np.pi / 3) * i_b + sym.cos(theta + 2 * np.pi / 3) * i_c),
+        i_q: 2 / 3 * (sym.sin(theta) * i_a + sym.sin(theta - 2 * np.pi / 3) * i_b + sym.sin(theta + 2 * np.pi / 3) * i_c),
         i_0: 2 / 3 * (0.5 * i_a + 0.5 * i_b + 0.5 * i_c),
 
         psi_d: (i_q * Ra - v_q) / omega,
@@ -203,16 +203,16 @@ def get_generator_emt_template() -> EmtModelTemplate:
     #     theta: Const(0.0),
     #     et: Const(0.0),
     #
-    #     v_d: 2 / 3 * (cos(theta) * v_a + cos(theta - 2 * np.pi / 3) * v_b + cos(theta + 2 * np.pi / 3) * v_c),
-    #     v_q: 2 / 3 * (sin(theta) * v_a + sin(theta - 2 * np.pi / 3) * v_b + sin(theta + 2 * np.pi / 3) * v_c),
+    #     v_d: 2 / 3 * (sym.cos(theta) * v_a + sym.cos(theta - 2 * np.pi / 3) * v_b + sym.cos(theta + 2 * np.pi / 3) * v_c),
+    #     v_q: 2 / 3 * (sym.sin(theta) * v_a + sym.sin(theta - 2 * np.pi / 3) * v_b + sym.sin(theta + 2 * np.pi / 3) * v_c),
     #     v_0: 2 / 3 * (0.5 * v_a + 0.5 * v_b + 0.5 * v_c),
     #
     #     i_a: v_a / Rload, # v_a / Const(3.0),
     #     i_b: v_b / Rload, # v_b / Const(3.0),
     #     i_c: v_c / Rload, # v_c / Const(3.0),
     #
-    #     i_d: 2 / 3 * (cos(theta) * i_a + cos(theta - 2 * np.pi / 3) * i_b + cos(theta + 2 * np.pi / 3) * i_c),
-    #     i_q: 2 / 3 * (sin(theta) * i_a + sin(theta - 2 * np.pi / 3) * i_b + sin(theta + 2 * np.pi / 3) * i_c),
+    #     i_d: 2 / 3 * (sym.cos(theta) * i_a + sym.cos(theta - 2 * np.pi / 3) * i_b + sym.cos(theta + 2 * np.pi / 3) * i_c),
+    #     i_q: 2 / 3 * (sym.sin(theta) * i_a + sym.sin(theta - 2 * np.pi / 3) * i_b + sym.sin(theta + 2 * np.pi / 3) * i_c),
     #     i_0: 2 / 3 * (0.5 * i_a + 0.5 * i_b + 0.5 * i_c),
     #
     #     psi_d: (i_q * Ra - v_q) / omega,
