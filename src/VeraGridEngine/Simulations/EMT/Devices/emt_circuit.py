@@ -26,11 +26,11 @@ class EmtCircuit:
                  n_load: int):
         """
 
-        :param n_bus:
-        :param n_line:
-        :param n_transformer:
-        :param n_gen:
-        :param n_load:
+        :param n_bus: Number of buses (int)
+        :param n_line: Number of lines (int)
+        :param n_transformer: Number of transformers (int)
+        :param n_gen: Number of generators (int)
+        :param n_load: Number of loads (int)
         """
         self.n_bus = n_bus
         self.n_line = n_line
@@ -53,6 +53,8 @@ class EmtCircuit:
         self.binary_bus_mask: BoolVec = np.zeros(4 * self.n_bus, dtype=bool)
         self.branch_lookup: IntVec = np.zeros(4 * self.n_br, dtype=bool)
         self.bus_idx_lookup: IntVec = np.zeros(4 * self.n_bus, dtype=bool)
+        self.branch_from_lookup: IntVec = np.zeros(4 * self.n_br, dtype=bool)
+        self.branch_to_lookup: IntVec = np.zeros(4 * self.n_br, dtype=bool)
 
         self._syst_blocks: List[Block | None] = [None] * self.n_bus
         self._init_guesses: List[Dict[int, float]] = [dict()] * self.n_bus
@@ -108,3 +110,11 @@ class EmtCircuit:
             init_guesses=self._init_guesses[i],
             t=self.tme,
         )
+
+    @property
+    def emt_vec(self):
+        return self._emt_vec
+
+    @property
+    def init_guesses(self):
+        return self._init_guesses

@@ -299,6 +299,7 @@ def compile_emt(grid: MultiCircuit,
                 key: {"times": [], "values": []}
                 for key in elm.emt_model.model.event_dict.keys()
             }
+            # TODO: find events
             # find out if there are events affecting the device parameters
             rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
             if len(rms_evts) != 0:
@@ -341,8 +342,8 @@ def compile_emt(grid: MultiCircuit,
             P = np.real(S)  # p.u.
             Q = np.imag(S)  # p.u.
 
-            init_guess[elm.emt_model.model.external_mapping[VarPowerFlowRefferenceType.P].uid] = P
-            init_guess[elm.emt_model.model.external_mapping[VarPowerFlowRefferenceType.Q].uid] = Q
+            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.P, float(P))
+            dta.add_guess(bus_idx, VarPowerFlowRefferenceType.Q, float(Q))
 
             print(f"initial P = {P}")
             print(f"initial Q = {Q}")

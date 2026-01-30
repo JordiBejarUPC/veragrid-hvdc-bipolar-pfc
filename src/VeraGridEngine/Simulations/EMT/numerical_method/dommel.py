@@ -15,7 +15,7 @@ from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
-from VeraGridEngine.Simulations.EMT.initialization_emt import initialize_emt
+from VeraGridEngine.Simulations.EMT.Devices.emt_compiler import compile_emt
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
@@ -157,8 +157,8 @@ def predict_Is(n: int,
     return Is_step
 
 
-def update_Hist(n_nodes: int,
-                nc: NumericalCircuit,
+def update_Hist(dta: EmtCircuit,
+                n_nodes: int,
                 step: int,
                 V_buffer: np.ndarray,
                 I_lines_buffer: np.ndarray,
@@ -166,16 +166,11 @@ def update_Hist(n_nodes: int,
                 hist_branches: np.ndarray,
                 hist_magn_trafos: np.ndarray,
                 grid: MultiCircuit,
-                N_delay: int,
-                h: float,
-                branch_from_lookup: IntVec,
-                branch_to_lookup: IntVec,
-                bus_idx_lookup: IntVec,
-                line_states: Dict):
+                verbose: int = 0 ) -> Vec:
     """
-
+    Update history currents for lines (Bergeron) in a multi-phase setting.
+    :param dta: EmtCircuit data
     :param n_nodes: number of nodes effective for simulation (np.sum(bus_idx_lookup >= 0))
-    :param nc:
     :param step:
     :param V_buffer:
     :param I_lines_buffer:
@@ -183,31 +178,11 @@ def update_Hist(n_nodes: int,
     :param hist_branches:
     :param hist_magn_trafos:
     :param grid:
-    :param N_delay:
-    :param h:
-    :param branch_from_lookup:
-    :param branch_to_lookup:
-    :param bus_idx_lookup:
-    :param line_states:
     :return:
     """
-    """
-    Update history currents for lines (Bergeron) in a multi-phase setting.
 
-    :param nc: NumericalCircuit
-    :param step: current time step index
-    :param V_buffer: (N_delay+1, total_cond)
-    :param I_lines_buffer: (N_delay+1, 2*max_phases_line*nl)
-    :param hist_branches: 1D array with current history for all line ends at this step
-    :param grid: MultiCircuit
-    :param N_delay: max delay in steps (for the longest line)
-    :param h: time step (not used here but kept for future extensions)
-    :param branch_from_lookup:
-    :param branch_to_lookup:
-    :param bus_idx_lookup:
-    :return: hist_step (1 x total_cond)
-    """
     n = dta.n_bus
+    bus_dict = grid.get_bus_index_dict()
 
     hist_step = np.zeros(n_nodes, dtype=float)
 
@@ -216,16 +191,16 @@ def update_Hist(n_nodes: int,
     for k, branch in enumerate(grid.get_branches_iter()):
 
         # Full bus indices
-        fro = nc.passive_branch_data.F[k]  # indices of the from buses
-        to = nc.passive_branch_data.T[k]  # indices of the to buses
+        fro = bus_dict[branch.bus_from]  # indices of the from buses
+        to = bus_dict[branch.bus_to]  # indices of the to buses
 
         # Full-node indices (N,A,B,C)
         f4 = 4 * fro + idx4
         t4 = 4 * to + idx4
 
         # Reduce using bus_idx_lookup
-        idx_from_reduced = bus_idx_lookup[f4]
-        idx_to_reduced = bus_idx_lookup[t4]
+        idx_from_reduced = dta.bus_idx_lookup[f4]
+        idx_to_reduced = dta.bus_idx_lookup[t4]
 
         # Keep only active phases
         mask_from = idx_from_reduced >= 0
@@ -241,8 +216,8 @@ def update_Hist(n_nodes: int,
         # Retrieve history currents segment for this line
         row_base = 4 * k + np.array([0, 1, 2, 3])
 
-        idx_hist_f_full = branch_from_lookup[row_base]
-        idx_hist_t_full = branch_to_lookup[row_base]
+        idx_hist_f_full = dta.branch_from_lookup[row_base]
+        idx_hist_t_full = dta.branch_to_lookup[row_base]
         idx_hist_f = idx_hist_f_full[mask]
         idx_hist_t = idx_hist_t_full[mask]
 
@@ -257,7 +232,7 @@ def update_Hist(n_nodes: int,
         if branch.device_type == DeviceType.LineDevice:
 
             if branch.emt_model_type == EmtLineTypes.Bergeron:
-                delay = branch.Ndelay
+                n_delay = dta.line_emt_data.n_delay[k]
 
                 # k_delay = (step - delay) % (N_delay + 1)
                 k_delay = 1
@@ -268,19 +243,19 @@ def update_Hist(n_nodes: int,
 
                 i_delay_ft = I_lines_buffer[k_delay, idx_hist_f]
                 i_delay_tf = I_lines_buffer[k_delay, idx_hist_t]
-
-                print(
-                    f"corriente linea en el step anterior from "
-                    f"i_delay_ft= I_lines_buffer[k_delay, idx_hist_f] = {i_delay_ft} at step = {step}")
-                print(
-                    f"corriente linea en el step anterior to "
-                    f"i_delay_tf = I_lines_buffer[k_delay, idx_hist_t] = {i_delay_tf} at step = {step}")
-                print(
-                    f"tensión buses en el step anterior from "
-                    f"v_delay_f = V_buffer[k_delay, idx_from] = {v_delay_f} at step = {step}")
-                print(
-                    f"tensión buses en el step anterior from "
-                    f"v_delay_t = V_buffer[k_delay, idx_to] = {v_delay_t} at step = {step}")
+                if verbose:
+                    print(
+                        f"corriente linea en el step anterior from "
+                        f"i_delay_ft= I_lines_buffer[k_delay, idx_hist_f] = {i_delay_ft} at step = {step}")
+                    print(
+                        f"corriente linea en el step anterior to "
+                        f"i_delay_tf = I_lines_buffer[k_delay, idx_hist_t] = {i_delay_tf} at step = {step}")
+                    print(
+                        f"tensión buses en el step anterior from "
+                        f"v_delay_f = V_buffer[k_delay, idx_from] = {v_delay_f} at step = {step}")
+                    print(
+                        f"tensión buses en el step anterior from "
+                        f"v_delay_t = V_buffer[k_delay, idx_to] = {v_delay_t} at step = {step}")
 
                 # Bergeron matrices
                 Gc_full = np.asarray(branch.Gc, dtype=float)  # 4x4
@@ -311,8 +286,8 @@ def update_Hist(n_nodes: int,
                 # --- MODELO PI HÍBRIDO (Correcto Físicamente) ---
                 # Serie RL: Trapecio (I_h = G_ser*v_diff_old + i_ser_old)
                 # Shunt C:  Backward Euler (I_h = -G_sh * v_old)
-
-                k_prev = (step - 1) % (N_delay + 1)
+                n_delay = dta.line_emt_data.n_delay[k]
+                k_prev = (step - 1) % (n_delay + 1)
 
                 # 1. Recuperar estados previos
                 vf_prev = V_buffer[k_prev, idx_from]
@@ -366,7 +341,7 @@ def update_Hist(n_nodes: int,
                 h_res = getattr(branch, 'H_residues', np.array([]))
 
                 # Estado actual de la memoria recursiva
-                st = line_states[branch.name]['x_states']
+                st = dta.line_states[branch.name]['x_states']
 
                 # Inicialización "lazy" si no se hizo antes
                 if st is None:
@@ -377,10 +352,11 @@ def update_Hist(n_nodes: int,
                         'h_f': np.zeros((n_h, Np), dtype=complex),
                         'h_t': np.zeros((n_h, Np), dtype=complex)
                     }
-                    line_states[branch.name]['x_states'] = st
+                    dta.line_states[branch.name]['x_states'] = st
 
                 # 1. Historia Local (Yc)
-                k_prev = (step - 1) % (N_delay + 1)
+                n_delay = dta.line_emt_data.n_delay[k]
+                k_prev = (step - 1) % (n_delay + 1)
                 vf_prev = V_buffer[k_prev, idx_from]
                 vt_prev = V_buffer[k_prev, idx_to]
 
@@ -390,9 +366,9 @@ def update_Hist(n_nodes: int,
                 # Convolución Yc (Nodo From)
                 for i, p in enumerate(yc_poles):
                     c = yc_res[i]
-                    denom = 2.0 - p * h
-                    alpha = (2.0 + p * h) / denom
-                    beta = (c * h) / denom
+                    denom = 2.0 - p * dta.h
+                    alpha = (2.0 + p * dta.h) / denom
+                    beta = (c * dta.h) / denom
 
                     # h_term = alpha * x(t-h) + beta * v(t-h)
                     h_term = alpha * st['yc_f'][i] + beta * vf_prev
@@ -401,22 +377,22 @@ def update_Hist(n_nodes: int,
                 # Convolución Yc (Nodo To)
                 for i, p in enumerate(yc_poles):
                     c = yc_res[i]
-                    denom = 2.0 + p * h
-                    alpha = (2.0 - p * h) / denom
-                    beta = (c * h) / denom
+                    denom = 2.0 + p * dta.h
+                    alpha = (2.0 - p * dta.h) / denom
+                    beta = (c * dta.h) / denom
 
                     h_term = alpha * st['yc_t'][i] + beta * vt_prev
                     Ih_yc_t += h_term
 
                 # 2. Historia Propagación (H)
-                delay = branch.Ndelay
-                k_tau = (step - delay) % (N_delay + 1)
+                delay = dta.line_emt_data.n_delay[k]
+                k_tau = (step - delay) % (dta.n_delay + 1)
 
                 vf_tau, vt_tau = V_buffer[k_tau, idx_from], V_buffer[k_tau, idx_to]
                 if_tau, it_tau = I_lines_buffer[k_tau, idx_hist_f], I_lines_buffer[k_tau, idx_hist_t]
 
                 # Impedancia característica aprox (inversa de Gc)
-                Gc = np.asarray(branch.Gc, dtype=float)[np.ix_(mask, mask)]
+                Gc = np.asarray(dta.line_emt_data.Gc[k], dtype=float)[np.ix_(mask, mask)]
                 Zc_inf = np.linalg.inv(Gc)
 
                 # Ondas viajeras incidentes
@@ -434,9 +410,9 @@ def update_Hist(n_nodes: int,
                     # Convolución H
                     for i, p in enumerate(h_poles):
                         c = h_res[i]
-                        denom = 2.0 + p * h
-                        alpha = (2.0 - p * h) / denom
-                        beta = (c * h) / denom
+                        denom = 2.0 + p * dta.h
+                        alpha = (2.0 - p * dta.h) / denom
+                        beta = (c * dta.h) / denom
 
                         # Onda llegando a F
                         prev_state = st['h_f'][i]
@@ -448,9 +424,9 @@ def update_Hist(n_nodes: int,
                     # Onda llegando a T
                     for i, p in enumerate(h_poles):
                         c = h_res[i]
-                        denom = 2.0 + p * h
-                        alpha = (2.0 - p * h) / denom
-                        beta = (c * h) / denom
+                        denom = 2.0 + p * dta.h
+                        alpha = (2.0 - p * dta.h) / denom
+                        beta = (c * dta.h) / denom
 
                         prev_state = st['h_t'][i]
                         u_curr = f_inc_from_to
@@ -513,19 +489,16 @@ def update_Hist(n_nodes: int,
                 i_delay_h = i_delay_tf
                 i_delay_l = i_delay_ft
 
-            L_hh = branch.L_hh
-            L_ll = branch.L_ll
-            L_hl = branch.L_hl
-            Llk = branch.X_leack
-            Rlk = branch.R_leack
-            Lm = branch.X_magn
-            Rm = branch.R_magn
+            L_hh = dta.transformer_emt_data.L_hh[k]
+            L_ll = dta.transformer_emt_data.L_ll[k]
+            L_hl = dta.transformer_emt_data.L_hl[k]
+
 
             D = L_hh * L_ll - L_hl * L_hl
             if abs(D) < 1e-18:
                 raise RuntimeError(f"Ill-conditioned transformer inductance matrix: D={D}")
 
-            k = h / (2.0 * D)
+            k = dta.h / (2.0 * D)
 
             I_hist_h = i_delay_h + k * (L_hl * v_delay_l - L_ll * v_delay_h)
             I_hist_l = i_delay_l + k * (L_hl * v_delay_h - L_hh * v_delay_l)
@@ -578,15 +551,15 @@ def update_Hist(n_nodes: int,
     return hist_step
 
 
-def update_Is(emt_simulation_driver: EmtSimulationDriver,
+def update_Is(dta:EmtCircuit,
+              emt_simulation_driver: EmtSimulationDriver,
               Vsol: np.ndarray,
-              nc: NumericalCircuit,
               step: int,
               grid: MultiCircuit,
               h: float,
               binary_bus_mask: BoolVec,
               bus_idx_lookup: IntVec,
-              emt_vec: Vector):
+              verbose: int = 0)-> Vec:
     """
     Update the current sources vector Is for arbitrary phase configurations.
     :param emt_simulation_driver: EmtSimulationDriver
@@ -605,7 +578,7 @@ def update_Is(emt_simulation_driver: EmtSimulationDriver,
 
     for i, bus in enumerate(
             grid.get_buses()):  # solve 1 step of the symbolic blocs in each bus (only if the bus has a symbolic block)
-        emt: EmtSolverProperties = emt_vec[i]
+        emt: EmtSolverProperties = dta._emt_vec[i]
         if emt.blocksolver is not None:  # only if there are injections in the bus
 
             # update v_abc in alter_params0 with the V solution from the MNA
@@ -665,19 +638,15 @@ def update_Is(emt_simulation_driver: EmtSimulationDriver,
 
                     Is_step[idx] += i_s_bus
                     if dev_type.name == 'GeneratorDevice':
-                        # plus the generator history component due to the interfacing resistor v(t-dt)/ Rp
-                        # Gp = (1 / elm.Rp) * np.eye(4)
-                        # Is_step[idx] += np.array([v_n, v_a, v_b, v_c], dtype=float) @ Gp
-                        # Is_step[idx] += elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
-                        #
-                        Is_step[idx] += elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
+
+                        Is_step[idx] += dta.gen_emt_data.Gc[i] @ np.array([v_n, v_a, v_b, v_c], dtype=float)
 
     Is_step = Is_step[binary_bus_mask]
 
     return Is_step
 
 
-def update_Ibranches(nc: NumericalCircuit,
+def update_Ibranches(dta:EmtCircuit,
                      V: np.ndarray,
                      hist_branches: np.ndarray,
                      hist_magn_trafos: np.ndarray,
@@ -686,39 +655,30 @@ def update_Ibranches(nc: NumericalCircuit,
                      I_magn_buffer: np.ndarray,
                      grid: MultiCircuit,
                      step: int,
-                     h: float,
-                     N_delay: int,
-                     bus_idx_lookup: IntVec,
-                     branch_from_lookup: IntVec,
-                     branch_to_lookup: IntVec,
                      total_branch_currents: int,
-                     line_states: Dict):
+                     verbose: int=0):
     """
     Compute instantaneous line currents for multi-phase lines.
-    :param nc: NumericalCircuit
     :param V: 1D array (N_active_nodes,) reduced nodal voltages
     :param hist_branches: 1D array (total_branch_currents,) history currents for each branch row (this step)
     :param V_buffer: (N_delay+1, N_active_nodes)
     :param I_lines_buffer: (N_delay+1, total_branch_currents)
     :param grid: MultiCircuit
     :param step: current timestep index
-    :param N_delay: max delay in steps
-    :param bus_idx_lookup: length 4*nbus, from full (4*bus) index → reduced node index (or -1)
-    :param branch_from_lookup: length 4*nl, from full branch-row index → reduced line-current index (or -1)
-    :param branch_to_lookup: length 4*nl, from full branch-row index → reduced line-current index (or -1)
     :return: Ibranches_step (1 x n_line_cond) where n_line_cond = I_lines_buffer.shape[1]
     """
-    bus_idx_lookup = np.asarray(bus_idx_lookup, dtype=int)
+    bus_idx_lookup = np.asarray(dta.bus_idx_lookup, dtype=int)
     Nbranches_masked = int(total_branch_currents / 2)
     Ibranches_step = np.zeros(total_branch_currents, dtype=float)
     I_magn_step = np.zeros(Nbranches_masked, dtype=float)
 
     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N, A, B, C
+    bus_dict = grid.get_bus_index_dict()
 
     # Iterate through branches
     for k, branch in enumerate(grid.get_branches_iter()):
-        f = nc.passive_branch_data.F[k]
-        t = nc.passive_branch_data.T[k]
+        f = bus_dict[branch.bus_from]
+        t = bus_dict[branch.bus_to]
 
         f4 = 4 * f + idx4
         t4 = 4 * t + idx4
@@ -738,8 +698,8 @@ def update_Ibranches(nc: NumericalCircuit,
 
         row_base = 4 * k + idx4
 
-        idx_hist_f = branch_from_lookup[row_base][phase_mask]
-        idx_hist_t = branch_to_lookup[row_base][phase_mask]
+        idx_hist_f = dta.branch_from_lookup[row_base][phase_mask]
+        idx_hist_t = dta.branch_to_lookup[row_base][phase_mask]
 
         if len(idx_hist_f) != Np or len(idx_hist_t) != Np:
             raise RuntimeError(
@@ -757,7 +717,7 @@ def update_Ibranches(nc: NumericalCircuit,
             hist_f = hist_branches[idx_hist_f]
             hist_t = hist_branches[idx_hist_t]
 
-            Gc_full = np.asarray(branch.Gc, dtype=float)
+            Gc_full = np.asarray(dta.line_emt_data.Gc[k], dtype=float)
             Gc = Gc_full[np.ix_(phase_mask, phase_mask)]
 
             if model == 'Pi':
@@ -780,7 +740,7 @@ def update_Ibranches(nc: NumericalCircuit,
                 # I_branch(t) = Gc * V(t) + I_hist_branch
                 # (I_hist_branch ya fue calculado en update_Hist y pasado aquí en hist_branches)
 
-                Gc = np.asarray(branch.Gc, dtype=float)[np.ix_(mask, mask)]
+                Gc = np.asarray(dta.line_emt_data.Gc[k], dtype=float)[np.ix_(mask, mask)]
                 I_ft = Gc @ V_f + hist_f
                 I_tf = Gc @ V_t + hist_t
 
@@ -790,21 +750,21 @@ def update_Ibranches(nc: NumericalCircuit,
                 # 2. ACTUALIZAR ESTADOS Yc (CRÍTICO)
                 # x(t) = alpha * x(t-h) + beta * (v(t) + v(t-h))
 
-                st = line_states[branch.name]['x_states']
+                st = dta.line_states[branch.name]['x_states']
                 if st is not None:
                     yc_poles = getattr(branch, 'Yc_poles', np.array([]))
                     yc_res = getattr(branch, 'Yc_residues', np.array([]))
 
-                    k_prev = (step - 1) % (N_delay + 1)
+                    k_prev = (step - 1) % (dta.line_emt_data.n_delay[k] + 1)
                     vf_prev = V_buffer[k_prev, idx_from]
                     vt_prev = V_buffer[k_prev, idx_to]
 
                     # Actualizar estados Nodo F
                     for i, p in enumerate(yc_poles):
                         c = yc_res[i]
-                        denom = 2.0 + p * h
-                        alpha = (2.0 - p * h) / denom
-                        beta = (c * h) / denom
+                        denom = 2.0 + p * dta.h
+                        alpha = (2.0 - p * dta.h) / denom
+                        beta = (c * dta.h) / denom
 
                         x_prev = st['yc_f'][i]
                         # Ecuación de estado recursiva completa
@@ -813,9 +773,9 @@ def update_Ibranches(nc: NumericalCircuit,
                     # Actualizar estados Nodo T
                     for i, p in enumerate(yc_poles):
                         c = yc_res[i]
-                        denom = 2.0 + p * h
-                        alpha = (2.0 - p * h) / denom
-                        beta = (c * h) / denom
+                        denom = 2.0 + p * dta.h
+                        alpha = (2.0 - p * dta.h) / denom
+                        beta = (c * dta.h) / denom
 
                         x_prev = st['yc_t'][i]
                         st['yc_t'][i] = alpha * x_prev + beta * (V_t + vt_prev)
@@ -852,32 +812,25 @@ def update_Ibranches(nc: NumericalCircuit,
                 v_h = V_t
                 v_l = V_f
 
-            L_hh = branch.L_hh
-            L_ll = branch.L_ll
-            L_hl = branch.L_hl
-            Llk = branch.X_leack
-            Rlk = branch.R_leack
-            Lm = branch.X_magn
-            Rm = branch.R_magn
+            L_hh = dta.transformer_emt_data.L_hh[k]
+            L_ll = dta.transformer_emt_data.L_ll[k]
+            L_hl = dta.transformer_emt_data.L_hl[k]
+
 
             D = L_hh * L_ll - L_hl * L_hl
-            k = h / (2.0 * D)
+            k = dta.h / (2.0 * D)
 
             i_h = I_hist_h + k * (L_ll * v_h - L_hl * v_l)
             i_l = I_hist_l + k * (L_hh * v_l - L_hl * v_h)
-            # i_h = I_hist_h - k * (L_ll * v_h - L_hl * v_l)
-            # i_l = I_hist_l - k * (L_hh * v_l - L_hl * v_h)
 
-            # i_h = I_hist_h + (1/((2*D/(h * Lm))+Rm))* (v_h - v_l) + (1/((2*D/(h * Llk/2))+ Rlk/2)) * v_h
-            # i_l = I_hist_l + (1/((2*D/(h * Lm))+Rm))* (v_l - v_h) + (1/((2*D/(h * Llk/2))+ Rlk/2)) * v_h
-
-            print(f"history current from I_hist_h = {I_hist_h} at step = {step}")
-            print(f"history current to I_hist_l = {I_hist_l} at step = {step}")
-            print(f"G*v(t-dt) contribution at current trafo_primary = {k * (L_ll * v_h - L_hl * v_l)} at step = {step}")
-            print(
-                f"G*v(t-dt) contribution at current trafo_secondary = {k * (L_hh * v_l - L_hl * v_h)} at step = {step}")
-            print(f"Current trafo from i_h = {i_h} at step = {step}")
-            print(f"Current trafo to i_l = {i_l} at step = {step}")
+            if verbose:
+                print(f"history current from I_hist_h = {I_hist_h} at step = {step}")
+                print(f"history current to I_hist_l = {I_hist_l} at step = {step}")
+                print(f"G*v(t-dt) contribution at current trafo_primary = {k * (L_ll * v_h - L_hl * v_l)} at step = {step}")
+                print(
+                    f"G*v(t-dt) contribution at current trafo_secondary = {k * (L_hh * v_l - L_hl * v_h)} at step = {step}")
+                print(f"Current trafo from i_h = {i_h} at step = {step}")
+                print(f"Current trafo to i_l = {i_l} at step = {step}")
 
             # transformer magnetizing current
             if hv == Vfrom:
@@ -885,7 +838,7 @@ def update_Ibranches(nc: NumericalCircuit,
             else:
                 hist_magn = hist_magn_trafos[idx_to]
 
-            # I_magn = hist_magn + branch.Gm[1:,1:] @ v_h
+
             I_magn = hist_magn + branch.Gm[1:, 1:] @ (v_h - v_l)
 
             if hv == Vfrom:  # bus "from" is the primary
@@ -904,7 +857,6 @@ def update_Ibranches(nc: NumericalCircuit,
     # kbuf = (step +1) % (1 + 1)
     kbuf = 1
     V_buffer[kbuf, :] = V
-    # I_lines_buffer[kbuf, :] = hist_branches[step, :]  # <-- guarda h(t) MALAMENT
     I_lines_buffer[kbuf, :] = Ibranches_step  # <-- guarda i(t)
     I_magn_buffer[kbuf, :] = I_magn_step
 
@@ -913,15 +865,14 @@ def update_Ibranches(nc: NumericalCircuit,
 
 def set_V0_bus(alter_params_mapping: Dict[int, Const],
                uid2idx_alterparams: Dict[int, int],
+               dta: EmtCircuit,
                bus: dev.Bus,
                i: int,
-               nc: NumericalCircuit,
-               binary_bus_mask: BoolVec):
+               verbose: int = 0):
     """
     Set init guess solution to the first step in the simulation
     :param emt_vec_bus: EmtSolverProperties
     :param i: int. Bus index
-    :param nc: NumericalCircuit
     :return :
     """
     v_n = v_a = v_b = v_c = 0.0
@@ -941,57 +892,26 @@ def set_V0_bus(alter_params_mapping: Dict[int, Const],
         elif var.name == "v_c":
             v_c = val
 
-    V0 = np.zeros((1, 4 * len(nc.bus_dict)))
+    V0 = np.zeros((1, 4 * dta.n_bus))
     V0[0, 4 * i + 0] = v_n
     V0[0, 4 * i + 1] = v_a
     V0[0, 4 * i + 2] = v_b
     V0[0, 4 * i + 3] = v_c
 
-    V0 = V0[0, binary_bus_mask]
-
-    # v_n = v_a = v_b = v_c = 0.0
-    # if emt_vec_bus.alter_params0 is not None:
-    #     uid2idx_alterparams = emt_vec_bus.blocksolver.uid2idx_alterparams
-    #     alter_params = emt_vec_bus.blocksolver.alter_params
-    #     alter_params0 = emt_vec_bus.alter_params0
-    #
-    #     for uid, idx in uid2idx_alterparams.items():
-    #         var = alter_params[idx]
-    #         val = alter_params0[idx]
-    #
-    #         if var.name == "v_n":
-    #             v_n = val
-    #         elif var.name == "v_a":
-    #             v_a = val
-    #         elif var.name == "v_b":
-    #             v_b = val
-    #         elif var.name == "v_c":
-    #             v_c = val
-    #
-    # V0 = np.zeros((1, 4 * len(nc.bus_dict)))
-    # V0[0, 4 * i + 0] = v_n
-    # V0[0, 4 * i + 1] = v_a
-    # V0[0, 4 * i + 2] = v_b
-    # V0[0, 4 * i + 3] = v_c
-    #
-    # V0 = V0[0, binary_bus_mask]
+    V0 = V0[0, dta.binary_bus_mask]
 
     return V0
 
-
-def set_I0_bus(emt_vec_bus: EmtSolverProperties,
+def set_I0_bus(dta: EmtCircuit,
                i: int,
-               nc: NumericalCircuit,
-               init_guesses: List[Dict[int, float]],
-               binary_bus_mask: BoolVec,
-               bus_idx_lookup: IntVec,
-               V: np.ndarray):
-    uid2idx_vars = emt_vec_bus.blocksolver.uid2idx_vars
+               V: np.ndarray,
+               verbose: int=0):
+    uid2idx_vars = dta.emt_vec[i].blocksolver.uid2idx_vars
     vars_all = (
-            emt_vec_bus.blocksolver.state_vars +
-            emt_vec_bus.blocksolver.algebraic_vars
+            dta.emt_vec[i].blocksolver.state_vars +
+            dta.emt_vec[i].blocksolver.algebraic_vars
     )
-    init_guess = init_guesses[i]
+    init_guess = dta.init_guesses[i]
     i_n = i_a = i_b = i_c = 0.0
     for uid, val in init_guess.items():
         index = uid2idx_vars.get(uid)
@@ -1007,60 +927,46 @@ def set_I0_bus(emt_vec_bus: EmtSolverProperties,
         elif var.name == "i_c":
             i_c = val
 
-    Is0 = np.zeros((1, 4 * len(nc.bus_dict)))
+    Is0 = np.zeros((1, 4 * dta.n_bus))
     Is0[0, 4 * i + 0] += i_n
     Is0[0, 4 * i + 1] += i_a
     Is0[0, 4 * i + 2] += i_b
     Is0[0, 4 * i + 3] += i_c
 
-    if emt_vec_bus.blocksolver is not None:
+    if dta.emt_vec[i].blocksolver is not None:
         idx = 4 * i + np.array([0, 1, 2, 3])
-        net_idx = np.asarray(bus_idx_lookup)[idx]
+        net_idx = np.asarray(dta.bus_idx_lookup)[idx]
         v_n, v_a, v_b, v_c = [V[i] if i >= 0 else 0.0 for i in net_idx]
-        for dev_type, dev_list in emt_vec_bus.devices.items():
+        for dev_type, dev_list in dta.emt_vec[i].devices.items():
             for elm in dev_list:
                 if dev_type.name == 'GeneratorDevice':
-                    # Is0[idx] += np.array([v_n, v_a, v_b, v_c], dtype=float) @ elm.Gc
                     Ir0 = elm.Gc @ np.array([v_n, v_a, v_b, v_c], dtype=float)
-                    # Is0[idx] +=Ir0.reshape(-1, 1)
                     Is0[0, idx] = Ir0
 
-    Is0 = Is0[0, binary_bus_mask]
+    Is0 = Is0[0, dta.binary_bus_mask]
 
     return Is0
 
 
-def initialize_buffers(  # nc: NumericalCircuit,
-        # grid: MultiCircuit,
+def initialize_buffers(
+        grid: MultiCircuit,
         dta: EmtCircuit,
         pf_results: PowerFlowResults3Ph,
-        N_delay: int,
-        h: float,
         V_buffer: np.ndarray,
         I_lines_buffer: np.ndarray,
-        binary_bus_mask: BoolVec,
-        bus_idx_lookup: IntVec,
-        branch_from_lookup: IntVec,
-        branch_to_lookup: IntVec):
+        verbose: int=0):
     """
     Initialize history buffers with steady state AC solution
 
-    :param nc: NumericalCircuit
-    :param grid: MultiCircuit
-    :param N_delay: max delay in steps (for the longest line)
-    :param h: time step
     :param V_buffer: array with voltage t-tau steps before (N_delay+1, total_cond)
     :param I_lines_buffer: array with currents at each branch termination t-tau steps before (N_delay+1, 2*max_phases_line*nl)
-    :param binary_bus_mask: BoolVec
-    :param bus_idx_lookup:  IntVec
-    :param branch_from_lookup: IntVec
-    :param branch_to_lookup: IntVec
     """
     # if pf_results is not None:
     omega = 2 * np.pi * grid.fBase
     res = pf_results
-
-    print("Initializing EMT history buffers with steady-state AC values.")
+    bus_dict = grid.get_bus_index_dict()
+    if verbose:
+        print("Initializing EMT history buffers with steady-state AC values.")
 
     nbus4 = 4 * dta.n_bus
     sqrt2 = np.sqrt(2)
@@ -1099,9 +1005,9 @@ def initialize_buffers(  # nc: NumericalCircuit,
     idx4 = np.array([0, 1, 2, 3], dtype=int)  # N,A,B,C
 
     # ---- fill buffers for negative times: t = -h, -2h, ... -N_delay*h ----
-    for kdelay in range(1, N_delay + 1):
-        t_val = -kdelay * h
-        idx_buf = (-kdelay) % (N_delay + 1)
+    for kdelay in range(1, dta.n_delay + 1):
+        t_val = -kdelay * dta.h
+        idx_buf = (-kdelay) % (dta.n_delay + 1)
 
         # ---------- VOLTAGES (peak p.u.) ----------
         V_inst_all = np.zeros(nbus4, dtype=float)
@@ -1110,37 +1016,28 @@ def initialize_buffers(  # nc: NumericalCircuit,
         V_inst_all[2::4] = sqrt2 * V_mag_B * np.cos(omega * t_val + V_ang_B)
         V_inst_all[3::4] = sqrt2 * V_mag_C * np.cos(omega * t_val + V_ang_C)
 
-        V_buffer[idx_buf, :] = V_inst_all[binary_bus_mask]
+        V_buffer[idx_buf, :] = V_inst_all[dta.binary_bus_mask]
 
         # ---------- HISTORY CURRENTS h(t) = i(t) - Gc*v(t) ----------
-        # Initialize buffer row to zero first (optional but recommended)
-        # I_lines_buffer[idx_buf, :] = 0.0
-
         for br_k, branch in enumerate(grid.get_branches_iter()):
 
-            fro = nc.passive_branch_data.F[br_k]
-            to = nc.passive_branch_data.T[br_k]
+            fro = bus_dict[branch.bus_from]
+            to = bus_dict[branch.bus_to]
 
             f4 = 4 * fro + idx4
             t4 = 4 * to + idx4
 
-            idx_from_red = bus_idx_lookup[f4]
-            idx_to_red = bus_idx_lookup[t4]
+            idx_from_red = dta.bus_idx_lookup[f4]
+            idx_to_red = dta.bus_idx_lookup[t4]
 
             # Keep only active phases
             mask_from = idx_from_red >= 0
             mask_to = idx_to_red >= 0
             mask = mask_from & mask_to  # phases active on both ends
 
-            if not np.any(mask):
-                continue
-
-            idx_from = idx_from_red[mask]
-            idx_to = idx_to_red[mask]
-
             row_base = 4 * br_k + idx4
-            idx_hist_f = branch_from_lookup[row_base][mask]
-            idx_hist_t = branch_to_lookup[row_base][mask]
+            idx_hist_f = dta.branch_from_lookup[row_base][mask]
+            idx_hist_t = dta.branch_to_lookup[row_base][mask]
 
             if np.any(idx_hist_f < 0) or np.any(idx_hist_t < 0):
                 raise RuntimeError(
@@ -1169,25 +1066,14 @@ def initialize_buffers(  # nc: NumericalCircuit,
 
 def simulate_emt(
         dta: EmtCircuit,
-        # t: Var,
         simulation_time: float,
-        # grid: MultiCircuit,
-        # nc: NumericalCircuit,
-        # syst_blocks: Dict,
-        # init_guesses: List,
-        # time_step: float,
-        # N_delay: int,
-        # G0: sp.csc_matrix,
-        # binary_bus_mask: BoolVec,
-        # branch_lookup: IntVec,
-        # bus_idx_lookup: IntVec,
+        grid: MultiCircuit,
         # alter_params_mappings: Dict[Bus, Dict[int, Const]],
         # uid2idx_alterparams: Dict[int, int],
-        # res: PowerFlowResults3Ph,
+        res: PowerFlowResults3Ph,
         integration_method: DynamicIntegrationMethod,
         tolerance: float,
-        verbose: int = 0
-):  # -> Tuple[np.ndarray, np.ndarray]:
+        verbose: int = 0):  # -> Tuple[np.ndarray, np.ndarray]:
     """
     Main MNA loop that simulates the system over time.
     :param t:
@@ -1254,17 +1140,12 @@ def simulate_emt(
     I_magn_buffer = np.zeros((dta.n_delay + 1, Nbranches_masked))
     print(f"Initial conditions are: V_buffer = {V_buffer}, I_lines_buffer = {I_lines_buffer}")
 
-    initialize_buffers(  # nc= nc,
-        # grid= grid,
-        pf_results=PowerFlowResults3Ph,
-        N_delay=dta.n_delay,
-        h=dta.h,
+    initialize_buffers(
+        dta= dta,
+        grid= grid,
+        pf_results= res,
         V_buffer=V_buffer,
-        I_lines_buffer=I_lines_buffer,
-        binary_bus_mask=dta.binary_bus_mask,
-        bus_idx_lookup=dta.bus_idx_lookup,
-        branch_from_lookup=IntVec,
-        branch_to_lookup=IntVec)
+        I_lines_buffer=I_lines_buffer)
 
     # Symbolic EmtSolverProperties association
     emt_vec = Vector(dta.n_bus)
@@ -1281,8 +1162,8 @@ def simulate_emt(
             syst_blocks=dta.syst_blocks,
             bus_regions_dict=bus_regions_dict,
             alter_params_mappings=alter_params_mappings,
-            init_guesses=init_guesses,
-            t=t,
+            init_guesses=dta.init_guesses,
+            t=dta.tme,
             steps=steps,
         )
 
@@ -1291,7 +1172,6 @@ def simulate_emt(
                         uid2idx_alterparams=uid2idx_alterparams,
                         bus=bus,
                         i=i,
-                        nc=nc,
                         binary_bus_mask=dta.binary_bus_mask)
         V[0, :] += V0
 
@@ -1303,31 +1183,20 @@ def simulate_emt(
             # Assign step 0 currents from injections ---------------------------------------------------------------
             Is_0 = set_I0_bus(emt_vec_bus=emt_vec[i],
                               i=i,
-                              nc=nc,
-                              init_guesses=init_guesses,
-                              binary_bus_mask=binary_bus_mask,
-                              bus_idx_lookup=bus_idx_lookup,
                               V=V[0, :])
             Is[0, :] += Is_0
     # --------------------------------------------------------------------------------------------------------------
-    hist[0, :] = update_Hist(nc=nc,
+    hist[0, :] = update_Hist(dta=dta,
                              step=0,
                              V_buffer=V_buffer,
                              I_lines_buffer=I_lines_buffer,
                              hist_branches=hist_branches[0, :],
                              grid=grid,
-                             N_delay=N_delay,
-                             h=h,
-                             branch_from_lookup=branch_from_lookup,
-                             branch_to_lookup=branch_to_lookup,
-                             bus_idx_lookup=bus_idx_lookup,
-                             line_states=line_states,
                              I_magn_buffer=I_magn_buffer,
                              hist_magn_trafos=hist_magn_trafos)
 
     # # update Ibranches for the step 0
-    Ibranches[0, :] = update_Ibranches(nc=nc,
-                                       V=V[0, :],
+    Ibranches[0, :] = update_Ibranches(V=V[0, :],
                                        V_buffer=V_buffer,
                                        I_lines_buffer=I_lines_buffer,
                                        I_magn_buffer=I_magn_buffer,
@@ -1335,14 +1204,8 @@ def simulate_emt(
                                        hist_magn_trafos=hist_magn_trafos[0, :],
                                        grid=grid,
                                        step=0,
-                                       h=h,
-                                       N_delay=N_delay,
-                                       bus_idx_lookup=bus_idx_lookup,
-                                       branch_from_lookup=branch_from_lookup,
-                                       branch_to_lookup=branch_to_lookup,
-                                       total_branch_currents=I_lines_buffer.shape[1],
-                                       line_states=line_states)
-    kbuf = 0 % (N_delay + 1)
+                                       total_branch_currents=I_lines_buffer.shape[1])
+    kbuf = 0 % (dta.n_delay + 1) #TODO: revise implementation valid for all
     V_buffer[kbuf, :] = V[0, :]
     I_lines_buffer[kbuf, :] = hist_branches[0, :]
 
@@ -1358,23 +1221,23 @@ def simulate_emt(
     Itotal0 = (Is0 - hist0).reshape(-1, 1)
 
     # --- MNA residual ---
-    r = G0 @ V0 - Itotal0
+    r = dta.G0 @ V0 - Itotal0
 
     # --- diagnostics ---
     r_inf = np.linalg.norm(r, ord=np.inf)
     r_l2 = np.linalg.norm(r)
+    if verbose:
+        print("MNA residual check at t = 0")
+        print(f"||r||_inf = {r_inf:.3e}")
+        print(f"||r||_2   = {r_l2:.3e}")
 
-    print("MNA residual check at t = 0")
-    print(f"||r||_inf = {r_inf:.3e}")
-    print(f"||r||_2   = {r_l2:.3e}")
-
-    print(f"step 0 completed, starting the loop...")
-    G = factorized(G0)
+        print(f"step 0 completed, starting the loop...")
+    G = factorized(dta.G0)
     # ---------- MAIN LOOP ----------
     for step in range(1, steps):
         # for step in range(steps): # -----------
         # actualize time variable
-        temp[step] = step * h
+        temp[step] = step * dta.h
         print("sim time = ", temp[step])
 
         # check events that change G TODO
@@ -1383,30 +1246,19 @@ def simulate_emt(
         Is[step, :] = predict_Is(n=dta.n_bus,
                                  Vprev=V[step - 1, :],
                                  step=step,
-                                 h=h,
-                                 binary_bus_mask=binary_bus_mask,
-                                 bus_idx_lookup=bus_idx_lookup,
-                                 emt_vec=emt_vec,
                                  integration_method=integration_method,
                                  tolerance=tolerance,
                                  verbose=verbose
                                  )
 
         # update i history
-        hist[step, :] = update_Hist(nc=nc,
-                                    step=step,
+        hist[step, :] = update_Hist(step=step,
                                     V_buffer=V_buffer,
                                     I_lines_buffer=I_lines_buffer,
                                     I_magn_buffer=I_magn_buffer,
                                     hist_branches=hist_branches[step, :],
                                     hist_magn_trafos=hist_magn_trafos[step, :],
-                                    grid=grid,
-                                    N_delay=N_delay,
-                                    h=h,
-                                    branch_from_lookup=branch_from_lookup,
-                                    branch_to_lookup=branch_to_lookup,
-                                    bus_idx_lookup=bus_idx_lookup,
-                                    line_states=line_states)
+                                    grid=grid)
 
         # Create right hand side vector Itotal for the MNA
         Itotal = (Is[step, :] - hist[step, :]).reshape(-1, 1)  # column vector
@@ -1422,12 +1274,8 @@ def simulate_emt(
         # -----------------------------------------------
         Is[step, :] = update_Is(emt_simulation_driver=self,
                                 Vsol=V[step, :],
-                                nc=nc,
                                 step=step,
                                 grid=grid,
-                                h=h,
-                                binary_bus_mask=binary_bus_mask,
-                                bus_idx_lookup=bus_idx_lookup,
                                 emt_vec=emt_vec)
 
         # Itotal = (Is[step, :] - hist[step, :]).reshape(-1, 1)  # column vector
@@ -1438,7 +1286,7 @@ def simulate_emt(
         # print(f"step {step} sol = {sol[:, 0]}")
 
         # solve current equations
-        Ibranches[step, :] = update_Ibranches(nc=nc,
+        Ibranches[step, :] = update_Ibranches(dta=dta,
                                               V=V[step, :],
                                               hist_branches=hist_branches[step, :],
                                               hist_magn_trafos=hist_magn_trafos[step, :],
@@ -1447,13 +1295,7 @@ def simulate_emt(
                                               I_magn_buffer=I_magn_buffer,
                                               grid=grid,
                                               step=step,
-                                              h=h,
-                                              N_delay=N_delay,
-                                              bus_idx_lookup=bus_idx_lookup,
-                                              branch_from_lookup=branch_from_lookup,
-                                              branch_to_lookup=branch_to_lookup,
-                                              total_branch_currents=I_lines_buffer.shape[1],
-                                              line_states=line_states)
+                                              total_branch_currents=I_lines_buffer.shape[1])
 
         print(f"transformer/line currents at current step = {Ibranches[step, :]}")
 
