@@ -54,6 +54,7 @@ class IoMain(ConfigurationMain):
                                     '.gridcal', '.dgridcal',
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
                                     '.dgs', '.m', '.raw', '.RAW', '.json', '.uct',
+                                    '.iidm', '.xiidm',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
                                     '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
                                     '.vgplugin', '.gslv']
@@ -265,7 +266,7 @@ class IoMain(ConfigurationMain):
         if allow_diff_file_format:
             files_types += "*.dgridcal *.dveragrid "
 
-        files_types += "*.gch5 *.xlsx *.xls *.sqlite *.dgs "
+        files_types += "*.gch5 *.xlsx *.xls *.sqlite *.dgs *.iidm *.xiidm"
         files_types += "*.m *.raw *.RAW *.rawx *.uct *.json *.ejson2 *.ejson3 *.xml "
         files_types += "*.zip *.dpx *.pwf *.epc *.EPC *.nc *.hdf5 *.p"
 

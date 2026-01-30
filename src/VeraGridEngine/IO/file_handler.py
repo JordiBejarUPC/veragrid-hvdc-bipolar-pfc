@@ -47,6 +47,7 @@ from VeraGridEngine.IO.ucte.devices.ucte_circuit import UcteCircuit
 from VeraGridEngine.IO.ucte.ucte_to_veragrid import convert_ucte_to_veragrid
 from VeraGridEngine.IO.others.rte_parser import rte2veragrid
 from VeraGridEngine.IO.others.anarede import PWFParser
+from VeraGridEngine.IO.iidm.iidm_parser_pypowsybl import IidmParser
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -460,6 +461,10 @@ class FileOpen:
                     ucte_grid = UcteCircuit()
                     ucte_grid.parse_file(files=[self.file_name], logger=self.logger)
                     self.circuit = convert_ucte_to_veragrid(ucte_grid=ucte_grid, logger=self.logger)
+
+                elif file_extension.lower() == '.iidm' or file_extension.lower() == '.xiidm':
+                    parser = IidmParser(self.file_name, self.logger)
+                    self.circuit = parser.parse()
 
             else:
                 # warn('The file does not exist.')
