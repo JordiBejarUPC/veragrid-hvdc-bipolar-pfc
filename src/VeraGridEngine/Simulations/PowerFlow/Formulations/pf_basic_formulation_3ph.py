@@ -76,17 +76,6 @@ def compute_ybus_generator(nc: NumericalCircuit) -> Tuple[csc_matrix]:
     return Ybus_gen.tocsc()
 
 
-# --- normalización de tipos auxiliares ---
-def is_yg(x) -> bool:
-    """
-    Devuelve True si x representa conexión 'Yg' (acepta Enum o str).
-    """
-    # TODO: What the F, hasattr must never be used
-    if hasattr(x, "value"):  # Enum
-        return x.value == "Yg"
-    return str(x) == "Yg"  # str u objeto que imprime 'Yg'
-
-
 def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matrix, CxVec, BoolVec, IntVec, IntVec]:
     """
     Compute admittances and masks
@@ -156,21 +145,48 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
     F = np.array(nc.passive_branch_data.F, dtype=int)
     T = np.array(nc.passive_branch_data.T, dtype=int)
 
+    # --- build CSR-like incidence list: branches per bus (Numba-friendly) ---
+    deg = np.zeros(n, dtype=np.int64) # number of incident branches per bus (the bus “degree”)
+    for k in range(m):
+        deg[F[k]] += 1
+        deg[T[k]] += 1
+
+    ptr = np.zeros(n + 1, dtype=np.int64) # Index pointer into bus_branches that gives where each bus’s incident branches start and end
+    for i in range(n):
+        ptr[i + 1] = ptr[i] + deg[i]
+
+    bus_branches = np.zeros(ptr[-1], dtype=np.int64)
+    fill = np.zeros(n, dtype=np.int64)
+    for k in range(m):
+        f = F[k]
+        t = T[k]
+
+        pos_f = ptr[f] + fill[f]
+        bus_branches[pos_f] = k
+        fill[f] += 1
+
+        pos_t = ptr[t] + fill[t]
+        bus_branches[pos_t] = k
+        fill[t] += 1
+
     bus_has_neutral = np.ones(4 * n, dtype=bool)  # por defecto el neutro del bus está activo
 
     for bus_idx in range(n):
-        connected = np.where((F == bus_idx) | (T == bus_idx))[0]  # TODO: where is very expensive
-        if connected.size == 0:
+        start = ptr[bus_idx]
+        end = ptr[bus_idx + 1]
+
+        if start == end:
             continue
 
         grounded_here = False
-        for k in connected:
-            # Si este bus es el 'from' de la rama k y ese lado es Yg -> neutro a 0
-            if F[k] == bus_idx and is_yg(nc.passive_branch_data.conn_f[k]):
+        # iterate only over branches actually connected to this bus
+        for p in range(start, end):
+            k = bus_branches[p]
+
+            if F[k] == bus_idx and nc.passive_branch_data.conn_f[k].value == 'Yg':
                 grounded_here = True
                 break
-            # Si este bus es el 'to' de la rama k y ese lado es Yg -> neutro a 0
-            if T[k] == bus_idx and is_yg(nc.passive_branch_data.conn_t[k]):
+            if T[k] == bus_idx and nc.passive_branch_data.conn_t[k].value == 'Yg':
                 grounded_here = True
                 break
 

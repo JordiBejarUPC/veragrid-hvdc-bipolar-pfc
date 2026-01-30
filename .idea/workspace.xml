@@ -28,7 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="some TODOs in the pf_basic_formulation_3ph.py">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="updated compute_ybus">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_basic_formulation_3ph.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -168,9 +169,11 @@
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
     "Python tests.pytest for tests.test_3ph_pf_neutral_loads.test_impedance_groundedstar_3ph.executor": "Run",
+    "Python tests.pytest for tests.test_3ph_pf_neutral_transformers.test_yy_impedance_neutralstar_3ph.executor": "Debug",
     "Python tests.pytest for tests.test_3ph_sc_driver.test_three_phase_to_ground_fault.executor": "Run",
     "Python tests.pytest in test_3ph_pf_driver.py.executor": "Run",
     "Python tests.pytest in test_3ph_pf_neutral_loads.py.executor": "Run",
+    "Python tests.pytest in test_3ph_pf_neutral_transformers.py.executor": "Run",
     "Python tests.pytest in test_3ph_sc_driver.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
@@ -655,7 +658,7 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for tests.test_3ph_pf_neutral_loads.test_impedance_groundedstar_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest for tests.test_3ph_pf_neutral_transformers.test_yy_impedance_neutralstar_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -670,13 +673,13 @@
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;tests.test_3ph_pf_neutral_loads.test_impedance_groundedstar_3ph&quot;" />
+      <option name="_new_target" value="&quot;tests.test_3ph_pf_neutral_transformers.test_yy_impedance_neutralstar_3ph&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.pytest for tests.test_3ph_pf_neutral_loads.test_impedance_groundedstar_3ph" />
+        <item itemvalue="Python tests.pytest for tests.test_3ph_pf_neutral_transformers.test_yy_impedance_neutralstar_3ph" />
       </list>
     </recent_temporary>
   </component>
@@ -1808,7 +1811,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="706" />
+    <option name="localTasksCounter" value="707" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1874,7 +1877,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="5.6.10" />
     <MESSAGE value="Fixed test issue with simplified linear analysis" />
     <MESSAGE value="merged" />
     <MESSAGE value="Modified the main icon path" />
@@ -1899,7 +1901,8 @@
     <MESSAGE value="changes in lookup_from_mask" />
     <MESSAGE value="three-phase functions compute_current_loads and compute_power_loads are converted to numba" />
     <MESSAGE value="some TODOs in the pf_basic_formulation_3ph.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="some TODOs in the pf_basic_formulation_3ph.py" />
+    <MESSAGE value="updated compute_ybus" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated compute_ybus" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
