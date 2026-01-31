@@ -2413,6 +2413,19 @@ class DynamicIntegrationMethod(Enum):
     def list(cls):
         return list(map(lambda c: c.value, cls))
 
+class JacobianBackend(Enum):
+    """
+    Jacobian construction backends for implicit solvers.
+    """
+    Symbolic = "symbolic"   # Symbolic differentiation (SD)
+    Automatic = "automatic" # Sparse forward-mode AD + graph coloring
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
