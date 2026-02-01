@@ -87,6 +87,16 @@ class IoMain(ConfigurationMain):
         self.ui.actionAdd_custom_catalogue.triggered.connect(self.load_custom_catalogue)
         self.ui.actionExportCatalogue.triggered.connect(self.save_custom_catalogue)
 
+        self.ui.actionPSS_e_Raw_Rawx.triggered.connect(self.export_psse)
+        self.ui.actionPower_Factory_DGS.triggered.connect(self.export_power_factory)
+        self.ui.actionCIM.triggered.connect(self.export_cim)
+        self.ui.actionCGMES.triggered.connect(self.export_cgmes)
+        self.ui.actionPower_Grid_Models.triggered.connect(self.export_power_grid_models)
+        self.ui.actionJSON.triggered.connect(self.export_json)
+        self.ui.actionH5.triggered.connect(self.export_h5)
+        self.ui.actionMicrosoft_Excel.triggered.connect(self.export_excel)
+        self.ui.actionSQLite.triggered.connect(self.export_sqlite)
+
         # Buttons
         self.ui.exportSimulationDataButton.clicked.connect(self.export_simulation_data)
         self.ui.loadResultFromDiskButton.clicked.connect(self.load_results_driver)
@@ -1076,3 +1086,30 @@ class IoMain(ConfigurationMain):
 
         self.ui.cgmes_profiles_listView.setModel(gf.get_list_model(list(self.cgmes_profiles_dict.keys()),
                                                                    checks=True, check_value=True))
+
+    def export_psse(self):
+        pass
+
+    def export_power_factory(self):
+        pass
+
+    def export_cim(self):
+        pass
+
+    def export_cgmes(self):
+        pass
+
+    def export_power_grid_models(self):
+        pass
+
+    def export_json(self):
+        pass
+
+    def export_h5(self):
+        pass
+
+    def export_excel(self):
+        pass
+
+    def export_sqlite(self):
+        pass

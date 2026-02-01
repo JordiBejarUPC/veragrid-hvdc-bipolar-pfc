@@ -28,8 +28,18 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="ptdf scan fixed">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="renamed .m files to .matpower">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/linear_contingency_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/linear_contingency_analysis.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/nonlinear_contingency_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/Methods/nonlinear_contingency_analysis.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingencies_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContingencyAnalysis/contingencies_report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -274,7 +284,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.rename_m_files (1)">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -588,6 +598,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -686,12 +718,12 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest for tests.test_3ph_sc_driver.test_three_phase_to_ground_fault" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+    <configuration name="pytest in tests" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid (eRoots)" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
@@ -699,22 +731,24 @@
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;tests.test_3ph_sc_driver.test_three_phase_to_ground_fault&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
     <list>
       <item itemvalue="Python.rename_m_files" />
       <item itemvalue="Python.rename_m_files (1)" />
+      <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python tests.pytest for tests.test_3ph_sc_driver.test_three_phase_to_ground_fault" />
+      <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.rename_m_files (1)" />
-        <item itemvalue="Python.rename_m_files" />
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest for tests.test_3ph_sc_driver.test_three_phase_to_ground_fault" />
+        <item itemvalue="Python.update_gui_file" />
+        <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python.rename_m_files" />
+        <item itemvalue="Python.rename_m_files (1)" />
       </list>
     </recent_temporary>
   </component>
@@ -1846,7 +1880,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="704" />
+    <option name="localTasksCounter" value="705" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1912,7 +1946,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="minor changes" />
     <MESSAGE value="5.6.10" />
     <MESSAGE value="Fixed test issue with simplified linear analysis" />
     <MESSAGE value="merged" />
@@ -1937,7 +1970,8 @@
     <MESSAGE value="minimal formatting" />
     <MESSAGE value="early iidm parser" />
     <MESSAGE value="ptdf scan fixed" />
-    <option name="LAST_COMMIT_MESSAGE" value="ptdf scan fixed" />
+    <MESSAGE value="renamed .m files to .matpower" />
+    <option name="LAST_COMMIT_MESSAGE" value="renamed .m files to .matpower" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

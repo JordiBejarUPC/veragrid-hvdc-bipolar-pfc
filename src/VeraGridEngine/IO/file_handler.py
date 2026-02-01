@@ -766,7 +766,10 @@ class FileSave:
         from VeraGridEngine.Compilers.circuit_to_pgm import save_pgm
         logger = Logger()
 
-        save_pgm(filename=self.file_name, circuit=self.circuit, logger=logger, time_series=self.circuit.has_time_series)
+        save_pgm(filename=self.file_name,
+                 circuit=self.circuit,
+                 logger=logger,
+                 time_series=self.circuit.has_time_series)
 
         return logger
 
