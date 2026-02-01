@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.0
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -628,7 +628,6 @@ class Ui_mainWindow(object):
         self.actionAdd_short_circuit_events.setMenuRole(QAction.MenuRole.NoRole)
         self.actionPSS_e_Raw_Rawx = QAction(mainWindow)
         self.actionPSS_e_Raw_Rawx.setObjectName(u"actionPSS_e_Raw_Rawx")
-        self.actionPSS_e_Raw_Rawx.setIcon(icon2)
         self.actionPower_Factory_DGS = QAction(mainWindow)
         self.actionPower_Factory_DGS.setObjectName(u"actionPower_Factory_DGS")
         self.actionCGMES = QAction(mainWindow)
@@ -5001,12 +5000,13 @@ class Ui_mainWindow(object):
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1411, 33))
+        self.menuBar.setGeometry(QRect(0, 0, 1411, 23))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
         self.menuExport_grid = QMenu(self.menuProject)
         self.menuExport_grid.setObjectName(u"menuExport_grid")
+        self.menuExport_grid.setIcon(icon22)
         self.menuExport_data = QMenu(self.menuProject)
         self.menuExport_data.setObjectName(u"menuExport_data")
         self.menuImport_data = QMenu(self.menuProject)
@@ -5202,7 +5202,7 @@ class Ui_mainWindow(object):
 
         self.retranslateUi(mainWindow)
 
-        self.mainTabWidget.setCurrentIndex(3)
+        self.mainTabWidget.setCurrentIndex(0)
         self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(0)
