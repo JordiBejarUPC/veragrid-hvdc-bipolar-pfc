@@ -4,203 +4,104 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Set
 from PySide6 import QtWidgets
-from PySide6.QtGui import QClipboard
-import numpy as np
-from VeraGrid.Gui.GridReduce.grid_reduce_gui import Ui_ReduceDialog
-from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.messages import yes_no_question, warning_msg
-from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
+from VeraGrid.Gui.CGMESDialogue.cgmes_export_gui import Ui_CgmesExportDialog
 from VeraGrid.Session.session import SimulationSession
-from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
-from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
-from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import GridReductionMethod, BusReductionMethod
+import VeraGrid.Session.file_handler as filedrv
+import VeraGrid.Gui.gui_functions as gf
+from VeraGridEngine.enumerations import CGMESVersions
+from VeraGridEngine.IO.cim.cgmes.cgmes_export import get_available_cgmes_profiles
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 
 
-class GridReduceDialogue(QtWidgets.QDialog):
+class GridExportDialogue(QtWidgets.QDialog):
     """
     GridMergeDialogue
     """
 
-    def __init__(self, grid: MultiCircuit, session: SimulationSession, selected_buses_set: Set[Bus]):
+    def __init__(self, grid: MultiCircuit, session: SimulationSession, project_directory: str = ""):
         """
         GridMergeDialogue
         :param grid: MultiCircuit instance
         :param session: SimulationSession instance to query the power flow
-        :param selected_buses_set: Set of buses (Bus objects) to reduce
+        :param project_directory: Set of buses (Bus objects) to reduce
         """
         QtWidgets.QDialog.__init__(self)
-        self.ui = Ui_ReduceDialog()
+        self.ui = Ui_CgmesExportDialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('Grid reduction')
+        self.setWindowTitle('CGMES export')
         self.setModal(True)
 
-        self.logger = Logger()
-        self.logs_dialogue: LogsDialogue | None = None
+        self.grid = grid
 
-        self.ui.listView.setModel(get_list_model(list(selected_buses_set)))
+        self.sessions_data = session
 
-        self.methods_dict, methods_mdl = enums_to_model(
-            [GridReductionMethod.PTDF,
-             GridReductionMethod.PTDFProjected,
-             GridReductionMethod.DiShi,
-             GridReductionMethod.Ward]
-        )
-        self.ui.methodComboBox.setModel(methods_mdl)
+        self.project_directory = project_directory
 
-        self.bus_methods_dict, bus_methods_mdl = enums_to_model(
-            [BusReductionMethod.Reduce, BusReductionMethod.Keep]
-        )
-        self.ui.busModeComboBox.setModel(bus_methods_mdl)
+        self.current_boundary_set = ""
 
-        self._grid: MultiCircuit = grid
-        self._session: SimulationSession = session
-        self._selected_buses_set: Set[Bus] = selected_buses_set
+        self.cgmes_version_dict = {x.value: x for x in [CGMESVersions.v2_4_15,
+                                                        CGMESVersions.v3_0_0]}
+        self.ui.cgmes_version_comboBox.setModel(gf.get_list_model(list(self.cgmes_version_dict.keys())))
 
-        self.did_reduce = False
+        self.cgmes_profiles_dict = {key: CgmesProfileType(key) for key, val in
+                                    get_available_cgmes_profiles(cgmes_version=CGMESVersions.v2_4_15).items()}
 
-        self.ui.reduceButton.clicked.connect(self.reduce_grid)
-        self.ui.copyIndicesButton.clicked.connect(self.copy_indices)
+        self.ui.cgmes_profiles_listView.setModel(gf.get_list_model(list(self.cgmes_profiles_dict.keys()),
+                                                                   checks=True, check_value=True))
 
-    def reduce_grid(self) -> None:
+        # Buttons
+        self.ui.selectCGMESBoundarySetButton.clicked.connect(self.select_cgmes_boundary_set)
+        self.ui.exportButton.clicked.connect(self.export)
+
+        # change
+        self.ui.cgmes_version_comboBox.currentTextChanged.connect(self.cgmes_version_change)
+
+    def cgmes_version_change(self):
+        """
+        On GUI cgmes version change, display only the supported profiles
+        """
+        cgmes_version = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
+
+        self.cgmes_profiles_dict = {key: CgmesProfileType(key) for key, val in
+                                    get_available_cgmes_profiles(cgmes_version=cgmes_version).items()}
+
+        self.ui.cgmes_profiles_listView.setModel(gf.get_list_model(list(self.cgmes_profiles_dict.keys()),
+                                                                   checks=True, check_value=True))
+
+    def select_cgmes_boundary_set(self):
+        """
+        Select the current boundary set
+        """
+        files_types = "Boundary set (*.zip)"
+
+        dialogue = QtWidgets.QFileDialog(None,
+                                         caption='Select Boundary set file',
+                                         directory=self.project_directory,
+                                         filter=files_types)
+        if dialogue.exec():
+            filenames = dialogue.selectedFiles()
+            if len(filenames) > 0:
+                self.current_boundary_set = filenames[0]
+                self.ui.cgmes_boundary_set_label.setText(self.current_boundary_set)
+
+    def export(self) -> None:
         """
         The elements of the grid will be added with new idtags.
         This is useful in the case you want to compose a new grid from grids that are the same.
         :return:
         """
-        if len(self._selected_buses_set):
+        cgmes_version = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
+        cgmes_profiles_txt = gf.get_checked_values(mdl=self.ui.cgmes_profiles_listView.model())
+        cgmes_profiles = [self.cgmes_profiles_dict[e] for e in cgmes_profiles_txt]
+        cgmes_one_file_per_profile = self.ui.cgmes_single_profile_per_file_checkBox.isChecked()
+        cgmes_map_areas_like_raw = self.ui.cgmes_map_regions_like_raw_checkBox.isChecked()
 
-            reduction_method: GridReductionMethod = self.methods_dict[self.ui.methodComboBox.currentText()]
-            bus_mode: BusReductionMethod = self.bus_methods_dict[self.ui.busModeComboBox.currentText()]
-
-            if bus_mode == BusReductionMethod.Reduce:
-                text = f"This will delete the selected buses and reintroduce their influence."
-            else:
-                text = "This will keep the selected buses and delete all others, reintroducing their influence."
-
-            text += f"using the {reduction_method.value} equivalent. "
-            "This cannot be undone and it is dangerous if you don't know"
-            "what you are doing \nAre you sure?"
-
-            ok = yes_no_question(
-                text=text,
-                title="Grid reduction?")
-
-            if ok:
-
-                if bus_mode == BusReductionMethod.Reduce:
-                    # convert the set of buses to bus indices
-                    reduction_bus_indices = np.array([self._grid.buses.index(b)
-                                                      for b in self._selected_buses_set],
-                                                     dtype=int)
-
-                elif bus_mode == BusReductionMethod.Keep:
-                    # the the other buses that are not in the set
-                    reduction_bus_indices = np.array([i for i in range(self._grid.get_bus_number())
-                                                      if self._grid.buses[i] not in self._selected_buses_set],
-                                                     dtype=int)
-                else:
-                    raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
-
-                if reduction_method == GridReductionMethod.DiShi:
-
-                    # get the previous power flow
-                    _, pf_res = self._session.power_flow
-
-                    if pf_res is None:
-                        warning_msg("Run a power flow first! or select another method", "Grid reduction")
-                        return
-
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = di_shi_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage
-                    )
-
-                elif reduction_method == GridReductionMethod.Ward:
-
-                    # get the previous power flow
-                    _, pf_res = self._session.power_flow
-
-                    if pf_res is None:
-                        warning_msg("Run a power flow first! or select another method", "Grid reduction")
-                        return
-
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = ward_standard_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        V0=pf_res.voltage,
-                    )
-
-                elif reduction_method == GridReductionMethod.PTDF:
-
-                    # NOTE: self._grid gets reduced in-place
-                    grid_reduced, logger = ptdf_reduction(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                    )
-
-                elif reduction_method == GridReductionMethod.PTDFProjected:
-
-                    # NOTE: self._grid gets reduced in-place
-
-                    # get the options from the linear analysis drivers (prefer TS if available)
-                    distribute_slack = True
-                    lin_drv_ts, _ = self._session.linear_power_flow_ts
-                    lin_drv, _ = self._session.linear_power_flow
-
-                    if lin_drv_ts is not None:
-                        distribute_slack = lin_drv_ts.options.distribute_slack
-
-                    elif lin_drv is not None:
-                        distribute_slack = lin_drv.options.distribute_slack
-
-                    else:
-                        pass
-
-                    grid_reduced, logger = ptdf_reduction_projected(
-                        grid=self._grid,
-                        reduction_bus_indices=reduction_bus_indices,
-                        distribute_slack=distribute_slack
-                    )
-
-                    # grid_reduced, logger = ptdf_reduction_ree_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
-
-                    # grid_reduced, logger = ptdf_reduction_ree_less_bad(
-                    #     grid=self._grid,
-                    #     reduction_bus_indices=reduction_bus_indices,
-                    # )
-
-                else:
-                    raise NotImplementedError("Reduction method not supported")
-
-                if logger.has_logs():
-                    self.logs_dialogue = LogsDialogue(name="Import profiles", logger=logger)
-                    self.logs_dialogue.exec()
-
-                self.did_reduce = True
-            else:
-                pass  # not ok
-        else:
-            warning_msg("No reduction happened", "Grid reduction")
-
-        # exit
-        self.close()
-
-    def copy_indices(self):
-        """
-        Copy the bus indices to the clipboard
-        """
-        tsv_text = ", ".join(list(self._selected_buses_set))
-
-        QtWidgets.QApplication.clipboard().setText(tsv_text, QClipboard.Mode.Clipboard)
+        options = filedrv.FileSavingOptions(cgmes_boundary_set=self.current_boundary_set,
+                                            sessions_data=self.sessions_data.get_save_data(),
+                                            dictionary_of_json_files=dict(),
+                                            cgmes_version=cgmes_version,
+                                            cgmes_profiles=cgmes_profiles,
+                                            cgmes_one_file_per_profile=cgmes_one_file_per_profile,
+                                            cgmes_map_areas_like_raw=cgmes_map_areas_like_raw)

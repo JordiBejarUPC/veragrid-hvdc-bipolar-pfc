@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>CgmesExportDialog</class>
- <widget class="QDialog" name="CgmesExportDialog">
+ <class>PsseExportDialog</class>
+ <widget class="QDialog" name="PsseExportDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>CGMES Export</string>
+   <string>PSS/e Export</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -227,6 +227,7 @@
  </widget>
  <resources>
   <include location="../Icons/icons.qrc"/>
+  <include location="../../../../../../../.designer/Icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -11803,6 +11803,7 @@ QProgressBar::chunk{
  </widget>
  <resources>
   <include location="../Icons/icons.qrc"/>
+  <include location="../../../../../../../.designer/Icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

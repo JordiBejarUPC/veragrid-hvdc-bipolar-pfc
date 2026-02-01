@@ -19,15 +19,16 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QPushButton,
     QSizePolicy, QSpacerItem, QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
+from VeraGrid.Gui.Icons.icons_rc import *
 
-class Ui_CgmesExportDialog(object):
-    def setupUi(self, CgmesExportDialog):
-        if not CgmesExportDialog.objectName():
-            CgmesExportDialog.setObjectName(u"CgmesExportDialog")
-        CgmesExportDialog.resize(343, 239)
-        self.verticalLayout_2 = QVBoxLayout(CgmesExportDialog)
+class Ui_PsseExportDialog(object):
+    def setupUi(self, PsseExportDialog):
+        if not PsseExportDialog.objectName():
+            PsseExportDialog.setObjectName(u"PsseExportDialog")
+        PsseExportDialog.resize(343, 239)
+        self.verticalLayout_2 = QVBoxLayout(PsseExportDialog)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.frame_77 = QFrame(CgmesExportDialog)
+        self.frame_77 = QFrame(PsseExportDialog)
         self.frame_77.setObjectName(u"frame_77")
         self.frame_77.setMinimumSize(QSize(300, 0))
         self.frame_77.setFrameShape(QFrame.Shape.NoFrame)
@@ -114,16 +115,16 @@ class Ui_CgmesExportDialog(object):
         self.verticalLayout_2.addWidget(self.frame_77)
 
 
-        self.retranslateUi(CgmesExportDialog)
+        self.retranslateUi(PsseExportDialog)
 
-        QMetaObject.connectSlotsByName(CgmesExportDialog)
+        QMetaObject.connectSlotsByName(PsseExportDialog)
     # setupUi
 
-    def retranslateUi(self, CgmesExportDialog):
-        CgmesExportDialog.setWindowTitle(QCoreApplication.translate("CgmesExportDialog", u"CGMES Export", None))
-        self.label_112.setText(QCoreApplication.translate("CgmesExportDialog", u"Export version", None))
+    def retranslateUi(self, PsseExportDialog):
+        PsseExportDialog.setWindowTitle(QCoreApplication.translate("PsseExportDialog", u"PSS/e Export", None))
+        self.label_112.setText(QCoreApplication.translate("PsseExportDialog", u"Export version", None))
         self.label_145.setText("")
-        self.label_131.setText(QCoreApplication.translate("CgmesExportDialog", u"Raw files", None))
-        self.exportButton.setText(QCoreApplication.translate("CgmesExportDialog", u"Export", None))
+        self.label_131.setText(QCoreApplication.translate("PsseExportDialog", u"Raw files", None))
+        self.exportButton.setText(QCoreApplication.translate("PsseExportDialog", u"Export", None))
     # retranslateUi
 
