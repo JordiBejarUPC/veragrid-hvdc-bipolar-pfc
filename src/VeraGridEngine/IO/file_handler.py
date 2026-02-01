@@ -337,7 +337,7 @@ class FileOpen:
                 elif file_extension.lower() == '.gch5':
                     self.circuit = open_h5(self.file_name, text_func=text_func, prog_func=progress_func)
 
-                elif file_extension.lower() == '.m':
+                elif file_extension.lower() in ['.m', '.matpower']:
                     m_grid = MatpowerCircuit()
                     m_grid.read_file(file_name=self.file_name)
                     self.circuit = matpower_to_veragrid(m_grid, self.logger)
