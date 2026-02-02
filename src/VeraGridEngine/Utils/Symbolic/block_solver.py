@@ -16,7 +16,7 @@ from scipy.sparse.linalg import gmres
 from scipy.sparse import csc_matrix
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr,
-                                                    expression2numba, _heaviside)
+                                                    expression2numba, _heaviside, get_expression_vars)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
@@ -115,7 +115,7 @@ class SymbolicJacobian:
                 d_expression = eq.diff(var, dt=dt)
                 if not (isinstance(d_expression, Const) and d_expression.value == 0):
                     triplets.append((col, row, d_expression))
-                for v in d_expression.get_vars():
+                for v in get_expression_vars(d_expression):
                     used_vars_count[v.uid] += 1
 
         triplets.sort(key=lambda t: (t[0], t[1]))
@@ -164,11 +164,26 @@ class SymbolicJacobian:
                 block_id, func = f.result()
                 self.funcs[block_id] = func
 
-    def __call__(self, values, diff_values, event_params, params, alter_params: Vec, h: float):
-        event_params[-2] = h
+    def __call__(self,
+                 x: Vec,
+                 dx: Vec,
+                 variable_params: Vec,
+                 constant_params: Vec,
+                 alter_params: Vec,
+                 h: float):
+        """
+
+        :param x:
+        :param dx:
+        :param variable_params:
+        :param constant_params:
+        :param alter_params:
+        :param h:
+        :return:
+        """
         for func in self.funcs:
             if func is not None:
-                func(values, diff_values, event_params, params, alter_params, self.J.data)
+                func(x, dx, variable_params, constant_params, alter_params, self.J.data)
         return self.J
 
 
@@ -196,7 +211,7 @@ class SymbolicVector:
         self.func: Callable[[Vec, Vec, Vec, Vec, Vec, Vec], None] | None = None
         used_vars_count = defaultdict(int)
         for eq in eqs:
-            for var in eq.get_vars():
+            for var in get_expression_vars(eq):
                 used_vars_count[var.uid] += 1
                 if var.uid not in compiler_names_dict.keys():
                     print()
@@ -273,7 +288,7 @@ class SymbolicParamsVector:
         self.func: Callable[[Vec, float, Vec], None] | None = None
         used_vars_count = defaultdict(int)
         for eq in eqs:
-            for var in eq.get_vars():
+            for var in get_expression_vars(eq):
                 used_vars_count[var.uid] += 1
 
         if len(eqs):

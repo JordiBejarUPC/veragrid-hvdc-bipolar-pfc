@@ -36,21 +36,18 @@ class BackEulerImplicitIntegration:
                       x: Vec,
                       dx: Vec,
                       xn: Vec,
-                      variable_params: Vec,
-                      constant_params: Vec, h: float) -> Vec:
+                      h: float) -> Vec:
         """
         Return 𝑑x/dt given the current *state* vector.
         :param x: get the right-hand-side give a state vector
         :param dx:
         :param xn:
-        :param variable_params:
-        :param constant_params: params array
         :return f_state_update or f_algeb
         """
-        f_algeb = self.problem.rhs_algebraic(x, dx, variable_params, constant_params)
+        f_algeb = self.problem.rhs_algebraic(x, dx)
 
         if self.problem.get_states_number() > 0:
-            f_state = self.problem.rhs_state(x, dx, variable_params, constant_params)
+            f_state = self.problem.rhs_state(x, dx)
             f_state_update = x[:self.problem.get_states_number()] - xn[:self.problem.get_states_number()] - h * f_state
             return np.r_[f_state_update, f_algeb]
 
@@ -60,14 +57,10 @@ class BackEulerImplicitIntegration:
     def _jacobian_implicit(self,
                            x: Vec,
                            dx: Vec,
-                           variable_params: Vec,
-                           constant_params: Vec,
                            h: float) -> sp.csc_matrix:
         """
         :param x: vector or variables' values
         :param dx: vector of diff values
-        :param variable_params:
-        :param constant_params: params array
         :param h: step
         :return:
         """
@@ -82,15 +75,14 @@ class BackEulerImplicitIntegration:
         """
 
         # returns only j22 if no states, returns J if states
-        variable_params[-2] = h
         if self.problem.get_states_number() == 0:
-            j22: sp.csc_matrix = self.problem.get_j22(x, dx, variable_params, constant_params, h)
+            j22: sp.csc_matrix = self.problem.get_j22(x, dx, h)
             return j22
 
-        j11_val: csc_matrix = self.problem.get_j11(x, dx, variable_params, constant_params, h)
-        j12_val: csc_matrix = self.problem.get_j12(x, dx, variable_params, constant_params, h)
-        j21_val: csc_matrix = self.problem.get_j21(x, dx, variable_params, constant_params, h)
-        j22_val: csc_matrix = self.problem.get_j22(x, dx, variable_params, constant_params, h)
+        j11_val: csc_matrix = self.problem.get_j11(x, dx, h)
+        j12_val: csc_matrix = self.problem.get_j12(x, dx, h)
+        j21_val: csc_matrix = self.problem.get_j21(x, dx, h)
+        j22_val: csc_matrix = self.problem.get_j22(x, dx, h)
 
         I = sp.eye(m=self.problem.get_states_number(), n=self.problem.get_states_number())
         j11: sp.csc_matrix = (I - h * j11_val).tocsc()
@@ -124,14 +116,6 @@ class BackEulerImplicitIntegration:
             "initial_step_time": 0.0,
         }
 
-        constant_params = self.problem.get_constant_parameters()
-
-        variable_parameters = np.ones(self.problem.get_variable_parameter_number())
-
-        # TODO: think about this thing of calling twice here
-        params_current = self.problem.compute_event_params(variable_parameters, 0.0)
-        params_current = self.problem.compute_event_params(params_current, 0.0)
-
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
         dx = dx0.copy()
@@ -146,8 +130,7 @@ class BackEulerImplicitIntegration:
             n_iter = 0
             current_time = self.t[step_idx]
 
-            params_current = self.problem.compute_event_params(params_current, current_time)
-            params_current[-2] = self.h
+            self.problem.update_variable_params(t=current_time)
 
             if step_idx == 0:
                 tol = 1e-7
@@ -172,10 +155,11 @@ class BackEulerImplicitIntegration:
                     tol = 1e-8
                     # max_iter = 5e5
 
-                params_current = np.asarray(params_current, dtype=np.float64)
+                # variable_params = np.asarray(variable_params, dtype=np.float64)
+
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
-                rhs = self._rhs_implicit(x_new, dx, xn, params_current, constant_params, self.h)
+                rhs = self._rhs_implicit(x_new, dx, xn, self.h)
 
                 # print(rhs)
                 rhs_end = time.time()
@@ -196,7 +180,7 @@ class BackEulerImplicitIntegration:
 
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
-                Jf = self._jacobian_implicit(x_new, dx, params_current, constant_params, self.h)
+                Jf = self._jacobian_implicit(x_new, dx, self.h)
 
                 # if step_idx == 0:
                 #     Jf = self._jacobian_implicit(x_new, dx, params_current, constant_params, self.h)
@@ -285,4 +269,3 @@ class BackEulerImplicitIntegration:
             else:
                 print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
                 print(f'Residual is {residual}')
-

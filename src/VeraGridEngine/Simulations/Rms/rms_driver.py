@@ -6,44 +6,14 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Dict
-
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic import Var
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
-from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.integration_methods import BackEulerImplicitIntegration
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
-
-# def check_if_diff_vars(system):
-#     """
-#
-#     :param system:
-#     :return:
-#     """
-#     diff_vars = system.diff_vars
-#     if len(diff_vars) != 0:
-#         return True
-#
-#     if system.children:
-#         for child in system.children:
-#             if check_if_diff_vars(child):
-#                 return True
-#             else:
-#                 continue
-#         return False
-#
-#     else:
-#         return False
+from VeraGridEngine.enumerations import EngineType, SimulationTypes
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -144,19 +114,19 @@ class RmsSimulationDriver(DriverTemplate):
 
         solver.simulate()
 
-        buses = self.grid.get_buses()
-        branches = self.grid.get_branches()
-        injections = self.grid.get_injection_devices()
-        devices = list(buses) + list(branches) + list(injections)
+        # buses = self.grid.get_buses()
+        # branches = self.grid.get_branches()
+        # injections = self.grid.get_injection_devices()
+        # devices = list(buses) + list(branches) + list(injections)
 
         self.results = RmsResults(
             values=solver.y,
             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-            stat_vars=problem.state_vars,
-            algeb_vars=problem.algebraic_vars,
-            uid2idx=problem.uid2idx_vars,
+            stat_vars=problem._state_vars,
+            algeb_vars=problem._algebraic_vars,
+            uid2idx=problem._uid2idx_vars,
             vars_glob_name2uid=problem.v_glob_name2uid,
-            devices=devices
+            devices=problem.get_device_vars_dict()
         )
 
         self.toc()

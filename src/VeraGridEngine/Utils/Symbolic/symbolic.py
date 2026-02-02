@@ -33,7 +33,6 @@ def _new_uid() -> int:
 # -----------------------------------------------------------------------------
 
 
-
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
         return val
@@ -77,33 +76,6 @@ class Expr:
         :param uid: (optional UID)
         """
         self.uid: int = _new_uid() if uid is None else uid  # real dataclass field lives in subclasses
-
-    def get_vars(self, vars_found: Optional[list["Var"]] = None) -> list["Var"]:
-        """
-
-        :param vars_found:
-        :return:
-        """
-        if vars_found is None:
-            vars_found = list()
-
-        if isinstance(self, Var):
-            if self not in vars_found:
-                vars_found.append(self)
-
-        elif isinstance(self, BinOp):
-            self.left.get_vars(vars_found)
-            self.right.get_vars(vars_found)
-
-        elif isinstance(self, UnOp):
-            self.operand.get_vars(vars_found)
-
-        elif isinstance(self, Func):
-            self.arg.get_vars(vars_found)
-
-        # Todo: add comparisions
-
-        return vars_found
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """
@@ -516,10 +488,10 @@ class DiffVar(Var):
                 return Const(1) / dt
             elif var.uid == self.origin_var.uid:
                 # recursive chain rule
-                return (Const(1) / dt) * self.base_var.diff(var, dt = dt)
+                return (Const(1) / dt) * self.base_var.diff(var, dt=dt)
             else:
                 return Const(0)
-            
+
         elif var.uid == self.base_var.uid:
             h_t = self.approximation_expr(dt=dt)[0]
             dh_dt = h_t.diff(var, dt=dt)
@@ -1141,11 +1113,11 @@ def f_exc(In: Expr) -> Expr:
     exp3 = (Const(1.732) - In * Const(1.732))
     b = (exp1 - exp2) * heaviside(Const(0.433) - In)
     c = (exp2 - exp3) * heaviside(Const(0.75) - In)
-    d =  exp3 * heaviside(Const(1.0) - In)
+    d = exp3 * heaviside(Const(1.0) - In)
     return b + c + d
 
 
-def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
+def piecewise(time_var: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
     """
     Symbolic piecewise function.
     Returns default_value before the first event, then switches to
@@ -1153,7 +1125,7 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
 
     Parameters
     ----------
-    time : Expr
+    time_var : Expr
         Symbolic time expression
     t_events : np.ndarray
         1D array of event times (must be sorted ascending)
@@ -1162,7 +1134,7 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
     default_value : Any
         Value before the first event
     """
-    t_expr = _to_expr(time)
+    t_expr = _to_expr(time_var)
     result = _to_expr(default_value)
 
     for t_event, new_value in zip(t_events, new_values):
@@ -1715,6 +1687,35 @@ def find_vars_order(expressions: Union[Expr, Sequence[Expr]],
         var_dict: Dict[int, Var] = {v.uid: v for v in vars_list}
 
     return [v if isinstance(v, Var) else var_dict[v.uid] for v in ordering]
+
+
+def get_expression_vars(expr: Expr, vars_found: Optional[List[Var]] = None) -> List[Var]:
+    """
+    Get the list of variables from any expression
+    :param expr: Expression Expr
+    :param vars_found: already existing list of vars
+    :return: Final list of vars
+    """
+    if vars_found is None:
+        vars_found = list()
+
+    if isinstance(expr, Var):
+        if expr not in vars_found:
+            vars_found.append(expr)
+
+    elif isinstance(expr, BinOp):
+        get_expression_vars(expr.left, vars_found)
+        get_expression_vars(expr.right, vars_found)
+
+    elif isinstance(expr, UnOp):
+        get_expression_vars(expr.operand, vars_found)
+
+    elif isinstance(expr, Func):
+        get_expression_vars(expr.arg, vars_found)
+
+    # Todo: add comparisions
+
+    return vars_found
 
 
 # mapping of Python operator nodes → our BinOp symbols
