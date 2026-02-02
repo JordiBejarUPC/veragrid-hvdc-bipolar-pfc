@@ -15,20 +15,23 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
     """
-     generator with quadratic saturation
+     VSC shunt model
+     with from side the DC bus and to side the AC bus
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
-    inputs = [Var("Vm_"), Var("Va_")]
+    inputs = [Var("Vm_"), Var("Va_"), Var("Vdc_"), Var("Idc_")]
     Vm = inputs[0]
     Va = inputs[1]
+    v_dc = inputs[2]
+    i_dc = inputs[3]
 
     #Vars:
     P_ac = Var('P_ac')
     Q_ac = Var('Q_ac')
+    P_dc = Var('P_dc')
     alpha = Var('alpha')
     am = Var('am')
-    v_dc = Var('v_dc')
 
     #Parameters:
     bt = Var('bt')
@@ -47,20 +50,82 @@ def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
                     - sqrt_38*bt*am*v_dc*Vm*sym.sin(Va - alpha)),
             gt*(sqrt_38*am*v_dc)**2 - sqrt_38*am*v_dc*Vm*sym.cos(Va-alpha)
                 + sqrt_38*am*v_dc*Vm*sym.sin(Va - alpha),
+            P_dc - v_dc*i_dc,
         ],
-        algebraic_vars=[P_ac, Q_ac, alpha, am, v_dc],
+        algebraic_vars=[P_ac, Q_ac, alpha, am],
     )
 
     vsc_block.event_dict = event_dict
     vsc_block.in_vars = inputs
-    vsc_block.out_vars = [P_ac, Q_ac, v_dc, alpha, am]
+    vsc_block.out_vars = [P_ac, Q_ac, alpha, am]
 
-    vsc_block.external_mapping ={
-        VarPowerFlowRefferenceType.Vm: inputs[0],
-        VarPowerFlowRefferenceType.Va: inputs[1],
-        VarPowerFlowRefferenceType.P: P_ac,
-        VarPowerFlowRefferenceType.Q: Q_ac,
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Vmt: inputs[0],
+        VarPowerFlowRefferenceType.Vat: inputs[1],
+        VarPowerFlowRefferenceType.Pt: P_ac,
+        VarPowerFlowRefferenceType.Qt: Q_ac,
+        VarPowerFlowRefferenceType.Pf: P_dc,
+        VarPowerFlowRefferenceType.Vdc: v_dc,
+        VarPowerFlowRefferenceType.Idc: i_dc,
     }
+
+    vsc_block.name = name
+    templ.block = vsc_block
+    return templ
+
+def VSCShunt2Build(name: str = "") -> RmsModelTemplate:
+    """
+     VSC shunt model
+     with from side the DC bus and to side the AC bus
+    """
+    templ = RmsModelTemplate()
+    templ.tpe = DeviceType.VscDevice
+    inputs = [Var("Vm_"), Var("Va_"), Var("Vdc_"), Var("Idc_")]
+    Vm = inputs[0]
+    Va = inputs[1]
+    v_dc = inputs[2]
+    i_dc = inputs[3]
+
+    #Vars:
+    P_ac = Var('P_ac')
+    Q_ac = Var('Q_ac')
+    P_dc = Var('P_dc')
+    alpha = Var('alpha')
+    am = Var('am')
+    vsh = Var('vsh')
+    ash = Var('ash')
+    #Parameters:
+    bt = Var('bt')
+    gt = Var('gt')
+    event_dict = {
+        bt: Const(0.0),
+        gt: Const(0.1),
+    }
+
+    sqrt_38 = Const(np.sqrt(3/8))
+    vsc_block = Block(
+        algebraic_eqs=[
+            P_ac + (-bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha)),
+            Q_ac + ( bt*vsh*Vm*sym.cos(Va - alpha) - bt*Vm**2 - gt*vsh*Vm*sym.sin(Va - alpha)),
+            P_dc + ( bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha) ),
+        ],
+        algebraic_vars=[P_ac, Q_ac, alpha, am],
+    )
+
+    vsc_block.event_dict = event_dict
+    vsc_block.in_vars = inputs
+    vsc_block.out_vars = [P_ac, Q_ac, alpha, am]
+
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Vmt: inputs[0],
+        VarPowerFlowRefferenceType.Vat: inputs[1],
+        VarPowerFlowRefferenceType.Pt: P_ac,
+        VarPowerFlowRefferenceType.Qt: Q_ac,
+        VarPowerFlowRefferenceType.Pf: P_dc,
+        VarPowerFlowRefferenceType.Qf: Const(0.0),
+        VarPowerFlowRefferenceType.Vdc: v_dc,
+    }
+
     vsc_block.name = name
     templ.block = vsc_block
     return templ

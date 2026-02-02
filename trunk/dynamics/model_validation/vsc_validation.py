@@ -30,7 +30,7 @@ from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.load_exponential_template import ExponentialLoadBuild
 from VeraGridEngine.Templates.Rms.load_motor_template import MotorLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV
+from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV, VSCShuntBuild
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
@@ -57,6 +57,7 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 bus2 = gce.Bus(name="Bus2", Vnom=10)
+bus_dc = gce.Bus(name="BusDC", Vnom=10.0, is_dc=True)
 
 bus0.initialize_rms()
 bus1.initialize_rms()
@@ -65,22 +66,26 @@ bus2.initialize_rms()
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 grid.add_bus(bus2)
+grid.add_bus(bus_dc)
 
 # Lines
+from VeraGridEngine.enumerations import ConverterControlType
 line0 = gce.Line(name="line 0-1", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
 line1 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
+line_vsc = gce.VSC(name="Vsc", bus_from=bus_dc, bus_to=bus2, control1=ConverterControlType.Qac, control1_val=1.0, control2=ConverterControlType.Vm_dc, control2_val=1.0)
+
 grid.add_line(line0)
 grid.add_line(line1)
-
+grid.add_line(line_vsc)
 # load
 load1 = gce.Load(P= 9.999999, Q= 0.999999)
-#load2 = gce.Load(P= 0.0, Q= 0.0)
-shunt1 = gce.Shunt(G= 0.0, B= 0.1)
+load_dc = gce.Load(P=0.5, Q=0.0)
 grid.add_load(bus=bus1, api_obj=load1)
+grid.add_load(bus=bus_dc, api_obj=load_dc)
 #grid.add_load(bus=bus2, api_obj=load2)
-grid.add_shunt(bus=bus2, api_obj=shunt1)
+
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
@@ -98,9 +103,10 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # line
 line0_mdl = block_deep_copy(get_line_rms_template().block)
 line1_mdl = block_deep_copy(get_line_rms_template().block)
+vsc_line_mdl = block_deep_copy(VSCShuntBuild().block)
 
 # Others
-vsc_solar_mdl = block_deep_copy(VscControlledPV().block)
+#vsc_solar_mdl = block_deep_copy(VscControlledPV().block)
 load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.0999999, Ql0 =-0.00999999).block)
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
 
@@ -119,8 +125,13 @@ line1_mdl.connect([line1_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 line1_mdl.connect([line1_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
 line1_mdl.connect([line1_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
 
-vsc_solar_mdl.connect([vsc_solar_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_solar_mdl.connect([vsc_solar_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+# vsc_line_mdl.connect([vsc_line_mdl.in_vars[0]], [bus_dc.rms_model.model.out_vars[0]])
+# vsc_line_mdl.connect([vsc_line_mdl.in_vars[1]], [bus_dc.rms_model.model.out_vars[1]])
+# vsc_line_mdl.connect([vsc_line_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+# vsc_line_mdl.connect([vsc_line_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+#vsc_solar_mdl.connect([vsc_solar_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+#vsc_solar_mdl.connect([vsc_solar_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 #load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
@@ -150,6 +161,8 @@ options = gce.PowerFlowOptions(
     generate_report=False,
 )
 
+res = gce.power_flow(grid, options=options)
+exit()
 line0.rms_model.model = line0_mdl
 line1.rms_model.model = line1_mdl
 
