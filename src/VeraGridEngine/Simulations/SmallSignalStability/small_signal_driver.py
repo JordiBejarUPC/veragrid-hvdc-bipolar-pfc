@@ -272,8 +272,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
                                                                                 damping_ratios=np.empty(0),
                                                                                 conjugate_frequencies=np.empty(0),
                                                                                 state_matrix =np.empty(0),
-                                                                                stat_vars=[],
-                                                                                vars2device={})
+                                                                                stat_vars=[])
 
         self.__cancel__ = False
 
