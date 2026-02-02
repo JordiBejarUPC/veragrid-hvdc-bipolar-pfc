@@ -9989,10 +9989,6 @@ QProgressBar::chunk{
      <property name="title">
       <string>Export grid</string>
      </property>
-     <property name="icon">
-      <iconset resource="../Icons/icons.qrc">
-       <normaloff>:/Icons/icons/save.png</normaloff>:/Icons/icons/save.png</iconset>
-     </property>
      <addaction name="actionPSS_e_Raw_Rawx"/>
      <addaction name="actionPower_Factory_DGS"/>
      <addaction name="actionCIM"/>
@@ -11726,76 +11722,136 @@ QProgressBar::chunk{
    </property>
   </action>
   <action name="actionPSS_e_Raw_Rawx">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/psse.png</normaloff>:/Icons/icons/psse.png</iconset>
+   </property>
    <property name="text">
     <string>PSS/e Raw / Rawx</string>
    </property>
   </action>
   <action name="actionPower_Factory_DGS">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/pfdgs.png</normaloff>:/Icons/icons/pfdgs.png</iconset>
+   </property>
    <property name="text">
     <string>Power Factory DGS</string>
    </property>
   </action>
   <action name="actionCGMES">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/cgmes.png</normaloff>:/Icons/icons/cgmes.png</iconset>
+   </property>
    <property name="text">
     <string>CGMES</string>
    </property>
   </action>
   <action name="actionPower_Grid_Models">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/pgm.png</normaloff>:/Icons/icons/pgm.png</iconset>
+   </property>
    <property name="text">
     <string>Power Grid Models</string>
    </property>
   </action>
   <action name="actionCIM">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/cim.png</normaloff>:/Icons/icons/cim.png</iconset>
+   </property>
    <property name="text">
     <string>CIM</string>
    </property>
   </action>
   <action name="actionH5">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/h5.png</normaloff>:/Icons/icons/h5.png</iconset>
+   </property>
    <property name="text">
     <string>H5</string>
    </property>
   </action>
   <action name="actionJSON">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/json.png</normaloff>:/Icons/icons/json.png</iconset>
+   </property>
    <property name="text">
     <string>JSON</string>
    </property>
   </action>
   <action name="actionMicrosoft_Excel">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/excel.png</normaloff>:/Icons/icons/excel.png</iconset>
+   </property>
    <property name="text">
     <string>Microsoft Excel</string>
    </property>
   </action>
   <action name="actionSQLite">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/sqlite.png</normaloff>:/Icons/icons/sqlite.png</iconset>
+   </property>
    <property name="text">
     <string>SQLite</string>
    </property>
   </action>
   <action name="actionExport_all_the_device_s_profiles">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/array.png</normaloff>:/Icons/icons/array.png</iconset>
+   </property>
    <property name="text">
     <string>Profiles</string>
    </property>
   </action>
   <action name="actionExport_contingencies">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/Catalogue.png</normaloff>:/Icons/icons/Catalogue.png</iconset>
+   </property>
    <property name="text">
     <string>Contingencies</string>
    </property>
   </action>
   <action name="actionExport_all_results">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/array.png</normaloff>:/Icons/icons/array.png</iconset>
+   </property>
    <property name="text">
     <string>Results</string>
    </property>
   </action>
   <action name="actionExportCatalogue">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/Catalogue.png</normaloff>:/Icons/icons/Catalogue.png</iconset>
+   </property>
    <property name="text">
     <string>Catalogue</string>
    </property>
   </action>
   <action name="actionImport_contingencies">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/CatalogueAdd.png</normaloff>:/Icons/icons/CatalogueAdd.png</iconset>
+   </property>
    <property name="text">
     <string>Contingencies</string>
    </property>
   </action>
   <action name="actionAdd_custom_catalogue">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/CatalogueAdd.png</normaloff>:/Icons/icons/CatalogueAdd.png</iconset>
+   </property>
    <property name="text">
     <string>Catalogue</string>
    </property>
@@ -11803,7 +11859,6 @@ QProgressBar::chunk{
  </widget>
  <resources>
   <include location="../Icons/icons.qrc"/>
-  <include location="../../../../../../../.designer/Icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -15,7 +15,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_export import get_available_cgmes_profile
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 
 if TYPE_CHECKING:
-    from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
+    from VeraGrid.Gui.Main.SubClasses.io import IoMain
 
 
 class CgmesExportDialogue(QtWidgets.QDialog):
@@ -23,7 +23,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
     GridMergeDialogue
     """
 
-    def __init__(self, app: VeraGridMainGUI):
+    def __init__(self, app: IoMain):
         """
         GridMergeDialogue
         :param app: VeraGridMainGUI
@@ -40,7 +40,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
 
         self.project_directory = app.project_directory
 
-        self.app: VeraGridMainGUI = app
+        self.app: IoMain = app
 
         self.current_boundary_set = ""
 
@@ -130,3 +130,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
             self.app.save_file_now(filename=filename,
                                    type_selected=type_selected,
                                    options=options)
+
+            self.app.show_info_toast("CGMES export done!")
+            self.close()
+

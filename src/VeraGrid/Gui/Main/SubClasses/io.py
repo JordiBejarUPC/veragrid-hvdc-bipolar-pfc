@@ -1036,26 +1036,8 @@ class IoMain(ConfigurationMain):
 
         :return:
         """
-        # if the global file_name is empty, ask where to save
-        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
-
-        files_types = "PSS/e (*.raw);;PSS/e json (*.rawx)"
-        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
-                                                                        'Export to PSS/e',
-                                                                        fname,
-                                                                        files_types)
-
-        if filename != '':
-
-            # if the user did not enter the extension, add it automatically
-            name, file_extension = os.path.splitext(filename)
-
-            if file_extension == '':
-                filename = name + '.raw'
-
-            # we were able to compose the file correctly, now save it
-            self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+        self.psse_export_dialogue = PsseExportDialogue(app=self)
+        self.psse_export_dialogue.show()
 
     def export_power_factory(self):
         """

@@ -3,23 +3,16 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-
-from typing import Set
+from typing import TYPE_CHECKING
+import os
 from PySide6 import QtWidgets
-from PySide6.QtGui import QClipboard
-import numpy as np
-from VeraGrid.Gui.GridReduce.grid_reduce_gui import Ui_ReduceDialog
+from VeraGrid.Gui.PsseExportDialogue.psse_export_gui import Ui_PsseExportDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.messages import yes_no_question, warning_msg
-from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
-from VeraGrid.Session.session import SimulationSession
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
-from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
+import VeraGrid.Session.file_handler as filedrv
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import GridReductionMethod, BusReductionMethod
+
+if TYPE_CHECKING:
+    from VeraGrid.Gui.Main.SubClasses.io import IoMain
 
 
 class PsseExportDialogue(QtWidgets.QDialog):
@@ -27,17 +20,18 @@ class PsseExportDialogue(QtWidgets.QDialog):
     GridMergeDialogue
     """
 
-    def __init__(self, grid: MultiCircuit, session: SimulationSession):
+    def __init__(self, app: IoMain):
         """
         GridMergeDialogue
-        :param grid: MultiCircuit instance
-        :param session: SimulationSession instance to query the power flow
+        :param App: App pointer
         """
         QtWidgets.QDialog.__init__(self)
-        self.ui = Ui_ReduceDialog()
+        self.ui = Ui_PsseExportDialog()
         self.ui.setupUi(self)
         self.setWindowTitle('PSS/e export')
         self.setModal(True)
+
+        self.app = app
 
         self.logger = Logger()
         self.logs_dialogue: LogsDialogue | None = None
@@ -47,8 +41,35 @@ class PsseExportDialogue(QtWidgets.QDialog):
         self.ui.exportButton.clicked.connect(self.export)
 
     def export(self):
+        """
+
+        :return:
+        """
         raw_version = self.ui.raw_export_version_comboBox.currentText()
 
-        options = filedrv.FileSavingOptions(cgmes_boundary_set=self.current_boundary_set,
-                                            sessions_data=sessions_data,
-                                            dictionary_of_json_files=json_files)
+        options = filedrv.FileSavingOptions(raw_version=raw_version)
+
+        # if the global file_name is empty, ask where to save
+        fname = os.path.join(self.app.project_directory, self.app.ui.grid_name_line_edit.text())
+
+        files_types = "PSS/e raw (*.raw);;PSS/e rawx (*.rawx)"
+        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
+                                                                        'Export to PSS/e',
+                                                                        fname,
+                                                                        files_types)
+
+        if filename != '':
+
+            # if the user did not enter the extension, add it automatically
+            name, file_extension = os.path.splitext(filename)
+
+            if file_extension == '':
+                filename = name + '.raw'
+
+            # we were able to compose the file correctly, now save it
+            self.app.save_file_now(filename=filename,
+                                   type_selected=type_selected,
+                                   options=options)
+
+            self.app.show_info_toast("PSS/e export done!")
+            self.close()

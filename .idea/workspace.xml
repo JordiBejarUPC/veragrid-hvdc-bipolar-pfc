@@ -28,11 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactor of the file saving process">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/CGMESDialogue/cgmes_export.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/CGMESDialogue/cgmes_export.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" afterDir="false" />
-    </list>
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="refactor of the file saving process" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -733,11 +729,11 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.update_gui_file (2)" />
+      <item itemvalue="Python.ExecuteVeraGrid" />
       <item itemvalue="Python.pyside6-designer" />
       <item itemvalue="Python.update_gui_file (1)" />
+      <item itemvalue="Python.update_gui_file (2)" />
       <item itemvalue="Python.update_gui_file" />
-      <item itemvalue="Python.ExecuteVeraGrid" />
     </list>
     <recent_temporary>
       <list>
