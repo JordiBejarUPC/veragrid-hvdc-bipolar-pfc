@@ -20,6 +20,8 @@ from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
 from VeraGrid.Gui.Main.SubClasses.Settings.configuration import ConfigurationMain
+from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
+from VeraGrid.Gui.PsseExportDialogue.psse_export import PsseExportDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.enumerations import SimulationTypes
@@ -56,6 +58,11 @@ class IoMain(ConfigurationMain):
                                     '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
                                     '.vgplugin', '.gslv']
 
+        # window pointers
+        self.cgmes_dialogue: CgmesExportDialogue | None = None
+        self.psse_export_dialogue: PsseExportDialogue | None = None
+
+        # actions
         self.ui.actionNew_project.triggered.connect(self.new_project)
         self.ui.actionOpen_file.triggered.connect(self.open_file)
         self.ui.actionAdd_circuit.triggered.connect(self.import_circuit)
@@ -582,7 +589,7 @@ class IoMain(ConfigurationMain):
 
         else:
             # declare the allowed file types
-            files_types = "VeraGrid zip (*.veragrid);;"
+            files_types = "VeraGrid zip (*.veragrid)"
 
             # call dialog to select the file
             if self.project_directory is None:
@@ -647,13 +654,17 @@ class IoMain(ConfigurationMain):
 
         return options
 
-    def save_file_now(self, filename: str, type_selected: str = "", grid: Union[MultiCircuit, None] = None):
+    def save_file_now(self, filename: str,
+                      type_selected: str = "",
+                      grid: Union[MultiCircuit, None] = None,
+                      options: filedrv.FileSavingOptions | None = None):
         """
         Save the file right now, without questions
         :param filename: filename to save to
         :param type_selected: File type description as it appears
                               in the file saving dialogue i.e. VeraGrid zip (*.veragrid)
         :param grid: MultiCircuit or None, if None, self.circuit is taken
+        :param options: FileSavingOptions to override the default ones
         """
 
         if ('file_save' not in self.stuff_running_now) and ('file_open' not in self.stuff_running_now):
@@ -667,12 +678,14 @@ class IoMain(ConfigurationMain):
                     if ok:
                         self.save_file_thread_object.quit()
 
-            options = self.get_file_save_options()
-            options.type_selected = type_selected
+            options2 = self.get_file_save_options() if options is None else options
+            options2.type_selected = type_selected
 
-            self.save_file_thread_object = filedrv.FileSaveThread(circuit=self.circuit if grid is None else grid,
-                                                                  file_name=filename,
-                                                                  options=options)
+            self.save_file_thread_object = filedrv.FileSaveThread(
+                circuit=self.circuit if grid is None else grid,
+                file_name=filename,
+                options=options2
+            )
 
             # make connections
             self.save_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
@@ -1026,7 +1039,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "PSS/e (*.raw);;PSS/e json (*.rawx);;"
+        files_types = "PSS/e (*.raw);;PSS/e json (*.rawx)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to PSS/e',
                                                                         fname,
@@ -1052,7 +1065,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "Power Factory (*.dgs);;"
+        files_types = "Power Factory (*.dgs)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to Power Factory',
                                                                         fname,
@@ -1078,7 +1091,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "CIM (*.xml);;"
+        files_types = "CIM (*.xml)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to CIM',
                                                                         fname,
@@ -1097,26 +1110,12 @@ class IoMain(ConfigurationMain):
             self.save_file_now(self.file_name, type_selected=type_selected)
 
     def export_cgmes(self):
-        # if the global file_name is empty, ask where to save
-        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
+        """
 
-        files_types = "CGMES (*.zip);;"
-        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
-                                                                        'Export to CGMES',
-                                                                        fname,
-                                                                        files_types)
-
-        if filename != '':
-
-            # if the user did not enter the extension, add it automatically
-            name, file_extension = os.path.splitext(filename)
-
-            if file_extension == '':
-                filename = name + '.zip'
-
-            # we were able to compose the file correctly, now save it
-            self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+        :return:
+        """
+        self.cgmes_dialogue = CgmesExportDialogue(app=self)
+        self.cgmes_dialogue.show()
 
     def export_power_grid_models(self):
         """
@@ -1128,7 +1127,7 @@ class IoMain(ConfigurationMain):
             # if the global file_name is empty, ask where to save
             fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-            files_types = "Power Grid Models (*.pgm);;"
+            files_types = "Power Grid Models (*.pgm)"
             filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                             'Export to Power Grid Models',
                                                                             fname,
@@ -1156,7 +1155,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "Electrical Json V3 (*.ejson3);;"
+        files_types = "Electrical Json V3 (*.ejson3)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to JSON',
                                                                         fname,
@@ -1182,7 +1181,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "VeraGrid HDF5 (*.gch5);;"
+        files_types = "VeraGrid HDF5 (*.gch5)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to VeraGrid HDF5',
                                                                         fname,
@@ -1208,7 +1207,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "Excel (*.xlsx);;"
+        files_types = "Excel (*.xlsx)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to Microsoft Excel',
                                                                         fname,
@@ -1234,7 +1233,7 @@ class IoMain(ConfigurationMain):
         # if the global file_name is empty, ask where to save
         fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
 
-        files_types = "Sqlite (*.sqlite);;"
+        files_types = "Sqlite (*.sqlite)"
         filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
                                                                         'Export to Sqlite',
                                                                         fname,

@@ -4,28 +4,29 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+import os
 from PySide6 import QtWidgets
 from VeraGrid.Gui.CGMESDialogue.cgmes_export_gui import Ui_CgmesExportDialog
-from VeraGrid.Session.session import SimulationSession
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGrid.Session.file_handler as filedrv
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.enumerations import CGMESVersions
 from VeraGridEngine.IO.cim.cgmes.cgmes_export import get_available_cgmes_profiles
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 
+if TYPE_CHECKING:
+    from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 
-class GridExportDialogue(QtWidgets.QDialog):
+
+class CgmesExportDialogue(QtWidgets.QDialog):
     """
     GridMergeDialogue
     """
 
-    def __init__(self, grid: MultiCircuit, session: SimulationSession, project_directory: str = ""):
+    def __init__(self, app: VeraGridMainGUI):
         """
         GridMergeDialogue
-        :param grid: MultiCircuit instance
-        :param session: SimulationSession instance to query the power flow
-        :param project_directory: Set of buses (Bus objects) to reduce
+        :param app: VeraGridMainGUI
         """
         QtWidgets.QDialog.__init__(self)
         self.ui = Ui_CgmesExportDialog()
@@ -33,11 +34,13 @@ class GridExportDialogue(QtWidgets.QDialog):
         self.setWindowTitle('CGMES export')
         self.setModal(True)
 
-        self.grid = grid
+        self.grid = app.circuit
 
-        self.sessions_data = session
+        self.sessions_data = app.session
 
-        self.project_directory = project_directory
+        self.project_directory = app.project_directory
+
+        self.app: VeraGridMainGUI = app
 
         self.current_boundary_set = ""
 
@@ -105,3 +108,25 @@ class GridExportDialogue(QtWidgets.QDialog):
                                             cgmes_profiles=cgmes_profiles,
                                             cgmes_one_file_per_profile=cgmes_one_file_per_profile,
                                             cgmes_map_areas_like_raw=cgmes_map_areas_like_raw)
+
+        # if the global file_name is empty, ask where to save
+        fname = os.path.join(self.project_directory, self.app.ui.grid_name_line_edit.text())
+
+        files_types = "CGMES (*.zip);;"
+        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
+                                                                        'Export to CGMES',
+                                                                        fname,
+                                                                        files_types)
+
+        if filename != '':
+
+            # if the user did not enter the extension, add it automatically
+            name, file_extension = os.path.splitext(filename)
+
+            if file_extension == '':
+                filename = name + '.zip'
+
+            # we were able to compose the file correctly, now save it
+            self.app.save_file_now(filename=filename,
+                                   type_selected=type_selected,
+                                   options=options)
