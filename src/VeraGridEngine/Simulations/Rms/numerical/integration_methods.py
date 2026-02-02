@@ -2,191 +2,287 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import sys
+
 import numpy as np
-from scipy.sparse import bmat, identity, csc_matrix
-from scipy.sparse.linalg import spsolve
-from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Simulations.Rms.problems.rms_problem import RmsProblem
+import scipy.sparse as sp
+import time
+from scipy.sparse import csc_matrix
+from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
+from VeraGridEngine.basic_structures import Vec, Mat
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
 
-class Integration:
-    """
-    Base class for implicit iterative methods.
-    """
+class BackEulerImplicitIntegration:
 
-    @staticmethod
-    def calc_jac(dae: RmsProblem, dt: float) -> csc_matrix:
+    def __init__(self,
+                 problem: RmsProblemTemplate,
+                 t0: float,
+                 t_end: float,
+                 h: float,
+                 max_iter: int):
         """
-        Calculates the Jacobian according to integration method.
-        :param dae: DAE class
-        :param dt: time interval
-        :return:
+
+        :param problem:
         """
-        raise NotImplementedError("You need to implement calc_jac")
+        self.problem = problem
+        self.t0 = t0
+        self.h = h
+        self.max_iter_0 = max_iter
+        self.steps = int(np.ceil((t_end - t0) / h))
+        self.t: Vec = np.empty(self.steps + 1)
+        self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
 
-    @staticmethod
-    def calc_f_res(x: Vec, f: Vec, Tf: csc_matrix, h: float, x0: Vec, f0: Vec) -> Vec:
+    def _rhs_implicit(self,
+                      x: Vec,
+                      dx: Vec,
+                      xn: Vec,
+                      variable_params: Vec,
+                      constant_params: Vec, h: float) -> Vec:
         """
-        Calculates the state residual according to integration method.
-        :param x: states variables values array
-        :param f: states functions values array
-        :param Tf: Tf
-        :param h: integration step size
-        :param x0: initial states variables values array
-        :param f0: initial states functions values array
-        :return:
+        Return 𝑑x/dt given the current *state* vector.
+        :param x: get the right-hand-side give a state vector
+        :param dx:
+        :param xn:
+        :param variable_params:
+        :param constant_params: params array
+        :return f_state_update or f_algeb
         """
-        raise NotImplementedError("You need to implement calc_f_res")
+        f_algeb = self.problem.rhs_algebraic(x, dx, variable_params, constant_params)
 
-    def step(self, dae: RmsProblem, dt: float, tol: float, max_iter: int):
+        if self.problem.get_states_number() > 0:
+            f_state = self.problem.rhs_state(x, dx, variable_params, constant_params)
+            f_state_update = x[:self.problem.get_states_number()] - xn[:self.problem.get_states_number()] - h * f_state
+            return np.r_[f_state_update, f_algeb]
+
+        else:
+            return f_algeb
+
+    def _jacobian_implicit(self,
+                           x: Vec,
+                           dx: Vec,
+                           variable_params: Vec,
+                           constant_params: Vec,
+                           h: float) -> sp.csc_matrix:
         """
-        Perform an implicit integration step with Newton-Raphson
-        :param dae: DAE class
-        :param dt: time interval
-        :param tol: tolerance
-        :param max_iter: maximum of iterations
-        :return:
-        """
-        x0, y0, f0 = dae.x.copy(), dae.y.copy(), dae.f.copy()
-
-        for iteration in range(max_iter):
-            # Compute Jacobian and residual
-            jac = self.calc_jac(dae, dt)
-            f_residual = self.calc_f_res(dae.x, dae.f, dae.Tf, dt, x0, f0)
-            residual = np.vstack((f_residual.reshape(-1, 1), dae.g.reshape(-1, 1)))  # Include algebraic residuals
-
-            # Solve linear system
-            dx = spsolve(jac, -residual)
-
-            # Update state and algebraic variables
-            dae.x += 0.5 * dx[:dae.nx]
-            dae.y += 0.5 * dx[dae.nx:]
-
-            # Recompute f and g
-            dae.update_fg()
-
-            # Check convergence
-            residual_error = np.linalg.norm(residual, np.inf)
-            if residual_error < tol:
-                return True
-
-        # Restore previous values if not converged
-        dae.x, dae.y, dae.f = x0, y0, f0
-        return False
-
-    def steadystate(self, dae: RmsProblem, tol=1e-2, max_iter=10):
-        """
-        Perform an implicit integration step with Newton-Raphson.
-        :param dae: DAE class
-        :param method: iterative method
-        :param tol: tolerance
-        :param max_iter: maximum of iterations
+        :param x: vector or variables' values
+        :param dx: vector of diff values
+        :param variable_params:
+        :param constant_params: params array
+        :param h: step
         :return:
         """
 
-        for iteration in range(max_iter):
-            jac = self.calc_jac(dae, dt=1.0)
-            residual = np.vstack((dae.f.reshape(-1, 1), dae.g.reshape(-1, 1)))
-
-            # Solve linear system
-            inc = spsolve(jac, -residual)
-
-            # Update variables
-            dae.x += 0.5 * inc[:dae.nx]
-            dae.y += 0.5 * inc[dae.nx:]
-
-            # Recompute f and g
-            dae.update_fg()
-            np.set_printoptions(threshold=sys.maxsize)
-
-            # Check convergence
-            residual_error = np.linalg.norm(residual, np.inf)
-            if residual_error < tol:
-                return True
-
-        return False
-
-
-class BackEuler(Integration):
-    """
-    Backward Euler method.
-    """
-
-    @staticmethod
-    def calc_jac(dae: RmsProblem, dt: float) -> csc_matrix:
         """
-        Builds Jacobian
-        :param dae: DAE class
-        :param dt: time interval
-        :return: Jacobian in csc format
+                  state Var    algeb var
+        state eq |I - h * J11 | - h* J12  |    | ∆ state var|    | ∆ state eq |
+                 |            |           |    |            |    |            |
+                 -------------------------- x  |------------|  = |------------|
+        algeb eq |J21         | J22       |    | ∆ algeb var|    | ∆ algeb eq |
+                 |            |           |    |            |    |            |
         """
-        return bmat([[identity(dae.nx) - dt * dae.dfx, -dt * dae.dfy],
-                     [dae.dgx, dae.dgy]], format='csc')
 
-    @staticmethod
-    def calc_f_res(x: Vec, f: Vec, Tf: csc_matrix, h: float, x0: Vec, f0: Vec) -> Vec:
+        # returns only j22 if no states, returns J if states
+        variable_params[-2] = h
+        if self.problem.get_states_number() == 0:
+            j22: sp.csc_matrix = self.problem.get_j22(x, dx, variable_params, constant_params, h)
+            return j22
+
+        j11_val: csc_matrix = self.problem.get_j11(x, dx, variable_params, constant_params, h)
+        j12_val: csc_matrix = self.problem.get_j12(x, dx, variable_params, constant_params, h)
+        j21_val: csc_matrix = self.problem.get_j21(x, dx, variable_params, constant_params, h)
+        j22_val: csc_matrix = self.problem.get_j22(x, dx, variable_params, constant_params, h)
+
+        I = sp.eye(m=self.problem.get_states_number(), n=self.problem.get_states_number())
+        j11: sp.csc_matrix = (I - h * j11_val).tocsc()
+        j12: sp.csc_matrix = - h * j12_val
+        j21: sp.csc_matrix = j21_val
+        j22: sp.csc_matrix = j22_val
+
+        J = pack_4_by_4_scipy(j11, j12, j21, j22)
+
+        return J
+
+    def simulate(self):
         """
-        Calculates f residuals
-        :param x: states variables values array
-        :param f: states functions values array
-        :param Tf: Tf
-        :param h: integration step size
-        :param x0: initial states variables values array
-        :param f0: initial states functions values array
-        :return: f residuals array
+
+        :return:
         """
-        return Tf @ (x - x0) - h * f
+        x0: Vec = self.problem.get_x0()
 
+        # we assume steady state
+        dx0: Vec = np.zeros(self.problem.get_diff_var_number(), dtype=float)
 
-class Trapezoid(Integration):
-    """
-    Trapezoidal integration method.
-    """
+        # init_time = time.time()
+        # steady_state = np.allclose(dx0, 0.0, atol=1e-12)
 
-    @staticmethod
-    def calc_jac(dae: RmsProblem, dt: float) -> csc_matrix:
-        """
-        Builds Jacobian
-        :param dae: DAE class
-        :param dt: time interval
-        :return: Jacobian in csc format
-        """
-        return bmat([[identity(dae.nx) - 0.5 * dt * dae.dfx, -0.5 * dt * dae.dfy],
-                     [dae.dgx, dae.dgy]],
-                    format='csc')
+        # timing accumulators
+        timings = {
+            "jacobian_time": 0.0,
+            "rhs_time": 0.0,
+            "lag_update_time": 0.0,
+            "linear_solver_time": 0.0,
+            "initial_step_time": 0.0,
+        }
 
-    @staticmethod
-    def calc_f_res(x: Vec, f: Vec, Tf: csc_matrix, h: float, x0: Vec, f0: Vec) -> Vec:
-        """
-        Calculates f residuals
-        :param x: states variables values array
-        :param f: states functions values array
-        :param Tf: Tf
-        :param h: integration step size
-        :param x0: initial states variables values array
-        :param f0: initial states functions values array
-        :return: f residuals array
-        """
-        return Tf @ (x - x0) - 0.5 * h * (f + f0)
+        constant_params = self.problem.get_constant_parameters()
 
+        variable_parameters = np.ones(self.problem.get_variable_parameter_number())
 
-class SteadyState(Integration):
-    """
-    Steady-state computation.
-    """
+        # TODO: think about this thing of calling twice here
+        params_current = self.problem.compute_event_params(variable_parameters, 0.0)
+        params_current = self.problem.compute_event_params(params_current, 0.0)
 
-    @staticmethod
-    def calc_jac(dae, dt=0.0) -> csc_matrix:
-        """
-        Builds Jacobian
-        :param dae: DAE class
-        :param dt: time interval
-        :return: Jacobian in bmat format
-        """
-        return bmat([[dae.dfx, dae.dfy],
-                     [dae.dgx, dae.dgy]], format='csc')
+        self.t[0] = self.t0
+        self.y[0, :] = x0.copy()
+        dx = dx0.copy()
+        dx_last = dx0.copy()
+        x_new = x0.copy()
+        residual = 0.0
 
-    @staticmethod
-    def calc_f_res(x, f, Tf, dt, x0, f0) -> Vec:
-        pass
+        for step_idx in range(self.steps):
+
+            discontinuity = False
+            converged = False
+            n_iter = 0
+            current_time = self.t[step_idx]
+
+            params_current = self.problem.compute_event_params(params_current, current_time)
+            params_current[-2] = self.h
+
+            if step_idx == 0:
+                tol = 1e-7
+                xn = x0.copy()
+            else:
+                xn = self.y[step_idx, :]
+                tol = 1e-7
+
+            while not converged and n_iter < self.max_iter_0:
+                if step_idx == 0:
+                    dx = dx0.copy()
+                else:
+                    dx = self.problem.get_dx(x_new, xn, dx_last, self.h)
+
+                # ---------------- lag update ----------------
+                lag_update_start = time.time()
+                lag_update_end = time.time()
+                timings["lag_update_time"] += lag_update_end - lag_update_start
+                # ------------------------------------------------
+
+                if discontinuity:
+                    tol = 1e-8
+                    # max_iter = 5e5
+
+                params_current = np.asarray(params_current, dtype=np.float64)
+                # ---------------- rhs calculation ----------------
+                rhs_start = time.time()
+                rhs = self._rhs_implicit(x_new, dx, xn, params_current, constant_params, self.h)
+
+                # print(rhs)
+                rhs_end = time.time()
+                timings["rhs_time"] += rhs_end - rhs_start
+                # -------------------------------------------------
+
+                # recompute Jacobian for next iteration
+                jac_start = time.time()
+
+                # Jf = self.jacobian_implicit(xnew_lags, params_current, h)
+                jac_end = time.time()
+
+                # if step_idx == 0:
+                #     _ = 0
+                #     # print(f'jacobian time is {(jac_end - jac_start)}')
+
+                timings["jacobian_time"] += jac_end - jac_start
+
+                residual = np.linalg.norm(rhs, np.inf)
+                converged = residual < tol
+                Jf = self._jacobian_implicit(x_new, dx, params_current, constant_params, self.h)
+
+                # if step_idx == 0:
+                #     Jf = self._jacobian_implicit(x_new, dx, params_current, constant_params, self.h)
+                #     delta = sp.linalg.spsolve(Jf, -rhs)
+                #     if converged:
+                #         print("System well initialized.")
+                #         print(f"x is {x_new}")
+                #     else:
+                #         print(f"System bad initialized. DAE resiudal is {residual}.")
+                #         print(f'rhs is {rhs}')
+                #         non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                #         all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                #         print("eqs are")
+                #         for i in non_zero_indexes:
+                #             eq = all_eq[i]
+                #             print(f"eq {eq} with error {rhs[i]}")
+                #         exit()
+                # else:
+                #     max_iter = max_iter_0
+
+                # if converged:
+                #     break
+
+                linear_start = time.time()
+                delta = sp.linalg.spsolve(Jf, -rhs)
+                linear_end = time.time()
+                timings["linear_solver_time"] += linear_end - linear_start
+                solved = np.all(np.isfinite(delta))
+
+                # if not solved:
+                #     delta, *_ = sp.linalg.lsqr(Jf, -rhs)
+                #     solved = np.all(np.isfinite(delta))
+                #     u, s, vh = np.linalg.svd(Jf.toarray() if sp.issparse(Jf) else Jf)
+                #     singular_dirs = np.where(s < tol)[0]
+                #     for i in singular_dirs:
+                #         v = vh.T[:, i]  # variable-space vector
+                #         abs_v = np.abs(v)
+                #         dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
+                #         print(f"\nSingular direction {i}, σ={s[i]:.3e}")
+                #         for j in dominant_idx:
+                #             if j < self.problem.get_diff_var_number():
+                #                 var_name = self._algebraic_vars[j].name
+                #                 print(f"  {var_name:20s} {v[j]:+.3e}")
+                #     print("Using LSQR")
+
+                # if not solved:
+                #     nan_indices = np.where(np.isnan(rhs))[0]
+                #     # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
+                #     nan_eqs = [self._algebraic_eqs[i] for i in nan_indices]
+                #     print(f'Jf is {Jf}')
+                #     raise ValueError(
+                #         f"spsolve returned non-finite values (NaN or Inf).\n"
+                #         f"delta = {delta}\n"
+                #         f"rhs = {rhs}\n"
+                #         f"Jacobian shape = {Jf.shape}\n"
+                #         f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
+                #     )
+
+                if not solved:
+                    raise RuntimeError("Failed to solve linear system even with regularization.")
+
+                x_new += delta
+                n_iter += 1
+
+            if converged:
+                # if step_idx == 0:
+                #     initial_step_end = time.time()
+                #     timings['initial_step_time'] = initial_step_end - initial_step_end
+                #     print(f'diff residual is {np.linalg.norm(x0[:self._n_alg] - x_new[:self._n_alg])}')
+
+                lag_update_start = time.time()
+                print(f'converged is {converged} at step {step_idx} and iter {n_iter}')
+
+                if discontinuity:
+                    _ = 0
+                    self.y[step_idx + 1, :] = x_new
+                else:
+                    self.y[step_idx + 1, :] = x_new
+
+                self.t[step_idx + 1] = self.t[step_idx] + self.h
+
+                dx_last = dx.copy()
+                lag_update_end = time.time()
+                timings["lag_update_time"] += lag_update_end - lag_update_start
+
+            else:
+                print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
+                print(f'Residual is {residual}')
+

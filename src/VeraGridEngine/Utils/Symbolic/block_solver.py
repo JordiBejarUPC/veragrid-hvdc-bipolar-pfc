@@ -17,17 +17,18 @@ from scipy.sparse import csc_matrix
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import  _compile_equations
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
                                                     expression2numba, _heaviside)
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod,SimulationBackend
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, SimulationBackend
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
-from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics,NewtonDiagnosticsConfig,
-                                                       NewtonSolveContext,dense_lstsq_fallback,
-                                                       sparse_lsqr_fallback)
+from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
+                                                      NewtonSolveContext, dense_lstsq_fallback,
+                                                      sparse_lsqr_fallback)
+
 
 def _tic():
     return time.perf_counter()
@@ -163,11 +164,11 @@ class SymbolicJacobian:
                 block_id, func = f.result()
                 self.funcs[block_id] = func
 
-    def __call__(self, values, diff_values, event_params, params, h: float):
-        event_params[-2] = h
+    def __call__(self, x: Vec, dx: Vec, variable_params: Vec, constant_params: Vec, h: float):
+        variable_params[-2] = h
         for func in self.funcs:
             if func is not None:
-                func(values, diff_values, event_params, params, self.J.data)
+                func(x, dx, variable_params, constant_params, self.J.data)
         return self.J
 
 
@@ -301,7 +302,7 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, event_params: Vec, glob_time: Vec) -> Vec:
+    def __call__(self, event_params: Vec, glob_time: float) -> Vec:
         """
         Call the compiled function
         :param glob_time:
@@ -336,7 +337,7 @@ class SymbolicDerivative:
         fname = f"func"  # since we compile into a namespace, there won't be repeated names
         # Build source
         uid2dx_expression = {}
-        #TODO: order diff vars by order
+        # TODO: order diff vars by order
         src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
         for i, diff_var in enumerate(diff_vars):
             base_var_uid = diff_var.base_var.uid
@@ -473,7 +474,7 @@ class BlockSolver:
         self.glob_time: Var = glob_time
         self.substitute = True
 
-        #Numerical trace
+        # Numerical trace
         self.newton_trace_collector = None
         self.backend = SimulationBackend.SymbolicImplicit
 
@@ -874,7 +875,7 @@ class BlockSolver:
         """
         event_params[-2] = 1e50
 
-        f_algeb = self._rhs_algeb_fn(x, 0*dx, event_params, params)
+        f_algeb = self._rhs_algeb_fn(x, 0 * dx, event_params, params)
         sim_step = sim_step
         if self._n_state > 0:
             f_state = self._rhs_state_fn(x, dx, event_params, params)
@@ -1091,7 +1092,7 @@ class BlockSolver:
         return res
 
     #################################################################################################
-    #(Legacy code) is retained in order to avoid conflicts while testing the unification method.
+    # (Legacy code) is retained in order to avoid conflicts while testing the unification method.
     # TODO: call of this function in GUI needs to be updated
     def simulate(self,
                  t0: float,
@@ -1142,17 +1143,17 @@ class BlockSolver:
     # ==============================================================================
 
     def simulate_unified(self,
-                 t0: float,
-                 t_end: float,
-                 h: float,
-                 x0: Vec,
-                 dx0: Vec,
-                 params0: Vec,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
-                 boundary_update_fn=None,
-                 verbose: bool = False,
-                 dense_threshold: int = 100,
-                 **kwargs):
+                         t0: float,
+                         t_end: float,
+                         h: float,
+                         x0: Vec,
+                         dx0: Vec,
+                         params0: Vec,
+                         method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                         boundary_update_fn=None,
+                         verbose: bool = False,
+                         dense_threshold: int = 100,
+                         **kwargs):
         """
         Main simulation entry point. Dispatches the simulation to the appropriate engine
         (Implicit JIT or Explicit Legacy) based on the solver configuration.
@@ -1366,8 +1367,6 @@ class BlockSolver:
                 # Jacobian Evaluation
                 dx_guess = (x_iter - x_prev) * alpha - dx_prev
                 J_base = self.jacobian_implicit(x_iter, dx_guess, ev_params, static_vals, h_eff)
-
-
 
                 if use_dense_solver:
                     J_dense = J_base.toarray()
@@ -1809,7 +1808,7 @@ class BlockSolver:
         return x0, init_guess
 
     def pseudo_transient_routine(self, x0, init_guess=dict(), plot=True, dtau0=1e-3, h=1e-3, beta=0.8, tol=1e-5,
-                                         predictor=False, max_iter=8e4, max_tries=200, verbose=False):
+                                 predictor=False, max_iter=8e4, max_tries=200, verbose=False):
         # Init pseudo transient method, Block only has algebraic eqs
 
         dtau = dtau0
@@ -1857,14 +1856,14 @@ class BlockSolver:
             if step_idx == 0:
                 xlast = xn
                 xn = x_new.copy()
-            else: 
+            else:
                 xlast = xn
                 xn = y[-1]
 
             # rhs = self.rhs_implicit(xnew_lags, xn_lags, params_current, 1, dtau)
             if verbose:
                 print(f'Pseudo transient step started with max_iter {max_iter} and step idx {step_idx} and try {tries}')
-            
+
             dx = self._derivative_fn(xn, xlast, dx0, 1e-3)
             rhs = self.rhs_pseudo_transient(x_new, xlast, dx, event_params, params, 1, dtau)
             if not np.all(np.isfinite(rhs)):
@@ -1875,7 +1874,7 @@ class BlockSolver:
                 delta = sp.linalg.spsolve(Jf, -rhs)
             except Exception as e:
                 raise SingularJacobianError(f"Linear solver failed at try {tries}: {e}")
-            
+
             solved = np.all(np.isfinite(delta))
             if not solved:
                 print("Using LSQR")
@@ -2029,12 +2028,12 @@ class BlockSolver:
     def compile_implicit_predictor(self):
         self._rhs_predictor = self.rhs_implicit
 
-        self._Jf_predictor = SymbolicJacobian(eqs=self._algebraic_eqs, 
-                                            variables=self._diff_vars,
-                                            diff_variables= [],
-                                            compiler_names_dict = self.compiler_names_dict,
-                                            alias_names_dict= self.alias_names_dict,
-                                            uid2idx_vars= self.uid2idx_vars,)
+        self._Jf_predictor = SymbolicJacobian(eqs=self._algebraic_eqs,
+                                              variables=self._diff_vars,
+                                              diff_variables=[],
+                                              compiler_names_dict=self.compiler_names_dict,
+                                              alias_names_dict=self.alias_names_dict,
+                                              uid2idx_vars=self.uid2idx_vars, )
 
         self._diff_eq_index = []
         for i, eq in enumerate(self._algebraic_eqs):
@@ -2411,4 +2410,3 @@ class BlockSolver:
             Collector used to store Newton iteration diagnostics.
         """
         self.newton_trace_collector = collector
-
