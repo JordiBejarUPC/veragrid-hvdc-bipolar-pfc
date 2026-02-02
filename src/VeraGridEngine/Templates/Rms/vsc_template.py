@@ -84,7 +84,6 @@ def VSCShunt2Build(name: str = "") -> RmsModelTemplate:
     Vm = inputs[0]
     Va = inputs[1]
     v_dc = inputs[2]
-    i_dc = inputs[3]
 
     #Vars:
     P_ac = Var('P_ac')
@@ -107,7 +106,7 @@ def VSCShunt2Build(name: str = "") -> RmsModelTemplate:
         algebraic_eqs=[
             P_ac + (-bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha)),
             Q_ac + ( bt*vsh*Vm*sym.cos(Va - alpha) - bt*Vm**2 - gt*vsh*Vm*sym.sin(Va - alpha)),
-            P_dc + ( bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha) ),
+            P_dc + ( bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha)),
         ],
         algebraic_vars=[P_ac, Q_ac, alpha, am],
     )
