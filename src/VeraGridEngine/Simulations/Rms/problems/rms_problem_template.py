@@ -7,15 +7,13 @@ from abc import ABC
 from typing import List, Dict
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.basic_structures import Vec
-
-
-
 
 
 class RmsProblemTemplate(ABC):
 
-    def __init__(self):
+    def __init__(self, block: Block):
         pass
 
     def get_vars_info(self) -> Dict[ALL_DEV_TYPES, List[Var]]:

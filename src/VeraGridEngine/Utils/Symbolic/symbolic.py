@@ -1844,7 +1844,8 @@ __all__ = [
     "hard_sat",
     "f_exc",
     'expression2numba',
-    '_heaviside'
+    '_heaviside',
+    'get_expression_vars'
 ]
 #
 # x = Var("x")
