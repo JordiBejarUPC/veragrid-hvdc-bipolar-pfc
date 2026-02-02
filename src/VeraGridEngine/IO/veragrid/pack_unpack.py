@@ -436,7 +436,7 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.DaeBlockType:
-            block_saver.save_block(blk=obj, store=True)
+            block_saver.save_block(blk=obj, main=True)
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)
@@ -506,6 +506,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
     vars = block_saver.get_vars_to_save()
     consts = block_saver.get_const_to_save()
     diff_vars = block_saver.get_diff_vars_to_save()
+
     # At this point I already have the symbolic data stored in block_saver
 
     return {
@@ -514,7 +515,8 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
             "vars": block_saver.get_vars_to_save(),
             "consts": block_saver.get_const_to_save(),
             "diff_vars": block_saver.get_diff_vars_to_save(),
-            "blocks": block_saver.get_blocks()
+            "blocks": block_saver.get_blocks(),
+            "main_block_uids": block_saver.main_block_uids,
         }
     }
 
@@ -1030,6 +1032,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
     :param data_list:
     :param elements_dict_by_type:
     :param time_profile:
+    :param block_parser:
     :param logger:
     :return:
     """
@@ -1466,6 +1469,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
         block_parser.parse_consts(symbolic_data["consts"])
         block_parser.parse_vars(symbolic_data["vars"])
         block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+        for block_uid in symbolic_data["main_block_uids"]:
+            block_parser.parse_block(symbolic_data["blocks"], block_uid)
 
     model_data = data.get('model_data', None)
     if model_data is not None:

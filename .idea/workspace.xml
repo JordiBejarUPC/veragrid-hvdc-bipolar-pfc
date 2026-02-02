@@ -29,13 +29,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added alter_params to BlockSolver and cleaning">
-      <change afterPath="$PROJECT_DIR$/trunk/dynamics/2bus_gen_load.veragrid" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/dynamics/2bus_gen_load_2.veragrid" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/dynamics/load_save_load_2_bus.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/dynamic_model_host.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/dynamic_model_host.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Dynamic/rms_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/zip_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/zip_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic_io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic_io.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -764,11 +761,11 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest in tests" />
         <item itemvalue="Python tests.pytest in test_load_save_load.py" />
         <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
-        <item itemvalue="Python.ExecuteVeraGrid" />
         <item itemvalue="Python.upload_to_pypi" />
-        <item itemvalue="Python tests.pytest in tests" />
       </list>
     </recent_temporary>
   </component>
@@ -2441,7 +2438,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
-          <line>1234</line>
+          <line>1237</line>
           <option name="timeStamp" value="3046" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2594,34 +2591,24 @@
           <option name="timeStamp" value="3189" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
-          <line>510</line>
-          <option name="timeStamp" value="3193" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
-          <line>502</line>
-          <option name="timeStamp" value="3195" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py</url>
           <line>591</line>
           <option name="timeStamp" value="3208" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
-          <line>507</line>
-          <option name="timeStamp" value="3209" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
-          <line>505</line>
-          <option name="timeStamp" value="3210" />
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
+          <line>681</line>
+          <option name="timeStamp" value="3462" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py</url>
           <line>589</line>
-          <option name="timeStamp" value="3214" />
+          <option name="timeStamp" value="3465" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
+          <line>1471</line>
+          <option name="timeStamp" value="3467" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
