@@ -743,6 +743,35 @@ class Line(BranchParent):
 
         return self
 
+    def get_tau(self, w: float) -> float:
+        """
+        get EMT delay parameter (tau) in seconds
+        :param w: 2 * pi * freq
+        :return: tau value
+        """
+        if self.template is None:
+            return 0.0
+        else:
+            # TODO: consider using line.ys and line.ysh instead
+            # Physical Parameters from Carson's
+            Z = self.template.z_nabc  # from Carson ohm/km
+            Y = self.template.y_nabc  # from Carson ohm/km
+
+            Z_phys_m = Z / 1e3  # ohm/m
+            Y_phys_m = Y / 1e3  # S/m
+
+            # line parameters / meter
+            l_ = np.imag(Z_phys_m) / w  # H/m
+            c_ = np.imag(Y_phys_m) / w  # F/m
+
+            # v_wave and tau from the travelling wave are taken only from the diagonal components
+            L_w = l_[0, 0]
+            C_w = c_[0, 0]
+            v_wave = 1 / np.sqrt(L_w * C_w)
+
+            # line time delay (tau) (only relevant for Bergeron and JMartí)
+            return self.length * 1e3 / v_wave  # s
+
     def fill_3_phase_from_sequence(self) -> None:
         """
         Fill the 3x3 from the sequence values
@@ -762,3 +791,4 @@ class Line(BranchParent):
         if self._rms_model.empty():
             line_template = get_line_rms_template()
             self.rms_model.model = line_template.block
+

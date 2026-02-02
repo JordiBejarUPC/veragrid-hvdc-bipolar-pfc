@@ -2066,6 +2066,7 @@ class SimulationTypes(Enum):
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
     SmallSignal_run = "Small Signal stability"
+    EmtDynamic_run = "EMT Dynamic"
 
     FileOpen = "file open"
     FileSave = "file save"
@@ -2330,11 +2331,18 @@ class CascadeType(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
-
 class DynamicIntegrationMethod(Enum):
-    Trapezoid = "Trapezoid",
-    BackEuler = "BackEuler"
-    RungeKutta4 = "Runge-Kutta 4"
+    """
+    Dynamic integration methods.
+    """
+    # Implicit time-stepping (DAE form)
+    Trapezoid = "trapezoidal"
+    BackEuler = "be"
+    BDF2 = "bdf2"
+
+    # Explicit time-stepping (ODE form)
+    RungeKutta4 = "rk4"
+    Euler = "euler"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2344,11 +2352,6 @@ class DynamicIntegrationMethod(Enum):
 
     @staticmethod
     def argparse(s):
-        """
-
-        :param s:
-        :return:
-        """
         try:
             return DynamicIntegrationMethod[s]
         except KeyError:
@@ -2356,12 +2359,7 @@ class DynamicIntegrationMethod(Enum):
 
     @classmethod
     def list(cls):
-        """
-
-        :return:
-        """
         return list(map(lambda c: c.value, cls))
-
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit",
@@ -2392,6 +2390,7 @@ class RmsInitializationMethod(Enum):
         :return:
         """
         return list(map(lambda c: c.value, cls))
+
 
 class GridReductionMethod(Enum):
     """
@@ -2466,6 +2465,11 @@ class VarPowerFlowRefferenceType(Enum):
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
 
+    Ia = "Ia"  # Injection current at phase a in p.u.
+    Ib = "Ib"  # Injection current at phase b in p.u.
+    Ic = "Ic"  # Injection current at phase c in p.u.
+    theta = "theta"  # Rotor angle in a synchronous generator in rad
+
     def __str__(self):
         return self.value
 
@@ -2483,6 +2487,7 @@ class VarPowerFlowRefferenceType(Enum):
             return VarPowerFlowRefferenceType[s]
         except KeyError:
             return s
+
 
 class ParamPowerFlowRefferenceType(Enum):
     """
@@ -2651,7 +2656,12 @@ class TimeSeriesSearchPoint(Enum):
         except KeyError:
             return s
 
-
+class SimulationBackend(Enum):
+    """
+    Solver Type for dynamic simulation
+    """
+    SymbolicImplicit = "symbolic"
+    LegacyExternal = "legacy"
 
 class EmtLineTypes(Enum):
     """

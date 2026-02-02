@@ -13,6 +13,7 @@ import math
 from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import SmallSignalStabilityResults
@@ -225,7 +226,7 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: i
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
 
     damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
-                                                                                   eig_no_conjugates = eig_no_conjugates)
+                                                                            eig_no_conjugates = eig_no_conjugates)
 
     if verbose:
         print("State matrix:", A.toarray())
