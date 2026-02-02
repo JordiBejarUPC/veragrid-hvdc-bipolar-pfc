@@ -23,5 +23,4 @@ ResultsMain
 ConfigurationMain
 IoMain
 ScriptingMain
-ProjectsMain
 MainGUI

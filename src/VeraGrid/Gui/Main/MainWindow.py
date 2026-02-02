@@ -23,8 +23,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QMenu, QMenuBar, QProgressBar, QPushButton,
     QRadioButton, QSizePolicy, QSlider, QSpacerItem,
     QSpinBox, QSplitter, QTabWidget, QTableView,
-    QTableWidget, QTableWidgetItem, QTextEdit, QToolBar,
-    QTreeView, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+    QTextEdit, QToolBar, QTreeView, QVBoxLayout,
     QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
@@ -2132,76 +2131,6 @@ class Ui_mainWindow(object):
         self.verticalLayout_22.addWidget(self.frame_10)
 
         self.mainTabWidget.addTab(self.main_console_tab, icon126, "")
-        self.tab_12 = QWidget()
-        self.tab_12.setObjectName(u"tab_12")
-        self.verticalLayout_17 = QVBoxLayout(self.tab_12)
-        self.verticalLayout_17.setObjectName(u"verticalLayout_17")
-        self.verticalLayout_17.setContentsMargins(0, 0, 0, 0)
-        self.projectsSplitter = QSplitter(self.tab_12)
-        self.projectsSplitter.setObjectName(u"projectsSplitter")
-        self.projectsSplitter.setOrientation(Qt.Orientation.Horizontal)
-        self.frame_3 = QFrame(self.projectsSplitter)
-        self.frame_3.setObjectName(u"frame_3")
-        self.frame_3.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_3.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_43 = QVBoxLayout(self.frame_3)
-        self.verticalLayout_43.setObjectName(u"verticalLayout_43")
-        self.verticalLayout_43.setContentsMargins(0, 0, 0, 0)
-        self.projectTreeWidget = QTreeWidget(self.frame_3)
-        __qtreewidgetitem = QTreeWidgetItem()
-        __qtreewidgetitem.setText(0, u"1");
-        self.projectTreeWidget.setHeaderItem(__qtreewidgetitem)
-        self.projectTreeWidget.setObjectName(u"projectTreeWidget")
-
-        self.verticalLayout_43.addWidget(self.projectTreeWidget)
-
-        self.projectsSplitter.addWidget(self.frame_3)
-        self.frame_22 = QFrame(self.projectsSplitter)
-        self.frame_22.setObjectName(u"frame_22")
-        self.frame_22.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_22.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_36 = QVBoxLayout(self.frame_22)
-        self.verticalLayout_36.setObjectName(u"verticalLayout_36")
-        self.verticalLayout_36.setContentsMargins(0, 0, 0, 0)
-        self.splitter_3 = QSplitter(self.frame_22)
-        self.splitter_3.setObjectName(u"splitter_3")
-        self.splitter_3.setOrientation(Qt.Orientation.Vertical)
-        self.frame_30 = QFrame(self.splitter_3)
-        self.frame_30.setObjectName(u"frame_30")
-        self.frame_30.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_30.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_44 = QVBoxLayout(self.frame_30)
-        self.verticalLayout_44.setObjectName(u"verticalLayout_44")
-        self.verticalLayout_44.setContentsMargins(0, 0, 0, 0)
-        self.projectTableWidget = QTableWidget(self.frame_30)
-        self.projectTableWidget.setObjectName(u"projectTableWidget")
-
-        self.verticalLayout_44.addWidget(self.projectTableWidget)
-
-        self.splitter_3.addWidget(self.frame_30)
-        self.frame_39 = QFrame(self.splitter_3)
-        self.frame_39.setObjectName(u"frame_39")
-        self.frame_39.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_39.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_45 = QVBoxLayout(self.frame_39)
-        self.verticalLayout_45.setObjectName(u"verticalLayout_45")
-        self.verticalLayout_45.setContentsMargins(0, 0, 0, 0)
-        self.projectsTextEdit = QTextEdit(self.frame_39)
-        self.projectsTextEdit.setObjectName(u"projectsTextEdit")
-
-        self.verticalLayout_45.addWidget(self.projectsTextEdit)
-
-        self.splitter_3.addWidget(self.frame_39)
-
-        self.verticalLayout_36.addWidget(self.splitter_3)
-
-        self.projectsSplitter.addWidget(self.frame_22)
-
-        self.verticalLayout_17.addWidget(self.projectsSplitter)
-
-        icon127 = QIcon()
-        icon127.addFile(u":/Icons/icons/new2.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.mainTabWidget.addTab(self.tab_12, icon127, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -5095,7 +5024,7 @@ class Ui_mainWindow(object):
 
         self.retranslateUi(mainWindow)
 
-        self.mainTabWidget.setCurrentIndex(4)
+        self.mainTabWidget.setCurrentIndex(0)
         self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(0)
@@ -5821,7 +5750,6 @@ class Ui_mainWindow(object):
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.pythonConsoleTab), QCoreApplication.translate("mainWindow", u"Python console", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.sourceCodeTab), QCoreApplication.translate("mainWindow", u"Source code", None))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.main_console_tab), QCoreApplication.translate("mainWindow", u"Scripting", None))
-        self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.tab_12), QCoreApplication.translate("mainWindow", u"Projects", None))
         self.label_68.setText("")
         self.label_69.setText(QCoreApplication.translate("mainWindow", u"General settings", None))
         self.label_58.setText(QCoreApplication.translate("mainWindow", u"Frequency", None))
