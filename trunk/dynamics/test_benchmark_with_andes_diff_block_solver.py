@@ -390,7 +390,6 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
     slv = BlockSolver(ss, sim_time)
     dx0 = np.zeros(len(slv._diff_vars))
 
-    params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
     vars_in_order = slv.sort_vars_from_uid(init_guess)
@@ -401,7 +400,6 @@ def perform_veragrid_simulation_for_kundur_ieee_no_shunt():
         h=0.001,
         x0=x0,
         dx0=dx0,
-        params0=params0,
         method="implicit_euler"
     )
 
