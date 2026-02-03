@@ -585,15 +585,12 @@ def rms_kundur():
 
     sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
-    params_mapping = {}
-
     slv = BlockSolver(ss, sim_time)
 
     pr.disable()
 
     pr.dump_stats('profile.pstat')
 
-    params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
     dx0 = np.zeros(len(slv.diff_vars))
@@ -604,7 +601,6 @@ def rms_kundur():
         h=0.001,
         x0=x0,
         dx0=dx0,
-        params0=params0,
         method=DynamicIntegrationMethod.BackEuler,
         newton_tol=0.000001,
         newton_max_iter=1000,

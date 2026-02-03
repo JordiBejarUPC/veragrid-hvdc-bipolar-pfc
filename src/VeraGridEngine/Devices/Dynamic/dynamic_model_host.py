@@ -393,7 +393,7 @@ class DynamicModelHost(EditableDevice):
         """
         return {
             "template": self.template.uid if self.template is not None else None,
-            "model": self._model.uid,
+            "model": self.model.uid,
             "diagram": self.diagram.to_dict()
         }
 
@@ -411,14 +411,14 @@ class DynamicModelHost(EditableDevice):
         template_data = data.get("template", None)
 
         if template_data is not None:
-            self._template = blocks_dict.get(int(template_data["uid"]), None)
+            self._template = blocks_dict.get(int(template_data), None)
 
         custom_data = data.get("model", None)
         if custom_data is None:
             custom_data = data.get("custom_model", None)
 
         if custom_data is not None:
-            self._model = blocks_dict.get(int(custom_data["uid"]), None)
+            self._model = blocks_dict.get(int(custom_data), None)
 
         diagram_data = data.get("diagram", None)
         if diagram_data is not None:

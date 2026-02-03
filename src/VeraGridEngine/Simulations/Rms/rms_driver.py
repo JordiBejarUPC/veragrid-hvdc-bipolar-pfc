@@ -6,44 +6,14 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Dict
-
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic import Var
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.Rms.problems.rms_problem import RmsProblem
-from VeraGridEngine.Simulations.Rms.numerical.integration_methods import Trapezoid, BackEuler
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
-
-# def check_if_diff_vars(system):
-#     """
-#
-#     :param system:
-#     :return:
-#     """
-#     diff_vars = system.diff_vars
-#     if len(diff_vars) != 0:
-#         return True
-#
-#     if system.children:
-#         for child in system.children:
-#             if check_if_diff_vars(child):
-#                 return True
-#             else:
-#                 continue
-#         return False
-#
-#     else:
-#         return False
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.numerical.integration_methods import BackEulerImplicitIntegration
+from VeraGridEngine.enumerations import EngineType, SimulationTypes
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -58,7 +28,6 @@ class RmsSimulationDriver(DriverTemplate):
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
                  engine: EngineType = EngineType.VeraGrid):
-
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
@@ -100,47 +69,64 @@ class RmsSimulationDriver(DriverTemplate):
         :return:
         """
         self.tic()
-        # Get integration method
-        if self.options.integration_method not in [DynamicIntegrationMethod.BackEuler,
-                                                   DynamicIntegrationMethod.Trapezoid]:
-            raise ValueError(f"integrator not implemented :( {self.options.integration_method}")
+        # # Get integration method
+        # if self.options.integration_method not in [DynamicIntegrationMethod.BackEuler,
+        #                                            DynamicIntegrationMethod.Trapezoid]:
+        #     raise ValueError(f"integrator not implemented :( {self.options.integration_method}")
+        #
+        # # TODO: Check if there is a cleaner way to get all the devices in a list
+        # params_mapping: Dict = dict()
+        #
+        # sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
+        # slv = BlockSolver(ss, sim_time)
+        #
+        # params0 = slv.build_init_params_vector(params_mapping)
+        # x0 = slv.build_init_vars_vector_from_uid(init_guess)
+        #
+        # dx0 = np.zeros(slv.diff_vars_number)
+        #
+        # t, y, timings = slv.simulate(
+        #     t0=0,
+        #     t_end=self.options.simulation_time,
+        #     h=self.options.time_step,
+        #     x0=x0,
+        #     dx0=dx0,
+        #     params0=params0,
+        #     method=self.options.integration_method,
+        #     newton_tol=self.options.tolerance,
+        #     newton_max_iter=1000,
+        #     followed_vars=None,
+        #     initialized=False,
+        #     verbose=False,
+        # )
 
-        # TODO: Check if there is a cleaner way to get all the devices in a list
-        params_mapping: Dict = dict()
+        problem = RmsProblemDae(grid=self.grid,
+                                options=self.options,
+                                pf_results=self.pf_results)
 
-        sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results, self.options.use_init_values)
-        slv = BlockSolver(ss, sim_time)
-
-        params0 = slv.build_init_params_vector(params_mapping)
-        x0 = slv.build_init_vars_vector_from_uid(init_guess)
-
-        dx0 = np.zeros(slv.diff_vars_number)
-
-        t, y, timings = slv.simulate(
+        solver = BackEulerImplicitIntegration(
+            problem=problem,
             t0=0,
             t_end=self.options.simulation_time,
             h=self.options.time_step,
-            x0=x0,
-            dx0=dx0,
-            params0=params0,
-            method=self.options.integration_method,
-            newton_tol=self.options.tolerance,
-            newton_max_iter=1000,
-            followed_vars=None,
-            initialized=False,
-            verbose=False,
+            max_iter=self.options.max_iter
         )
 
-        buses = self.grid.get_buses()
-        branches = self.grid.get_branches()
-        injections = self.grid.get_injection_devices()
-        devices = list(buses) + list(branches) + list(injections)
-        self.results = RmsResults(values=y,
-                                  time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
-                                  stat_vars=slv.state_vars,
-                                  algeb_vars=slv.algebraic_vars,
-                                  uid2idx=slv.uid2idx_vars,
-                                  vars_glob_name2uid=slv.v_glob_name2uid,
-                                  devices=devices)
+        solver.simulate()
+
+        # buses = self.grid.get_buses()
+        # branches = self.grid.get_branches()
+        # injections = self.grid.get_injection_devices()
+        # devices = list(buses) + list(branches) + list(injections)
+
+        self.results = RmsResults(
+            values=solver.y,
+            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+            stat_vars=problem._state_vars,
+            algeb_vars=problem._algebraic_vars,
+            uid2idx=problem._uid2idx_vars,
+            vars_glob_name2uid=problem.v_glob_name2uid,
+            devices=problem.get_device_vars_dict()
+        )
 
         self.toc()

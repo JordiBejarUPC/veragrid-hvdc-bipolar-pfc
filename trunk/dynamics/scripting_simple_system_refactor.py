@@ -207,7 +207,6 @@ slv = BlockSolver(ss, grid.time, use_jit=False)
 end_building_system = time.time()
 print(f"Automatic build system time = {end_building_system-start_building_system:.6f} [s]")
 
-params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 vars_in_order = slv.sort_vars_from_uid(init_guess)
 
@@ -219,7 +218,6 @@ t, y = slv.simulate(
     h=0.001,
     x0=x0,
     dx0 =np.zeros(0),
-    params0=params0,
     method=DynamicIntegrationMethod.BackEuler,
     )
 

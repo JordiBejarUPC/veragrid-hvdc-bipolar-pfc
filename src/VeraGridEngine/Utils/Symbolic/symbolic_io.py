@@ -348,6 +348,7 @@ class BlockSaver:
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
         self.diff_var_dict: Dict[int, DiffVar] = dict()
+        self.main_block_uids: List[int] | None = None
         self.blocks: Dict[int, Dict[str, Any]] = dict()
 
     def get_const_to_save(self) -> List[Dict[str, Any]]:
@@ -374,12 +375,12 @@ class BlockSaver:
     def get_blocks(self) -> Dict[int, Dict[str, Any]]:
         return self.blocks
 
-    def save_block(self, blk: Block, store: bool = False) -> Dict[str, Any]:
+    def save_block(self, blk: Block, main: bool = False) -> Dict[str, Any]:
         """
         Get a dictionary representing the block
         All "global references" such a as Conts, Var and DiffVar are stored in the class for later
         :param blk: Block
-        :param store: Store the block data?
+        :param main: is it the main block?
         :return: Dictionary representing the block
         """
         state_expressions = expr_list_to_list(
@@ -488,6 +489,14 @@ class BlockSaver:
             if diff_var.uid not in self.diff_var_dict:
                 self.diff_var_dict[diff_var.uid] = diff_var
 
+        for dyn_var_type, var in blk.external_mapping.items():
+            if var.uid not in self.var_dict:
+                self.var_dict[var.uid] = var
+
+        # save children
+        for child in blk.children:
+            self.save_block(child)
+
         d = {
             "uid": blk.uid,
 
@@ -523,13 +532,15 @@ class BlockSaver:
 
             "event_dict": events_list,
             "name": blk.name,
-            "children": [self.save_block(child) for child in blk.children],
+            "children": [child.uid for child in blk.children],
             "in_vars": in_vars,
             "out_vars": out_vars
         }
 
-        if store:
-            self.blocks[blk.uid] = d
+
+        self.blocks[blk.uid] = d
+        if main:
+            self.main_block_uids.append(blk.uid)
 
 
         return d
@@ -567,12 +578,18 @@ class BlockParser:
         """
         self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict, diff_var_dict=self.diff_var_dict)
 
-    def parse_block(self, data: Dict[Any, Any]) -> Block:
+    def parse_block(self, blocks_data: Dict[int, Dict[str, Any]], main_block_uid: int) -> Block:
         """
 
-        :param data:
+        :param main_block_uid:
+        :param blocks_data:
         :return:
         """
+
+        if main_block_uid not in blocks_data:
+            main_block_uid = str(main_block_uid)
+
+        data = blocks_data[main_block_uid]
 
         state_vars = [self.var_dict[v] for v in data["state_vars"]]
 
@@ -601,7 +618,7 @@ class BlockParser:
 
         out_vars = [self.var_dict[v] for v in data["out_vars"]]
 
-        children = [self.parse_block(child) for child in data["children"]]
+        children = [self.parse_block(blocks_data, child_uid) for child_uid in data["children"]]
 
         init_eqs: Dict[Var, Expr] = dict()
         for entry in data["init_eqs"]:
@@ -639,31 +656,24 @@ class BlockParser:
             key = ParamPowerFlowRefferenceType(key_str)
             api_obj_mapping[key] = self.var_dict[var_uid]
 
-        # # parse children
-        # for child_uid in data["children"]:
-        #     child_data = self.block_dict[child_uid]
-        #     child_block = self.parse_block(data=child_data)
-
-
-
         block = Block(
-            state_vars=state_vars,
-            state_eqs=state_eqs,
-            algebraic_vars=algebraic_vars,
-            algebraic_eqs=algebraic_eqs,
-            diff_vars=diff_vars,
-            differential_eqs=differential_eqs,
-            in_vars=in_vars,
-            out_vars=out_vars,
-            init_eqs=init_eqs,
-            event_dict=event_dict,
-            children=children,  # TODO think about this
-            parameters=parameters,
-            init_values=init_values,
-            external_mapping=external_mapping,
-            api_obj_mapping=api_obj_mapping,
-            name=data["name"],
-            uid=data["uid"]
+        state_vars=state_vars,
+        state_eqs=state_eqs,
+        algebraic_vars=algebraic_vars,
+        algebraic_eqs=algebraic_eqs,
+        diff_vars=diff_vars,
+        differential_eqs=differential_eqs,
+        in_vars=in_vars,
+        out_vars=out_vars,
+        init_eqs=init_eqs,
+        event_dict=event_dict,
+        children=children,  # TODO think about this
+        parameters=parameters,
+        init_values=init_values,
+        external_mapping=external_mapping,
+        api_obj_mapping=api_obj_mapping,
+        name=data["name"],
+        uid=data["uid"]
         )
 
         # TODO: Review if this is what is used
@@ -684,15 +694,18 @@ def block_deep_copy(block: Block):
     :return:
     """
     saver = BlockSaver()
-    d = saver.save_block(block, store=False)
+    d = saver.save_block(block, main=False)
     const_save = saver.get_const_to_save()
     vars_save = saver.get_vars_to_save()
     diff_vars_save = saver.get_diff_vars_to_save()
+    blocks = saver.get_blocks()
+
+
 
     parser = BlockParser()
     parser.parse_consts(data=const_save)
     parser.parse_vars(data=vars_save)
     parser.parse_diff_vars(data=diff_vars_save)
-    block2 = parser.parse_block(data=d)
+    block2 = parser.parse_block(blocks, block.uid)
 
     return block2

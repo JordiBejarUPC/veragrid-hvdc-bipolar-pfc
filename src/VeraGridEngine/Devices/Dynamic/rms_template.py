@@ -9,6 +9,7 @@ from typing import Dict
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
 
 
@@ -45,7 +46,7 @@ class RmsModelTemplate(PointerDeviceParent):
         result._tpe = self._tpe
 
         # deepcopy block safely
-        result._block = self._block
+        result._block = block_deep_copy(self._block)
 
         return result
 
