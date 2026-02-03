@@ -21,6 +21,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
+from VeraGridEngine.Simulations.Rms.numerical.compiled_integrator_fx import CompiledIntegration
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 
 
 def create_buck_converter_system():
@@ -77,7 +79,12 @@ def run_emt_demo():
     sys_block, vin_var = create_buck_converter_system()
     glob_time = Var("t_glob")
 
-    solver = BlockSolver(sys_block, glob_time)
+
+    solver = CompiledIntegration(block = sys_block,
+                                 t0 = 0.0,
+                                 t_end = T_TOTAL,
+                                 h = DT,
+                                 max_iter= 100)
 
     solver.newton_trace_collector = NewtonTraceCollector()
 
@@ -92,22 +99,24 @@ def run_emt_demo():
         else:
             val = 0.0
 
-        offset = len(solver._event_parameters)
+        offset = len(sys_block.parameters)
         idx = offset + solver.uid2idx_params[vin_var.uid]
 
         params[idx] = val
 
-    print(f" > Simulando {T_TOTAL * 1000} ms con dt={DT * 1e6} us...")
+    print(f" > Simulating {T_TOTAL * 1000} ms with dt={DT * 1e6} us...")
 
-    x0 = np.zeros(solver._n_vars)
+    x0 = np.zeros(len(sys_block.state_vars))
+    dx0 = np.zeros(len(sys_block.diff_vars))
+    params0 = np.zeros(len(sys_block.parameters))
 
     t_arr, y_arr = solver.simulate_unified(
         t0=0.0,
         t_end=T_TOTAL,
         h=DT,
         x0=x0,
-        dx0=None,
-        params0=None,
+        dx0=dx0,
+        params0=params0,
         method=DynamicIntegrationMethod.Trapezoid,
         boundary_update_fn=pwm_controller,
         verbose=True,
