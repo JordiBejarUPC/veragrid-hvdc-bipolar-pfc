@@ -1119,6 +1119,11 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
+    # Slack/reference machine indicator (PowerFactory exports ip_ctrl=1 on the slack generator)
+    if int(elmgenstat.ip_ctrl) == 1:
+        bus.is_slack = True
+
+
     stagen = dev.StaticGenerator(
         name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
         P=elmgenstat.pgini,
@@ -1126,6 +1131,8 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
         active=0 if elmgenstat.outserv else 1
     )
 
+    # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
+    stagen.ip_ctrl = int(elmgenstat.ip_ctrl)
     return bus, stagen
 
 
@@ -1474,18 +1481,18 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     """
     name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
 
-    # Skip motors (ElmSym can represent synchronous motors too)
-    if elmsym.i_mot != 0:
-        logger.add_warning(f"ElmSym '{name}' is marked as motor (i_mot=1). Skipping Generator conversion.")
-        raise ValueError("ElmSym is a motor, not a generator.")
-
     bus = get_injection_bus(elm_id=elmsym.ID,
                             stacubic_dict=stacubic_dict,
                             buses=buses,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    # Resolve type (optional but recommended)
+    # Slack/reference machine indicator (PowerFactory exports ip_ctrl=1 on the slack generator)
+    if int(elmsym.ip_ctrl) == 1:
+        bus.is_slack = True
+
+
+    # Resolve type
     typsym = typsym_dict.get(elmsym.typ_id, None)
     if typsym is None:
         typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
@@ -2402,6 +2409,4 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
     return switches
 
 """
-#TODO: For the test_v5_export grid, all buses with generators appear as Slacks. Fix this
 #TODO: There might be an error with 3W trafos impedances
-#TODO: Shunt seem to always be in positive
