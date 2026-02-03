@@ -28,30 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Some improvements in the iidm parser">
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/ACTIVSg2000.RAW" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/ACTIVSg2000.RAW.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/AU14GenModel.RAW" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/AU14GenModel.RAW.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE118Busv2.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE118Busv2.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE14bus.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE14bus.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE30bus.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/IEEE30bus.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/NETS-NYPS68Bus.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/NETS-NYPS68Bus.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/case118.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/case300.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/case300.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/ieee9.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/ieee9.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/wecc179.raw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/data/wecc179.raw.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/psse_validation/psse_validation.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added psse validation&#10;Improved type correctness of the topology">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Diagrams/base_diagram.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Diagrams/base_diagram.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/topology.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/topology.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContinuationPowerFlow/continuation_power_flow_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ContinuationPowerFlow/continuation_power_flow_results.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -296,7 +275,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.psse_validation">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -761,8 +740,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.psse_validation" />
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python.psse_validation" />
         <item itemvalue="Python.download_stats" />
         <item itemvalue="Python.upload_to_pypi" />
         <item itemvalue="Python.update_gui_file" />
@@ -1897,7 +1876,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="713" />
+    <option name="localTasksCounter" value="714" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1963,7 +1942,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="dgs handle of FID" />
     <MESSAGE value="added bus color" />
     <MESSAGE value="Updated discord link" />
     <MESSAGE value="research of grid manager" />
@@ -1988,7 +1966,8 @@
     <MESSAGE value="Fixed multi-circuit types" />
     <MESSAGE value="Fixed assets types" />
     <MESSAGE value="Some improvements in the iidm parser" />
-    <option name="LAST_COMMIT_MESSAGE" value="Some improvements in the iidm parser" />
+    <MESSAGE value="Added psse validation&#10;Improved type correctness of the topology" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added psse validation&#10;Improved type correctness of the topology" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
