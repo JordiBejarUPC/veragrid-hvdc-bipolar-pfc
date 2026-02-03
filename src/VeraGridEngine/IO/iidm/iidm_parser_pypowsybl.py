@@ -32,12 +32,16 @@ class IidmParser:
 
         :param fname: xiidm file
         """
+        self.logger = Logger() if logger is None else logger
+
         if os.path.exists(fname):
-            self.ps_grid = pp.network.load(fname)
+            if PYPOWSYBL_AVAILABLE:
+                self.ps_grid = pp.network.load(fname)
+            else:
+                self.ps_grid = None
+                self.logger.add_error("pypowsybl not installed")
         else:
             self.ps_grid = None
-
-        self.logger = Logger() if logger is None else logger
 
     def parse(self) -> dev.MultiCircuit:
         """
@@ -50,6 +54,38 @@ class IidmParser:
         if self.ps_grid is None:
             return grid
         else:
+
+            """
+            - Expected objects:   
+            - areas    
+            - buses (from bus view)    
+            - buses from bus/breaker view    
+            - lines    
+            - 2 windings transformers    
+            - 3 windings transformers    
+            - generators    
+            - loads    
+            - shunt compensators    
+            - dangling lines    
+            - LCC and VSC converters stations    
+            - static var compensators    
+            - switches    
+            - voltage levels    
+            - substations    
+            - busbar sections    
+            - HVDC lines    
+            - ratio and phase tap changer steps associated to a 2 windings transformers    
+            - identifiables that are all the equipment on the network    
+            - injections    
+            - branches (lines and two windings transformers)    
+            - terminals are a practical view of those objects 
+              which are very important in the java implementation    
+            - DC nodes    
+            - DC lines    
+            - voltage source converters    
+            - DC grounds
+            """
+
             substations = self.ps_grid.get_substations(all_attributes=True)
             voltage_levels = self.ps_grid.get_voltage_levels(all_attributes=True)
             buses = self.ps_grid.get_buses(all_attributes=True)
@@ -76,12 +112,12 @@ class IidmParser:
             """
             Substation
             0 = {str} 'name'
-            1 = {str} 'TSO'
-            2 = {str} 'geo_tags'
-            3 = {str} 'country'
+            1 = {str} 'TSO': To track to which Transmission System Operator the substation belongs
+            2 = {str} 'geo_tags': They make it possible to accurately locate the substation
+            3 = {str} 'country': To specify in which country the substation is located
             4 = {str} 'fictitious'
             """
-            country_dict: Dict[str, dev.Substation] = dict()
+            country_dict: Dict[str, dev.Country] = dict()
             se_dict: Dict[str, dev.Substation] = dict()
             for i, row in substations.iterrows():
 
@@ -107,9 +143,13 @@ class IidmParser:
             Voltage Level
             0 = {str} 'name'
             1 = {str} 'substation_id'
-            2 = {str} 'nominal_v'
-            3 = {str} 'high_voltage_limit'
-            4 = {str} 'low_voltage_limit'
+            2 = {str} 'nominal_v': kV, Nominal base voltage
+            3 = {str} 'high_voltage_limit' kV, Low voltage limit magnitude
+            4 = {str} 'low_voltage_limit' kV, High voltage limit magnitude
+            
+            In the docs 
+            (https://powsybl.readthedocs.io/projects/powsybl-core/en/stable/grid_model/network_subnetwork.html)
+            it says that topology_kind is required, but doesn't seem to be present
             """
             vl_dict: Dict[str, dev.VoltageLevel] = dict()
             for i, row in voltage_levels.iterrows():
@@ -196,28 +236,42 @@ class IidmParser:
             25 = {str} 'selected_limits_group_2'
             """
             for i, row in lines.iterrows():
-                bus1: dev.Bus = bus_dict[row["bus1_id"]]
-                bus2: dev.Bus = bus_dict[row["bus2_id"]]
+                bus1: dev.Bus | None = bus_dict.get(row["bus1_id"], None)
+                bus2: dev.Bus | None = bus_dict.get(row["bus2_id"], None)
 
-                Vn = max(bus1.Vnom, bus2.Vnom)
-                Zbase = Vn * Vn / grid.Sbase
-                Ybase = 1.0 / Zbase
-                elm = dev.Line(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    bus_from=bus1,
-                    bus_to=bus2,
-                    r=row["r"] / Zbase,
-                    x=row["x"] / Zbase,
-                    b=row["b1"] / Ybase,
-                )
+                if bus1 is None:
+                    self.logger.add_error("Bus from not found",
+                                          device_class="Line",
+                                          device=i)
 
-                grid.add_line(obj=elm, logger=self.logger)
+                if bus2 is None:
+                    self.logger.add_error("Bus to not found",
+                                          device_class="Line",
+                                          device=i)
+
+                if bus1 is not None and bus2 is not None:
+
+                    Vn = max(bus1.Vnom, bus2.Vnom)
+                    Zbase = Vn * Vn / grid.Sbase
+                    Ybase = 1.0 / Zbase
+                    elm = dev.Line(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        bus_from=bus1,
+                        bus_to=bus2,
+                        r=row["r"] / Zbase,
+                        x=row["x"] / Zbase,
+                        b=row["b1"] / Ybase,
+                    )
+
+                    grid.add_line(obj=elm, logger=self.logger)
+                else:
+                    pass
 
             """
             Switch
             00 = {str} 'name'
-            01 = {str} 'kind'
+            01 = {str} 'kind' {'DISCONNECTOR', 'BREAKER'}
             02 = {str} 'open'
             03 = {str} 'retained'
             04 = {str} 'voltage_level_id'
@@ -280,39 +334,68 @@ class IidmParser:
             32 = {str} 'b_at_current_tap'
             """
             for i, row in transformers.iterrows():
-                bus1: dev.Bus = bus_dict[row["bus1_id"]]
-                bus2: dev.Bus = bus_dict[row["bus2_id"]]
+                bus1: dev.Bus | None = bus_dict.get(row["bus1_id"], None)
+                bus2: dev.Bus | None = bus_dict.get(row["bus2_id"], None)
 
-                rated_u1 = float(row["rated_u1"])
-                rated_u2 = float(row["rated_u2"])
-                if rated_u1 > rated_u2:
-                    HV = rated_u1
-                    LV = rated_u2
+                if bus1 is None:
+                    self.logger.add_error("Bus from not found",
+                                          device_class="Line",
+                                          device=i)
+
+                if bus2 is None:
+                    self.logger.add_error("Bus to not found",
+                                          device_class="Line",
+                                          device=i)
+
+                if bus1 is not None and bus2 is not None:
+
+                    rated_u1 = float(row["rated_u1"])
+                    rated_u2 = float(row["rated_u2"])
+                    if rated_u1 > rated_u2:
+                        HV = rated_u1
+                        LV = rated_u2
+                    else:
+                        HV = rated_u2
+                        LV = rated_u1
+
+                    Sn = float(row["rated_s"])
+                    if np.isnan(Sn):
+                        Sn = 9999.0
+
+                    # According to RTE...
+                    # https://powsybl.readthedocs.io/projects/pypowsybl/en/stable/user_guide/per_unit.html#per-unit-formula
+                    Zbase = bus1.Vnom * bus2.Vnom / grid.Sbase
+                    Ybase = 1.0 / Zbase
+
+                    r = float(row["r"]) / Zbase
+                    x = float(row["x"]) / Zbase
+                    y = 1.0 / (complex(float(row["r"]), float(row["x"])) + 1e-20)  # siemens
+
+                    # NOTE: These formulas look incorrect altogether
+                    # g = (float(row["g"]) * bus1.Vnom ** 2 + (bus1.Vnom - bus2.Vnom) * bus1.Vnom * y.real) / grid.Sbase
+                    # b = (float(row["b"]) * bus1.Vnom ** 2 + (bus1.Vnom - bus2.Vnom) * bus1.Vnom * y.imag) / grid.Sbase
+                    g = 0.0
+                    b = 0.0
+
+                    elm = dev.Transformer2W(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        bus_from=bus1,
+                        bus_to=bus2,
+                        r=r,
+                        x=x,
+                        g=g,
+                        b=b,
+                        HV=HV,
+                        LV=LV,
+                        rate=Sn,
+                        tap_module=float(row["rho"]),
+                        tap_phase=float(row["alpha"]),  # TODO in deg or rad? we need rad
+                    )
+
+                    grid.add_transformer2w(obj=elm)
                 else:
-                    HV = rated_u2
-                    LV = rated_u1
-
-                rate = float(row["rated_s"])
-                if np.isnan(rate):
-                    rate = 9999.0
-
-                elm = dev.Transformer2W(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    bus_from=bus1,
-                    bus_to=bus2,
-                    r=float(row["r"]),
-                    x=float(row["x"]),
-                    g=float(row["g"]),
-                    b=float(row["b"]),
-                    HV=HV,
-                    LV=LV,
-                    rate=rate,
-                    tap_module=float(row["rho"]),
-                    tap_phase=float(row["alpha"]),  # TODO in deg or rad? we need rad
-                )
-
-                grid.add_transformer2w(obj=elm)
+                    pass
 
             """
             HVDC
@@ -329,26 +412,38 @@ class IidmParser:
             10 = {str} 'fictitious'
             """
             for i, row in hvdc.iterrows():
-                bus1: dev.Bus = bus_dict[row["converter_station1_id"]]
-                bus2: dev.Bus = bus_dict[row["converter_station2_id"]]
 
-                connected1 = bool(row["connected1"])
-                connected2 = bool(row["connected2"])
+                bus1: dev.Bus | None = bus_dict.get(row["converter_station1_id"], None)
+                bus2: dev.Bus | None = bus_dict.get(row["converter_station2_id"], None)
 
-                # TODO, what is the content of converters_mode? PMODE1, PMODE3 stuff probably but investigate
+                if bus1 is None:
+                    self.logger.add_error("Bus from not found",
+                                          device_class="Line",
+                                          device=i)
 
-                elm = dev.HvdcLine(
-                    name=row["name"] if row["name"] != "" else i,
-                    bus_from=bus1,
-                    bus_to=bus2,
-                    dc_link_voltage=float(row["nominal_v"]),
-                    Pset=float(row["target_p"]),
-                    rate=float(row["max_p"]),
-                    r=float(row["r"]),  # TODO: Ohm?, we need Ohm
-                    active=connected1 and connected2
-                )
+                if bus2 is None:
+                    self.logger.add_error("Bus to not found",
+                                          device_class="Line",
+                                          device=i)
 
-                grid.add_hvdc(obj=elm)
+                if bus1 is not None and bus2 is not None:
+                    connected1 = bool(row["connected1"])
+                    connected2 = bool(row["connected2"])
+
+                    # TODO, what is the content of converters_mode? PMODE1, PMODE3 stuff probably but investigate
+
+                    elm = dev.HvdcLine(
+                        name=row["name"] if row["name"] != "" else i,
+                        bus_from=bus1,
+                        bus_to=bus2,
+                        dc_link_voltage=float(row["nominal_v"]),
+                        Pset=float(row["target_p"]),
+                        rate=float(row["max_p"]),
+                        r=float(row["r"]),  # TODO: Ohm?, we need Ohm
+                        active=connected1 and connected2
+                    )
+
+                    grid.add_hvdc(obj=elm)
 
             """
             Load
@@ -367,33 +462,39 @@ class IidmParser:
             12 = {str} 'fictitious'
             """
             for i, row in loads.iterrows():
-                bus1 = bus_dict[row["bus_id"]]
-                elm = dev.Load(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    P1=float(row["p"]),
-                    Q1=float(row["q"]),
-                    active=bool(row["connected"])
-                )
-                grid.add_load(bus=bus1, api_obj=elm)
+                bus1: dev.Bus | None = bus_dict.get(row["bus_id"], None)
+
+                if bus1 is None:
+                    self.logger.add_error("Bus not found",
+                                          device_class="Load",
+                                          device=i)
+                else:
+                    elm = dev.Load(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        P1=float(row["p"]),
+                        Q1=float(row["q"]),
+                        active=bool(row["connected"])
+                    )
+                    grid.add_load(bus=bus1, api_obj=elm)
 
             """
             Generator
             00 = {str} 'name'
             01 = {str} 'energy_source'
-            02 = {str} 'target_p'
-            03 = {str} 'min_p'
-            04 = {str} 'max_p'
-            05 = {str} 'min_q'
-            06 = {str} 'max_q'
-            07 = {str} 'min_q_at_target_p'
+            02 = {str} 'target_p' MW, The active power target
+            03 = {str} 'min_p' MW, Minimum generator active power output
+            04 = {str} 'max_p' MW, Maximum generator active power output
+            05 = {str} 'min_q' MVAr
+            06 = {str} 'max_q' MVAr
+            07 = {str} 'min_q_at_target_p' 
             08 = {str} 'max_q_at_target_p'
             09 = {str} 'min_q_at_p'
             10 = {str} 'max_q_at_p'
-            11 = {str} 'rated_s'
+            11 = {str} 'rated_s' MVA, The rated nominal power
             12 = {str} 'reactive_limits_kind'
-            13 = {str} 'target_v'
-            14 = {str} 'target_q'
+            13 = {str} 'target_v' kV, The voltage target at regulating terminal which can be remote or local
+            14 = {str} 'target_q' MVAr, The reactive power target at local terminal
             15 = {str} 'voltage_regulator_on'
             16 = {str} 'regulated_element_id'
             17 = {str} 'regulated_bus_id'
@@ -410,33 +511,39 @@ class IidmParser:
             28 = {str} 'fictitious'
             """
             for i, row in gens.iterrows():
-                bus1 = bus_dict[row["bus_id"]]
+                bus1: dev.Bus | None = bus_dict.get(row["bus_id"], None)
 
-                p = float(row["p"])
-                q = float(row["q"])
-                S = p + 1j * q
-                Sabs = abs(S)
-                if Sabs > 0.0:
-                    pf = p / Sabs
+                if bus1 is None:
+                    self.logger.add_error("Bus not found",
+                                          device_class="Generator",
+                                          device=i)
                 else:
-                    pf = 0.0
 
-                elm = dev.Generator(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    P=row["p"],
-                    power_factor=pf,
-                    vset=float(row["target_v"]),
-                    Pmin=float(row["min_p"]),
-                    Pmax=float(row["max_p"]),
-                    Qmin=float(row["min_q"]),
-                    Qmax=float(row["max_q"]),
-                    Snom=float(row["rated_s"]),
-                    active=bool(row["connected"]),
-                    is_controlled=bool(row["voltage_regulator_on"]),
-                )
-                elm.control_bus = bus_dict.get(row["regulated_bus_id"], None)
-                grid.add_generator(bus=bus1, api_obj=elm)
+                    p = float(row["p"])
+                    q = float(row["q"])
+                    S = p + 1j * q
+                    Sabs = abs(S)
+                    if Sabs > 0.0:
+                        pf = p / Sabs
+                    else:
+                        pf = 0.0
+
+                    elm = dev.Generator(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        P=row["p"],
+                        power_factor=pf,
+                        vset=float(row["target_v"]),
+                        Pmin=float(row["min_p"]),
+                        Pmax=float(row["max_p"]),
+                        Qmin=float(row["min_q"]),
+                        Qmax=float(row["max_q"]),
+                        Snom=float(row["rated_s"]),
+                        active=bool(row["connected"]),
+                        is_controlled=bool(row["voltage_regulator_on"]),
+                    )
+                    elm.control_bus = bus_dict.get(row["regulated_bus_id"], None)
+                    grid.add_generator(bus=bus1, api_obj=elm)
 
             """
             Capacitor bank
@@ -462,15 +569,21 @@ class IidmParser:
             19 = {str} 'fictitious'
             """
             for i, row in capacitor_banks.iterrows():
-                bus1 = bus_dict[row["bus_id"]]
-                elm = dev.Shunt(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    G1=float(row["g"]),
-                    B1=float(row["b"]),
-                    active=bool(row["connected"])
-                )
-                grid.add_shunt(bus=bus1, api_obj=elm)
+                bus1: dev.Bus | None = bus_dict.get(row["bus_id"], None)
+
+                if bus1 is None:
+                    self.logger.add_error("Bus not found",
+                                          device_class="Capacitor Bank",
+                                          device=i)
+                else:
+                    elm = dev.Shunt(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        G1=float(row["g"]),
+                        B1=float(row["b"]),
+                        active=bool(row["connected"])
+                    )
+                    grid.add_shunt(bus=bus1, api_obj=elm)
 
             """
             SVC
@@ -495,19 +608,25 @@ class IidmParser:
             18 = {str} 'fictitious'
             """
             for i, row in svc.iterrows():
-                bus1 = bus_dict[row["bus_id"]]
-                elm = dev.ControllableShunt(
-                    name=row["name"] if row["name"] != "" else i,
-                    code=i,
-                    G1=float(row["g"]),
-                    B1=float(row["b"]),
-                    active=bool(row["connected"]),
-                    Bmin=float(row["b_min"]),
-                    Bmax=float(row["b_max"]),
-                    vset=float(row["target_v"]),
-                    is_controlled=bool(row["regulating"]),
-                )
-                elm.control_bus = bus_dict.get(row["regulated_bus_id"], None)
-                grid.add_controllable_shunt(bus=bus1, api_obj=elm)
+                bus1: dev.Bus | None = bus_dict.get(row["bus_id"], None)
+
+                if bus1 is None:
+                    self.logger.add_error("Bus not found",
+                                          device_class="SVC",
+                                          device=i)
+                else:
+                    elm = dev.ControllableShunt(
+                        name=row["name"] if row["name"] != "" else i,
+                        code=i,
+                        G1=float(row["p"]),  # TODO: Make sure about the units
+                        B1=float(row["q"]),
+                        active=bool(row["connected"]),
+                        Bmin=float(row["b_min"]),
+                        Bmax=float(row["b_max"]),
+                        vset=float(row["target_v"]),
+                        is_controlled=bool(row["regulating"]),
+                    )
+                    elm.control_bus = bus_dict.get(row["regulated_bus_id"], None)
+                    grid.add_controllable_shunt(bus=bus1, api_obj=elm)
 
             return grid
