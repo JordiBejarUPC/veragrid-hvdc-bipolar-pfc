@@ -28,7 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed deleting of short circuit events">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Moved matpower files to test matpower folder">
       <change afterPath="$PROJECT_DIR$/src/tests/data/grids/Matpower/case14.matpower" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/tests/data/grids/Matpower/case14_ps.matpower" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/tests/data/grids/Matpower/case24_7_jb.matpower" afterDir="false" />
@@ -1890,7 +1890,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="719" />
+    <option name="localTasksCounter" value="720" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1956,7 +1956,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="added chance to reuse existing voltage levels" />
     <MESSAGE value="added device type to the VoltageLevel conversion wizard" />
     <MESSAGE value="Minor fixes" />
     <MESSAGE value="5.6.16" />
@@ -1981,7 +1980,8 @@
     <MESSAGE value="Added owner" />
     <MESSAGE value="Added owner, now every physical device can have owners associated" />
     <MESSAGE value="Fixed deleting of short circuit events" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed deleting of short circuit events" />
+    <MESSAGE value="Moved matpower files to test matpower folder" />
+    <option name="LAST_COMMIT_MESSAGE" value="Moved matpower files to test matpower folder" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
