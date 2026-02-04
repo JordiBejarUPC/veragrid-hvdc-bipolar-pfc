@@ -70,7 +70,6 @@ from VeraGrid.Gui.Diagrams.graphics_manager import ALL_MAP_GRAPHICS
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.tiles import Tiles
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.messages import error_msg, yes_no_question
-from trunk.curtailments.curtailments_example import selected_generators
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
