@@ -907,7 +907,7 @@ class RmsProblemDae(RmsProblemTemplate):
         :param t:
         :return:
         """
-        self._variable_parameters = self._event_params_fn(self._variable_parameters, t)
+        self._variable_parameters = self._event_params_fn(np.array(self._variable_parameters), t)
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         return self._derivative_fn(x, xn, dx, h)
