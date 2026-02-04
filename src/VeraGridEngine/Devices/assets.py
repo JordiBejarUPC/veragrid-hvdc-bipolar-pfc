@@ -93,7 +93,7 @@ class Assets:
         '_contingency_groups',
         '_remedial_actions',
         '_remedial_action_groups',
-        '_short_circuit_definitions',
+        '_short_circuit_events',
         '_investments',
         '_investments_groups',
         '_technologies',
@@ -247,7 +247,7 @@ class Assets:
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
         # Short circuit definition
-        self._short_circuit_definitions: List[dev.ShortCircuitEvent] = list()
+        self._short_circuit_events: List[dev.ShortCircuitEvent] = list()
 
         # investments
         self._investments: List[dev.Investment] = list()
@@ -4743,60 +4743,60 @@ class Assets:
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Short Circuit Definition
+    # Short Circuit Events
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def short_circuit_definitions(self) -> List[dev.ShortCircuitEvent]:
+    def short_circuit_event(self) -> List[dev.ShortCircuitEvent]:
         """
         Get list of ShortCircuitDefinition
         :return:
         """
-        return self._short_circuit_definitions
+        return self._short_circuit_events
 
-    @short_circuit_definitions.setter
-    def short_circuit_definitions(self, value: List[dev.ShortCircuitEvent]):
-        self._short_circuit_definitions = value
+    @short_circuit_event.setter
+    def short_circuit_event(self, value: List[dev.ShortCircuitEvent]):
+        self._short_circuit_events = value
 
-    def add_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
+    def add_short_circuit_event(self, obj: dev.ShortCircuitEvent):
         """
         Add short_circuit_definitions
         :param obj: ShortCircuitDefinition
         """
-        self._short_circuit_definitions.append(obj)
+        self._short_circuit_events.append(obj)
 
-    def delete_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
+    def delete_short_circuit_event(self, obj: dev.ShortCircuitEvent):
         """
         Delete ShortCircuitDefinition
         :param obj: index
         """
 
         try:
-            self._short_circuit_definitions.remove(obj)
+            self._short_circuit_events.remove(obj)
         except ValueError:
             pass
 
-    def get_short_circuit_definition_names(self) -> StrVec:
+    def get_short_circuit_event_names(self) -> StrVec:
         """
         Get the short circuit definition names
         :return: Names
         """
-        return np.array([elm.name for elm in self._short_circuit_definitions])
+        return np.array([elm.name for elm in self._short_circuit_events])
 
-    def get_short_circuit_definition_number(self) -> int:
+    def get_short_circuit_event_number(self) -> int:
         """
         Get the short circuit definition names
         :return: Names
         """
-        return len(self._short_circuit_definitions)
+        return len(self._short_circuit_events)
 
-    def short_circuit_definition_exist(self, scd: dev.ShortCircuitEvent) -> bool:
+    def short_circuit_event_exist(self, scd: dev.ShortCircuitEvent) -> bool:
         """
         Check if a short circuit definition has been added already
         :param scd: ShortCircuitDefinition
         :return: Bool
         """
-        for elm in self._short_circuit_definitions:
+        for elm in self._short_circuit_events:
             if elm.device_idtag == scd.device_idtag and elm.fault_type == scd.fault_type:
                 return True
         return False
@@ -6312,7 +6312,7 @@ class Assets:
             return self._remedial_action_groups
 
         elif device_type == DeviceType.ShortCircuitEvent:
-            return self._short_circuit_definitions
+            return self._short_circuit_events
 
         elif device_type == DeviceType.Technology:
             return self._technologies
@@ -6550,7 +6550,7 @@ class Assets:
             self._remedial_action_groups = devices
 
         elif device_type == DeviceType.ShortCircuitEvent:
-            self._short_circuit_definitions = devices
+            self._short_circuit_events = devices
 
         elif device_type == DeviceType.Technology:
             self._technologies = devices
@@ -6991,6 +6991,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.FluidNodeDevice:
             self.delete_fluid_node(obj)
+
+        elif obj.device_type == DeviceType.ShortCircuitEvent:
+            self.delete_short_circuit_event(obj)
 
         elif obj.device_type == DeviceType.FluidTurbineDevice:
             self.delete_fluid_turbine(obj)

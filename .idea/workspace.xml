@@ -28,15 +28,29 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added owner">
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons/owner.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons/owner.svg" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Added owner, now every physical device can have owners associated">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_injections_template_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Injections/map_injections_template_graphics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons.qrc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons_rc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/md_source/short_circuit.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/short_circuit.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/short_circuit_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/short_circuit_run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/Substation/bus_graphics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_sc_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_sc_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_short_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_short_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_short_circuit_vsc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_short_circuit_vsc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_unbalanced_faults.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_unbalanced_faults.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/Neutral/ShortCircuit/Impedance_GroundedStar_3ph.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/Neutral/ShortCircuit/Impedance_GroundedStar_3ph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/SC_Test.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/SC_Test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit Documentation.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit Documentation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit IEEE 13-bus.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit IEEE 13-bus.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/phases.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/phases.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/phases_original.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/phases_original.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/sequences.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/ShortCircuit/sequences.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/shortcircuit_vsc.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -281,7 +295,7 @@
       <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.update_icons_rc">
+  <component name="RunManager" selected="Python.ExecuteVeraGrid">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -1882,7 +1896,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="717" />
+    <option name="localTasksCounter" value="718" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1948,7 +1962,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved UCT parsing" />
     <MESSAGE value="Implemented different way of saving models based on pointers instead of copies" />
     <MESSAGE value="added chance to reuse existing voltage levels" />
     <MESSAGE value="added device type to the VoltageLevel conversion wizard" />
@@ -1973,7 +1986,8 @@
     <MESSAGE value="improved CPF results edge cases representation" />
     <MESSAGE value="Fixed old PSSe parsing critical bug when detecting shunts" />
     <MESSAGE value="Added owner" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added owner" />
+    <MESSAGE value="Added owner, now every physical device can have owners associated" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added owner, now every physical device can have owners associated" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
