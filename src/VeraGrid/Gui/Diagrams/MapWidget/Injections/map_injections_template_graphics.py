@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
+from VeraGridEngine import DeviceType
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
@@ -235,12 +236,33 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                        function_ptr=self.editor.consolidate_object_coordinates,
                        icon_path=":/Icons/icons/assign_to_profile.png")
 
+
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
                        text="Delete",
                        function_ptr=self.delete,
                        icon_path=":/Icons/icons/delete_schematic.png")
+
+
+        ss_counter = 0
+        gen_counter = 0
+
+        for graphic_obj in self.editor._get_selected():
+            if hasattr(graphic_obj, 'api_object'):
+                if hasattr(graphic_obj.api_object, 'device_type'):
+                    if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
+                        has_substation = True
+                        ss_counter += 1
+                    elif graphic_obj.api_object.device_type == DeviceType.GeneratorDevice:
+                        gen_counter += 1
+        if ss_counter == 1 and gen_counter > 0:
+            menu.addSeparator()
+
+            add_menu_entry(menu=menu,
+                           text="Change bus connection for the generator",
+                           function_ptr=self.editor.change_generator_bus_connection,
+                           icon_path=":/Icons/icons/move_bus.png")
 
         return menu
 
@@ -267,3 +289,4 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         self.api_object.latitude = lat
         self.api_object.longitude = long
         self.editor.gui.show_info_toast("Coordinates consolidated!")
+

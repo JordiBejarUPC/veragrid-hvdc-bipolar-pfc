@@ -63,11 +63,14 @@ from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics impor
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import MapStaticGeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.map_widget import MapWidget, MapDiagramScene
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
+from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
+
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.Diagrams.graphics_manager import ALL_MAP_GRAPHICS
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.tiles import Tiles
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
 from VeraGrid.Gui.messages import error_msg, yes_no_question
+from trunk.curtailments.curtailments_example import selected_generators
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -1945,6 +1948,34 @@ class GridMapWidget(BaseDiagramWidget):
                 self.gui.show_error_toast(
                     'The waypoint selected is not included in the selected line\'s waypoint. Operation not performed.')
                 return
+
+    def change_generator_bus_connection(self):
+
+        selected_generators = self.get_selected_generators_tup()
+        selected_substations = self.get_selected_substations_tup()
+
+        if len(selected_substations) > 1:
+            self.gui.show_error_toast('More than one substation has been selected to reconnect generators. '
+                                      'Please, select only one.')
+            return
+        ss = selected_substations[0][0]
+
+        dialog = BusSelectorDialogue(grid=self.circuit, se=ss)
+        dialog.exec()
+        if dialog.is_valid():
+            bus = dialog.bus()
+            if bus is not None:
+                for gen in selected_generators:
+                    gen[0].bus = bus
+            else:
+                self.gui.show_error_toast('The selected bus appears as None. Check selection.')
+                return
+
+            self.gui.show_info_toast(f'Selected generators changed to bus {bus.name}.')
+            return
+
+        else:
+            self.gui.show_error_toast('Dialogue selection failed.')
 
     def merge_selected_lines(self):
 
