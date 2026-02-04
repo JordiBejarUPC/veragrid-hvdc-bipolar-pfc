@@ -16,7 +16,7 @@ from VeraGridEngine.basic_structures import Logger, Vec
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic, _dict_to_expr, abs,
-                                                    DiffVar, hard_sat, heaviside)
+                                                    DiffVar, hard_sat, heaviside, get_expression_vars)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 

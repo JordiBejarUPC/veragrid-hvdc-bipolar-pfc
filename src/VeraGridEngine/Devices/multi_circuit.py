@@ -1588,17 +1588,6 @@ class MultiCircuit(Assets):
 
         return result
 
-    def compose_system_blocks(self):
-        grid_blocks: List[Block] = list()
-        for i, elm in enumerate(self.buses):
-            mdl = elm.rms_model.model
-            grid_blocks.append(mdl)
-
-        for i, elm in enumerate(self.b):
-            mdl = elm.rms_model.model
-            grid_blocks.append(mdl)
-
-
     def compose_bus_blocks(self) -> Dict[dev.bus, Block]:
         """
         this function returns a dictionary with keys, the device bus, mand values, a block containing all the rms models of the elements connected to that bus.
@@ -1612,10 +1601,6 @@ class MultiCircuit(Assets):
 
         for bus, region in bus_regions_dict.items():
             bus_block = Block(children=[], in_vars=[])
-            # add bus block
-            # bus_mdl = bus.rms_model.model
-            # bus_block.add(bus_mdl)
-            # add injection in the bus blocks
             for dev_type, dev_list in region.items():
                 for elm in dev_list:
                     elm_mdl = elm.rms_model.model

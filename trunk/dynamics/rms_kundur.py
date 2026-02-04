@@ -8,10 +8,15 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from VeraGridEngine import VarPowerFlowRefferenceType, DynamicIntegrationMethod, DynamicModelHost
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
+
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
@@ -583,31 +588,54 @@ def rms_kundur():
 
     pr.enable()
 
-    sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+    options = RmsOptions(time_step=0.001,
+                 simulation_time=10,
+                 tolerance=1e-6,
+                 integration_method=DynamicIntegrationMethod.BackEuler,
+                 initialization_method=RmsInitializationMethod.Explicit,
+                 use_init_values=False,
+                 max_iter=1000,
+                 verbose=0)
 
-    slv = BlockSolver(ss, sim_time)
+    problem = RmsProblemDae(grid=grid,
+                            options=options,
+                            pf_results=res)
 
-    pr.disable()
-
-    pr.dump_stats('profile.pstat')
-
-    x0 = slv.build_init_vars_vector_from_uid(init_guess)
-
-    dx0 = np.zeros(len(slv.diff_vars))
-
-    t, y, timings = slv.simulate(
+    solver = BackEulerImplicitIntegration(
+        problem=problem,
         t0=0,
-        t_end=20,
-        h=0.001,
-        x0=x0,
-        dx0=dx0,
-        method=DynamicIntegrationMethod.BackEuler,
-        newton_tol=0.000001,
-        newton_max_iter=1000,
-        followed_vars=None,
-        initialized=False,
-        verbose=False,
+        t_end=options.simulation_time,
+        h=options.time_step,
+        max_iter=options.max_iter
     )
+
+    solver.simulate()
+
+    # sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+    #
+    # slv = BlockSolver(ss, sim_time)
+    #
+    # pr.disable()
+    #
+    # pr.dump_stats('profile.pstat')
+    #
+    # x0 = slv.build_init_vars_vector_from_uid(init_guess)
+    #
+    # dx0 = np.zeros(len(slv.diff_vars))
+    #
+    # t, y, timings = slv.simulate(
+    #     t0=0,
+    #     t_end=20,
+    #     h=0.001,
+    #     x0=x0,
+    #     dx0=dx0,
+    #     method=DynamicIntegrationMethod.BackEuler,
+    #     newton_tol=0.000001,
+    #     newton_max_iter=1000,
+    #     followed_vars=None,
+    #     initialized=False,
+    #     verbose=False,
+    # )
 
 
     # plot
@@ -623,9 +651,9 @@ def rms_kundur():
 
     # Generator state variables
     # plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
-    plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
-    plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
-    plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
+    plt.plot(t, y[:, solver.get_var_idx(delta)], label="delta (pu)")
+    plt.plot(t, y[:, solver.get_var_idx(Pg)], label="P (pu)")
+    plt.plot(t, y[:, solver.get_var_idx(Qg)], label="Q (pu)")
     # plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
 
     plt.legend(loc='upper right', ncol=2)

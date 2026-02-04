@@ -25,13 +25,22 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+
+from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+
+
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, \
     StabilizerBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -70,12 +79,8 @@ grid.add_bus(bus1)
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
 
-grid.add_line(line0)
-
 # load
 load = gce.Load(P= 9.999999, Q= 0.999999)
-load_mdl = load.rms_model.model
-grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
@@ -87,78 +92,67 @@ gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
                      Ki=10.0,
                      )
 
-grid.add_generator(bus=bus0, api_obj=gen0)
-
 ######################################################################################################
 # Build Rms models
 ######################################################################################################
+
+# Build dynamic_model_host
+
+line_dynhost = DynamicModelHost()
+load_dynhost = DynamicModelHost()
+gen_dynhost = DynamicModelHost()
+
 # generator
-genqec1_mdl = block_deep_copy(GenqecBuild().block)
-
-exc1_mdl = block_deep_copy(ExciterBuild().block)
-
-gov1_mdl = block_deep_copy(GovernorBuild().block)
-
-stabil1_mdl = block_deep_copy(StabilizerBuild().block)
+genqec_mdl = block_deep_copy(get_complete_generator_template().block)
 
 # line
-line0_mdl = block_deep_copy(get_line_rms_template().block)
+line_mdl = block_deep_copy(get_line_rms_template().block)
 
 # load
 load_mdl = block_deep_copy(get_load_rms_template().block)
 
-## Build big generators by connecting elements
-
-genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
-exc1_mdl.connect([exc1_mdl.in_vars[0]], [genqec1_mdl.out_vars[3]])
-
-stabil1_mdl.connect([stabil1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
-
-exc1_mdl.connect([exc1_mdl.in_vars[2]], [stabil1_mdl.out_vars[0]])
-
-genqec1_mdl.connect([genqec1_mdl.in_vars[2]], [gov1_mdl.out_vars[0]])
-
-gov1_mdl.connect([gov1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
-
-# Te connection
-gov1_mdl.connect([gov1_mdl.in_vars[1]], [genqec1_mdl.out_vars[4]])
-
 # connection with buses
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
-
-exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[0]])
+genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
+line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
 
-u_gov = find_name_in_block("u_gov1", gov1_mdl)
+# u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 # external mapping
 
-big_gen1 = Block(children=[genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
+big_gen1 = Block(children=[genqec_mdl])
 
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
+
+# add models to dyn_host
+line_dynhost.model = line_mdl
+load_dynhost.model = load_mdl
+gen_dynhost.model = big_gen1
+
 
 # attach rms models to Veragrid objects
-gen0.rms_model.model = big_gen1
+line0.rms_model= line_dynhost
+load.rms_model= load_dynhost
+gen0.rms_model= gen_dynhost
 
-line0.rms_model.model = line0_mdl
+# Pl0 = find_name_in_block('Pl0', load_mdl)
+# event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)
+# grid.add_rms_event(event)
 
-load.rms_model.model = load_mdl
-
-Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)
-grid.add_rms_event(event)
+grid.add_line(line0)
+grid.add_load(bus=bus1, api_obj=load)
+grid.add_generator(bus=bus0, api_obj=gen0)
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -192,30 +186,53 @@ params_mapping = dict()
 
 pr.enable()
 
-sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+options = RmsOptions(time_step=0.001,
+                 simulation_time=10,
+                 tolerance=1e-6,
+                 integration_method=DynamicIntegrationMethod.BackEuler,
+                 initialization_method=RmsInitializationMethod.Explicit,
+                 use_init_values=False,
+                 max_iter=1000,
+                 verbose=0)
 
-slv = BlockSolver(ss, sim_time)
+problem = RmsProblemDae(grid=grid,
+                        options=options,
+                        pf_results=res)
 
-
-x0 = slv.build_init_vars_vector_from_uid(init_guess)
-dx0 = np.zeros(len(slv.diff_vars))
-Vm = find_name_in_block("Vm", slv.block_system)
-
-xlim = 15.0
-t, y, _ = slv.simulate(
+solver = BackEulerImplicitIntegration(
+    problem=problem,
     t0=0,
-    t_end=xlim,
-    h=0.001,
-    x0=x0,
-    dx0=dx0,
-    method=DynamicIntegrationMethod.BackEuler,
-    newton_tol=1e-8,
-    newton_max_iter=1000,
-    followed_vars=None,
-    initialized=False,
-    verbose=False,
-
+    t_end=options.simulation_time,
+    h=options.time_step,
+    max_iter=options.max_iter
 )
+
+solver.simulate()
+
+# sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+#
+# slv = BlockSolver(ss, sim_time)
+#
+#
+# x0 = slv.build_init_vars_vector_from_uid(init_guess)
+# dx0 = np.zeros(len(slv.diff_vars))
+# Vm = find_name_in_block("Vm", slv.block_system)
+#
+# xlim = 15.0
+# t, y, _ = slv.simulate(
+#     t0=0,
+#     t_end=xlim,
+#     h=0.001,
+#     x0=x0,
+#     dx0=dx0,
+#     method=DynamicIntegrationMethod.BackEuler,
+#     newton_tol=1e-8,
+#     newton_max_iter=1000,
+#     followed_vars=None,
+#     initialized=False,
+#     verbose=False,
+
+# )
 
 pr.disable()
 
@@ -235,12 +252,12 @@ delta = find_name_in_block("delta", genqec1_mdl)
 
 
 # Generator state variables
-plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
-plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
+plt.plot(t, y[:, solver.get_var_idx(omega)], label="omega (pu)")
+plt.plot(t, y[:, solver.get_var_idx(delta)], label="delta (pu)")
+plt.plot(t, y[:, solver.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, solver.get_var_idx(Pg)], label="P (pu)")
+plt.plot(t, y[:, solver.get_var_idx(Qg)], label="Q (pu)")
+plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
 
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")

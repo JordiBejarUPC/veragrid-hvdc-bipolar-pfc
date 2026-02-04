@@ -434,6 +434,8 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
 
         elif prop.tpe == SubObjectType.DynamicModelHostType:
             data[name] = obj.to_dict()
+            if obj.model is not None:
+                block_saver.save_block(blk=obj.model, main=True)
 
         elif prop.tpe == SubObjectType.DaeBlockType:
             block_saver.save_block(blk=obj, main=True)

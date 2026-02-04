@@ -1274,12 +1274,12 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
-                P, Q = self.api_object.P, self.api_object.Q
-                for param in self.selected_template.block.event_dict.keys():
-                    if param.name == 'Pl0':
-                        self.selected_template.block.event_dict[param] = Const(P)
-                    if param.name == 'Ql0':
-                        self.selected_template.block.event_dict[param] = Const(Q)
+                # P, Q = self.api_object.P, self.api_object.Q
+                # for param in self.selected_template.block.event_dict.keys():
+                #     if param.name == 'Pl0':
+                #         self.selected_template.block.event_dict[param] = Const(P)
+                #     if param.name == 'Ql0':
+                #         self.selected_template.block.event_dict[param] = Const(Q)
 
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables

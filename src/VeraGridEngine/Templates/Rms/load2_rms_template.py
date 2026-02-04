@@ -35,6 +35,9 @@ def get_load2_rms_template(name = "Load rms template") -> RmsModelTemplate:
     templ.block.event_dict[Pl0] = Const(-0.0999999)
     templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
 
+    # templ.block.event_dict[Pl0] = Const(-17.6699999999199)
+    # templ.block.event_dict[Ql0] = Const(-0.999999999989467)
+
     templ.block.algebraic_vars = [Pl, Ql]
 
     templ.block.algebraic_eqs = [
