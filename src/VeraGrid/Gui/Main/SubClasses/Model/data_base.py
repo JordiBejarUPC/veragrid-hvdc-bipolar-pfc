@@ -932,6 +932,12 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.EmissionGas(name=name)
                 self.circuit.add_emission_gas(obj)
 
+            elif elm_type == DeviceType.Owner.value:
+
+                name = f'Owner {len(self.circuit.owners) + 1}'
+                obj = dev.Owner(name=name)
+                self.circuit.add_owner(obj)
+
             elif elm_type == DeviceType.ModellingAuthority.value:
 
                 name = f'Modelling authority {self.circuit.get_modelling_authorities_number()}'
