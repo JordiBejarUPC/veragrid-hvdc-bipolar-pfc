@@ -12,7 +12,6 @@ import scipy.sparse as sp
 import math
 import concurrent.futures
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block_solver import compile_jac_block
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise,
                                                     _heaviside, expression2numba,
                                                     get_expression_vars)
@@ -64,6 +63,38 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q_used[k] = 1
     else:
         Q[k] += val
+
+def compile_jac_block(block_id, block_eqs, block_offsets, used_vars_count,
+                      compiler_names_dict, alias_names_dict, namespace, VARS_NAME: str, DIFF_NAME: str,
+                      EVENT_PARAMS_NAME: str,
+                      PARAMS_NAME: str, use_jit):
+    fname = f"jac_block_{block_id}"
+    src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
+    final_names_dict = {}
+    for uid, count in used_vars_count.items():
+        if count > 1:
+            final_names_dict[uid] = alias_names_dict[uid]
+            src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+        else:
+            final_names_dict[uid] = compiler_names_dict[uid]
+
+    offset = block_offsets[block_id]
+    for i, e in enumerate(block_eqs):
+        src += f"    out[{offset + i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
+
+    exec(src, namespace)
+
+    if use_jit:
+        func = nb.njit(
+            nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+            fastmath=True,
+            cache=False
+        )(namespace[fname])
+    else:
+        func = namespace[fname]
+
+    return block_id, func
+
 
 
 class SymbolicJacobian:
@@ -146,7 +177,7 @@ class SymbolicJacobian:
             for i in range(0, len(equations_sorted), batch_size)
         ]
         self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
-        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
+        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
 
         # --- Compile blocks sequentially -------------------------------------------
         # --- Compile blocks in parallel ---------------------------------------------
@@ -156,7 +187,7 @@ class SymbolicJacobian:
                     compile_jac_block,
                     i, block, self.block_offsets, used_vars_count,
                     compiler_names_dict, alias_names_dict,
-                    self.namespace, VARS_NAME, DIFF_NAME, EVENT_PARAMS_NAME, PARAMS_NAME, ALTER_PARAMS_NAME, use_jit
+                    self.namespace, VARS_NAME, DIFF_NAME, EVENT_PARAMS_NAME, PARAMS_NAME, use_jit
                 )
                 for i, block in enumerate(blocks)
             ]
@@ -169,7 +200,6 @@ class SymbolicJacobian:
                  dx: Vec,
                  variable_params: Vec,
                  constant_params: Vec,
-                 alter_params: Vec,
                  h: float):
         """
 
@@ -183,7 +213,7 @@ class SymbolicJacobian:
         """
         for func in self.funcs:
             if func is not None:
-                func(x, dx, variable_params, constant_params, alter_params, self.J.data)
+                func(x, dx, variable_params, constant_params, self.J.data)
         return self.J
 
 
@@ -209,7 +239,7 @@ class SymbolicVector:
         :param uid2sym_params:
         :return: Function pointer that returns an array
         """
-        self.func: Callable[[Vec, Vec, Vec, Vec, Vec, Vec], None] | None = None
+        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None] | None = None
         used_vars_count = defaultdict(int)
         for eq in eqs:
             for var in get_expression_vars(eq):
@@ -230,7 +260,7 @@ class SymbolicVector:
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
             # Build source
-            src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, {ALTER_PARAMS_NAME}, out):\n"
+            src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
             final_names_dict = compiler_names_dict.copy()
             for uid, count in used_vars_count.items():
                 if count > 1:
@@ -246,7 +276,7 @@ class SymbolicVector:
             # compile in numba
             if use_jit:
                 self.func = nb.njit(
-                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
                     fastmath=True)(self.namespace[fname])
             else:
                 self.func = self.namespace[fname]
@@ -255,7 +285,7 @@ class SymbolicVector:
 
         self.data: Vec = np.zeros(len(eqs))
 
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, alter_params: Vec) -> Vec:
+    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> Vec:
         """
         Call the compiled function
         :param values:
@@ -265,7 +295,7 @@ class SymbolicVector:
         :return:
         """
         if self.func is not None:
-            self.func(values, diff_values, event_params, params, alter_params, self.data)
+            self.func(values, diff_values, event_params, params, self.data)
         return self.data
 
 
@@ -333,7 +363,8 @@ class SymbolicParamsVector:
         :return:
         """
         if self.func is not None:
-            return self.data
+            self.func(event_params, glob_time, self.data)
+        return self.data
 
 
 class SymbolicDerivative:
@@ -606,6 +637,12 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_diff = len(self._diff_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
+        # variable_parameters_init = np.ones(self.get_variable_parameter_number())
+        #
+        # # TODO: think about this thing of calling twice here
+        # self._variable_parameters_values = self._event_params_fn(variable_parameters_init, 0.0)
+        # self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, 0.0)
+
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
         # going to be represented by an array called vars[]
@@ -830,11 +867,11 @@ class RmsProblemDae(RmsProblemTemplate):
         # Collect parameters' vectors
         # --------------------------------------------------------------------------------------------------------------
 
-        self._variable_parameters = np.ones(self.get_variable_parameter_number())
+        variable_parameters_init = np.ones(self.get_variable_parameter_number())
 
         # TODO: think about this thing of calling twice here
-        self._variable_params = self._event_params_fn(self._variable_parameters, 0.0)
-        self._variable_params = self._event_params_fn(self._variable_params, 0.0)
+        self._variable_parameters_values = self._event_params_fn(variable_parameters_init, 0.0)
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, 0.0)
 
         self._constant_params = np.array([const.value for const in self._parameters_values])
 
@@ -857,6 +894,14 @@ class RmsProblemDae(RmsProblemTemplate):
         else:
             var_list.append(var)
 
+    def get_var_idx(self, v: Var) -> int:
+        """
+
+        :param v:
+        :return:
+        """
+        return self._uid2idx_vars[v.uid]
+
     @property
     def v_glob_name2uid(self):
         """
@@ -864,6 +909,13 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         return self._block_system.vars_glob_name2uid
+
+    @property
+    def get_algebraic_vars(self):
+        """
+        :return:
+        """
+        return self._algebraic_vars
 
     def get_all_vars_number(self) -> int:
         return self._n_vars
@@ -882,7 +934,7 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._n_state
 
     def get_variable_parameter_number(self) -> int:
-        return len(self._constant_parameters)
+        return len(self._variable_parameters)
 
     def get_x0(self) -> Vec:
         """
@@ -907,47 +959,41 @@ class RmsProblemDae(RmsProblemTemplate):
         :param t:
         :return:
         """
-        self._variable_parameters = self._event_params_fn(np.array(self._variable_parameters), t)
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         return self._derivative_fn(x, xn, dx, h)
 
     def rhs_state(self, x: Vec, dx: Vec, ) -> Vec:
         return self._rhs_state_fn(x, dx,
-                                 self._variable_params,
-                                 self._constant_params,
-                                 self._alter_params)
+                                 self._variable_parameters_values,
+                                 self._constant_params)
 
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
         return self._rhs_algeb_fn(x, dx,
-                                 self._variable_params,
-                                 self._constant_params,
-                                 self._alter_params)
+                                 self._variable_parameters_values,
+                                 self._constant_params)
 
     def get_j11(self, x: Vec, dx: Vec, h: float):
         return self._j11_fn(x, dx,
-                           self._variable_params,
+                           self._variable_parameters_values,
                            self._constant_params,
-                           self._alter_params,
                            h)
 
     def get_j12(self, x: Vec, dx: Vec, h: float):
         return self._j12_fn(x, dx,
-                           self._variable_params,
+                           self._variable_parameters_values,
                            self._constant_params,
-                           self._alter_params,
                            h)
 
     def get_j21(self, x: Vec, dx: Vec, h: float):
         return self._j21_fn(x, dx,
-                           self._variable_params,
+                           self._variable_parameters_values,
                            self._constant_params,
-                           self._alter_params,
                            h)
 
     def get_j22(self, x: Vec, dx: Vec, h: float):
         return self._j22_fn(x, dx,
-                           self._variable_params,
+                           self._variable_parameters_values,
                            self._constant_params,
-                           self._alter_params,
                            h)

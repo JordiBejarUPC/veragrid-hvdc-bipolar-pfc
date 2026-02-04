@@ -5,6 +5,7 @@
 
 from abc import ABC
 from typing import List, Dict
+import numpy as np
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.basic_structures import Vec
@@ -33,6 +34,9 @@ class RmsProblemTemplate(ABC):
     def get_variable_parameter_number(self) -> int:
         return 0
 
+    def get_algebraic_vars(self) -> List:
+        return list()
+
     # def get_constant_parameters(self) -> Vec:
     #     raise NotImplementedError("get_constant_parameters")
 
@@ -53,6 +57,7 @@ class RmsProblemTemplate(ABC):
 
     def rhs_algebraic(self, values: Vec, diff_values: Vec) -> Vec:
         raise NotImplementedError("rhs_algebraic")
+
 
     def get_j11(self, x: Vec, dx: Vec, h: float):
         raise NotImplementedError("get_j11")

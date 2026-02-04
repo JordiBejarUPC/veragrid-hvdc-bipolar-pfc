@@ -182,27 +182,27 @@ class BackEulerImplicitIntegration:
                 converged = residual < tol
                 Jf = self._jacobian_implicit(x_new, dx, self.h)
 
-                # if step_idx == 0:
-                #     Jf = self._jacobian_implicit(x_new, dx, params_current, constant_params, self.h)
-                #     delta = sp.linalg.spsolve(Jf, -rhs)
-                #     if converged:
-                #         print("System well initialized.")
-                #         print(f"x is {x_new}")
-                #     else:
-                #         print(f"System bad initialized. DAE resiudal is {residual}.")
-                #         print(f'rhs is {rhs}')
-                #         non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                #         all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                #         print("eqs are")
-                #         for i in non_zero_indexes:
-                #             eq = all_eq[i]
-                #             print(f"eq {eq} with error {rhs[i]}")
-                #         exit()
-                # else:
-                #     max_iter = max_iter_0
+                if step_idx == 0:
+                    Jf = self._jacobian_implicit(x_new, dx, self.h)
+                    delta = sp.linalg.spsolve(Jf, -rhs)
+                    if converged:
+                        print("System well initialized.")
+                        print(f"x is {x_new}")
+                    else:
+                        print(f"System bad initialized. DAE resiudal is {residual}.")
+                        print(f'rhs is {rhs}')
+                        non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                        all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                        print("eqs are")
+                        for i in non_zero_indexes:
+                            eq = all_eq[i]
+                            print(f"eq {eq} with error {rhs[i]}")
+                        exit()
+                else:
+                    max_iter = 1000
 
-                # if converged:
-                #     break
+                if converged:
+                    break
 
                 linear_start = time.time()
                 delta = sp.linalg.spsolve(Jf, -rhs)
@@ -210,34 +210,35 @@ class BackEulerImplicitIntegration:
                 timings["linear_solver_time"] += linear_end - linear_start
                 solved = np.all(np.isfinite(delta))
 
-                # if not solved:
-                #     delta, *_ = sp.linalg.lsqr(Jf, -rhs)
-                #     solved = np.all(np.isfinite(delta))
-                #     u, s, vh = np.linalg.svd(Jf.toarray() if sp.issparse(Jf) else Jf)
-                #     singular_dirs = np.where(s < tol)[0]
-                #     for i in singular_dirs:
-                #         v = vh.T[:, i]  # variable-space vector
-                #         abs_v = np.abs(v)
-                #         dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
-                #         print(f"\nSingular direction {i}, σ={s[i]:.3e}")
-                #         for j in dominant_idx:
-                #             if j < self.problem.get_diff_var_number():
-                #                 var_name = self._algebraic_vars[j].name
-                #                 print(f"  {var_name:20s} {v[j]:+.3e}")
-                #     print("Using LSQR")
+                if not solved:
+                    delta, *_ = sp.linalg.lsqr(Jf, -rhs)
+                    solved = np.all(np.isfinite(delta))
+                    u, s, vh = np.linalg.svd(Jf.toarray() if sp.issparse(Jf) else Jf)
+                    singular_dirs = np.where(s < tol)[0]
+                    for i in singular_dirs:
+                        v = vh.T[:, i]  # variable-space vector
+                        abs_v = np.abs(v)
+                        dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
+                        print(f"\nSingular direction {i}, σ={s[i]:.3e}")
+                        for j in dominant_idx:
+                            if j < self.problem.get_diff_var_number():
+                                algeb_vars = self.problem.get_algebraic_vars()
+                                var_name = algeb_vars[j].name
+                                print(f"  {var_name:20s} {v[j]:+.3e}")
+                    print("Using LSQR")
 
-                # if not solved:
-                #     nan_indices = np.where(np.isnan(rhs))[0]
-                #     # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
-                #     nan_eqs = [self._algebraic_eqs[i] for i in nan_indices]
-                #     print(f'Jf is {Jf}')
-                #     raise ValueError(
-                #         f"spsolve returned non-finite values (NaN or Inf).\n"
-                #         f"delta = {delta}\n"
-                #         f"rhs = {rhs}\n"
-                #         f"Jacobian shape = {Jf.shape}\n"
-                #         f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
-                #     )
+                if not solved:
+                    nan_indices = np.where(np.isnan(rhs))[0]
+                    # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
+                    nan_eqs = [self._algebraic_eqs[i] for i in nan_indices]
+                    print(f'Jf is {Jf}')
+                    raise ValueError(
+                        f"spsolve returned non-finite values (NaN or Inf).\n"
+                        f"delta = {delta}\n"
+                        f"rhs = {rhs}\n"
+                        f"Jacobian shape = {Jf.shape}\n"
+                        f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
+                    )
 
                 if not solved:
                     raise RuntimeError("Failed to solve linear system even with regularization.")
@@ -269,3 +270,4 @@ class BackEulerImplicitIntegration:
             else:
                 print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
                 print(f'Residual is {residual}')
+        return self.t, self.y
