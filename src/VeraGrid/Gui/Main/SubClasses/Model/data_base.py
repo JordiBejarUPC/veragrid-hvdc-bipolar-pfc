@@ -182,6 +182,7 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.Technology.value: ":/Icons/icons/technology.png",
             DeviceType.FuelDevice.value: ":/Icons/icons/fuel.png",
             DeviceType.EmissionGasDevice.value: ":/Icons/icons/emission.png",
+            DeviceType.Owner.value: ":/Icons/icons/owner.png",
 
             "Measurements": ":/Icons/icons/measurement.png",
             DeviceType.PMeasurementDevice.value: ":/Icons/icons/measurement.png",
