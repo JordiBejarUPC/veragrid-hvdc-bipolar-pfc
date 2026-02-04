@@ -10,7 +10,9 @@ import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import math
+import concurrent.futures
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Utils.Symbolic.block_solver import compile_jac_block
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise,
                                                     _heaviside, expression2numba,
                                                     get_expression_vars)
@@ -331,8 +333,7 @@ class SymbolicParamsVector:
         :return:
         """
         if self.func is not None:
-            self.func(event_params, glob_time, self.data)
-        return self.data
+            return self.data
 
 
 class SymbolicDerivative:
@@ -909,43 +910,43 @@ class RmsProblemDae(RmsProblemTemplate):
         self._variable_parameters = self._event_params_fn(self._variable_parameters, t)
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
-        raise self._derivative_fn(x, xn, dx, h)
+        return self._derivative_fn(x, xn, dx, h)
 
     def rhs_state(self, x: Vec, dx: Vec, ) -> Vec:
-        raise self._rhs_state_fn(x, dx,
+        return self._rhs_state_fn(x, dx,
                                  self._variable_params,
                                  self._constant_params,
                                  self._alter_params)
 
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
-        raise self._rhs_algeb_fn(x, dx,
+        return self._rhs_algeb_fn(x, dx,
                                  self._variable_params,
                                  self._constant_params,
                                  self._alter_params)
 
     def get_j11(self, x: Vec, dx: Vec, h: float):
-        raise self._j11_fn(x, dx,
+        return self._j11_fn(x, dx,
                            self._variable_params,
                            self._constant_params,
                            self._alter_params,
                            h)
 
     def get_j12(self, x: Vec, dx: Vec, h: float):
-        raise self._j12_fn(x, dx,
+        return self._j12_fn(x, dx,
                            self._variable_params,
                            self._constant_params,
                            self._alter_params,
                            h)
 
     def get_j21(self, x: Vec, dx: Vec, h: float):
-        raise self._j21_fn(x, dx,
+        return self._j21_fn(x, dx,
                            self._variable_params,
                            self._constant_params,
                            self._alter_params,
                            h)
 
     def get_j22(self, x: Vec, dx: Vec, h: float):
-        raise self._j22_fn(x, dx,
+        return self._j22_fn(x, dx,
                            self._variable_params,
                            self._constant_params,
                            self._alter_params,

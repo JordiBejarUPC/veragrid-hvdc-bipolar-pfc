@@ -11,7 +11,7 @@ from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
-from VeraGridEngine.Simulations.Rms.numerical.integration_methods import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.numerical. back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 

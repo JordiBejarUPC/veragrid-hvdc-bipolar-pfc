@@ -2362,7 +2362,7 @@ class DynamicIntegrationMethod(Enum):
         return list(map(lambda c: c.value, cls))
 
 class RmsInitializationMethod(Enum):
-    Explicit = "Explicit",
+    Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
 
     def __str__(self) -> str:

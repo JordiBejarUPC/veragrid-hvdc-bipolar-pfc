@@ -348,7 +348,7 @@ class BlockSaver:
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
         self.diff_var_dict: Dict[int, DiffVar] = dict()
-        self.main_block_uids: List[int] | None = None
+        self.main_block_uids: List[int] =list()
         self.blocks: Dict[int, Dict[str, Any]] = dict()
 
     def get_const_to_save(self) -> List[Dict[str, Any]]:
@@ -709,3 +709,62 @@ def block_deep_copy(block: Block):
     block2 = parser.parse_block(blocks, block.uid)
 
     return block2
+
+def compare_blocks(block1: Block, block2: Block, testing = False):
+    """
+    Create depp copy of a block
+    :param block1:
+    :param block2:
+    :param testing:
+    :return:
+    """
+
+    saver1 = BlockSaver()
+    d1 = saver1.save_block(block1, main=False)
+    const_save1 = saver1.get_const_to_save()
+    vars_save1 = saver1.get_vars_to_save()
+    diff_vars_save1 = saver1.get_diff_vars_to_save()
+    blocks1 = saver1.get_blocks()
+
+    saver2 = BlockSaver()
+    d2 = saver2.save_block(block2, main=False)
+    const_save2 = saver2.get_const_to_save()
+    vars_save2 = saver2.get_vars_to_save()
+    diff_vars_save2 = saver2.get_diff_vars_to_save()
+    blocks2 = saver2.get_blocks()
+
+
+    # if const_save1 != const_save2:
+    #     if testing:
+    #         logger.add_error(msg="List of constants differs",
+    #                          value=const_save2,
+    #                          expected_value=const_save1)
+    #         return logger.error_count() == 0, logger
+    #     else:
+    #         return False
+    #
+    # if vars_save1 != vars_save2:
+    #     if testing:
+    #         logger.add_error(msg="List of vars differs",
+    #                          value=vars_save2,
+    #                          expected_value=vars_save1)
+    #         return logger.error_count() == 0, logger
+    #     else:
+    #         return False
+    #
+    # if diff_vars_save1 != diff_vars_save2:
+    #     if testing:
+    #         logger.add_error(msg="List of diffvars differs",
+    #                          value=diff_vars_save2,
+    #                          expected_value=diff_vars_save1)
+    #         return logger.error_count() == 0, logger
+    #     else:
+    #         return False
+
+    return (
+            (blocks1, const_save1, vars_save1, diff_vars_save1)
+            == (blocks2, const_save2, vars_save2, diff_vars_save2)
+    )
+
+
+
