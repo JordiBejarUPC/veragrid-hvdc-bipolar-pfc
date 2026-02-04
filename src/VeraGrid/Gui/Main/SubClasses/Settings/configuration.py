@@ -13,7 +13,6 @@ from VeraGrid.Gui.Main.SubClasses.Results.results import ResultsMain
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.generic_graphics import set_dark_mode, set_light_mode
 from VeraGrid.plugins import PluginsInfo, PluginFunction
-import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.gui_functions import add_menu_entry
 
 
@@ -120,8 +119,7 @@ class ConfigurationMain(ResultsMain):
         # check boxes
         self.ui.dark_mode_checkBox.clicked.connect(self.change_theme_mode)
 
-        # buttons
-        self.ui.selectCGMESBoundarySetButton.clicked.connect(self.select_cgmes_boundary_set)
+        self.plugins_investment_evaluation_method_dict = dict()
 
         # DateTime change
         self.ui.snapshot_dateTimeEdit.dateTimeChanged.connect(self.snapshot_datetime_changed)
@@ -209,6 +207,7 @@ class ConfigurationMain(ResultsMain):
                     "investment_evaluation_method": self.ui.investment_evaluation_method_ComboBox,
                     "max_investments_evluation_number": self.ui.max_investments_evluation_number_spinBox,
                     "investment_evaluation_obj_func": self.ui.investment_evaluation_objfunc_ComboBox,
+                    "firm_capacity_share": self.ui.firmCapacityShareSpinBox,
                 },
                 "stochastic": {
                     "method": self.ui.stochastic_pf_method_comboBox,
@@ -250,6 +249,16 @@ class ConfigurationMain(ResultsMain):
                 "add_pf_report": self.ui.addPowerFlowReportCheckBox,
                 "initialize_angles": self.ui.initialize_pf_angles_checkBox,
             },
+            "state_estimation": {
+                "solver": self.ui.se_solver_comboBox,
+                "tolerance": self.ui.se_tolerance_spinBox,
+                "max_iter": self.ui.se_max_iterations_spinBox,
+                "prefer_correct": self.ui.se_prefer_correct_checkBox,
+                "fixed_slack": self.ui.se_fixed_slack_checkBox,
+                "run_observability_analyis": self.ui.se_observability_analysis_checkBox,
+                "add_pseudo_measurements": self.ui.se_add_pseudo_measurements_checkBox,
+                "run_measurement_profiling": self.ui.se_measurements_profiling_checkBox
+            },
             "optimal_power_flow": {
                 "method": self.ui.lpf_solver_comboBox,
                 "time_grouping": self.ui.opf_time_grouping_comboBox,
@@ -258,8 +267,7 @@ class ConfigurationMain(ResultsMain):
                 "contingency_tolerance": self.ui.opfContingencyToleranceSpinBox,
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
-                "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
-                "unit_commitment": self.ui.opfUnitCommitmentCheckBox,
+                "dispatch_mode": self.ui.opfDispatchModeComboBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,
                 "area_spinning_reserve": self.ui.opfSpinningReserveCheckBox,
@@ -324,12 +332,20 @@ class ConfigurationMain(ResultsMain):
             },
             "file": {
                 "store_results_in_file": self.ui.saveResultsCheckBox,
-                "current_boundary_set": self.current_boundary_set,
-                "cgmes_selected_version": self.ui.cgmes_version_comboBox,
-                "cgmes_single_profile_per_file": self.ui.cgmes_single_profile_per_file_checkBox,
-                "map_regions_like_raw": self.ui.cgmes_map_regions_like_raw_checkBox,
-                "raw_selected_version": self.ui.raw_export_version_comboBox,
-                "cgmes_dc_as_hvdclines": self.ui.cgmes_dc_as_hvdclines_checkBox,
+                # "current_boundary_set": self.current_boundary_set,
+                # "cgmes_selected_version": self.ui.cgmes_version_comboBox,
+                # "cgmes_single_profile_per_file": self.ui.cgmes_single_profile_per_file_checkBox,
+                # "map_regions_like_raw": self.ui.cgmes_map_regions_like_raw_checkBox,
+                # "raw_selected_version": self.ui.raw_export_version_comboBox,
+                # "cgmes_dc_as_hvdclines": self.ui.cgmes_dc_as_hvdclines_checkBox,
+            },
+            "dyn": {
+                "rms_int_method_comboBox": self.ui.rms_int_method_comboBox,
+                "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
+                "sim_time_spinBox": self.ui.sim_time_spinBox,
+                "h_spinBox": self.ui.h_spinBox,
+
+                "ss_assessment_time_spinBox_2": self.ui.ss_assessment_time_spinBox_2
             }
         }
 
@@ -362,21 +378,6 @@ class ConfigurationMain(ResultsMain):
         struct = self.get_config_structure()
         config_data_to_struct(data_=data, struct_=struct)
 
-        # CGMES boundary set
-
-        """
-        "file": {
-                "store_results_in_file": self.ui.saveResultsCheckBox,
-                "current_boundary_set": self.current_boundary_set 
-            }
-        """
-
-        file_data: Dict[str, Any] = data.get("file", None)
-        if file_data is not None:
-            bd_path = file_data.get("current_boundary_set", "")
-            self.current_boundary_set = bd_path if os.path.exists(bd_path) else ""
-            self.ui.cgmes_boundary_set_label.setText(self.current_boundary_set)
-
         # light / dark mode
         if self.ui.dark_mode_checkBox.isChecked():
             set_dark_mode()
@@ -397,22 +398,6 @@ class ConfigurationMain(ResultsMain):
                     print(e)
                     self.save_gui_config()
                     print("GUI config file was erroneous, wrote a new one")
-
-    def select_cgmes_boundary_set(self):
-        """
-        Select the current boundary set
-        """
-        files_types = "Boundary set (*.zip)"
-
-        dialogue = QtWidgets.QFileDialog(None,
-                                         caption='Select Boundary set file',
-                                         directory=self.project_directory,
-                                         filter=files_types)
-        if dialogue.exec():
-            filenames = dialogue.selectedFiles()
-            if len(filenames) > 0:
-                self.current_boundary_set = filenames[0]
-                self.ui.cgmes_boundary_set_label.setText(self.current_boundary_set)
 
     def snapshot_datetime_changed(self):
         """
@@ -466,10 +451,6 @@ class ConfigurationMain(ResultsMain):
                 self.plugins_investment_evaluation_method_dict[
                     plugin_info.investments_fcn.alias
                 ] = plugin_info.investments_fcn.function_ptr
-
-        # create combobox model for the plugin investments
-        lst = list(self.plugins_investment_evaluation_method_dict.keys())
-        self.ui.plugins_investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
     def launch_plugin(self, fcn: PluginFunction):
         """

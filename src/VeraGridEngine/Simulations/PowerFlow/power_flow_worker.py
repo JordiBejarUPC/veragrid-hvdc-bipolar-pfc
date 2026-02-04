@@ -13,6 +13,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation import PfBasicFormulation
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
@@ -64,6 +65,17 @@ def __split_reactive_power_into_devices(nc: NumericalCircuit, Qbus: Vec, results
     results.gen_q = Qvar[bus_idx_gen] * gen_q_share
     results.battery_q = Qvar[bus_idx_bat] * batt_q_share
     results.shunt_q = Qvar[bus_idx_sh] * sh_q_share
+
+    # For non-controlled generators, their Q is fixed based on power factor
+    # The sharing mechanism gives them 0 since their q_share = 0, so we must set their Q explicitly
+    _, idx_non_ctrl = nc.generator_data.get_controllable_and_not_controllable_indices()
+    if len(idx_non_ctrl) > 0:
+        pf = nc.generator_data.pf[idx_non_ctrl]
+        pf2 = pf ** 2
+        pf_sign = (pf + 1e-20) / np.abs(pf + 1e-20)
+        q_fixed_gen = pf_sign * nc.generator_data.p[idx_non_ctrl] * np.sqrt((1.0 - pf2) / (pf2 + 1e-20))
+        # Only set for active generators
+        results.gen_q[idx_non_ctrl] = q_fixed_gen * nc.generator_data.active[idx_non_ctrl]
 
 
 def __solve_island_complete_support(nc: NumericalCircuit,
@@ -120,7 +132,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                                            It=np.zeros(nc.nbr, dtype=complex),
                                            loading=np.zeros(nc.nbr, dtype=complex),
                                            losses=np.zeros(nc.nbr, dtype=complex),
-                                           Pf_vsc=np.zeros(nc.nvsc, dtype=float),
+                                           Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
                                            St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                            If_vsc=np.zeros(nc.nvsc, dtype=float),
                                            It_vsc=np.zeros(nc.nvsc, dtype=complex),
@@ -154,7 +166,8 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                                                  It=np.zeros(nc.nbr, dtype=complex),
                                                  loading=np.zeros(nc.nbr, dtype=complex),
                                                  losses=np.zeros(nc.nbr, dtype=complex),
-                                                 Pf_vsc=np.zeros(nc.nvsc, dtype=float),
+                                                 Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
+                                                 Pfn_vsc=np.zeros(nc.nvsc, dtype=float),
                                                  St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                                  If_vsc=np.zeros(nc.nvsc, dtype=float),
                                                  It_vsc=np.zeros(nc.nvsc, dtype=complex),
@@ -173,7 +186,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
 
             if solver_type == SolverType.LM:
 
-                problem = PfGeneralizedFormulation(V0=final_solution.V,
+                problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                    S0=S0,
                                                    I0=I0,
                                                    Y0=Y0,
@@ -191,7 +204,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
 
             elif solver_type == SolverType.NR:
 
-                problem = PfGeneralizedFormulation(V0=final_solution.V,
+                problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                    S0=S0,
                                                    I0=I0,
                                                    Y0=Y0,
@@ -210,7 +223,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
 
             elif solver_type == SolverType.PowellDogLeg:
 
-                problem = PfGeneralizedFormulation(V0=final_solution.V,
+                problem = PfAcDcWithNegativePoles(V0=final_solution.V,
                                                    S0=S0,
                                                    I0=I0,
                                                    Y0=Y0,
@@ -361,7 +374,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                            It=np.zeros(island.nbr, dtype=complex),
                                            loading=np.zeros(island.nbr, dtype=complex),
                                            losses=np.zeros(island.nbr, dtype=complex),
-                                           Pf_vsc=np.zeros(island.nvsc, dtype=float),
+                                           Pfp_vsc=np.zeros(island.nvsc, dtype=float),
                                            St_vsc=np.zeros(island.nvsc, dtype=complex),
                                            If_vsc=np.zeros(island.nvsc, dtype=float),
                                            It_vsc=np.zeros(island.nvsc, dtype=complex),
@@ -397,7 +410,8 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                                  It=np.zeros(island.nbr, dtype=complex),
                                                  loading=np.zeros(island.nbr, dtype=complex),
                                                  losses=np.zeros(island.nbr, dtype=complex),
-                                                 Pf_vsc=np.zeros(island.nvsc, dtype=float),
+                                                 Pfp_vsc=np.zeros(island.nvsc, dtype=float),
+                                                 Pfn_vsc=np.zeros(island.nvsc, dtype=float),
                                                  St_vsc=np.zeros(island.nvsc, dtype=complex),
                                                  If_vsc=np.zeros(island.nvsc, dtype=float),
                                                  It_vsc=np.zeros(island.nvsc, dtype=complex),

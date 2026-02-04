@@ -10,7 +10,7 @@ from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 from VeraGridEngine.Topology.VoltageLevels.single_bar import connect_bar_segments
 
 
-def create_double_bar(
+def create_double_bar_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -19,7 +19,8 @@ def create_double_bar(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x: float = 0,
-        offset_y: float = 0
+        offset_y: float = 0,
+        vl0: dev.VoltageLevel | None = None
 ) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a double-bar voltage level
@@ -32,11 +33,15 @@ def create_double_bar(
     :param bar_by_segments: Split the bar into segments
     :param offset_x: x ofsset (px)
     :param offset_y: y ofsset (px)
-    :return: Voltage level object, list of busses where connections are allowed, offset x, offset y
+    :param vl0: VoltageLevel to reuse (optional)
+    :return: Voltage level object, list of buses where connections are allowed, offset x, offset y
     """
 
-    vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
-    grid.add_voltage_level(vl)
+    if vl0 is None:
+        vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
+        grid.add_voltage_level(vl)
+    else:
+        vl = vl0
 
     bus_width = 120
     x_dist = bus_width * 2
@@ -228,7 +233,7 @@ def create_double_bar(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_disconnectors(
+def create_double_bar(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -237,7 +242,8 @@ def create_double_bar_with_disconnectors(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x: float = 0,
-        offset_y: float = 0
+        offset_y: float = 0,
+        vl0: dev.VoltageLevel | None = None
 ) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a double-bar voltage level
@@ -250,11 +256,15 @@ def create_double_bar_with_disconnectors(
     :param bar_by_segments: Split the bar into segments
     :param offset_x: x ofsset (px)
     :param offset_y: y ofsset (px)
-    :return: Voltage level object, list of busses where connections are allowed, offset x, offset y
+    :param vl0: VoltageLevel to reuse vl0
+    :return: Voltage level object, list of buses where connections are allowed, offset x, offset y
     """
 
-    vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
-    grid.add_voltage_level(vl)
+    if vl0 is None:
+        vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
+        grid.add_voltage_level(vl)
+    else:
+        vl = vl0
 
     bus_width = 120
     x_dist = bus_width * 2
@@ -378,7 +388,7 @@ def create_double_bar_with_disconnectors(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_transference_bar(
+def create_double_bar_with_transference_bar_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -387,8 +397,9 @@ def create_double_bar_with_transference_bar(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x=0,
-        offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
+        offset_y=0,
+        vl0: dev.VoltageLevel | None = None
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a double-bar with transference bar voltage level
     :param name: Voltage level name
@@ -400,11 +411,15 @@ def create_double_bar_with_transference_bar(
     :param bar_by_segments: Split the bar into segments
     :param offset_x: x ofsset (px)
     :param offset_y: y ofsset (px)
-    :return: Voltage level object, list of busses where connections are allowed, offset x, offset y
+    :param vl0: VoltageLevel to reuse (optional)
+    :return: Voltage level object, list of buses where connections are allowed, offset x, offset y
     """
 
-    vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
-    grid.add_voltage_level(vl)
+    if vl0 is None:
+        vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
+        grid.add_voltage_level(vl)
+    else:
+        vl = vl0
 
     bus_width = 120
     x_dist = bus_width * 2
@@ -419,7 +434,7 @@ def create_double_bar_with_transference_bar(
 
     if not bar_by_segments:
         bar1 = dev.Bus(name=f"{name} bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width,
                        ypos=offset_y + y_dist * 3,
                        country=country,
@@ -430,7 +445,7 @@ def create_double_bar_with_transference_bar(
         l_y_pos.append(bar1.y)
 
         bar2 = dev.Bus(name=f"{name} bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width,
                        ypos=offset_y + y_dist * 4, country=country,
                        graphic_type=BusGraphicType.BusBar)
@@ -440,7 +455,7 @@ def create_double_bar_with_transference_bar(
         l_y_pos.append(bar2.y)
 
         transfer_bar = dev.Bus(name=f"{name} transfer bar", substation=substation, Vnom=v_nom, voltage_level=vl,
-                               width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                               width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                                xpos=offset_x - bus_width, ypos=offset_y + y_dist * 5, country=country,
                                graphic_type=BusGraphicType.BusBar)
         grid.add_bus(transfer_bar)
@@ -553,14 +568,14 @@ def create_double_bar_with_transference_bar(
 
     # coupling
     bus1 = dev.Bus(name=f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 3.6,
                    width=bus_width,
                    country=country,
                    graphic_type=BusGraphicType.Connectivity)
 
     bus2 = dev.Bus(name=f"{name}_coupling_bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 4.6,
                    width=bus_width,
                    country=country,
@@ -604,7 +619,7 @@ def create_double_bar_with_transference_bar(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_transference_bar_with_disconnectors(
+def create_double_bar_with_transference_bar(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -613,8 +628,9 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         country: dev.Country = None,
         bar_by_segments: bool = False,
         offset_x=0,
-        offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
+        offset_y=0,
+        vl0: dev.VoltageLevel | None = None
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a double-bar with transference bar voltage level
     :param name: Voltage level name
@@ -626,11 +642,15 @@ def create_double_bar_with_transference_bar_with_disconnectors(
     :param bar_by_segments: Split the bar into segments
     :param offset_x: x ofsset (px)
     :param offset_y: y ofsset (px)
-    :return: Voltage level object, list of busses where connections are allowed, offset x, offset y
+    :param vl0: VoltageLevel to reuse (optional)
+    :return: Voltage level object, list of buses where connections are allowed, offset x, offset y
     """
 
-    vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
-    grid.add_voltage_level(vl)
+    if vl0 is None:
+        vl = dev.VoltageLevel(name=name, substation=substation, Vnom=v_nom)
+        grid.add_voltage_level(vl)
+    else:
+        vl = vl0
 
     bus_width = 120
     x_dist = bus_width * 2
@@ -645,7 +665,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
 
     if not bar_by_segments:
         bar1 = dev.Bus(name=f"{name} bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width, ypos=offset_y + y_dist * 2, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar1)
@@ -654,7 +674,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         l_y_pos.append(bar1.y)
 
         bar2 = dev.Bus(name=f"{name} bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
@@ -663,7 +683,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         l_y_pos.append(bar2.y)
 
         transfer_bar = dev.Bus(name=f"{name} transfer bar", substation=substation, Vnom=v_nom, voltage_level=vl,
-                               width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                               width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                                xpos=offset_x - bus_width, ypos=offset_y + y_dist * 4, country=country,
                                graphic_type=BusGraphicType.BusBar)
         grid.add_bus(transfer_bar)
@@ -761,7 +781,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
 
     # coupling
     bus1 = dev.Bus(f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 3.6,
                    width=bus_width,
                    country=country,

@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import pdb
 from typing import Union, List
 import numpy as np
 import pandas as pd
@@ -12,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
@@ -58,12 +57,19 @@ class Load(LoadParent):
         '_Ir3_prof',
         '_Ii3_prof',
 
+        '_contract_power',
         '_n_customers',
         '_n_customers_prof',
 
         'Pl0',
         'Ql0',
-        'init_params'
+        'Pl',
+        'Ql',
+        'init_params',
+        'Vm',
+        'Va',
+        'Pl_0',
+        'Ql_0'
     )
 
     def __init__(self, name='Load', idtag=None, code='',
@@ -72,7 +78,9 @@ class Load(LoadParent):
                  G1=0.0, G2=0.0, G3=0.0, B1=0.0, B2=0.0, B3=0.0,
                  Ir1=0.0, Ir2=0.0, Ir3=0.0, Ii1=0.0, Ii2=0.0, Ii3=0.0, Pl0=1.0, Ql0=1.0,
                  active=True, mttf=0.0, mttr=0.0, capex=0, opex=0,
-                 init_params: dict[str, float] = {},
+                 n_customers: int = 0,
+                 contracted_power: float = 0.0,
+                 init_params: dict[str, float] | None = None,
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The load object implements the so-called ZIP model, in which the load can be
@@ -166,13 +174,18 @@ class Load(LoadParent):
         self._Ii2_prof = Profile(default_value=self.Ii2, data_type=float)
         self._Ii3_prof = Profile(default_value=self.Ii3, data_type=float)
 
-        self._n_customers: int = 1
+        self._n_customers: int = n_customers
         self._n_customers_prof = Profile(default_value=self._n_customers, data_type=int)
+
+        self._contract_power: float = contracted_power
 
         self.Pl0 = Pl0
         self.Ql0 = Ql0
 
-        self.init_params = init_params
+        self.Pl_0 = Var('Pl_0')
+        self.Ql_0 = Var('Ql_0')
+
+        self.init_params = init_params if init_params is not None else dict()
 
         self.register(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof')
@@ -217,6 +230,7 @@ class Load(LoadParent):
                       profile_name='B3_prof')
         self.register(key='n_customers', units='unit', tpe=int,
                       definition='Number of customers represented by this load', profile_name='n_customers_prof')
+        self.register(key='contract_power', units='MW', tpe=float, definition='Nominal contracted power', )
 
     @property
     def Ir_prof(self) -> Profile:
@@ -697,7 +711,29 @@ class Load(LoadParent):
             if val2 > 0:
                 self._n_customers = val2
             else:
-                print("There must be at least one customer right?")
+                pass
+        except ValueError as e:
+            print(e)
+
+    @property
+    def contract_power(self) -> float:
+        """
+        Return the contracted power
+        """
+        return self._contract_power
+
+    @contract_power.setter
+    def contract_power(self, val: float):
+        """
+        Set the contracted power
+        :param val: value greater than 0
+        """
+        try:
+            val2 = float(val)
+            if val2 > 0:
+                self._contract_power = val2
+            else:
+                pass
         except ValueError as e:
             print(e)
 
@@ -717,6 +753,10 @@ class Load(LoadParent):
             self._n_customers_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into n_customers_prof')
+
+    def assign_input_vars_and_params(self):
+        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -758,58 +798,26 @@ class Load(LoadParent):
         :return:
         """
         if self.rms_model.empty():
+
             Ql = Var("Ql")
             Pl = Var("Pl")
+            # Pl_0 = Var("Pl0")
+            # Ql_0 = Var("Ql0")
 
-            self.rms_model.model = Block(
-                algebraic_eqs=[
-                    Pl - self.Pl0,
-                    Ql - self.Ql0
-                ],
+            block = Block(
                 algebraic_vars=[Pl, Ql],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                external_mapping={
-                    DynamicVarType.P: Pl,
-                    DynamicVarType.Q: Ql
-                }
-            )
-
-    def initialize_rms_with_event(self, rms_events: List, glob_time):
-        """
-
-        :param rms_events:
-        :param glob_time:
-        :return:
-        """
-        if self.rms_model.empty():
-            Ql = Var("Ql" + self.name)
-            Pl = Var("Pl" + self.name)
-            self.rms_model.model = Block(
                 algebraic_eqs=[
-                ],
-                algebraic_vars=[],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                parameters_eqs=[],
-                external_mapping={
-                }
+                    Pl - self.Pl_0,
+                    Ql - self.Ql_0
+                ]
             )
-            self.rms_model.model.external_mapping[DynamicVarType.P] = Pl
-            self.rms_model.model.external_mapping[DynamicVarType.Q] = Ql
-            self.rms_model.model.algebraic_vars.append(Pl)
-            self.rms_model.model.algebraic_vars.append(Ql)
-            for rms_event in rms_events:
-                # default_value = getattr(self, rms_event.parameter,
-                #                         None)  # TODO: Find a way of not using getattr and setattr
-                default_value = self.get_profile(rms_event.parameter)
-                var = Var(rms_event.parameter)
-                setattr(self, rms_event.parameter, var)
-                self.rms_model.model.parameters.append(var)
-                self.rms_model.model.parameters_eqs.append(
-                    piecewise(glob_time, rms_event.times, rms_event.values, default_value))
 
-            self.rms_model.model.algebraic_eqs.append(Pl - self.Pl0)
-            self.rms_model.model.algebraic_eqs.append(Ql - self.Ql0)
+            block.event_dict = {self.Pl_0: Const(self.Pl0),
+                                self.Ql_0: Const(self.Ql0)}
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.P: Pl,
+                VarPowerFlowRefferenceType.Q: Ql
+            }
+
+            self.rms_model.model = block
+

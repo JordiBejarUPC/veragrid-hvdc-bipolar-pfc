@@ -446,6 +446,20 @@ class BaseDiagram:
                 node_devices.append(location.api_object)
                 node_count += 1
 
+        # Add 3W-transformers ------------------------------------------------------------------------------------------
+        tr3_groups = self.data.get(DeviceType.Transformer3WDevice.value, None)
+        if tr3_groups:
+            for i, (idtag, location) in enumerate(tr3_groups.locations.items()):
+                graph.add_node(node_count)
+                graph_node_dictionary[idtag] = node_count
+
+                if location.api_object.bus0 is not None:
+                    # the electrical bus location is the same
+                    graph_node_dictionary[location.api_object.bus0.idtag] = node_count
+
+                node_devices.append(location.api_object)
+                node_count += 1
+
         # Add the electrical branches ----------------------------------------------------------------------------------
         tuples = list()
         for dev_type in [DeviceType.LineDevice,
@@ -462,7 +476,7 @@ class BaseDiagram:
 
                     if f is not None and t is not None:
                         if hasattr(branch, 'X'):
-                            w = branch.X
+                            w = abs(branch.X)
                         else:
                             w = 1e-6
 
@@ -479,7 +493,7 @@ class BaseDiagram:
                     t = graph_node_dictionary.get(branch.bus_to.idtag, None)
 
                     if f is not None and t is not None:
-                        w = branch.R
+                        w = abs(branch.R)
                         tuples.append((f, t, w))
 
         for dev_type in [DeviceType.HVDCLineDevice]:

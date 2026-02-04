@@ -6,7 +6,7 @@ np.set_printoptions(linewidth=10000)
 
 def test_14_bus_matpower():
     # Go back two directories
-    file_path = os.path.join('data', 'grids', 'case14.m')
+    file_path = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
 
     grid = FileOpen(file_path).open()
 
@@ -105,7 +105,7 @@ def test_14_bus_matpower():
             run_observability_analyis=True,
             run_measurement_profiling=True
         )
-        se = StateEstimation(circuit=grid, options=se_options)
+        se = StateEstimationDriver(circuit=grid, options=se_options)
         se.run()
 
         # Get the first convergence report

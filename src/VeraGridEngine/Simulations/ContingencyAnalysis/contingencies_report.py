@@ -508,9 +508,9 @@ class ContingencyResultsReport:
                 PTDF: Mat = None,
                 available_power: Vec = None,
                 srap_used_power: Mat = None,
-                F: Vec = None,
-                T: Vec = None,
-                bus_area_indices: Vec = None,
+                F: IntVec | None = None,
+                T: IntVec | None = None,
+                bus_area_indices: IntVec | None = None,
                 area_names: Vec = None,
                 top_n: int = 5,
                 detailed_massive_report: bool = True):
@@ -548,12 +548,17 @@ class ContingencyResultsReport:
         if contingency_idx == 0:  # only doing it once per hour
 
             for m in mon_idx:
-                if len(area_names):
-                    area_from = area_names[bus_area_indices[F[m]]]
-                    area_to = area_names[bus_area_indices[T[m]]]
-                else:
+
+                if area_names is None:
                     area_from = ""
                     area_to = ""
+                else:
+                    if len(area_names):
+                        area_from = area_names[bus_area_indices[F[m]]]
+                        area_to = area_names[bus_area_indices[T[m]]]
+                    else:
+                        area_from = ""
+                        area_to = ""
 
                 if abs(base_flow[m]) > nc.passive_branch_data.rates[m]:  # only add if overloaded
 
@@ -577,15 +582,19 @@ class ContingencyResultsReport:
                              srap_power=0.0,
                              solved_by_srap=False)
 
-        # Now evalueting the effect of contingencies
+        # Now evaluating the effect of contingencies
         for m in mon_idx:  # for each monitored branch ...
 
-            if len(area_names):
-                area_from = area_names[bus_area_indices[F[m]]]
-                area_to = area_names[bus_area_indices[T[m]]]
-            else:
+            if area_names is None:
                 area_from = ""
                 area_to = ""
+            else:
+                if len(area_names):
+                    area_from = area_names[bus_area_indices[F[m]]]
+                    area_to = area_names[bus_area_indices[T[m]]]
+                else:
+                    area_from = ""
+                    area_to = ""
 
             c_flow = abs(contingency_flows[m])
             b_flow = abs(base_flow[m])

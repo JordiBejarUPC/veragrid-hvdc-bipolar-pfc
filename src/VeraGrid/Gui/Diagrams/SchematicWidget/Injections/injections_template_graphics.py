@@ -81,6 +81,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
     @property
     def parent(self) -> NODE_GRAPHIC:
+        """
+
+        :return:
+        """
         return self._parent
 
     @property
@@ -185,7 +189,6 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         deleted, delete_from_db_final = self.editor.delete_with_dialogue(selected=[self], delete_from_db=False)
 
-
     def plot(self):
         """
         Plot API objects profiles
@@ -208,34 +211,14 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         Change the generator bus
         """
-        idx_bus_list = self._editor.get_selected_buses()
+        self._editor.change_injection_bus(injection_graphics=self)
 
-        if len(idx_bus_list) == 2:
-
-            # detect the bus and its combinations
-            if idx_bus_list[0][1] == self.api_object.bus:
-                idx, old_bus, old_bus_graphic_item = idx_bus_list[0]
-                idx, new_bus, new_bus_graphic_item = idx_bus_list[1]
-            elif idx_bus_list[1][1] == self.api_object.bus:
-                idx, new_bus, new_bus_graphic_item = idx_bus_list[0]
-                idx, old_bus, old_bus_graphic_item = idx_bus_list[1]
-            else:
-                error_msg("The bus to change has not been selected!", 'Change bus')
-                return
-
-            ok = yes_no_question(
-                text=f"Are you sure that you want to relocate the bus from {old_bus.name} to {new_bus.name}?",
-                title='Change bus')
-
-            if ok:
-                self.api_object.bus = new_bus
-                new_bus_graphic_item.add_object(api_obj=self.api_object)
-                new_bus_graphic_item.update()
-                self._editor.remove_element(device=self.api_object, graphic_object=self)
-
-        else:
-            warning_msg("you have to select the origin and destination buses!",
-                        title='Change bus')
+    def move_behind_converter(self):
+        """
+        Create a DC bus and a converter and move the injection there
+        :return:
+        """
+        self._editor.move_behind_converter(injection_graphics=self)
 
     def rescale(self, scale: float = 1.0):
         """
@@ -262,6 +245,11 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                        text="Change bus",
                        function_ptr=self.change_bus,
                        icon_path=":/Icons/icons/move_bus.png")
+
+        add_menu_entry(menu=menu,
+                       text="Move behind converter",
+                       function_ptr=self.move_behind_converter,
+                       icon_path=":/Icons/icons/to_vsc.png")
 
         add_menu_entry(menu=menu,
                        text="Plot profiles",

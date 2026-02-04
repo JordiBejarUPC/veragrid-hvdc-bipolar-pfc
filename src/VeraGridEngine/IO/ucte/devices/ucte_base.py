@@ -6,7 +6,28 @@ from __future__ import annotations
 from VeraGridEngine.basic_structures import Logger
 
 
-def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger) -> float:
+def try_float(val: str, device: str, prop_name: str, logger: Logger, fallback_value: float = 0):
+    """
+
+    :param val:
+    :param device:
+    :param prop_name:
+    :param logger:
+    :param fallback_value:
+    :return:
+    """
+    try:
+        return float(val)
+    except ValueError as e:
+        logger.add_error(msg=str(e),
+                         device=device,
+                         device_property=prop_name,
+                         value=val)
+        return fallback_value
+
+
+def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+              fallback_value: float = 0.0) -> float:
     """
     Try to get a value from a substring
     :param line: string
@@ -15,29 +36,70 @@ def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Lo
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: float
     """
     if len(line) > b:
         chunk = line[a:b].strip()
 
+        if chunk == "":
+            logger.add_error(msg="Property not provided",
+                             device=device,
+                             device_property=prop_name,
+                             value=line)
+            return fallback_value
+        else:
+            try:
+                return float(chunk)
+            except ValueError as e:
+                logger.add_error(msg=str(e),
+                                 device=device,
+                                 device_property=prop_name,
+                                 value=chunk)
+                return fallback_value
+    else:
+        logger.add_warning(msg=f"Could not parse property <{prop_name}> "
+                               f"because the file row is too short, "
+                               f"setting fallback value",
+                           device=device,
+                           device_property=prop_name,
+                           value=line,
+                           expected_value=b)
+        return fallback_value
+
+
+def try_int(val: str, device: str, prop_name: str, logger: Logger, fallback_value: int = 0):
+    """
+
+    :param val:
+    :param device:
+    :param prop_name:
+    :param logger:
+    :param fallback_value:
+    :return:
+    """
+    try:
+        return int(val)
+    except ValueError as e:
+
+        val2 = try_float(val=val,
+                         device=device,
+                         prop_name=prop_name,
+                         logger=logger,
+                         fallback_value=0)
+
         try:
-            return float(chunk)
+            return int(val2)
         except ValueError as e:
             logger.add_error(msg=str(e),
                              device=device,
                              device_property=prop_name,
-                             value=chunk)
-            return 0.0
-    else:
-        logger.add_error(msg=f"Could not parse {prop_name} because the file row is too short",
-                         device=device,
-                         device_property=prop_name,
-                         value=line,
-                         expected_value=b)
-        return 0.0
+                             value=val)
+            return fallback_value
 
 
-def sub_int(line: str, a: int, b: int, device: str, prop_name: str,  logger: Logger) -> int:
+def sub_int(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+            fallback_value: int = 0) -> int:
     """
     Try to get a value from a substring
     :param line: string
@@ -46,30 +108,38 @@ def sub_int(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: int
     """
     if len(line) > b:
         chunk = line[a:b].strip()
 
-        try:
-            return int(chunk)
-        except ValueError as e:
-            logger.add_error(msg=str(e),
+        if chunk == "":
+            logger.add_error(msg="Property not provided",
                              device=device,
                              device_property=prop_name,
-                             value=chunk)
-            return 0
+                             value=line)
+            return fallback_value
+        else:
+            try:
+                return int(chunk)
+            except ValueError as e:
+                logger.add_error(msg=str(e),
+                                 device=device,
+                                 device_property=prop_name,
+                                 value=chunk)
+                return fallback_value
     else:
-        logger.add_error(msg=f"Could not parse {prop_name} because the file row is too short",
+        logger.add_error(msg=f"Could not parse <{prop_name}> because the file row is too short",
                          device=device,
                          device_property=prop_name,
                          value=line,
                          expected_value=b)
-        return 0
+        return fallback_value
 
 
-
-def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Logger) -> str:
+def sub_str(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+            fallback_value: str = "") -> str:
     """
     Try to get a value from a substring
     :param line: string
@@ -78,6 +148,7 @@ def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: string
     """
 
@@ -85,9 +156,9 @@ def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
         chunk = line[a:b].strip()
         return chunk
     else:
-        logger.add_error(msg=f"Could not parse {prop_name} because the file row is too short",
+        logger.add_error(msg=f"Could not parse <{prop_name}> because the file row is too short",
                          device=device,
                          device_property=prop_name,
                          value=line,
                          expected_value=b)
-        return ""
+        return fallback_value

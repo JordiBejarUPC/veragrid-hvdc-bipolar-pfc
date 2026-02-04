@@ -3,18 +3,21 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
-import io
-import sys
-
-from PySide6.QtGui import QFont, QFontMetrics, Qt
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from PySide6.QtGui import Qt
 from PySide6 import QtWidgets, QtCore
+from PySide6.QtCore import Qt
 
 from VeraGridEngine.IO.file_system import scripts_path
 from VeraGrid.Gui.Main.SubClasses.io import IoMain
-from VeraGrid.Gui.python_highlighter import PythonHighlighter
 from VeraGrid.Gui.gui_functions import CustomFileSystemModel
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import error_msg, yes_no_question
+
+from VeraGridEngine.IO.file_system import get_create_veragrid_folder
+import VeraGridEngine as vg
 
 
 class ScriptingMain(IoMain):
@@ -31,20 +34,6 @@ class ScriptingMain(IoMain):
         # create main window
         IoMain.__init__(self, parent)
 
-        # Source code text ---------------------------------------------------------------------------------------------
-        # Set the font for your widget
-        font = QFont("Consolas", 10)  # Replace "Consolas" with your preferred monospaced font
-
-
-        # Source code
-        self.ui.sourceCodeTextEdit.setFont(font)
-        font_metrics = QFontMetrics(font)  # Set tab width to 4 spaces
-        tab_stop_width = font_metrics.horizontalAdvance(' ' * 4)  # Width of 4 spaces in the selected font
-        self.ui.sourceCodeTextEdit.setTabStopDistance(tab_stop_width)
-        self.ui.sourceCodeTextEdit.highlighter = PythonHighlighter(self.ui.sourceCodeTextEdit.document())
-        self.ui.sourceCodeTextEdit.setPlaceholderText("Enter or load Python code here\nType Ctrl + Enter to run")
-        self.ui.sourceCodeTextEdit.installEventFilter(self)  # Install event filter to handle Ctrl+Enter
-
         self.add_console_vars()
 
         # scripts tree view --------------------------------------------------------------------------------------------
@@ -55,11 +44,11 @@ class ScriptingMain(IoMain):
         # actions ------------------------------------------------------------------------------------------------------
         self.ui.actionReset_console.triggered.connect(self.reset_console)
 
-        # button clicks -------------------------------------------------------------------------------------------------
+        # button clicks ------------------------------------------------------------------------------------------------
         self.ui.runSourceCodeButton.clicked.connect(self.run_source_code)
         self.ui.saveSourceCodeButton.clicked.connect(self.save_source_code)
         self.ui.clearSourceCodeButton.clicked.connect(self.clear_source_code)
-        self.ui.clearConsoleButton.clicked.connect(self.clear_console)
+        self.ui.clearConsoleButton.clicked.connect(self.reset_console)
 
         # double clicked -----------------------------------------------------------------------------------------------
         self.ui.sourceCodeTreeView.doubleClicked.connect(self.source_code_tree_clicked)
@@ -70,61 +59,135 @@ class ScriptingMain(IoMain):
         # Set context menu policy to CustomContextMenu
         self.ui.sourceCodeTreeView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
-
-
-
-    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent):
+    def clear_console(self):
         """
-        Event filter to capture Ctrl + Enter
-        :param watched:
-        :param event:
+        Clear console output
+        """
+        self.console.clear()
+
+    def reset_console(self):
+        """
+        Reset console
         :return:
         """
+        self.console.reset()
+        self.add_console_vars()
 
-        if watched == self.ui.sourceCodeTextEdit and event.type() == QtCore.QEvent.Type.KeyPress:
-            if event.key() == Qt.Key.Key_Return and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-                self.run_source_code()
-                return True
+    def print_console_help(self):
 
-        return super().eventFilter(watched, event)
+        self.console.append_output("")
+        self.console.append_output('VeraGrid internal commands.\n')
+        self.console.append_output('If a command is unavailable is because the study has not been executed yet.')
 
-    def execute_command(self, command: str, silent: bool = False):
+        self.console.append_output('\n\nclc():\tclear the console.')
+
+        self.console.append_output('\n\nApp functions:')
+        self.console.append_output('\tapp.new_project(): Clear all.')
+        self.console.append_output('\tapp.open_file(): Prompt to load VeraGrid compatible file')
+        self.console.append_output('\tapp.save_file(): Prompt to save VeraGrid file')
+        self.console.append_output('\tapp.export_diagram(): Prompt to export the diagram in png.')
+        self.console.append_output(
+            '\tapp.create_schematic_from_api(): Create the schematic from the circuit information.')
+        self.console.append_output(
+            '\tapp.adjust_all_node_width(): Adjust the width of all the nodes according to their name.')
+        self.console.append_output('\tapp.numerical_circuit: get compilation of the assets.')
+        self.console.append_output('\tapp.islands: get compilation of the assets split into the topological islands.')
+
+        self.console.append_output('\n\nCircuit functions:')
+        self.console.append_output(
+            '\tapp.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.')
+
+        self.console.append_output('\n\nPower flow results:')
+        self.console.append_output('\tapp.session.power_flow.voltage:\t the nodal voltages in per unit')
+        self.console.append_output('\tapp.session.power_flow.current:\t the branch currents in per unit')
+        self.console.append_output('\tapp.session.power_flow.loading:\t the branch loading in %')
+        self.console.append_output('\tapp.session.power_flow.losses:\t the branch losses in per unit')
+        self.console.append_output('\tapp.session.power_flow.power:\t the nodal power Injections in per unit')
+        self.console.append_output(
+            '\tapp.session.power_flow.Sf:\t the branch power Injections in per unit at the "from" side')
+        self.console.append_output(
+            '\tapp.session.power_flow.St:\t the branch power Injections in per unit at the "to" side')
+
+        self.console.append_output('\n\nShort circuit results:')
+        self.console.append_output('\tapp.session.short_circuit.voltage:\t the nodal voltages in per unit')
+        self.console.append_output('\tapp.session.short_circuit.current:\t the branch currents in per unit')
+        self.console.append_output('\tapp.session.short_circuit.loading:\t the branch loading in %')
+        self.console.append_output('\tapp.session.short_circuit.losses:\t the branch losses in per unit')
+        self.console.append_output('\tapp.session.short_circuit.power:\t the nodal power Injections in per unit')
+        self.console.append_output(
+            '\tapp.session.short_circuit.power_from:\t the branch power Injections in per unit at the "from" side')
+        self.console.append_output(
+            '\tapp.session.short_circuit.power_to:\t the branch power Injections in per unit at the "to" side')
+        self.console.append_output(
+            '\tapp.session.short_circuit.short_circuit_power:\t Short circuit power in MVA of the grid nodes')
+
+        self.console.append_output('\n\nOptimal power flow results:')
+        self.console.append_output('\tapp.session.optimal_power_flow.voltage:\t the nodal voltages angles in rad')
+        self.console.append_output('\tapp.session.optimal_power_flow.load_shedding:\t the branch loading in %')
+        self.console.append_output('\tapp.session.optimal_power_flow.losses:\t the branch losses in per unit')
+        self.console.append_output('\tapp.session.optimal_power_flow.Sbus:\t the nodal power Injections in MW')
+        self.console.append_output('\tapp.session.optimal_power_flow.Sf:\t the branch power Sf')
+
+        self.console.append_output('\n\nTime series power flow results:')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.time:\t Profiles time index (pandas DateTimeIndex object)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.load_profiles:\t Load profiles matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.gen_profiles:\t Generation profiles matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.voltages:\t nodal voltages results matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.currents:\t Branches currents results matrix (row: time, col: branch)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.loadings:\t Branches loadings results matrix (row: time, col: branch)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.losses:\t Branches losses results matrix (row: time, col: branch)')
+
+        self.console.append_output('\n\nVoltage stability power flow results:')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.voltage:\t Voltage values for every power multiplication factor.')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.lambda:\t Value of power multiplication factor applied')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.Sf:\t Power values for every power multiplication factor.')
+
+        self.console.append_output('\n\nMonte Carlo power flow results:')
+        self.console.append_output('\tapp.session.stochastic_power_flow.V_avg:\t nodal voltage average result.')
+        self.console.append_output('\tapp.session.stochastic_power_flow.I_avg:\t branch current average result.')
+        self.console.append_output('\tapp.session.stochastic_power_flow.Loading_avg:\t branch loading average result.')
+        self.console.append_output('\tapp.session.stochastic_power_flow.Losses_avg:\t branch losses average result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.V_std:\t nodal voltage standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.I_std:\t branch current standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.Loading_std:\t branch loading standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.Losses_std:\t branch losses standard deviation result.')
+        self.console.append_output('\tapp.session.stochastic_power_flow.V_avg_series:\t nodal voltage average series.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.V_std_series:\t branch current standard deviation series.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.error_series:\t Monte Carlo error series (the convergence value).')
+        self.console.append_output('The same for app.latin_hypercube_sampling')
+
+    def add_console_vars(self):
         """
-        Run a command
-        :param command: Python command to run
-        :param silent: Silent mode
+        Add vars to the console
+        :return:
         """
+        for elm in [self.console, self.code_editor]:
+            elm.add_var("hlp", self.print_console_help)
+            elm.add_var("np", np)
+            elm.add_var("pd", pd)
+            elm.add_var("plt", plt)
+            elm.add_var("vg", vg)  # veragrid as a library
+            elm.add_var('app', self)
+            elm.add_var('circuit', self.circuit)
+            elm.add_var('user_folder', get_create_veragrid_folder)
 
-        if not silent:
-            self.append_output(f">>> {command}")
-
-        try:
-
-            if silent:
-                ret = self.interpreter.runcode(command)
-            else:
-                old_stdout = sys.stdout
-                old_stderr = sys.stderr
-                sys.stdout = io.StringIO()
-                sys.stderr = io.StringIO()
-
-                ret = self.interpreter.runcode(command)
-
-                stdout_output = sys.stdout.getvalue()
-                stderr_output = sys.stderr.getvalue()
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
-
-                if stdout_output:
-                    self.append_output(stdout_output)
-                if stderr_output:
-                    self.append_output(stderr_output)
-
-                if ret:
-                    self.append_output(str(ret))
-
-        except Exception as e:
-            self.append_output(str(e))
+        self.console.add_var("clc", self.console.clear)
 
     def append_output(self, text: str):
         """
@@ -137,7 +200,7 @@ class ScriptingMain(IoMain):
         """
         Run the source code in the IPython console
         """
-        source_code = self.ui.sourceCodeTextEdit.toPlainText()
+        source_code = self.code_editor.toPlainText()
 
         if source_code[-1] != '\n':
             source_code += "\n"
@@ -154,7 +217,7 @@ class ScriptingMain(IoMain):
         if os.path.exists(pth):
             with open(pth, 'r') as f:
                 txt = "\n".join(line.rstrip() for line in f)
-                self.ui.sourceCodeTextEdit.setPlainText(txt)
+                self.code_editor.setPlainText(txt)
 
             name = os.path.basename(pth)
             self.ui.sourceCodeNameLineEdit.setText(name.replace('.py', ''))
@@ -170,7 +233,7 @@ class ScriptingMain(IoMain):
 
         if ok:
             self.ui.sourceCodeNameLineEdit.setText("")
-            self.ui.sourceCodeTextEdit.setPlainText("")
+            self.code_editor.setPlainText("")
 
     def save_source_code(self):
         """
@@ -182,7 +245,7 @@ class ScriptingMain(IoMain):
             fname = name + '.py'
             pth = os.path.join(scripts_path(), fname)
             with open(pth, 'w') as f:
-                f.write(self.ui.sourceCodeTextEdit.toPlainText())
+                f.write(self.code_editor.toPlainText())
         else:
             error_msg("Please enter a name for the script", title="Save script")
 
@@ -193,7 +256,8 @@ class ScriptingMain(IoMain):
         index = self.ui.sourceCodeTreeView.currentIndex()
         pth = self.python_fs_model.filePath(index)
         if os.path.exists(pth):
-            ok = yes_no_question(text="Do you want to delete_with_dialogue {}?".format(pth), title="Delete source code file")
+            ok = yes_no_question(text="Do you want to delete_with_dialogue {}?".format(pth),
+                                 title="Delete source code file")
 
             if ok:
                 os.remove(pth)

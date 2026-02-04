@@ -2,14 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import warnings
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
-from VeraGridEngine.Devices.Dynamic.events import RmsEvent
-from VeraGridEngine.basic_structures import IntVec, StrVec, Vec
+from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat, ObjVec, BoolVec
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
@@ -92,9 +93,11 @@ class Assets:
         '_contingency_groups',
         '_remedial_actions',
         '_remedial_action_groups',
+        '_short_circuit_events',
         '_investments',
         '_investments_groups',
         '_technologies',
+        '_owners',
         '_modelling_authorities',
         '_fuels',
         '_emission_gases',
@@ -243,6 +246,9 @@ class Assets:
         # remedial actions group
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
+        # Short circuit definition
+        self._short_circuit_events: List[dev.ShortCircuitEvent] = list()
+
         # investments
         self._investments: List[dev.Investment] = list()
 
@@ -251,6 +257,9 @@ class Assets:
 
         # technologies
         self._technologies: List[dev.Technology] = list()
+
+        # owners
+        self._owners: List[dev.Owner] = list()
 
         # Modelling authority
         self._modelling_authorities: List[dev.ModellingAuthority] = list()
@@ -280,7 +289,7 @@ class Assets:
         self._p2xs: List[dev.FluidP2x] = list()
 
         # list of wire types
-        self._rms_models: List[dev.DynamicModelHost] = list()
+        self._rms_models: List[dev.RmsModelTemplate] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -294,6 +303,12 @@ class Assets:
                 dev.Municipality(),
                 dev.Area(),
                 dev.Zone(),
+            ],
+            "Associations": [
+                dev.Technology(),
+                dev.Fuel(),
+                dev.EmissionGas(),
+                dev.Owner(),
             ],
             "Substation": [
                 dev.Substation(),
@@ -331,22 +346,24 @@ class Assets:
                 dev.FluidP2x(),
             ],
             "Groups": [
+                dev.BranchGroup(),
+                dev.ModellingAuthority(),
+                dev.Facility(),
+            ],
+            "Contingencies": [
                 dev.ContingencyGroup(),
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
+                dev.ShortCircuitEvent()
+            ],
+            "Investments": [
                 dev.InvestmentsGroup(),
                 dev.Investment(),
-                dev.BranchGroup(),
-                dev.ModellingAuthority(),
-                dev.Facility(),
+            ],
+            "Dynamic": [
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
-            ],
-            "Associations": [
-                dev.Technology(),
-                dev.Fuel(),
-                dev.EmissionGas(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -354,7 +371,21 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.DynamicModelHost()
+                dev.RmsModelTemplate()
+            ],
+            "Measurements": [
+                dev.PiMeasurement(),
+                dev.QiMeasurement(),
+                dev.PfMeasurement(),
+                dev.QfMeasurement(),
+                dev.IfMeasurement(),
+                dev.PtMeasurement(),
+                dev.QtMeasurement(),
+                dev.ItMeasurement(),
+                dev.VmMeasurement(),
+                dev.VaMeasurement(),
+                dev.PgMeasurement(),
+                dev.QgMeasurement(),
             ]
 
         }
@@ -373,14 +404,17 @@ class Assets:
         """
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
+
+                key = str(elm.device_type.value)
+
+                associated_props, indices = elm.get_association_properties()
+                self.device_type_name_dict[key] = elm.device_type
+                self.device_associations[key] = [prop.name for prop in associated_props]
+
                 if elm.properties_with_profile is not None:
-                    key = str(elm.device_type.value)
                     profile_attr = list(elm.properties_with_profile.keys())
                     profile_types = [elm.registered_properties[attr].tpe for attr in profile_attr]
-                    associated_props, indices = elm.get_association_properties()
                     self.profile_magnitudes[key] = (profile_attr, profile_types)
-                    self.device_type_name_dict[key] = elm.device_type
-                    self.device_associations[key] = [prop.name for prop in associated_props]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Device iterators
@@ -420,10 +454,10 @@ class Assets:
         Return the number of buses
         :return: number
         """
-        if self._time_profile is not None:
-            return len(self._time_profile)
-        else:
+        if self._time_profile is None or self._time_profile is pd.NaT:
             return 0
+        else:
+            return len(self._time_profile)
 
     def get_time_array(self) -> pd.DatetimeIndex:
         """
@@ -449,10 +483,17 @@ class Assets:
         if isinstance(value, pd.DatetimeIndex):
             self._time_profile = value
         else:
-            try:
-                self._time_profile = pd.to_datetime(value)
-            except TypeError:
-                warnings.warn(f"Trying to set time profile with something else {type(value)}")
+            if value is None or value is pd.NaT:
+                if self._time_profile is None:
+                    # the time profile is None al ready
+                    pass
+                else:
+                    raise ValueError("Cannot set the time profile to None because it is already not None")
+            else:
+                try:
+                    self._time_profile = pd.to_datetime(value)
+                except TypeError:
+                    warnings.warn(f"Trying to set time profile with something else {type(value)}")
 
     def get_all_time_indices(self) -> IntVec:
         """
@@ -554,7 +595,7 @@ class Assets:
         :param time_base: Date to start from
         """
 
-        index = np.empty(steps, dtype=object)
+        index: ObjVec = np.empty(steps, dtype=object)
         for i in range(steps):
             if step_unit == 'h':
                 index[i] = time_base + dateslib.timedelta(hours=i * step_length)
@@ -578,7 +619,7 @@ class Assets:
         for key, tpe in self.device_type_name_dict.items():
             elements = self.get_elements_by_type(device_type=tpe)
             for elm in elements:
-                elm.ensure_profiles_exist(index)
+                elm.ensure_profiles_exist(index, set_profile_default_as_snapshot=True)
 
     def set_time_profile(self, unix_data: IntVec):
         """
@@ -612,7 +653,26 @@ class Assets:
         """
         for elm in self.items():
             elm.delete_profiles()
-        self.time_profile = None
+        self._time_profile = None
+
+    def resample_profiles(self, indices: IntVec):
+        """
+        resample the given profiles to the indices
+        :param indices: array of indices to keep
+        """
+        self.time_profile = pd.DatetimeIndex([self.time_profile[i] for i in indices])
+
+        for elm in self.items():
+            elm.resample_profiles(indices=indices)
+
+    def resample_profiles2(self, t0: int, t1: int):
+        """
+        Resample profiles
+        :param t0: first time index
+        :param t1: second time index
+        """
+        indices = np.arange(t0, t1)
+        self.resample_profiles(indices=indices)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Snapshot time
@@ -865,7 +925,7 @@ class Assets:
         get a vector of actives
         :return: Array of bus active
         """
-        data = np.zeros(len(self._hvdc_lines), dtype=int)
+        data: IntVec = np.zeros(len(self._hvdc_lines), dtype=int)
         for i, b in enumerate(self._hvdc_lines):
             data[i] = b.active if t_idx is None else b.active_prof[t_idx]
         return data
@@ -946,7 +1006,7 @@ class Assets:
         get a vector of actives
         :return: Array of bus active
         """
-        data = np.zeros(len(self._vsc_devices), dtype=int)
+        data: IntVec = np.zeros(len(self._vsc_devices), dtype=int)
         for i, b in enumerate(self._vsc_devices):
             data[i] = b.active if t_idx is None else b.active_prof[t_idx]
         return data
@@ -1298,7 +1358,7 @@ class Assets:
 
     @buses.setter
     def buses(self, value: List[dev.Bus]):
-        self._buses = value
+        self._buses = ListSet(value)
 
     def get_bus_number(self) -> int:
         """
@@ -1347,12 +1407,19 @@ class Assets:
         """
         return {b: i for i, b in enumerate(self._buses)}
 
+    def get_bus_idtag_index_dict(self) -> Dict[str, int]:
+        """
+        Return dictionary of buses
+        :return: dictionary of buses {name:object}
+        """
+        return {b.idtag: i for i, b in enumerate(self._buses)}
+
     def get_bus_actives(self, t_idx: int | None = None) -> IntVec:
         """
         get a vector of actives
         :return: Array of bus active
         """
-        data = np.zeros(len(self._buses), dtype=int)
+        data: IntVec = np.zeros(len(self._buses), dtype=int)
         for i, b in enumerate(self._buses):
             data[i] = b.active if t_idx is None else b.active_prof[t_idx]
         return data
@@ -1406,23 +1473,21 @@ class Assets:
                         inj_list[i].bus = None
 
         # delete the bus itself
-        try:
-            self._buses.remove(obj)
-        except ValueError:
-            print(f"Could not delete {obj.name}")
+        # Use list comprehension for faster removal (avoids ValueError if already removed)
+        self._buses = ListSet([b for b in self._buses if b != obj])
 
-    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+    def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
-        Delete a :ref:`Bus<bus>` object from the grid.
-        :param lst: Array of objects to remove
-        :param delete_associated: Delete the associated branches and injections
+        Delete branch objects that may contain contingencies, remedial actions, or investments
+        Used when you delete buses connected to branches
+        :param buses_to_remove: Set of buses to remove
+        :param delete_associated: Delete the associated branches
+        :return: None
         """
-        buses_to_remove = set(lst)
 
         branches_to_delete = list()
-        injections_to_delete = list()
 
-        # delete associated Branches in reverse order
+        # First find branches to delete from the passed buses
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             for i in range(len(branch_list) - 1, -1, -1):
                 if branch_list[i].bus_from in buses_to_remove:
@@ -1436,8 +1501,69 @@ class Assets:
                     else:
                         branch_list[i].bus_to = None
 
-        for elm in branches_to_delete:
-            self.delete_branch(obj=elm)
+        # Optimized branch removal by creating a set for faster lookups
+        branches_to_delete_set = set(branches_to_delete)
+
+        # Remove branches directly from lists in one pass
+        # This is more efficient than calling delete_branch for each
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+            # Use list comprehension to not consider branches to delete 
+            # This is faster than the multiple remove() calls we had before
+            branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
+
+        # Batch process groupings, faster than calling delete_groupings_with_object for each branch
+        if branches_to_delete:
+            branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
+
+            # Process contingencies in batch. Remove all at once, then check for empty groups
+            contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
+            if contingencies_to_delete:
+                contingencies_to_delete_set = set(contingencies_to_delete)
+                # Remove all contingencies in one pass
+                self._contingencies = [c for c in self._contingencies if c not in contingencies_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {c.group for c in self._contingencies}
+                groups_to_delete = [g for g in self._contingency_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_contingency_group(grp)
+
+            # Process remedial actions in batch. Remove all at once, then check for empty groups
+            remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
+            if remedial_actions_to_delete:
+                remedial_actions_to_delete_set = set(remedial_actions_to_delete)
+                # Remove all remedial actions in one pass
+                self._remedial_actions = [r for r in self._remedial_actions if r not in remedial_actions_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {r.group for r in self._remedial_actions}
+                groups_to_delete = [g for g in self._remedial_action_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_remedial_action_group(grp)
+
+            # Process investments in batch. Remove all at once, then check for empty groups
+            investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
+            if investments_to_delete:
+                investments_to_delete_set = set(investments_to_delete)
+                # Remove all investments in one pass
+                self._investments = [i for i in self._investments if i not in investments_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {i.group for i in self._investments}
+                groups_to_delete = [g for g in self._investments_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_investment_groups(grp)
+
+        return None
+
+    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+        """
+        Delete a :ref:`Bus<bus>` object from the grid.
+        :param lst: Array of objects to remove
+        :param delete_associated: Delete the associated branches and injections
+        """
+        buses_to_remove = set(lst)
+        injections_to_delete = list()
+
+        # We delete the associated branches by knowing the buses to remove
+        self.delete_branches_with_sets(buses_to_remove, delete_associated)
 
         # delete the associated injection devices
         for inj_list in self.get_injection_devices_lists():
@@ -1448,27 +1574,48 @@ class Assets:
                     else:
                         inj_list[i].bus = None
 
-        for elm in injections_to_delete:
-            self.delete_injection_device(obj=elm)
+        # Optimized batch deletion of injection devices
+        if injections_to_delete:
+            injections_to_delete_set = set(injections_to_delete)
+            for inj_list in self.get_injection_devices_lists():
+                # Use list comprehension to filter out injections we have to delete
+                inj_list[:] = [inj for inj in inj_list if inj not in injections_to_delete_set]
+        else:
+            # No injections to delete, so nothing to be done
+            pass
 
-        # delete the bus itself
-        for elm in buses_to_remove:
-            try:
-                self._buses.remove(elm)
-            except ValueError:
-                print(f"Could not delete {elm.name}")
+        # delete the bus itself - use set difference for faster removal
+        # Remove all buses in one pass using list comprehension (faster and avoids ValueError)
+        buses_to_remove_set = buses_to_remove
+        self._buses = ListSet([b for b in self._buses if b not in buses_to_remove_set])
 
-    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
+    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Zone,
+    dev.Country, dev.Community,
+    dev.Region, dev.Municipality]]) -> List[dev.Bus]:
         """
         Get a list of buses that can be found in the list of Areas | Zones | Countries
         :param filter_elements: list of Areas | Zones | Countries
         :return: list of buses
         """
         data: List[dev.Bus] = list()
+        filter_elements_set = set(filter_elements)
 
         for bus in self._buses:
 
-            if bus.area in filter_elements or bus.zone in filter_elements or bus.country in filter_elements:
+            ok = bus.area in filter_elements_set
+            ok = ok or bus.zone in filter_elements_set
+            ok = ok or bus.country in filter_elements_set
+
+            if bus.substation is not None:
+                ok = ok or bus.substation.municipality in filter_elements_set
+
+                if bus.substation.municipality is not None:
+                    ok = ok or bus.substation.municipality.region in filter_elements_set
+
+                    if bus.substation.municipality.region is not None:
+                        ok = ok or bus.substation.municipality.region.community in filter_elements_set
+
+            if ok:
                 data.append(bus)
 
         return data
@@ -3844,6 +3991,55 @@ class Assets:
             for grp in to_del:
                 self.delete_contingency_group(grp)
 
+    def get_contingencies_by_group(self) -> Dict[dev.ContingencyGroup, List[dev.Contingency]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[dev.Contingency]] = dict()
+
+        for con in self.contingencies:
+            lst = d.get(con.group, None)
+
+            if lst is None:
+                d[con.group] = [con]
+            else:
+                lst.append(con)
+
+        return d
+
+    def get_contingency_branch_indices_by_group(
+            self,
+            add_vsc: bool = True,
+            add_hvdc: bool = True,
+            add_switch: bool = False) -> Dict[dev.ContingencyGroup, List[int]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[int]] = dict()
+
+        br_idtag_dict = self.get_branches_idtag_index_dict(add_vsc=add_vsc,
+                                                           add_hvdc=add_hvdc,
+                                                           add_switch=add_switch)
+
+        for con in self.contingencies:
+
+            idx = br_idtag_dict.get(con.device_idtag, None)
+
+            if idx is not None:
+                lst = d.get(con.group, None)
+
+                if lst is None:
+                    d[con.group] = [idx]
+                else:
+                    lst.append(idx)
+
+        return d
+
     # ------------------------------------------------------------------------------------------------------------------
     # Contingency group
     # ------------------------------------------------------------------------------------------------------------------
@@ -3866,6 +4062,13 @@ class Assets:
         :return:List[dev.ContingencyGroup]
         """
         return self._contingency_groups
+
+    def get_contingency_groups_active(self) -> List[dev.ContingencyGroup]:
+        """
+        Get contingency_groups
+        :return:List[dev.ContingencyGroup]
+        """
+        return [e for e in self._contingency_groups if e.active]
 
     def get_contingency_groups_number(self) -> int:
         """
@@ -3961,7 +4164,8 @@ class Assets:
         return logger
 
     def get_contingency_groups_in(self,
-                                  grouping_elements: List[Union[dev.Area, dev.Country, dev.Zone]]
+                                  grouping_elements: List[Union[dev.Area, dev.Zone,
+                                  dev.Country, dev.Community, dev.Region, dev.Municipality]]
                                   ) -> List[dev.ContingencyGroup]:
         """
         Get a filtered set of ContingencyGroups
@@ -4002,6 +4206,40 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
+
+    def get_contingency_groups_sensitive_to_moitoring(self, LODF: Mat, threshold: float) -> IntVec:
+        """
+        Get a list of contingency groups that are sensitive to the monitoring rule
+        :param LODF: LODF matrix (nbr, nbr)
+        :param threshold: LODF threshold
+        :return: vector of sensitive status
+        """
+
+        d = self.get_contingency_branch_indices_by_group()
+        sensitive: BoolVec = np.zeros(self.get_contingency_groups_number(), dtype=bool)
+
+        for cg_idx, con_group in enumerate(self.contingency_groups):  # for every contingency group
+
+            # get the branch indices of this contingency group
+            branch_indices = d[con_group]
+
+            sensitive[cg_idx] = False
+
+            if con_group.active:
+                i = 0
+                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True):  # for every branch
+
+                    if elm.monitor_loading:  # if monitored
+
+                        # check if any contingency branch is sensitive to the monitored branch
+
+                        for j in branch_indices:
+                            if abs(LODF[i, j]) >= threshold:
+                                sensitive[cg_idx] = True
+
+                    i += 1
+
+        return sensitive
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment group
@@ -4098,7 +4336,7 @@ class Assets:
         """
 
         # we initialize with the capex of the group, then we add the capex of the individual investments
-        capex = np.array([elm.CAPEX for elm in self.investments_groups])
+        capex: Vec = np.array([elm.CAPEX for elm in self.investments_groups])
 
         # pre-compute the capex of each investment group
         d = self.get_investment_by_groups_index_dict()
@@ -4158,7 +4396,7 @@ class Assets:
                 self.delete_investment_groups(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Rms group
+    # Rms Events group
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
@@ -4182,7 +4420,7 @@ class Assets:
 
     def add_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
-        Add investments group
+        Add rms events group
         :param obj: InvestmentsGroup
         """
         self._rms_events_groups.append(obj)
@@ -4364,7 +4602,7 @@ class Assets:
     def remedial_action_groups(self, value: List[dev.RemedialActionGroup]):
         self._remedial_action_groups = value
 
-    def get_rmedial_action_groups(self) -> List[dev.RemedialActionGroup]:
+    def get_remedial_action_groups(self) -> List[dev.RemedialActionGroup]:
         """
         Get contingency_groups
         :return:List[dev.ContingencyGroup]
@@ -4505,6 +4743,65 @@ class Assets:
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Short Circuit Events
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def short_circuit_event(self) -> List[dev.ShortCircuitEvent]:
+        """
+        Get list of ShortCircuitDefinition
+        :return:
+        """
+        return self._short_circuit_events
+
+    @short_circuit_event.setter
+    def short_circuit_event(self, value: List[dev.ShortCircuitEvent]):
+        self._short_circuit_events = value
+
+    def add_short_circuit_event(self, obj: dev.ShortCircuitEvent):
+        """
+        Add short_circuit_definitions
+        :param obj: ShortCircuitDefinition
+        """
+        self._short_circuit_events.append(obj)
+
+    def delete_short_circuit_event(self, obj: dev.ShortCircuitEvent):
+        """
+        Delete ShortCircuitDefinition
+        :param obj: index
+        """
+
+        try:
+            self._short_circuit_events.remove(obj)
+        except ValueError:
+            pass
+
+    def get_short_circuit_event_names(self) -> StrVec:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return np.array([elm.name for elm in self._short_circuit_events])
+
+    def get_short_circuit_event_number(self) -> int:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return len(self._short_circuit_events)
+
+    def short_circuit_event_exist(self, scd: dev.ShortCircuitEvent) -> bool:
+        """
+        Check if a short circuit definition has been added already
+        :param scd: ShortCircuitDefinition
+        :return: Bool
+        """
+        for elm in self._short_circuit_events:
+            if elm.device_idtag == scd.device_idtag and elm.fault_type == scd.fault_type:
+                return True
+        return False
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Technology
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -4527,7 +4824,7 @@ class Assets:
         """
         self._technologies.append(obj)
 
-    def delete_technology(self, obj):
+    def delete_technology(self, obj: dev.Technology):
         """
         Delete zone
         :param obj: index
@@ -4564,6 +4861,67 @@ class Assets:
         :return:
         """
         return np.array([elm.name for elm in self._technologies])
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Owners
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def owners(self) -> List[dev.Owner]:
+        """
+        Get list of owners
+        :return:
+        """
+        return self._owners
+
+    @owners.setter
+    def owners(self, value: List[dev.Owner]):
+        self._owners = value
+
+    def add_owner(self, obj: dev.Owner):
+        """
+        Add owner
+        :param obj: Owner
+        """
+        self._owners.append(obj)
+
+    def delete_owner(self, obj: dev.Owner):
+        """
+        Delete owner
+        :param obj: index
+        """
+
+        for elm_list in self.get_injection_devices_lists():
+            for elm in elm_list:
+                to_del = list()
+                for assoc in elm.owners:
+                    if assoc.api_object == obj:
+                        to_del.append(assoc)
+
+                for assoc in to_del:
+                    elm.owners.remove(assoc)
+
+        try:
+            self._owners.remove(obj)
+        except ValueError:
+            pass
+
+    def get_owner_indexing_dict(self) -> Dict[str, int]:
+        """
+        Get a dictionary that relates the fuel uuid's with their index
+        :return: Dict[str, int]
+        """
+        index_dict: Dict[str, int] = dict()
+        for k, elm in enumerate(self._owners):
+            index_dict[elm.idtag] = k  # associate the idtag to the index
+        return index_dict
+
+    def get_owner_names(self) -> StrVec:
+        """
+
+        :return:
+        """
+        return np.array([elm.name for elm in self._owners])
 
     # ------------------------------------------------------------------------------------------------------------------
     # Modelling authority
@@ -5201,7 +5559,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def rms_models(self) -> List[dev.DynamicModelHost]:
+    def rms_models(self) -> List[dev.RmsModelTemplate]:
         """
         list of rms models
         :return:
@@ -5209,24 +5567,27 @@ class Assets:
         return self._rms_models
 
     @rms_models.setter
-    def rms_models(self, value: List[dev.DynamicModelHost]):
+    def rms_models(self, value: List[dev.RmsModelTemplate]):
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
+        """
+        Get number of RMS models
+        """
         return len(self._rms_models)
 
-    def add_rms_model(self, obj: dev.DynamicModelHost):
+    def add_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Add rms model to the collection
         :param obj: DynamicModel instance
         """
         if obj is not None:
-            if isinstance(obj, dev.DynamicModelHost):
+            if isinstance(obj, dev.RmsModelTemplate):
                 self._rms_models.append(obj)
             else:
-                print('The template is not a DynamicModel!')
+                print('The template is not a RmsModelTemplate!')
 
-    def delete_rms_model(self, obj: dev.DynamicModelHost):
+    def delete_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Delete RMS model from the collection
         :param obj: DynamicModel object
@@ -5422,7 +5783,7 @@ class Assets:
         :return: StrVec
         """
         n = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)
-        data = np.zeros(n, dtype=int)
+        data: IntVec = np.zeros(n, dtype=int)
         i = 0
         for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
             data[i] = elm.active_prof[t_idx] if t_idx is not None else elm.active
@@ -5442,6 +5803,20 @@ class Assets:
         return {b: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                   add_hvdc=add_hvdc,
                                                                   add_switch=add_switch))}
+
+    def get_branches_idtag_index_dict(self, add_vsc: bool = True,
+                                      add_hvdc: bool = True,
+                                      add_switch: bool = False) -> Dict[str, int]:
+        """
+        Get the branch to index dictionary
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: Branch object to index
+        """
+        return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
+                                                                        add_hvdc=add_hvdc,
+                                                                        add_switch=add_switch))}
 
     def get_branches_index_dict2(self, add_vsc: bool = True,
                                  add_hvdc: bool = True,
@@ -5483,13 +5858,33 @@ class Assets:
         :return: IntVec, IntVec
         """
         m = self.get_branch_number(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)
-        F = np.zeros(m, dtype=int)
-        T = np.zeros(m, dtype=int)
+        F: IntVec = np.zeros(m, dtype=int)
+        T: IntVec = np.zeros(m, dtype=int)
         bus_dict = self.get_bus_index_dict()
         for i, elm in enumerate(self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
             F[i] = bus_dict[elm.bus_from]
             T[i] = bus_dict[elm.bus_to]
         return F, T
+
+    def get_branches_monitored_indices(self,
+                                       add_vsc: bool = True,
+                                       add_hvdc: bool = True,
+                                       add_switch: bool = False) -> IntVec:
+        """
+         Get the indices of the monitored branche
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: numpy array with the indices of the branches
+        """
+        lst = list()
+        i = 0
+        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+            if elm.monitor_loading:
+                lst.append(i)
+            i += 1
+
+        return np.array(lst, dtype=int)
 
     def delete_groupings_with_object(self, obj: BRANCH_TYPES, delete_groups: bool = True):
         """
@@ -5516,8 +5911,8 @@ class Assets:
         :return: IntVec, IntVec
         """
         m = len(self._hvdc_lines)
-        F = np.zeros(m, dtype=int)
-        T = np.zeros(m, dtype=int)
+        F: IntVec = np.zeros(m, dtype=int)
+        T: IntVec = np.zeros(m, dtype=int)
         bus_dict = self.get_bus_index_dict()
         for i, elm in enumerate(self._hvdc_lines):
             F[i] = bus_dict[elm.bus_from]
@@ -5631,6 +6026,17 @@ class Assets:
             n += len(lst)
 
         return n
+
+    def get_load_like_devices_names(self) -> StrVec:
+        """
+        Get a list of names of the load like devices
+        :return: array of str
+        """
+        elms = list()
+        for lst in self.get_load_like_devices_lists():
+            for elm in lst:
+                elms.append(elm.name)
+        return np.array(elms)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Shunt-like devices
@@ -5905,8 +6311,14 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
+        elif device_type == DeviceType.ShortCircuitEvent:
+            return self._short_circuit_events
+
         elif device_type == DeviceType.Technology:
             return self._technologies
+
+        elif device_type == DeviceType.Owner:
+            return self._owners
 
         elif device_type == DeviceType.InvestmentDevice:
             return self._investments
@@ -5998,7 +6410,7 @@ class Assets:
         elif device_type == DeviceType.LambdaDevice:
             return list()
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6006,7 +6418,6 @@ class Assets:
 
         elif device_type == DeviceType.RmsEventsGroupDevice:
             return self.rms_events_groups
-
 
         else:
             raise Exception('Element type not understood ' + str(device_type))
@@ -6138,8 +6549,14 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
 
+        elif device_type == DeviceType.ShortCircuitEvent:
+            self._short_circuit_events = devices
+
         elif device_type == DeviceType.Technology:
             self._technologies = devices
+
+        elif device_type == DeviceType.Owner:
+            self._owners = devices
 
         elif device_type == DeviceType.InvestmentDevice:
             self._investments = devices
@@ -6214,7 +6631,7 @@ class Assets:
         elif device_type == DeviceType.FacilityDevice:
             self._facilities = devices
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6347,6 +6764,9 @@ class Assets:
         elif obj.device_type == DeviceType.Technology:
             self.add_technology(obj=obj)
 
+        elif obj.device_type == DeviceType.Owner:
+            self.add_owner(obj=obj)
+
         elif obj.device_type == DeviceType.InvestmentDevice:
             self.add_investment(obj=obj)
 
@@ -6416,7 +6836,7 @@ class Assets:
         elif obj.device_type == DeviceType.FacilityDevice:
             self.add_facility(obj=obj)
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6554,6 +6974,9 @@ class Assets:
         elif obj.device_type == DeviceType.Technology:
             self.delete_technology(obj)
 
+        elif obj.device_type == DeviceType.Owner:
+            self.delete_owner(obj)
+
         elif obj.device_type == DeviceType.InvestmentDevice:
             self.delete_investment(obj)
 
@@ -6568,6 +6991,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.FluidNodeDevice:
             self.delete_fluid_node(obj)
+
+        elif obj.device_type == DeviceType.ShortCircuitEvent:
+            self.delete_short_circuit_event(obj)
 
         elif obj.device_type == DeviceType.FluidTurbineDevice:
             self.delete_fluid_turbine(obj)
@@ -6626,7 +7052,7 @@ class Assets:
         elif obj.device_type == DeviceType.LineLocation:
             pass
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6743,7 +7169,7 @@ class Assets:
             self,
             add_locations: bool = False,
             string_keys: bool = True
-    ) -> dict[Union[str, DeviceType], Union[dict[str, ALL_DEV_TYPES], Any]]:
+    ) -> Dict[Union[str, DeviceType], Union[Dict[str, ALL_DEV_TYPES], Any]]:
         """
         Get a dictionary of all elements by type
         :param add_locations: Add locations to dict
@@ -6814,11 +7240,14 @@ class Assets:
                 DeviceType.VoltageLevelDevice: self.voltage_levels,
                 DeviceType.CountryDevice: self.countries,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.Owner: self.owners,
             }
 
         elif elm_type == DeviceType.LoadDevice:
             elm = dev.Load()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6826,6 +7255,8 @@ class Assets:
         elif elm_type == DeviceType.StaticGeneratorDevice:
             elm = dev.StaticGenerator()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6833,6 +7264,8 @@ class Assets:
         elif elm_type == DeviceType.ControllableShuntDevice:
             elm = dev.ControllableShunt()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6840,6 +7273,8 @@ class Assets:
         elif elm_type == DeviceType.CurrentInjectionDevice:
             elm = dev.CurrentInjection()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6848,6 +7283,7 @@ class Assets:
             elm = dev.Generator()
             dictionary_of_lists = {
                 DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.FuelDevice: self.fuels,
                 DeviceType.EmissionGasDevice: self.emission_gases,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
@@ -6858,6 +7294,7 @@ class Assets:
             elm = dev.Battery()
             dictionary_of_lists = {
                 DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6865,6 +7302,8 @@ class Assets:
         elif elm_type == DeviceType.ShuntDevice:
             elm = dev.Shunt()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6872,6 +7311,8 @@ class Assets:
         elif elm_type == DeviceType.ExternalGridDevice:
             elm = dev.ExternalGrid()
             dictionary_of_lists = {
+                DeviceType.Technology: self.technologies,
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
             }
@@ -6879,6 +7320,7 @@ class Assets:
         elif elm_type == DeviceType.LineDevice:
             elm = dev.Line()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6886,6 +7328,7 @@ class Assets:
         elif elm_type == DeviceType.SwitchDevice:
             elm = dev.Switch()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6893,6 +7336,7 @@ class Assets:
         elif elm_type == DeviceType.Transformer2WDevice:
             elm = dev.Transformer2W()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6900,6 +7344,7 @@ class Assets:
         elif elm_type == DeviceType.WindingDevice:
             elm = dev.Winding()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6907,12 +7352,14 @@ class Assets:
         elif elm_type == DeviceType.Transformer3WDevice:
             elm = dev.Transformer3W()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
 
         elif elm_type == DeviceType.HVDCLineDevice:
             elm = dev.HvdcLine()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6920,6 +7367,7 @@ class Assets:
         elif elm_type == DeviceType.VscDevice:
             elm = dev.VSC()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6927,6 +7375,7 @@ class Assets:
         elif elm_type == DeviceType.UpfcDevice:
             elm = dev.UPFC()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6934,6 +7383,7 @@ class Assets:
         elif elm_type == DeviceType.SeriesReactanceDevice:
             elm = dev.SeriesReactance()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6941,6 +7391,7 @@ class Assets:
         elif elm_type == DeviceType.DCLineDevice:
             elm = dev.DcLine()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -6948,6 +7399,7 @@ class Assets:
         elif elm_type == DeviceType.SubstationDevice:
             elm = dev.Substation()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.CountryDevice: self.get_countries(),
                 DeviceType.CommunityDevice: self.get_communities(),
                 DeviceType.RegionDevice: self.get_regions(),
@@ -6959,13 +7411,17 @@ class Assets:
         elif elm_type == DeviceType.BusBarDevice:
             elm = dev.BusBar()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.VoltageLevelDevice: self.voltage_levels,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
 
         elif elm_type == DeviceType.VoltageLevelDevice:
             elm = dev.VoltageLevel()
-            dictionary_of_lists = {DeviceType.SubstationDevice: self.get_substations(), }
+            dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
+                DeviceType.SubstationDevice: self.get_substations(),
+            }
 
         elif elm_type == DeviceType.AreaDevice:
             elm = dev.Area()
@@ -6996,6 +7452,9 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
+        elif elm_type == DeviceType.ShortCircuitEvent:
+            elm = dev.ShortCircuitEvent()
+
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()
             dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
@@ -7016,6 +7475,9 @@ class Assets:
 
         elif elm_type == DeviceType.Technology:
             elm = dev.Technology()
+
+        elif elm_type == DeviceType.Owner:
+            elm = dev.Owner()
 
         elif elm_type == DeviceType.FuelDevice:
             elm = dev.Fuel()
@@ -7045,6 +7507,7 @@ class Assets:
         elif elm_type == DeviceType.FluidPathDevice:
             elm = dev.FluidPath()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.FluidNodeDevice: self.get_fluid_nodes(),
                 DeviceType.ModellingAuthority: self.modelling_authorities,
             }
@@ -7052,6 +7515,7 @@ class Assets:
         elif elm_type == DeviceType.FluidTurbineDevice:
             elm = dev.FluidTurbine()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.FluidNodeDevice: self.get_fluid_nodes(),
                 DeviceType.GeneratorDevice: self.get_generators(),
                 DeviceType.ModellingAuthority: self.modelling_authorities,
@@ -7061,6 +7525,7 @@ class Assets:
         elif elm_type == DeviceType.FluidPumpDevice:
             elm = dev.FluidPump()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.FluidNodeDevice: self.get_fluid_nodes(),
                 DeviceType.GeneratorDevice: self.get_generators(),
                 DeviceType.ModellingAuthority: self.modelling_authorities,
@@ -7070,6 +7535,7 @@ class Assets:
         elif elm_type == DeviceType.FluidP2XDevice:
             elm = dev.FluidP2x()
             dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
                 DeviceType.FluidNodeDevice: self.get_fluid_nodes(),
                 DeviceType.GeneratorDevice: self.get_generators(),
                 DeviceType.ModellingAuthority: self.modelling_authorities,
@@ -7084,16 +7550,64 @@ class Assets:
             elm = dev.Facility()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.DynamicModelHostDevice:
-            elm = dev.DynamicModelHost()
+        elif elm_type == DeviceType.RmsModelTemplateDevice:
+            elm = dev.RmsModelTemplate()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
-            dictionary_of_lists = dict()
+            dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
 
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PMeasurementDevice:
+            elm = dev.PiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QMeasurementDevice:
+            elm = dev.QiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PgMeasurementDevice:
+            elm = dev.PgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QgMeasurementDevice:
+            elm = dev.QgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PfMeasurementDevice:
+            elm = dev.PfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QfMeasurementDevice:
+            elm = dev.QfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PtMeasurementDevice:
+            elm = dev.PtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QtMeasurementDevice:
+            elm = dev.QtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.IfMeasurementDevice:
+            elm = dev.IfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.ItMeasurementDevice:
+            elm = dev.ItMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VmMeasurementDevice:
+            elm = dev.VmMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VaMeasurementDevice:
+            elm = dev.VaMeasurement()
             dictionary_of_lists = dict()
 
         else:

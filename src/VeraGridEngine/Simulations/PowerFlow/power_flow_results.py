@@ -32,7 +32,8 @@ class NumericPowerFlowResults:
                  It: CxVec,
                  loading: CxVec,
                  losses: CxVec,
-                 Pf_vsc: Vec,
+                 Pfp_vsc: Vec,
+                 Pfn_vsc: Vec,
                  St_vsc: CxVec,
                  If_vsc: Vec,
                  It_vsc: CxVec,
@@ -58,7 +59,8 @@ class NumericPowerFlowResults:
         :param It: Current to vector for all the Branches
         :param loading: Loading vector for all the Branches
         :param losses: Losses vector for all the Branches
-        :param Pf_vsc:
+        :param Pfp_vsc: Active power of the positive pole
+        :param Pfn_vsc: Active power of the negative pole
         :param St_vsc:
         :param If_vsc:
         :param It_vsc:
@@ -87,7 +89,8 @@ class NumericPowerFlowResults:
         self.tap_angle = tau
 
         # VSC
-        self.Pf_vsc = Pf_vsc
+        self.Pfp_vsc = Pfp_vsc
+        self.Pfn_vsc = Pfn_vsc
         self.St_vsc = St_vsc
         self.If_vsc = If_vsc
         self.It_vsc = It_vsc
@@ -179,7 +182,8 @@ class PowerFlowResults(ResultsTemplate):
                 ],
 
                 ResultTypes.VscResults: [
-                    ResultTypes.VscPowerFrom,
+                    ResultTypes.VscPowerFromPositive,
+                    ResultTypes.VscPowerFromNegative,
                     ResultTypes.VscPowerTo,
                     ResultTypes.VscLosses,
                 ],
@@ -241,7 +245,8 @@ class PowerFlowResults(ResultsTemplate):
         self.loading_hvdc: Vec = np.zeros(n_hvdc)
 
         # VSC
-        self.Pf_vsc = np.zeros(n_vsc, dtype=float)
+        self.Pfp_vsc = np.zeros(n_vsc, dtype=float)
+        self.Pfn_vsc = np.zeros(n_vsc, dtype=float)
         self.St_vsc = np.zeros(n_vsc, dtype=complex)
         self.If_vsc = np.zeros(n_vsc, dtype=float)
         self.It_vsc = np.zeros(n_vsc, dtype=complex)
@@ -293,7 +298,8 @@ class PowerFlowResults(ResultsTemplate):
         self.register(name='loading_hvdc', tpe=Vec)
 
         self.register(name='losses_vsc', tpe=Vec)
-        self.register(name='Pf_vsc', tpe=Vec)
+        self.register(name='Pfp_vsc', tpe=Vec)
+        self.register(name='Pfn_vsc', tpe=Vec)
         self.register(name='St_vsc', tpe=CxVec)
         self.register(name='If_vsc', tpe=Vec)
         self.register(name='It_vsc', tpe=CxVec)
@@ -396,54 +402,8 @@ class PowerFlowResults(ResultsTemplate):
         self.loading_hvdc[hvdc_idx] = results.loading_hvdc.real
 
         # VSC
-        self.Pf_vsc[vsc_idx] = results.Pf_vsc
-        self.St_vsc[vsc_idx] = results.St_vsc
-        self.If_vsc[vsc_idx] = results.If_vsc
-        self.It_vsc[vsc_idx] = results.It_vsc
-        self.losses_vsc[vsc_idx] = results.losses_vsc
-        self.loading_vsc[vsc_idx] = results.loading_vsc
-
-    def apply_from_island_3phase(self,
-                                 results: NumericPowerFlowResults,
-                                 b_idx: np.ndarray,
-                                 b_idx3: np.ndarray,
-                                 br_idx: np.ndarray,
-                                 br_idx3: np.ndarray,
-                                 hvdc_idx: np.ndarray,
-                                 vsc_idx: np.ndarray) -> None:
-        """
-        Apply results from another island circuit to the circuit results represented
-        here.
-        :param results: NumericPowerFlowResults from an island circuit
-        :param b_idx: bus original indices
-        :param b_idx3: bus original indices expanded to 3-phase
-        :param br_idx: branch original indices
-        :param br_idx3: branch original indices expanded to 3-phase
-        :param hvdc_idx: hvdc original indices
-        :param vsc_idx: vsc original indices
-        :return: None
-        """
-        self.voltage[b_idx3] = results.V
-        self.Sbus[b_idx3] = results.Scalc
-
-        self.tap_module[br_idx3] = results.tap_module
-        self.tap_angle[br_idx3] = results.tap_angle
-
-        self.Sf[br_idx3] = results.Sf
-        self.St[br_idx3] = results.St
-        self.If[br_idx3] = results.If
-        self.It[br_idx3] = results.It
-        self.loading[br_idx3] = results.loading
-        self.losses[br_idx3] = results.losses
-
-        # Hvdc
-        self.Pf_hvdc[hvdc_idx] = results.Sf_hvdc.real
-        self.Pt_hvdc[hvdc_idx] = results.St_hvdc.real
-        self.losses_hvdc[hvdc_idx] = results.losses_hvdc.real
-        self.loading_hvdc[hvdc_idx] = results.loading_hvdc.real
-
-        # VSC
-        self.Pf_vsc[vsc_idx] = results.Pf_vsc
+        self.Pfp_vsc[vsc_idx] = results.Pfp_vsc
+        self.Pfn_vsc[vsc_idx] = results.Pfn_vsc
         self.St_vsc[vsc_idx] = results.St_vsc
         self.If_vsc[vsc_idx] = results.If_vsc
         self.It_vsc[vsc_idx] = results.It_vsc
@@ -508,6 +468,18 @@ class PowerFlowResults(ResultsTemplate):
                                   "Ploss": self.losses.real,
                                   "Qloss": self.losses.imag,
                                   },
+                            index=self.branch_names)
+
+    def get_voltage_df(self):
+
+        return pd.DataFrame(data={'Um 1 [p.u.]': np.abs(self.voltage),
+                                  'Ua 1 [º]': np.angle(self.voltage, deg=True)},
+                            index=self.bus_names)
+
+    def get_current_df(self):
+
+        return pd.DataFrame(data={'Im 1 [p.u.]': np.abs(self.If),
+                                  'Ia 1 [º]': np.angle(self.If, deg=True)},
                             index=self.branch_names)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
@@ -806,9 +778,20 @@ class PowerFlowResults(ResultsTemplate):
                                 ylabel='(MW)',
                                 units='(MW)')
 
-        elif result_type == ResultTypes.VscPowerFrom:
+        elif result_type == ResultTypes.VscPowerFromPositive:
 
-            return ResultsTable(data=self.Pf_vsc,
+            return ResultsTable(data=self.Pfp_vsc,
+                                index=self.vsc_names,
+                                idx_device_type=DeviceType.VscDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
+
+        elif result_type == ResultTypes.VscPowerFromNegative:
+
+            return ResultsTable(data=self.Pfn_vsc,
                                 index=self.vsc_names,
                                 idx_device_type=DeviceType.VscDevice,
                                 columns=np.array([result_type.value]),

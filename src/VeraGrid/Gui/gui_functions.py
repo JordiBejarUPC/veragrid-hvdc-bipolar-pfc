@@ -7,13 +7,14 @@ from __future__ import annotations
 import numpy as np
 from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING
 from PySide6 import QtCore, QtWidgets, QtGui
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, CGMES_ASSETS
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGrid.Gui.font_config import MENU_FONT_SIZE
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
@@ -541,6 +542,11 @@ class ColorPickerDelegate(QtWidgets.QItemDelegate):
         return colorDialog
 
     def setEditorData(self, editor: QtWidgets.QColorDialog, index):
+        """
+
+        :param editor:
+        :param index:
+        """
         editor.blockSignals(True)
         val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
         color = QtGui.QColor.fromString(val)
@@ -572,9 +578,19 @@ class DateTimeDelegate(QtWidgets.QItemDelegate):
 
     @QtCore.Slot()
     def returnPressed(self):
+        """
+
+        """
         self.commitData.emit(self.sender())
 
     def createEditor(self, parent, option, index):
+        """
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
         editor = QtWidgets.QDateTimeEdit(parent)
         editor.setCalendarPopup(True)
         editor.setDisplayFormat("yyyy/MM/dd HH:mm:ss")
@@ -588,6 +604,11 @@ class DateTimeDelegate(QtWidgets.QItemDelegate):
         return editor
 
     def setEditorData(self, editor: QtWidgets.QDateTimeEdit, index):
+        """
+
+        :param editor:
+        :param index:
+        """
         editor.blockSignals(True)
         val = index.model().data(index, QtCore.Qt.ItemDataRole.DisplayRole)
         if isinstance(val, (int, float)):
@@ -604,12 +625,20 @@ class DateTimeDelegate(QtWidgets.QItemDelegate):
         editor.blockSignals(False)
 
     def setModelData(self, editor: QtWidgets.QDateTimeEdit, model, index):
+        """
+
+        :param editor:
+        :param model:
+        :param index:
+        """
         dt = editor.dateTime()
         epoch_seconds = dt.toSecsSinceEpoch()
         model.setData(index, epoch_seconds)
 
 
-def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]], checks=False, check_value=False) -> QtGui.QStandardItemModel:
+def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]],
+                   checks=False,
+                   check_value=False) -> QtGui.QStandardItemModel:
     """
     Pass a list to a list model
     """
@@ -632,6 +661,57 @@ def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]], checks=False, check_val
                 list_model.appendRow(item)
 
     return list_model
+
+
+def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: IntVec) -> QtGui.QStandardItemModel:
+    """
+    Pass a list to a list model
+    """
+    list_model = QtGui.QStandardItemModel()
+    for elm, val in zip(lst, check_status):
+        # for the list model
+        item = QtGui.QStandardItem(str(elm.name))
+        item.setEditable(False)
+        item.setCheckable(True)
+        if val:
+            item.setCheckState(QtCore.Qt.CheckState.Checked)
+        list_model.appendRow(item)
+
+    return list_model
+
+
+def get_chck_list_model(lst: List[str], check_status: List[bool]) -> QtGui.QStandardItemModel:
+    """
+    Pass a list to a list model
+    """
+    list_model = QtGui.QStandardItemModel()
+    for elm, val in zip(lst, check_status):
+        # for the list model
+        item = QtGui.QStandardItem(elm)
+        item.setEditable(False)
+        item.setCheckable(True)
+        if val:
+            item.setCheckState(QtCore.Qt.CheckState.Checked)
+        list_model.appendRow(item)
+
+    return list_model
+
+
+def enums_to_model(enums_lst: List[Any]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
+    """
+    Get the model and dict from a list of Enum value
+    :param enums_lst:
+    :return: dictionary, model
+    """
+    d = OrderedDict()
+    val_list = list()
+    for e in enums_lst:
+        d[e.value] = e
+        val_list.append(e.value)
+
+    mdl = get_list_model(val_list)
+
+    return d, mdl
 
 
 class CustomFileSystemModel(QtWidgets.QFileSystemModel):
@@ -775,7 +855,7 @@ def fill_model_from_dict(parent: QtGui.QStandardItem,
                          d: Dict[str, Union[Dict[str, Any], List[str]]],
                          editable=False,
                          icons: Dict[str, str] = None,
-                         font_size: int = 9):
+                         font_size: int = MENU_FONT_SIZE):
     """
     Fill TreeViewModel from dictionary
     :param parent: Parent QStandardItem
@@ -988,7 +1068,6 @@ def add_sub_menu(menu: QtWidgets.QMenu,
                  text: str,
                  icon_path: str = "",
                  icon_pixmap: QtGui.QPixmap = None, ):
-
     entry = menu.addMenu(text)
 
     if icon_pixmap is None:
@@ -1002,7 +1081,6 @@ def add_sub_menu(menu: QtWidgets.QMenu,
         edit_icon.addPixmap(icon_pixmap)
         entry.setIcon(edit_icon)
 
-
     return entry
 
 
@@ -1013,7 +1091,7 @@ def add_menu_entry(menu: QtWidgets.QMenu,
                    function_ptr=None,
                    checkeable=False,
                    checked_value=False,
-                   font_size: int = 9) -> QtGui.QAction:
+                   font_size: int = MENU_FONT_SIZE) -> QtGui.QAction:
     """
     Add a context menu entry
     :param menu:

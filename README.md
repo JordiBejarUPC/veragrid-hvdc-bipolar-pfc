@@ -14,7 +14,7 @@ product of cutting-edge research.
 [![Documentation Status](https://readthedocs.org/projects/veragrid/badge/?version=latest)](https://veragrid.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/SanPen/VeraGrid.svg?branch=master)](https://travis-ci.org/SanPen/VeraGrid)
 [![DOI](https://www.zenodo.org/badge/49583206.svg)](https://www.zenodo.org/badge/latestdoi/49583206)
 [![Downloads](https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads)](https://pepy.tech/project/veragrid)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg)](https://discord.gg/sVnwkaxN)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg)](https://discord.gg/ypgmWvT5)
 
 VeraGrid started in 2015 with a clear objective: create a solid programming library and a user-friendly interface.
 This straightforward approach sparked many innovations — some driven by the necessity
@@ -1038,12 +1038,21 @@ pf = gce.PowerFlowDriver(grid, pf_options)
 pf.run()
 
 fault_index = 2
-sc_options = gce.ShortCircuitOptions(bus_index=fault_index,
-                                     fault_type=gce.FaultType.LG)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_event(
+  gce.ShortCircuitEvent(
+    device=grid.buses[fault_index],
+    fault_type=gce.FaultType.LG,
+    method=gce.MethodShortCircuit.sequences,
+    phases=gce.PhasesShortCircuit.a
+  )
+)
 
 sc = gce.ShortCircuitDriver(grid, options=sc_options,
                             pf_options=pf_options,
-                            pf_results=pf.results)
+                            pf_results=pf.results,
+                            pf_results3ph=None)
 sc.run()
 
 print("Short circuit power: ", sc.results.SCpower[fault_index])
@@ -1303,7 +1312,7 @@ m_circuit.add_line(br2)
 m_circuit.add_line(br3)
 
 # Declare the simulation driver and run
-se = gce.StateEstimation(circuit=m_circuit)
+se = gce.StateEstimationDriver(circuit=m_circuit)
 se.run()
 
 print(se.results.get_bus_df())
@@ -1458,7 +1467,7 @@ All contributions must come with testing.
 
 ## Contact
 
-- Join the [Discord VeraGrid channel](https://discord.com/invite/dzxctaNbvu) for a friendly chat, or quick question.
+- Join the [Discord VeraGrid channel](https://discord.gg/ypgmWvT5) for a friendly chat, or quick question.
 - Submit questions or comments to our [form](https://forms.gle/MpjJAntAwZiLwE6B6).
 - Submit bugs or requests in the [Issues](https://github.com/SanPen/VeraGrid/issues) section.
 

@@ -15,7 +15,19 @@ from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph 
 
 class ShortCircuitResults(ResultsTemplate):
 
-    def __init__(self, n, m, n_hvdc, bus_names, branch_names, hvdc_names, bus_types, area_names=None):
+    def __init__(self,
+                 nsc: int,
+                 n: int,
+                 m: int,
+                 n_hvdc: int,
+                 n_vsc: int,
+                 sc_names: StrVec,
+                 bus_names: StrVec,
+                 branch_names: StrVec,
+                 hvdc_names: StrVec,
+                 vsc_names: StrVec,
+                 bus_types: IntVec,
+                 area_names: StrVec | None = None):
         """
         A **ShortCircuitResults** object is create as an attribute of the
         :ref:`ShortCircuitResults<pf_mp>` (as ShortCircuitResults.results) when the power flow is run. It
@@ -136,6 +148,7 @@ class ShortCircuitResults(ResultsTemplate):
         self.bus_names = bus_names
         self.branch_names = branch_names
         self.hvdc_names = hvdc_names
+        self.sc_names = sc_names
 
         # vars for the inter-area computation
         self.F = np.zeros(m, dtype=int)
@@ -145,88 +158,104 @@ class ShortCircuitResults(ResultsTemplate):
         self.bus_area_indices = np.zeros(n, dtype=int)
         self.area_names = area_names
 
-        self.Sbus1 = np.zeros(n, dtype=complex)
-        self.voltage1 = np.zeros(n, dtype=complex)
-        self.Sf1 = np.zeros(m, dtype=complex)
-        self.St1 = np.zeros(m, dtype=complex)
-        self.If1 = np.zeros(m, dtype=complex)
-        self.It1 = np.zeros(m, dtype=complex)
-        self.Vbranch1 = np.zeros(m, dtype=complex)
-        self.loading1 = np.zeros(m, dtype=complex)
-        self.losses1 = np.zeros(m, dtype=complex)
+        self.Sbus1 = np.zeros((n, nsc), dtype=complex)
+        self.voltage1 = np.zeros((n, nsc), dtype=complex)
+        self.Sf1 = np.zeros((m, nsc), dtype=complex)
+        self.St1 = np.zeros((m, nsc), dtype=complex)
+        self.If1 = np.zeros((m, nsc), dtype=complex)
+        self.It1 = np.zeros((m, nsc), dtype=complex)
+        self.Vbranch1 = np.zeros((m, nsc), dtype=complex)
+        self.loading1 = np.zeros((m, nsc), dtype=complex)
+        self.losses1 = np.zeros((m, nsc), dtype=complex)
 
-        self.Sbus0 = np.zeros(n, dtype=complex)
-        self.voltage0 = np.zeros(n, dtype=complex)
-        self.Sf0 = np.zeros(m, dtype=complex)
-        self.St0 = np.zeros(m, dtype=complex)
-        self.If0 = np.zeros(m, dtype=complex)
-        self.It0 = np.zeros(m, dtype=complex)
-        self.Vbranch0 = np.zeros(m, dtype=complex)
-        self.loading0 = np.zeros(m, dtype=complex)
-        self.losses0 = np.zeros(m, dtype=complex)
+        self.Sbus0 = np.zeros((n, nsc), dtype=complex)
+        self.voltage0 = np.zeros((n, nsc), dtype=complex)
+        self.Sf0 = np.zeros((m, nsc), dtype=complex)
+        self.St0 = np.zeros((m, nsc), dtype=complex)
+        self.If0 = np.zeros((m, nsc), dtype=complex)
+        self.It0 = np.zeros((m, nsc), dtype=complex)
+        self.Vbranch0 = np.zeros((m, nsc), dtype=complex)
+        self.loading0 = np.zeros((m, nsc), dtype=complex)
+        self.losses0 = np.zeros((m, nsc), dtype=complex)
 
-        self.Sbus2 = np.zeros(n, dtype=complex)
-        self.voltage2 = np.zeros(n, dtype=complex)
-        self.Sf2 = np.zeros(m, dtype=complex)
-        self.St2 = np.zeros(m, dtype=complex)
-        self.If2 = np.zeros(m, dtype=complex)
-        self.It2 = np.zeros(m, dtype=complex)
-        self.Vbranch2 = np.zeros(m, dtype=complex)
-        self.loading2 = np.zeros(m, dtype=complex)
-        self.losses2 = np.zeros(m, dtype=complex)
+        self.Sbus2 = np.zeros((n, nsc), dtype=complex)
+        self.voltage2 = np.zeros((n, nsc), dtype=complex)
+        self.Sf2 = np.zeros((m, nsc), dtype=complex)
+        self.St2 = np.zeros((m, nsc), dtype=complex)
+        self.If2 = np.zeros((m, nsc), dtype=complex)
+        self.It2 = np.zeros((m, nsc), dtype=complex)
+        self.Vbranch2 = np.zeros((m, nsc), dtype=complex)
+        self.loading2 = np.zeros((m, nsc), dtype=complex)
+        self.losses2 = np.zeros((m, nsc), dtype=complex)
 
-        self.SbusA = np.zeros(n, dtype=complex)
-        self.voltageA = np.zeros(n, dtype=complex)
-        self.SfA = np.zeros(m, dtype=complex)
-        self.StA = np.zeros(m, dtype=complex)
-        self.IfA = np.zeros(m, dtype=complex)
-        self.ItA = np.zeros(m, dtype=complex)
-        self.VbranchA = np.zeros(m, dtype=complex)
-        self.loadingA = np.zeros(m, dtype=complex)
-        self.lossesA = np.zeros(m, dtype=complex)
+        self.SbusN = np.zeros((n, nsc), dtype=complex)
+        self.voltageN = np.zeros((n, nsc), dtype=complex)
+        self.SfN = np.zeros((m, nsc), dtype=complex)
+        self.StN = np.zeros((m, nsc), dtype=complex)
+        self.IfN = np.zeros((m, nsc), dtype=complex)
+        self.ItN = np.zeros((m, nsc), dtype=complex)
+        self.VbranchN = np.zeros((m, nsc), dtype=complex)
+        self.loadingN = np.zeros((m, nsc), dtype=complex)
+        self.lossesN = np.zeros((m, nsc), dtype=complex)
 
-        self.SbusB = np.zeros(n, dtype=complex)
-        self.voltageB = np.zeros(n, dtype=complex)
-        self.SfB = np.zeros(m, dtype=complex)
-        self.StB = np.zeros(m, dtype=complex)
-        self.IfB = np.zeros(m, dtype=complex)
-        self.ItB = np.zeros(m, dtype=complex)
-        self.VbranchB = np.zeros(m, dtype=complex)
-        self.loadingB = np.zeros(m, dtype=complex)
-        self.lossesB = np.zeros(m, dtype=complex)
+        self.SbusA = np.zeros((n, nsc), dtype=complex)
+        self.voltageA = np.zeros((n, nsc), dtype=complex)
+        self.SfA = np.zeros((m, nsc), dtype=complex)
+        self.StA = np.zeros((m, nsc), dtype=complex)
+        self.IfA = np.zeros((m, nsc), dtype=complex)
+        self.ItA = np.zeros((m, nsc), dtype=complex)
+        self.VbranchA = np.zeros((m, nsc), dtype=complex)
+        self.loadingA = np.zeros((m, nsc), dtype=complex)
+        self.lossesA = np.zeros((m, nsc), dtype=complex)
 
-        self.SbusC = np.zeros(n, dtype=complex)
-        self.voltageC = np.zeros(n, dtype=complex)
-        self.SfC = np.zeros(m, dtype=complex)
-        self.StC = np.zeros(m, dtype=complex)
-        self.IfC = np.zeros(m, dtype=complex)
-        self.ItC = np.zeros(m, dtype=complex)
-        self.VbranchC = np.zeros(m, dtype=complex)
-        self.loadingC = np.zeros(m, dtype=complex)
-        self.lossesC = np.zeros(m, dtype=complex)
+        self.SbusB = np.zeros((n, nsc), dtype=complex)
+        self.voltageB = np.zeros((n, nsc), dtype=complex)
+        self.SfB = np.zeros((m, nsc), dtype=complex)
+        self.StB = np.zeros((m, nsc), dtype=complex)
+        self.IfB = np.zeros((m, nsc), dtype=complex)
+        self.ItB = np.zeros((m, nsc), dtype=complex)
+        self.VbranchB = np.zeros((m, nsc), dtype=complex)
+        self.loadingB = np.zeros((m, nsc), dtype=complex)
+        self.lossesB = np.zeros((m, nsc), dtype=complex)
 
-        self.hvdc_losses = np.zeros(n_hvdc)
-        self.hvdc_Pf = np.zeros(n_hvdc)
-        self.hvdc_Pt = np.zeros(n_hvdc)
-        self.hvdc_loading = np.zeros(n_hvdc)
+        self.SbusC = np.zeros((n, nsc), dtype=complex)
+        self.voltageC = np.zeros((n, nsc), dtype=complex)
+        self.SfC = np.zeros((m, nsc), dtype=complex)
+        self.StC = np.zeros((m, nsc), dtype=complex)
+        self.IfC = np.zeros((m, nsc), dtype=complex)
+        self.ItC = np.zeros((m, nsc), dtype=complex)
+        self.VbranchC = np.zeros((m, nsc), dtype=complex)
+        self.loadingC = np.zeros((m, nsc), dtype=complex)
+        self.lossesC = np.zeros((m, nsc), dtype=complex)
 
-        self.sc_bus_index = 0
-        self.sc_type = FaultType.ph3
+        self.hvdc_losses = np.zeros((n_hvdc, nsc))
+        self.hvdc_Pf = np.zeros((n_hvdc, nsc))
+        self.hvdc_Pt = np.zeros((n_hvdc, nsc))
+        self.hvdc_loading = np.zeros((n_hvdc, nsc))
 
-        self.SCpower = np.zeros(n, dtype=complex)
-        self.SCpowerA = np.zeros(n, dtype=complex)
-        self.SCpowerB = np.zeros(n, dtype=complex)
-        self.SCpowerC = np.zeros(n, dtype=complex)
+        self.vsc_If = np.zeros((n_vsc, nsc))
+        self.vsc_It = np.zeros((n_vsc, nsc), dtype=complex)
+        self.vsc_Pfp = np.zeros((n_vsc, nsc))
+        self.vsc_Pfn = np.zeros((n_vsc, nsc))
+        self.vsc_St = np.zeros((n_vsc, nsc), dtype=complex)
+        self.vsc_losses = np.zeros((n_vsc, nsc), dtype=float)
+        self.vsc_loading = np.zeros((n_vsc, nsc), dtype=float)
 
-        self.ICurrent = np.zeros(n, dtype=complex)
-        self.ICurrentA = np.zeros(n, dtype=complex)
-        self.ICurrentB = np.zeros(n, dtype=complex)
-        self.ICurrentC = np.zeros(n, dtype=complex)
+        self.SCpower = np.zeros((n, nsc), dtype=complex)
+        self.SCpowerA = np.zeros((n, nsc), dtype=complex)
+        self.SCpowerB = np.zeros((n, nsc), dtype=complex)
+        self.SCpowerC = np.zeros((n, nsc), dtype=complex)
+
+        self.ICurrent = np.zeros((n, nsc), dtype=complex)
+        self.ICurrentA = np.zeros((n, nsc), dtype=complex)
+        self.ICurrentB = np.zeros((n, nsc), dtype=complex)
+        self.ICurrentC = np.zeros((n, nsc), dtype=complex)
 
         # Register results
         self.register(name='bus_names', tpe=StrVec)
         self.register(name='branch_names', tpe=StrVec)
         self.register(name='hvdc_names', tpe=StrVec)
+        self.register(name='sc_names', tpe=StrVec)
         self.register(name='bus_types', tpe=IntVec)
 
         self.register(name='F', tpe=IntVec)
@@ -266,6 +295,16 @@ class ShortCircuitResults(ResultsTemplate):
         self.register(name='loading2', tpe=CxVec)
         self.register(name='losses2', tpe=CxVec)
 
+        self.register(name='SbusN', tpe=CxVec)
+        self.register(name='voltageN', tpe=CxVec)
+        self.register(name='SfN', tpe=CxVec)
+        self.register(name='StN', tpe=CxVec)
+        self.register(name='IfN', tpe=CxVec)
+        self.register(name='ItN', tpe=CxVec)
+        self.register(name='VbranchN', tpe=CxVec)
+        self.register(name='loadingN', tpe=CxVec)
+        self.register(name='lossesN', tpe=CxVec)
+
         self.register(name='SbusA', tpe=CxVec)
         self.register(name='voltageA', tpe=CxVec)
         self.register(name='SfA', tpe=CxVec)
@@ -301,8 +340,13 @@ class ShortCircuitResults(ResultsTemplate):
         self.register(name='hvdc_Pt', tpe=Vec)
         self.register(name='hvdc_loading', tpe=Vec)
 
-        self.register(name='sc_bus_index', tpe=int)
-        self.register(name='sc_type', tpe=FaultType)
+        self.register(name='vsc_If', tpe=Vec)
+        self.register(name='vsc_It', tpe=CxVec)
+        self.register(name='vsc_Pfp', tpe=Vec)
+        self.register(name='vsc_Pfn', tpe=Vec)
+        self.register(name='vsc_St', tpe=CxVec)
+        self.register(name='vsc_losses', tpe=Vec)
+        self.register(name='vsc_loading', tpe=Vec)
 
         self.register(name='SCpower', tpe=CxVec)
         self.register(name='SCpowerA', tpe=CxVec)
@@ -314,7 +358,6 @@ class ShortCircuitResults(ResultsTemplate):
         self.register(name='ICurrentB', tpe=CxVec)
         self.register(name='ICurrentC', tpe=CxVec)
 
-
     @property
     def elapsed(self):
         """
@@ -324,7 +367,8 @@ class ShortCircuitResults(ResultsTemplate):
         val = 0.0
         return val
 
-    def apply_from_island(self, results: "ShortCircuitResults", b_idx: IntVec, br_idx: IntVec):
+    def apply_from_island(self, sc_idx: int, results: "ShortCircuitResults", b_idx: IntVec, br_idx: IntVec,
+                          hvdc_idx: IntVec, vsc_idx: IntVec):
         """
         Apply results from another island circuit to the circuit results represented
         here.
@@ -337,68 +381,91 @@ class ShortCircuitResults(ResultsTemplate):
 
             **elm_idx**: branch original indices
         """
-        self.SCpower[b_idx] = results.SCpower
-        self.ICurrent[b_idx] = results.ICurrent
+        self.SCpower[b_idx, sc_idx] = results.SCpower[:, 0]
+        self.ICurrent[b_idx, sc_idx] = results.ICurrent[:, 0]
 
-        self.Sbus1[b_idx] = results.Sbus1
-        self.voltage1[b_idx] = results.voltage1
-        self.Sf1[br_idx] = results.Sf1
-        self.St1[br_idx] = results.St1
-        self.If1[br_idx] = results.If1
-        self.It1[br_idx] = results.It1
-        self.Vbranch1[br_idx] = results.Vbranch1
-        self.loading1[br_idx] = results.loading1
-        self.losses1[br_idx] = results.losses1
+        self.Sbus1[b_idx, sc_idx] = results.Sbus1[:, 0]
+        self.voltage1[b_idx, sc_idx] = results.voltage1[:, 0]
+        self.Sf1[br_idx, sc_idx] = results.Sf1[:, 0]
+        self.St1[br_idx, sc_idx] = results.St1[:, 0]
+        self.If1[br_idx, sc_idx] = results.If1[:, 0]
+        self.It1[br_idx, sc_idx] = results.It1[:, 0]
+        self.Vbranch1[br_idx, sc_idx] = results.Vbranch1[:, 0]
+        self.loading1[br_idx, sc_idx] = results.loading1[:, 0]
+        self.losses1[br_idx, sc_idx] = results.losses1[:, 0]
 
-        self.Sbus0[b_idx] = results.Sbus0
-        self.voltage0[b_idx] = results.voltage0
-        self.Sf0[br_idx] = results.Sf0
-        self.St0[br_idx] = results.St0
-        self.If0[br_idx] = results.If0
-        self.It0[br_idx] = results.It0
-        self.Vbranch0[br_idx] = results.Vbranch0
-        self.loading0[br_idx] = results.loading0
-        self.losses0[br_idx] = results.losses0
+        self.Sbus0[b_idx, sc_idx] = results.Sbus0[:, 0]
+        self.voltage0[b_idx, sc_idx] = results.voltage0[:, 0]
+        self.Sf0[br_idx, sc_idx] = results.Sf0[:, 0]
+        self.St0[br_idx, sc_idx] = results.St0[:, 0]
+        self.If0[br_idx, sc_idx] = results.If0[:, 0]
+        self.It0[br_idx, sc_idx] = results.It0[:, 0]
+        self.Vbranch0[br_idx, sc_idx] = results.Vbranch0[:, 0]
+        self.loading0[br_idx, sc_idx] = results.loading0[:, 0]
+        self.losses0[br_idx, sc_idx] = results.losses0[:, 0]
 
-        self.Sbus2[b_idx] = results.Sbus2
-        self.voltage2[b_idx] = results.voltage2
-        self.Sf2[br_idx] = results.Sf2
-        self.St2[br_idx] = results.St2
-        self.If2[br_idx] = results.If2
-        self.It2[br_idx] = results.It2
-        self.Vbranch2[br_idx] = results.Vbranch2
-        self.loading2[br_idx] = results.loading2
-        self.losses2[br_idx] = results.losses2
+        self.Sbus2[b_idx, sc_idx] = results.Sbus2[:, 0]
+        self.voltage2[b_idx, sc_idx] = results.voltage2[:, 0]
+        self.Sf2[br_idx, sc_idx] = results.Sf2[:, 0]
+        self.St2[br_idx, sc_idx] = results.St2[:, 0]
+        self.If2[br_idx, sc_idx] = results.If2[:, 0]
+        self.It2[br_idx, sc_idx] = results.It2[:, 0]
+        self.Vbranch2[br_idx, sc_idx] = results.Vbranch2[:, 0]
+        self.loading2[br_idx, sc_idx] = results.loading2[:, 0]
+        self.losses2[br_idx, sc_idx] = results.losses2[:, 0]
 
-        self.SbusA[b_idx] = results.SbusA
-        self.voltageA[b_idx] = results.voltageA
-        self.SfA[br_idx] = results.SfA
-        self.StA[br_idx] = results.StA
-        self.IfA[br_idx] = results.IfA
-        self.ItA[br_idx] = results.ItA
-        self.VbranchA[br_idx] = results.VbranchA
-        self.loadingA[br_idx] = results.loadingA
-        self.lossesA[br_idx] = results.lossesA
+        self.SbusN[b_idx, sc_idx] = results.SbusN[:, 0]
+        self.voltageN[b_idx, sc_idx] = results.voltageN[:, 0]
+        self.SfN[br_idx, sc_idx] = results.SfN[:, 0]
+        self.StN[br_idx, sc_idx] = results.StN[:, 0]
+        self.IfN[br_idx, sc_idx] = results.IfN[:, 0]
+        self.ItN[br_idx, sc_idx] = results.ItN[:, 0]
+        self.VbranchN[br_idx, sc_idx] = results.VbranchN[:, 0]
+        self.loadingN[br_idx, sc_idx] = results.loadingN[:, 0]
+        self.lossesN[br_idx, sc_idx] = results.lossesN[:, 0]
 
-        self.SbusB[b_idx] = results.SbusB
-        self.voltageB[b_idx] = results.voltageB
-        self.SfB[br_idx] = results.SfB
-        self.StB[br_idx] = results.StB
-        self.IfB[br_idx] = results.IfB
-        self.ItB[br_idx] = results.ItB
-        self.VbranchB[br_idx] = results.VbranchB
-        self.loadingB[br_idx] = results.loadingB
-        self.lossesB[br_idx] = results.lossesB
+        self.SbusA[b_idx, sc_idx] = results.SbusA[:, 0]
+        self.voltageA[b_idx, sc_idx] = results.voltageA[:, 0]
+        self.SfA[br_idx, sc_idx] = results.SfA[:, 0]
+        self.StA[br_idx, sc_idx] = results.StA[:, 0]
+        self.IfA[br_idx, sc_idx] = results.IfA[:, 0]
+        self.ItA[br_idx, sc_idx] = results.ItA[:, 0]
+        self.VbranchA[br_idx, sc_idx] = results.VbranchA[:, 0]
+        self.loadingA[br_idx, sc_idx] = results.loadingA[:, 0]
+        self.lossesA[br_idx, sc_idx] = results.lossesA[:, 0]
 
-        self.SbusC[b_idx] = results.SbusC
-        self.voltageC[b_idx] = results.voltageC
-        self.SfC[br_idx] = results.SfC
-        self.StC[br_idx] = results.StC
-        self.IfC[br_idx] = results.IfC
-        self.ItC[br_idx] = results.ItC
-        self.VbranchC[br_idx] = results.VbranchC
-        self.loadingC[br_idx] = results.loadingC
-        self.lossesC[br_idx] = results.lossesC
+        self.SbusB[b_idx, sc_idx] = results.SbusB[:, 0]
+        self.voltageB[b_idx, sc_idx] = results.voltageB[:, 0]
+        self.SfB[br_idx, sc_idx] = results.SfB[:, 0]
+        self.StB[br_idx, sc_idx] = results.StB[:, 0]
+        self.IfB[br_idx, sc_idx] = results.IfB[:, 0]
+        self.ItB[br_idx, sc_idx] = results.ItB[:, 0]
+        self.VbranchB[br_idx, sc_idx] = results.VbranchB[:, 0]
+        self.loadingB[br_idx, sc_idx] = results.loadingB[:, 0]
+        self.lossesB[br_idx, sc_idx] = results.lossesB[:, 0]
+
+        self.SbusC[b_idx, sc_idx] = results.SbusC[:, 0]
+        self.voltageC[b_idx, sc_idx] = results.voltageC[:, 0]
+        self.SfC[br_idx, sc_idx] = results.SfC[:, 0]
+        self.StC[br_idx, sc_idx] = results.StC[:, 0]
+        self.IfC[br_idx, sc_idx] = results.IfC[:, 0]
+        self.ItC[br_idx, sc_idx] = results.ItC[:, 0]
+        self.VbranchC[br_idx, sc_idx] = results.VbranchC[:, 0]
+        self.loadingC[br_idx, sc_idx] = results.loadingC[:, 0]
+        self.lossesC[br_idx, sc_idx] = results.lossesC[:, 0]
+
+        self.hvdc_losses[hvdc_idx, sc_idx] = results.hvdc_losses[:, 0]
+        self.hvdc_Pf[hvdc_idx, sc_idx] = results.hvdc_Pf[:, 0]
+        self.hvdc_Pt[hvdc_idx, sc_idx] = results.hvdc_Pt[:, 0]
+        self.hvdc_loading[hvdc_idx, sc_idx] = results.hvdc_loading[:, 0]
+
+        self.vsc_If[vsc_idx, sc_idx] = results.vsc_If[:, 0]
+        self.vsc_It[vsc_idx, sc_idx] = results.vsc_It[:, 0]
+        self.vsc_Pfp[vsc_idx, sc_idx] = results.vsc_Pfp[:, 0]
+        self.vsc_Pfn[vsc_idx, sc_idx] = results.vsc_Pfn[:, 0]
+        self.vsc_St[vsc_idx, sc_idx] = results.vsc_St[:, 0]
+        self.vsc_losses[vsc_idx, sc_idx] = results.vsc_losses[:, 0]
+        self.vsc_loading[vsc_idx, sc_idx] = results.vsc_loading[:, 0]
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
@@ -407,7 +474,7 @@ class ShortCircuitResults(ResultsTemplate):
         :return:
         """
 
-        columns = np.array([result_type.value])
+        # columns = np.array([result_type.value])
         title = result_type.value
 
         if result_type == ResultTypes.BusShortCircuitActivePower:
@@ -418,7 +485,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -432,7 +499,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -446,7 +513,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -460,7 +527,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -474,7 +541,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -488,7 +555,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -502,7 +569,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -516,7 +583,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -530,7 +597,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -544,7 +611,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -558,7 +625,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -572,7 +639,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -586,7 +653,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -600,7 +667,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -614,7 +681,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -628,7 +695,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -642,7 +709,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -656,7 +723,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -670,7 +737,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -684,7 +751,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -698,7 +765,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -712,7 +779,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -726,7 +793,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -740,7 +807,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -754,7 +821,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -768,7 +835,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -782,7 +849,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -796,7 +863,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -810,7 +877,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -824,7 +891,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -838,7 +905,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -852,7 +919,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -866,7 +933,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -880,7 +947,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -894,7 +961,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -908,7 +975,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -922,7 +989,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -936,7 +1003,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -950,7 +1017,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -964,7 +1031,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -978,7 +1045,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -992,7 +1059,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1006,7 +1073,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1020,7 +1087,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1034,7 +1101,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1048,7 +1115,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1062,7 +1129,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1076,7 +1143,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1090,7 +1157,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1104,7 +1171,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1118,7 +1185,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1132,7 +1199,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1146,7 +1213,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1160,7 +1227,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1174,7 +1241,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1188,7 +1255,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1202,7 +1269,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1216,7 +1283,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1230,7 +1297,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1244,7 +1311,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1258,7 +1325,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1272,7 +1339,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1286,7 +1353,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1300,7 +1367,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1314,7 +1381,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1328,7 +1395,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1342,7 +1409,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1356,7 +1423,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1370,7 +1437,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1384,7 +1451,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BranchDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1398,7 +1465,7 @@ class ShortCircuitResults(ResultsTemplate):
             return ResultsTable(data=y,
                                 index=labels,
                                 idx_device_type=DeviceType.BusDevice,
-                                columns=columns,
+                                columns=self.sc_names,
                                 cols_device_type=DeviceType.NoDevice,
                                 title=title,
                                 ylabel=y_label,
@@ -1407,30 +1474,48 @@ class ShortCircuitResults(ResultsTemplate):
         else:
             raise Exception('Unsupported result type: ' + str(result_type))
 
-    def get_voltage_3ph_df(self):
-        # phase buses results
-        # vm_a = np.abs(self.voltageA)
-        # vm_b = np.abs(self.voltageB)
-        # vm_c = np.abs(self.voltageC)
-        # va_a = np.angle(self.voltageA)
-        # va_b = np.angle(self.voltageB)
-        # va_c = np.angle(self.voltageC)
-        # phases_data = np.c_[vm_a, va_a*(180/np.pi), vm_b, va_b*(180/np.pi), vm_c, va_c*(180/np.pi)]
-        # phases_cols = ['U_mod A [p.u.]',
-        #                'U_ang A [º]',
-        #                'U_mod B [p.u.]',
-        #                'U_ang B [º]',
-        #                'U_mod C [p.u.]',
-        #                'U_ang C [º]',
-        #                ]
-        # df_phases = pd.DataFrame(data=phases_data, columns=phases_cols)
+    def get_voltage_df(self, sc_idx=0) -> pd.DataFrame:
+        """
 
-        return pd.DataFrame(data={'U_mod A [p.u.]': np.abs(self.voltageA),
-                                  'U_ang A [º]': np.angle(self.voltageA, deg=True),
-                                  'U_mod B [p.u.]': np.abs(self.voltageB),
-                                  'U_ang B [º]': np.angle(self.voltageB, deg=True),
-                                  'U_mod C [p.u.]': np.abs(self.voltageC),
-                                  'U_ang C [º]': np.angle(self.voltageC, deg=True)},
+        :param sc_idx:
+        :return:
+        """
+
+        return pd.DataFrame(data={'Um 0 [p.u.]': np.abs(self.voltage0[:, sc_idx]),
+                                  'Ua 0 [º]': np.angle(self.voltage0[:, sc_idx], deg=True),
+                                  'Um 1 [p.u.]': np.abs(self.voltage1[:, sc_idx]),
+                                  'Ua 1 [º]': np.angle(self.voltage1[:, sc_idx], deg=True),
+                                  'Um 2 [p.u.]': np.abs(self.voltage2[:, sc_idx]),
+                                  'Ua 2 [º]': np.angle(self.voltage2[:, sc_idx], deg=True)},
+                            index=self.bus_names)
+
+    def get_current_df(self, sc_idx=0) -> pd.DataFrame:
+        """
+
+        :param sc_idx:
+        :return:
+        """
+
+        return pd.DataFrame(data={'Im 0 [p.u.]': np.abs(self.If0[:, sc_idx]),
+                                  'Ia 0 [º]': np.angle(self.If0[:, sc_idx], deg=True),
+                                  'Im 1 [p.u.]': np.abs(self.If1[:, sc_idx]),
+                                  'Ia 1 [º]': np.angle(self.If1[:, sc_idx], deg=True),
+                                  'Im 2 [p.u.]': np.abs(self.If2[:, sc_idx]),
+                                  'Ia 2 [º]': np.angle(self.If2[:, sc_idx], deg=True)},
+                            index=self.branch_names)
+
+    def get_voltage_3ph_df(self, sc_idx: int = 0) -> pd.DataFrame:
+        """
+
+        :param sc_idx:
+        :return:
+        """
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:, sc_idx]).round(5),
+                                  'Ua A [º]': np.angle(self.voltageA[:, sc_idx], deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltageB[:, sc_idx]).round(5),
+                                  'Ua B [º]': np.angle(self.voltageB[:, sc_idx], deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltageC[:, sc_idx]).round(5),
+                                  'Ua C [º]': np.angle(self.voltageC[:, sc_idx], deg=True).round(1)},
                             index=self.bus_names)
 
     def export_all(self):

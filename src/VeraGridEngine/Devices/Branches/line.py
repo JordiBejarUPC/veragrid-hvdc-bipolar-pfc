@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -70,6 +70,14 @@ class Line(BranchParent):
         'possible_underground_line_types',
         'possible_sequence_line_types',
         '_locations',
+        'Vmf',
+        'Vmt',
+        'Vaf',
+        'Vat',
+        'Pf',
+        'Pt',
+        'Qf',
+        'Qt'
     )
 
     def __init__(self,
@@ -330,6 +338,10 @@ class Line(BranchParent):
 
     @property
     def circuit_idx(self):
+        """
+
+        :return:
+        """
         return self._circuit_idx
 
     @circuit_idx.setter
@@ -440,7 +452,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ys.size == 0:
+        if self._ys.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ys
@@ -458,7 +470,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ysh.size == 0:
+        if self._ysh.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ysh
@@ -469,6 +481,13 @@ class Line(BranchParent):
             self._ysh = val
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
+
+    def assign_input_vars_and_params(self):
+        self.Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+        self.Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+        self.Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+
 
     def change_base(self, Sbase_old: float, Sbase_new: float):
         """
@@ -547,8 +566,8 @@ class Line(BranchParent):
                                          length=self.length,
                                          line_Vnom=self.get_max_bus_nominal_voltage())
 
-            self.ys = obj.get_ys_abc()
-            self.ysh = obj.get_ysh_abc()
+            self.ys = obj.get_ys_nabc()
+            self.ysh = obj.get_ysh_nabc()
 
             self.template = obj
 
@@ -643,8 +662,16 @@ class Line(BranchParent):
 
         return elm
 
-    def fill_design_properties(self, r_ohm: float, x_ohm: float, c_nf: float, length: float,
-                               Imax: float, freq: float, Sbase: float, apply_to_profile: bool = True, ) -> "Line":
+    def fill_design_properties(self,
+                               r_ohm: float,
+                               x_ohm: float,
+                               c_nf: float,
+                               length: float,
+                               Imax: float,
+                               freq: float,
+                               Sbase: float,
+                               apply_to_profile: bool = True,
+                               logger: Logger = Logger()) -> "Line":
         """
         Fill R, X, B from not-in-per-unit parameters
         :param r_ohm: Resistance per km in OHM/km
@@ -655,32 +682,40 @@ class Line(BranchParent):
         :param freq: System frequency in Hz
         :param Sbase: Base power in MVA (take always 100 MVA)
         :param apply_to_profile: modify the ratings profile if checked
+        :param logger: Logger
         :return self pointer
         """
-        self.R, self.X, self.B, new_rate = get_line_impedances_with_c(r_ohm=r_ohm,
-                                                                      x_ohm=x_ohm,
-                                                                      c_nf=c_nf,
-                                                                      length=length,
-                                                                      Imax=Imax,
-                                                                      freq=freq,
-                                                                      Sbase=Sbase,
-                                                                      Vnom=self.get_max_bus_nominal_voltage())
+        Vnom = self.get_max_bus_nominal_voltage()
 
-        old_rate = float(self.rate)
+        if Vnom > 0:
 
-        self.rate = new_rate
-        self._length = length
+            self.R, self.X, self.B, new_rate = get_line_impedances_with_c(r_ohm=r_ohm,
+                                                                          x_ohm=x_ohm,
+                                                                          c_nf=c_nf,
+                                                                          length=length,
+                                                                          Imax=Imax,
+                                                                          freq=freq,
+                                                                          Sbase=Sbase,
+                                                                          Vnom=Vnom,
+                                                                          logger=logger)
 
-        if apply_to_profile:
-            if old_rate != 0.0:
-                prof_old = self.rate_prof.toarray()
-                self.rate_prof.set(prof_old * new_rate / old_rate)
-            else:
-                self.rate_prof.fill(new_rate)
+            old_rate = float(self.rate)
+
+            self.rate = new_rate
+            self._length = length
+
+            if apply_to_profile:
+                if old_rate != 0.0:
+                    prof_old = self.rate_prof.toarray()
+                    self.rate_prof.set(prof_old * new_rate / old_rate)
+                else:
+                    self.rate_prof.fill(new_rate)
+        else:
+            logger.add_error("Nominal voltage is zero", device_class="Line", device=self.name)
 
         return self
 
-    def fill_3_phase_from_sequence(self):
+    def fill_3_phase_from_sequence(self) -> None:
         """
         Fill the 3x3 from the sequence values
         """
@@ -688,41 +723,49 @@ class Line(BranchParent):
             obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0)
         else:
             obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X)
-        self.ys = obj.get_ys_abc()
-        self.ysh = obj.get_ysh_abc()
+        self.ys = obj.get_ys_nabc()
+        self.ysh = obj.get_ysh_nabc()
 
-    def initialize_rms(self):
+    def initialize_rms(self) -> None:
+        """
+
+        :return:
+        """
         if self.rms_model.empty():
-            Qf = Var("Qf" + self.name)
-            Qt = Var("Qt" + self.name)
-            Pf = Var("Pf" + self.name)
-            Pt = Var("Pt" + self.name)
+            Qf = Var("Qf")
+            Qt = Var("Qt")
+            Pf = Var("Pf")
+            Pt = Var("Pt")
 
-            ys = 1.0 / complex(self.R, self.X)
-            g = Const(ys.real)
-            b = Const(ys.imag)
-            bsh = Const(self.B)
+            g = Const((1.0 / complex(self.R, self.X)).real)
+            b = Const((1.0 / complex(self.R, self.X)).imag)
+            bsh =  self.B
 
-            Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
-            Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
-            Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
+            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
-            self.rms_model.model = Block(
-                algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + np.pi / 2)),
-                ],
+            block = Block(
                 algebraic_vars=[Pf, Pt, Qf, Qt],
-                init_eqs={},
-                init_vars=[],
-                parameters=[],
-                external_mapping={
-                    DynamicVarType.Pf: Pf,
-                    DynamicVarType.Pt: Pt,
-                    DynamicVarType.Qf: Qf,
-                    DynamicVarType.Qt: Qt,
-                }
-            )
+                algebraic_eqs=[
+                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
+                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
+                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
+                        Vaf - Vat) + b * Vmf * Vmt * sin(
+                        Vaf - Vat + np.pi / 2)),
+                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
+                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
+                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
+                        Vat - Vaf) + b * Vmt * Vmf * sin(
+                        Vat - Vaf + np.pi / 2)),
+                ])
+
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.Pf: Pf,
+                VarPowerFlowRefferenceType.Pt: Pt,
+                VarPowerFlowRefferenceType.Qf: Qf,
+                VarPowerFlowRefferenceType.Qt: Qt,
+            }
+
+            self.rms_model.model = block

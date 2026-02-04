@@ -5,10 +5,11 @@
 import random
 import uuid
 import numpy as np
+import pandas as pd
 
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,
                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
@@ -17,7 +18,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
-                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod)
+                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode)
 
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
@@ -59,7 +60,8 @@ GCPROP_TYPES = Union[
     Type[ShuntConnectionType],
     Type[BusGraphicType],
     Type[SwitchGraphicType],
-    Type[DynamicIntegrationMethod]
+    Type[DynamicIntegrationMethod],
+    Type[OpfDispatchMode]
 ]
 
 
@@ -309,7 +311,7 @@ class EditableDevice:
 
         # some devices have an auto update of a property when another property changes
         # (i.e. Line's R, X, B when the length changes) this controls that behaviour and disables it during loading
-        self.__auto_update_enabled = False
+        self.__auto_update_enabled = True
 
         self.register(key='idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='name', units='', tpe=str, definition='Name of the device.')
@@ -367,7 +369,8 @@ class EditableDevice:
 
     def __hash__(self) -> int:
         # alternatively, return hash(repr(self))
-        return int(self.idtag, 16)  # hex string to int
+        # return int(self.idtag, 16)  # hex string to int
+        return hash(repr(self))
 
     def __lt__(self, other) -> bool:
         return self.__hash__() < other.__hash__()
@@ -793,7 +796,7 @@ class EditableDevice:
                 # set the profile variable associated with the magnitude
                 setattr(self, self.properties_with_profile[magnitude], val2)
 
-    def create_profile(self, magnitude, index):
+    def create_profile(self, magnitude, index: pd.DatetimeIndex):
         """
         Create power profile based on index
         :param magnitude: name of the property
@@ -802,20 +805,29 @@ class EditableDevice:
         # get the value of the magnitude
         snapshot_value = getattr(self, magnitude)
 
-        prof = self.get_profile(magnitude=magnitude)
+        # get the already existing profile
+        prof: Profile = self.get_profile(magnitude=magnitude)
 
-        prof.create_sparse(size=len(index), default_value=snapshot_value)
+        if prof is None:
+            print("The profile is none, this is a bug!")
+        elif index is pd.NaT:
+            pass
+        else:
+            prof.create_sparse(size=len(index), default_value=snapshot_value)
 
         # set the profile variable associated with the magnitude
-        setattr(self, self.properties_with_profile[magnitude], prof)
+        # setattr(self, self.properties_with_profile[magnitude], prof)
 
-    def ensure_profiles_exist(self, index):
+    def ensure_profiles_exist(self, index: pd.DatetimeIndex, set_profile_default_as_snapshot: bool = False):
         """
         It might be that when loading the VeraGrid Model has properties that the file has not.
         Those properties must be initialized as well
         :param index: Time series index (timestamps)
+        :param set_profile_default_as_snapshot: set the bool default profile value as the snapshot
         """
-        if index is not None:
+        if index is None or index is pd.NaT:
+            raise Exception("ensure_profiles_exist: No index provided")
+        else:
             for magnitude, prof_attr in self.properties_with_profile.items():
 
                 # get the profile
@@ -834,8 +846,10 @@ class EditableDevice:
                     # print(self.name, ': created profile for ' + prof_attr)
                     self.create_profile(magnitude=magnitude, index=index)
 
-        else:
-            raise Exception("ensure_profiles_exist: No index provided")
+                if set_profile_default_as_snapshot:
+                    prop = self.registered_properties[magnitude]
+                    val = getattr(self, magnitude)
+                    profile.default_value = val
 
     def delete_profiles(self):
         """
@@ -843,6 +857,14 @@ class EditableDevice:
         """
         for magnitude in self.properties_with_profile.keys():
             self.get_profile(magnitude=magnitude).clear()
+
+    def resample_profiles(self, indices: IntVec):
+        """
+        re-sample the object profiles (set all to None)
+        """
+        for magnitude in self.properties_with_profile.keys():
+            prof = self.get_profile(magnitude=magnitude)
+            prof.resample(indices=indices)
 
     def set_profile_values(self, t):
         """

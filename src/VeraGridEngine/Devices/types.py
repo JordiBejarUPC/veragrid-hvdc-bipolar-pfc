@@ -12,6 +12,7 @@ from VeraGridEngine.Devices.Substation import *
 from VeraGridEngine.Devices.Fluid import *
 from VeraGridEngine.Devices.measurement import *
 from VeraGridEngine.Devices.Dynamic import *
+from VeraGridEngine.Templates.Rms import *
 
 INJECTION_DEVICE_TYPES = Union[
     Generator,
@@ -109,6 +110,7 @@ ALL_DEV_TYPES = Union[
     RemedialAction,
     RemedialActionGroup,
     Technology,
+    Owner,
     UndergroundLineType,
     SequenceLineType,
     RmsModelTemplate
@@ -116,7 +118,9 @@ ALL_DEV_TYPES = Union[
 
 CONNECTION_TYPE = Union[Bus, None]
 
-ASSOCIATION_TYPES = Union[Fuel, Technology, EmissionGas]
+ASSOCIATION_TYPES = Union[Fuel, Technology, EmissionGas, Owner]
 
 # this is the data type of the VeraGrid Json
 VERAGRID_FILE_TYPE = Dict[str, Union[str, float, pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]]]
+
+# ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, Line_1_RmsTemplate, Generator_1_RmsTemplate, Line_0_RmsTemplate, Generator_0_RmsTemplate]

@@ -105,29 +105,25 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         if self.options.solver == SolverType.LINEAR_OPF:
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=self.time_indices,
+                dispatch_mode=self.options.dispatch_mode,
                 solver_type=self.options.mip_solver,
                 zonal_grouping=self.options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
                 contingency_groups_used=self.grid.contingency_groups,
-                unit_commitment=self.options.unit_commitment,
                 ramp_constraints=self.options.consider_ramps,
                 consider_time_up_down=self.options.consider_time_up_down,
                 area_spinning_reserve=self.options.area_spinning_reserve,
-                generation_expansion_planning=self.options.generation_expansion_planning,
-                all_generators_fixed=False,
                 lodf_threshold=self.options.lodf_tolerance,
-                maximize_inter_area_flow=self.options.maximize_flows,
                 inter_aggregation_info=self.options.inter_aggregation_info,
                 use_glsk_as_cost=self.options.use_glsk_as_cost,
                 add_losses_approximation=self.options.add_losses_approximation,
                 logger=self.logger,
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -160,7 +156,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.results.losses = opf_vars.branch_vars.losses
 
             self.results.loading = opf_vars.branch_vars.loading
-            self.results.phase_shift = opf_vars.branch_vars.tap_angles
+            self.results.tap_angle = opf_vars.branch_vars.tap_angles
 
             self.results.hvdc_Pf = opf_vars.hvdc_vars.flows
             self.results.hvdc_loading = opf_vars.hvdc_vars.loading
@@ -184,6 +180,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             # set converged for all t to the value of acceptable solution
             self.results.converged = np.array([opf_vars.acceptable_solution] * opf_vars.nt)
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.NONLINEAR_OPF:
 
@@ -222,7 +221,8 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.St[it, :] = res.St * Sbase
                 self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
                 self.results.loading[it, :] = res.loading
-                self.results.phase_shift[it, :] = res.tap_phase
+                self.results.tap_angle[it, :] = res.tap_phase
+                self.results.tap_module[it, :] = res.tap_module
 
                 self.results.hvdc_Pf[it, :] = res.hvdc_Pf
                 self.results.hvdc_loading[it, :] = res.hvdc_loading
@@ -299,7 +299,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 time_indices = np.arange(start_, end_)
 
             # show progress message
-            print(start_, ':', end_, ' [', end_ - start_, ']')
+            msg = f"Group {i} -> {start_} : {end_} [{end_ - start_}]"
+            if self.options.verbose > 0:
+                print(msg)
+
             self.report_text('Running OPF for the time group {0} '
                              'start {1} - end {2} in external solver...'.format(i, start_, end_))
 
@@ -307,29 +310,25 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 # run an opf for the group interval only if the group is within the start:end boundaries
                 # DC optimal power flow
-                opf_vars = run_linear_opf_ts(
+                opf_vars, model = run_linear_opf_ts(
                     grid=self.grid,
                     time_indices=time_indices,
+                    dispatch_mode=self.options.dispatch_mode,
                     solver_type=self.options.mip_solver,
                     zonal_grouping=self.options.zonal_grouping,
                     skip_generation_limits=self.options.skip_generation_limits,
                     consider_contingencies=self.options.consider_contingencies,
                     contingency_groups_used=self.options.contingency_groups_used,
-                    unit_commitment=self.options.unit_commitment,
                     ramp_constraints=self.options.consider_ramps,
                     consider_time_up_down=self.options.consider_time_up_down,
                     area_spinning_reserve=self.options.area_spinning_reserve,
-                    generation_expansion_planning=self.options.generation_expansion_planning,
-                    all_generators_fixed=False,
                     lodf_threshold=self.options.lodf_tolerance,
-                    maximize_inter_area_flow=self.options.maximize_flows,
                     inter_aggregation_info=self.options.inter_aggregation_info,
                     energy_0=energy_0,
                     fluid_level_0=fluid_level_0,
                     use_glsk_as_cost=self.options.use_glsk_as_cost,
                     add_losses_approximation=self.options.add_losses_approximation,
                     logger=self.logger,
-                    export_model_fname=self.options.export_model_fname,
                     verbose=self.options.verbose,
                     robust=self.options.robust,
                     mip_framework=self.options.mip_framework
@@ -361,7 +360,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.losses[time_indices, :] = opf_vars.branch_vars.losses
 
                 self.results.loading[time_indices, :] = opf_vars.branch_vars.loading
-                self.results.phase_shift[time_indices, :] = opf_vars.branch_vars.tap_angles
+                self.results.tap_angle[time_indices, :] = opf_vars.branch_vars.tap_angles
 
                 self.results.hvdc_Pf[time_indices, :] = opf_vars.hvdc_vars.flows
                 self.results.hvdc_loading[time_indices, :] = opf_vars.hvdc_vars.loading
@@ -388,6 +387,9 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 energy_0 = self.results.battery_energy[end_ - 1, :]
                 fluid_level_0 = self.results.fluid_node_current_level[end_ - 1, :]
+
+                if self.options.report_formulation:
+                    self.results.report_text = f"## {msg}\n\n" + model.model_as_string()
 
             elif self.options.solver == SolverType.NONLINEAR_OPF:
 
@@ -424,7 +426,8 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                     self.results.St[it, :] = res.St * Sbase
                     self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
                     self.results.loading[it, :] = res.loading
-                    self.results.phase_shift[it, :] = res.tap_phase
+                    self.results.tap_angle[it, :] = res.tap_phase
+                    self.results.tap_module[it, :] = res.tap_module
 
                     self.results.hvdc_Pf[it, :] = res.hvdc_Pf
                     self.results.hvdc_loading[it, :] = res.hvdc_loading
@@ -570,7 +573,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.results.St[ti, :] = -npa_res.branch_flows
                 self.results.overloads[ti, :] = npa_res.branch_overloads
                 self.results.loading[ti, :] = npa_res.branch_loading
-                self.results.phase_shift[ti, :] = npa_res.branch_tap_angle
+                self.results.tap_angle[ti, :] = npa_res.branch_tap_angle
 
                 # self.results.Sbus[ti, :] = problem.get_power_injections()
                 self.results.hvdc_Pf[ti, :] = npa_res.hvdc_flows

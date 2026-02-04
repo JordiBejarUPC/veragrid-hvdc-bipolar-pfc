@@ -64,6 +64,8 @@ class ResultsTemplate:
         """
         self.name: str = name
 
+        self.report_text: str = ""
+
         self.study_results_type: StudyResultsType = study_results_type
 
         self.available_results: Dict[ResultTypes, List[ResultTypes]] = available_results
@@ -99,6 +101,10 @@ class ResultsTemplate:
 
     @property
     def data_variables(self):
+        """
+
+        :return:
+        """
         return self._data_variables
 
     @property
@@ -511,24 +517,4 @@ class ResultsTemplate:
                     setattr(self, res_prop.name, array)
 
 
-class DriverToSave:
-    """
-    Wrapper to save a driver
-    """
 
-    def __init__(self,
-                 name: str,
-                 tpe: SimulationTypes,
-                 results: ResultsTemplate,
-                 logger: Logger):
-        """
-
-        :param name:
-        :param tpe:
-        :param results:
-        :param logger:
-        """
-        self.name = name
-        self.tpe = tpe
-        self.results = results
-        self.logger = logger

@@ -5,7 +5,6 @@
 from __future__ import annotations
 from typing import Union, TYPE_CHECKING, Dict, Callable, List
 from PySide6.QtCore import QPointF
-from PySide6.QtGui import QBrush
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_segment import MapLineSegment
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
@@ -41,17 +40,34 @@ class NodeTemplate(GenericDiagramWidget):
                                       editor=editor,
                                       draw_labels=draw_labels)
 
-        self.lat = lat
-        self.lon = lon
+        self._lat = lat
+        self._lon = lon
 
         self.hovered = False
         self.needsUpdate = False
 
         self._hosting_connections: Dict[MapLineSegment, Callable[[float, float], None]] = dict()
 
+    @property
+    def lat(self):
+        return self._lat
+
+    @lat.setter
+    def lat(self, val: float):
+        self._lat = val
+
+    @property
+    def lon(self):
+        return self._lon
+
+    @lon.setter
+    def lon(self, val: float):
+        self._lon = val
+
     def add_position_change_callback(self, obj: MapLineSegment, fcn: Callable[[float, float], None]):
         """
         Add callable function
+        :param obj:
         :param fcn: Function that accepts two floats (x, y) to update the positions
         :return:
         """
@@ -79,14 +95,6 @@ class NodeTemplate(GenericDiagramWidget):
         :return:
         """
         return QPointF(0, 0)
-
-    def setBrush(self, brush: QBrush):
-        """
-        Dummy placeholder function
-        :param brush:
-        :return:
-        """
-        pass
 
     def delete_hosting_connection(self, graphic_obj: MapLineSegment):
         """

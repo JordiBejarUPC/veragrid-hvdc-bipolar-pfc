@@ -76,7 +76,7 @@ def get_veragrid_bus(psse_bus: RawBus,
                       Vm0=psse_bus.VM,
                       Va0=np.deg2rad(psse_bus.VA))
 
-        if psse_bus.GL > 0 or psse_bus.BL > 0:
+        if psse_bus.GL != 0 or psse_bus.BL != 0:
             sh = dev.Shunt(name='Shunt_' + str(psse_bus.I),
                            G=psse_bus.GL, B=psse_bus.BL,
                            active=True)
@@ -279,6 +279,18 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
     """
     name = str(psse_elm.I) + '_' + str(psse_elm.ID).replace("'", "")
 
+    is_controlled = True
+    if psse_elm.WMOD == 0:
+        is_controlled = True
+    elif psse_elm.WMOD == 1:
+        is_controlled = True
+    elif psse_elm.WMOD == 2:
+        is_controlled = False
+    elif psse_elm.WMOD == 3:
+        is_controlled = False
+    else:
+        pass
+
     elm = dev.Generator(name=name,
                         idtag=None,
                         code=name,
@@ -290,6 +302,7 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
                         Pmax=psse_elm.PT,
                         Pmin=psse_elm.PB,
                         active=bool(psse_elm.STAT),
+                        is_controlled=is_controlled,
                         power_factor=psse_elm.WPF if psse_elm.WPF is not None else 0.8)
 
     if psse_elm.IREG > 0:

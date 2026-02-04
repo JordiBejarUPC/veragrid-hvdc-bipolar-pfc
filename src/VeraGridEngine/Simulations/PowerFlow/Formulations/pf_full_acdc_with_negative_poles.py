@@ -12,6 +12,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 import VeraGridEngine.Simulations.Derivatives.csc_derivatives as deriv
+from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSbus_dV_with_I0_numba_sparse_csc
 from VeraGridEngine.Utils.NumericalMethods.common import find_closest_number, make_complex
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, CxCSC, scipy_to_mat, sp_slice, csc_stack_2d_ff)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_for_generalized_method,
@@ -44,6 +45,7 @@ def adv_jacobian(nbus: int,
                  V: CxVec,
                  Vm: Vec,
                  Va: Vec,
+                 I0: CxVec,
 
                  # Controllable Branch Indices
                  u_cbr_m: IntVec,
@@ -59,6 +61,7 @@ def adv_jacobian(nbus: int,
                  u_vsc_pfn: IntVec,
                  u_vsc_pt: IntVec,
                  u_vsc_qt: IntVec,
+                 k_vsc_has_dc_n: IntVec,
 
                  k_vsc_imax: IntVec,
 
@@ -114,6 +117,7 @@ def adv_jacobian(nbus: int,
     :param V:
     :param Vm:
     :param Va:
+    :param I0: Current injections vector (for Norton equivalent in short-circuit)
     :param u_cbr_m:
     :param u_cbr_tau:
     :param k_cbr_pf:
@@ -153,11 +157,12 @@ def adv_jacobian(nbus: int,
     tap = polar_to_rect(tap_modules, tap_angles)
 
     # -------- ROW 1 + ROW 2 (Sbus) ---------
-    # bus-bus derivatives (always needed)
-    dSy_dVm_x, dSy_dVa_x = deriv.dSbus_dV_numba_sparse_csc(Yx, Yp, Yi, V, Vm)
+    # bus-bus derivatives (including I0 Norton current contribution)
+    dSy_dVm_x, dSy_dVa_x = dSbus_dV_with_I0_numba_sparse_csc(Yx, Yp, Yi, V, Vm, I0)
     dS_dVm = CxCSC(nbus, nbus, len(dSy_dVm_x), False).set(Yi, Yp, dSy_dVm_x)
     dS_dVa = CxCSC(nbus, nbus, len(dSy_dVa_x), False).set(Yi, Yp, dSy_dVa_x)
 
+    nvsc_has_dc_n = len(k_vsc_has_dc_n)
     nvsc_imax = len(k_vsc_imax)
     hvdc_range = np.arange(nhvdc)
 
@@ -204,18 +209,18 @@ def adv_jacobian(nbus: int,
     dLvsc_dtau = CSC(nvsc, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 4 (current balance VSCs) ---------
-    dIvsc_dVa = CSC(nvsc, len(i_u_va), 0, False)  # fully empty
-    dIvsc_dVm = deriv.dIvsc_dVm_csc(nvsc, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
-    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(nvsc, u_vsc_pfp, Vm, Fdcn_vsc)
-    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(nvsc, u_vsc_pfn, Vm, Fdcp_vsc)
-    dIvsc_dPtvsc = CSC(nvsc, len(u_vsc_pt), 0, False)  # fully empty
-    dIvsc_dQtvsc = CSC(nvsc, len(u_vsc_qt), 0, False)  # fully empty
-    dIvsc_dPfhvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dPthvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dQfhvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dQthvdc = CSC(nvsc, nhvdc, 0, False)  # fully empty
-    dIvsc_dm = CSC(nvsc, len(u_cbr_m), 0, False)  # fully empty
-    dIvsc_dtau = CSC(nvsc, len(u_cbr_tau), 0, False)  # fully empty
+    dIvsc_dVa = CSC(nvsc_has_dc_n, len(i_u_va), 0, False)  # fully empty
+    dIvsc_dVm = deriv.dIvsc_dVm_csc(k_vsc_has_dc_n, nbus, i_u_vm, Pfp_vsc, Pfn_vsc, Fdcp_vsc, Fdcn_vsc)
+    dIvsc_dPfpvsc = deriv.dIvsc_dPfpvsc_csc(k_vsc_has_dc_n, u_vsc_pfp, Vm, Fdcn_vsc)
+    dIvsc_dPfnvsc = deriv.dIvsc_dPfnvsc_csc(k_vsc_has_dc_n, u_vsc_pfn, Vm, Fdcp_vsc)
+    dIvsc_dPtvsc = CSC(nvsc_has_dc_n, len(u_vsc_pt), 0, False)  # fully empty
+    dIvsc_dQtvsc = CSC(nvsc_has_dc_n, len(u_vsc_qt), 0, False)  # fully empty
+    dIvsc_dPfhvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dPthvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dQfhvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dQthvdc = CSC(nvsc_has_dc_n, nhvdc, 0, False)  # fully empty
+    dIvsc_dm = CSC(nvsc_has_dc_n, len(u_cbr_m), 0, False)  # fully empty
+    dIvsc_dtau = CSC(nvsc_has_dc_n, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 5 (max current VSCs) ---------
     dImax_dVa = CSC(nvsc_imax, len(i_u_va), 0, False)  # fully empty
@@ -479,7 +484,10 @@ def calc_flows_summation_per_bus(nbus: int,
     # Add VSC with its 3 terminals
     for i in range(len(Fdcp_vsc)):
         res[Fdcp_vsc[i]] += Pfp_vsc[i]
-        res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
+        if Fdcn_vsc[i] > -1:
+            res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
         res[T_vsc[i]] += St_vsc[i]
 
     return res
@@ -518,7 +526,10 @@ def calc_flows_active_branch_per_bus(nbus: int,
     # Add VSC
     for i in range(len(Fdcp_vsc)):
         res[Fdcp_vsc[i]] += Pfp_vsc[i]
-        res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
+        if Fdcn_vsc[i] > -1:
+            res[Fdcn_vsc[i]] += Pfn_vsc[i]
+
         res[T_vsc[i]] += St_vsc[i]
 
     return res
@@ -578,7 +589,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         self.S0: CxVec = S0
         self.I0: CxVec = I0
-        self.Y0: CxVec = Y0
+        # We move Y0 to Ybus diagonal to improve convergence, so self.Y0 set to zeros
+        self.Y0: CxVec = np.zeros_like(Y0)
 
         self.Qmin = Qmin
         self.Qmax = Qmax
@@ -624,6 +636,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_pt_set = np.zeros(0, dtype=float)
         self.vsc_qt_set = np.zeros(0, dtype=float)
         self.vsc_i_set = np.zeros(0, dtype=float)
+        self.k_vsc_has_dc_n = np.zeros(0, dtype=int)
         self._set_vsc_control_indices()
 
         # Fill HVDC Indices
@@ -669,7 +682,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             tap_angle=expand(self.nc.nbr, self.tau, self.u_cbr_tau, 0.0),
             F=self.nc.passive_branch_data.F,
             T=self.nc.passive_branch_data.T,
-            Yshunt_bus=self.nc.get_Yshunt_bus_pu(),
+            Yshunt_bus=self.nc.get_Yshunt_bus_pu() + Y0,
         )
         self.adm.initialize_update()  # allows mega fast matrix updates
 
@@ -812,9 +825,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         vsc_pt_set = list()
         vsc_qt_set = list()
         vsc_i_set = list()
+        k_vsc_has_dc_n = list()
 
         # VSC LOOP
         for k in range(self.nc.vsc_data.nelm):
+
+            if self.nc.vsc_data.F_dcn[k] > -1:
+                k_vsc_has_dc_n.append(k)
 
             control1 = self.nc.vsc_data.control1[k]
             control2 = self.nc.vsc_data.control2[k]
@@ -851,7 +868,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -861,7 +880,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -874,7 +895,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_pt.append(control2_branch_device)
 
                     k_vsc_qt.append(control2_branch_device)
@@ -892,7 +915,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
-                    u_vsc_pfn.append(control2_branch_device)
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
 
                     k_vsc_pfp.append(control2_branch_device)
 
@@ -907,7 +931,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
+
                     u_vsc_qt.append(control2_branch_device)
 
                     k_vsc_pt.append(control2_branch_device)
@@ -923,7 +950,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
+
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
@@ -937,7 +967,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -952,7 +984,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -965,7 +999,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_pt.append(control2_branch_device)
 
                     k_vsc_qt.append(control2_branch_device)
@@ -981,7 +1017,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_branch_device > -1:
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
 
                     k_vsc_pfp.append(control2_branch_device)
                     vsc_pfp_set.append(control2_magnitude)
@@ -995,7 +1033,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
                     k_vsc_pt.append(control2_branch_device)
@@ -1010,7 +1050,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
@@ -1024,7 +1066,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -1034,7 +1078,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 u_vsc_pfp.append(k)
-                u_vsc_pfn.append(k)
+
+                if self.nc.vsc_data.F_dcn[k] > -1:
+                    u_vsc_pfn.append(k)
                 u_vsc_pt.append(k)
                 u_vsc_qt.append(k)
 
@@ -1052,7 +1098,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_pt.append(control2_branch_device)
 
                     k_vsc_qt.append(control2_branch_device)
@@ -1068,7 +1116,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control2_branch_device > -1:
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
 
                     k_vsc_pfp.append(control2_branch_device)
                     vsc_pfp_set.append(control2_magnitude)
@@ -1082,7 +1132,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
                     k_vsc_pt.append(control2_branch_device)
@@ -1097,7 +1149,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     pass
                 if control2_branch_device > -1:
                     u_vsc_pfp.append(control2_branch_device)
-                    u_vsc_pfn.append(control2_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control2_branch_device)
                     u_vsc_pt.append(control2_branch_device)
                     u_vsc_qt.append(control2_branch_device)
 
@@ -1105,13 +1159,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
                     vsc_i_set.append(control2_magnitude)
 
-
             elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Vm_dc:
                 if control2_bus_device > -1:
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_pt.append(control1_branch_device)
 
                     k_vsc_qt.append(control1_branch_device)
@@ -1122,7 +1177,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_pt.append(control1_branch_device)
 
                     k_vsc_qt.append(control1_branch_device)
@@ -1133,7 +1190,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     self.is_va_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_pt.append(control1_branch_device)
 
                     k_vsc_qt.append(control1_branch_device)
@@ -1146,7 +1206,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
             elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Pdc:
                 if control1_branch_device > -1:
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_pt.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
@@ -1158,7 +1220,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Pac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
 
@@ -1169,7 +1233,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Qac and control2 == ConverterControlType.Imax:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_pt.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
                     vsc_qt_set.append(control1_magnitude)
@@ -1184,7 +1250,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1195,7 +1263,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1206,7 +1276,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1214,7 +1286,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Pdc and control2 == ConverterControlType.Qac:
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1232,7 +1306,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1244,7 +1320,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if control1_branch_device > -1:
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
                     vsc_pfp_set.append(control1_magnitude)
@@ -1258,7 +1336,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_pt.append(control1_branch_device)
@@ -1269,19 +1349,22 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     self.is_vm_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_pt.append(control1_branch_device)
                     vsc_pt_set.append(control1_magnitude)
-
 
             elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Va_ac:
                 if control2_bus_device > -1:
                     self.is_va_controlled[control2_bus_device] = True
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_pt.append(control1_branch_device)
@@ -1290,7 +1373,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Qac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
 
                     k_vsc_pt.append(control1_branch_device)
                     k_vsc_qt.append(control1_branch_device)
@@ -1299,7 +1384,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
             elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Pdc:
                 if control1_branch_device > -1:
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_pfp.append(control1_branch_device)
@@ -1316,7 +1404,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Pac and control2 == ConverterControlType.Imax:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_pt.append(control1_branch_device)
@@ -1329,7 +1419,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Vm_dc:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
@@ -1342,7 +1435,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Vm_ac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
@@ -1355,7 +1450,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Va_ac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
@@ -1368,7 +1466,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Qac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_pt.append(control1_branch_device)
 
                     k_vsc_i.append(control1_branch_device)
@@ -1380,7 +1481,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Pdc:
                 if control1_branch_device > -1:
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_pt.append(control1_branch_device)
                     u_vsc_qt.append(control1_branch_device)
 
@@ -1394,7 +1498,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             elif control1 == ConverterControlType.Imax and control2 == ConverterControlType.Pac:
                 if control1_branch_device > -1:
                     u_vsc_pfp.append(control1_branch_device)
-                    u_vsc_pfn.append(control1_branch_device)
+
+                    if self.nc.vsc_data.F_dcn[k] > -1:
+                        u_vsc_pfn.append(control1_branch_device)
+
                     u_vsc_qt.append(control1_branch_device)
 
                     k_vsc_i.append(control1_branch_device)
@@ -1409,8 +1516,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
 
-
-        # self.vsc = np.array(vsc, dtype=int)
+        # Fill arrays
         self.u_vsc_pfp = np.array(u_vsc_pfp, dtype=int)
         self.u_vsc_pfn = np.array(u_vsc_pfn, dtype=int)
         self.u_vsc_pt = np.array(u_vsc_pt, dtype=int)
@@ -1420,6 +1526,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.k_vsc_pt = np.array(k_vsc_pt, dtype=int)
         self.k_vsc_qt = np.array(k_vsc_qt, dtype=int)
         self.k_vsc_i = np.array(k_vsc_i, dtype=int)
+        self.k_vsc_has_dc_n = np.array(k_vsc_has_dc_n, dtype=int)
         self.vsc_pfp_set = np.array(vsc_pfp_set, dtype=float)
         self.vsc_pfn_set = np.array(vsc_pfn_set, dtype=float)
         self.vsc_pt_set = np.array(vsc_pt_set, dtype=float)
@@ -1604,7 +1711,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tm[2] = time.time()
 
         V = polar_to_rect(Vm_, Va_)
-        Sbus = compute_zip_power(self.S0, self.I0, self.Y0, Vm_)
+
+        # Use V instead of Vm (not a device-centered axis). Thus avoid compute_zip_power()
+        # We add self.Y0 despite it being zero
+        Sbus = self.S0 + V * np.conj(self.I0) + V * np.conj(V) * np.conj(self.Y0)
         Scalc_passive = compute_power(adm_.Ybus, V)
 
         Pf_cbr = calcSf(k=self.k_cbr_pf,
@@ -1673,7 +1783,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         St_vsc = make_complex(Pt_vsc_, Qt_vsc_)
 
         # Add the 2nd equation per VSC
-        balance_vsc = Pfp_vsc_ * Vm_[self.nc.vsc_data.F_dcn] + Pfn_vsc_ * Vm_[self.nc.vsc_data.F]
+        balance_vsc = (Pfp_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F_dcn[self.k_vsc_has_dc_n]] +
+                       Pfn_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F[self.k_vsc_has_dc_n]])
 
         # Add the 3rd equation per VSC
         current_vsc = It**2 - Imax_vsc**2
@@ -1759,6 +1870,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.adm = adm_
             self._f = f_
 
+        if self.options.verbose > 1:
+            print('residual = \n', f_)
+
         return f_
 
     def check_error(self, x: Vec) -> Tuple[float, Vec]:
@@ -1790,6 +1904,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self._f = self.compute_f(x, update_class_vars=True)
 
         self._error = compute_fx_error(self._f)
+        # print('error = ', self._error)
 
         # Update controls only below a certain error
         if update_controls and self._error < self._controls_tol:
@@ -1922,7 +2037,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     It_i = np.sqrt(self.Pt_vsc[i]**2 + self.Qt_vsc[i]**2) / self.Vm[self.nc.vsc_data.T[i]]
                     Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
-                    print(f"Josep current: {It_i}, Imax: {Imax}")
+                    # print(f"Josep current: {It_i}, Imax: {Imax}")
 
                     if (It_i > Imax
                         and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
@@ -2002,7 +2117,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                             raise ValueError(f"Unfound control type when switching to current limiting: "
                                              f"{self.nc.vsc_data.control1[i]}")
 
-                        print(It_i, Imax)
+                        # print(It_i, Imax)
 
 
                         # Potentially add new conditionals, mainly for the 2nd iteration once saturated
@@ -2037,7 +2152,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                             raise ValueError(f"Unfound control type when switching to current limiting: "
                                              f"{self.nc.vsc_data.control1[i]}")
 
-                    print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
+                    # print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
                     print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
 
             if branch_ctrl_change:
@@ -2180,7 +2295,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                      + self.nc.vsc_data.alpha1)
 
         loss_vsc = PLoss_IEC - self.Pt_vsc - self.Pfp_vsc - self.Pfn_vsc
-        balance_vsc = self.Pfp_vsc * self.Vm[F_dcn] + self.Pfn_vsc * self.Vm[F]
+        balance_vsc = (self.Pfp_vsc[self.k_vsc_has_dc_n] * self.Vm[F_dcn[self.k_vsc_has_dc_n]] +
+                       self.Pfn_vsc[self.k_vsc_has_dc_n] * self.Vm[F[self.k_vsc_has_dc_n]])
 
         current_vsc = It**2 - Imax_vsc**2
 
@@ -2284,6 +2400,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 V=self.V,
                 Vm=self.Vm,
                 Va=self.Va,
+                I0=self.I0,
 
                 # Controllable Branch Indices
                 u_cbr_m=self.u_cbr_m,
@@ -2299,7 +2416,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 u_vsc_pfn=self.u_vsc_pfn,
                 u_vsc_pt=self.u_vsc_pt,
                 u_vsc_qt=self.u_vsc_qt,
-
+                k_vsc_has_dc_n=self.k_vsc_has_dc_n,
                 k_vsc_imax=self.k_vsc_i,
 
                 # VSC Params
@@ -2408,13 +2525,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         loading = Sf / (self.nc.passive_branch_data.rates + 1e-9)
 
         # VSC ----------------------------------------------------------------------------------------------------------
-        Pf_vsc = self.Pfp_vsc * self.nc.Sbase
+        Pfp_vsc = self.Pfp_vsc * self.nc.Sbase
+        Pfn_vsc = self.Pfn_vsc * self.nc.Sbase
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase
         If_vsc = self.Pfp_vsc / self.Vm[self.nc.vsc_data.F]
         It_vsc = St_vsc / self.Vm[self.nc.vsc_data.T]
-        loading_vsc = np.abs(St_vsc) / (self.nc.vsc_data.rates + 1e-20)
+        Uac_vsc = self.V[self.nc.vsc_data.T]
+        loading_vsc = np.abs(make_complex(self.Pt_vsc, self.Qt_vsc) / Uac_vsc + 1e-20) / (self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Pfp_vsc + self.Pfn_vsc) * self.nc.Sbase
-        # losses_vsc = Pf_vsc + St_vsc.real
 
         # HVDC ---------------------------------------------------------------------------------------------------------
         Sf_hvdc = make_complex(self.Pf_hvdc, self.Qf_hvdc) * self.nc.Sbase
@@ -2438,8 +2556,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Fdcp_vsc=self.nc.vsc_data.F,
             Fdcn_vsc=self.nc.vsc_data.F_dcn,
             T_vsc=self.nc.vsc_data.T,
-            Pfp_vsc=self.Pfp_vsc,
-            Pfn_vsc=self.Pfn_vsc,
+            Pfp_vsc=Pfp_vsc,
+            Pfn_vsc=Pfn_vsc,
             St_vsc=St_vsc
         )
 
@@ -2447,6 +2565,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tau2 = self.nc.active_branch_data.tap_angle.copy()
         m2[self.u_cbr_m] = self.m
         tau2[self.u_cbr_tau] = self.tau
+
+        print('\nConverged?', self.converged, '\n')
 
         return NumericPowerFlowResults(
             V=self.V,
@@ -2459,7 +2579,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             It=It,
             loading=loading,
             losses=losses,
-            Pf_vsc=Pf_vsc,
+            Pfp_vsc=Pfp_vsc,
+            Pfn_vsc=Pfn_vsc,
             St_vsc=St_vsc,
             If_vsc=If_vsc,
             It_vsc=It_vsc,

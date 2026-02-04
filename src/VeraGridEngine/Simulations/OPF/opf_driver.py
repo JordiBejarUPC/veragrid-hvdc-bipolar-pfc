@@ -129,28 +129,25 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.report_text('Formulating problem...')
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=None,
+                dispatch_mode=self.options.dispatch_mode,
                 solver_type=self.options.mip_solver,
                 zonal_grouping=self.options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
                 contingency_groups_used=self.options.contingency_groups_used,
-                unit_commitment=self.options.unit_commitment,
                 ramp_constraints=False,
-                consider_time_up_down = False,
-                area_spinning_reserve = False,
-                all_generators_fixed=False,
+                consider_time_up_down=False,
+                area_spinning_reserve=False,
                 lodf_threshold=self.options.lodf_tolerance,
-                maximize_inter_area_flow=self.options.maximize_flows,
                 inter_aggregation_info=self.options.inter_aggregation_info,
                 energy_0=None,
                 fluid_level_0=None,
                 use_glsk_as_cost=self.options.use_glsk_as_cost,
                 add_losses_approximation=self.options.add_losses_approximation,
                 logger=self.logger,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -166,13 +163,14 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             # self.results.battery_energy = opf_vars.batt_vars.e[0, :]
 
             self.results.generator_power = opf_vars.gen_vars.p[0, :]
+            self.results.generator_shedding = opf_vars.gen_vars.shedding[0, :]
 
             self.results.Sf = opf_vars.branch_vars.flows[0, :]
             self.results.St = -opf_vars.branch_vars.flows[0, :]
             self.results.overloads = (opf_vars.branch_vars.flow_slacks_pos[0, :]
                                       - opf_vars.branch_vars.flow_slacks_neg[0, :])
             self.results.loading = opf_vars.branch_vars.loading[0, :]
-            self.results.phase_shift = opf_vars.branch_vars.tap_angles[0, :]
+            self.results.tap_angle = opf_vars.branch_vars.tap_angles[0, :]
             self.results.losses = opf_vars.branch_vars.losses[0, :]
 
             # self.results.Sbus = problem.get_power_injections()[0, :]
@@ -190,6 +188,9 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out[0, :]
             self.results.fluid_path_flow = opf_vars.fluid_path_vars.flow[0, :]
             self.results.fluid_injection_flow = opf_vars.fluid_inject_vars.flow[0, :]
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.GREEDY_DISPATCH_OPF:
 
@@ -266,7 +267,8 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.overloads = (res.sl_sf - res.sl_st) * Sbase
             self.results.loading = res.loading
             self.results.losses = (self.results.Sf.real + self.results.St.real)
-            self.results.phase_shift = res.tap_phase
+            self.results.tap_angle = res.tap_phase
+            self.results.tap_module = res.tap_module
 
             self.results.hvdc_Pf = res.hvdc_Pf
             self.results.hvdc_loading = res.hvdc_loading
@@ -323,7 +325,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.results.St = -npa_res.branch_flows[0, :]
                 self.results.overloads = npa_res.branch_overloads[0, :]
                 self.results.loading = npa_res.branch_loading[0, :]
-                self.results.phase_shift = npa_res.branch_tap_angle[0, :]
+                self.results.tap_angle = npa_res.branch_tap_angle[0, :]
 
                 # self.results.Sbus = npa_res.
                 self.results.hvdc_Pf = npa_res.hvdc_flows[0, :]
@@ -352,7 +354,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.results.overloads = npa_res.branch_overload[0, :]
                 self.results.loading = npa_res.Loading[0, :]
                 # self.results.losses =
-                self.results.phase_shift = npa_res.tap_angle[0, :]
+                self.results.tap_angle = npa_res.tap_angle[0, :]
 
                 self.results.hvdc_Pf = npa_res.hvdc_Pf[0, :]
                 self.results.hvdc_loading = npa_res.hvdc_loading[0, :]

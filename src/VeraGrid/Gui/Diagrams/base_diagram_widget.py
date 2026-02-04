@@ -165,15 +165,15 @@ class BaseDiagramWidget(QSplitter):
 
         # Table to display object's properties
         self.object_editor_table = QTableView(self)
-        change_font_size(self.object_editor_table, 9)
-        change_font_size(self.object_editor_table.verticalHeader(), 9)
-        change_font_size(self.object_editor_table.horizontalHeader(), 9)
+        # change_font_size(self.object_editor_table, 9)
+        # change_font_size(self.object_editor_table.verticalHeader(), 9)
+        # change_font_size(self.object_editor_table.horizontalHeader(), 9)
 
         # Actual libraryView object
         self.library_view = QListView(self)
         self.library_view.setViewMode(self.library_view.ViewMode.ListMode)
         self.library_view.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        change_font_size(self.library_view, 9)
+        # change_font_size(self.library_view, 9)
 
         # library model
         self.library_model = library_model
@@ -334,7 +334,7 @@ class BaseDiagramWidget(QSplitter):
             return False
 
     def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True,
-                                        graphic_object: QGraphicsItem | None = None):
+                                        graphic_object: ALL_GRAPHICS | None = None):
         """
         This function is a utility function to call this function in other diagrams through the GUI
         :param device: ALL_DEV_TYPES
@@ -349,6 +349,9 @@ class BaseDiagramWidget(QSplitter):
 
         if graphic_object is not None:
             self._remove_from_scene(graphic_object)
+
+            for extra_grph in graphic_object.get_extra_graphics():
+                self._remove_from_scene(extra_grph)
 
         if propagate:
             self.gui.call_delete_db_element(caller=self, api_obj=device)
@@ -410,7 +413,7 @@ class BaseDiagramWidget(QSplitter):
         self.delete_with_dialogue(selected=self._get_selected(),
                                   delete_from_db=delete_from_db)
 
-    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES], propagate: bool):
+    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES]):
         """
         Delete device from the diagram registry
         :param elements: list of elements to delete

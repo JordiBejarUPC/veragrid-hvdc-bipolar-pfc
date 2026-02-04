@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
@@ -24,6 +24,7 @@ class Bus(PhysicalDevice):
     __slots__ = (
         'active',
         '_active_prof',
+        'color',
         'Vnom',
         'Vmin',
         'Vm_cost',
@@ -93,7 +94,8 @@ class Bus(PhysicalDevice):
                  Va0=0,
                  graphic_type: BusGraphicType = BusGraphicType.BusBar,
                  bus_bar: BusBar | None = None,
-                 build_status: BuildStatus = BuildStatus.Commissioned):
+                 build_status: BuildStatus = BuildStatus.Commissioned,
+                 color: str | None = None):
         """
         The Bus object is the container of all the possible devices that can be attached to
         a bus bar or Substation. Such objects can be loads, voltage controlled generators,
@@ -127,6 +129,7 @@ class Bus(PhysicalDevice):
         :param Vm0: initial solution for the voltage module (p.u.)
         :param Va0: initial solution for the voltage angle (rad)
         :param graphic_type: BusGraphicType to represent the bus in the schematic
+        :param color: Bus color mark
         """
 
         PhysicalDevice.__init__(self,
@@ -230,6 +233,9 @@ class Bus(PhysicalDevice):
         self.ph_n: bool = True
         self.is_grounded: bool = True
 
+        self.color = color if color is not None else "#000000"
+
+        # The model of the bus is fixed, then it can already be defined here
         self._rms_model: DynamicModelHost = DynamicModelHost()
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
@@ -285,6 +291,8 @@ class Bus(PhysicalDevice):
         self.register(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.')
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
+        self.register(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
+                      is_color=True)
 
     @property
     def rms_model(self) -> DynamicModelHost:
@@ -470,7 +478,7 @@ class Bus(PhysicalDevice):
         if show_fig:
             plt.show()
 
-    def get_fault_impedance(self):
+    def get_fault_impedance(self) -> complex:
         """
         Get the fault impedance
         :return: complex value of fault impedance
@@ -527,30 +535,35 @@ class Bus(PhysicalDevice):
         else:
             raise ValueError("The value must be a BusBar")
 
+    def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
+        """
+        Initializes rms model if not initialized
+        :return: Vm, Va rms vars
+        """
+        if self.rms_model.model.empty():
+            self.initialize_rms()
+        assert len(self.rms_model.model.algebraic_vars) == 2
+        return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
+
+
     def initialize_rms(self):
         """
         Initialize the RMS model
         """
         if self.rms_model.empty():
-            Vm = Var("Vm" + self.name)
-            Va = Var("Va" + self.name)
-            P = Var("P" + self.name)
-            Q = Var("Q" + self.name)
+            Vm = Var("Vm")
+            Va = Var("Va")
+            P = Var("P")
+            Q = Var("Q")
 
-            self.rms_model.model = Block(
-                state_eqs=[],
-                state_vars=[],
-                algebraic_eqs=[
-                ],
-                # algebraic_vars=[],
-                algebraic_vars=[Vm, Va],
+            block = Block(
+                algebraic_vars=[Vm, Va])
 
-                init_eqs={},
-                init_vars=[],
-                external_mapping={
-                    DynamicVarType.Vm: Vm,
-                    DynamicVarType.Va: Va,
-                    DynamicVarType.P: P,
-                    DynamicVarType.Q: Q
-                }
-            )
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.Vm: Vm,
+                VarPowerFlowRefferenceType.Va: Va,
+                VarPowerFlowRefferenceType.P: P,
+                VarPowerFlowRefferenceType.Q: Q
+            }
+
+            self.rms_model.model = block

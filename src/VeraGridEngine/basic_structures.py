@@ -24,7 +24,7 @@ Vec = npt.NDArray[np.float64]
 CxVec = npt.NDArray[np.complex128]
 StrVec = npt.NDArray[np.str_]
 ObjVec = npt.NDArray[np.object_]
-Mat = npt.NDArray[np.float64] | np.ndarray[tuple[int, int], np.dtype[np.float64]]  # no way yet to say it is 2D
+Mat = Union[npt.NDArray[np.float64], np.ndarray[tuple[int, int], np.dtype[np.float64]]]  # no way yet to say it is 2D
 CxMat = npt.NDArray[np.complex128]  # no way yet to say it is 2D
 IntMat = npt.NDArray[np.int_]  # no way yet to say it is 2D
 StrMat = npt.NDArray[np.str_]  # no way yet to say it is 2D
@@ -217,11 +217,12 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
     :return: list of indices that determine the partitions
     """
     groups: List[int] = list()
-
+    nt = len(t_array)
     last = -1
 
     i = 0
-    for i, t in enumerate(t_array):
+    for i in range(nt):
+        t = t_array[i]
 
         if grouping == TimeGrouping.Monthly:
             if t.month != last:
@@ -244,7 +245,7 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
                 groups.append(i)
 
     # add the last index if it is not already there
-    if len(t_array) > 0:
+    if nt > 0:
         if i != groups[len(groups) - 1]:
             groups.append(i)
 
@@ -848,7 +849,7 @@ class ListSet(list):
         if iterable:
             self.extend(iterable)
 
-    def append(self, value):
+    def append(self, value: "Bus") -> None:
         """Append an item to the list if it's not already present."""
         if value not in self._set:
             super().append(value)

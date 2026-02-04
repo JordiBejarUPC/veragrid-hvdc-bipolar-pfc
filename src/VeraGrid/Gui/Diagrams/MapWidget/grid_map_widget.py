@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import ast
 import os
-from typing import Union, List, Set, Tuple, Dict, TYPE_CHECKING
+from typing import Union, List, Tuple, Dict, TYPE_CHECKING
 import json
 import numpy as np
 import math
@@ -28,6 +28,11 @@ from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.Devices.Branches.line import Line, accept_line_connection
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
+from VeraGridEngine.Devices.Injections.battery import Battery
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
+from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Diagrams.map_diagram import MapDiagram
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec
@@ -41,7 +46,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.enumerations import Colormaps
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_ac_line import MapAcLine
@@ -51,8 +56,15 @@ from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_fluid_path import MapFluidPath
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.line_location_graphic_item import LineLocationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item import VoltageLevelGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_battery_graphics import MapBatteryGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_generator_graphics import MapGeneratorGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_load_graphics import MapLoadGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics import MapExternalGridGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import MapStaticGeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.map_widget import MapWidget, MapDiagramScene
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
+from VeraGrid.Gui.Diagrams.Editors.bus_selector import BusSelectorDialogue
+
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.Diagrams.graphics_manager import ALL_MAP_GRAPHICS
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.tiles import Tiles
@@ -125,7 +137,7 @@ class MapLibraryModel(QStandardItemModel):
         :return: QByteArray
         """
         data = QByteArray()
-        stream = QDataStream(data, QIODevice.WriteOnly)
+        stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream.writeQString(val)
         return data
 
@@ -155,7 +167,7 @@ class MapLibraryModel(QStandardItemModel):
                 txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
 
                 data = QByteArray()
-                stream = QDataStream(data, QIODevice.WriteOnly)
+                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
                 stream.writeQString(txt)
 
                 mime_data.setData('component/name', data)
@@ -312,6 +324,9 @@ class GridMapWidget(BaseDiagramWidget):
 
     @property
     def diagram_scene(self) -> MapDiagramScene:
+        """
+        :return: MapDiagramScene
+        """
         return self.map.diagram_scene
 
     def _get_selected(self) -> List[ALL_MAP_GRAPHICS | QGraphicsItem]:
@@ -359,6 +374,18 @@ class GridMapWidget(BaseDiagramWidget):
             if hasattr(item, 'api_object') and isinstance(item, SubstationGraphicItem):
                 selected_substations.append((item.api_object, item))
         return selected_substations
+
+    def get_selected_generators_tup(self) -> List[Tuple[Generator, MapGeneratorGraphicItem]]:
+        """
+        Get only selected generators from the scene
+
+        :return: List of (Generator, GeneratorGraphicItem) tuples
+        """
+        selected_generators = []
+        for item in self.diagram_scene.selectedItems():
+            if hasattr(item, 'api_object') and isinstance(item, MapGeneratorGraphicItem):
+                selected_generators.append((item.api_object, item))
+        return selected_generators
 
     def get_selected_linelocations_tup(self) -> List[Tuple[LineLocation, LineLocationGraphicItem]]:
         """
@@ -781,6 +808,136 @@ class GridMapWidget(BaseDiagramWidget):
 
         return graphic_object
 
+    def add_api_battery(self,
+                        api_object: Battery,
+                        lat: float,
+                        lon: float) -> MapBatteryGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapBatteryGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_generator(self,
+                          api_object: Generator,
+                          lat: float,
+                          lon: float) -> MapGeneratorGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapGeneratorGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_load(self,
+                     api_object: Load,
+                     lat: float,
+                     lon: float) -> MapLoadGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapLoadGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_external_grid(self,
+                              api_object: ExternalGrid,
+                              lat: float,
+                              lon: float) -> MapExternalGridGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapExternalGridGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
+    def add_api_static_generator(self,
+                                 api_object: StaticGenerator,
+                                 lat: float,
+                                 lon: float) -> MapStaticGeneratorGraphicItem:
+        """
+
+        :param api_object:
+        :param lat:
+        :param lon:
+        :return:
+        """
+        graphic_object = MapStaticGeneratorGraphicItem(
+            editor=self,
+            api_object=api_object,
+            lat=lat,
+            lon=lon,
+            size=self.diagram.min_bus_width
+        )
+
+        self.graphics_manager.add_device(elm=api_object,
+                                         graphic=graphic_object)
+
+        self.add_to_scene(graphic_object=graphic_object)
+
+        return graphic_object
+
     def draw_diagram(self, diagram: MapDiagram) -> None:
         """
         Draw any diagram
@@ -795,6 +952,36 @@ class GridMapWidget(BaseDiagramWidget):
                     self.add_api_substation(api_object=location.api_object,
                                             lon=location.longitude,
                                             lat=location.latitude)
+
+            elif category == DeviceType.GeneratorDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_generator(api_object=location.api_object,
+                                           lon=location.longitude,
+                                           lat=location.latitude)
+
+            elif category == DeviceType.BatteryDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_battery(api_object=location.api_object,
+                                         lon=location.longitude,
+                                         lat=location.latitude)
+
+            elif category == DeviceType.LoadDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_load(api_object=location.api_object,
+                                      lon=location.longitude,
+                                      lat=location.latitude)
+
+            elif category == DeviceType.StaticGeneratorDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_static_generator(api_object=location.api_object,
+                                                  lon=location.longitude,
+                                                  lat=location.latitude)
+
+            elif category == DeviceType.ExternalGridDevice.value:
+                for idtag, location in points_group.locations.items():
+                    self.add_api_external_grid(api_object=location.api_object,
+                                               lon=location.longitude,
+                                               lat=location.latitude)
 
         # second pass: create the rest of devices
         for category, points_group in diagram.data.items():
@@ -1045,15 +1232,21 @@ class GridMapWidget(BaseDiagramWidget):
             elm_graphics.resize(new_radius=branch_width)
 
         # rescale substations (this is super-fast)
-        data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(DeviceType.SubstationDevice)
-        for se_key, elm_graphics in data.items():
-            # elm_graphics.set_api_object_color()
-            elm_graphics.set_size(r=se_width)
+        for dev_tpe in [DeviceType.SubstationDevice,
+                        DeviceType.GeneratorDevice,
+                        DeviceType.BatteryDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.ExternalGridDevice,
+                        DeviceType.StaticGeneratorDevice]:
+            data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(dev_tpe)
+            for se_key, elm_graphics in data.items():
+                elm_graphics.set_api_object_color()
+                elm_graphics.set_size(r=se_width)
 
         self.diagram_scene.blockSignals(False)
         self.diagram_scene.update(self.diagram_scene.sceneRect())
 
-    def center(self):
+    def center(self) -> None:
         """
         Center the diagram
         """
@@ -1064,32 +1257,86 @@ class GridMapWidget(BaseDiagramWidget):
         lon_max = -1e20
         lon_min = 1e20
         n = 0
-        for graphic_obj in self.graphics_manager.get_device_type_list(DeviceType.SubstationDevice):
-            lat += graphic_obj.lat
-            lon += graphic_obj.lon
+        for dev_tpe in [DeviceType.SubstationDevice,
+                        DeviceType.GeneratorDevice,
+                        DeviceType.BatteryDevice,
+                        DeviceType.LoadDevice,
+                        DeviceType.ExternalGridDevice,
+                        DeviceType.StaticGeneratorDevice]:
+            for graphic_obj in self.graphics_manager.get_device_type_list(dev_tpe):
+                lat += graphic_obj.lat
+                lon += graphic_obj.lon
 
-            lat_max = max(lat_max, graphic_obj.lat)
-            lat_min = min(lat_min, graphic_obj.lat)
-            lon_max = max(lon_max, graphic_obj.lon)
-            lon_min = min(lon_min, graphic_obj.lon)
-            n += 1
+                lat_max = max(lat_max, graphic_obj.lat)
+                lat_min = min(lat_min, graphic_obj.lat)
+                lon_max = max(lon_max, graphic_obj.lon)
+                lon_min = min(lon_min, graphic_obj.lon)
+                n += 1
 
         if n > 0:
             lat /= n
             lon /= n
-            self.map.pan_position(latitude=lat, longitude=lon)
 
-            # this is to also move the diagram layer according to the map
-            # z = self.map.best_zoom_from_bbox(min_lat=lat_min,
-            #                                  max_lat=lat_max,
-            #                                  min_lon=lon_min,
-            #                                  max_lon=lon_max)
-
-            self.map.set_zoom_level(level=self.map.level)
-            # self.map.set_zoom_level(level=z)
+            self.map.go_to_position(latitude=lat, longitude=lon)
+            # self.map.set_zoom_level(level=10)
+            # level = self.map.best_zoom_from_bbox(min_lat=lat_min,
+            #                                      max_lat=lat_max,
+            #                                      min_lon=lon_min,
+            #                                      max_lon=lon_max)
+            # self.map.set_zoom_level(level=level)
 
         else:
             self.gui.show_warning_toast("No points to center :/")
+
+    def graphical_search(self, search_text: str):
+        """
+        Search object in the diagram and center around it
+        :param search_text: object name, object code or object idtag
+        """
+        # Initialize boundaries
+        min_lat = min_lon = max_lat = max_lon = None
+
+        n = 0
+        for key, points_group in self.diagram.data.items():
+            for idTag, location in points_group.locations.items():
+                if location.api_object is not None:
+
+                    # Check if searchText is in the name, code, or idtag of the api_object
+                    if (search_text in location.api_object.name.lower() or
+                            search_text in location.api_object.code.lower() or
+                            search_text in str(location.api_object.idtag).lower()):
+
+                        # Calculate boundaries (x: latitude, y: longitude)
+                        left = location.latitude
+                        right = location.latitude + location.w
+                        top = location.longitude
+                        bottom = location.longitude + location.h
+
+                        if min_lat is None or left < min_lat:
+                            min_lat = left
+                        if min_lon is None or top < min_lon:
+                            min_lon = top
+                        if max_lat is None or right > max_lat:
+                            max_lat = right
+                        if max_lon is None or bottom > max_lon:
+                            max_lon = bottom
+
+                        n += 1
+
+        # After all matching elements have been processed
+
+        if None not in (min_lat, min_lon, max_lat, max_lon):
+            lat = (min_lat + max_lat) / 2.0
+            lon = (min_lon + max_lon) / 2.0
+
+            # Fit the view
+            level = self.map.best_zoom_from_bbox(min_lat=min_lat,
+                                                 max_lat=max_lat,
+                                                 min_lon=min_lon,
+                                                 max_lon=max_lon)
+
+            self.map.set_zoom_level(level=level)
+            # self.map.go_to_position(latitude=lat, longitude=lon)
 
     def colour_results(self,
                        Sbus: CxVec,
@@ -1701,6 +1948,34 @@ class GridMapWidget(BaseDiagramWidget):
                     'The waypoint selected is not included in the selected line\'s waypoint. Operation not performed.')
                 return
 
+    def change_generator_bus_connection(self):
+
+        selected_generators = self.get_selected_generators_tup()
+        selected_substations = self.get_selected_substations_tup()
+
+        if len(selected_substations) > 1:
+            self.gui.show_error_toast('More than one substation has been selected to reconnect generators. '
+                                      'Please, select only one.')
+            return
+        ss = selected_substations[0][0]
+
+        dialog = BusSelectorDialogue(grid=self.circuit, se=ss)
+        dialog.exec()
+        if dialog.is_valid():
+            bus = dialog.bus()
+            if bus is not None:
+                for gen in selected_generators:
+                    gen[0].bus = bus
+            else:
+                self.gui.show_error_toast('The selected bus appears as None. Check selection.')
+                return
+
+            self.gui.show_info_toast(f'Selected generators changed to bus {bus.name}.')
+            return
+
+        else:
+            self.gui.show_error_toast('Dialogue selection failed.')
+
     def merge_selected_lines(self):
 
         selected_lines = self.get_selected_line_segments_tup()
@@ -1852,8 +2127,13 @@ class GridMapWidget(BaseDiagramWidget):
             merging_substation.remove_function_from_schematic_and_db()
 
     def consolidate_object_coordinates(self):
+        """
+
+        :return:
+        """
         selected_lines = self.get_selected_line_segments_tup()
         selected_substations = self.get_selected_substations_tup()
+        selected_generators = self.get_selected_generators_tup()
         line_graphics_list = []
         for subst, subst_graphic in selected_substations:
             subst.latitude = subst_graphic.lat
@@ -1864,6 +2144,10 @@ class GridMapWidget(BaseDiagramWidget):
             for gelm in line_graphic.nodes_list:
                 gelm.api_object.lat = gelm.lat
                 gelm.api_object.long = gelm.lon
+
+        for gen, gen_graphic in selected_generators:
+            gen.latitude = gen_graphic.lat
+            gen.longitude = gen_graphic.lon
 
         ok = yes_no_question(title='Update lengths?',
                              text='Do you want to update lengths of lines? \n'
@@ -2685,6 +2969,11 @@ def generate_map_diagram(
         hvdc_lines: List[HvdcLine],
         fluid_nodes: List[FluidNode],
         fluid_paths: List[FluidPath],
+        generators: List[Generator],
+        batteries: List[Battery],
+        loads: List[Load],
+        static_generators: List[StaticGenerator],
+        external_grids: List[ExternalGrid],
         prog_func: Union[Callable, None] = None,
         text_func: Union[Callable, None] = None,
         name='Map diagram',
@@ -2706,6 +2995,11 @@ def generate_map_diagram(
     :param hvdc_lines: list of HvdcLine objects
     :param fluid_nodes: list of FluidNode objects
     :param fluid_paths: list of FluidPath objects
+    :param external_grids:
+    :param static_generators:
+    :param loads:
+    :param batteries:
+    :param generators:
     :param prog_func: progress report function
     :param text_func: Text report function
     :param name: name of the diagram
@@ -2736,16 +3030,34 @@ def generate_map_diagram(
         text_func('Creating schematic buses')
 
     nn = len(substations)
-    for i, substation in enumerate(substations):
+    for i, elm in enumerate(substations):
 
         if prog_func is not None:
             prog_func((i + 1) / nn * 100.0)
 
-        diagram.set_point(device=substation, location=MapLocation(latitude=substation.latitude,
-                                                                  longitude=substation.longitude,
-                                                                  api_object=substation))
+        diagram.set_point(device=elm, location=MapLocation(latitude=elm.latitude,
+                                                           longitude=elm.longitude,
+                                                           api_object=elm))
 
     # --------------------------------------------------------------------------------------------------------------
+
+    if text_func is not None:
+        text_func('Creating schematic injections')
+
+    for lst in [generators, batteries, loads, static_generators, external_grids]:
+        nn = len(lst)
+        for i, elm in enumerate(lst):
+
+            if prog_func is not None:
+                prog_func((i + 1) / nn * 100.0)
+
+            lon, lat = elm.try_to_find_coordinates()
+            diagram.set_point(device=elm, location=MapLocation(latitude=lat,
+                                                               longitude=lon,
+                                                               api_object=elm))
+
+    # --------------------------------------------------------------------------------------------------------------
+
     if text_func is not None:
         text_func('Creating schematic buses')
 
@@ -2851,148 +3163,29 @@ def generate_map_diagram(
     return diagram
 
 
-def get_devices_to_expand(circuit: MultiCircuit, substations: List[Substation], max_level: int = 1,
-                          expand_outside: bool = True) -> Tuple[
-    List[Substation],
-    List[VoltageLevel],
-    List[Line],
-    List[DcLine],
-    List[HvdcLine]]:
-    """
-    get lists of devices to expand given a root bus
-    :param circuit: MultiCircuit
-    :param substations: List of Bus
-    :param max_level: max expansion level
-    :param expand_outside: whether to expand outside of the given references using the branches
-    :return:
-    """
-
-    # get all Branches
-    all_branches = circuit.lines + circuit.dc_lines + circuit.hvdc_lines
-
-    # create a pool of buses that belong to the substations
-    # store the bus objects and their level from the root
-    bus_pool = [(b, 0) for b in circuit.buses if b.substation in substations]
-
-    voltage_levels = set()
-    substations_extended = set()
-    selected_branches = set()
-
-    while len(bus_pool) > 0:
-
-        # search the next bus
-        bus, level = bus_pool.pop()
-
-        if bus.voltage_level is not None:
-            voltage_levels.add(bus.voltage_level)
-            if bus.substation not in substations_extended:
-                substations_extended.add(bus.substation)
-
-        if level < max_level:
-
-            for i, br in enumerate(all_branches):
-
-                if br.bus_from == bus:
-                    if expand_outside:
-                        bus_pool.append((br.bus_to, level + 1))
-                    selected_branches.add(br)
-
-                elif br.bus_to == bus:
-                    if expand_outside:
-                        bus_pool.append((br.bus_from, level + 1))
-                    selected_branches.add(br)
-
-                else:
-                    pass
-
-    # sort Branches
-    lines: List[Line] = list()
-    dc_lines: List[DcLine] = list()
-    hvdc_lines: List[HvdcLine] = list()
-
-    for obj in selected_branches:
-
-        if obj.device_type == DeviceType.LineDevice:
-            lines.append(obj)
-
-        elif obj.device_type == DeviceType.DCLineDevice:
-            dc_lines.append(obj)
-
-
-        elif obj.device_type == DeviceType.HVDCLineDevice:
-            hvdc_lines.append(obj)
-
-        else:
-            raise Exception(f'Unrecognized branch type {obj.device_type.value}')
-
-    list_substations_extended = list(substations_extended)
-
-    for substation in substations:
-        if substation not in list_substations_extended:
-            list_substations_extended.append(substation)
-
-    return list_substations_extended, list(voltage_levels), lines, dc_lines, hvdc_lines
-
-
-def make_diagram_from_substations(circuit: MultiCircuit,
-                                  substations: List[Substation] | Set[Substation],
-                                  prog_func: Union[Callable, None] = None,
-                                  text_func: Union[Callable, None] = None,
-                                  use_flow_based_width: bool = False,
-                                  min_branch_width: int = 1.0,
-                                  max_branch_width=5,
-                                  min_bus_width=1.0,
-                                  max_bus_width=20,
-                                  arrow_size=20,
-                                  palette: Colormaps = Colormaps.VeraGrid,
-                                  default_bus_voltage: float = 10,
-                                  expand_outside: bool = True,
-                                  name="Map diagram"):
-    """
-    Create a vicinity diagram
-    :param circuit: MultiCircuit
-    :param substations: List of Bus
-    :param prog_func:
-    :param text_func:
-    :param use_flow_based_width: use flow based width
-    :param min_branch_width: minimum branch width
-    :param max_branch_width: maximum branch width
-    :param min_bus_width:
-    :param max_bus_width: maximum bus width
-    :param arrow_size: arrow size
-    :param palette: Colormaps
-    :param default_bus_voltage: default bus voltage
-    :param expand_outside: whether to expand outside the given references using the branches
-    :param name: Name of the diagram
-    :return:
-    """
-
-    (substations_extended, voltage_levels,
-     lines, dc_lines, hvdc_lines) = get_devices_to_expand(circuit=circuit,
-                                                          substations=substations,
-                                                          max_level=1,
-                                                          expand_outside=expand_outside)
-
-    # Draw schematic subset
-    diagram = generate_map_diagram(
-        substations=substations_extended,
-        voltage_levels=voltage_levels,
-        lines=lines,
-        dc_lines=dc_lines,
-        hvdc_lines=hvdc_lines,
-        fluid_nodes=list(),
-        fluid_paths=list(),
-        prog_func=prog_func,
-        text_func=text_func,
-        name=name,
-        use_flow_based_width=use_flow_based_width,
-        min_branch_width=min_branch_width,
-        max_branch_width=max_branch_width,
-        min_bus_width=min_bus_width,
-        max_bus_width=max_bus_width,
-        arrow_size=arrow_size,
-        palette=palette,
-        default_bus_voltage=default_bus_voltage
+def generate_map_diagram2(circuit: MultiCircuit):
+    return generate_map_diagram(
+        substations=circuit.get_substations(),
+        voltage_levels=circuit.get_voltage_levels(),
+        lines=circuit.get_lines(),
+        dc_lines=circuit.get_dc_lines(),
+        hvdc_lines=circuit.get_hvdc(),
+        fluid_nodes=circuit.get_fluid_nodes(),
+        fluid_paths=circuit.get_fluid_paths(),
+        external_grids=circuit.external_grids,
+        static_generators=circuit.static_generators,
+        loads=circuit.loads,
+        batteries=circuit.batteries ,
+        generators=circuit.generators,
+        prog_func=None,
+        text_func=None,
+        name='Map diagram',
+        use_flow_based_width=False,
+        min_branch_width=0.01,
+        max_branch_width=0.02,
+        min_bus_width=0.1,
+        max_bus_width=0.2,
+        arrow_size=0.015,
+        palette=Colormaps.VeraGrid,
+        default_bus_voltage=20
     )
-
-    return diagram

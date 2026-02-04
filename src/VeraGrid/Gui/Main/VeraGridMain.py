@@ -43,6 +43,11 @@ class VeraGridMainGUI(ScriptingMain):
         self.setWindowTitle('VeraGrid ' + __VeraGrid_VERSION__)
         self.setAcceptDrops(True)
 
+        self.ui.mainTabWidget.setCurrentIndex(0)
+        self.ui.modelTabWidget.setCurrentIndex(0)
+        self.ui.settingsTabWidget.setCurrentIndex(0)
+        self.ui.resultsTabWidget.setCurrentIndex(0)
+
         ################################################################################################################
         # Set splitters
         ################################################################################################################
@@ -70,7 +75,7 @@ class VeraGridMainGUI(ScriptingMain):
         self.modify_ui_options_according_to_the_engine()
 
         # this is the contingency planner tab, invisible until done
-        self.ui.tabWidget_3.setTabVisible(4, True)
+        self.ui.modelTabWidget.setTabVisible(4, True)
 
         self.clear_results()
 
@@ -83,6 +88,26 @@ class VeraGridMainGUI(ScriptingMain):
 
         self.ui.actionRun_Dynamic_RMS_Simulation.setVisible(True)
         self.ui.actionRun_Small_Signal_RMS_Simulation.setVisible(True)
+
+        # global delete function
+        self.ui.actionDelete_selected.triggered.connect(self.global_delete)
+
+    def global_delete(self):
+        """
+        Function to dispatch what to do when [supr] is pressed
+        :return:
+        """
+        if self.ui.mainTabWidget.currentIndex() == 0:  # Model
+            if self.ui.modelTabWidget.currentIndex() == 0:  # Diagrams
+                self.delete_selected_diagram_widgets()
+
+            elif self.ui.modelTabWidget.currentIndex() == 1:  # Database
+                self.delete_selected_db_table_objects()
+
+            else:
+                self.show_warning_toast("No effect, select diagrams or database")
+        else:
+            self.show_warning_toast("No effect, select diagrams or database")
 
     def save_all_config(self) -> None:
         """
@@ -143,7 +168,7 @@ def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):
         Path to the icon inside the .qrc (e.g. ':/icons/app_icon.svg')
     """
     if not sys.platform.startswith("linux"):
-        print("[INFO] Not running on Linux, skipping .desktop creation.")
+        # print("[INFO] Not running on Linux, skipping .desktop creation.")
         return None
 
     # Extract icon from Qt resource to a real file
@@ -237,7 +262,7 @@ def runVeraGrid() -> None:
     # MacOS: display icons in menus
     app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
 
-    icon_name = ':/Program icon/VeraGrid_icon.png'
+    icon_name = ':/Program icon/icons/VeraGrid_icon.png'
     icon = QtGui.QIcon(icon_name)
 
     # will check os internally

@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 from typing import List, Dict
 from VeraGridEngine.IO.ucte.devices.ucte_node import UcteNode
 from VeraGridEngine.IO.ucte.devices.ucte_comment import UcteComment
@@ -18,8 +20,7 @@ class UcteCircuit:
     UCTE circuit class
     """
 
-
-    def __init__(self):
+    def __init__(self) -> None:
         """
 
         """
@@ -59,6 +60,7 @@ class UcteCircuit:
 
             if self.check_file_extension(file_path):
                 current_block = None
+                current_country = ""
 
                 with open(file_path, "r") as file:
                     for line in file:
@@ -67,6 +69,9 @@ class UcteCircuit:
                                 current_block = "comments"
                             elif line.startswith("##N"):
                                 current_block = "nodes"
+                            elif line.startswith("##Z"):
+                                current_block = "nodes"
+                                current_country = line[3:] if line[2] == "Z" else line[2:]  # line[-3:-1]
                             elif line.startswith("##L"):
                                 current_block = "lines"
                             elif line.startswith("##T"):
@@ -79,6 +84,7 @@ class UcteCircuit:
                                 current_block = "exchange_powers"
                             else:
                                 pass
+
                         else:
                             if current_block == "comments":
                                 comment = UcteComment()
@@ -87,6 +93,7 @@ class UcteCircuit:
 
                             elif current_block == "nodes":
                                 node = UcteNode()
+                                node.current_country = current_country
                                 node.parse(line, logger)
                                 self.nodes.append(node)
 
@@ -106,13 +113,12 @@ class UcteCircuit:
                                 self.regulations.append(regulation)
                                 self.regulations_dict[regulation.get_primary_key()] = regulation
 
-
                             elif current_block == "special_transformers":
                                 special_transformer = UcteTransformerTapTable()
                                 special_transformer.parse(line, logger)
                                 self.transformer_tap_tables.append(special_transformer)
-                                self.transformer_tap_tables_dict[special_transformer.get_primary_key()] = special_transformer
-
+                                self.transformer_tap_tables_dict[
+                                    special_transformer.get_primary_key()] = special_transformer
 
                             elif current_block == "exchange_powers":
                                 exchange = UcteExchangePower()
@@ -141,6 +147,9 @@ class UcteCircuit:
         return self.transformer_tap_tables_dict.get(key, None)
 
     def summary(self):
+        """
+        Print grid summary
+        """
         print(f"Comments: {len(self.comments)}")
         print(f"Nodes: {len(self.nodes)}")
         print(f"Lines: {len(self.lines)}")
@@ -159,4 +168,3 @@ class UcteCircuit:
             val += cmnt.content + "\n"
 
         return val
-
