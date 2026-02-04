@@ -16,11 +16,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, sqrt
-from VeraGridEngine.Utils.Symbolic.block import  DiffBlock
-from VeraGridEngine.Utils.Symbolic.block_solver import DiffBlockSolver
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, DiffVar, Const
 import VeraGridEngine.api as gce
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
 
@@ -49,59 +49,6 @@ print(f"Converged: {res.converged}")
 # ----------
 # Intialization
 # ----------
-# w0 = 1.0
-# psi_d0 = -1.229887350550713
-# psi_q0 = 0.6971685548303476
-# psi_f0 = -1.3696013540893925
-# psi_00 = -8.664674504566788e-17
-# i_f0 = -1.0484395244679796
-# v_f00 = -0.017823471915955656
-# v_a0 = 0.6974010218376268
-# v_b0 = -1.4141693565707523
-# v_c0 = 0.7167683347331255
-# v_d0 = 0.6974010218376268
-# v_q0 = 1.2302974497006134
-# v_00 = -5.09686735562785e-20
-# i_a0 = 0.23246700727920894
-# i_b0 = -0.4713897855235841
-# i_c0 = 0.23892277824437516
-# i_d0 = 0.23246700727920896
-# i_q0 = 0.4100991499002045
-# i_00 = -5.096867355627523e-17
-# T_e0 = 0.9996666666666664
-# T_m0 = 0.9996666666666664
-# # theta0 = 1.0551043059609357
-# theta0 = 0.0
-# # Pe0 = 0.9999999999999998
-# Pe0 = 0.9996666666666664
-# Qe0 = 0.0
-# Pm0 = 0.9996666666666664
-
-# w0 = 1.0
-# psi_d0 = -1.1842763746406721
-# psi_q0 = 0.771982229268087
-# psi_f0 = -1.3375495187614632
-# psi_00 = -3.925011603517386e-17
-# i_f0 = -1.0887100650967585
-# v_f00 = -0.018508071106644895
-# v_a0 = 0.7722782435188278
-# v_b0 = -1.4121458156657476
-# v_c0 = 0.6398675721469198
-# v_d0 = 0.7722782435188278
-# v_q0 = 1.1847304818343594
-# v_00 = -2.3088303550114134e-20
-# i_a0 = 0.2960142507407667
-# i_b0 = -0.541275491144681
-# i_c0 = 0.2452612404039144
-# i_d0 = 0.29601425074076676
-# i_q0 = 0.45410719368711
-# i_00 = -2.3088303550102268e-17
-# T_e0 = 1.1494592433299995
-# T_m0 = 1.1494592433299995
-# theta0 = 0.0
-# Pe0 = 1.1498999999999997
-# Qe0 = -8.012344526598184e-18
-# Pm0 = 1.1494592433299995
 
 w0 = 1.0
 psi_d0 = -1.1842763746406721
@@ -128,33 +75,6 @@ theta0 = 0.0
 Pe0 = 1.0
 Qe0 = -8.012344526598184e-18
 Pm0 = 1.0
-
-
-# w0 = 1.0
-# psi_d0 = -1.2299371819390006
-# psi_q0 = 0.6970807186395105
-# psi_f0 = -1.3696367450900728
-# psi_00 = -0.4004936625252342
-# i_f0 = -1.048397104714715
-# v_f00 = 0.00031765044537134294
-# v_a0 = 1.4139779386212579
-# v_b0 = -0.7073423460716806
-# v_c0 = -0.7073423460716806
-# v_d0 = 0.6973131176573745
-# v_q0 = 1.2303472294205533
-# v_00 = -0.00023558450736778483
-# i_a0 = 0.23574153756483648
-# i_b0 = -0.4712475298340954
-# i_c0 = -0.4712475298340954
-# i_d0 = 0.23239901786400435
-# i_q0 = 0.41004748155265325
-# i_00 = -0.23558450736778483
-# T_e0 = 0.999500277458717
-# T_m0 = 0.999500277458717
-# theta0 = 1.0551757383211462
-# Pe0 = 1.0
-# Qe0 = 0.0
-# Pm0 = 0.999500277458717
 
 d_w0 = 0.0
 d_theta0 = 1.0
@@ -228,23 +148,23 @@ Pe = Var("Pe") #23
 Qe = Var("Qe") #24
 Pm = Var("Pm") #24
 
-d_w = DiffVar.get_or_create('d_w', base_var=w)
-d_theta = DiffVar.get_or_create('d_theta', base_var=theta)
-d_psi_d = DiffVar.get_or_create('d_psid', base_var=psi_d)
-d_psi_f = DiffVar.get_or_create('d_psif', base_var=psi_f)
-d_psi_q = DiffVar.get_or_create('d_psiq', base_var=psi_q)
-d_psi_0 = DiffVar.get_or_create('d_psi0', base_var=psi_0)
+d_w = DiffVar('d_w', base_var=w)
+d_theta = DiffVar('d_theta', base_var=theta)
+d_psi_d = DiffVar('d_psid', base_var=psi_d)
+d_psi_f = DiffVar('d_psif', base_var=psi_f)
+d_psi_q = DiffVar('d_psiq', base_var=psi_q)
+d_psi_0 = DiffVar('d_psi0', base_var=psi_0)
 
 
 et = Var("et")
-d_et = DiffVar.get_or_create('d_et', base_var=et)
+d_et = DiffVar('d_et', base_var=et)
 
 ev = Var("ev")
-d_ev = DiffVar.get_or_create('d_ev', base_var=ev)
+d_ev = DiffVar('d_ev', base_var=ev)
 
 
 
-generator_block_1 = DiffBlock(
+generator_block_1 = Block(
 state_eqs=[
         v_d - Ra * i_d - w * psi_q,
         v_q - Ra * i_q + w * psi_d,
@@ -327,7 +247,7 @@ sys = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = DiffBlockSolver(sys, t)
+slv = BlockSolver(sys, t)
 
 params_mapping = { }
 
@@ -381,8 +301,7 @@ diff_mapping = {
 }
 
 alter_params0 = np.zeros(0)
-params0 = slv.build_init_params_vector(params_mapping)
-x0 = slv.build_init_vars_vector(vars_mapping)
+x0 = slv.build_init_vars_vector_from_uid(vars_mapping)
 dx0 = slv.build_init_diffvars_vector(diff_mapping)
 
 vars_in_order = slv.sort_vars(vars_mapping)
@@ -394,13 +313,13 @@ t, y, dx, timing = slv.simulate(
     h=5e-5,
     x0=x0,
     dx0 =dx0,
-    params0=params0,
-    alter_params0 = alter_params0,
     newton_tol = 1e-12,
-    method="implicit_euler"
+    method=DynamicIntegrationMethod.BackEuler
 )
 
-slv.save_simulation_to_csv('simulation_results.csv', t, y, csv_saving = True)
+print(f"Simulation finished.")
+
+# slv.save_simulation_to_csv('simulation_results.csv', t, y, csv_saving = True)
 
 all_vars = slv.diff_vars
 var_names = [str(var) + '_VeraGrid' for var in all_vars]
