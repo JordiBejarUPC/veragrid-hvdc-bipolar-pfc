@@ -28,15 +28,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_template.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="changed compiled_integrator_fx.py too match problem-solver structure">
+      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Templates/Emt/generator_emt_type_template_with_load.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/analyze_floquet_staility.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/example_floquet_template.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_damped_oscillator.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_staility_1D.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/compiled_integrator_fx.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/compiled_integrator_fx.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/implicit_solver_test_EMT/Demos/demo_emt_buck_converter.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/implicit_solver_test_EMT/Demos/demo_emt_buck_converter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/SmallSignalStability/small_signal_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/dynamics_emt/generator_equations_diffblock.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics_emt/generator_equations_diffblock.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -97,12 +99,12 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
-    &quot;accountId&quot;: &quot;cf5b980e-9261-4544-851c-0ceba824405b&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/eRoots-Analytics/VeraGrid.git",
+    "accountId": "4d02aa34-2027-4dfd-8f23-94887f8b85ab"
   }
-}</component>
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
@@ -190,6 +192,7 @@
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
+    "Python.analyze_floquet_staility.executor": "Run",
     "Python.block_solver.executor": "Run",
     "Python.cgmes_rdfs_graph.executor": "Run",
     "Python.circuit_to_optimods.executor": "Run",
@@ -200,6 +203,9 @@
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
     "Python.demo_emt_buck_converter.executor": "Run",
+    "Python.floquet_stability_damped_oscillator.executor": "Run",
+    "Python.floquet_staility_1D.executor": "Run",
+    "Python.generator_equations_diffblock.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
     "Python.load_save_load_2_bus.executor": "Debug",
@@ -247,7 +253,7 @@
     "WebServerToolWindowFactoryState": "false",
     "ai.playground.ignore.import.keys.banner.in.settings": "true",
     "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "C:/Users/maria/PycharmProjects/VeraGrid/src/VeraGridEngine/Simulations/EMT/problems",
+    "last_opened_file_path": "C:/Users/maria/PycharmProjects/VeraGrid/src/VeraGridEngine/Templates/Emt",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
@@ -265,11 +271,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\maria\PycharmProjects\VeraGrid\src\VeraGridEngine\Templates\Emt" />
       <recent name="C:\Users\maria\PycharmProjects\VeraGrid\src\VeraGridEngine\Simulations\EMT\problems" />
       <recent name="$PROJECT_DIR$/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids" />
       <recent name="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic" />
-      <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/trunk/ucte" />
@@ -371,7 +377,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -420,7 +425,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
@@ -434,7 +438,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -453,7 +456,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -472,7 +474,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="CLASS_NAME" value="" />
       <option name="METHOD_NAME" value="" />
@@ -493,7 +494,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;&quot;" />
@@ -511,7 +511,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -791,7 +790,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-ca5e2b39c7df-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.308" />
+        <option value="bundled-python-sdk-8753aad8314d-d902c0275401-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-252.25557.178" />
       </set>
     </attachedChunks>
   </component>
@@ -1925,7 +1924,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="700" />
+    <option name="localTasksCounter" value="701" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1986,7 +1985,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="small changes in dgs_parser.py" />
     <MESSAGE value="PowerFactory parser to VeraGrid" />
     <MESSAGE value="some more changes in PowerFactory parser to VeraGrid" />
     <MESSAGE value="added library list in the about window" />
@@ -2011,7 +2009,8 @@
     <MESSAGE value="More UCTE corrections&#10;fixed new pandas 3 breaking changes" />
     <MESSAGE value="More UCTE corrections&#10;5.6.18" />
     <MESSAGE value="added alter_params to BlockSolver and cleaning" />
-    <option name="LAST_COMMIT_MESSAGE" value="added alter_params to BlockSolver and cleaning" />
+    <MESSAGE value="changed compiled_integrator_fx.py too match problem-solver structure" />
+    <option name="LAST_COMMIT_MESSAGE" value="changed compiled_integrator_fx.py too match problem-solver structure" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2638,6 +2637,11 @@
           <url>file://$APPLICATION_CONFIG_DIR$/scratches/scratch_1.py</url>
           <line>4</line>
           <option name="timeStamp" value="3669" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/block_solver.py</url>
+          <line>5</line>
+          <option name="timeStamp" value="3670" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -206,9 +206,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: i
 
     4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
     """
-    A = compute_state_matrix(slv,
-                             x,
-                             time) # sparse state matrix csc matrix
+    A = compute_state_matrix(slv=slv,
+                             x=x,
+                             time=time) # sparse state matrix csc matrix
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it

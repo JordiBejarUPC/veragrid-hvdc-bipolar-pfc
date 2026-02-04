@@ -456,14 +456,14 @@ class EmtProblemDae(EmtProblemTemplate):
         # initialize buses
         for i, elm in enumerate(grid.buses):
             bus_dict[elm] = i
-            for var in elm.rms_model.model.get_all_vars():
+            for var in elm.emt_model.model.get_all_vars():
                 vars2device[var.uid] = elm
                 vars_glob_name2uid[var.name + elm.name] = var.uid
 
         # initialize branches
         for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
 
-            mdl = elm.rms_model.model
+            mdl = elm.emt_model.model
             f = bus_dict[elm.bus_from]
             t = bus_dict[elm.bus_to]
             # add variable to conservation equations of the bus to which the element is connected
@@ -472,7 +472,7 @@ class EmtProblemDae(EmtProblemTemplate):
             setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
             setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
-            for var in elm.rms_model.model.get_all_vars():
+            for var in elm.emt_model.model.get_all_vars():
                 vars2device[var.uid] = elm
                 vars_glob_name2uid[var.name + elm.name] = var.uid
                 self.add_device_var(dev=elm, var=var)
@@ -482,10 +482,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
             # create dictionary for collecting events of the same parameter
 
-            if elm.rms_model.model.event_dict is not None:
+            if elm.emt_model.model.event_dict is not None:
                 collect_events = {
                     key: {"times": [], "values": []}
-                    for key in elm.rms_model.model.event_dict.keys()
+                    for key in elm.emt_model.model.event_dict.keys()
                 }
                 # find out if there are events affecting the device parameters
                 rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
@@ -495,8 +495,8 @@ class EmtProblemDae(EmtProblemTemplate):
                         collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                         # TODO: implement the function in block: apply_event
                     for param, events_info in collect_events.items():
-                        default_value = elm.rms_model.model.event_dict[param]
-                        elm.rms_model.model.event_dict[param] = piecewise(
+                        default_value = elm.emt_model.model.event_dict[param]
+                        elm.emt_model.model.event_dict[param] = piecewise(
                             time_var=self._glob_time,
                             t_events=np.array(events_info["times"]),
                             new_values=np.array(events_info["values"]),
@@ -504,20 +504,20 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
 
             # after applying the events the model has to be "build"
-            mdl = elm.rms_model.model
+            mdl = elm.emt_model.model
 
             # add variable to conservation equations of the bus to which the element is connected
             k = bus_dict[elm.bus]
             setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
             setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
-            for var in elm.rms_model.model.get_all_vars():
+            for var in elm.emt_model.model.get_all_vars():
                 vars2device[var.uid] = elm
                 vars_glob_name2uid[var.name + elm.name] = var.uid
 
         # add the nodal balance equations
         for i, elm in enumerate(grid.buses):
-            mdl = elm.rms_model.model
+            mdl = elm.emt_model.model
             if len(mdl.algebraic_eqs) == 0:
                 if P_used[i] == 0 and Q_used[i] == 0:
                     self.logger.add_error("Isolated bus", value=i)
