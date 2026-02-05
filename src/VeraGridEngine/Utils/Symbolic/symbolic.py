@@ -296,15 +296,20 @@ class Const(Expr):
         d["kind"] = "float"
         return d
 
+class VarType(Enum):
+    Parameter = "parameter"
+    State = "state"
+    Algebraic = "algebraic"
+    Differential = "differential"
 
 class Var(Expr):
     """
     Any variable
     """
 
-    __slots__ = ("name", "uid", "diff_var")
+    __slots__ = ("name", "uid", "diff_var", "tpe")
 
-    def __init__(self, name: str, uid: int | None = None, diff_var: "DiffVar | None" = None):
+    def __init__(self, name: str, uid: int | None = None, diff_var: "DiffVar | None" = None, tpe : VarType = VarType.Algebraic):
         """
 
         :param name:
@@ -314,6 +319,7 @@ class Var(Expr):
         super().__init__(uid=uid)
         self.name: str = name
         self.diff_var = diff_var
+        self.tpe = tpe
 
     def __deepcopy__(self, memo):
         return Var(self.name, self.uid, self.diff_var)
@@ -331,7 +337,10 @@ class Var(Expr):
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
 
     def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
-        return Const(1 if self.uid == var.uid else 0)
+        if self.tpe == VarType.Parameter:
+            return Const(0) 
+        else:
+            return Const(1 if self.uid == var.uid else 0)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
         if self in mapping:
@@ -696,6 +705,8 @@ class BinOp(Expr):
             if isinstance(v, Const):
                 # numeric exponent
                 n = v.value
+                return Const(n) * (u ** Const(n - 1)) * du
+            elif isinstance(v, Var) and v.tpe == VarType.Parameter:
                 return Const(n) * (u ** Const(n - 1)) * du
             else:
                 # general exponent: u**v = exp(v*log u)

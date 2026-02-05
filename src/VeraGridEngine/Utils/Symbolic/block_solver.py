@@ -992,7 +992,8 @@ class BlockSolver:
                 i = self.uid2idx_vars[uid]
                 x[i] = val
             else:
-                raise ValueError(f"Missing uid {key} definition")
+                x[i] = 0.0
+                #raise ValueError(f"Missing uid {key} definition")
 
         return x
 
@@ -1174,7 +1175,7 @@ class BlockSolver:
             params = np.array([const.value for const in self._parameters_values])
 
             if step_idx == 0:
-                tol = 1e-4
+                tol = 1e-8
                 xn = x0.copy()
                 initial_step_start = time.time()
             else:
@@ -1220,7 +1221,7 @@ class BlockSolver:
 
                 if step_idx == 0:
                     if steady_state:
-                        alpha = 0.5
+                        alpha = 1.0
                         xn = (1-alpha)*x_new + alpha*xn
                         _ = 0
                     if converged:
@@ -1228,7 +1229,7 @@ class BlockSolver:
                         print(f"x is {x_new}")
                     else:
                         print(f"System bad initialized. DAE resiudal is {residual}.")
-                        print(f'rhs is {rhs}')
+                        print(f'residual is {residual}')
                         non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
                         all_eq = self._state_eqs + self._algebraic_eqs
                         print("eqs are")

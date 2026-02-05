@@ -32,6 +32,8 @@ def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
     P_dc = Var('P_dc')
     alpha = Var('alpha')
     am = Var('am')
+    Im = Var('Im')
+    Ia = Var('Ia')
 
     #Parameters:
     bt = Var('bt')
@@ -46,13 +48,14 @@ def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
         algebraic_eqs=[
             P_ac - (gt*Vm**2 - sqrt_38*am*v_dc*Vm*sym.cos(Va - alpha)
                     - sqrt_38*bt*am*v_dc*Vm*sym.sin(Va - alpha)),
-            Q_ac - (-bt*Va**2 + sqrt_38*bt*am*v_dc*Vm*sym.cos(Va - alpha)
+            Q_ac - (-bt*Vm**2 + sqrt_38*bt*am*v_dc*Vm*sym.cos(Va - alpha)
                     - sqrt_38*bt*am*v_dc*Vm*sym.sin(Va - alpha)),
             gt*(sqrt_38*am*v_dc)**2 - sqrt_38*am*v_dc*Vm*sym.cos(Va-alpha)
                 + sqrt_38*am*v_dc*Vm*sym.sin(Va - alpha),
-            P_dc - v_dc*i_dc,
+            P_ac**2 + Q_ac**2  - Vm*Im,
+            P_ac*sym.sin(Va - alpha) - Q_ac*sym.cos(Va - alpha),
         ],
-        algebraic_vars=[P_ac, Q_ac, alpha, am],
+        algebraic_vars=[P_ac, Q_ac, alpha, am, Im, Ia],
     )
 
     vsc_block.event_dict = event_dict
@@ -64,7 +67,7 @@ def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
         VarPowerFlowRefferenceType.Vat: inputs[1],
         VarPowerFlowRefferenceType.Pt: P_ac,
         VarPowerFlowRefferenceType.Qt: Q_ac,
-        VarPowerFlowRefferenceType.Pf: P_dc,
+        VarPowerFlowRefferenceType.Pf: v_dc*i_dc,
         VarPowerFlowRefferenceType.Vdc: v_dc,
         VarPowerFlowRefferenceType.Idc: i_dc,
     }
@@ -73,55 +76,61 @@ def VSCShuntBuild(name: str = "") -> RmsModelTemplate:
     templ.block = vsc_block
     return templ
 
-def VSCShunt2Build(name: str = "") -> RmsModelTemplate:
+def VSCShuntBuild2(name: str = "") -> RmsModelTemplate:
     """
      VSC shunt model
      with from side the DC bus and to side the AC bus
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
-    inputs = [Var("Vm_"), Var("Va_"), Var("Vdc_"), Var("Idc_")]
+    inputs = [Var("Vm_"), Var("Va_"), Var("Vdc_")]
     Vm = inputs[0]
     Va = inputs[1]
     v_dc = inputs[2]
 
     #Vars:
-    P_ac = Var('P_ac')
-    Q_ac = Var('Q_ac')
-    P_dc = Var('P_dc')
-    alpha = Var('alpha')
-    am = Var('am')
+    Pt_vsc = Var('Pt_vsc')
+    Qt_vsc = Var('Qt_vsc')
+    Pf_vsc = Var('Pf_vsc')
     vsh = Var('vsh')
     ash = Var('ash')
     #Parameters:
     bt = Var('bt')
     gt = Var('gt')
+    Qf = Var('Qf')
     event_dict = {
+        Qf: Const(0.0),
         bt: Const(0.0),
         gt: Const(0.1),
     }
 
     sqrt_38 = Const(np.sqrt(3/8))
+    exp1 = Qt_vsc + bt*Vm**2
+    exp2 = Pt_vsc - gt*Vm**2
     vsc_block = Block(
         algebraic_eqs=[
-            P_ac + (-bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha)),
-            Q_ac + ( bt*vsh*Vm*sym.cos(Va - alpha) - bt*Vm**2 - gt*vsh*Vm*sym.sin(Va - alpha)),
-            P_dc + ( bt*vsh*Vm*sym.sin(Va - alpha) + gt*Vm**2 - gt*vsh*Vm*sym.cos(Va - alpha)),
+            Pt_vsc + (-bt*vsh*Vm*sym.sin(ash - Va) + gt*Vm**2 - gt*vsh*Vm*sym.cos(ash - Va)),
+            Qt_vsc + ( bt*vsh*Vm*sym.cos(ash - Va) - bt*Vm**2 - gt*vsh*Vm*sym.sin(ash - Va)),
+            Pf_vsc + ( bt*vsh*Vm*sym.sin(ash - Va) + gt*Vm**2 - gt*vsh*Vm*sym.cos(ash - Va)),
         ],
-        algebraic_vars=[P_ac, Q_ac, alpha, am],
+        algebraic_vars=[Pt_vsc, Qt_vsc, vsh, ash, Pf_vsc],
+        init_eqs={
+            vsh: sym.sqrt((exp1**2 + exp2**2)/(gt**2 + bt**2))/Vm,
+            ash: sym.atan((-gt*exp1 - bt*exp2)/(bt*exp1 - gt*exp2)),
+        }
     )
 
     vsc_block.event_dict = event_dict
     vsc_block.in_vars = inputs
-    vsc_block.out_vars = [P_ac, Q_ac, alpha, am]
+    vsc_block.out_vars = [Pt_vsc, Qt_vsc, vsh, ash, Pf_vsc]
 
-    templ.block.external_mapping = {
+    vsc_block.external_mapping = {
         VarPowerFlowRefferenceType.Vmt: inputs[0],
         VarPowerFlowRefferenceType.Vat: inputs[1],
-        VarPowerFlowRefferenceType.Pt: P_ac,
-        VarPowerFlowRefferenceType.Qt: Q_ac,
-        VarPowerFlowRefferenceType.Pf: P_dc,
-        VarPowerFlowRefferenceType.Qf: Const(0.0),
+        VarPowerFlowRefferenceType.Pt: Pt_vsc,
+        VarPowerFlowRefferenceType.Qt: Qt_vsc,
+        VarPowerFlowRefferenceType.Pf: Pf_vsc,
+        VarPowerFlowRefferenceType.Qf: Qf,
         VarPowerFlowRefferenceType.Vdc: v_dc,
     }
 
@@ -129,9 +138,87 @@ def VSCShunt2Build(name: str = "") -> RmsModelTemplate:
     templ.block = vsc_block
     return templ
 
+def PVControlBuild2(name: str = "") -> RmsModelTemplate:
+    templ = RmsModelTemplate()
+    inputs = [Var("Vm_"), Var("Vdc_"), Var("vhs_"), Var("ahs_"), Var("Pdc_")]
+    Vm = inputs[0]
+    vdc = inputs[1]
+    vhs = inputs[2]
+    ahs = inputs[3]
+    Pdc = inputs[4]
+
+    #Vars:
+    x = Var('x')
+
+    #Parameters:
+    Kp = Var('Kp')
+    Ki = Var('Ki')
+    vdc_ref = Var('vdc_ref')
+    Temp = Var('Temp')
+    G = Var('G')
+    gamma_p = Var('gamma_p')
+    Pref = Var('Pref')
+    Gref = Var('Gref')
+    Tref = Var('Tref')
+    vref = Var('vref')
+    Km = Var('Km')
+    Ts = Var('Ts_controller')
+    event_dict = {
+        vref: Const(None),
+        Km: Const(10.0),
+        Ts: Const(0.01),
+        Kp: Const(0.1),
+        Ki: Const(0.1),
+        Temp: Const(300.0),
+        G: Const(1000.0),
+        Gref: Const(1000.0),
+        Pref: Const(None),
+        Tref: Const(300.0),
+        gamma_p: Const(-0.001),
+        vdc_ref: Const(1.033),
+    }
+
+    Ppv = (G/Const(1000.0))*(Pref*(1+gamma_p*(Temp - Tref)))
+    i_dc_ref = Ppv / vdc_ref
+    init_eqs = {
+        vref: inputs[0],
+        Pref: inputs[4],
+    }
+
+    block_vhs_control, _ = tf_to_diffblock_with_antiwindup(
+        x =(Vm-vref),
+        y = vhs,
+        num = [Km],
+        den = [Const(1), Ts],  
+        name = "VSC Vhs Control",
+        sat_min = Const(-1.0),      
+        sat_max = Const(1.0),
+    )      
+    #Block that Controls Vdc_ref based on MPPT optimal point
+    solar_block = Block(
+        state_eqs=[ Ki*(vdc_ref - vdc) ],   
+        state_vars=[x],
+        algebraic_eqs=[
+            Kp*(vdc_ref - vdc) + x - ahs,
+            i_dc_ref + vdc_ref*i_dc_ref.diff(vdc_ref),
+        ],
+        algebraic_vars=[vdc_ref],
+        in_vars=inputs,
+        init_eqs= init_eqs,
+        #children = [block_vhs_control],
+        event_dict= event_dict,
+    )
+
+    solar_block.name = name
+
+    templ.block = solar_block
+    templ.block.event_dict = event_dict
+
+    return templ
+
 def PVControlBuild(name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
-    inputs = [Var("Vdc_"), Var("alpha_")]
+    inputs = [Var("Vdc_"), Var("ahs_")]
     Vdc = inputs[0]
     alpha = inputs[1]
 
@@ -163,10 +250,6 @@ def PVControlBuild(name: str = "") -> RmsModelTemplate:
 
     Ppv = (G/Const(1000.0))*(Pref*(1+gamma_p*(Temp - Tref)))
     i_dc_ref = Ppv / vdc_ref
-    init_eqs = {
-        vdc_ref: Const(0.01),
-        Pref:  Const(0.01),
-    }
     init_eqs = {}
     solar_block = Block(
         state_eqs=[ Ki*(vdc_ref - Vdc) ],   
@@ -195,6 +278,7 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
     iL = Var('iL')
     Idc = Var('Idc')
     vD = Var('vD')
+    Pdc = Var('Pdc')
 
     #Parameters:
     Temp = Var('Temp')
@@ -249,12 +333,19 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
     solar_block = Block(
         algebraic_eqs=[
             Idc - (iL - iD - vD/Rsh),
+            Pdc - Idc*Vdc,
             vD - Vdc - Rse*Idc,
             Is*(sym.exp(vD/(gamma*v_T)) - Const(1)) - iD,
             iL*Sn/Vdc - G/Const(1000.0)*(Aa*rho_e*G + C_temp*(Temp - Tref)),
         ],
-        algebraic_vars=[iD, iL, Idc, vD],
+        algebraic_vars=[iD, iL, Idc, vD, Pdc],
         in_vars=inputs,
+        out_vars=[Pdc, Idc],
+        external_mapping={
+            VarPowerFlowRefferenceType.P: Pdc,
+            VarPowerFlowRefferenceType.Idc: Idc,
+            VarPowerFlowRefferenceType.Vdc: Vdc,
+        }
     )
 
     solar_block.name = "PVCell" + name
@@ -269,17 +360,17 @@ def VscControlledPV(name = 'VscControlledPV') -> RmsModelTemplate:
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
 
-    vsc_block = VSCShuntBuild().block
-    pv_block  = PVControlBuild().block
+    vsc_block = VSCShuntBuild2().block
+    pv_block  = PVControlBuild2().block
     pv_cell_block  = PVCellBuild().block
 
-    pv_block.connect([pv_block.in_vars[0]], [vsc_block.out_vars[2]])
-    pv_block.connect([pv_block.in_vars[1]], [vsc_block.out_vars[3]])
+    pv_block.connect([pv_block.in_vars[2]], [vsc_block.out_vars[2]])
+    pv_block.connect([pv_block.in_vars[3]], [vsc_block.out_vars[3]])
 
     pv_cell_block.connect([pv_cell_block.in_vars[0]], [vsc_block.out_vars[0]])
 
 
-    templ.block = Block(children=[vsc_block, pv_block, pv_cell_block])
+    templ.block = Block(children=[pv_block, pv_cell_block])
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: vsc_block.in_vars[0],
@@ -288,8 +379,4 @@ def VscControlledPV(name = 'VscControlledPV') -> RmsModelTemplate:
         VarPowerFlowRefferenceType.Q: vsc_block.out_vars[1],
     }
 
-    templ.block.in_vars = [vsc_block.in_vars[0], vsc_block.in_vars[1]]
-    templ.block.out_vars = [vsc_block.out_vars[0], vsc_block.out_vars[1]]
-
-
-    return templ
+    return templ, vsc

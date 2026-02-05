@@ -345,10 +345,12 @@ def tf_to_diffblock_with_antiwindup(num: np.ndarray,
 
     if len(num) > len(den):
         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    if num[-1] == 0 or den[-1] == 0:
-        raise ValueError("Leading coefficient cannot be zero.")
+    if isinstance(num[-1], Const) and num[-1].value == 0:
+        raise ValueError("Leading coefficient of numerator cannot be zero.")
+    if isinstance(den[-1], Const) and den[-1].value == 0:
+        raise ValueError("Leading coefficient of denominator cannot be zero.")
 
-    if y is None:
+    if y is None:   
         y = Var('y_' + name)
 
     aux_eqs = []
@@ -412,14 +414,14 @@ def tf_to_diffblock_with_antiwindup(num: np.ndarray,
         for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
             rhs += term
 
-    f = (rhs-lhs)/Const(den[1])
+    f = (rhs-lhs)
     hf = heaviside(rhs-lhs)
     ha = h1*h2
     hb = (1-h1)*hf
     hc = (1-h2)*(1-hf)
     h = heaviside(ha + hb + hc)
     # Differential equation (single equation)
-    eq_main = (diff_vars_y[1] - h*f).simplify()
+    eq_main = (diff_vars_y[1]*den[1] - h*f).simplify()
 
     block = Block(
         name=name,
@@ -804,7 +806,7 @@ class Block:
             variables.extend(blk.get_vars())
         return variables
 
-    def update_equations(self, old, new):
+    def  update_equations(self, old, new):
         """
         this function changes the variable old for the variable new in a block
         :param old:
@@ -813,6 +815,7 @@ class Block:
         """
         init_eqs_new = dict()
         event_dict_new = dict()
+        external_mapping_new = dict()
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -840,8 +843,14 @@ class Block:
 
         self.event_dict = event_dict_new
 
+        for key, expr in self.external_mapping.items():
+            new_expr = expr.subs({old: new})
+            external_mapping_new.update({key: new_expr})
+
+        self.external_mapping = external_mapping_new
+
     def update_model(self, old, new):
-        """
+        """<
         :param old:
         :param new:
         :return:

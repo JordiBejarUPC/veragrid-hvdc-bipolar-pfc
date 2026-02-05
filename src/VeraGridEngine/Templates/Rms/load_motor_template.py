@@ -106,7 +106,7 @@ def MotorLoadBuild(name: str = "") -> RmsModelTemplate:
     Te = Var('Te')
     block2 = Block(
         state_eqs = [
-            u*((Eq_2prime*Iq + Ed_2prime*Id) - Cl0*sym.abs(omega/omega0)**Const(1.0))/2*H,
+            u*((Eq_2prime*Iq + Ed_2prime*Id) - Cl0*sym.abs(omega/omega0)**n)/2*H,
         ],
         state_vars = [omega],
         algebraic_eqs= [ 
