@@ -216,16 +216,16 @@ class SequenceLineType(EditableDevice):
         diag = (2 * z1 + z0) / 3
         off_diag = (z0 - z1) / 3
 
-        zabc = np.full((4, 4), off_diag)
-        np.fill_diagonal(zabc, diag)
+        z_abc = np.full((3, 3), off_diag)
+        np.fill_diagonal(z_abc, diag)
 
         adm = AdmittanceMatrix(size=4)
         try:
-            adm.values = np.linalg.inv(zabc)
+            adm.values[1:4,1:4] = np.linalg.inv(z_abc)
         except np.linalg.LinAlgError:
-            adm.values = np.linalg.pinv(zabc)
+            adm.values[1:4,1:4]  = np.linalg.pinv(z_abc)
 
-        adm.phN = 1
+        adm.phN = 0
         adm.phA = 1
         adm.phB = 1
         adm.phC = 1
@@ -247,13 +247,13 @@ class SequenceLineType(EditableDevice):
         diag = (2.0 * y1 + y0) / 3.0
         off_diag = (y0 - y1) / 3.0
 
-        yabc = np.full((4, 4), off_diag)
-        np.fill_diagonal(yabc, diag)
+        y_abc = np.full((3, 3), off_diag)
+        np.fill_diagonal(y_abc, diag)
 
         adm = AdmittanceMatrix(size=4)
-        adm.values = yabc
+        adm.values[1:4,1:4] = y_abc
 
-        adm.phN = 1
+        adm.phN = 0
         adm.phA = 1
         adm.phB = 1
         adm.phC = 1
