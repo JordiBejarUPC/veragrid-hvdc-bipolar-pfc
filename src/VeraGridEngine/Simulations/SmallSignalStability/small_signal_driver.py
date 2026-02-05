@@ -308,6 +308,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
         if not self.assessment_time == 0:
             # Get integration method
 
+            # TODO: assign a solver directly depending on the options.integration_method (without if)
             if self.rms_options.integration_method == DynamicIntegrationMethod.Trapezoid:
                 NotImplementedError(f"Rms integration method {DynamicIntegrationMethod.Trapezoid} not implemented")
 
@@ -320,19 +321,11 @@ class SmallSignalStabilityDriver(DriverTemplate):
                     max_iter=self.rms_options.max_iter
                 )
 
-                solver.simulate()
-
+                t, y = solver.simulate()
 
             else:
                 raise ValueError(f"integrator not implemented :( {self.rms_options.integration_method}")
 
-            # t, y = slv.simulate(
-            #     t0=0,
-            #     t_end=self.options.ss_assessment_time,
-            #     h=self.options.time_step,
-            #     x0=x0,
-            #     method=self.options.integration_method
-            # )
 
             i = int(self.assessment_time / self.rms_options.time_step)
             (eigenvalues,
