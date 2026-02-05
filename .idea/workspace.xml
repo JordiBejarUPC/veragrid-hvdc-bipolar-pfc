@@ -28,15 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="small signal refactored">
-      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_different_damping_oscillators.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_symmetric_damping_oscillators.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_from_DAE.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="more floquet examples">
+      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/Floquet_theory_for_stability_analysis_in_EMT.pdf" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_template.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_staility_1D.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_1D.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/rms_kundur.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_different_damping_oscillators.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_different_damping_oscillators.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -199,6 +194,7 @@
     "Python.floquet_stability_1D.executor": "Run",
     "Python.floquet_stability_chain_damping_oscillators.executor": "Run",
     "Python.floquet_stability_chain_different_damping_oscillators.executor": "Run",
+    "Python.floquet_stability_chain_symmetric_damping_oscillators.executor": "Run",
     "Python.floquet_stability_damped_oscillator.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
@@ -1912,7 +1908,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="696" />
+    <option name="localTasksCounter" value="697" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1958,7 +1954,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
     <MESSAGE value="5.6.5" />
     <MESSAGE value="Fixed important bug" />
@@ -1983,7 +1978,8 @@
     <MESSAGE value="comparison sparse vs dense in small signal calc. v2" />
     <MESSAGE value="working on refactor small_signal simulation 2" />
     <MESSAGE value="small signal refactored" />
-    <option name="LAST_COMMIT_MESSAGE" value="small signal refactored" />
+    <MESSAGE value="more floquet examples" />
+    <option name="LAST_COMMIT_MESSAGE" value="more floquet examples" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
