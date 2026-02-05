@@ -29,10 +29,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="test load_save_load">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx_2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_template.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -74,7 +73,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="147_86_Dynamic_simulations_V1_DiffBlock_pre_emt" />
+        <entry key="$PROJECT_DIR$" value="30605c92c0b86b4de8260b0f8ee68a8d11874ead" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -242,14 +241,14 @@
     "WebServerToolWindowFactoryState": "false",
     "ai.playground.ignore.import.keys.banner.in.settings": "true",
     "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/tests/data/grids",
+    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx_2.py",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "run.code.analysis.last.selected.profile": "aDefault",
     "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "two.files.diff.last.used.file": "C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py",
+    "two.files.diff.last.used.file": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx_2.py",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -260,11 +259,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical" />
       <recent name="$PROJECT_DIR$/src/tests/data/grids" />
       <recent name="$PROJECT_DIR$/trunk/dynamics" />
       <recent name="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic" />
       <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/trunk/ucte" />
@@ -2622,11 +2621,6 @@
           <option name="timeStamp" value="3494" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py</url>
-          <line>877</line>
-          <option name="timeStamp" value="3495" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py</url>
           <line>144</line>
           <option name="timeStamp" value="3496" />
@@ -2642,9 +2636,14 @@
           <option name="timeStamp" value="3498" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx.py</url>
+          <line>136</line>
+          <option name="timeStamp" value="3506" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py</url>
           <line>538</line>
-          <option name="timeStamp" value="3499" />
+          <option name="timeStamp" value="3507" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

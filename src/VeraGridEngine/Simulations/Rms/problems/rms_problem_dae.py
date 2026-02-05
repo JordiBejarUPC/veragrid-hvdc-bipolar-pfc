@@ -960,6 +960,7 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+        self._variable_parameters_values[-2] = 0.001
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         return self._derivative_fn(x, xn, dx, h)
