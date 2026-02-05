@@ -61,6 +61,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import io
+import zipfile
+import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -462,6 +465,7 @@ class ShareVectorDataset(Dataset):
             share_t=torch.tensor(self.share[t], dtype=torch.float32),
         )
 
+
 def collate_aggregate(batch: List[AggregateBatch]) -> AggregateBatch:
     """
     Stack AggregateBatch list into one AggregateBatch.
@@ -474,6 +478,7 @@ def collate_aggregate(batch: List[AggregateBatch]) -> AggregateBatch:
         y_next=torch.stack([b.y_next for b in batch], dim=0),
     )
 
+
 def collate_share(batch: List[ShareBatch]) -> ShareBatch:
     """
     Stack ShareBatch list into one ShareBatch.
@@ -484,6 +489,8 @@ def collate_share(batch: List[ShareBatch]) -> ShareBatch:
         y_agg_t=torch.stack([b.y_agg_t for b in batch], dim=0),
         share_t=torch.stack([b.share_t for b in batch], dim=0),
     )
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # 5) MODELS
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1477,6 +1484,287 @@ def plot_devices_real_vs_syn(P_real: Mat,
     plt.tight_layout()
 
 
+@dataclass
+class HierarchicalZipSpec:
+    """
+    Serializable, future-safe spec for training and generation.
+
+    All fields are JSON-serialisable primitives.
+
+    :param context_len: Aggregate context length L.
+    :param steps_agg: Optimisation steps for aggregate model.
+    :param steps_share: Optimisation steps for share model.
+    :param batch_size_agg: Batch size for aggregate model.
+    :param batch_size_share: Batch size for share model.
+    :param lr_agg: Learning rate for aggregate model.
+    :param lr_share: Learning rate for share model.
+    :param prefer_cuda: Try to use CUDA if available.
+    :param verbose: Print diagnostics during training.
+    :param eps_agg: Epsilon for log stability in aggregate model.
+    :param eps_share_denominator: Epsilon for share denominator stability.
+    :param share_chunk_size: Chunk size for ShareSoftmaxModel forward (0 disables).
+    :param sigma_damp: Damping factor for aggregate sampling sigma.
+    :param logit_noise_std: Optional noise added to share logits during sampling.
+    """
+    context_len: int
+    steps_agg: int
+    steps_share: int
+    batch_size_agg: int
+    batch_size_share: int
+    lr_agg: float
+    lr_share: float
+    prefer_cuda: bool
+    verbose: bool
+    eps_agg: float
+    eps_share_denominator: float
+    share_chunk_size: int
+    sigma_damp: float
+    logit_noise_std: Optional[float]
+
+
+class HierarchicalZipArtifact:
+    """
+    Orchestrates training, prediction, and durable ZIP save/load for the
+    hierarchical (aggregate + simplex shares) generator, using the existing
+    functions/classes already present in clean_room1.py.
+
+    This class NEVER pickles model objects. It only stores:
+    - state_dict tensors (.pt)
+    - JSON specs/meta/losses
+    """
+
+    def __init__(self, spec: HierarchicalZipSpec):
+        self.spec = spec
+
+        self.agg_model: Optional[AggregateARModel] = None
+        self.share_model: Optional[ShareSoftmaxModel] = None
+
+        self.agg_losses: List[float] = []
+        self.share_losses: List[float] = []
+
+        self.agg_meta: Dict[str, Any] = {}
+        self.share_meta: Dict[str, Any] = {}
+
+        self.device: torch.device = torch.device("cpu")
+
+    # ------------------------------------------------------------------
+    # Training
+    # ------------------------------------------------------------------
+
+    def train(self,
+              timestamps: IntVec,
+              P: Mat,
+              region_id: IntVec,
+              temp: IntVec) -> None:
+        """
+        Train both aggregate and share models.
+
+        :param timestamps: Unix timestamps (T,).
+        :param P: Device power matrix (T,N).
+        :param region_id: Region index per device (N,).
+        :param temp: Temperature matrix (T,R).
+        :returns: None (models stored in self).
+        """
+        # Aggregate target
+        P_arr: Mat = np.asarray(P, dtype=np.float32)
+        P_arr = np.nan_to_num(P_arr, nan=0.0)
+        P_agg = P_arr.sum(axis=1).astype(np.float32)
+
+        # --- Train aggregate (returns model, losses, meta) ---
+        agg_model, agg_losses, agg_meta = train_aggregate_model(
+            timestamps=np.asarray(timestamps, dtype=np.int64),
+            P_agg=P_agg,
+            temp=np.asarray(temp, dtype=np.float32),
+            context_len=int(self.spec.context_len),
+            steps=int(self.spec.steps_agg),
+            batch_size=int(self.spec.batch_size_agg),
+            lr=float(self.spec.lr_agg),
+            prefer_cuda=bool(self.spec.prefer_cuda),
+            verbose=bool(self.spec.verbose),
+            eps_agg=float(self.spec.eps_agg),
+        )
+
+        # --- Train shares (returns model, losses, meta) ---
+        share_model, share_losses, share_meta = train_share_softmax_model(
+            timestamps=np.asarray(timestamps, dtype=np.int64),
+            P=P_arr,
+            region_id=np.asarray(region_id, dtype=np.int64),
+            temp=np.asarray(temp, dtype=np.float32),
+            steps=int(self.spec.steps_share),
+            batch_size=int(self.spec.batch_size_share),
+            lr=float(self.spec.lr_share),
+            prefer_cuda=bool(self.spec.prefer_cuda),
+            verbose=bool(self.spec.verbose),
+            eps_share_denominator=float(self.spec.eps_share_denominator),
+            eps_agg=float(self.spec.eps_agg),
+            chunk_size=int(self.spec.share_chunk_size),
+        )
+
+        # Store
+        self.agg_model = agg_model
+        self.share_model = share_model
+        self.agg_losses = list(agg_losses)
+        self.share_losses = list(share_losses)
+        self.agg_meta = dict(agg_meta)
+        self.share_meta = dict(share_meta)
+
+        # Device used (both training fns choose device internally; we keep agg’s)
+        self.device = next(self.agg_model.parameters()).device
+
+    def predict(self,
+                timestamps: IntVec,
+                temp: Vec,
+                region_id: IntVec,
+                y_agg_init: Vec,
+                seed: int) -> np.ndarray:
+        """
+        Generate synthetic device powers (T,N).
+
+        Uses:
+        - sample_aggregate(...) -> (y_syn, sigma_eff)
+        - lognormal_mean_correction(...) -> P_agg_syn
+        - sample_shares_softmax(...) -> shares (T,N)
+        - reconstruct_power_from_shares(...) -> P_syn (T,N)
+
+        :param timestamps: Unix timestamps (T,).
+        :param temp: Temperature matrix (T,R).
+        :param region_id: Region index per device (N,).
+        :param y_agg_init: Initial context for aggregate log-series (L,).
+        :param seed: RNG seed.
+        :returns: Synthetic device power matrix (T,N).
+        """
+        if self.agg_model is None or self.share_model is None:
+            raise RuntimeError("Models are not loaded or trained")
+
+        y_syn, sigma_eff = sample_aggregate(
+            model=self.agg_model,
+            timestamps=np.asarray(timestamps, dtype=np.int64),
+            temp=np.asarray(temp, dtype=np.float32),
+            y_agg_init=np.asarray(y_agg_init, dtype=np.float32),
+            seed=int(seed),
+            sigma_damp=float(self.spec.sigma_damp),
+        )
+
+        P_agg_syn = lognormal_mean_correction(y_syn, sigma_eff)
+
+        shares = sample_shares_softmax(
+            model=self.share_model,
+            timestamps=np.asarray(timestamps, dtype=np.int64),
+            temp=np.asarray(temp, dtype=np.float32),
+            y_agg=np.asarray(y_syn, dtype=np.float32),
+            region_id=np.asarray(region_id, dtype=np.int64),
+            seed=int(seed),
+            logit_noise_std=self.spec.logit_noise_std,
+            chunk_size=int(self.spec.share_chunk_size),
+        )
+
+        return reconstruct_power_from_shares(P_agg_syn, shares)
+
+    # ------------------------------------------------------------------
+    # Durable ZIP save/load (tensors + JSON only)
+    # ------------------------------------------------------------------
+
+    def save(self, zip_path: str) -> None:
+        """
+        Save a ZIP artifact containing:
+        - aggregate_state.pt
+        - share_state.pt
+        - spec.json
+        - meta.json
+        - losses_agg.json
+        - losses_share.json
+
+        :param zip_path: Destination ZIP path.
+        :returns: None
+        """
+        if self.agg_model is None or self.share_model is None:
+            raise RuntimeError("Models are not loaded or trained")
+
+        agg_sd = self.agg_model.state_dict()
+        share_sd = self.share_model.state_dict()
+
+        # JSON payloads
+        spec_json = json.dumps(asdict(self.spec), indent=2)
+        meta_json = json.dumps(
+            {"agg_meta": self.agg_meta, "share_meta": self.share_meta},
+            indent=2
+        )
+        losses_agg_json = json.dumps(self.agg_losses, indent=2)
+        losses_share_json = json.dumps(self.share_losses, indent=2)
+
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            # Weights as .pt (state_dict only)
+            buf = io.BytesIO()
+            torch.save(agg_sd, buf)
+            zf.writestr("aggregate_state.pt", buf.getvalue())
+
+            buf = io.BytesIO()
+            torch.save(share_sd, buf)
+            zf.writestr("share_state.pt", buf.getvalue())
+
+            # JSON files
+            zf.writestr("spec.json", spec_json)
+            zf.writestr("meta.json", meta_json)
+            zf.writestr("losses_agg.json", losses_agg_json)
+            zf.writestr("losses_share.json", losses_share_json)
+
+    @classmethod
+    def load(cls, zip_path: str, map_location: Optional[torch.device]) -> "HierarchicalZipArtifact":
+        """
+        Load from a ZIP artifact produced by save().
+
+        Reconstruction is explicit:
+        - AggregateARModel(cal_dim, hidden, input_proj)
+        - ShareSoftmaxModel(n_devices, n_regions, cal_dim, dev_emb_dim, reg_emb_dim, hidden)
+
+        All dimensions are read from meta.json.
+
+        :param zip_path: ZIP path.
+        :param map_location: Target torch device (cpu/cuda). If None, CPU.
+        :returns: Loaded HierarchicalZipArtifact instance.
+        """
+        device = map_location if map_location is not None else torch.device("cpu")
+
+        with zipfile.ZipFile(zip_path, mode="r") as zf:
+            spec = HierarchicalZipSpec(**json.loads(zf.read("spec.json")))
+            meta = json.loads(zf.read("meta.json"))
+            agg_meta = dict(meta["agg_meta"])
+            share_meta = dict(meta["share_meta"])
+
+            agg_sd = torch.load(io.BytesIO(zf.read("aggregate_state.pt")), map_location=device)
+            share_sd = torch.load(io.BytesIO(zf.read("share_state.pt")), map_location=device)
+
+            agg_losses = list(json.loads(zf.read("losses_agg.json")))
+            share_losses = list(json.loads(zf.read("losses_share.json")))
+
+        obj = cls(spec=spec)
+        obj.agg_meta = agg_meta
+        obj.share_meta = share_meta
+        obj.agg_losses = agg_losses
+        obj.share_losses = share_losses
+        obj.device = device
+
+        # Explicit reconstruction from meta dicts returned by your training fns
+        obj.agg_model = AggregateARModel(
+            int(obj.agg_meta["cal_dim"]),
+            int(obj.agg_meta["hidden"]),
+            int(obj.agg_meta["input_proj"]),
+        ).to(device)
+        obj.agg_model.load_state_dict(agg_sd)
+
+        obj.share_model = ShareSoftmaxModel(
+            n_devices=int(obj.share_meta["n_devices"]),
+            n_regions=int(obj.share_meta["n_regions"]),
+            cal_dim=int(obj.share_meta["cal_dim"]),
+            dev_emb_dim=int(obj.share_meta["dev_emb_dim"]),
+            reg_emb_dim=int(obj.share_meta["reg_emb_dim"]),
+            hidden=int(obj.share_meta["hidden"]),
+        ).to(device)
+        obj.share_model.load_state_dict(share_sd)
+
+        return obj
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # 12) DEMO / HOW TO USE (with parameter explanations)
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1516,11 +1804,11 @@ def demo():
     # -------------------------------------------------------------------------
 
     # Demo data (replace with your real data)
-    T = 24 * 21
-    N = 400
-    R = 8
-    start = 1704067200
-    dt = 3600
+    T = 24 * 21  # Number of time steps
+    N = 400  # Number of loads
+    R = 8  # region number
+    start = 1704067200  # Unix datetime
+    dt = 3600  # Time step increment in seconds
     timestamps = np.arange(start, start + T * dt, dt, dtype=np.int64)
 
     rng = np.random.default_rng(0)
@@ -1629,6 +1917,184 @@ def demo():
 
     plt.show()
 
+def _make_synthetic_demo_data(T: int, N: int, R: int, seed: int) -> tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Create a small synthetic dataset so the demo can run standalone.
+
+    :param T: number of timesteps
+    :param N: number of devices
+    :param R: number of regions
+    :param seed: RNG seed
+    :returns: (timestamps, P, region_id, temp)
+    """
+    rng = np.random.default_rng(int(seed))
+    timestamps = (np.arange(T, dtype=np.int64) * 3600) + np.int64(1700000000)  # hourly unix times
+
+    # Regions and temperatures
+    region_id = rng.integers(low=0, high=R, size=N, dtype=np.int64)
+    base_temp = 10.0 + 10.0 * np.sin(2.0 * np.pi * np.arange(T) / (24.0 * 30.0))
+    temp = np.stack([base_temp + rng.normal(0.0, 1.5, size=T) for _ in range(R)], axis=1).astype(np.float32)
+
+    # Build a plausible aggregate: daily + weekly + temp sensitivity + noise
+    hour = (timestamps // 3600) % 24
+    dow = (timestamps // (3600 * 24)) % 7
+    daily = 1.0 + 0.3 * np.sin(2.0 * np.pi * hour / 24.0 - 0.5)
+    weekly = 1.0 - 0.12 * (dow >= 5).astype(np.float32)
+    temp_effect = 1.0 + 0.02 * np.maximum(0.0, 18.0 - temp[:, 0]) + 0.01 * np.maximum(0.0, temp[:, 0] - 24.0)
+    P_agg = (1000.0 * daily * weekly * temp_effect + rng.normal(0.0, 20.0, size=T)).astype(np.float32)
+    P_agg = np.maximum(P_agg, 1.0)
+
+    # Shares per device: region-conditioned static weights + small time variation
+    w_dev = rng.lognormal(mean=0.0, sigma=0.5, size=N).astype(np.float32)
+    w_reg = rng.lognormal(mean=0.0, sigma=0.3, size=R).astype(np.float32)
+    w = w_dev * w_reg[region_id]
+    w = w / np.sum(w)
+
+    # Add mild day/night device modulation
+    mod = (1.0 + 0.05 * np.sin(2.0 * np.pi * hour / 24.0))[..., None].astype(np.float32)
+    P = (P_agg[:, None] * w[None, :] * mod).astype(np.float32)
+
+    # Inject a few NaNs to mimic real telemetry gaps
+    mask = rng.random(P.shape) < 0.0005
+    P[mask] = np.nan
+
+    return timestamps, P, region_id, temp
+
+
+def demo2():
+    # =============================================================================
+    # Demo: Train / Save / Load / Predict with HierarchicalZipArtifact
+    # =============================================================================
+    # How to use this demo:
+    # - Replace the "INPUT DATA" section with arrays you get from VeraGrid.
+    #   VeraGrid should provide:
+    #     timestamps: (T,) int64 unix seconds
+    #     P:          (T,N) float32 device powers (loads/generation per device)
+    #     region_id:  (N,) int64 region index per device (0..R-1)
+    #     temp:       (T,R) float32 temperatures per region (or per weather zone)
+    #
+    # Key parameters (HierarchicalZipSpec):
+    # - context_len:  number of initial timesteps used to seed the aggregate sampler.
+    # - steps_agg/share: optimisation steps for each model training loop.
+    # - batch_size_agg/share: training batch sizes (share can be smaller if N large).
+    # - lr_agg/share: learning rates.
+    # - prefer_cuda:  if True, training functions will try to use CUDA if available.
+    # - eps_agg:      small epsilon added inside logs for stability (aggregate).
+    # - eps_share_denominator: epsilon in share normalisation denom for stability.
+    # - share_chunk_size: chunk size for share model forward; 0 disables chunking.
+    # - sigma_damp:   damp aggregate stochasticity when sampling (stability knob).
+    # - logit_noise_std: optional noise on share logits during sampling (diversity knob).
+    #
+    # Outputs:
+    # - P_syn: (T,N) synthetic device powers, with aggregate matching the sampled
+    #          aggregate trajectory. You can compare sum(P_syn, axis=1) vs sum(P, axis=1).
+    # =============================================================================
+
+    # -------------------------------------------------------------------------
+    # INPUT DATA
+    # -------------------------------------------------------------------------
+    # Replace the following with VeraGrid-provided arrays:
+    # timestamps = ...
+    # P = ...
+    # region_id = ...
+    # temp = ...
+
+    # Standalone demo fallback:
+    timestamps, P, region_id, temp = _make_synthetic_demo_data(T=24 * 60, N=400, R=6, seed=123)
+
+    # Basic sanity
+    T = int(timestamps.shape[0])
+    N = int(P.shape[1])
+    R = int(temp.shape[1])
+    print(f"[demo] T={T}, N={N}, R={R}")
+
+    # -------------------------------------------------------------------------
+    # SPEC + ARTIFACT PATH
+    # -------------------------------------------------------------------------
+    artifact_path = "./artifacts/hierarchical_country_load.zip"
+    os.makedirs(os.path.dirname(artifact_path), exist_ok=True)
+
+    spec = HierarchicalZipSpec(
+        context_len=48,  # seed length for aggregate sampler (e.g. 2 days if hourly)
+        steps_agg=3000,  # training steps for aggregate model
+        steps_share=3000,  # training steps for share model
+        batch_size_agg=64,  # aggregate batch size
+        batch_size_share=16,  # share batch size (often smaller because N is large)
+        lr_agg=3e-4,  # aggregate learning rate
+        lr_share=3e-4,  # share learning rate
+        prefer_cuda=True,  # try CUDA if available
+        verbose=True,  # print training progress
+        eps_agg=1e-6,  # numerical stability for log transforms
+        eps_share_denominator=1e-6,  # stability in share normalisation
+        share_chunk_size=0,  # 0 disables chunking; set >0 if you need lower peak memory
+        sigma_damp=0.25,  # reduces aggregate stochasticity at generation
+        logit_noise_std=0.0,  # share diversity; start at 0.0
+    )
+
+    # -------------------------------------------------------------------------
+    # TRAIN OR LOAD
+    # -------------------------------------------------------------------------
+    if os.path.exists(artifact_path):
+        print(f"[demo] Loading artifact: {artifact_path}")
+        # Always load to CPU first for maximum portability; move to CUDA later if desired.
+        art = HierarchicalZipArtifact.load(artifact_path, map_location=torch.device("cpu"))
+    else:
+        print(f"[demo] Training new artifact: {artifact_path}")
+        art = HierarchicalZipArtifact(spec=spec)
+        art.train(timestamps=timestamps, P=P, region_id=region_id, temp=temp)
+        art.save(artifact_path)
+        print(f"[demo] Saved: {artifact_path}")
+
+    # -------------------------------------------------------------------------
+    # GENERATE SYNTHETIC
+    # -------------------------------------------------------------------------
+    # y_agg_init must be a (context_len,) log-aggregate seed.
+    # Using the REAL aggregate for seeding is typical (you can also seed with a
+    # previous synthetic run if doing multi-year continuation).
+    P_clean = np.nan_to_num(P.astype(np.float32), nan=0.0)
+    P_agg_real = np.sum(P_clean, axis=1)
+    y_agg_init = np.log(P_agg_real[:int(art.spec.context_len)] + float(art.spec.eps_agg)).astype(np.float32)
+
+    P_syn = art.predict(
+        timestamps=timestamps,
+        temp=temp.astype(np.float32),
+        region_id=region_id.astype(np.int64),
+        y_agg_init=y_agg_init,
+        seed=1234,
+    )
+
+    # -------------------------------------------------------------------------
+    # PLOTS: real vs synthetic aggregate
+    # -------------------------------------------------------------------------
+    P_agg_syn = np.sum(P_syn, axis=1)
+
+    plt.figure()
+    plt.plot(P_agg_real, label="Real aggregate")
+    plt.plot(P_agg_syn, label="Synthetic aggregate")
+    plt.xlabel("timestep")
+    plt.ylabel("Aggregate power")
+    plt.legend()
+    plt.title("Aggregate: Real vs Synthetic")
+    plt.tight_layout()
+    plt.show()
+
+    # Optional: device-level example
+    plt.figure()
+    dev_idx = 0
+    plt.plot(P_clean[:, dev_idx], label=f"Real dev {dev_idx}")
+    plt.plot(P_syn[:, dev_idx], label=f"Synth dev {dev_idx}")
+    plt.xlabel("timestep")
+    plt.ylabel("Device power")
+    plt.legend()
+    plt.title("Example device trajectory")
+    plt.tight_layout()
+    plt.show()
+
+    # Quick numeric check
+    rel_err = float(np.mean(np.abs(P_agg_syn - P_agg_real)) / (np.mean(P_agg_real) + 1e-9))
+    print(f"[demo] Mean abs aggregate error / mean real = {rel_err:.4f}")
+
 
 if __name__ == "__main__":
-    demo()
+    demo2()
