@@ -1470,11 +1470,16 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     block_parser = BlockParser()
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
-        block_parser.parse_consts(symbolic_data["consts"])
-        block_parser.parse_vars(symbolic_data["vars"])
-        block_parser.parse_diff_vars(symbolic_data["diff_vars"])
-        for block_uid in symbolic_data["main_block_uids"]:
-            block_parser.parse_block(symbolic_data["blocks"], block_uid)
+        if len(symbolic_data) > 0:
+            block_parser.parse_consts(symbolic_data["consts"])
+            block_parser.parse_vars(symbolic_data["vars"])
+            block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+            for block_uid in symbolic_data["main_block_uids"]:
+                block_parser.parse_block(symbolic_data["blocks"], block_uid)
+        else:
+            pass  # the symbolic data is empty
+    else:
+        pass  # there is no symbolic data records
 
     model_data = data.get('model_data', None)
     if model_data is not None:
