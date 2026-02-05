@@ -235,7 +235,10 @@ def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
             droop_mw_deg = nc.vsc_data.control1_val[k]
             ys = droop_mw_deg * 57.295779513 / nc.Sbase
         else:
-            ys = 1e15
+            # Non-droop VSCs have free power in the LP (not angle-coupled)
+            # Hence, we skip them avoid artificial AC-DC coupling in the PTDF/LODF
+            # Otherwise we would get overly conservative contingency constraints
+            continue
 
         A[f, f] += ys
         A[f, t] -= ys
