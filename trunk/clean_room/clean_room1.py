@@ -256,6 +256,63 @@ def compute_month_index(timestamps: IntVec) -> IntVec:
     return month.astype(np.int64)
 
 
+@dataclass
+class AggregateBatch:
+    """
+    Strongly-typed batch for the aggregate model.
+
+    :param y_ctx: Tensor (L,)
+    :param temp_hist: Tensor (L,1)
+    :param cal_t: Tensor (1,F)
+    :param temp_t: Tensor (1,1)
+    :param y_next: Tensor (1,)
+    """
+    y_ctx: torch.Tensor
+    temp_hist: torch.Tensor
+    cal_t: torch.Tensor
+    temp_t: torch.Tensor
+    y_next: torch.Tensor
+
+    def to(self, device: torch.device) -> "AggregateBatch":
+        """
+        Move tensors to device.
+        """
+        return AggregateBatch(
+            y_ctx=self.y_ctx.to(device),
+            temp_hist=self.temp_hist.to(device),
+            cal_t=self.cal_t.to(device),
+            temp_t=self.temp_t.to(device),
+            y_next=self.y_next.to(device),
+        )
+
+
+@dataclass
+class ShareBatch:
+    """
+    Strongly-typed batch for the share model.
+
+    :param cal_t: Tensor (F,)
+    :param temp_dev_t: Tensor (N,)
+    :param y_agg_t: Tensor (1,)
+    :param share_t: Tensor (N,)
+    """
+    cal_t: torch.Tensor
+    temp_dev_t: torch.Tensor
+    y_agg_t: torch.Tensor
+    share_t: torch.Tensor
+
+    def to(self, device: torch.device) -> "ShareBatch":
+        """
+        Move tensors to device.
+        """
+        return ShareBatch(
+            cal_t=self.cal_t.to(device),
+            temp_dev_t=self.temp_dev_t.to(device),
+            y_agg_t=self.y_agg_t.to(device),
+            share_t=self.share_t.to(device),
+        )
+
+
 class AggregateDataset(Dataset):
     """
     Random window dataset for aggregate model.
@@ -307,7 +364,7 @@ class AggregateDataset(Dataset):
         """
         return self.samples
 
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> AggregateBatch:
         """
         :param idx: Unused (random sampling).
         :returns: Batch element dictionary.
@@ -319,13 +376,13 @@ class AggregateDataset(Dataset):
         temp_t = self.temp[t:t + 1, 0:1]
         cal_t = self.cal[t:t + 1]
 
-        return {
-            "y_ctx": torch.tensor(y_ctx, dtype=torch.float32),
-            "temp_hist": torch.tensor(temp_hist, dtype=torch.float32),
-            "cal_t": torch.tensor(cal_t, dtype=torch.float32),
-            "temp_t": torch.tensor(temp_t, dtype=torch.float32),
-            "y_next": torch.tensor([y_next], dtype=torch.float32),
-        }
+        return AggregateBatch(
+            y_ctx=torch.tensor(y_ctx, dtype=torch.float32),
+            temp_hist=torch.tensor(temp_hist, dtype=torch.float32),
+            cal_t=torch.tensor(cal_t, dtype=torch.float32),
+            temp_t=torch.tensor(temp_t, dtype=torch.float32),
+            y_next=torch.tensor([y_next], dtype=torch.float32),
+        )
 
 
 class ShareVectorDataset(Dataset):
@@ -392,20 +449,41 @@ class ShareVectorDataset(Dataset):
         """
         return self.samples
 
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> ShareBatch:
         """
         :param idx: Unused (random sampling).
         :returns: Batch element dictionary.
         """
         t = np.random.randint(0, self.T)
-        return {
-            "cal_t": torch.tensor(self.calendar_features[t], dtype=torch.float32),
-            "temp_dev_t": torch.tensor(self.temp_dev[t], dtype=torch.float32),
-            "y_agg_t": torch.tensor([self.y_agg[t]], dtype=torch.float32),
-            "share_t": torch.tensor(self.share[t], dtype=torch.float32),
-        }
+        return ShareBatch(
+            cal_t=torch.tensor(self.calendar_features[t], dtype=torch.float32),
+            temp_dev_t=torch.tensor(self.temp_dev[t], dtype=torch.float32),
+            y_agg_t=torch.tensor([self.y_agg[t]], dtype=torch.float32),
+            share_t=torch.tensor(self.share[t], dtype=torch.float32),
+        )
 
+def collate_aggregate(batch: List[AggregateBatch]) -> AggregateBatch:
+    """
+    Stack AggregateBatch list into one AggregateBatch.
+    """
+    return AggregateBatch(
+        y_ctx=torch.stack([b.y_ctx for b in batch], dim=0),
+        temp_hist=torch.stack([b.temp_hist for b in batch], dim=0),
+        cal_t=torch.stack([b.cal_t for b in batch], dim=0),
+        temp_t=torch.stack([b.temp_t for b in batch], dim=0),
+        y_next=torch.stack([b.y_next for b in batch], dim=0),
+    )
 
+def collate_share(batch: List[ShareBatch]) -> ShareBatch:
+    """
+    Stack ShareBatch list into one ShareBatch.
+    """
+    return ShareBatch(
+        cal_t=torch.stack([b.cal_t for b in batch], dim=0),
+        temp_dev_t=torch.stack([b.temp_dev_t for b in batch], dim=0),
+        y_agg_t=torch.stack([b.y_agg_t for b in batch], dim=0),
+        share_t=torch.stack([b.share_t for b in batch], dim=0),
+    )
 # ----------------------------------------------------------------------------------------------------------------------
 # 5) MODELS
 # ----------------------------------------------------------------------------------------------------------------------
@@ -690,7 +768,11 @@ def train_aggregate_model(
     cal_dim = calendar_features_unix(timestamps).shape[1]
 
     ds = AggregateDataset(timestamps, P_agg, temp, context_len, steps * batch_size, eps_agg)
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    dl = DataLoader(ds,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    num_workers=0, collate_fn=collate_aggregate)
+
     it = iter(dl)
 
     hidden = 96
@@ -702,12 +784,10 @@ def train_aggregate_model(
     model.train()
 
     for step in range(1, int(steps) + 1):
-        batch = next(it)
-        for k in batch:
-            batch[k] = batch[k].to(device)
+        batch = next(it).to(device)
 
-        mu, sigma = model(batch["y_ctx"], batch["temp_hist"], batch["cal_t"], batch["temp_t"])
-        loss = gaussian_nll(batch["y_next"], mu, sigma)
+        mu, sigma = model(batch.y_ctx, batch.temp_hist, batch.cal_t, batch.temp_t)
+        loss = gaussian_nll(batch.y_next, mu, sigma)
 
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -778,7 +858,8 @@ def train_share_softmax_model(
         eps_share_denominator=eps_share_denominator,
         eps_agg=eps_agg,
     )
-    dl = DataLoader(ds, batch_size=int(batch_size), shuffle=True, num_workers=0)
+    dl = DataLoader(ds, batch_size=int(batch_size), shuffle=True, num_workers=0, collate_fn=collate_share)
+
     it = iter(dl)
 
     model = ShareSoftmaxModel(
@@ -797,14 +878,9 @@ def train_share_softmax_model(
     model.train()
 
     for step in range(1, int(steps) + 1):
-        batch = next(it)
-        cal_t = batch["cal_t"].to(device)
-        temp_dev_t = batch["temp_dev_t"].to(device)
-        y_agg_t = batch["y_agg_t"].to(device)
-        share_t = batch["share_t"].to(device)
-
-        logits = model(cal_t, temp_dev_t, y_agg_t, region_id_t, int(chunk_size))
-        loss = share_kl_loss(logits, share_t)
+        batch = next(it).to(device)
+        logits = model(batch.cal_t, batch.temp_dev_t, batch.y_agg_t, region_id_t, int(chunk_size))
+        loss = share_kl_loss(logits, batch.share_t)
 
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -1306,7 +1382,6 @@ def plot_losses(losses: List[float], title: str) -> None:
     plt.ylabel("Loss")
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
 
 
 def plot_aggregate_real_vs_syn(P_agg_real: Vec, P_agg_syn: Vec, max_points: int, title: str) -> None:
