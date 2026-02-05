@@ -917,6 +917,13 @@ class RmsProblemDae(RmsProblemTemplate):
         """
         return self._algebraic_vars
 
+    @property
+    def get_state_vars(self):
+        """
+        :return:
+        """
+        return self._state_vars
+
     def get_all_vars_number(self) -> int:
         return self._n_vars
 

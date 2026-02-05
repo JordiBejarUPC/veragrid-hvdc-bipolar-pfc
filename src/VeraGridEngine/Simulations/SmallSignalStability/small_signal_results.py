@@ -6,12 +6,11 @@
 import numpy as np
 import math
 from matplotlib import pyplot as plt
-from typing import List, Tuple, Dict
+from typing import List
 
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, ConvergenceReport, Logger, DateVec, Mat
+from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
@@ -27,13 +26,11 @@ class SmallSignalStabilityResults(ResultsTemplate):
                  stat_vars: List[Var]):
         """
 
-        :param stability:
         :param eigenvalues:
         :param participation_factors:
         :param damping_ratios:
         :param conjugate_frequencies:
         :param stat_vars:
-        :param vars2device:
         """
         ResultsTemplate.__init__(
             self,

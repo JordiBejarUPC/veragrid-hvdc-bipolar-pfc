@@ -37,6 +37,9 @@ class RmsProblemTemplate(ABC):
     def get_algebraic_vars(self) -> List:
         return list()
 
+    def get_state_vars(self):
+        return list()
+
     # def get_constant_parameters(self) -> Vec:
     #     raise NotImplementedError("get_constant_parameters")
 

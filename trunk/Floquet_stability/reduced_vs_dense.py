@@ -273,11 +273,11 @@ def print_comparison_report(
 
 
     # PARAMETERS
-n_states_min = 100
-n_states_max = 10000
+n_states_min = 100000
+n_states_max = 100000
 n_points = 2
-density = 0.1
-k_per = 0.1
+density = 0.01
+k_per = 0.01
 
 (
     n_states_arr,

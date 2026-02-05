@@ -10,20 +10,17 @@ import scipy.linalg
 from scipy.sparse.linalg import spsolve
 import math
 
-from typing import Dict, Union
+from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import SmallSignalStabilityResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.enumerations import  ResultTypes
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 
 # def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
@@ -176,7 +173,7 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: int = 0):
+def run_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
@@ -204,9 +201,9 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: i
 
     4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
     """
-    A = compute_state_matrix(slv=slv,
+    A = compute_state_matrix(problem= problem,
                              x=x,
-                             time=time) # sparse state matrix csc matrix
+                             dx=dx) # sparse state matrix csc matrix
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
@@ -244,9 +241,12 @@ class SmallSignalStabilityDriver(DriverTemplate):
     name = 'Small Signal Stability Simulation'
     tpe = SimulationTypes.SmallSignal_run
 
-    def __init__(self, grid: MultiCircuit,
-                 options: Union[SmallSignalStabilityOptions, None] = None,
-                 pf_results: Union[PowerFlowResults, None] = None,
+    def __init__(self,
+                 grid: MultiCircuit,
+                 problem: RmsProblemTemplate,
+                 rms_options: Union[RmsOptions, None] = None,
+                 ss_options: Union[SmallSignalStabilityOptions, None] = None,
+                 # pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
         """
@@ -259,11 +259,16 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        self.grid = grid
+        # self.grid = grid
 
-        self.pf_results: Union[PowerFlowResults, None] = pf_results
+        # self.pf_results: Union[PowerFlowResults, None] = pf_results
 
-        self.options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if options is None else options
+        self.problem = problem
+
+        self.ss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if ss_options is None else ss_options
+        self.assessment_time = self.ss_options.ss_assessment_time
+
+        self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(eigenvalues=np.empty(0),
                                                                                 participation_factors=np.empty(0),
@@ -292,35 +297,49 @@ class SmallSignalStabilityDriver(DriverTemplate):
         """
         self.tic()
 
-        time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        slv = BlockSolver(ss, time)
+        # time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
+        # slv = BlockSolver(ss, time)
 
 
-        x0 = slv.build_init_vars_vector_from_uid(init_guess)
+        # x0 = slv.build_init_vars_vector_from_uid(init_guess)
+        x0 = self.problem.get_x0()
+        dx0 = np.zeros_like(x0)
 
-        if not self.options.ss_assessment_time == 0:
+        if not self.assessment_time == 0:
             # Get integration method
-            if self.options.integration_method == "trapezoid":
-                integrator = "trapezoid"
-            elif self.options.integration_method == "implicit euler":
-                integrator = "implicit_euler"
+
+            if self.rms_options.integration_method == DynamicIntegrationMethod.Trapezoid:
+                NotImplementedError(f"Rms integration method {DynamicIntegrationMethod.Trapezoid} not implemented")
+
+            elif self.rms_options.integration_method == DynamicIntegrationMethod.BackEuler:
+                solver = BackEulerImplicitIntegration(
+                    problem=self.problem,
+                    t0=0,
+                    t_end=self.assessment_time,
+                    h=self.rms_options.time_step,
+                    max_iter=self.rms_options.max_iter
+                )
+
+                solver.simulate()
+
+
             else:
-                raise ValueError(f"integrator not implemented :( {self.options.integration_method}")
+                raise ValueError(f"integrator not implemented :( {self.rms_options.integration_method}")
 
-            t, y = slv.simulate(
-                t0=0,
-                t_end=self.options.ss_assessment_time,
-                h=self.options.time_step,
-                x0=x0,
-                method=integrator
-            )
+            # t, y = slv.simulate(
+            #     t0=0,
+            #     t_end=self.options.ss_assessment_time,
+            #     h=self.options.time_step,
+            #     x0=x0,
+            #     method=self.options.integration_method
+            # )
 
-            i = int(self.options.ss_assessment_time / self.options.time_step)
+            i = int(self.assessment_time / self.rms_options.time_step)
             (eigenvalues,
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], time = self.options.ss_assessment_time)
+             state_matrix) = run_small_signal_stability(problem=self.problem, x=y[i], dx=np.zeros_like(y[i]))
 
         else:
 
@@ -328,7 +347,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=x0, time = 0)
+             state_matrix) = run_small_signal_stability(problem=self.problem, x=x0,  dx=np.zeros_like(x0))
+
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
             eigenvalues = eigenvalues,
@@ -336,8 +356,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             damping_ratios = damping_ratios,
             conjugate_frequencies = conjugate_frequencies,
             state_matrix = state_matrix,
-            stat_vars = slv.state_vars,
-            vars2device = slv.vars2device
+            stat_vars = self.problem.get_state_vars(),
         )
 
         self.toc()
