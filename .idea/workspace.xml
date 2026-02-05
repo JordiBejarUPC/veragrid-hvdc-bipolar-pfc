@@ -28,8 +28,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="updated the logic to eliminate grounded buses">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merged devel into #133_shortcircuit_vsc">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/newton_raphson_fx.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/NumericalMethods/newton_raphson_fx.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/ShortCircuitStudies/short_circuit_worker.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_sc/3bus_powerfactory.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -186,7 +188,7 @@
     "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
     "Python tests.pytest in test_transformer_type.py.executor": "Run",
     "Python tests.pytest in tests.executor": "Run",
-    "Python.3bus_powerfactory.executor": "Debug",
+    "Python.3bus_powerfactory.executor": "Run",
     "Python.AnalysisDialogue.executor": "Run",
     "Python.Current_GroundedStar_3ph.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
@@ -210,6 +212,9 @@
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
+    "Python.nr_manual.executor": "Run",
+    "Python.nr_manual_v2.executor": "Run",
+    "Python.nr_manual_v3.executor": "Run",
     "Python.pf_basic_formulation_3ph.executor": "Run",
     "Python.profile.executor": "Debug",
     "Python.pymoo_example.executor": "Debug",
@@ -1787,7 +1792,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="708" />
+    <option name="localTasksCounter" value="709" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1853,7 +1858,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="merged" />
     <MESSAGE value="Modified the main icon path" />
     <MESSAGE value="Modified the test_grid_reduction_with_multiple_islands_before as intended" />
     <MESSAGE value="Added one extra power flow test&#10;Minor enhancements" />
@@ -1878,7 +1882,8 @@
     <MESSAGE value="some TODOs in the pf_basic_formulation_3ph.py" />
     <MESSAGE value="updated compute_ybus" />
     <MESSAGE value="updated the logic to eliminate grounded buses" />
-    <option name="LAST_COMMIT_MESSAGE" value="updated the logic to eliminate grounded buses" />
+    <MESSAGE value="merged devel into #133_shortcircuit_vsc" />
+    <option name="LAST_COMMIT_MESSAGE" value="merged devel into #133_shortcircuit_vsc" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2450,26 +2455,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/ucte/devices/ucte_node.py</url>
           <line>152</line>
           <option name="timeStamp" value="3165" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
-          <line>609</line>
-          <option name="timeStamp" value="3167" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>1748</line>
-          <option name="timeStamp" value="3168" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>1902</line>
-          <option name="timeStamp" value="3171" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/PowerFlow/Formulations/pf_full_acdc_with_negative_poles.py</url>
-          <line>643</line>
-          <option name="timeStamp" value="3172" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
