@@ -20,7 +20,7 @@ def get_bus_emt_template() -> EmtModelTemplate():
     v_c = Var("v_c")
 
     templ.block = Block(
-        # alter_params=[v_a, v_b, v_c],
+        alter_params=[v_a, v_b, v_c],
         out_vars=[v_a, v_b, v_c],
     )
 
