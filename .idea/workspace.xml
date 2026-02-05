@@ -28,7 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Fixed file import issues">
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Some clean room improvements">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trunk/clean_room/clean_room1.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/clean_room/clean_room1.py" afterDir="false" />
     </list>
@@ -723,7 +723,7 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in test_parse_dgs.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest in /home/santi/Git/eRoots/VeraGrid/src/tests/test_parse_dgs.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -746,13 +746,13 @@
       <item itemvalue="Python.ExecuteVeraGrid" />
       <item itemvalue="Python.update_gui_file" />
       <item itemvalue="Python.update_icons_rc" />
-      <item itemvalue="Python tests.pytest in test_parse_dgs.py" />
+      <item itemvalue="Python tests.pytest in /home/santi/Git/eRoots/VeraGrid/src/tests/test_parse_dgs.py" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.clean_room1" />
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in test_parse_dgs.py" />
+        <item itemvalue="Python tests.pytest in /home/santi/Git/eRoots/VeraGrid/src/tests/test_parse_dgs.py" />
         <item itemvalue="Python.update_gui_file" />
         <item itemvalue="Python.update_icons_rc" />
       </list>
@@ -1887,7 +1887,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="690" />
+    <option name="localTasksCounter" value="691" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1933,7 +1933,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixing convert_busbar_to_voltage_level" />
     <MESSAGE value="Fixed on mouse change size to rearrange when there are only lines" />
     <MESSAGE value="Fixed LinearAnalysisTs when the time indices are different from the grid ones" />
     <MESSAGE value="Added more ContingencyFilteringMethods" />
@@ -1958,7 +1957,8 @@
     <MESSAGE value="5.6.11" />
     <MESSAGE value="Added time series search button" />
     <MESSAGE value="Fixed file import issues" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed file import issues" />
+    <MESSAGE value="Some clean room improvements" />
+    <option name="LAST_COMMIT_MESSAGE" value="Some clean room improvements" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

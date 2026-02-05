@@ -65,11 +65,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from VeraGridEngine.basic_structures import Vec, Mat, IntVec
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 1) SAFE DEVICE SELECTION
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def select_torch_device(prefer_cuda: bool, verbose: bool) -> torch.device:
     """
     Select a safe torch device.
@@ -118,9 +119,9 @@ def select_torch_device(prefer_cuda: bool, verbose: bool) -> torch.device:
             return torch.device("cpu")
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 2) TIME GRID + CALENDAR FEATURES
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 @dataclass
 class TimeGrid:
     """
@@ -135,7 +136,7 @@ class TimeGrid:
     jitter_frac_p95: float
 
 
-def infer_time_grid(timestamps: np.ndarray, jitter_tol: float) -> TimeGrid:
+def infer_time_grid(timestamps: Vec, jitter_tol: float) -> TimeGrid:
     """
     Infer dominant timestep and regularity from Unix timestamps.
 
@@ -143,19 +144,21 @@ def infer_time_grid(timestamps: np.ndarray, jitter_tol: float) -> TimeGrid:
     :param jitter_tol: Relative tolerance for regularity check.
     :returns: :class:`TimeGrid`.
     """
-    ts = np.asarray(timestamps, dtype=np.int64)
-    dts = np.diff(ts)
-    dts = dts[dts > 0]
+    ts: Vec = np.asarray(timestamps, dtype=np.int64)
+    dts: Vec = np.diff(ts)
+    dts: Vec = dts[dts > 0]
     if len(dts) == 0:
         raise ValueError("Not enough timestamps to infer dt.")
     vals, counts = np.unique(dts, return_counts=True)
     dt_mode = int(vals[np.argmax(counts)])
     jitter = np.abs(dts - dt_mode) / max(dt_mode, 1)
     jitter_p95 = float(np.percentile(jitter, 95))
-    return TimeGrid(dt_seconds=dt_mode, is_regular=(jitter_p95 <= jitter_tol), jitter_frac_p95=jitter_p95)
+    return TimeGrid(dt_seconds=dt_mode,
+                    is_regular=(jitter_p95 <= jitter_tol),
+                    jitter_frac_p95=jitter_p95)
 
 
-def calendar_features_unix(timestamps: np.ndarray) -> np.ndarray:
+def calendar_features_unix(timestamps: IntVec) -> Mat:
     """
     Compute resolution-independent calendar features from Unix timestamps.
 
@@ -169,14 +172,14 @@ def calendar_features_unix(timestamps: np.ndarray) -> np.ndarray:
     :param timestamps: Unix timestamps (seconds), shape ``(T,)``.
     :returns: Feature matrix, shape ``(T, Fcal)`` (float32).
     """
-    ts = np.asarray(timestamps, dtype=np.int64)
+    ts: IntVec = np.asarray(timestamps, dtype=np.int64)
     sec_day = 86400
     sec_week = 7 * sec_day
     sec_year = 365 * sec_day
 
-    tod = (ts % sec_day) / sec_day
-    dow = (ts % sec_week) / sec_week
-    doy = (ts % sec_year) / sec_year
+    tod: IntVec = (ts % sec_day) / sec_day
+    dow: IntVec = (ts % sec_week) / sec_week
+    doy: IntVec = (ts % sec_year) / sec_year
 
     feats = [
         np.sin(2 * np.pi * tod), np.cos(2 * np.pi * tod),
@@ -184,26 +187,26 @@ def calendar_features_unix(timestamps: np.ndarray) -> np.ndarray:
         np.sin(2 * np.pi * doy), np.cos(2 * np.pi * doy),
         ((dow >= 5 / 7) | (dow >= 6 / 7)).astype(np.float32),
     ]
-    return np.stack(feats, axis=1).astype(np.float32)
+    return np.stack(feats, axis=1, dtype=np.float32)
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 3) DATA HELPERS
-# ============================================================
-def ensure_2d_temp(temp: np.ndarray) -> np.ndarray:
+# ----------------------------------------------------------------------------------------------------------------------
+def ensure_2d_temp(temp: Mat) -> Mat:
     """
     Ensure temperature array has shape ``(T,R)``.
 
     :param temp: Temperature array. Accepted shapes: ``(T,)``, ``(T,1)``, ``(T,R)``.
     :returns: Temperature array ``(T,R)`` (float32).
     """
-    arr = np.asarray(temp, dtype=np.float32)
+    arr: Vec = np.asarray(temp, dtype=np.float32)
     if arr.ndim == 1:
         arr = arr[:, None]
     return arr
 
 
-def compute_aggregate(P: np.ndarray) -> np.ndarray:
+def compute_aggregate(P: Mat) -> Vec:
     """
     Compute aggregate series from device matrix.
 
@@ -213,7 +216,7 @@ def compute_aggregate(P: np.ndarray) -> np.ndarray:
     return np.nansum(P, axis=1).astype(np.float32)
 
 
-def stable_shares(P: np.ndarray, eps: float) -> np.ndarray:
+def stable_shares(P: Mat, eps: float) -> Mat:
     """
     Compute per-time shares:
 
@@ -226,11 +229,12 @@ def stable_shares(P: np.ndarray, eps: float) -> np.ndarray:
     :returns: Shares matrix ``(T,N)`` (float32).
     """
     P_clean = np.nan_to_num(np.asarray(P, dtype=np.float32), nan=0.0)
-    denom = P_clean.sum(axis=1, keepdims=True) + float(eps)
-    return (P_clean / denom).astype(np.float32)
+    denom = np.sum(P_clean, axis=1, keepdims=True) + float(eps)
+    shares: Mat = P_clean / denom
+    return shares.astype(np.float32)
 
 
-def compute_month_index(timestamps: np.ndarray) -> np.ndarray:
+def compute_month_index(timestamps: IntVec) -> IntVec:
     """
     Compute a month index ``0..11`` from Unix timestamps (approx).
 
@@ -242,18 +246,16 @@ def compute_month_index(timestamps: np.ndarray) -> np.ndarray:
     """
     ts = np.asarray(timestamps, dtype=np.int64)
     sec_day = 86400
-    day_of_year = ((ts // sec_day) % 365).astype(np.int64)
+    day_of_the_year: IntVec = ((ts // sec_day) % 365)
+    day_of_year = day_of_the_year.astype(np.int64)
     # Approx month boundaries (cumulative days): Jan,Feb,... in a non-leap year
-    bounds = np.array([31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365], dtype=np.int64)
-    month = np.zeros_like(day_of_year)
+    bounds: IntVec = np.array([31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365], dtype=np.int64)
+    month: IntVec = np.zeros_like(day_of_year)
     for m in range(12):
         month = np.where(day_of_year < bounds[m], m, month)
     return month.astype(np.int64)
 
 
-# ============================================================
-# 4) DATASETS
-# ============================================================
 class AggregateDataset(Dataset):
     """
     Random window dataset for aggregate model.
@@ -271,15 +273,13 @@ class AggregateDataset(Dataset):
     - ``y_next``: shape ``(1,)``
     """
 
-    def __init__(
-            self,
-            timestamps: np.ndarray,
-            P_agg: np.ndarray,
-            temp: np.ndarray,
-            context_len: int,
-            samples_per_epoch: int,
-            eps_agg: float,
-    ):
+    def __init__(self,
+                 timestamps: np.ndarray,
+                 P_agg: np.ndarray,
+                 temp: np.ndarray,
+                 context_len: int,
+                 samples_per_epoch: int,
+                 eps_agg: float, ):
         """
         :param timestamps: Unix timestamps ``(T,)``.
         :param P_agg: Aggregate power ``(T,)``.
@@ -299,7 +299,7 @@ class AggregateDataset(Dataset):
         self.y = np.log(np.maximum(P_agg, 0.0) + self.eps_agg).astype(np.float32)
         self.T = self.y.shape[0]
         if self.T <= self.L + 1:
-            raise ValueError("Not enough timesteps for chosen context_len.")
+            raise ValueError("Not enough time steps for chosen context_len.")
 
     def __len__(self) -> int:
         """
@@ -344,44 +344,47 @@ class ShareVectorDataset(Dataset):
     - ``share_t``: shape ``(N,)`` target share vector
     """
 
-    def __init__(
-            self,
-            timestamps: np.ndarray,
-            P: np.ndarray,
-            region_id: np.ndarray,
-            temp: np.ndarray,
-            samples_per_epoch: int,
-            eps_share_denom: float,
-            eps_agg: float,
-    ):
+    def __init__(self,
+                 timestamps: IntVec,
+                 P: Mat,
+                 region_id: IntVec,
+                 temp: Vec,
+                 samples_per_epoch: int,
+                 eps_share_denominator: float,
+                 eps_agg: float):
         """
         :param timestamps: Unix timestamps ``(T,)``.
         :param P: Device powers ``(T,N)`` (NaNs allowed).
         :param region_id: Device region indices ``(N,)``.
         :param temp: Temperatures ``(T,R)``.
         :param samples_per_epoch: Random samples per epoch.
-        :param eps_share_denom: Epsilon for share denominator.
+        :param eps_share_denominator: Epsilon for share denominator.
         :param eps_agg: Epsilon for aggregate log.
         """
-        self.timestamps = np.asarray(timestamps, dtype=np.int64)
-        self.cal = calendar_features_unix(self.timestamps)
-        self.P = np.asarray(P, dtype=np.float32)
-        self.region_id = np.asarray(region_id, dtype=np.int64)
-        self.temp = ensure_2d_temp(temp)
+        self.timestamps: IntVec = np.asarray(timestamps, dtype=np.int64)
+        self.calendar_features: Mat = calendar_features_unix(self.timestamps)
+        self.P: Mat = np.asarray(P, dtype=np.float32)
+        self.region_id: IntVec = np.asarray(region_id, dtype=np.int64)
+        self.temperature = ensure_2d_temp(temp)
         self.samples = int(samples_per_epoch)
-        self.eps_share_denom = float(eps_share_denom)
+        self.eps_share_denominator = float(eps_share_denominator)
         self.eps_agg = float(eps_agg)
 
         self.T, self.N = self.P.shape
+
         if self.region_id.shape[0] != self.N:
             raise ValueError("region_id must have length N.")
-        if self.temp.shape[0] != self.T:
+
+        if self.temperature.shape[0] != self.T:
             raise ValueError("temp must have T rows.")
 
-        self.share = stable_shares(self.P, self.eps_share_denom)
+        self.share = stable_shares(self.P, self.eps_share_denominator)
+
         P_agg = compute_aggregate(self.P)
-        self.y_agg = np.log(np.maximum(P_agg, 0.0) + self.eps_agg).astype(np.float32)
-        self.temp_dev = self.temp[:, self.region_id].astype(np.float32)
+
+        self.y_agg: Vec = np.log(np.maximum(P_agg, 0.0) + self.eps_agg).astype(np.float32)
+
+        self.temp_dev: Vec = self.temperature[:, self.region_id].astype(np.float32)
 
     def __len__(self) -> int:
         """
@@ -396,16 +399,16 @@ class ShareVectorDataset(Dataset):
         """
         t = np.random.randint(0, self.T)
         return {
-            "cal_t": torch.tensor(self.cal[t], dtype=torch.float32),
+            "cal_t": torch.tensor(self.calendar_features[t], dtype=torch.float32),
             "temp_dev_t": torch.tensor(self.temp_dev[t], dtype=torch.float32),
             "y_agg_t": torch.tensor([self.y_agg[t]], dtype=torch.float32),
             "share_t": torch.tensor(self.share[t], dtype=torch.float32),
         }
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 5) MODELS
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 class SafeGRU(nn.GRU):
     """
     GRU variant that disables cuDNN flatten_parameters path.
@@ -424,8 +427,13 @@ class SafeGRU(nn.GRU):
         - Safe path everywhere else
         """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, input_proj: int, hidden: int, batch_first=True):
+        """
+        :param hidden: GRU hidden size.
+        :param input_proj: Projection size for GRU input.
+        :param batch_first:
+        """
+        super().__init__(input_proj, hidden, batch_first=batch_first)
         self._flatten_safe: Optional[bool] = None
 
     def _detect_flatten_safety(self) -> bool:
@@ -493,13 +501,11 @@ class AggregateARModel(nn.Module):
         self.mu = nn.Linear(64, 1)
         self.log_sigma = nn.Linear(64, 1)
 
-    def forward(
-            self,
-            y_ctx: torch.Tensor,
-            temp_hist: torch.Tensor,
-            cal_t: torch.Tensor,
-            temp_t: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self,
+                y_ctx: torch.Tensor,
+                temp_hist: torch.Tensor,
+                cal_t: torch.Tensor,
+                temp_t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :param y_ctx: Tensor ``(B,L)``.
         :param temp_hist: Tensor ``(B,L,1)``.
@@ -529,15 +535,13 @@ class ShareSoftmaxModel(nn.Module):
     The forward can optionally chunk over devices to reduce memory.
     """
 
-    def __init__(
-            self,
-            n_devices: int,
-            n_regions: int,
-            cal_dim: int,
-            dev_emb_dim: int,
-            reg_emb_dim: int,
-            hidden: int,
-    ):
+    def __init__(self,
+                 n_devices: int,
+                 n_regions: int,
+                 cal_dim: int,
+                 dev_emb_dim: int,
+                 reg_emb_dim: int,
+                 hidden: int):
         """
         :param n_devices: Number of devices ``N``.
         :param n_regions: Number of regions ``R``.
@@ -564,14 +568,12 @@ class ShareSoftmaxModel(nn.Module):
             nn.Linear(hidden, 1),
         )
 
-    def forward(
-            self,
-            cal_t: torch.Tensor,
-            temp_dev_t: torch.Tensor,
-            y_agg_t: torch.Tensor,
-            region_id: torch.Tensor,
-            chunk_size: int,
-    ) -> torch.Tensor:
+    def forward(self,
+                cal_t: torch.Tensor,
+                temp_dev_t: torch.Tensor,
+                y_agg_t: torch.Tensor,
+                region_id: torch.Tensor,
+                chunk_size: int) -> torch.Tensor:
         """
         Compute logits for all devices.
 
@@ -601,14 +603,32 @@ class ShareSoftmaxModel(nn.Module):
         if chunk_size is None or int(chunk_size) <= 0:
             return self.mlp(feat).squeeze(-1)
 
-        out = []
-        start = 0
-        step = int(chunk_size)
-        while start < N:
-            end = min(N, start + step)
-            out.append(self.mlp(feat[:, start:end, :]).squeeze(-1))
-            start = end
-        return torch.cat(out, dim=1)
+        # out = []
+        # start = 0
+        # step = int(chunk_size)
+        # while start < N:
+        #     end = min(N, start + step)
+        #     out.append(self.mlp(feat[:, start:end, :]).squeeze(-1))
+        #     start = end
+        # return torch.cat(out, dim=1)
+
+        # Split device dimension into chunks
+        chunks = torch.split(feat, int(chunk_size), dim=1)
+
+        # Preallocate output explicitly
+        logits = torch.empty(
+            (B, N),
+            device=feat.device,
+            dtype=feat.dtype,
+        )
+
+        offset = 0
+        for chunk in chunks:
+            k = chunk.shape[1]
+            logits[:, offset:offset + k] = self.mlp(chunk).squeeze(-1)
+            offset += k
+
+        return logits
 
 
 def gaussian_nll(y: torch.Tensor, mu: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
@@ -636,13 +656,13 @@ def share_kl_loss(logits: torch.Tensor, target_share: torch.Tensor) -> torch.Ten
     return F.kl_div(log_pred, target_share, reduction="batchmean")
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 6) TRAINING
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def train_aggregate_model(
-        timestamps: np.ndarray,
-        P_agg: np.ndarray,
-        temp: np.ndarray,
+        timestamps: IntVec,
+        P_agg: Vec,
+        temp: IntVec,
         context_len: int,
         steps: int,
         batch_size: int,
@@ -710,16 +730,16 @@ def train_aggregate_model(
 
 
 def train_share_softmax_model(
-        timestamps: np.ndarray,
-        P: np.ndarray,
-        region_id: np.ndarray,
-        temp: np.ndarray,
+        timestamps: IntVec,
+        P: Mat,
+        region_id: IntVec,
+        temp: Vec,
         steps: int,
         batch_size: int,
         lr: float,
         prefer_cuda: bool,
         verbose: bool,
-        eps_share_denom: float,
+        eps_share_denominator: float,
         eps_agg: float,
         chunk_size: int,
 ) -> Tuple[ShareSoftmaxModel, List[float], Dict[str, Any]]:
@@ -735,17 +755,17 @@ def train_share_softmax_model(
     :param lr: Learning rate.
     :param prefer_cuda: Try CUDA.
     :param verbose: Print progress.
-    :param eps_share_denom: Epsilon for share denominator.
+    :param eps_share_denominator: Epsilon for share denominator.
     :param eps_agg: Epsilon for aggregate log.
     :param chunk_size: Forward chunk size over devices (0 disables).
     :returns: ``(model, losses, meta)``.
     """
     device = select_torch_device(prefer_cuda, verbose)
-    ts = np.asarray(timestamps, dtype=np.int64)
+    ts: IntVec = np.asarray(timestamps, dtype=np.int64)
     cal_dim = calendar_features_unix(ts).shape[1]
 
-    P_arr = np.asarray(P, dtype=np.float32)
-    temp_arr = ensure_2d_temp(temp)
+    P_arr: Mat = np.asarray(P, dtype=np.float32)
+    temp_arr: Mat = ensure_2d_temp(temp)
     N = int(P_arr.shape[1])
     R = int(temp_arr.shape[1])
 
@@ -755,7 +775,7 @@ def train_share_softmax_model(
         region_id=region_id,
         temp=temp_arr,
         samples_per_epoch=int(steps) * int(batch_size),
-        eps_share_denom=eps_share_denom,
+        eps_share_denominator=eps_share_denominator,
         eps_agg=eps_agg,
     )
     dl = DataLoader(ds, batch_size=int(batch_size), shuffle=True, num_workers=0)
@@ -803,27 +823,27 @@ def train_share_softmax_model(
         "dev_emb_dim": 32,
         "reg_emb_dim": 8,
         "hidden": 128,
-        "eps_share_denom": float(eps_share_denom),
+        "eps_share_denom": float(eps_share_denominator),
         "eps_agg": float(eps_agg),
         "chunk_size": int(chunk_size),
     }
     return model, losses, meta
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 7) AGGREGATE SAMPLING + CORRECTIONS
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 @torch.no_grad()
 def sample_aggregate(
         model: AggregateARModel,
-        timestamps: np.ndarray,
-        temp: np.ndarray,
-        y_agg_init: np.ndarray,
+        timestamps: IntVec,
+        temp: Vec,
+        y_agg_init: Vec,
         seed: int,
         sigma_damp: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Sample y_agg(t) autoregressively and return per-step effective sigma.
+    Sample y_agg(t) auto-regressively and return per-step effective sigma.
 
     The effective sigma used for sampling is:
         sigma_eff = sigma_damp * sigma
@@ -846,8 +866,8 @@ def sample_aggregate(
     L = int(y_agg_init.shape[0])
 
     y_ctx = y_agg_init.astype(np.float32).copy()
-    y_out = np.zeros(T, dtype=np.float32)
-    sigma_eff_out = np.zeros(T, dtype=np.float32)
+    y_out: Vec = np.zeros(T, dtype=np.float32)
+    sigma_eff_out: Vec = np.zeros(T, dtype=np.float32)
 
     model.eval()
 
@@ -878,7 +898,7 @@ def sample_aggregate(
     return y_out, sigma_eff_out
 
 
-def lognormal_mean_correction(y: np.ndarray, sigma_eff: np.ndarray) -> np.ndarray:
+def lognormal_mean_correction(y: Vec, sigma_eff: Vec) -> Vec:
     """
     Apply log-normal mean correction when mapping y to power:
 
@@ -893,7 +913,7 @@ def lognormal_mean_correction(y: np.ndarray, sigma_eff: np.ndarray) -> np.ndarra
     return np.exp(y_arr - 0.5 * (s_arr ** 2)).astype(np.float32)
 
 
-def anchor_log_mean_global(y_syn: np.ndarray, y_real: np.ndarray) -> np.ndarray:
+def anchor_log_mean_global(y_syn: Vec, y_real: Vec) -> Vec:
     """
     Anchor synthetic log-series to match the real mean (global).
 
@@ -909,7 +929,7 @@ def anchor_log_mean_global(y_syn: np.ndarray, y_real: np.ndarray) -> np.ndarray:
     return (ys + delta).astype(np.float32)
 
 
-def anchor_log_mean_monthly(y_syn: np.ndarray, y_real: np.ndarray, timestamps: np.ndarray) -> np.ndarray:
+def anchor_log_mean_monthly(y_syn: Vec, y_real: Vec, timestamps: IntVec) -> Vec:
     """
     Anchor synthetic log-series to match real mean per month.
 
@@ -933,20 +953,20 @@ def anchor_log_mean_monthly(y_syn: np.ndarray, y_real: np.ndarray, timestamps: n
     return ys.astype(np.float32)
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 8) SHARE SAMPLING (SIMPLEX)
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 @torch.no_grad()
 def sample_shares_softmax(
         model: ShareSoftmaxModel,
-        timestamps: np.ndarray,
-        region_id: np.ndarray,
-        temp: np.ndarray,
-        y_agg: np.ndarray,
+        timestamps: IntVec,
+        region_id: IntVec,
+        temp: Vec,
+        y_agg: Vec,
         seed: int,
         logit_noise_std: float,
         chunk_size: int,
-) -> np.ndarray:
+) -> Mat:
     """
     Sample shares s(t,:) using softmax(logits + noise), ensuring simplex constraints.
 
@@ -992,7 +1012,7 @@ def sample_shares_softmax(
     return out
 
 
-def reconstruct_power_from_shares(P_agg: np.ndarray, shares: np.ndarray) -> np.ndarray:
+def reconstruct_power_from_shares(P_agg: Vec, shares: Mat) -> Mat:
     """
     Reconstruct device powers from aggregate and shares.
 
@@ -1003,9 +1023,9 @@ def reconstruct_power_from_shares(P_agg: np.ndarray, shares: np.ndarray) -> np.n
     return (np.asarray(shares, dtype=np.float32) * np.asarray(P_agg, dtype=np.float32)[:, None]).astype(np.float32)
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 9) ARTIFACT SAVE/LOAD
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def save_artifact(path: str, payload: Dict[str, Any]) -> None:
     """
     Save payload via torch.save.
@@ -1034,10 +1054,10 @@ def load_artifact(path: str, map_location: torch.device) -> Dict[str, Any]:
 
 def load_or_train_hierarchical(
         artifact_path: str,
-        timestamps: np.ndarray,
-        P: np.ndarray,
-        region_id: np.ndarray,
-        temp: np.ndarray,
+        timestamps: IntVec,
+        P: Mat,
+        region_id: IntVec,
+        temp: Vec,
         context_len: int,
         steps_agg: int,
         steps_share: int,
@@ -1048,7 +1068,7 @@ def load_or_train_hierarchical(
         prefer_cuda: bool,
         verbose: bool,
         eps_agg: float,
-        eps_share_denom: float,
+        eps_share_denominator: float,
         jitter_tol: float,
         share_chunk_size: int,
 ) -> Tuple[AggregateARModel, ShareSoftmaxModel, Dict[str, Any], List[float], List[float]]:
@@ -1070,7 +1090,7 @@ def load_or_train_hierarchical(
     :param prefer_cuda: Try CUDA.
     :param verbose: Print diagnostics.
     :param eps_agg: Epsilon for aggregate log.
-    :param eps_share_denom: Epsilon for share denominator.
+    :param eps_share_denominator: Epsilon for share denominator.
     :param jitter_tol: Timestamp jitter tolerance.
     :param share_chunk_size: Chunking for share forward pass.
     :returns: ``(agg_model, share_model, meta, agg_losses, share_losses)``.
@@ -1136,7 +1156,7 @@ def load_or_train_hierarchical(
         lr=lr_share,
         prefer_cuda=prefer_cuda,
         verbose=verbose,
-        eps_share_denom=eps_share_denom,
+        eps_share_denominator=eps_share_denominator,
         eps_agg=eps_agg,
         chunk_size=share_chunk_size,
     )
@@ -1145,7 +1165,7 @@ def load_or_train_hierarchical(
         "time_grid": asdict(grid),
         "context_len": int(context_len),
         "eps_agg": float(eps_agg),
-        "eps_share_denom": float(eps_share_denom),
+        "eps_share_denom": float(eps_share_denominator),
         "n_devices": int(np.asarray(P).shape[1]),
         "n_regions": int(temp_arr.shape[1]),
         "device": str(device),
@@ -1176,16 +1196,16 @@ def load_or_train_hierarchical(
     return agg_model, share_model, meta, agg_losses, share_losses
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 10) SYNTHESIS PIPELINE
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def generate_synthetic(
         agg_model: AggregateARModel,
         share_model: ShareSoftmaxModel,
-        timestamps: np.ndarray,
-        P_real: np.ndarray,
-        region_id: np.ndarray,
-        temp: np.ndarray,
+        timestamps: IntVec,
+        P_real: Mat,
+        region_id: IntVec,
+        temp: Vec,
         context_len: int,
         seed: int,
         eps_agg: float,
@@ -1265,9 +1285,9 @@ def generate_synthetic(
     return y_real, y_syn, sigma_eff_hist, P_agg_syn, P_syn
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 11) PLOTTING
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def plot_losses(losses: List[float], title: str) -> None:
     """
     Plot training loss curve.
@@ -1276,8 +1296,6 @@ def plot_losses(losses: List[float], title: str) -> None:
     :param title: Plot title.
     :returns: None
     """
-    import matplotlib.pyplot as plt
-
     if len(losses) == 0:
         print(f"[plot] No losses to plot for: {title} (likely loaded artifact).")
         return
@@ -1291,7 +1309,7 @@ def plot_losses(losses: List[float], title: str) -> None:
     plt.show()
 
 
-def plot_aggregate_real_vs_syn(P_agg_real: np.ndarray, P_agg_syn: np.ndarray, max_points: int, title: str) -> None:
+def plot_aggregate_real_vs_syn(P_agg_real: Vec, P_agg_syn: Vec, max_points: int, title: str) -> None:
     """
     Plot aggregate series real vs synthetic.
 
@@ -1301,8 +1319,6 @@ def plot_aggregate_real_vs_syn(P_agg_real: np.ndarray, P_agg_syn: np.ndarray, ma
     :param title: Plot title.
     :returns: None
     """
-    import matplotlib.pyplot as plt
-
     T = int(P_agg_real.shape[0])
     idx = np.arange(T)
     if T > int(max_points):
@@ -1319,7 +1335,10 @@ def plot_aggregate_real_vs_syn(P_agg_real: np.ndarray, P_agg_syn: np.ndarray, ma
     plt.tight_layout()
 
 
-def plot_share_sum_sanity(P_syn: np.ndarray, P_agg_syn: np.ndarray, max_points: int, title: str) -> None:
+def plot_share_sum_sanity(P_syn: Mat,
+                          P_agg_syn: Vec,
+                          max_points: int,
+                          title: str) -> None:
     """
     Plot sanity check: sum_i P_syn(t,i) / P_agg_syn(t). Should be ~1.
 
@@ -1329,7 +1348,6 @@ def plot_share_sum_sanity(P_syn: np.ndarray, P_agg_syn: np.ndarray, max_points: 
     :param title: Plot title.
     :returns: None
     """
-    import matplotlib.pyplot as plt
 
     P = np.asarray(P_syn, dtype=np.float32)
     A = np.asarray(P_agg_syn, dtype=np.float32)
@@ -1350,7 +1368,10 @@ def plot_share_sum_sanity(P_syn: np.ndarray, P_agg_syn: np.ndarray, max_points: 
     plt.tight_layout()
 
 
-def plot_devices_real_vs_syn(P_real: np.ndarray, P_syn: np.ndarray, devices: List[int], max_points: int,
+def plot_devices_real_vs_syn(P_real: Mat,
+                             P_syn: Mat,
+                             devices: List[int],
+                             max_points: int,
                              title: str) -> None:
     """
     Plot selected devices real vs synthetic.
@@ -1381,9 +1402,9 @@ def plot_devices_real_vs_syn(P_real: np.ndarray, P_syn: np.ndarray, devices: Lis
     plt.tight_layout()
 
 
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 # 12) DEMO / HOW TO USE (with parameter explanations)
-# ============================================================
+# ----------------------------------------------------------------------------------------------------------------------
 def demo():
     # -------------------------------------------------------------------------
     # HOW TO USE WITH YOUR DATA (VeraGrid or otherwise)
@@ -1480,7 +1501,7 @@ def demo():
         prefer_cuda=prefer_cuda,
         verbose=verbose,
         eps_agg=eps_agg,
-        eps_share_denom=eps_share_denom,
+        eps_share_denominator=eps_share_denom,
         jitter_tol=jitter_tol,
         share_chunk_size=share_chunk_size,
     )
