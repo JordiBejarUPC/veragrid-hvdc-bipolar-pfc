@@ -69,7 +69,7 @@ def perform_andes_simulation_for_kundur_ieee_no_shunt():
     tds.config.shrinkt = 0
     tds.config.tstep = 0.001
     tds.config.tf = 20.0
-    tds.t = 0.0
+    tds.t_idx = 0.0
     tds.init()
 
     end_compiling = time.time()
@@ -79,13 +79,13 @@ def perform_andes_simulation_for_kundur_ieee_no_shunt():
     # Step-by-step simulation
     start_sim = time.time()
 
-    while tds.t < tds.config.tf:
+    while tds.t_idx < tds.config.tf:
 
-        if tds.t > 2.5 and one == True:
+        if tds.t_idx > 2.5 and one == True:
             ss.PQ.set(src='Ppf', idx='PQ_1', attr='v', value=9.0)
             one = False
             # Log current state
-        time_history.append(tds.t)
+        time_history.append(tds.t_idx)
         for i in range(len(ss.GENCLS)):
             omega_history[i].append(ss.GENCLS.omega.v[i])
             tm_history[i].append(ss.GENCLS.tm.v[i])
@@ -99,7 +99,7 @@ def perform_andes_simulation_for_kundur_ieee_no_shunt():
 
         # Advance one time step
         tds.itm_step()
-        tds.t += tds.config.tstep
+        tds.t_idx += tds.config.tstep
 
     end_sim = time.time()
     simulation_time = end_sim - start_sim

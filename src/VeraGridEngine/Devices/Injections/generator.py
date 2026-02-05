@@ -59,9 +59,6 @@ class Generator(GeneratorParent):
         'Kp',
         'Ki',
         'Kw',
-        'init_params',
-        'P_g',
-        'Q_g',
         'must_run',
         '_must_run_prof'
     )
@@ -106,7 +103,6 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
-                 init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  # TODO: Delete
                  build_status: BuildStatus = BuildStatus.Commissioned,
                  must_run: bool = False):
         """
@@ -150,7 +146,6 @@ class Generator(GeneratorParent):
         :param capex:
         :param opex:
         :param srap_enabled:
-        :param init_params:
         :param build_status:
         :param must_run:
         """
@@ -264,9 +259,6 @@ class Generator(GeneratorParent):
         self.vf = vf
         self.Kp = Kp
         self.Ki = Ki
-        self.init_params = init_params
-        self.P_g = Var("P_g")
-        self.Q_g = Var("Q_g")
 
         self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 
@@ -636,6 +628,7 @@ class Generator(GeneratorParent):
         """
         Initialize the RMS model
         """
+
         if self._rms_model.empty():
             generator_template = get_complete_generator_template()
             self.rms_model.model = generator_template.block

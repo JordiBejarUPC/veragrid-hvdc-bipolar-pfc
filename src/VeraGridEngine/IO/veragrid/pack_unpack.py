@@ -42,6 +42,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'region': dev.Region(),
         'municipality': dev.Municipality(),
 
+        'owner': dev.Owner(),
+
         'substation': dev.Substation(),
         'voltage_level': dev.VoltageLevel(),
 
@@ -255,7 +257,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit,
     return dfs
 
 
-def profile_todict(profile: Profile) -> Dict[str, str]:
+def profile_todict(profile: Profile) -> Dict[str, str | bool]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -737,12 +739,12 @@ def parse_object_type_from_dataframe(
         elm.disable_auto_updates()
 
         # ensure the profiles existence
-        if time_profile is not None:
+        if time_profile is None or time_profile is pd.NaT:
+            nt = 0
+        else:
             nt = len(time_profile)
             if nt > 0:
                 elm.ensure_profiles_exist(index=time_profile)
-        else:
-            nt = 0
 
         # parse each property of the row
         for property_name_, property_value in row.items():

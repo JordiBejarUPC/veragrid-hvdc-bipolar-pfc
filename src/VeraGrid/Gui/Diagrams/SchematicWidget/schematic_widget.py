@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING
 from collections.abc import Callable
+from collections import defaultdict
 from warnings import warn
 import networkx as nx
 import pyproj
@@ -20,14 +21,12 @@ from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
-from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem, QDialog,
-                               QPushButton)
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem)
 from PySide6.QtSvg import QSvgGenerator
 
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, BRANCH_TYPES
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -140,7 +139,7 @@ class SchematicLibraryModel(QStandardItemModel):
         :return: QByteArray
         """
         data = QByteArray()
-        stream = QDataStream(data, QIODevice.WriteOnly)
+        stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream.writeQString(val)
         return data
 
@@ -198,7 +197,7 @@ class SchematicLibraryModel(QStandardItemModel):
                 txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
 
                 data = QByteArray()
-                stream = QDataStream(data, QIODevice.WriteOnly)
+                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
                 stream.writeQString(txt)
 
                 mimedata.setData('component/name', data)
@@ -4609,12 +4608,19 @@ class SchematicWidget(BaseDiagramWidget):
         :param buses: List or Set of Buses
         """
 
+        # Extract voltage levels from the input buses to restrict expansion
+        # This prevents expanding into the external network when drawing voltage level conversions
+        voltage_levels = {b.voltage_level for b in buses if b.voltage_level is not None}
+
         (buses,
          lines, dc_lines, transformers2w,
          transformers3w, windings, hvdc_lines,
          vsc_converters, upfc_devices,
          series_reactances, switches,
-         fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit, buses=buses, max_level=5)
+         fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit,
+                                                           buses=buses,
+                                                           max_level=5,
+                                                           restrict_to_voltage_levels=voltage_levels)
 
         # Draw schematic subset
         diagram = generate_schematic_diagram(buses=list(buses),
@@ -5089,24 +5095,30 @@ def generate_grid_diagram(circuit: MultiCircuit,
                                       name=name)
 
 
-def get_devices_to_expand(circuit: MultiCircuit, buses: List[Bus], max_level: int = 1) -> Tuple[List[Bus],
-List[Line],
-List[DcLine],
-List[Transformer2W],
-List[Transformer3W],
-List[Winding],
-List[HvdcLine],
-List[VSC],
-List[UPFC],
-List[SeriesReactance],
-List[Switch],
-List[FluidNode],
-List[FluidPath]]:
+def get_devices_to_expand(circuit: MultiCircuit,
+                          buses: List[Bus],
+                          max_level: int = 1,
+                          restrict_to_voltage_levels: Set | None = None) -> Tuple[List[Bus],
+                                                                                   List[Line],
+                                                                                   List[DcLine],
+                                                                                   List[Transformer2W],
+                                                                                   List[Transformer3W],
+                                                                                   List[Winding],
+                                                                                   List[HvdcLine],
+                                                                                   List[VSC],
+                                                                                   List[UPFC],
+                                                                                   List[SeriesReactance],
+                                                                                   List[Switch],
+                                                                                   List[FluidNode],
+                                                                                   List[FluidPath]]:
     """
     get lists of devices to expand given a root bus
     :param circuit: MultiCircuit
     :param buses: List of Bus
     :param max_level: max expansion level
+    :param restrict_to_voltage_levels: If provided, only expand to buses within these voltage levels.
+                                       This prevents expansion into the external network when drawing
+                                       voltage level conversions.
     :return:
     """
 
@@ -5118,6 +5130,17 @@ List[FluidPath]]:
     # get all Branches
     all_branches = circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True)
     branch_dict = {b: i for i, b in enumerate(all_branches)}
+
+    # Build index of branches by bus for O(1) lookup instead of scanning all branches
+    # This changes the algorithm complexity from O(n*m) to O(n+m) where n=buses, m=branches
+    # Hence drawing voltage level conversions should be much faster, thus fixing REE complaints
+    branches_by_bus = defaultdict(list)
+    has_winding = False
+    for br in all_branches:
+        branches_by_bus[br.bus_from].append(br)
+        branches_by_bus[br.bus_to].append(br)
+        if isinstance(br, Winding):
+            has_winding = True
 
     # create a pool of buses
     bus_pool = [(b, 0) for b in buses]  # store the bus objects and their level from the root
@@ -5134,7 +5157,8 @@ List[FluidPath]]:
     fluid_nodes = set()
     selected_branches = set()
     visited = set()
-    max_level_offset = 0
+    # If there are windings, we need an extra level to represent whole 3-winding transformers
+    max_level_offset = 1 if has_winding else 0
 
     while len(bus_pool) > 0:
 
@@ -5149,31 +5173,30 @@ List[FluidPath]]:
 
         if level < (max_level + max_level_offset):
 
-            for i, br in enumerate(all_branches):
+            # Use the built index for O(1) lookup of branches connected to this bus
+            for br in branches_by_bus.get(bus, []):
 
-                if isinstance(br, Winding):
-                    # if we find a winding, we need to add 1 extra search level
-                    # to be able to represent the whole 3-winding transformer
-                    max_level_offset = 1
+                # Always add the branch if connected to current bus
+                selected_branches.add(br)
 
+                # Determine the other bus and add if not visited
                 if br.bus_from == bus:
-                    # Always add the branch if connected to current bus
-                    selected_branches.add(br)
-                    # Only add the other bus to pool if not visited
-                    if br.bus_to not in visited:
-                        bus_pool.append((br.bus_to, level + 1))
-                        visited.add(br.bus_to)
-
+                    other_bus = br.bus_to
                 elif br.bus_to == bus:
-                    # Always add the branch if connected to current bus
-                    selected_branches.add(br)
-                    # Only add the other bus to pool if not visited
-                    if br.bus_from not in visited:
-                        bus_pool.append((br.bus_from, level + 1))
-                        visited.add(br.bus_from)
-
+                    other_bus = br.bus_from
                 else:
-                    pass
+                    other_bus = None
+
+                if other_bus not in visited:
+                    # If voltage level restriction is active, only follow to buses within allowed voltage levels
+                    should_expand = True
+                    if restrict_to_voltage_levels is not None:
+                        other_vl = other_bus.voltage_level if other_bus is not None else None
+                        should_expand = other_vl in restrict_to_voltage_levels
+
+                    if should_expand:
+                        bus_pool.append((other_bus, level + 1))
+                        visited.add(other_bus)
 
     # sort Branches
     lines: List[Line] = list()
