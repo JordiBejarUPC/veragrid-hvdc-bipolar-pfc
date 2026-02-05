@@ -12,6 +12,7 @@ import math
 
 from typing import Dict, Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -22,14 +23,16 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
 
-def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
+# def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
+def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec):
     """
     Small Signal Stability analysis
-    :param slv: BlockSolver
+    :param problem: RmsProblemTemplate
     :param x: variables (1D numpy array)
-    :param time: time (float)
+    :param dx: derivatives (1D numpy array)
 
     :return: np array state matrix(A)
 
@@ -40,17 +43,12 @@ def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
         the A matrix is computed as:
         A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
     """
-    event_params = np.zeros(len(slv._event_parameters))
-    params_current = slv._event_params_fn(event_params=event_params, glob_time=time)
-    params = np.zeros(10)
-    diff_values = np.zeros(10)
-    h = 0.001
+    h = problem.get_dt()
 
-
-    fx = slv._j11_fn(x, diff_values, params_current, params, h)  # ∂f/∂x
-    fy = slv._j12_fn(x, diff_values, params_current, params, h)  # ∂f/∂y
-    gx = slv._j21_fn(x, diff_values, params_current, params, h)  # ∂g/∂x
-    gy = slv._j22_fn(x, diff_values, params_current, params, h)  # ∂g/∂y
+    fx = problem.get_j11(x, dx, h)  # ∂f/∂x
+    fy = problem.get_j12(x, dx, h)  # ∂f/∂y
+    gx = problem.get_j21(x, dx, h)  # ∂g/∂x
+    gy = problem.get_j22(x, dx, h)  # ∂g/∂y
 
     gyx = spsolve(gy, gx)
     return fx - fy @ gyx

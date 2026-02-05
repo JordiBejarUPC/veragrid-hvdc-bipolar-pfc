@@ -58,7 +58,6 @@ class RmsProblemTemplate(ABC):
     def rhs_algebraic(self, values: Vec, diff_values: Vec) -> Vec:
         raise NotImplementedError("rhs_algebraic")
 
-
     def get_j11(self, x: Vec, dx: Vec, h: float):
         raise NotImplementedError("get_j11")
 
@@ -70,3 +69,6 @@ class RmsProblemTemplate(ABC):
 
     def get_j22(self, x: Vec, dx: Vec, h: float):
         raise NotImplementedError("get_j22")
+
+    def get_dt(self):
+        return NotImplementedError("get_dt")
