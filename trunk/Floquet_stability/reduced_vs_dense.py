@@ -134,6 +134,7 @@ def compare_sparse_vs_dense_time(
     n_states_max,
     n_points,
     density,
+    k_per,
     seed=1
 ):
     n_states_arr = np.linspace(
@@ -171,7 +172,7 @@ def compare_sparse_vs_dense_time(
         A_dense = A_sparse.toarray()
 
         # Reduced order: almost full, as you were doing
-        k = int(0.01*n_states)
+        k = int(k_per*n_states)
 
         try:
             _, t_dense, t_eig_dense, t_pf_dense = calculate_dense_eigs_PF(A_dense)
@@ -209,10 +210,14 @@ def print_comparison_report(
     t_eig_dense_arr,
     t_pf_dense_arr,
     t_eig_sparse_arr,
-    t_pf_sparse_arr
+    t_pf_sparse_arr,
+    density,
+    k_per
 ):
     print("\n" + "=" * 130)
     print("DENSE vs SPARSE SMALL-SIGNAL STABILITY — PERFORMANCE COMPARISON")
+    print(f"Matrix density          : {density:.3f}")
+    print(f"Reduced eig percentage  : k_per = {k_per:.2f}  (k = ⌊k_per · n_states⌋)")
     print("=" * 130)
 
     header = (
@@ -255,12 +260,7 @@ def print_comparison_report(
 
     print("-" * 130)
 
-    # Summary statistics
-    valid = (
-        (~np.isnan(t_dense_arr)) &
-        (~np.isnan(t_sparse_arr))
-    )
-
+    valid = (~np.isnan(t_dense_arr)) & (~np.isnan(t_sparse_arr))
     if np.any(valid):
         avg_speedup = np.mean(t_dense_arr[valid] / t_sparse_arr[valid])
         max_speedup = np.max(t_dense_arr[valid] / t_sparse_arr[valid])
@@ -270,11 +270,14 @@ def print_comparison_report(
 
     print("=" * 130 + "\n")
 
+
+
     # PARAMETERS
-n_states_min = 10
-n_states_max = 1000
-n_points = 5
-density = 0.3
+n_states_min = 100
+n_states_max = 10000
+n_points = 2
+density = 0.1
+k_per = 0.1
 
 (
     n_states_arr,
@@ -288,7 +291,8 @@ density = 0.3
     n_states_min=n_states_min,
     n_states_max=n_states_max,
     n_points=n_points,
-    density=density
+    density=density,
+    k_per = k_per
 )
 
 print_comparison_report(
@@ -298,7 +302,9 @@ print_comparison_report(
     t_eig_dense_arr,
     t_pf_dense_arr,
     t_eig_sparse_arr,
-    t_pf_sparse_arr
+    t_pf_sparse_arr,
+    density=density,
+    k_per = k_per
 )
 
 
