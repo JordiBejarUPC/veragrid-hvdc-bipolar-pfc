@@ -305,7 +305,7 @@ class IoMain(ConfigurationMain):
             self.open_file_thread_object = filedrv.FileOpenThread(
                 file_name=filenames if len(filenames) > 1 else filenames[0],
                 previous_circuit=self.circuit,
-                options=self.get_file_open_options()
+                options=filedrv.FileOpenOptions()
             )
 
             # make connections
@@ -637,20 +637,6 @@ class IoMain(ConfigurationMain):
         options = filedrv.FileSavingOptions(cgmes_boundary_set=self.current_boundary_set,
                                             sessions_data=sessions_data,
                                             dictionary_of_json_files=json_files)
-
-        return options
-
-    def get_file_open_options(self) -> filedrv.FileOpenOptions:
-        """
-        Compose the file open options
-        :return: FileOpenOptions
-        """
-
-        cgmes_map_areas_like_raw = self.ui.cgmes_map_regions_like_raw_checkBox.isChecked()
-        try_to_map_dc_to_hvdc_line = self.ui.cgmes_dc_as_hvdclines_checkBox.isChecked()
-
-        options = filedrv.FileOpenOptions(cgmes_map_areas_like_raw=cgmes_map_areas_like_raw,
-                                          try_to_map_dc_to_hvdc_line=try_to_map_dc_to_hvdc_line)
 
         return options
 
@@ -1036,26 +1022,8 @@ class IoMain(ConfigurationMain):
 
         :return:
         """
-        # if the global file_name is empty, ask where to save
-        fname = os.path.join(self.project_directory, self.ui.grid_name_line_edit.text())
-
-        files_types = "PSS/e (*.raw);;PSS/e json (*.rawx)"
-        filename, type_selected = QtWidgets.QFileDialog.getSaveFileName(self,
-                                                                        'Export to PSS/e',
-                                                                        fname,
-                                                                        files_types)
-
-        if filename != '':
-
-            # if the user did not enter the extension, add it automatically
-            name, file_extension = os.path.splitext(filename)
-
-            if file_extension == '':
-                filename = name + '.raw'
-
-            # we were able to compose the file correctly, now save it
-            self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+        self.psse_export_dialogue = PsseExportDialogue(app=self)
+        self.psse_export_dialogue.show()
 
     def export_power_factory(self):
         """
