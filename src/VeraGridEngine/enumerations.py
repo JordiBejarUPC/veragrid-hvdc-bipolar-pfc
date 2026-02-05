@@ -1134,6 +1134,7 @@ class DeviceType(Enum):
     Technology = 'Technology'
     TechnologyGroup = 'Technology Group'
     TechnologyCategory = 'Technology Category'
+    Owner = 'Owner'
 
     ContingencyDevice = 'Contingency'
     ContingencyGroupDevice = 'Contingency Group'

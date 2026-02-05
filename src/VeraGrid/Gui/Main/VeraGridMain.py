@@ -13,7 +13,7 @@ from VeraGrid.Gui.Main.MainWindow import QApplication
 from PySide6.QtCore import QDirIterator, QResource
 from PySide6.QtSvg import QSvgRenderer
 from VeraGrid.Gui.update_gui_all import update_all_icons
-from VeraGrid.Gui.Main.SubClasses.Projects.projects import ProjectsMain
+from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
 import VeraGrid.ThirdParty.qdarktheme as qdarktheme
 from VeraGrid.__version__ import __VeraGrid_VERSION__
 
@@ -28,7 +28,7 @@ This class is the handler of the main gui of VeraGrid.
 # Main Window
 ########################################################################################################################
 
-class VeraGridMainGUI(ProjectsMain):
+class VeraGridMainGUI(ScriptingMain):
     """
     MainGUI
     """
@@ -39,7 +39,7 @@ class VeraGridMainGUI(ProjectsMain):
         """
 
         # create main window
-        ProjectsMain.__init__(self, parent=None)
+        ScriptingMain.__init__(self, parent=None)
         self.setWindowTitle('VeraGrid ' + __VeraGrid_VERSION__)
         self.setAcceptDrops(True)
 
