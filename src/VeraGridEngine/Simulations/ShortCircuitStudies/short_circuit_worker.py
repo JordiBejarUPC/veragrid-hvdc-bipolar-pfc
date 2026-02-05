@@ -834,8 +834,8 @@ def short_circuit_vsc(nc: NumericalCircuit,
             Egen = Ugen + Igen / Ygen[bus_gen_idx[gen_i]]
             I0_linear[bus_gen_idx[gen_i]] += Ygen[bus_gen_idx[gen_i]] * Egen
 
-        # nc.vsc_data.control1_val = nc.vsc_data.control1_val / 10
-        # nc.vsc_data.control2_val = nc.vsc_data.control1_val / 10
+        nc.vsc_data.control1_val = nc.vsc_data.control1_val / 10
+        nc.vsc_data.control2_val = nc.vsc_data.control1_val / 10
 
         if len(indices.vd) > 0:
 
