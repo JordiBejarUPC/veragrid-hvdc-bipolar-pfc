@@ -976,6 +976,9 @@ class EmtProblemDae(EmtProblemTemplate):
     def def_event_params_fn(self, ev_param: SymbolicParamsVector ,tm:float):
         return self._event_params_fn(ev_param, tm)
 
+    def get_dt(self):
+        return self._dt
+
     @property
     def block_system(self):
         return self._block_system
