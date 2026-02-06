@@ -6,7 +6,10 @@
 import numpy as np
 import scipy.sparse as sp
 import time
+import scipy.sparse as sp
 from scipy.sparse import csc_matrix
+
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
@@ -15,7 +18,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProb
 class BackEulerImplicitIntegration:
 
     def __init__(self,
-                 problem: RmsProblemTemplate,
+                 problem: RmsProblemDae,
                  t0: float,
                  t_end: float,
                  h: float,
@@ -104,8 +107,6 @@ class BackEulerImplicitIntegration:
         # we assume steady state
         dx0: Vec = np.zeros(self.problem.get_diff_var_number(), dtype=float)
 
-        # init_time = time.time()
-        # steady_state = np.allclose(dx0, 0.0, atol=1e-12)
 
         # timing accumulators
         timings = {
@@ -132,6 +133,9 @@ class BackEulerImplicitIntegration:
 
             self.problem.update_variable_params(t=current_time)
 
+            if step_idx > 4998:
+                print("")
+
             if step_idx == 0:
                 tol = 1e-7
                 xn = x0.copy()
@@ -139,7 +143,7 @@ class BackEulerImplicitIntegration:
                 xn = self.y[step_idx, :]
                 tol = 1e-7
 
-            while not converged and n_iter < self.max_iter_0:
+            while not converged and n_iter < 1e5:
                 if step_idx == 0:
                     dx = dx0.copy()
                 else:
@@ -153,9 +157,8 @@ class BackEulerImplicitIntegration:
 
                 if discontinuity:
                     tol = 1e-8
-                    # max_iter = 5e5
+                    max_iter = 5e5
 
-                # variable_params = np.asarray(variable_params, dtype=np.float64)
 
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
@@ -172,8 +175,8 @@ class BackEulerImplicitIntegration:
                 # Jf = self.jacobian_implicit(xnew_lags, params_current, h)
                 jac_end = time.time()
 
-                # if step_idx == 0:
-                #     _ = 0
+                if step_idx == 0:
+                    _ = 0
                 #     # print(f'jacobian time is {(jac_end - jac_start)}')
 
                 timings["jacobian_time"] += jac_end - jac_start
@@ -199,11 +202,11 @@ class BackEulerImplicitIntegration:
                             print(f"eq {eq} with error {rhs[i]}")
                         exit()
                 else:
-                    max_iter = 1000
+                    max_iter = 1e5
 
                 if converged:
                     break
-
+                solved = False
                 linear_start = time.time()
                 delta = sp.linalg.spsolve(Jf, -rhs)
                 linear_end = time.time()
@@ -221,8 +224,8 @@ class BackEulerImplicitIntegration:
                         dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
                         print(f"\nSingular direction {i}, σ={s[i]:.3e}")
                         for j in dominant_idx:
-                            if j < self.problem.get_diff_var_number():
-                                algeb_vars = self.problem.get_algebraic_vars()
+                            if j < self.problem.get_algebraic_var_number():
+                                algeb_vars = self.problem.get_algebraic_vars
                                 var_name = algeb_vars[j].name
                                 print(f"  {var_name:20s} {v[j]:+.3e}")
                     print("Using LSQR")
@@ -230,7 +233,7 @@ class BackEulerImplicitIntegration:
                 if not solved:
                     nan_indices = np.where(np.isnan(rhs))[0]
                     # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
-                    nan_eqs = [self._algebraic_eqs[i] for i in nan_indices]
+                    nan_eqs = [self.problem._algebraic_eqs[i] for i in nan_indices]
                     print(f'Jf is {Jf}')
                     raise ValueError(
                         f"spsolve returned non-finite values (NaN or Inf).\n"
@@ -270,4 +273,8 @@ class BackEulerImplicitIntegration:
             else:
                 print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
                 print(f'Residual is {residual}')
+                break
+
         return self.t, self.y
+
+

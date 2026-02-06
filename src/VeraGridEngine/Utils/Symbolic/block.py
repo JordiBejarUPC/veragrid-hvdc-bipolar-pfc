@@ -813,7 +813,9 @@ class Block:
         variables: List[Var] = list()
         all_blocks = self.get_all_blocks()
         for blk in all_blocks:
-            variables.extend(get_expression_vars(blk))
+            variables.extend(blk.algebraic_vars)
+            variables.extend(blk.state_vars)
+            variables.extend(blk.diff_vars)
         return variables
 
     def update_equations(self, old, new):

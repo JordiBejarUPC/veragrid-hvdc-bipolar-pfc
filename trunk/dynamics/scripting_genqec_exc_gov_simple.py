@@ -148,7 +148,7 @@ gen0.rms_model= gen_dynhost
 
 # apply event
 Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=5, value=-0.0999998)
+event = RmsEvent(device=load, parameter=Pl0, time=5, value=-0.0995)
 grid.add_rms_event(event)
 
 grid.add_line(line0)

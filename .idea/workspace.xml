@@ -28,10 +28,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="more floquet examples">
-      <change afterPath="$PROJECT_DIR$/trunk/Floquet_stability/Floquet_theory_for_stability_analysis_in_EMT.pdf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_different_damping_oscillators.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/Floquet_stability/floquet_stability_chain_different_damping_oscillators.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="Merge remote-tracking branch 'eRoots/147_86_Dynamic_simulations_V1_DiffBlock' into 147_86_Dynamic_simulations_V1_DiffBlock&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;src/VeraGrid/Gui/Main/MainWindow.py&#10;#&#9;src/VeraGrid/Gui/Main/MainWindow.ui&#10;#&#9;src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py">
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="#137Make-the-to_veragrid-and-from_veragrid-functions-for-dgs_circuit" />
+        <entry key="$PROJECT_DIR$" value="30605c92c0b86b4de8260b0f8ee68a8d11874ead" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -92,12 +91,12 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/eRoots-Analytics/VeraGrid.git",
-    "accountId": "4d02aa34-2027-4dfd-8f23-94887f8b85ab"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/eRoots-Analytics/VeraGrid&quot;,
+    &quot;accountId&quot;: &quot;cf5b980e-9261-4544-851c-0ceba824405b&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
@@ -155,8 +154,10 @@
     "Python tests.Python tests in tests.executor": "Run",
     "Python tests.pytest for src.tests.test_ac_opf.test_pegase89.executor": "Debug",
     "Python tests.pytest for src.tests.test_ac_opf.test_superconductors_handling.executor": "Debug",
+    "Python tests.pytest for src.tests.test_admittance_matrix.test3.executor": "Debug",
     "Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor": "Debug",
     "Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor": "Run",
+    "Python tests.pytest for src.tests.test_load_all_grids.test_all_grids.executor": "Debug",
     "Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor": "Debug",
     "Python tests.pytest for src.tests.test_power_flow_matpower.executor": "Run",
     "Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor": "Debug",
@@ -165,6 +166,7 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
     "Python tests.pytest in test_basic.py.executor": "Run",
@@ -191,13 +193,9 @@
     "Python.demo_code2.executor": "Run",
     "Python.demo_code3.executor": "Debug",
     "Python.demo_code4.executor": "Run",
-    "Python.floquet_stability_1D.executor": "Run",
-    "Python.floquet_stability_chain_damping_oscillators.executor": "Run",
-    "Python.floquet_stability_chain_different_damping_oscillators.executor": "Run",
-    "Python.floquet_stability_chain_symmetric_damping_oscillators.executor": "Run",
-    "Python.floquet_stability_damped_oscillator.executor": "Run",
     "Python.gridcal_compare_andes.executor": "Run",
     "Python.initialization.executor": "Debug",
+    "Python.load_save_load_2_bus.executor": "Run",
     "Python.multi_circuit.executor": "Debug",
     "Python.new_circuit_objects.executor": "Run",
     "Python.new_diagram2.executor": "Run",
@@ -208,9 +206,10 @@
     "Python.python_console.executor": "Run",
     "Python.raw_imp_exp_test.executor": "Run",
     "Python.readme_checks.executor": "Run",
-    "Python.reduced_vs_dense.executor": "Run",
+    "Python.rms_kundur.executor": "Debug",
     "Python.rms_model_editor_engine.executor": "Run",
     "Python.scripting_andes.executor": "Run",
+    "Python.scripting_genqec_exc_gov_simple.executor": "Debug",
     "Python.scripting_gridcal.executor": "Run",
     "Python.scripting_gridcal_hardcoded.executor": "Run",
     "Python.scripting_gridcal_hardcoded_light.executor": "Run",
@@ -236,16 +235,18 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "WebServerToolWindowFactoryState": "false",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
     "git-widget-placeholder": "147__86__Dynamic__simulations__V1__DiffBlock",
-    "last_opened_file_path": "C:/Users/maria/PycharmProjects/VeraGrid/trunk/Floquet_stability",
+    "last_opened_file_path": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx_2.py",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "project.propDebugger",
-    "two.files.diff.last.used.file": "C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "two.files.diff.last.used.file": "/home/marina/PycharmProjects/VeraGrid/src/VeraGridEngine/Simulations/Rms/numerical/back_euler_fx_2.py",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -256,24 +257,23 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\maria\PycharmProjects\VeraGrid\trunk\Floquet_stability" />
-      <recent name="$PROJECT_DIR$/trunk/power_factory_api" />
-      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/numerical" />
+      <recent name="$PROJECT_DIR$/src/tests/data/grids" />
+      <recent name="$PROJECT_DIR$/trunk/dynamics" />
+      <recent name="$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic" />
       <recent name="$PROJECT_DIR$/src/trunk/tuvalu" />
-      <recent name="$PROJECT_DIR$/src/trunk/dynamics" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/icons" />
-      <recent name="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
-      <recent name="$PROJECT_DIR$/trunk" />
-      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/trunk/ucte" />
       <recent name="$PROJECT_DIR$/src/GridCalEngine/Devices/Dynamic" />
+      <recent name="C:\Users\eRoots1\PycharmProjects\GridCal\src\tests" />
+      <recent name="$PROJECT_DIR$/src/tests/data/grids/RAW" />
+      <recent name="D:\SIROCO\GridCal\src\GridCal\Gui\Diagrams\MapWidget\Substation" />
     </key>
   </component>
   <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -285,7 +285,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="TARGET" value="" />
       <option name="SETTINGS_FILE" value="" />
       <option name="CUSTOM_SETTINGS" value="false" />
@@ -364,6 +363,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -375,7 +375,6 @@
     </configuration>
     <configuration default="true" type="Python.FlaskServer">
       <module name="GridCalEngine" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -384,7 +383,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
       <option name="launchJavascriptDebuger" value="false" />
       <method v="2" />
     </configuration>
@@ -414,6 +412,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
@@ -427,6 +426,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -445,6 +445,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -463,6 +464,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="CLASS_NAME" value="" />
       <option name="METHOD_NAME" value="" />
@@ -483,6 +485,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;&quot;" />
@@ -500,6 +503,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -521,6 +525,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/ExecuteVeraGrid.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -544,6 +549,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
@@ -553,7 +559,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="test_linear_time_series" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -562,58 +568,13 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tests/test_linear_time_series.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Main/update_gui_file.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_icons_rc" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/Icons" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/Icons/update_icons_rc.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -633,6 +594,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
@@ -646,6 +608,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -664,6 +627,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="docutils_input_file" value="" />
       <option name="docutils_output_file" value="" />
       <option name="docutils_params" value="" />
@@ -682,6 +646,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="" />
       <option name="CLASS_NAME" value="" />
       <option name="METHOD_NAME" value="" />
@@ -702,6 +667,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
       <option name="_new_target" value="&quot;&quot;" />
@@ -719,6 +685,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -726,21 +693,41 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in C:/Users/maria/PycharmProjects/VeraGrid/src/tests/test_parse_dgs.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+    <configuration name="pytest for tests.test_load_save_load.test_load_save_load_rms" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_parse_dgs.py&quot;" />
+      <option name="_new_target" value="&quot;tests.test_load_save_load.test_load_save_load_rms&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest in test_load_save_load.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_load_save_load.py&quot;" />
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
@@ -749,12 +736,13 @@
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
+      <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
       <option name="_new_keywords" value="&quot;&quot;" />
       <option name="_new_parameters" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
@@ -763,27 +751,26 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.test_linear_time_series" />
       <item itemvalue="Python.ExecuteVeraGrid" />
-      <item itemvalue="Python.update_gui_file" />
-      <item itemvalue="Python.update_icons_rc" />
-      <item itemvalue="Python tests.pytest in C:/Users/maria/PycharmProjects/VeraGrid/src/tests/test_parse_dgs.py" />
+      <item itemvalue="Python.upload_to_pypi" />
+      <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
+      <item itemvalue="Python tests.pytest in test_load_save_load.py" />
       <item itemvalue="Python tests.pytest in tests" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in C:/Users/maria/PycharmProjects/VeraGrid/src/tests/test_parse_dgs.py" />
-        <item itemvalue="Python.update_gui_file" />
-        <item itemvalue="Python.update_icons_rc" />
         <item itemvalue="Python tests.pytest in tests" />
+        <item itemvalue="Python tests.pytest in test_load_save_load.py" />
+        <item itemvalue="Python tests.pytest for tests.test_load_save_load.test_load_save_load_rms" />
+        <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-8753aad8314d-d902c0275401-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-252.25557.178" />
+        <option value="bundled-python-sdk-ca5e2b39c7df-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.308" />
       </set>
     </attachedChunks>
   </component>
@@ -1564,6 +1551,15 @@
       <workItem from="1740045012834" duration="3376000" />
       <workItem from="1759129150471" duration="1012000" />
       <workItem from="1759130170160" duration="2035000" />
+      <workItem from="1769091231878" duration="23000" />
+      <workItem from="1769091263351" duration="10432000" />
+      <workItem from="1769163072237" duration="9549000" />
+      <workItem from="1769175722580" duration="643000" />
+      <workItem from="1769176373363" duration="10000" />
+      <workItem from="1769176807207" duration="1490000" />
+      <workItem from="1769178399525" duration="2796000" />
+      <workItem from="1769415990974" duration="35000" />
+      <workItem from="1769419391044" duration="1000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1908,7 +1904,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="697" />
+    <option name="localTasksCounter" value="701" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1926,6 +1922,21 @@
     </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="devel" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
     <option name="TAB_STATES">
       <map>
         <entry key="1">
@@ -1941,7 +1952,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="origin/17_implement_rms_templates" />
+                        <option value="devel" />
                       </list>
                     </value>
                   </entry>
@@ -1954,32 +1965,32 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
-    <MESSAGE value="5.6.5" />
-    <MESSAGE value="Fixed important bug" />
-    <MESSAGE value="minimal changes" />
-    <MESSAGE value="some comments" />
-    <MESSAGE value="Improved bus centering" />
-    <MESSAGE value="Added copy button to the grid reduction" />
-    <MESSAGE value="Moved trunk out of src&#10;Added grid_reduction checks" />
-    <MESSAGE value="Added grid_reduction_with_multiple_islands_after" />
-    <MESSAGE value="refactored more trunk files" />
-    <MESSAGE value="Icons moved to Icons folder&#10;All GUI's reference a single icons resource now" />
-    <MESSAGE value="added new dgs parse candidate" />
-    <MESSAGE value="improved dgs objects" />
-    <MESSAGE value="added from veragrid_to_dgs" />
-    <MESSAGE value="Improvements in the DGS parser" />
-    <MESSAGE value="5.6.11" />
-    <MESSAGE value="Added time series search button" />
-    <MESSAGE value="starting refactor small signal" />
-    <MESSAGE value="floquet stability examples" />
-    <MESSAGE value="emt problem-solver small changes" />
-    <MESSAGE value="comparison sparse vs dense in small signal calc." />
-    <MESSAGE value="comparison sparse vs dense in small signal calc. v2" />
-    <MESSAGE value="working on refactor small_signal simulation 2" />
-    <MESSAGE value="small signal refactored" />
-    <MESSAGE value="more floquet examples" />
-    <option name="LAST_COMMIT_MESSAGE" value="more floquet examples" />
+    <MESSAGE value="PowerFactory parser to VeraGrid" />
+    <MESSAGE value="some more changes in PowerFactory parser to VeraGrid" />
+    <MESSAGE value="added library list in the about window" />
+    <MESSAGE value="minor changes" />
+    <MESSAGE value="5.6.10" />
+    <MESSAGE value="Fixed test issue with simplified linear analysis" />
+    <MESSAGE value="merged" />
+    <MESSAGE value="Modified the main icon path" />
+    <MESSAGE value="Modified the test_grid_reduction_with_multiple_islands_before as intended" />
+    <MESSAGE value="Added one extra power flow test&#10;Minor enhancements" />
+    <MESSAGE value="Commented out the HELM contingency" />
+    <MESSAGE value="Some refactors" />
+    <MESSAGE value="dgs handle of FID" />
+    <MESSAGE value="added bus color" />
+    <MESSAGE value="Updated discord link" />
+    <MESSAGE value="research of grid manager" />
+    <MESSAGE value="Improved UCT parsing" />
+    <MESSAGE value="Implemented different way of saving models based on pointers instead of copies" />
+    <MESSAGE value="added chance to reuse existing voltage levels" />
+    <MESSAGE value="added device type to the VoltageLevel conversion wizard" />
+    <MESSAGE value="Minor fixes" />
+    <MESSAGE value="More UCTE corrections&#10;fixed new pandas 3 breaking changes" />
+    <MESSAGE value="More UCTE corrections&#10;5.6.18" />
+    <MESSAGE value="added alter_params to BlockSolver and cleaning" />
+    <MESSAGE value="test load_save_load" />
+    <option name="LAST_COMMIT_MESSAGE" value="test load_save_load" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2384,6 +2395,21 @@
           <option name="timeStamp" value="2990" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2804</line>
+          <option name="timeStamp" value="2991" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2631</line>
+          <option name="timeStamp" value="2992" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_gslv.py</url>
+          <line>2623</line>
+          <option name="timeStamp" value="2993" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/base.py</url>
           <line>179</line>
           <option name="timeStamp" value="2994" />
@@ -2407,6 +2433,11 @@
           <url>file://$PROJECT_DIR$/trunk/unbalanced_pf/Neutral/ShortCircuit/Impedance_GroundedStar_3ph.py</url>
           <line>78</line>
           <option name="timeStamp" value="3035" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/pack_unpack.py</url>
+          <line>1241</line>
+          <option name="timeStamp" value="3046" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py</url>
@@ -2548,13 +2579,8 @@
           <option name="timeStamp" value="3181" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py</url>
-          <line>596</line>
-          <option name="timeStamp" value="3208" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/initialization.py</url>
-          <line>696</line>
+          <line>694</line>
           <option name="timeStamp" value="3462" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2562,7 +2588,71 @@
           <line>594</line>
           <option name="timeStamp" value="3465" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/dynamics/rms_kundur.py</url>
+          <line>596</line>
+          <option name="timeStamp" value="3468" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/dynamics/rms_kundur.py</url>
+          <line>600</line>
+          <option name="timeStamp" value="3469" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py</url>
+          <line>198</line>
+          <option name="timeStamp" value="3470" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/trunk/dynamics/scripting_genqec_exc_gov_simple.py</url>
+          <line>202</line>
+          <option name="timeStamp" value="3471" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Utils/Symbolic/symbolic_io.py</url>
+          <line>763</line>
+          <option name="timeStamp" value="3484" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py</url>
+          <line>641</line>
+          <option name="timeStamp" value="3494" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py</url>
+          <line>87</line>
+          <option name="timeStamp" value="3513" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py</url>
+          <line>79</line>
+          <option name="timeStamp" value="3515" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/rms_driver.py</url>
+          <line>89</line>
+          <option name="timeStamp" value="3516" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/EMT/problems/emt_problem_dae.py</url>
+          <line>528</line>
+          <option name="timeStamp" value="3519" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Simulations/Rms/problems/rms_problem_dae.py</url>
+          <line>944</line>
+          <option name="timeStamp" value="3536" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ucte_parser_check.coverage" NAME="ucte_parser_check Coverage Results" MODIFIED="1769171208501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/trunk/ucte" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$upload_to_pypi.coverage" NAME="upload_to_pypi Coverage Results" MODIFIED="1769180289089" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_admittance_matrix_test3.coverage" NAME="pytest for src.tests.test_admittance_matrix.test3 Coverage Results" MODIFIED="1769177024740" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_load_all_grids_test_all_grids.coverage" NAME="pytest for src.tests.test_load_all_grids.test_all_grids Coverage Results" MODIFIED="1769176306528" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1769171330480" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_for_src_tests_test_power_flow_acdc_generalized_test_controllable_shunt.coverage" NAME="pytest for src.tests.test_power_flow_acdc_generalized.test_controllable_shunt Coverage Results" MODIFIED="1769175359097" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_in_tests.coverage" NAME="pytest in tests Coverage Results" MODIFIED="1769179935509" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
   </component>
 </project>
