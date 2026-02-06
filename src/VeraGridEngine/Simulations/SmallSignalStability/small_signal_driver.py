@@ -358,7 +358,9 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         self.ss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if ss_options is None else ss_options
         self.assessment_time = self.ss_options.ss_assessment_time
-        self.k = self.ss_options.k
+
+        self.k = self.ss_options.k if self.ss_options.k is not None else self.problem.get_states_number()
+
 
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
@@ -395,6 +397,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         # x0 = slv.build_init_vars_vector_from_uid(init_guess)
         x = self.problem.get_x0()
+        print(f"x = {x}")
         dx = np.zeros_like(x)
 
         if not self.assessment_time == 0:
@@ -422,7 +425,10 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
 
         n = self.problem.get_states_number()
+        print(f"type n = {type(n)}")
+        print(f"type self.k = {type(self.k)}")
         if self.k >= n-1:
+
             reduced_state_matrix = None
             (eigenvalues,
              participation_factors,
