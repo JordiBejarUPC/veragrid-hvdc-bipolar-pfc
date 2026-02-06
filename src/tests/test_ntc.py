@@ -1031,7 +1031,7 @@ def test_ntc_vsc_8_buses_REE_contingencies():
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
     Contingencies are enabled
     """
-    fname = os.path.join('data', 'grids', 'NTC_8_buses_REE.gridcal')
+    fname = os.path.join('data', 'grids', 'NTC_8_bus_vsc_REE.veragrid')
     # fname = os.path.join('src', 'tests', 'data', 'grids', 'NTC_8_bus_vsc_REE.veragrid')
 
     grid = gce.open_file(fname)
