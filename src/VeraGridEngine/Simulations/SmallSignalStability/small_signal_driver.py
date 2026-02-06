@@ -8,6 +8,7 @@ import numba as nb
 from matplotlib import pyplot as plt
 import scipy.linalg
 from scipy.sparse.linalg import spsolve
+import scipy.sparse.linalg as spla
 import math
 
 from typing import Union
@@ -173,13 +174,12 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, verbose: int = 0):
+def run_dense_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, verbose: int = 0):
     """
-    Small Signal Stability analysis
-    :param slv: BlockSolver
+    Small Signal Stability analysis "dense matrix"
+    :param problem: RmsProblemTemplate
     :param x: variables (1D numpy array)
-    :param time: time (float)
-    :param plot: True(default) if S-domain eigenvalues plot wanted. Else: False
+    :param dx: derivatives (1D numpy array)
     :param verbose: verbosity level (0 for none)
     :return:
         stability: str
@@ -233,6 +233,98 @@ def run_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, verb
 
     return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
 
+def run_sparse_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, k:int, verbose: int = 0):
+    """
+    Small Signal Stability analysis "sparse matrix"
+    :param problem: RmsProblemTemplate
+    :param x: variables (1D numpy array)
+    :param dx: derivatives (1D numpy array)
+    :param k: number of modes to be calculated (int)
+    :param verbose: verbosity level (0 for none)
+    :return:
+        stability: str
+            "Unstable", "Marginally stable" or "Asymptotically stable"
+        eigenvalues:  1D row numpy array
+        participation factors: 2D array csc matrix.
+            Participation factors of mode i stored in PF[:,i]
+
+    Small Signal Stability analysis:
+    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
+        Tx'=f(x,y)
+        0=g(x,y)
+        the A matrix is computed as:
+        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+
+    2. Find eigenvalues and right(V) and left(W) eigenvectors
+
+    3. Calculate normalized participation factors PF = W · V
+
+    4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
+    """
+    A = compute_state_matrix(problem= problem,
+                             x=x,
+                             dx=dx) # sparse state matrix csc matrix
+    num_states = A.shape[0]
+
+    # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
+    eigenvalues_r, v = spla.eigs(
+        A,
+        k=k,
+        sigma=0.0,  # shift-invert → critical modes
+        which="LM"
+    )
+
+    # reduced A matrix
+    A_r = v.conj().T @ (A @ v)
+
+    # dense eigenvalues decomposition
+    eigenvalues, w_r, v_r = scipy.linalg.eig(
+        A_r,
+        left=True,
+        right=True
+    )
+
+    # lift left eivenvectors
+    w = v @ w_r
+
+    # find participation factors
+    # participation_factors = compute_participation_factors(An=A_r.shape[0],
+    #                                                       Am=A_r.shape[1],
+    #                                                       v=v,
+    #                                                       w=w,
+    #                                                       n_eigenvalues=len(eigenvalues),
+    #                                                       num_states=num_states)
+
+
+    # # bu-orthonormalization
+    for i in range(k):
+        norm_factor = w[:, i].conj().T @ v[:, i]
+        if np.abs(norm_factor) < 1e-12:
+            raise RuntimeError("Bi-orthogonality lost in reduced projection")
+        w[:, i] /= norm_factor
+
+    # reduced participation factors
+    PF = np.abs(v * w)
+    participation_factors = PF / PF.sum(axis=0, keepdims=True)
+
+
+    # find damping ratios and oscillation frequencies only for the complex conjugate modes
+    eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
+    #
+    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
+                                                                            eig_no_conjugates = eig_no_conjugates)
+
+    if verbose:
+        print("Reduced state matrix:", A_r.toarray())
+        print("Eigenvalues:", eigenvalues)
+        print("Participation factors:", participation_factors)
+        print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
+        print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
+
+
+    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A_r.toarray(), A_r.toarray()
+
+
 
 class SmallSignalStabilityDriver(DriverTemplate):
     """
@@ -266,6 +358,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         self.ss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if ss_options is None else ss_options
         self.assessment_time = self.ss_options.ss_assessment_time
+        self.k = self.ss_options.k
 
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
@@ -301,8 +394,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
 
         # x0 = slv.build_init_vars_vector_from_uid(init_guess)
-        x0 = self.problem.get_x0()
-        dx0 = np.zeros_like(x0)
+        x = self.problem.get_x0()
+        dx = np.zeros_like(x)
 
         if not self.assessment_time == 0:
             # Get integration method
@@ -321,25 +414,35 @@ class SmallSignalStabilityDriver(DriverTemplate):
                 )
 
                 t, y = solver.simulate()
+                i = int(self.assessment_time / self.rms_options.time_step)
+                x = y[i]
 
             else:
                 raise ValueError(f"integrator not implemented :( {self.rms_options.integration_method}")
 
 
-            i = int(self.assessment_time / self.rms_options.time_step)
+        n = self.problem.get_states_number()
+        if self.k >= n-1:
+            reduced_state_matrix = None
             (eigenvalues,
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(problem=self.problem, x=y[i], dx=dx0)
+             state_matrix) = run_dense_small_signal_stability(problem=self.problem,
+                                                              x=x,
+                                                              dx=dx,
+                                                              verbose= self.ss_options.verbose)
 
         else:
-
             (eigenvalues,
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(problem=self.problem, x=x0,  dx=dx0)
+             state_matrix, reduced_state_matrix) = run_sparse_small_signal_stability(problem=self.problem,
+                                                                                     x=x, dx=dx,
+                                                                                     k = self.k,
+                                                                                     verbose= self.ss_options.verbose)
+
 
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
@@ -348,6 +451,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             damping_ratios = damping_ratios,
             conjugate_frequencies = conjugate_frequencies,
             state_matrix = state_matrix,
+            reduced_state_matrix = reduced_state_matrix,
             stat_vars = self.problem.get_state_vars(),
         )
 

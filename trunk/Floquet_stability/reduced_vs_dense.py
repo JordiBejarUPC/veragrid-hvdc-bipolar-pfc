@@ -116,6 +116,12 @@ def calculate_sparse_eigs_PF(A_sparse, k):
     print("Computing reduced participation factors...")
     PF = np.abs(V * W)
     PF_norm = PF / PF.sum(axis=0, keepdims=True)
+    # PF_sparse = compute_participation_factors(An=A_r.shape[0],
+    #                                           Am=A_r.shape[1],
+    #                                           v=V,
+    #                                           w=W,
+    #                                           n_eigenvalues=len(eigvals_red),
+    #                                           num_states=num_states)
 
     t_pf_sparse = time.perf_counter() - t1
 

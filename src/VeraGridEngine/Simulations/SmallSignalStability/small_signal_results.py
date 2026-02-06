@@ -10,7 +10,7 @@ from typing import List
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
@@ -18,19 +18,22 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 class SmallSignalStabilityResults(ResultsTemplate):
 
     def __init__(self,
-                 eigenvalues: np.ndarray,
-                 participation_factors: np.ndarray,
-                 damping_ratios: np.ndarray,
-                 conjugate_frequencies: np.ndarray,
-                 state_matrix: np.ndarray,
-                 stat_vars: List[Var]):
+                 eigenvalues: Mat,
+                 participation_factors: Mat,
+                 damping_ratios: Vec,
+                 conjugate_frequencies: Vec,
+                 state_matrix: Mat,
+                 stat_vars: List[Var],
+                 reduced_state_matrix: Mat| None = None):
         """
-
+        Small-signal Analsis results
         :param eigenvalues:
         :param participation_factors:
         :param damping_ratios:
         :param conjugate_frequencies:
+        :param state_matrix:
         :param stat_vars:
+        :param reduced_state_matrix:
         """
         ResultsTemplate.__init__(
             self,
@@ -56,6 +59,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
         self.damping_ratios = [str(r) if not np.isnan(r) else '-' for r in damping_ratios]
         self.conjugate_frequencies = [str(r) if not np.isnan(r) else '-' for r in conjugate_frequencies]
         self.state_matrix = state_matrix
+
 
         self.register(name='eigenvalues', tpe=Vec)
         self.register(name='participation_factors', tpe=Vec)
