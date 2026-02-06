@@ -170,8 +170,8 @@ if __name__ == "__main__":
     # PARAMETRIC RESONANCE SELECTION
     # -----------------------------
     mode_idx = 0   # choose which mode to excite
-    # omega = 2.0 * omega_n[mode_idx]
-    omega = 2.0
+    omega = 2.0 * omega_n[mode_idx]
+    # omega = 2.0
 
     T = 2 * np.pi / omega
 
