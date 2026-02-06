@@ -86,7 +86,7 @@ def test_dc_pf_ieee14():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join('data', 'grids', 'case14.m')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
@@ -127,7 +127,7 @@ def test_dc_pf_ieee14_ps():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join('data', 'grids', 'case14_ps.m')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14_ps.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
@@ -697,7 +697,7 @@ def test_hvdc_all_methods() -> None:
 #                                control_q=True,
 #                                retry_with_other_methods=False)
 #
-#     fname = os.path.join('data', 'grids', 'case14.m')
+#     fname = os.path.join('data', 'grids', 'case14.matpower')
 #     grid = FileOpen(fname).open()
 #
 #     Qmin_gen = np.array([elm.Qmin for elm in grid.generators])

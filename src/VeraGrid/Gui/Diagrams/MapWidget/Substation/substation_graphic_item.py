@@ -276,18 +276,24 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         for i, vl_graphics in enumerate(sorted_objects):
             vl_graphics.setZValue(i)
 
+    def get_xc(self) -> float:
+        return self.rect().x() + self.size/2
+
+    def get_yc(self) -> float:
+        return self.rect().y() + self.size/2
+
     def update_position_at_the_diagram(self) -> None:
         """
         Updates the element position in the diagram (to save)
         :return: 
         """
-        lat, long = self.editor.to_lat_lon(self.rect().x(), self.rect().y())
+        lat, long = self.editor.to_lat_lon(self.get_xc(), self.get_yc())
 
-        if (self.lat - lat) < 1e-8:
-            print(f"LAT MOVED: {self.lat}, new: {lat}")
-
-        if (self.lon - long) < 1e-8:
-            print(f"LON MOVED: {self.lon}, new: {long}")
+        # if abs(self.lat - lat) > 1e-8:
+        #     print(f"LAT MOVED: {self.lat}, new: {lat}")
+        #
+        # if abs(self.lon - long) > 1e-8:
+        #     print(f"LON MOVED: {self.lon}, new: {long}")
 
         self.lat = lat
         self.lon = long
