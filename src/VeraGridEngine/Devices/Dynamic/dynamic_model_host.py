@@ -411,14 +411,14 @@ class DynamicModelHost(EditableDevice):
         template_data = data.get("template", None)
 
         if template_data is not None:
-            self._template = blocks_dict.get(int(template_data), None)
+            self._template = blocks_dict.get(int(template_data['uid']), None)
 
         custom_data = data.get("model", None)
         if custom_data is None:
             custom_data = data.get("custom_model", None)
 
         if custom_data is not None:
-            self._model = blocks_dict.get(int(custom_data), None)
+            self._model = blocks_dict.get(int(custom_data['uid']), None)
 
         diagram_data = data.get("diagram", None)
         if diagram_data is not None:

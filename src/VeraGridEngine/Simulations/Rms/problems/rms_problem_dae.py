@@ -935,6 +935,13 @@ class RmsProblemDae(RmsProblemTemplate):
 
         return variables
 
+    @property
+    def get_state_vars(self):
+        """
+        :return:
+        """
+        return self._state_vars
+
     def get_all_vars_number(self) -> int:
         return self._n_vars
 
@@ -1015,3 +1022,6 @@ class RmsProblemDae(RmsProblemTemplate):
                             self._variable_parameters_values,
                             self._constant_params,
                             h)
+
+    def get_dt(self):
+        return self._dt

@@ -447,7 +447,7 @@ def short_circuit_3ph(grid, t_idx=None) -> ShortCircuitResults:
 
     sc_options = gce.ShortCircuitOptions()
 
-    grid.add_short_circuit_definition(
+    grid.add_short_circuit_event(
         gce.ShortCircuitEvent(
             device=grid.buses[4],
             fault_type=FaultType.LG,

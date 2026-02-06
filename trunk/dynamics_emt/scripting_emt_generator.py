@@ -22,8 +22,6 @@ from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-
-
 import VeraGridEngine.api as gce
 np.set_printoptions(
             precision=10,  # number of digits

@@ -42,6 +42,8 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'region': dev.Region(),
         'municipality': dev.Municipality(),
 
+        'owner': dev.Owner(),
+
         'substation': dev.Substation(),
         'voltage_level': dev.VoltageLevel(),
 
@@ -255,7 +257,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit,
     return dfs
 
 
-def profile_todict(profile: Profile) -> Dict[str, str]:
+def profile_todict(profile: Profile) -> Dict[str, str | bool]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -737,12 +739,12 @@ def parse_object_type_from_dataframe(
         elm.disable_auto_updates()
 
         # ensure the profiles existence
-        if time_profile is not None:
+        if time_profile is None or time_profile is pd.NaT:
+            nt = 0
+        else:
             nt = len(time_profile)
             if nt > 0:
                 elm.ensure_profiles_exist(index=time_profile)
-        else:
-            nt = 0
 
         # parse each property of the row
         for property_name_, property_value in row.items():
@@ -1468,11 +1470,16 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     block_parser = BlockParser()
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
-        block_parser.parse_consts(symbolic_data["consts"])
-        block_parser.parse_vars(symbolic_data["vars"])
-        block_parser.parse_diff_vars(symbolic_data["diff_vars"])
-        for block_uid in symbolic_data["main_block_uids"]:
-            block_parser.parse_block(symbolic_data["blocks"], block_uid)
+        if len(symbolic_data) > 0:
+            block_parser.parse_consts(symbolic_data["consts"])
+            block_parser.parse_vars(symbolic_data["vars"])
+            block_parser.parse_diff_vars(symbolic_data["diff_vars"])
+            for block_uid in symbolic_data["main_block_uids"]:
+                block_parser.parse_block(symbolic_data["blocks"], block_uid)
+        else:
+            pass  # the symbolic data is empty
+    else:
+        pass  # there is no symbolic data records
 
     model_data = data.get('model_data', None)
     if model_data is not None:

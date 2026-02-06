@@ -22,6 +22,7 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.Rms.initialization import compose_system_block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
 
 def _tic():
@@ -66,8 +67,8 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
 
 class SymbolicJacobian:
     """
-       Class to store and evaluate a symbolic jacobian
-       """
+    Class to store and evaluate a symbolic jacobian
+    """
 
     def __init__(self,
                  eqs: list,
@@ -420,7 +421,7 @@ class EmtProblemDae(EmtProblemTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results: PowerFlowResults | None):
+                 pf_results: PowerFlowResults3Ph | None):
         """
 
         :param grid:
@@ -974,6 +975,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
     def def_event_params_fn(self, ev_param: SymbolicParamsVector ,tm:float):
         return self._event_params_fn(ev_param, tm)
+
+    def get_dt(self):
+        return self._dt
 
     @property
     def block_system(self):

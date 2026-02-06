@@ -90,4 +90,7 @@ class EmtProblemTemplate(ABC):
     def def_event_params_fn(self,ev_param: None, tm:float):
         return NotImplementedError("get_event_params_fn")
 
+    def get_dt(self):
+        return NotImplementedError("get_dt")
+
 

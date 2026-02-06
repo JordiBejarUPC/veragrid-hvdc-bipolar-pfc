@@ -1,6 +1,12 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 import numpy as np
 from scipy.integrate import solve_ivp
 from numpy.linalg import eigvals
+from scipy.sparse import csr_matrix
 
 # ----- fUNCTION TO ANALYZE: damped oscillator with periodic stiffness -----
 def A(t, omega, d):
@@ -10,16 +16,28 @@ def A(t, omega, d):
         [-k,  -d]
     ])
 
+def A_sparse(t, omega, d):
+    k = 2.0 + np.sin(omega * t)
+    return csr_matrix([
+        [0.0,  1.0],
+        [-k,  -d]
+    ])
+
 def fundamental_ode(t, M_flat, omega, d):
     M = M_flat.reshape((2, 2))
     dMdt = A(t, omega, d) @ M
     return dMdt.flatten()
 
+def fundamental_ode_sparse(t, M_flat, omega, d):
+    M = M_flat.reshape((2, 2))
+    A = A_sparse(t, omega, d)
+    dMdt = A @ M
+    return dMdt.A.flatten()  # convert to dense
+
 # parameters
 omega = 2.0
 d = 0.3
 T = 2 * np.pi / omega
-
 
 M0 = np.eye(2).flatten()   # M(0) = I
 
@@ -51,6 +69,8 @@ elif np.isclose(rho, 1.0):
     print("\nSystem is marginally stable")
 else:
     print("\nSystem is unstable")
+
+
 
 
 

@@ -557,6 +557,7 @@ class VoltageLevelConversionWizard(QDialog):
         """
         Get the bay assignments from the table.
         :return: List of (device_name, bay_number, assigned_bus) tuples
+                 Note: device_name is the plain device name (without device type suffix)
         """
         assignments = []
         for row in range(self.table.rowCount()):
@@ -564,11 +565,21 @@ class VoltageLevelConversionWizard(QDialog):
             bay_item = self.table.item(row, 1)
             main_bar_item = self.table.item(row, 2)
 
-            device = device_item.text() if device_item else ""
+            device_display = device_item.text() if device_item else ""
 
             # Skip visual indicator rows (like "Double bar connection")
-            if device == "Double bar connection":
+            if device_display == "Double bar connection":
                 continue
+
+            # Extract plain device name from display format "DeviceName (DeviceType)"
+            # Keep "(Spare)" as-is since it's a special marker
+            if device_display == "(Spare)":
+                device_name = device_display
+            elif " (" in device_display and device_display.endswith(")"):
+                # Extract name before the " (DeviceType)" suffix
+                device_name = device_display.rsplit(" (", 1)[0]
+            else:
+                device_name = device_display
 
             bay_str = bay_item.text() if bay_item else "Bay1"
             main_bar = main_bar_item.text() if main_bar_item else "JBP1"
@@ -579,7 +590,7 @@ class VoltageLevelConversionWizard(QDialog):
             except ValueError:
                 bay_num = 1
 
-            assignments.append((device, bay_num, main_bar))
+            assignments.append((device_name, bay_num, main_bar))
 
         return assignments
 

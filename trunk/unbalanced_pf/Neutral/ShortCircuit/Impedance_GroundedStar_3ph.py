@@ -59,7 +59,7 @@ res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=S
 # ----------------------------------------------------------------------------------------------------------------------
 sc_options = gce.ShortCircuitOptions()
 
-grid.add_short_circuit_definition(
+grid.add_short_circuit_event(
     gce.ShortCircuitEvent(
         device=grid.buses[1],
         fault_type=FaultType.LG,

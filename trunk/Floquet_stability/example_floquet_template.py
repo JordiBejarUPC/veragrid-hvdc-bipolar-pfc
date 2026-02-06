@@ -12,7 +12,7 @@ from VeraGridEngine.Utils.Symbolic.block import Var, DiffVar, Const
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
-def get_generator_emt_template() -> EmtModelTemplate:
+def get_exemple_floquet_emt_template() -> EmtModelTemplate:
     """
     Get the EMT template of a generator
     :return: EmtModelTemplate
@@ -52,8 +52,7 @@ def get_generator_emt_template() -> EmtModelTemplate:
 
     templ.block.init_eqs = {
         theta: 0.0,
-        x: ,
-
+        x: -1 +0.5 * sym.sin(theta) ,
     }
 
     return templ
