@@ -64,6 +64,7 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
     else:
         Q[k] += val
 
+
 def compile_jac_block(block_id, block_eqs, block_offsets, used_vars_count,
                       compiler_names_dict, alias_names_dict, namespace, VARS_NAME: str, DIFF_NAME: str,
                       EVENT_PARAMS_NAME: str,
@@ -94,7 +95,6 @@ def compile_jac_block(block_id, block_eqs, block_offsets, used_vars_count,
         func = namespace[fname]
 
     return block_id, func
-
 
 
 class SymbolicJacobian:
@@ -470,7 +470,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
-        vars_glob_name2uid: Dict[str, int] = dict()
+        self.vars_glob_name2uid: Dict[str, int] = dict()
         # find events
         rms_events = grid.rms_events
 
@@ -490,7 +490,8 @@ class RmsProblemDae(RmsProblemTemplate):
             bus_dict[elm] = i
             for var in elm.rms_model.model.get_all_vars():
                 vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
+                self.vars_glob_name2uid[var.name + elm.name] = var.uid
+                self.add_device_var(dev=elm, var=var)
 
         # initialize branches
         for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
@@ -506,7 +507,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
             for var in elm.rms_model.model.get_all_vars():
                 vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
+                self.vars_glob_name2uid[var.name + elm.name] = var.uid
                 self.add_device_var(dev=elm, var=var)
 
         # initialize injections
@@ -545,7 +546,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
             for var in elm.rms_model.model.get_all_vars():
                 vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
+                self.vars_glob_name2uid[var.name + elm.name] = var.uid
+                self.add_device_var(dev=elm, var=var)
 
         # add the nodal balance equations
         for i, elm in enumerate(grid.buses):
@@ -564,7 +566,6 @@ class RmsProblemDae(RmsProblemTemplate):
             VARS_NAME=self.VARS_NAME,
             power_flow_results=pf_results,
             vars2device=vars2device,
-            vars_glob_name2uid=vars_glob_name2uid,
             use_init_values=options.use_init_values,
             method=options.initialization_method
         )
@@ -593,8 +594,6 @@ class RmsProblemDae(RmsProblemTemplate):
         # Class-level registry
         self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
         self._absolute_registry: Dict[Tuple[int, int], DiffVar] = dict()
-
-        # self.v_glob_name2uid = self.block_system.vars_glob_name2uid
 
         self._substitute = True
 
@@ -878,7 +877,7 @@ class RmsProblemDae(RmsProblemTemplate):
         if options.verbose > 0:
             print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
 
-    def get_vars_info(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
+    def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         return self._vars_info
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var):
@@ -911,11 +910,30 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._block_system.vars_glob_name2uid
 
     @property
+    def uid2idx_vars(self):
+        """
+        :return:
+        """
+        return self._uid2idx_vars
+
+    @property
     def get_algebraic_vars(self):
         """
         :return:
         """
         return self._algebraic_vars
+
+    @property
+    def state_and_algebraic_vars(self) -> List[Var]:
+        """
+        :return:
+        """
+        variables = list()
+        for lst in [self._state_vars, self._algebraic_vars]:
+            for var in lst:
+                variables.append(var)
+
+        return variables
 
     def get_all_vars_number(self) -> int:
         return self._n_vars
@@ -960,41 +978,40 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
-        self._variable_parameters_values[-2] = 0.001
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         return self._derivative_fn(x, xn, dx, h)
 
     def rhs_state(self, x: Vec, dx: Vec, ) -> Vec:
         return self._rhs_state_fn(x, dx,
-                                 self._variable_parameters_values,
-                                 self._constant_params)
+                                  self._variable_parameters_values,
+                                  self._constant_params)
 
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
         return self._rhs_algeb_fn(x, dx,
-                                 self._variable_parameters_values,
-                                 self._constant_params)
+                                  self._variable_parameters_values,
+                                  self._constant_params)
 
     def get_j11(self, x: Vec, dx: Vec, h: float):
         return self._j11_fn(x, dx,
-                           self._variable_parameters_values,
-                           self._constant_params,
-                           h)
+                            self._variable_parameters_values,
+                            self._constant_params,
+                            h)
 
     def get_j12(self, x: Vec, dx: Vec, h: float):
         return self._j12_fn(x, dx,
-                           self._variable_parameters_values,
-                           self._constant_params,
-                           h)
+                            self._variable_parameters_values,
+                            self._constant_params,
+                            h)
 
     def get_j21(self, x: Vec, dx: Vec, h: float):
         return self._j21_fn(x, dx,
-                           self._variable_parameters_values,
-                           self._constant_params,
-                           h)
+                            self._variable_parameters_values,
+                            self._constant_params,
+                            h)
 
     def get_j22(self, x: Vec, dx: Vec, h: float):
         return self._j22_fn(x, dx,
-                           self._variable_parameters_values,
-                           self._constant_params,
-                           h)
+                            self._variable_parameters_values,
+                            self._constant_params,
+                            h)

@@ -29,7 +29,6 @@ from VeraGrid.Session.server_driver import RemoteJobDriver
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
-from VeraGridEngine import DynamicIntegrationMethod
 from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.file_system import opf_file_path
@@ -41,7 +40,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
-                                         ReliabilityMode, OpfDispatchMode)
+                                         ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod, RmsInitializationMethod)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -880,7 +879,7 @@ class SimulationsMain(TimeEventsMain):
             simulation_time=self.ui.sim_time_spinBox.value(),
             tolerance=self.ui.tolerance_rms_spinBox.value(),
             integration_method=DynamicIntegrationMethod(self.ui.rms_int_method_comboBox.currentText()),
-            # integration_method=DynamicIntegrationMethod("BackEuler"),
+            initialization_method=RmsInitializationMethod(self.ui.rms_init_method_comboBox.currentText()),
             use_init_values=self.ui.rms_use_init_values_checkBox.isChecked()
         )
 

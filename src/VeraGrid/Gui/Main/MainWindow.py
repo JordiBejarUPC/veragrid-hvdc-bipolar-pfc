@@ -3752,15 +3752,6 @@ class Ui_mainWindow(object):
         self.frame_109.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_33 = QGridLayout(self.frame_109)
         self.gridLayout_33.setObjectName(u"gridLayout_33")
-        self.label_414 = QLabel(self.frame_109)
-        self.label_414.setObjectName(u"label_414")
-        self.label_414.setMinimumSize(QSize(24, 24))
-        self.label_414.setMaximumSize(QSize(24, 24))
-        self.label_414.setPixmap(QPixmap(u":/Icons/icons/dyn.png"))
-        self.label_414.setScaledContents(True)
-
-        self.gridLayout_33.addWidget(self.label_414, 0, 0, 1, 1)
-
         self.frame_111 = QFrame(self.frame_109)
         self.frame_111.setObjectName(u"frame_111")
         self.frame_111.setFrameShape(QFrame.Shape.NoFrame)
@@ -3783,87 +3774,14 @@ class Ui_mainWindow(object):
 
         self.gridLayout_33.addWidget(self.frame_111, 0, 1, 1, 2)
 
-        self.frame_113 = QFrame(self.frame_109)
-        self.frame_113.setObjectName(u"frame_113")
-        self.frame_113.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_113.setFrameShadow(QFrame.Shadow.Raised)
-        self.gridLayout_34 = QGridLayout(self.frame_113)
-        self.gridLayout_34.setObjectName(u"gridLayout_34")
-        self.rms_int_method_comboBox = QComboBox(self.frame_113)
-        self.rms_int_method_comboBox.addItem("")
-        self.rms_int_method_comboBox.addItem("")
-        self.rms_int_method_comboBox.addItem("")
-        self.rms_int_method_comboBox.addItem("")
-        self.rms_int_method_comboBox.setObjectName(u"rms_int_method_comboBox")
-        self.rms_int_method_comboBox.setMinimumSize(QSize(200, 0))
-        self.rms_int_method_comboBox.setEditable(False)
+        self.label_414 = QLabel(self.frame_109)
+        self.label_414.setObjectName(u"label_414")
+        self.label_414.setMinimumSize(QSize(24, 24))
+        self.label_414.setMaximumSize(QSize(24, 24))
+        self.label_414.setPixmap(QPixmap(u":/Icons/icons/dyn.png"))
+        self.label_414.setScaledContents(True)
 
-        self.gridLayout_34.addWidget(self.rms_int_method_comboBox, 0, 1, 1, 1)
-
-        self.label_409 = QLabel(self.frame_113)
-        self.label_409.setObjectName(u"label_409")
-
-        self.gridLayout_34.addWidget(self.label_409, 1, 0, 1, 1)
-
-        self.label_405 = QLabel(self.frame_113)
-        self.label_405.setObjectName(u"label_405")
-
-        self.gridLayout_34.addWidget(self.label_405, 3, 0, 1, 1)
-
-        self.sim_time_spinBox = QDoubleSpinBox(self.frame_113)
-        self.sim_time_spinBox.setObjectName(u"sim_time_spinBox")
-        self.sim_time_spinBox.setDecimals(4)
-        self.sim_time_spinBox.setMinimum(0.000000000000000)
-        self.sim_time_spinBox.setMaximum(1000.000000000000000)
-        self.sim_time_spinBox.setSingleStep(0.010000000000000)
-        self.sim_time_spinBox.setValue(0.000000000000000)
-
-        self.gridLayout_34.addWidget(self.sim_time_spinBox, 2, 1, 1, 1)
-
-        self.label_411 = QLabel(self.frame_113)
-        self.label_411.setObjectName(u"label_411")
-
-        self.gridLayout_34.addWidget(self.label_411, 0, 0, 1, 1)
-
-        self.tolerance_rms_spinBox = QSpinBox(self.frame_113)
-        self.tolerance_rms_spinBox.setObjectName(u"tolerance_rms_spinBox")
-        self.tolerance_rms_spinBox.setMinimum(1)
-        self.tolerance_rms_spinBox.setMaximum(15)
-        self.tolerance_rms_spinBox.setValue(4)
-
-        self.gridLayout_34.addWidget(self.tolerance_rms_spinBox, 1, 1, 1, 1)
-
-        self.h_spinBox = QDoubleSpinBox(self.frame_113)
-        self.h_spinBox.setObjectName(u"h_spinBox")
-        self.h_spinBox.setDecimals(4)
-        self.h_spinBox.setMinimum(0.000000000000000)
-        self.h_spinBox.setMaximum(1000.000000000000000)
-        self.h_spinBox.setSingleStep(0.001000000000000)
-        self.h_spinBox.setValue(0.001000000000000)
-
-        self.gridLayout_34.addWidget(self.h_spinBox, 3, 1, 1, 1)
-
-        self.verticalSpacer_4 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_34.addItem(self.verticalSpacer_4, 6, 0, 1, 1)
-
-        self.label_412 = QLabel(self.frame_113)
-        self.label_412.setObjectName(u"label_412")
-
-        self.gridLayout_34.addWidget(self.label_412, 2, 0, 1, 1)
-
-        self.label_407 = QLabel(self.frame_113)
-        self.label_407.setObjectName(u"label_407")
-
-        self.gridLayout_34.addWidget(self.label_407, 5, 0, 1, 1)
-
-        self.rms_use_init_values_checkBox = QCheckBox(self.frame_113)
-        self.rms_use_init_values_checkBox.setObjectName(u"rms_use_init_values_checkBox")
-
-        self.gridLayout_34.addWidget(self.rms_use_init_values_checkBox, 4, 0, 1, 2)
-
-
-        self.gridLayout_33.addWidget(self.frame_113, 2, 0, 2, 3)
+        self.gridLayout_33.addWidget(self.label_414, 0, 0, 1, 1)
 
         self.line_62 = QFrame(self.frame_109)
         self.line_62.setObjectName(u"line_62")
@@ -3877,6 +3795,100 @@ class Ui_mainWindow(object):
         self.line_62.setFrameShape(QFrame.Shape.HLine)
 
         self.gridLayout_33.addWidget(self.line_62, 1, 0, 1, 3)
+
+        self.frame_113 = QFrame(self.frame_109)
+        self.frame_113.setObjectName(u"frame_113")
+        self.frame_113.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_113.setFrameShadow(QFrame.Shadow.Raised)
+        self.gridLayout_34 = QGridLayout(self.frame_113)
+        self.gridLayout_34.setObjectName(u"gridLayout_34")
+        self.label_411 = QLabel(self.frame_113)
+        self.label_411.setObjectName(u"label_411")
+
+        self.gridLayout_34.addWidget(self.label_411, 0, 0, 1, 2)
+
+        self.rms_int_method_comboBox = QComboBox(self.frame_113)
+        self.rms_int_method_comboBox.addItem("")
+        self.rms_int_method_comboBox.addItem("")
+        self.rms_int_method_comboBox.addItem("")
+        self.rms_int_method_comboBox.addItem("")
+        self.rms_int_method_comboBox.setObjectName(u"rms_int_method_comboBox")
+        self.rms_int_method_comboBox.setMinimumSize(QSize(200, 0))
+        self.rms_int_method_comboBox.setEditable(False)
+
+        self.gridLayout_34.addWidget(self.rms_int_method_comboBox, 0, 2, 1, 2)
+
+        self.label_45 = QLabel(self.frame_113)
+        self.label_45.setObjectName(u"label_45")
+
+        self.gridLayout_34.addWidget(self.label_45, 1, 0, 1, 2)
+
+        self.rms_init_method_comboBox = QComboBox(self.frame_113)
+        self.rms_init_method_comboBox.addItem("")
+        self.rms_init_method_comboBox.addItem("")
+        self.rms_init_method_comboBox.setObjectName(u"rms_init_method_comboBox")
+
+        self.gridLayout_34.addWidget(self.rms_init_method_comboBox, 1, 2, 1, 2)
+
+        self.label_409 = QLabel(self.frame_113)
+        self.label_409.setObjectName(u"label_409")
+
+        self.gridLayout_34.addWidget(self.label_409, 2, 0, 1, 2)
+
+        self.tolerance_rms_spinBox = QSpinBox(self.frame_113)
+        self.tolerance_rms_spinBox.setObjectName(u"tolerance_rms_spinBox")
+        self.tolerance_rms_spinBox.setMinimum(1)
+        self.tolerance_rms_spinBox.setMaximum(15)
+        self.tolerance_rms_spinBox.setValue(4)
+
+        self.gridLayout_34.addWidget(self.tolerance_rms_spinBox, 2, 2, 1, 2)
+
+        self.label_412 = QLabel(self.frame_113)
+        self.label_412.setObjectName(u"label_412")
+
+        self.gridLayout_34.addWidget(self.label_412, 3, 0, 1, 2)
+
+        self.sim_time_spinBox = QDoubleSpinBox(self.frame_113)
+        self.sim_time_spinBox.setObjectName(u"sim_time_spinBox")
+        self.sim_time_spinBox.setDecimals(4)
+        self.sim_time_spinBox.setMinimum(0.000000000000000)
+        self.sim_time_spinBox.setMaximum(1000.000000000000000)
+        self.sim_time_spinBox.setSingleStep(0.010000000000000)
+        self.sim_time_spinBox.setValue(0.000000000000000)
+
+        self.gridLayout_34.addWidget(self.sim_time_spinBox, 3, 2, 1, 2)
+
+        self.label_405 = QLabel(self.frame_113)
+        self.label_405.setObjectName(u"label_405")
+
+        self.gridLayout_34.addWidget(self.label_405, 4, 0, 2, 2)
+
+        self.h_spinBox = QDoubleSpinBox(self.frame_113)
+        self.h_spinBox.setObjectName(u"h_spinBox")
+        self.h_spinBox.setDecimals(4)
+        self.h_spinBox.setMinimum(0.000000000000000)
+        self.h_spinBox.setMaximum(1000.000000000000000)
+        self.h_spinBox.setSingleStep(0.001000000000000)
+        self.h_spinBox.setValue(0.001000000000000)
+
+        self.gridLayout_34.addWidget(self.h_spinBox, 4, 3, 2, 1)
+
+        self.label_407 = QLabel(self.frame_113)
+        self.label_407.setObjectName(u"label_407")
+
+        self.gridLayout_34.addWidget(self.label_407, 5, 1, 1, 1)
+
+        self.rms_use_init_values_checkBox = QCheckBox(self.frame_113)
+        self.rms_use_init_values_checkBox.setObjectName(u"rms_use_init_values_checkBox")
+
+        self.gridLayout_34.addWidget(self.rms_use_init_values_checkBox, 6, 0, 1, 3)
+
+        self.verticalSpacer_4 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_34.addItem(self.verticalSpacer_4, 7, 1, 1, 1)
+
+
+        self.gridLayout_33.addWidget(self.frame_113, 2, 0, 2, 3)
 
 
         self.horizontalLayout_21.addWidget(self.frame_109)
@@ -6268,29 +6280,33 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setTabToolTip(self.settingsTabWidget.indexOf(self.contingencies_tab), QCoreApplication.translate("mainWindow", u"Contingencies related settings", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_414.setText("")
         self.label_408.setText(QCoreApplication.translate("mainWindow", u"Rms", None))
+        self.label_414.setText("")
+        self.label_411.setText(QCoreApplication.translate("mainWindow", u"Int. method", None))
         self.rms_int_method_comboBox.setItemText(0, QCoreApplication.translate("mainWindow", u"Trapezoid", None))
         self.rms_int_method_comboBox.setItemText(1, QCoreApplication.translate("mainWindow", u"BackEuler", None))
         self.rms_int_method_comboBox.setItemText(2, QCoreApplication.translate("mainWindow", u"Runge-Kutta 4", None))
         self.rms_int_method_comboBox.setItemText(3, "")
 
+        self.label_45.setText(QCoreApplication.translate("mainWindow", u"Init. method", None))
+        self.rms_init_method_comboBox.setItemText(0, QCoreApplication.translate("mainWindow", u"Explicit", None))
+        self.rms_init_method_comboBox.setItemText(1, QCoreApplication.translate("mainWindow", u"PseudoTransient", None))
+
         self.label_409.setText(QCoreApplication.translate("mainWindow", u"Tolerance", None))
-        self.label_405.setText(QCoreApplication.translate("mainWindow", u"Time step", None))
-#if QT_CONFIG(tooltip)
-        self.sim_time_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
-        self.sim_time_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
-        self.label_411.setText(QCoreApplication.translate("mainWindow", u"Int. method", None))
 #if QT_CONFIG(tooltip)
         self.tolerance_rms_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Error tolerance of the method</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.tolerance_rms_spinBox.setPrefix(QCoreApplication.translate("mainWindow", u"1e-", None))
+        self.label_412.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
+#if QT_CONFIG(tooltip)
+        self.sim_time_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.sim_time_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
+        self.label_405.setText(QCoreApplication.translate("mainWindow", u"Time step", None))
 #if QT_CONFIG(tooltip)
         self.h_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.h_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u"s", None))
-        self.label_412.setText(QCoreApplication.translate("mainWindow", u"Simulation time", None))
         self.label_407.setText("")
         self.rms_use_init_values_checkBox.setText(QCoreApplication.translate("mainWindow", u"Use initial values", None))
 #if QT_CONFIG(tooltip)

@@ -471,7 +471,6 @@ def compose_system_block(
         VARS_NAME: str,
         power_flow_results: PowerFlowResults,
         vars2device: Dict[int, PhysicalDevice],
-        vars_glob_name2uid: Dict[str, int],
         use_init_values: bool,
         method: RmsInitializationMethod = RmsInitializationMethod.Explicit
 ) -> Tuple[Block, Dict[Tuple[int, str], float]]:
@@ -496,7 +495,6 @@ def compose_system_block(
     sys_block = Block(children=[], in_vars=[])
 
     sys_block.vars2device = vars2device
-    sys_block.vars_glob_name2uid = vars_glob_name2uid
 
     # initialize containers
     init_guess: Dict[

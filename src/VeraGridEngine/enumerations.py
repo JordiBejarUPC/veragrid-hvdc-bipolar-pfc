@@ -2337,7 +2337,7 @@ class DynamicIntegrationMethod(Enum):
     """
     # Implicit time-stepping (DAE form)
     Trapezoid = "trapezoidal"
-    BackEuler = "be"
+    BackEuler = "BackEuler"
     BDF2 = "bdf2"
 
     # Explicit time-stepping (ODE form)
