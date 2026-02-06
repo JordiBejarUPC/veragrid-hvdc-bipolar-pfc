@@ -12,11 +12,7 @@ class SmallSignalStabilityOptions(OptionsTemplate):
     Rms simulation options
     """
 
-    def __init__(self,
-                 time_step: float = 0.01,
-                 ss_assessment_time: float = 5,
-                 tolerance: float = 1e-6,
-                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler):
+    def __init__(self,  ss_assessment_time: float = 5,):
         """
         RmsOptions
         todo: add EMT vs RMS!
@@ -27,13 +23,6 @@ class SmallSignalStabilityOptions(OptionsTemplate):
         """
 
         OptionsTemplate.__init__(self, name='RmsSimulationOptions')
-
-        self.integration_method: DynamicIntegrationMethod = integration_method
-        self.time_step: float = time_step
         self.ss_assessment_time: float = ss_assessment_time
-        self.tolerance: float = tolerance
 
-        self.register(key="integration_method", tpe=DynamicIntegrationMethod)
-        self.register(key="time_step", tpe=float)
         self.register(key="ss_assessment_time", tpe=float)
-        self.register(key="tolerance", tpe=float)

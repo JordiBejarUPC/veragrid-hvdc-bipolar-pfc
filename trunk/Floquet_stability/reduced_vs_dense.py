@@ -176,13 +176,21 @@ def compare_sparse_vs_dense_time(
 
         try:
             _, t_dense, t_eig_dense, t_pf_dense = calculate_dense_eigs_PF(A_dense)
+
+        except Exception as e:
+            print(f"FAILED dense calculation for n_states={n_states}: {e}")
+            t_dense =  np.nan
+            t_eig_dense = np.nan
+            t_pf_dense = np.nan
+
+        try:
             _, t_sparse, t_eig_sparse, t_pf_sparse = calculate_sparse_eigs_PF(A_sparse, k)
 
         except Exception as e:
-            print(f"FAILED for n_states={n_states}: {e}")
-            t_dense = t_sparse = np.nan
-            t_eig_dense = t_pf_dense = np.nan
-            t_eig_sparse = t_pf_sparse = np.nan
+            print(f"FAILED sparse calculation for n_states={n_states}: {e}")
+            t_sparse = np.nan
+            t_eig_sparse = np.nan
+            t_pf_sparse = np.nan
 
         t_dense_arr.append(t_dense)
         t_sparse_arr.append(t_sparse)
@@ -273,10 +281,10 @@ def print_comparison_report(
 
 
     # PARAMETERS
-n_states_min = 100000
-n_states_max = 100000
-n_points = 2
-density = 0.01
+n_states_min = 10
+n_states_max = 200
+n_points = 19
+density = 0.4
 k_per = 0.01
 
 (

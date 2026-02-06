@@ -246,7 +246,6 @@ class SmallSignalStabilityDriver(DriverTemplate):
                  problem: RmsProblemTemplate,
                  rms_options: Union[RmsOptions, None] = None,
                  ss_options: Union[SmallSignalStabilityOptions, None] = None,
-                 # pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
         """
@@ -332,7 +331,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(problem=self.problem, x=y[i], dx=np.zeros_like(y[i]))
+             state_matrix) = run_small_signal_stability(problem=self.problem, x=y[i], dx=dx0)
 
         else:
 
@@ -340,7 +339,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(problem=self.problem, x=x0,  dx=np.zeros_like(x0))
+             state_matrix) = run_small_signal_stability(problem=self.problem, x=x0,  dx=dx0)
 
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(

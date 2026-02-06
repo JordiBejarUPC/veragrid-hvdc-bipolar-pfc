@@ -2,28 +2,26 @@ from __future__ import annotations
 
 import numpy as np
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
-from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
-from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
 
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
 from VeraGridEngine.Utils.Symbolic import Block
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
@@ -47,7 +45,6 @@ def stability_kundur_no_shunt():
     bus9 = Bus(name="Bus9", Vnom=230)
     bus10 = Bus(name="Bus10", Vnom=230)
     bus11 = Bus(name="Bus11", Vnom=230)
-
 
     bus1.initialize_rms()
     bus2.initialize_rms()
@@ -76,84 +73,65 @@ def stability_kundur_no_shunt():
     # Line
 
     line0 = gce.Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-
+                     r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
     line1 = gce.Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-
+                     r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
     line2 = gce.Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line3 = gce.Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line4 = gce.Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line5 = gce.Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
     line6 = gce.Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
     line7 = gce.Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
     line8 = gce.Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0)
-
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
     line9 = gce.Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line10 = gce.Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                      r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line11 = gce.Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0)
-
+                      r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
     line12 = gce.Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-
+                      r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
     line13 = gce.Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0)
-
+                      r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
     # Transformers
     xt1 = 0.15 * (100.0 / 900.0)
     trafo_G1 = Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-
+                    r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     trafo_G2 = gce.Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     trafo_G3 = gce.Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     trafo_G4 = gce.Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
-
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     # load
-    load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
+    load1 = gce.Load(name="load1", P=9.999999, Q=0.999999)
 
-    load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
-
+    load2 = gce.Load(name="load2", P=9.999999, Q=0.999999)
 
     # Generators
     fn_1 = 60.0
@@ -194,7 +172,7 @@ def stability_kundur_no_shunt():
 
     # Generators
     gen1 = Generator(
-        name="Gen1", P=700.0, vset=1.03, Snom=900.0,
+        name="Gen1", P=10.0, vset=1.03, Snom=900.0,
         x1=xd_1, r1=ra_1, freq=fn_1,
         tm0=6.999999999999999,
         vf=1.1410480598099169,
@@ -204,7 +182,7 @@ def stability_kundur_no_shunt():
     )
 
     gen2 = Generator(
-        name="Gen2", P=700.0, vset=1.01, Snom=900.0,
+        name="Gen2", P=10.0, vset=1.01, Snom=900.0,
         x1=xd_2, r1=ra_2, freq=fn_2,
         tm0=6.999999999999998,
         vf=1.1801018702912192,
@@ -214,7 +192,7 @@ def stability_kundur_no_shunt():
     )
 
     gen3 = Generator(
-        name="Gen3", P=719.091, vset=1.03, Snom=900.0,
+        name="Gen3", P=10.0, vset=1.03, Snom=900.0,
         x1=xd_3, r1=ra_3, freq=fn_3,
         tm0=7.331838148595014,
         vf=1.15513088317088697,
@@ -224,7 +202,7 @@ def stability_kundur_no_shunt():
     )
 
     gen4 = Generator(
-        name="Gen4", P=700.0, vset=1.01, Snom=900.0,
+        name="Gen4", P=10.0, vset=1.01, Snom=900.0,
         x1=xd_4, r1=ra_4, freq=fn_4,
         tm0=6.999999999999998,
         vf=1.2028207647478641,
@@ -232,7 +210,6 @@ def stability_kundur_no_shunt():
         omega_ref=omega_ref_4,
         Kp=Kp_4, Ki=Ki_4
     )
-
 
     ######################################################################################################
     # Build Rms models
@@ -268,11 +245,12 @@ def stability_kundur_no_shunt():
     load1_dynhost = DynamicModelHost()
     load2_dynhost = DynamicModelHost()
 
+    # Build rms models from template
     # generators
-    genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
-    genrow_mdl2 = block_deep_copy(get_genrow2_rms_template().block)
-    genrow_mdl3 = block_deep_copy(get_genrow3_rms_template().block)
-    genrow_mdl4 = block_deep_copy(get_genrow4_rms_template().block)
+    genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl3 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl4 = block_deep_copy(get_complete_generator_template().block)
 
     # lines
     line0_mdl = block_deep_copy(get_line_rms_template().block)
@@ -282,7 +260,7 @@ def stability_kundur_no_shunt():
     line4_mdl = block_deep_copy(get_line_rms_template().block)
     line5_mdl = block_deep_copy(get_line_rms_template().block)
     line6_mdl = block_deep_copy(get_line_rms_template().block)
-    line7_mdl =block_deep_copy(get_line_rms_template().block)
+    line7_mdl = block_deep_copy(get_line_rms_template().block)
     line8_mdl = block_deep_copy(get_line_rms_template().block)
     line9_mdl = block_deep_copy(get_line_rms_template().block)
     line10_mdl = block_deep_copy(get_line_rms_template().block)
@@ -290,13 +268,13 @@ def stability_kundur_no_shunt():
     line12_mdl = block_deep_copy(get_line_rms_template().block)
     line13_mdl = block_deep_copy(get_line_rms_template().block)
 
-    #trafos
+    # trafos
     trafo1_mdl = block_deep_copy(get_line_rms_template().block)
     trafo2_mdl = block_deep_copy(get_line_rms_template().block)
     trafo3_mdl = block_deep_copy(get_line_rms_template().block)
     trafo4_mdl = block_deep_copy(get_line_rms_template().block)
 
-    #loads
+    # loads
     load1_mdl = block_deep_copy(get_load1_rms_template().block)
     load2_mdl = block_deep_copy(get_load2_rms_template().block)
 
@@ -313,7 +291,6 @@ def stability_kundur_no_shunt():
 
     genrow_mdl4.connect([genrow_mdl4.in_vars[0]], [bus4.rms_model.model.out_vars[0]])
     genrow_mdl4.connect([genrow_mdl4.in_vars[1]], [bus4.rms_model.model.out_vars[1]])
-
 
     line0_mdl.connect([line0_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
     line0_mdl.connect([line0_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
@@ -422,8 +399,6 @@ def stability_kundur_no_shunt():
 
     trafo4_mdl.connect([trafo4_mdl.in_vars[2]], [bus4.rms_model.model.out_vars[0]])
     trafo4_mdl.connect([trafo4_mdl.in_vars[3]], [bus4.rms_model.model.out_vars[1]])
-
-
 
     load1_mdl.connect([load1_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
     load1_mdl.connect([load1_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
@@ -563,23 +538,33 @@ def stability_kundur_no_shunt():
     power_flow.run()
     res = power_flow.results
 
-    sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+    rms_options = RmsOptions(time_step=0.001,
+                         simulation_time=10,
+                         tolerance=1e-6,
+                         integration_method=DynamicIntegrationMethod.BackEuler,
+                         initialization_method=RmsInitializationMethod.Explicit,
+                         use_init_values=False,
+                         max_iter=1000,
+                         verbose=0)
 
-    params_mapping = {}
+    ss_options = SmallSignalStabilityOptions(ss_assessment_time = 0)
 
-    slv = BlockSolver(ss, sim_time, use_jit=False)
-    x0 = slv.build_init_vars_vector_from_uid(init_guess)
+    problem = RmsProblemDae(grid=grid,
+                            options=rms_options,
+                            pf_results=res)
 
-    (Eigenvalues,
-     PFactors,
-     damping_ratios,
-     conjugate_frequencies,
-     state_matrix) = run_small_signal_stability(slv=slv,
-                                                x=x0,
-                                                time=0,
-                                                verbose=1)
+    small_signal_driver = SmallSignalStabilityDriver(grid=grid,
+                                                     problem= problem,
+                                                     rms_options = rms_options,
+                                                     ss_options = ss_options)
 
-    return Eigenvalues, PFactors
+    small_signal_driver.run()
+
+    eigenvalues = small_signal_driver.results.eigenvalues
+    PFactors = small_signal_driver.results.participation_factors
+
+
+    return eigenvalues, PFactors
 
 
 def test_eigenvalues():
