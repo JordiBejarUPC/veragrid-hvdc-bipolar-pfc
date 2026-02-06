@@ -45,14 +45,14 @@ def test_dgs_ieee_grids():
         for f1, f2 in files:
             print(f1, end=' ')
 
-            fname = os.path.join('src', 'tests', 'data', 'grids', f1)
+            fname = os.path.join('data', 'grids', 'DGS', f1)
 
             main_circuit = FileOpen(fname).open()
             power_flow = PowerFlowDriver(main_circuit, options)
             power_flow.run()
 
             # reference results are stored under src/tests/data/results
-            results_file = os.path.join('src', 'tests', 'data', 'results', f2)
+            results_file = os.path.join('data', 'results', f2)
 
             # load the associated results file
             df_v = pd.read_excel(results_file, sheet_name='Vabs', index_col=0)
