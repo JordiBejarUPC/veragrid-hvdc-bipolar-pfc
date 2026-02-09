@@ -65,10 +65,34 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
-def compile_jac_block(block_id, block_eqs, block_offsets, used_vars_count,
-                      compiler_names_dict, alias_names_dict, namespace, VARS_NAME: str, DIFF_NAME: str,
+def compile_jac_block(block_id,
+                      block_eqs,
+                      block_offsets,
+                      used_vars_count,
+                      compiler_names_dict,
+                      alias_names_dict,
+                      namespace,
+                      VARS_NAME: str,
+                      DIFF_NAME: str,
                       EVENT_PARAMS_NAME: str,
-                      PARAMS_NAME: str, use_jit):
+                      PARAMS_NAME: str,
+                      use_jit):
+    """
+
+    :param block_id:
+    :param block_eqs:
+    :param block_offsets:
+    :param used_vars_count:
+    :param compiler_names_dict:
+    :param alias_names_dict:
+    :param namespace:
+    :param VARS_NAME:
+    :param DIFF_NAME:
+    :param EVENT_PARAMS_NAME:
+    :param PARAMS_NAME:
+    :param use_jit:
+    :return:
+    """
     fname = f"jac_block_{block_id}"
     src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
     final_names_dict = {}
@@ -207,7 +231,6 @@ class SymbolicJacobian:
         :param dx:
         :param variable_params:
         :param constant_params:
-        :param alter_params:
         :param h:
         :return:
         """

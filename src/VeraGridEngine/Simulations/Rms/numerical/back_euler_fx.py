@@ -107,7 +107,6 @@ class BackEulerImplicitIntegration:
         # we assume steady state
         dx0: Vec = np.zeros(self.problem.get_diff_var_number(), dtype=float)
 
-
         # timing accumulators
         timings = {
             "jacobian_time": 0.0,
@@ -158,7 +157,6 @@ class BackEulerImplicitIntegration:
                 if discontinuity:
                     tol = 1e-8
                     max_iter = 5e5
-
 
                 # ---------------- rhs calculation ----------------
                 rhs_start = time.time()
@@ -276,5 +274,3 @@ class BackEulerImplicitIntegration:
                 break
 
         return self.t, self.y
-
-

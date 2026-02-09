@@ -101,8 +101,10 @@ def parse_vars_dict(data_list: List[Dict[str, Any]]) -> Dict[int, Var]:
     return obj_dict
 
 
-def parse_diff_var_dict(data_list: List[Dict[str, Any]],
-                        var_dict: Dict[int, Var], diff_var_dict: Dict[int, DiffVar]) -> Dict[int, Var | Const | DiffVar]:
+def parse_diff_var_dict(
+        data_list: List[Dict[str, Any]],
+        var_dict: Dict[int, Var],
+        diff_var_dict: Dict[int, DiffVar]) -> Dict[int, Var | Const | DiffVar]:
     """
 
     :param data_list: 
@@ -128,7 +130,6 @@ def parse_diff_var_dict(data_list: List[Dict[str, Any]],
             base_var = diff_var_dict[data["base_var"]]
         else:
             base_var = obj_dict[data["base_var"]]
-
 
         obj = DiffVar(name=data["name"],
                       uid=data["uid"],
@@ -348,7 +349,7 @@ class BlockSaver:
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
         self.diff_var_dict: Dict[int, DiffVar] = dict()
-        self.main_block_uids: List[int] =list()
+        self.main_block_uids: List[int] = list()
         self.blocks: Dict[int, Dict[str, Any]] = dict()
 
     def get_const_to_save(self) -> List[Dict[str, Any]]:
@@ -410,9 +411,8 @@ class BlockSaver:
             # TODO: this signals a code small somewhere else
             found_var = self.var_dict.get(var.uid, None)
 
-            if found_var is None :
+            if found_var is None:
                 self.var_dict[var.uid] = var
-
 
             init_eq_list.append(
                 {
@@ -537,11 +537,9 @@ class BlockSaver:
             "out_vars": out_vars
         }
 
-
         self.blocks[blk.uid] = d
         if main:
             self.main_block_uids.append(blk.uid)
-
 
         return d
 
@@ -576,7 +574,8 @@ class BlockParser:
         :param data:
         :return:
         """
-        self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict, diff_var_dict=self.diff_var_dict)
+        self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict,
+                                                 diff_var_dict=self.diff_var_dict)
 
     def parse_block(self, blocks_data: Dict[int, Dict[str, Any]], main_block_uid: int) -> Block:
         """
@@ -657,23 +656,23 @@ class BlockParser:
             api_obj_mapping[key] = self.var_dict[var_uid]
 
         block = Block(
-        state_vars=state_vars,
-        state_eqs=state_eqs,
-        algebraic_vars=algebraic_vars,
-        algebraic_eqs=algebraic_eqs,
-        diff_vars=diff_vars,
-        differential_eqs=differential_eqs,
-        in_vars=in_vars,
-        out_vars=out_vars,
-        init_eqs=init_eqs,
-        event_dict=event_dict,
-        children=children,  # TODO think about this
-        parameters=parameters,
-        init_values=init_values,
-        external_mapping=external_mapping,
-        api_obj_mapping=api_obj_mapping,
-        name=data["name"],
-        uid=data["uid"]
+            state_vars=state_vars,
+            state_eqs=state_eqs,
+            algebraic_vars=algebraic_vars,
+            algebraic_eqs=algebraic_eqs,
+            diff_vars=diff_vars,
+            differential_eqs=differential_eqs,
+            in_vars=in_vars,
+            out_vars=out_vars,
+            init_eqs=init_eqs,
+            event_dict=event_dict,
+            children=children,  # TODO think about this
+            parameters=parameters,
+            init_values=init_values,
+            external_mapping=external_mapping,
+            api_obj_mapping=api_obj_mapping,
+            name=data["name"],
+            uid=data["uid"]
         )
 
         # TODO: Review if this is what is used
@@ -700,8 +699,6 @@ def block_deep_copy(block: Block):
     diff_vars_save = saver.get_diff_vars_to_save()
     blocks = saver.get_blocks()
 
-
-
     parser = BlockParser()
     parser.parse_consts(data=const_save)
     parser.parse_vars(data=vars_save)
@@ -710,7 +707,8 @@ def block_deep_copy(block: Block):
 
     return block2
 
-def compare_blocks(block1: Block, block2: Block, testing = False):
+
+def compare_blocks(block1: Block, block2: Block, testing=False):
     """
     Create depp copy of a block
     :param block1:
@@ -732,7 +730,6 @@ def compare_blocks(block1: Block, block2: Block, testing = False):
     vars_save2 = saver2.get_vars_to_save()
     diff_vars_save2 = saver2.get_diff_vars_to_save()
     blocks2 = saver2.get_blocks()
-
 
     # if const_save1 != const_save2:
     #     if testing:
@@ -765,6 +762,3 @@ def compare_blocks(block1: Block, block2: Block, testing = False):
             (blocks1, const_save1, vars_save1, diff_vars_save1)
             == (blocks2, const_save2, vars_save2, diff_vars_save2)
     )
-
-
-
