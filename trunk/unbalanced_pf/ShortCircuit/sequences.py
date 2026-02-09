@@ -81,7 +81,7 @@ print(res_pf.get_current_df())
 # ----------------------------------------------------------------------------------------------------------------------
 sc_options = gce.ShortCircuitOptions()
 
-grid.add_short_circuit_definition(
+grid.add_short_circuit_event(
     gce.ShortCircuitEvent(
         device=grid.buses[3],
         fault_type=FaultType.LLLG,
