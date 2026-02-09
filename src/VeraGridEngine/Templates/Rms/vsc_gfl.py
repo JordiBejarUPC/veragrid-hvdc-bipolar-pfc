@@ -9,7 +9,7 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
+from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, DiffVar, VarPowerFlowRefferenceType, tf_to_diffblock,
                                                  tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import ConverterControlType
@@ -135,7 +135,7 @@ def pll_transform_rms(Vm, Va, name:str = ''):
     )
 
     res_block = Block(
-        state_eqs=[2*math.pi*fn*omega],
+        state_eqs=[2*math.pi*fn*(omega-1)],
         state_vars=[theta],
         algebraic_eqs= [
             vd - Vm*sym.sin(Va - theta),
@@ -193,10 +193,8 @@ def build_gfl_converter_model(inputs,
     """
     Vm     = inputs[0]  
     Va     = inputs[1]  
-    i_d    = inputs[2]
-    i_q    = inputs[3]
-    Pt_vsc = inputs[4]
-    Qt_vsc = inputs[5]
+    Pt_vsc = inputs[2]
+    Qt_vsc = inputs[3]
 
     algebraic_eqs = []
     algebraic_vars = []
@@ -227,6 +225,8 @@ def build_gfl_converter_model(inputs,
     L = Var('L') 
 
     #VARS
+    i_d = Var('i_d')
+    i_q = Var('i_q')
     i_d_ref = Var('i_d_ref')
     i_q_ref = Var('i_q_ref')
     
@@ -274,8 +274,8 @@ def build_gfl_converter_model(inputs,
     operation = 'normal'
     if operation == 'normal':
         id_max = sym.sqrt( max(I_max**2- max(i_q, i_q_ref)**2, Const(1e-5)))     
-        i_d_ref = sym.hard_sat(i_d_ref, -id_max, id_max)
-        i_q_ref = sym.hard_sat(i_q_ref, -I_max, I_max)
+        i_d_ref_sat = sym.hard_sat(i_d_ref, -id_max, id_max)
+        i_q_ref_sat = sym.hard_sat(i_q_ref, -I_max, I_max)
 
 
     #Voltage Control Loop
@@ -291,22 +291,47 @@ def build_gfl_converter_model(inputs,
         x= i_d_ref - i_d,
         name='vd_hat'
     )
-    vsh = Var('vsh')
-    ash = Var('ash')
+
+    #if EMT hybrid:
+    dt_id = DiffVar('dt_id', base_var= i_d)
+    dt_iq = DiffVar('dt_iq', base_var= i_q)
+    EMT_block=Block(
+        algebraic_eqs = [
+            v_d_c - v_d_g - (R*i_d + L*dt_id - omega*L*i_q),
+            v_q_c - v_q_g - (R*i_q + L*dt_iq - omega*L*i_d),
+        ],
+        diff_vars= [dt_id, dt_iq]
+    )
+    RMS_block=Block(
+        algebraic_eqs = [
+            v_d_c - v_d_g - (R*i_d - omega*L*i_q),
+            v_q_c - v_q_g - (R*i_q - omega*L*i_d),
+        ],
+    )
 
     algebraic_eqs.append(v_d_c - (vd_hat + v_d_g + L*(omega)*i_q))
     algebraic_eqs.append(v_q_c - (vq_hat + v_q_g - L*(omega)*i_d))
-    algebraic_eqs.append(v_d_c - (-vsh*sym.cos(ash - theta)))
-    algebraic_eqs.append(v_q_c - ( vsh*sym.sin(ash - theta)))
-    algebraic_vars.extend([v_q_c, v_d_c, vsh, ash])
+    algebraic_vars.extend([v_q_c, v_d_c, i_d, i_q])
 
     gfl_block_aux = Block(
         algebraic_eqs=algebraic_eqs,
         algebraic_vars=algebraic_vars,
         event_dict= event_dict,
         init_eqs={
-            P_ref: -Pt_vsc,
-            Q_ref: -Qt_vsc,
+            P: -Pt_vsc,
+            Q: -Qt_vsc,
+            P_ref: P,
+            Q_ref: Q,
+            theta: Va,
+            omega: Const(1),
+            v_d_g: Const(0),
+            v_q_g: Vm,
+            i_q: (2 / 3) * P / v_q_g  ,
+            i_d: Const(0),
+            i_q_ref: i_q,
+            i_d_ref: i_d,
+            v_d_c: v_d_g - (R*i_d - omega*L*i_q),
+            v_q_c: v_q_g - (R*i_q - omega*L*i_d),
         },
         external_mapping={
             VarPowerFlowRefferenceType.P:P,
@@ -321,8 +346,10 @@ def build_gfl_converter_model(inputs,
     gfl_block.add(control_block_iq)
 
     gfl_block.add(pll_block)
+    gfl_block.add(EMT_block)
+    gfl_block.unify_blocks()
 
-    return gfl_block, vsh, ash, P, Q
+    return gfl_block, i_d, i_q, P, Q
 
 def VscGflBuild(name: str = "") -> RmsModelTemplate:
     """
@@ -337,36 +364,40 @@ def VscGflBuild(name: str = "") -> RmsModelTemplate:
     v_dc = inputs[2]
 
     #Vars:
-    Id = Var("Id")
-    Iq = Var("Iq")
     Pt_vsc = Var('Pt_vsc')
     Qt_vsc = Var('Qt_vsc')
     Pf_vsc = Var('Pf_vsc')
+
     #Parameters:
     bt = Var('bt')
     gt = Var('gt')
     Qf = Var('Qf')
-    gfl_block, vsh, ash, P, Q = build_gfl_converter_model(inputs=[Vm, Va, Id, Iq, Pt_vsc, Qt_vsc])
+    a0 = Var('a0')
+    a1 = Var('a1')
+    a2 = Var('a2')
+    gfl_block, i_d, i_q, P, Q = build_gfl_converter_model(inputs=[Vm, Va, Pt_vsc, Qt_vsc])
 
     event_dict = {
         Qf: Const(0.0),
         bt: Const(0.0),
         gt: Const(0.1),
+        a0: Const(0.0),
+        a1: Const(0.0),
+        a2: Const(0.0),
     }
     exp1 = Qt_vsc + bt*Vm**2
     exp2 = Pt_vsc - gt*Vm**2
+    Im  = sym.sqrt(i_d**2 + i_q**2 + Const(1e-5))
     vsc_block = Block(
         algebraic_eqs=[
-            Pt_vsc + (-bt*vsh*Vm*sym.sin(ash - Va) + gt*Vm**2 - gt*vsh*Vm*sym.cos(ash - Va)),
-            Qt_vsc + ( bt*vsh*Vm*sym.cos(ash - Va) - bt*Vm**2 - gt*vsh*Vm*sym.sin(ash - Va)),
-            Pf_vsc + ( bt*vsh*Vm*sym.sin(ash - Va) + gt*Vm**2 - gt*vsh*Vm*sym.cos(ash - Va)),
+            Pf_vsc - (P - (a0 + a1*Im + a2*Im**2)),
             Pt_vsc + P,
             Qt_vsc + Q,
         ],
-        algebraic_vars=[Pt_vsc, Qt_vsc, Pf_vsc, Id, Iq],
+        algebraic_vars=[Pt_vsc, Qt_vsc, Pf_vsc],
         init_eqs={
-            vsh: sym.sqrt((exp1**2 + exp2**2)/(gt**2 + bt**2))/Vm,
-            ash: sym.atan((-gt*exp1 - bt*exp2)/(bt*exp1 - gt*exp2)),
+            #vsh: sym.sqrt((exp1**2 + exp2**2)/(gt**2 + bt**2))/Vm,
+            #ash: sym.atan((-gt*exp1 - bt*exp2)/(bt*exp1 - gt*exp2)),
         },
         event_dict= event_dict,
         external_mapping={
@@ -374,7 +405,7 @@ def VscGflBuild(name: str = "") -> RmsModelTemplate:
             VarPowerFlowRefferenceType.Q: Q,
         },
         in_vars= inputs,
-        out_vars = [Pt_vsc, Qt_vsc, vsh, ash, Pf_vsc]
+        out_vars = [Pt_vsc, Qt_vsc, Pf_vsc]
     )
     vsc_block.external_mapping = {
         VarPowerFlowRefferenceType.Vmt: inputs[0],

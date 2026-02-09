@@ -445,10 +445,8 @@ class BlockSolver:
         # Flatten the block lists, preserving declaration order
         self._algebraic_vars: List[Var] = list()
         self._algebraic_eqs: List[Expr] = list()
-        self._algebraic_eqs_substituted: List[Expr] = list()
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
-        self._state_eqs_substituted: List[Expr] = list()
         self._diff_vars: List[DiffVar] = list()
         self._differential_eqs: List[Expr] = list()
         self._reformulated_vars: List[Var] = list()
@@ -456,7 +454,6 @@ class BlockSolver:
         self._event_parameters_eqs: List[Expr] = list()
         self._parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
-        self._stability_eqs: List[Expr] = list()
 
         # Class-level registry
         self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
@@ -566,24 +563,8 @@ class BlockSolver:
         # define parameters
         self.alpha = 1
         alpha = self.alpha
-        lag_can_be_0 = False  # TODO: will this allways be False??
-        if lag_can_be_0:
-            lag_init = 0
-        else:
-            lag_init = 1
 
-        # Substitute in state eqs
 
-        # Substitute in algebraic eqs
-        self._stability_eqs = list()
-        self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
-
-        # fill stability equations by putting algebraic equations equal zero
-        for it, eq in enumerate(self._algebraic_eqs):
-            for diff_var in self._diff_vars:
-                eq = eq.subs({diff_var: Const(0)})
-                eq = eq.simplify()
-            self._stability_eqs.append(eq)
 
         i = len(self.uid2idx_vars)
         l = 0
@@ -699,8 +680,8 @@ class BlockSolver:
 
         print(
             f"Model compiled with {self._n_vars} variables, "
-            f"{len(self._algebraic_eqs_substituted)} algebraic eqs and "
-            f"{len(self._state_eqs_substituted)} state eqs"
+            f"{len(self._algebraic_eqs)} algebraic eqs and "
+            f"{len(self._state_eqs)} state eqs"
         )
 
         print("\nCompilation timing summary:")

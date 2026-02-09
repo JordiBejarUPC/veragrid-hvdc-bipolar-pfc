@@ -40,6 +40,15 @@ from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
 
+def block_dimensions(block:Block):
+    res_vars = 0
+    res_eqs = 0
+    for b in block.get_all_blocks():
+        res_vars += len(b.algebraic_vars) 
+        res_eqs += len(b.algebraic_eqs)
+    print(f"Block has {res_vars} vars and res_eqs {res_eqs}")
+    return 
+
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
         if name == var.name:
@@ -168,8 +177,8 @@ load1.rms_model.model    = load_mdl
 vsc1.rms_model.model     = vsc_mdl
 gen3.rms_model.model     = Block(children=[pv_cell_block, pv_control_block], external_mapping= pv_cell_block.external_mapping)
 
-print(f"block has {len(gen3.rms_model.model.algebraic_eqs)} algebraic vars")
-print(f"block has {len(gen3.rms_model.model.algebraic_vars)} algebraic vars")
+block_dimensions(vsc_mdl)
+block_dimensions(gen3.rms_model.model)
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
 slv = BlockSolver(ss, sim_time)

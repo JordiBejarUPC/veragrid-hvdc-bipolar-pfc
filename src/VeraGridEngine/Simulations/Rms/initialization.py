@@ -194,7 +194,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     uid2idx_params: Dict[int, int] = {}
 
     # already known variables:
-
+    sys_block_region = Block()
     for mdl in region.children:
         mdl.unify_blocks()
         bus_rms_mdl = bus.rms_model.model
@@ -363,9 +363,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
                 raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
-        sys_block.add(mdl)
+        sys_block_region.add(mdl)
 
-    return init_guess, sys_block
+    return init_guess, sys_block_region
 
 
 def init_pseudo_transient(bus, region:Block, grid, sys_block, res, init_guess, time):
@@ -626,7 +626,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         elif method == RmsInitializationMethod.PseudoTransient:
             time, sys_block_region, init_guess_region = init_pseudo_transient(bus, region, grid, sys_block, res, init_guess, time)
         init_guess.update(init_guess_region)
-        sys_block = sys_block_region
+        sys_block.add(sys_block_region)
 
     for vsc in grid.get_vsc():
         bus = vsc.bus_to
@@ -635,9 +635,8 @@ def compose_system_block(time: Var, grid: MultiCircuit,
             init_guess_region, sys_block_region = init_explicit(bus, vsc, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                              vars_array_index, use_init_values)
         elif method == RmsInitializationMethod.PseudoTransient:
-            raise Exception("not implemented for VSC")
+            raise Exception("Not implemented for VSC")
         init_guess.update(init_guess_region)
-        sys_block = sys_block_region
 
 
     # del buses P, Q
@@ -737,8 +736,10 @@ def initialize_rms(grid: MultiCircuit,
         # add variable to conservation equations of the bus to which the element is connected
         setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
         setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-        setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
-        setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+        if not elm.bus_from.is_dc:
+            setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
+        if not elm.bus_from.is_dc:
+            setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
         for var in elm.rms_model.model.get_all_vars():
             vars2device[var.uid] = elm
@@ -779,11 +780,13 @@ def initialize_rms(grid: MultiCircuit,
             vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # add the nodal balance equations
-    for i, elm in enumerate(grid.buses):
-        mdl = elm.rms_model.model
+    for i, bus in enumerate(grid.buses):
+        mdl = bus.rms_model.model
         if len(mdl.algebraic_eqs) == 0:
             if P_used[i] == 0 and Q_used[i] == 0:
                 logger.add_error("Isolated bus", value=i)
+            elif bus.is_dc:
+                mdl.algebraic_eqs.append(P[i])
             else:
                 mdl.algebraic_eqs.append(P[i])
                 mdl.algebraic_eqs.append(Q[i])
