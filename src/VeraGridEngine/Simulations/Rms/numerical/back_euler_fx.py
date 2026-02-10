@@ -129,7 +129,7 @@ class BackEulerImplicitIntegration:
             converged = False
             n_iter = 0
             current_time = self.t[step_idx]
-
+            dx_last = dx 
             self.problem.update_variable_params(t=current_time)
 
             if step_idx > 4998:
@@ -227,6 +227,7 @@ class BackEulerImplicitIntegration:
                                 var_name = algeb_vars[j].name
                                 print(f"  {var_name:20s} {v[j]:+.3e}")
                     print("Using LSQR")
+                    print(f"residual is {residual} for timestep {step_idx}")
 
                 if not solved:
                     nan_indices = np.where(np.isnan(rhs))[0]
@@ -256,11 +257,7 @@ class BackEulerImplicitIntegration:
                 lag_update_start = time.time()
                 print(f'converged is {converged} at step {step_idx} and iter {n_iter}')
 
-                if discontinuity:
-                    _ = 0
-                    self.y[step_idx + 1, :] = x_new
-                else:
-                    self.y[step_idx + 1, :] = x_new
+                self.y[step_idx + 1, :] = x_new
 
                 self.t[step_idx + 1] = self.t[step_idx] + self.h
 

@@ -113,8 +113,8 @@ load_mdl = block_deep_copy(get_load_rms_template().block)
 
 # connection with buses
 
-genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 
 
 line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
@@ -148,7 +148,7 @@ gen0.rms_model= gen_dynhost
 
 # apply event
 Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=5, value=-0.0995)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
 grid.add_rms_event(event)
 
 grid.add_line(line0)
@@ -188,7 +188,7 @@ params_mapping = dict()
 pr.enable()
 
 options = RmsOptions(time_step=0.001,
-                 simulation_time=10,
+                 simulation_time=1,
                  tolerance=1e-6,
                  integration_method=DynamicIntegrationMethod.BackEuler,
                  initialization_method=RmsInitializationMethod.Explicit,
@@ -237,7 +237,7 @@ t, y = solver.simulate()
 
 pr.disable()
 
-xlim = 15.0
+xlim = options.simulation_time
 
 omega = find_name_in_block("omega", genqec_mdl)
 Pg = genqec_mdl.out_vars[0]
