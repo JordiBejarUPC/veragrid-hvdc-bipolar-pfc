@@ -327,7 +327,7 @@ class TowerBuilderGUI(QtWidgets.QDialog):
         x = 0  # ohm / km
         gmr = 0.002481072  # m
 
-        wire = dev.Wire(name=name, r_ext=gmr, r=r, x=x)
+        wire = dev.Wire(name=name, diameter=gmr, r=r)
 
         self.tower_driver.add(WireInTower(wire=wire, xpos=1.5, ypos=10, phase=0))
         self.tower_driver.add(WireInTower(wire=wire, xpos=1, ypos=7, phase=1))

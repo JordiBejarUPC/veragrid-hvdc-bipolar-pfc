@@ -28,16 +28,11 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="cosmetic changes">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/sequence_line_type.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/transformer_type.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="added capex and opex to templates">
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/LineBuilderDialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/LineBuilderDialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/tower_builder.ui" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/catalogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/veragrid/catalogue.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,118 +135,119 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
-    &quot;Git.Branch.Popup.ShowAllRemotes&quot;: &quot;true&quot;,
-    &quot;MATLAB_INTERPRETER&quot;: &quot;/usr/local/MATLAB/R2018a/bin/matlab&quot;,
-    &quot;Python tests.Nosetests for test_power_flow.test_zip.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Nosetests for test_topology_processor.test_topology_rts.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Nosetests for tests.test_ac_opf.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests for tests.test_ac_opf.test_pegase89.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Nosetests for tests.test_hydro.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests for tests.test_latin_hypercube.test_lhs.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests for tests.test_opf_time_series.test_opf_ts.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests for tests.test_topology_processor.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests for tests.test_topology_processor.test_topology_rts.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests in admittance_matrix_test.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests in deep_copy_test.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests in test_topology_processor.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Nosetests in tests.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests in tests.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for src.tests.test_ac_opf.test_pegase89.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for src.tests.test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for src.tests.test_power_flow_matpower.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for test_ac_opf.test_superconductors_handling.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for test_basic.test_gridcal_basic_pi.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for test_load_save_load.test_load_save_load2.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest for test_transformer_type.test_psse_conversion3.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest for test_transformer_type.test_transformer_type.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_ac_opf.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_admitances.py.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.pytest in test_basic.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_benchmark_with_andes.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_benchmark_with_andes_diff_block_solver.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_cgmes_ieeee.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_copy.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_gslv_contingencies.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_load_save_load.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_small_signal_rms.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in test_transformer_type.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.pytest in tests.executor&quot;: &quot;Run&quot;,
-    &quot;Python.AnalysisDialogue.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ExecuteGridCal.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ExecuteVeraGrid.executor&quot;: &quot;Run&quot;,
-    &quot;Python.GridCalMain.executor&quot;: &quot;Run&quot;,
-    &quot;Python._callers.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.alex.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.block_solver.executor&quot;: &quot;Run&quot;,
-    &quot;Python.cgmes_rdfs_graph.executor&quot;: &quot;Run&quot;,
-    &quot;Python.circuit_to_optimods.executor&quot;: &quot;Run&quot;,
-    &quot;Python.constructing_kundur_full.executor&quot;: &quot;Run&quot;,
-    &quot;Python.converter.executor&quot;: &quot;Run&quot;,
-    &quot;Python.demo_code.executor&quot;: &quot;Run&quot;,
-    &quot;Python.demo_code2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.demo_code3.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.demo_code4.executor&quot;: &quot;Run&quot;,
-    &quot;Python.gridcal_compare_andes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.initialization.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.multi_circuit.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.new_circuit_objects.executor&quot;: &quot;Run&quot;,
-    &quot;Python.new_diagram2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.profile.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pymoo_example.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.pyside6-designer (1).executor&quot;: &quot;Run&quot;,
-    &quot;Python.pyside6-designer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.python_console.executor&quot;: &quot;Run&quot;,
-    &quot;Python.raw_imp_exp_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.readme_checks.executor&quot;: &quot;Run&quot;,
-    &quot;Python.rms_model_editor_engine.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_andes.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_hardcoded.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_hardcoded_light.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_controlled.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_whith_control.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_whith_control_automatic_init.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_with_controller.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_with_controller_and_event.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_gridcal_small_system_with_event.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_simbolic_framework_0.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_simbolic_framework_0_automatic_init.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_small_sys_bus_mapping.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scripting_smallsys_p_controller.executor&quot;: &quot;Run&quot;,
-    &quot;Python.substation_wizards.executor&quot;: &quot;Run&quot;,
-    &quot;Python.substations_types.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_power_flow.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_raw_cgmes_cross_roundtrip.executor&quot;: &quot;Run&quot;,
-    &quot;Python.update_gui_file.executor&quot;: &quot;Run&quot;,
-    &quot;Python.upload_to_pypi.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;devel&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/santi/Documentos/Git/eRoots/VeraGrid/trunk/power_factory_api&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;two.files.diff.last.used.file&quot;: &quot;C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "Git.Branch.Popup.ShowAllRemotes": "true",
+    "MATLAB_INTERPRETER": "/usr/local/MATLAB/R2018a/bin/matlab",
+    "Python tests.Nosetests for test_power_flow.test_zip.executor": "Debug",
+    "Python tests.Nosetests for test_topology_processor.test_topology_rts.executor": "Debug",
+    "Python tests.Nosetests for tests.test_ac_opf.executor": "Run",
+    "Python tests.Nosetests for tests.test_ac_opf.test_pegase89.executor": "Debug",
+    "Python tests.Nosetests for tests.test_hydro.executor": "Run",
+    "Python tests.Nosetests for tests.test_latin_hypercube.test_lhs.executor": "Run",
+    "Python tests.Nosetests for tests.test_opf_time_series.test_opf_ts.executor": "Run",
+    "Python tests.Nosetests for tests.test_topology_processor.executor": "Run",
+    "Python tests.Nosetests for tests.test_topology_processor.test_topology_rts.executor": "Run",
+    "Python tests.Nosetests in admittance_matrix_test.py.executor": "Run",
+    "Python tests.Nosetests in deep_copy_test.py.executor": "Run",
+    "Python tests.Nosetests in test_topology_processor.py.executor": "Run",
+    "Python tests.Nosetests in tests.executor": "Run",
+    "Python tests.Python tests in tests.executor": "Run",
+    "Python tests.pytest for src.tests.test_ac_opf.test_pegase89.executor": "Debug",
+    "Python tests.pytest for src.tests.test_ac_opf.test_superconductors_handling.executor": "Debug",
+    "Python tests.pytest for src.tests.test_basic.test_gridcal_basic_pi.executor": "Debug",
+    "Python tests.pytest for src.tests.test_generator_q_control.test_q_control_true.executor": "Run",
+    "Python tests.pytest for src.tests.test_load_save_load.test_load_save_load_xlsx.executor": "Debug",
+    "Python tests.pytest for src.tests.test_power_flow_matpower.executor": "Run",
+    "Python tests.pytest for src.tests.test_transformer_type.test_transformer_type.executor": "Debug",
+    "Python tests.pytest for test_ac_opf.test_superconductors_handling.executor": "Run",
+    "Python tests.pytest for test_basic.test_gridcal_basic_pi.executor": "Debug",
+    "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
+    "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
+    "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest in test_ac_opf.py.executor": "Run",
+    "Python tests.pytest in test_admitances.py.executor": "Debug",
+    "Python tests.pytest in test_basic.py.executor": "Run",
+    "Python tests.pytest in test_benchmark_with_andes.py.executor": "Run",
+    "Python tests.pytest in test_benchmark_with_andes_diff_block_solver.py.executor": "Run",
+    "Python tests.pytest in test_cgmes_ieeee.py.executor": "Run",
+    "Python tests.pytest in test_copy.py.executor": "Run",
+    "Python tests.pytest in test_gslv_contingencies.py.executor": "Run",
+    "Python tests.pytest in test_load_save_load.py.executor": "Run",
+    "Python tests.pytest in test_small_signal_rms.py.executor": "Run",
+    "Python tests.pytest in test_transformer_type.py.executor": "Run",
+    "Python tests.pytest in tests.executor": "Run",
+    "Python.AnalysisDialogue.executor": "Run",
+    "Python.ExecuteGridCal.executor": "Run",
+    "Python.ExecuteVeraGrid.executor": "Run",
+    "Python.GridCalMain.executor": "Run",
+    "Python.LineBuilderDialogue.executor": "Run",
+    "Python._callers.executor": "Debug",
+    "Python.alex.executor": "Debug",
+    "Python.block_solver.executor": "Run",
+    "Python.cgmes_rdfs_graph.executor": "Run",
+    "Python.circuit_to_optimods.executor": "Run",
+    "Python.constructing_kundur_full.executor": "Run",
+    "Python.converter.executor": "Run",
+    "Python.demo_code.executor": "Run",
+    "Python.demo_code2.executor": "Run",
+    "Python.demo_code3.executor": "Debug",
+    "Python.demo_code4.executor": "Run",
+    "Python.gridcal_compare_andes.executor": "Run",
+    "Python.initialization.executor": "Debug",
+    "Python.multi_circuit.executor": "Debug",
+    "Python.new_circuit_objects.executor": "Run",
+    "Python.new_diagram2.executor": "Run",
+    "Python.profile.executor": "Debug",
+    "Python.pymoo_example.executor": "Debug",
+    "Python.pyside6-designer (1).executor": "Run",
+    "Python.pyside6-designer.executor": "Run",
+    "Python.python_console.executor": "Run",
+    "Python.raw_imp_exp_test.executor": "Run",
+    "Python.readme_checks.executor": "Run",
+    "Python.rms_model_editor_engine.executor": "Run",
+    "Python.scripting_andes.executor": "Run",
+    "Python.scripting_gridcal.executor": "Run",
+    "Python.scripting_gridcal_hardcoded.executor": "Run",
+    "Python.scripting_gridcal_hardcoded_light.executor": "Run",
+    "Python.scripting_gridcal_small_system.executor": "Run",
+    "Python.scripting_gridcal_small_system_controlled.executor": "Run",
+    "Python.scripting_gridcal_small_system_whith_control.executor": "Run",
+    "Python.scripting_gridcal_small_system_whith_control_automatic_init.executor": "Run",
+    "Python.scripting_gridcal_small_system_with_controller.executor": "Run",
+    "Python.scripting_gridcal_small_system_with_controller_and_event.executor": "Run",
+    "Python.scripting_gridcal_small_system_with_event.executor": "Run",
+    "Python.scripting_simbolic_framework_0.executor": "Run",
+    "Python.scripting_simbolic_framework_0_automatic_init.executor": "Run",
+    "Python.scripting_small_sys_bus_mapping.executor": "Run",
+    "Python.scripting_smallsys_p_controller.executor": "Run",
+    "Python.substation_wizards.executor": "Run",
+    "Python.substations_types.executor": "Run",
+    "Python.test_power_flow.executor": "Run",
+    "Python.test_raw_cgmes_cross_roundtrip.executor": "Run",
+    "Python.update_gui_file.executor": "Run",
+    "Python.upload_to_pypi.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "devel",
+    "last_opened_file_path": "/home/santi/Documentos/Git/eRoots/VeraGrid/trunk/power_factory_api",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "run.code.analysis.last.selected.profile": "aDefault",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "two.files.diff.last.used.file": "C:/WorkProjects/PycharmProjects/GridCal/src/trunk/cgmes_py_generator/cgmes_v2_4_15/cgmes_enums.py",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="PyDebuggerOptionsProvider">
     <option name="mySaveCallSignatures" value="true" />
     <option name="mySupportGeventDebugging" value="true" />
@@ -512,6 +508,30 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="LineBuilderDialogue" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/LineBuilderDialogue.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -537,14 +557,14 @@
       <method v="2" />
     </configuration>
     <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
+      <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="$PROJECT_DIR$/.venv312/bin/python" />
+      <option name="SDK_HOME" value="" />
       <option name="SDK_NAME" value="Python 3.12 (VeraGrid)" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
       <option name="IS_MODULE_SDK" value="false" />
@@ -553,54 +573,6 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="python_console" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/python_console.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="python_script_editor" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/python_script_editor.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -625,6 +597,54 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tests/test_linear_time_series.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="update_gui_file" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder/update_gui_file.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="upload_to_pypi" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/upload_to_pypi.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -758,40 +778,21 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="pytest in test_gslv_contingencies.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="_new_keywords" value="&quot;&quot;" />
-      <option name="_new_parameters" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests/test_gslv_contingencies.py&quot;" />
-      <option name="_new_targetType" value="&quot;PATH&quot;" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Python.test_linear_time_series" />
+      <item itemvalue="Python.LineBuilderDialogue" />
+      <item itemvalue="Python.update_gui_file" />
+      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python.ExecuteVeraGrid" />
       <item itemvalue="Python.pyside6-designer" />
-      <item itemvalue="Python.python_console" />
-      <item itemvalue="Python.python_script_editor" />
-      <item itemvalue="Python tests.pytest in test_gslv_contingencies.py" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in test_gslv_contingencies.py" />
-        <item itemvalue="Python.python_script_editor" />
-        <item itemvalue="Python.python_console" />
+        <item itemvalue="Python.LineBuilderDialogue" />
+        <item itemvalue="Python.update_gui_file" />
         <item itemvalue="Python.pyside6-designer" />
+        <item itemvalue="Python.upload_to_pypi" />
       </list>
     </recent_temporary>
   </component>
@@ -1581,7 +1582,7 @@
       <workItem from="1759129150471" duration="1012000" />
       <workItem from="1759130170160" duration="2035000" />
       <workItem from="1770638585888" duration="738000" />
-      <workItem from="1770733291613" duration="2704000" />
+      <workItem from="1770733291613" duration="8790000" />
     </task>
     <task id="LOCAL-00310" summary="implemented newtonPA time series">
       <created>1656059954202</created>
@@ -1926,7 +1927,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="694" />
+    <option name="localTasksCounter" value="696" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1972,7 +1973,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Several fixes when selecting by country, community, etc" />
     <MESSAGE value="5.6.3" />
     <MESSAGE value="When adding bus coordinates the SE coordinates are added too if zero&#10;Fixed several small bugs&#10;5.6.4" />
     <MESSAGE value="DGS parser wip&#10;Improved mapgenerator context menu" />
@@ -1997,7 +1997,8 @@
     <MESSAGE value="Some clean room improvements 2" />
     <MESSAGE value="Some clean room improvements 3" />
     <MESSAGE value="cosmetic changes" />
-    <option name="LAST_COMMIT_MESSAGE" value="cosmetic changes" />
+    <MESSAGE value="added capex and opex to templates" />
+    <option name="LAST_COMMIT_MESSAGE" value="added capex and opex to templates" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2535,6 +2536,10 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pytest_in_test_gslv_contingencies_py.coverage" NAME="pytest in test_gslv_contingencies.py Coverage Results" MODIFIED="1770638659427" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
-    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1770743156832" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$pyside6_designer.coverage" NAME="pyside6-designer Coverage Results" MODIFIED="1770753716631" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/.venv312/bin" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$LineBuilderDialogue.coverage" NAME="LineBuilderDialogue Coverage Results" MODIFIED="1770755126125" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$update_gui_file.coverage" NAME="update_gui_file Coverage Results" MODIFIED="1770755053604" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid/Gui/TowerBuilder" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$upload_to_pypi.coverage" NAME="upload_to_pypi Coverage Results" MODIFIED="1770743203712" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/VeraGrid__eRoots_$ExecuteVeraGrid.coverage" NAME="ExecuteVeraGrid Coverage Results" MODIFIED="1770755344570" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/VeraGrid" />
   </component>
 </project>
