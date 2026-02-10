@@ -32,9 +32,13 @@ def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]
     Get the connected terminal IDs (ElmTerm.ID) for a given branch/injection element ID
     using the StaCubic.fold_id -> ElmTerm.ID mapping.
     """
-    cbs = cubics_by_objid.get(_ref_id(element_id), [])
-    # StaCubic.fold_id typically points to the parent ElmTerm of the connection
-    return [_ref_id(cb.fold_id) for cb in cbs if _ref_id(cb.fold_id) is not None and _ref_id(cb.fold_id) != ""]
+    cbs = [cb for cb in cubics_by_objid.get(_ref_id(element_id), [])
+           if _ref_id(cb.fold_id)]
+
+    if len(cbs) == 2:
+        cbs = sorted(cbs, key=lambda cb: int(cb.obj_bus))
+
+    return [_ref_id(cb.fold_id) for cb in cbs]
 
 
 def get_branch_buses(elm_id: str,
