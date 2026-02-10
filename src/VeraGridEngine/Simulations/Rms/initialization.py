@@ -549,7 +549,7 @@ def compose_system_block(
                         mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(
                 np.imag(res.Sbus[i] / grid.Sbase))
 
-            sys_block.add(mdl)
+        sys_block.add(mdl)
 
     # branches
     for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):

@@ -182,7 +182,6 @@ class BackEulerImplicitIntegration:
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
                 Jf = self._jacobian_implicit(x_new, dx, self.h)
-
                 if step_idx == 0:
                     Jf = self._jacobian_implicit(x_new, dx, self.h)
                     delta = sp.linalg.spsolve(Jf, -rhs)
