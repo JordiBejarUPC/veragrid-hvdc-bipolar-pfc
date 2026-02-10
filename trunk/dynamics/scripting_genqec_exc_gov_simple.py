@@ -157,6 +157,7 @@ line0.rms_model.model = line0_mdl
 load.rms_model.model = load_mdl
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
+print(Pl0)
 event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)
 grid.add_rms_event(event)
 
@@ -202,7 +203,7 @@ x0 = slv.build_init_vars_vector_from_uid(init_guess)
 dx0 = np.zeros(len(slv._diff_vars))
 Vm = find_name_in_block("Vm", slv.block_system)
 
-xlim = 15.0
+xlim = 1.0
 t, y, _ = slv.simulate(
     t0=0,
     t_end=xlim,

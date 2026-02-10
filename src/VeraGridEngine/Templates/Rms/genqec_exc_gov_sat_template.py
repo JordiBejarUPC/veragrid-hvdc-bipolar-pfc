@@ -230,6 +230,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             omega: Const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
             Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-5))) ** 2,
+            Sat: Const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
@@ -267,7 +268,6 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),
-            Sat: Const(1) + Sa,
             Iq_sat: Iq/Sat,
             Id_sat: Id/Sat,
 

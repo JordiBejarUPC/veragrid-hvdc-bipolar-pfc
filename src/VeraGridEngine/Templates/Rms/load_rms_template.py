@@ -28,8 +28,8 @@ def get_load_rms_template(name = "Load rms template", Pl0=-0.09999, Ql0 = -0.009
     Ql = Var("Ql")
     Pl = Var("Pl")
 
-    templ.block.event_dict[Pl0] = Const(Pl0)
-    templ.block.event_dict[Ql0] = Const(Ql0)
+    templ.block.event_dict[Pl0] = Const(-0.09999)
+    templ.block.event_dict[Ql0] = Const(-0.009999)
 
     templ.block.algebraic_vars = [Pl, Ql]
 
