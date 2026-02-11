@@ -14,7 +14,7 @@ from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
 from VeraGrid.plugins import install_plugin, get_plugin_info
 from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
-from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue
+from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, FileTypeSelector, CgmesOptionsSelector
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
@@ -24,7 +24,8 @@ from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.PsseExportDialogue.psse_export import PsseExportDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
-from VeraGridEngine.enumerations import SimulationTypes
+from VeraGridEngine.IO.file_handler import determine_file_type
+from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
@@ -279,11 +280,13 @@ class IoMain(ConfigurationMain):
             self.open_file_now(filenames, post_function)
 
     def open_file_now(self, filenames: Union[str, List[str]],
-                      post_function: Union[None, Callable[[], None]] = None) -> None:
+                      post_function: Union[None, Callable[[], None]] = None,
+                      bool_prompt_to_ask_if_unclear: bool = True) -> None:
         """
         Open a file without questions
         :param filenames: list of file names (maybe more than one because of CIM TP and EQ files)
         :param post_function: function callback
+        :param bool_prompt_to_ask_if_unclear: if the extension is ambiguous like xml, zip or json, ask what to do
         :return: Nothing
         """
         if len(filenames) > 0:
@@ -301,11 +304,28 @@ class IoMain(ConfigurationMain):
             # lock the ui
             self.LOCK()
 
+            options = filedrv.FileOpenOptions( )
+
+            file_name = filenames if len(filenames) > 1 else filenames[0]
+
+            # try to determine the file type
+            file_type = determine_file_type(file_name)
+
+            if file_type is None and bool_prompt_to_ask_if_unclear:
+                self.file_selector = FileTypeSelector(file_name=file_name)
+                self.file_selector.exec()
+                options.file_type = self.file_selector.file_type
+
+                if options.file_type == FileType.CGMES:
+                    self.cgmes_selector = CgmesOptionsSelector()
+                    self.cgmes_selector.exec()
+                    options.cgmes_version = self.cgmes_selector.version
+
             # create thread
             self.open_file_thread_object = filedrv.FileOpenThread(
-                file_name=filenames if len(filenames) > 1 else filenames[0],
+                file_name=file_name,
                 previous_circuit=self.circuit,
-                options=filedrv.FileOpenOptions()
+                options=options
             )
 
             # make connections
@@ -387,7 +407,7 @@ class IoMain(ConfigurationMain):
                 self.ui.grid_name_line_edit.setText(self.circuit.name)
 
                 # if this was a CGMES file, launch the Rosetta GUI
-                if self.open_file_thread_object.cgmes_circuit:
+                if self.open_file_thread_object.options.file_type == FileType.CGMES:
 
                     show_rosetta = yes_no_question(title="Show rosetta",
                                                    text="Do you want to open the Rosetta CGMEs browser?")
