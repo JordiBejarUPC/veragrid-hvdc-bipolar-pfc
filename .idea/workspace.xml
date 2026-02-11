@@ -28,12 +28,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="test for the order of the phases">
-      <change afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/IEEE 14 bus.raw" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_power_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_power_flow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/positive_sequence_3ph_pf.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/positive_sequence_3ph_pf.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="starting test for the 3ph power flow working with positive sequence grid">
+      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/tests/tower.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -245,6 +241,7 @@
     "Python.substations_types.executor": "Run",
     "Python.test_power_flow.executor": "Run",
     "Python.test_raw_cgmes_cross_roundtrip.executor": "Run",
+    "Python.tower.executor": "Run",
     "Python.update_gui_file.executor": "Run",
     "Python.upload_to_pypi.executor": "Run",
     "RunOnceActivity.MCP Project settings loaded": "true",
@@ -1915,7 +1912,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="708" />
+    <option name="localTasksCounter" value="709" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1981,7 +1978,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Modified the main icon path" />
     <MESSAGE value="Modified the test_grid_reduction_with_multiple_islands_before as intended" />
     <MESSAGE value="Added one extra power flow test&#10;Minor enhancements" />
     <MESSAGE value="Commented out the HELM contingency" />
@@ -2006,7 +2002,8 @@
     <MESSAGE value="refactor of the file saving process" />
     <MESSAGE value="small changes in the LineBuilderDialogue.py" />
     <MESSAGE value="test for the order of the phases" />
-    <option name="LAST_COMMIT_MESSAGE" value="test for the order of the phases" />
+    <MESSAGE value="starting test for the 3ph power flow working with positive sequence grid" />
+    <option name="LAST_COMMIT_MESSAGE" value="starting test for the 3ph power flow working with positive sequence grid" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2422,17 +2419,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>748</line>
+          <line>745</line>
           <option name="timeStamp" value="3011" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>756</line>
+          <line>753</line>
           <option name="timeStamp" value="3012" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/base_gui.py</url>
-          <line>760</line>
+          <line>757</line>
           <option name="timeStamp" value="3013" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -2640,11 +2637,6 @@
           <option name="timeStamp" value="3731" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py</url>
-          <line>55</line>
-          <option name="timeStamp" value="3732" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
           <line>789</line>
           <option name="timeStamp" value="3733" />
@@ -2653,11 +2645,6 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
           <line>955</line>
           <option name="timeStamp" value="3734" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py</url>
-          <line>13</line>
-          <option name="timeStamp" value="3735" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
