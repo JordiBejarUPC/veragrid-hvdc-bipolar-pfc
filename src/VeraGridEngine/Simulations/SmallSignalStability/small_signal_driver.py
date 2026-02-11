@@ -20,6 +20,7 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
@@ -335,7 +336,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
     def __init__(self,
                  grid: MultiCircuit,
-                 problem: RmsProblemTemplate,
+                 problem: RmsProblemDae,
                  rms_options: Union[RmsOptions, None] = None,
                  ss_options: Union[SmallSignalStabilityOptions, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
@@ -450,7 +451,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
                                                                                      verbose= self.ss_options.verbose)
 
 
-
+        state_vars = self.problem.get_state_vars
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
             eigenvalues = eigenvalues,
             participation_factors = participation_factors,
@@ -458,7 +459,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
             conjugate_frequencies = conjugate_frequencies,
             state_matrix = state_matrix,
             reduced_state_matrix = reduced_state_matrix,
-            stat_vars = self.problem.get_state_vars(),
+            stat_vars = state_vars,
         )
 
         self.toc()
