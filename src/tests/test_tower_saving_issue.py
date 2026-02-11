@@ -1,5 +1,7 @@
+import sys
+from PySide6 import QtWidgets
 import VeraGridEngine.api as vge
-from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI, QApplication
+from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 
 
 def test_tower_saving_issue():
@@ -13,7 +15,10 @@ def test_tower_saving_issue():
     # ----------------------------------------------------------------------------------------------------------------------
     # GUI
     # ----------------------------------------------------------------------------------------------------------------------
-    app = QApplication()
+    if not QtWidgets.QApplication.instance():
+        app = QtWidgets.QApplication(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()
     gui = VeraGridMainGUI()
     gui.add_default_catalogue()
 
