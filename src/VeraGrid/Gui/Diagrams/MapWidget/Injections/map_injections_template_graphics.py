@@ -4,16 +4,15 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPen, QCursor, QColor, QBrush
+from PySide6.QtGui import QCursor, QColor, QBrush
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneContextMenuEvent,
                                QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
-from VeraGridEngine import DeviceType
-
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking

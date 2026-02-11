@@ -85,7 +85,7 @@ pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 limit_i_vsc=True,
                                 verbose=1)
 
-grid.add_short_circuit_definition(
+grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
         device=grid.buses[1],
         method=MethodShortCircuit.sequences_vsc

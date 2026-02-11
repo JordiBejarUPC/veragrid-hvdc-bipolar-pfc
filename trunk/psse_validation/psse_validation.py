@@ -7,20 +7,20 @@ folder = "data"
 
 for name in [
     "ACTIVSg2000.RAW",
-    "AU14GenModel.RAW",
-    "ieee9.raw",
-    "IEEE14bus.raw",
-    "IEEE30bus.raw",
-    "NETS-NYPS68Bus.raw",
-    "IEEE118Busv2.raw",
-    "wecc179.raw",
-    "case300.raw",
+    # "AU14GenModel.RAW",
+    # "ieee9.raw",
+    # "IEEE14bus.raw",
+    # "IEEE30bus.raw",
+    # "NETS-NYPS68Bus.raw",
+    # "IEEE118Busv2.raw",
+    # "wecc179.raw",
+    # "case300.raw",
 ]:
     # ------------------------------------------------------------------------------------------------------------------
     # Load PSSe
     # ------------------------------------------------------------------------------------------------------------------
     excel_name = os.path.join(folder, name + ".xlsx")
-
+    
     excel_ptr = pd.ExcelFile(excel_name)
     psse_bus_df = pd.read_excel(excel_ptr, "bus")  # , index_col="names")
     psse_lne_df = pd.read_excel(excel_ptr, "branch")

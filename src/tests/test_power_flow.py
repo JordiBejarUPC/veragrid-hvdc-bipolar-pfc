@@ -48,14 +48,14 @@ def test_ieee_grids():
         for f1, f2 in files:
             print(f1, end=' ')
 
-            fname = os.path.join('data', 'grids', 'RAW', f1)
+            fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'RAW', f1)
             main_circuit = FileOpen(fname).open()
             power_flow = PowerFlowDriver(main_circuit, options)
             power_flow.run()
 
             # load the associated results file
-            df_v = pd.read_excel(os.path.join('data', 'results', f2), sheet_name='Vabs', index_col=0)
-            df_p = pd.read_excel(os.path.join('data', 'results', f2), sheet_name='Pbranch', index_col=0)
+            df_v = pd.read_excel(os.path.join(SCRIPT_DIR, 'data', 'results', f2), sheet_name='Vabs', index_col=0)
+            df_p = pd.read_excel(os.path.join(SCRIPT_DIR, 'data', 'results', f2), sheet_name='Pbranch', index_col=0)
 
             v_gc = np.abs(power_flow.results.voltage)
             v_psse = df_v.values[:, 0]
@@ -86,7 +86,7 @@ def test_dc_pf_ieee14():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join('data', 'grids', 'case14.matpower')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
@@ -127,7 +127,7 @@ def test_dc_pf_ieee14_ps():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join('data', 'grids', 'case14_ps.matpower')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14_ps.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
