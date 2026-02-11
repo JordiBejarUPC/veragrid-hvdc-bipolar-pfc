@@ -382,6 +382,13 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.elmlods.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
+    # Shunts
+    for shunt in grid.shunts:
+        e = convert_shunt(shunt, new_id=dgs_grid.new_id(), t=t)
+        term = bus2term_dict[shunt.bus]
+        dgs_grid.elmshnts.append(e)
+        dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
+
     # Static generators
     for stagen in grid.static_generators:
         e = convert_static_gen(stagen, new_id=dgs_grid.new_id(), t=t)
