@@ -19,6 +19,7 @@ from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, Q
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent)
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
 from VeraGrid.Gui.SubstationDesigner.substation_designer import SubstationDesigner
@@ -78,6 +79,8 @@ if TYPE_CHECKING:
 MAP_BRANCH_GRAPHIC_TYPES = Union[
     MapAcLine, MapDcLine, MapHvdcLine, MapFluidPathLine
 ]
+
+from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -1641,6 +1644,13 @@ class GridMapWidget(BaseDiagramWidget):
         for gelm in graphics_linelocations:
             gelm.api_object.lat = gelm.lat
             gelm.api_object.long = gelm.lon
+
+        for inj_type in self.circuit.get_injections_device_types():
+            graphics_injections: List[MapInjectionTemplateGraphicItem] = self.graphics_manager.get_device_type_list(
+                device_type=inj_type)
+            for gelm in graphics_injections:
+                gelm.api_object.latitude = gelm.lat
+                gelm.api_object.longitude = gelm.lon
 
         ok = yes_no_question(title='Update lengths?',
                              text='Do you want to update lengths of lines? \n'
