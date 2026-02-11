@@ -504,13 +504,15 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                                         cubics_by_objid=cubics_by_objid,
                                         bus_by_term_id=bus_by_term_id)
 
-    bus_hv, bus_lv = _order_hv_lv(bus_a=bus_from,
-                                  bus_b=bus_to,
-                                  logger=logger,
-                                  tr_name=tr2.loc_name)
+    cbs = cubics_by_objid.get(_ref_id(tr2.ID), [])
+    has_dgs_from_to = (len(cbs) == 2) and ({int(cb.obj_bus) for cb in cbs} == {0, 1})
 
-    trafo = dev.Transformer2W(bus_from=bus_hv,
-                              bus_to=bus_lv,
+    if has_dgs_from_to:
+        bus_vg_from, bus_vg_to = bus_from, bus_to
+    else:
+        bus_vg_from, bus_vg_to = _order_hv_lv(bus_a=bus_from, bus_b=bus_to, logger=logger, tr_name=tr2.loc_name)
+
+    trafo = dev.Transformer2W(bus_from=bus_vg_from, bus_to=bus_vg_to,
                               name=tr2.loc_name,
                               active=not tr2.outserv,
                               template=template)
@@ -537,10 +539,15 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
         tap_min, tap_max = tap_max, tap_min
 
     # If tap-changer is on LV side, move it to HV side by inversion to match VeraGrid model
-    if int(typtr2_raw.tap_side) != 0:
+    if float(bus_vg_from.Vnom) >= float(bus_vg_to.Vnom):
+        hv_bus, lv_bus = bus_vg_from, bus_vg_to
+    else:
+        hv_bus, lv_bus = bus_vg_to, bus_vg_from
+    tap_on_bus = hv_bus if int(typtr2_raw.tap_side) == 0 else lv_bus
+    if tap_on_bus is not bus_vg_from:
         tap = 1.0 / tap
-        tap_min_i: float = 1.0 / tap_min
-        tap_max_i: float = 1.0 / tap_max
+        tap_min_i = 1.0 / tap_min
+        tap_max_i = 1.0 / tap_max
         tap_min = min(tap_min_i, tap_max_i)
         tap_max = max(tap_min_i, tap_max_i)
 

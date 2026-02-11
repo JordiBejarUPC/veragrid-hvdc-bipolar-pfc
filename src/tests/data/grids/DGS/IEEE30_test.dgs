@@ -210,8 +210,8 @@ $$StaCubic;FID(a:40);OP(a:1);loc_name(a:80);fold_id(p);obj_bus(i);obj_id(p);it2p
   273;C;trf_6_10_1;ElmTerm_10;1;ElmTr2_6_10_1;0;1;2
   280;C;trf_28_27_1;ElmTerm_28;0;ElmTr2_28_27_1;0;1;2
   281;C;trf_28_27_1;ElmTerm_27;1;ElmTr2_28_27_1;0;1;2
-  274;C;trf_9_10_1;ElmTerm_9;1;ElmTr2_10_9_1;0;1;2
-  275;C;trf_9_10_1;ElmTerm_10;0;ElmTr2_10_9_1;0;1;2
+  274;C;trf_9_10_1;ElmTerm_9;0;ElmTr2_10_9_1;0;1;2
+  275;C;trf_9_10_1;ElmTerm_10;1;ElmTr2_10_9_1;0;1;2
   276;C;trf_9_11_1;ElmTerm_9;1;ElmTr2_11_9_1;0;1;2
   277;C;trf_9_11_1;ElmTerm_11;0;ElmTr2_11_9_1;0;1;2
   278;C;trf_12_13_1;ElmTerm_12;0;ElmTr2_12_13_1;0;1;2
