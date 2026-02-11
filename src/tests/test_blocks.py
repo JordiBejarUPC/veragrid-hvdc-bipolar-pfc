@@ -8,6 +8,7 @@ import numpy as np
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, exp, log, abs
 
+
 def test_block_save_to_disk():
     """
        Checks the serialization to disk and recovery from disk of several blocks.
@@ -156,8 +157,6 @@ def test_block_save_to_disk():
     vf = UndefinedConst()  # this will disappear when the generator and the exciter model are decoupled
     tm0 = UndefinedConst()
 
-
-
     block = Block(
         state_vars=[delta, omega],
         state_eqs=[
@@ -258,4 +257,3 @@ def test_block_save_to_disk():
         assert reconstructed_block == blk
 
     print('test block save to disk ok')
-
