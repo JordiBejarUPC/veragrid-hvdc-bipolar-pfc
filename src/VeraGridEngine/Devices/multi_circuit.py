@@ -2012,8 +2012,8 @@ class MultiCircuit(Assets):
 
         # create associations between generators and fuels
         for generator in self.generators:
+            gen_idx = gen_index_dict[generator.idtag]
             for assoc in generator.fuels:
-                gen_idx = gen_index_dict[generator.idtag]
                 fuel_idx = fuel_index_dict[assoc.api_object.idtag]
                 gen_fuel_rates_matrix[fuel_idx, gen_idx] = assoc.value
 
@@ -2034,8 +2034,9 @@ class MultiCircuit(Assets):
 
         # create associations between generators and emissions
         for generator in self.generators:
+            gen_idx = gen_index_dict[generator.idtag]
+
             for assoc in generator.emissions:
-                gen_idx = gen_index_dict[generator.idtag]
                 em_idx = em_index_dict[assoc.api_object.idtag]
                 gen_emissions_rates_matrix[em_idx, gen_idx] = assoc.value
 
@@ -2056,8 +2057,8 @@ class MultiCircuit(Assets):
 
         # create associations between generators and technologies
         for generator in self.generators:
+            gen_idx = gen_index_dict[generator.idtag]
             for assoc in generator.technologies:
-                gen_idx = gen_index_dict[generator.idtag]
                 tech_idx = tech_index_dict[assoc.api_object.idtag]
                 gen_tech_proportions_matrix[tech_idx, gen_idx] = assoc.value
 
@@ -2078,8 +2079,8 @@ class MultiCircuit(Assets):
 
         # create associations between generators and technologies
         for elm in self.batteries:
+            gen_idx = gen_index_dict[elm.idtag]
             for assoc in elm.technologies:
-                gen_idx = gen_index_dict[elm.idtag]
                 tech_idx = tech_index_dict[assoc.api_object.idtag]
                 gen_tech_proportions_matrix[tech_idx, gen_idx] = assoc.value
 

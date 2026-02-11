@@ -14,9 +14,6 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-
-
 
 # GUI imports
 from PySide6 import QtGui, QtWidgets, QtCore
