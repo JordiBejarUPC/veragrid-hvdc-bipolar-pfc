@@ -235,6 +235,43 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
 
     return typlne
 
+def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2) -> None:
+    """
+    Fill TypTr2 + ElmTr2 tap fields so dgs_to_veragrid reconstructs tap_module.
+    Assumes VeraGrid Transformer2W has: tap_module, tap_module_min, tap_module_max.
+    """
+    tap = float(tr.tap_module)
+    tap_min = float(tr.tap_module_min)
+    tap_max = float(tr.tap_module_max)
+
+    if tap_min > tap_max:
+        tap_min, tap_max = tap_max, tap_min
+
+    # If fixed at 1.0 → keep neutral
+    if abs(tap - 1.0) < 1e-12 and abs(tap_min - 1.0) < 1e-12 and abs(tap_max - 1.0) < 1e-12:
+        tpe.tap_side = 0
+        tpe.dutap = 0.0
+        tpe.nntap0 = 0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+    # Discretization step (p.u.)
+    step = 0.001
+    tpe.dutap = step * 100.0  # Percent
+    tpe.nntap0 = 0
+    tpe.tap_side = 0  # HV
+
+    def to_pos(x: float) -> int:
+        return int(round((x - 1.0) / step))
+
+    e.nntap = to_pos(tap)
+    tpe.ntpmn = to_pos(tap_min)
+    tpe.ntpmx = to_pos(tap_max)
+
+    if tpe.ntpmn > tpe.ntpmx:
+        tpe.ntpmn, tpe.ntpmx = tpe.ntpmx, tpe.ntpmn
 
 def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     """
@@ -494,14 +531,14 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
 
     # 2W transformers
     for tr in grid.transformers2w:
-        # try search for the template
         tpe = tr2typtr2_dict.get(tr.template, None)
+        tpe_is_new = False
 
         if tpe is None:
-            # produce a new template
             tpe = convert_transformer_type(tr=tr.get_transformer_type(),
                                            new_id=dgs_grid.new_id())
             dgs_grid.typtr2s.append(tpe)
+            tpe_is_new = True
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
@@ -511,14 +548,23 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
 
+        # --- TAP EXPORT (minimal + coherent) ---
+        # If type is new, we set type tap range + element tap position.
+        # If type is reused, we still set the element position, and we assume shared type has correct range.
+        if tpe_is_new:
+            _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
+        else:
+            if float(getattr(tpe, "dutap", 0.0)) > 0.0:
+                step = float(tpe.dutap) / 100.0
+                e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
+            else:
+                e.nntap = 0
         hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            # the order must be HV, LV
-            dgs_buses=[bus2term_dict[hv_bus],
-                       bus2term_dict[lv_bus]]
+            dgs_buses=[bus2term_dict[hv_bus], bus2term_dict[lv_bus]]
         )
 
     # diagrams
