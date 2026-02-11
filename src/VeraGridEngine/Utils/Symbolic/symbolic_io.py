@@ -577,9 +577,11 @@ class BlockParser:
         self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict,
                                                  diff_var_dict=self.diff_var_dict)
 
-    def parse_block(self, blocks_data: Dict[int, Dict[str, Any]], main_block_uid: int) -> Block:
+    def parse_block(self,
+                    blocks_data: Dict[int, Dict[str, Any]],
+                    main_block_uid: int) -> Block:
         """
-
+        Parse block as
         :param main_block_uid:
         :param blocks_data:
         :return:
@@ -588,7 +590,7 @@ class BlockParser:
         if main_block_uid not in blocks_data:
             main_block_uid = str(main_block_uid)
 
-        data = blocks_data[main_block_uid]
+        data=blocks_data[main_block_uid]
 
         state_vars = [self.var_dict[v] for v in data["state_vars"]]
 

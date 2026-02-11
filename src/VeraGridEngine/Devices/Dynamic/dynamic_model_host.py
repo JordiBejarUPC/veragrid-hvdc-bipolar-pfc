@@ -397,7 +397,8 @@ class DynamicModelHost(EditableDevice):
             "diagram": self.diagram.to_dict()
         }
 
-    def parse(self, data: Dict[str, str | Dict[str, List[Dict[str, Any]]]],
+    def parse(self,
+              data: Dict[str, str | Dict[str, List[Dict[str, Any]]]],
               blocks_dict: Dict[int, Block]):
         """
         Parse the data

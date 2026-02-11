@@ -16,7 +16,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser
+from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
                                          ContingencyOperationTypes)
@@ -441,6 +441,10 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
 
         elif prop.tpe == SubObjectType.DaeBlockType:
             block_saver.save_block(blk=obj, main=True)
+            if isinstance(obj, Block):
+                data[name] = obj.uid
+            else:
+                raise ValueError("must be a block")
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)
@@ -1173,7 +1177,7 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
                                     # set the value of the property
-                                    blk = block_parser.parse_block(data=property_value)
+                                    blk = block_parser.block_dict.get(property_value, None)
                                     elm.set_snapshot_value(gc_prop.name, blk)
 
                                 elif gc_prop.tpe == SubObjectType.Associations:
