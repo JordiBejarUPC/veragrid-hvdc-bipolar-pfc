@@ -28,11 +28,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="some small changes">
-      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/order_phases.py" afterDir="false" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="test for the order of the phases">
+      <change afterPath="$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/IEEE 14 bus.raw" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tests/test_3ph_admittance_matrix.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_3ph_admittance_matrix.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_power_flow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_power_flow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trunk/unbalanced_pf/positive_sequence_3ph_pf.py" beforeDir="false" afterPath="$PROJECT_DIR$/trunk/unbalanced_pf/positive_sequence_3ph_pf.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -170,13 +171,17 @@
     "Python tests.pytest for test_load_save_load.test_load_save_load2.executor": "Run",
     "Python tests.pytest for test_transformer_type.test_psse_conversion3.executor": "Debug",
     "Python tests.pytest for test_transformer_type.test_transformer_type.executor": "Run",
+    "Python tests.pytest for tests.def_3ph_pf_positive_sequence.test_ieee_grids.executor": "Run",
     "Python tests.pytest for tests.test_3ph_pf_driver.test_ieee_13_bus_feeder_driver.executor": "Run",
     "Python tests.pytest for tests.test_3ph_sc_driver.test_three_phase_to_ground_fault.executor": "Run",
+    "Python tests.pytest for tests.test_power_flow.test_ieee_grids.executor": "Run",
+    "Python tests.pytest in def_3ph_pf_positive_sequence.py.executor": "Debug",
     "Python tests.pytest in test_3ph_admittance_matrix.py.executor": "Run",
     "Python tests.pytest in test_3ph_pf_driver.py.executor": "Run",
     "Python tests.pytest in test_3ph_pf_neutral_loads.py.executor": "Run",
     "Python tests.pytest in test_3ph_pf_neutral_shunts.py.executor": "Run",
     "Python tests.pytest in test_3ph_pf_neutral_transformers.py.executor": "Run",
+    "Python tests.pytest in test_3ph_pf_positive_sequence.py.executor": "Debug",
     "Python tests.pytest in test_3ph_sc_driver.py.executor": "Run",
     "Python tests.pytest in test_ac_opf.py.executor": "Run",
     "Python tests.pytest in test_admitances.py.executor": "Debug",
@@ -193,7 +198,7 @@
     "Python.AnalysisDialogue.executor": "Run",
     "Python.Dy_Power_NeutralStar_3ph.executor": "Run",
     "Python.ExecuteGridCal.executor": "Run",
-    "Python.ExecuteVeraGrid.executor": "Debug",
+    "Python.ExecuteVeraGrid.executor": "Run",
     "Python.GridCalMain.executor": "Run",
     "Python._callers.executor": "Debug",
     "Python.alex.executor": "Debug",
@@ -598,54 +603,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="pyside6-designer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.venv312/bin" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/.venv312/bin/pyside6-designer" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="update_gui_file (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="VeraGrid" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/VeraGrid/Gui/PsseExportDialogue" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="RUN_TOOL" value="" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/VeraGrid/Gui/PsseExportDialogue/update_gui_file.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
       <option name="ENV_FILES" value="" />
@@ -775,20 +732,58 @@
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for tests.test_3ph_pf_positive_sequence.test_ieee_grids_3ph" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;tests.test_3ph_pf_positive_sequence.test_ieee_grids_3ph&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest for tests.test_power_flow.test_ieee_grids" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="VeraGrid" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;tests.test_power_flow.test_ieee_grids&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Python.Dy_Power_NeutralStar_3ph" />
-      <item itemvalue="Python.pyside6-designer" />
-      <item itemvalue="Python.update_gui_file (1)" />
       <item itemvalue="Python.ExecuteVeraGrid" />
+      <item itemvalue="Python tests.pytest for tests.test_3ph_pf_positive_sequence.test_ieee_grids_3ph" />
+      <item itemvalue="Python tests.pytest for tests.test_power_flow.test_ieee_grids" />
       <item itemvalue="Python tests.pytest for tests.test_3ph_pf_driver.test_ieee_13_bus_feeder_driver" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest for tests.test_3ph_pf_positive_sequence.test_ieee_grids_3ph" />
+        <item itemvalue="Python tests.pytest for tests.test_power_flow.test_ieee_grids" />
         <item itemvalue="Python tests.pytest for tests.test_3ph_pf_driver.test_ieee_13_bus_feeder_driver" />
         <item itemvalue="Python.Dy_Power_NeutralStar_3ph" />
-        <item itemvalue="Python.update_gui_file (1)" />
-        <item itemvalue="Python.pyside6-designer" />
       </list>
     </recent_temporary>
   </component>
@@ -1920,7 +1915,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="707" />
+    <option name="localTasksCounter" value="708" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1986,7 +1981,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="merged" />
     <MESSAGE value="Modified the main icon path" />
     <MESSAGE value="Modified the test_grid_reduction_with_multiple_islands_before as intended" />
     <MESSAGE value="Added one extra power flow test&#10;Minor enhancements" />
@@ -2011,7 +2005,8 @@
     <MESSAGE value="renamed .m files to .matpower" />
     <MESSAGE value="refactor of the file saving process" />
     <MESSAGE value="small changes in the LineBuilderDialogue.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="small changes in the LineBuilderDialogue.py" />
+    <MESSAGE value="test for the order of the phases" />
+    <option name="LAST_COMMIT_MESSAGE" value="test for the order of the phases" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2605,11 +2600,6 @@
           <option name="timeStamp" value="3716" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
-          <line>789</line>
-          <option name="timeStamp" value="3719" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py</url>
           <line>547</line>
           <option name="timeStamp" value="3721" />
@@ -2648,6 +2638,26 @@
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/overhead_line_type.py</url>
           <line>1411</line>
           <option name="timeStamp" value="3731" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py</url>
+          <line>55</line>
+          <option name="timeStamp" value="3732" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
+          <line>789</line>
+          <option name="timeStamp" value="3733" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py</url>
+          <line>955</line>
+          <option name="timeStamp" value="3734" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/tests/test_3ph_pf_positive_sequence.py</url>
+          <line>13</line>
+          <option name="timeStamp" value="3735" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
