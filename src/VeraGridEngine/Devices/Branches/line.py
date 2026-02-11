@@ -28,7 +28,6 @@ from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 
 
-
 def accept_line_connection(V1: float, V2: float, branch_connection_voltage_tolerance=0.1) -> float:
     """
     This function checks if a line can be connected between 2 voltages
@@ -287,11 +286,11 @@ class Line(BranchParent):
         if self.auto_update_enabled:
             if not self.rms_model.empty():
                 g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
                 b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
                 bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                self.rms_model.model._parameters[bsh_param] = Const(float(self._B))
 
     @property
     def X(self):
@@ -303,11 +302,11 @@ class Line(BranchParent):
         if self.auto_update_enabled:
             if not self.rms_model.empty():
                 g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
                 b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
                 bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                self.rms_model.model._parameters[bsh_param] = Const(float(self._B))
 
     @property
     def B(self):
@@ -319,11 +318,11 @@ class Line(BranchParent):
         if self.auto_update_enabled:
             if not self.rms_model.empty():
                 g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
                 b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                self.rms_model.model._parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
                 bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                self.rms_model.model._parameters[bsh_param] = Const(float(self._B))
 
     @property
     def R0(self):
@@ -387,8 +386,8 @@ class Line(BranchParent):
             self._circuit_idx = int(value)
 
             if self.auto_update_enabled:
-                print(
-                    "No impedance updates are being done, use the apply_template method to update the impedance values")
+                print("No impedance updates are being done, "
+                      "use the apply_template method to update the impedance values")
 
     def set_circuit_idx(self, val: int, obj: Union[OverheadLineType, UndergroundLineType, SequenceLineType]):
         """
@@ -431,12 +430,20 @@ class Line(BranchParent):
     @BranchParent.rms_model.setter
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
-            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
-                float(self.R / (self.R ** 2 + self.X ** 2)))
-            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
-                float(-self.X / (self.R ** 2 + self.X ** 2)))
-            value.model.parameters[value.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(
-                self.B)
+            value.model.set_parameter(
+                ParamPowerFlowRefferenceType.g,
+                Const(float(self.R / (self.R ** 2 + self.X ** 2)))
+            )
+
+            value.model.set_parameter(
+                ParamPowerFlowRefferenceType.b,
+                Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
+            )
+
+            value.model.set_parameter(
+                ParamPowerFlowRefferenceType.bsh,
+                Const(self.B)
+            )
             self._rms_model = value
 
     def set_length(self, val: float):
@@ -529,12 +536,6 @@ class Line(BranchParent):
             self._ysh = val
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
-
-    def assign_input_vars_and_params(self):
-        self.Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-        self.Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-        self.Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-        self.Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def change_base(self, Sbase_old: float, Sbase_new: float):
         """
@@ -812,4 +813,3 @@ class Line(BranchParent):
         if self._rms_model.empty():
             line_template = get_line_rms_template()
             self.rms_model.model = line_template.block
-

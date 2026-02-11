@@ -509,7 +509,7 @@ class BlockSolver:
             for param, eq in b.event_dict.items():
                 self._event_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
-            for param, constant in b.parameters.items():
+            for param, constant in b._parameters.items():
                 self._parameters.append(param)
                 self._parameters_values.append(constant)
 

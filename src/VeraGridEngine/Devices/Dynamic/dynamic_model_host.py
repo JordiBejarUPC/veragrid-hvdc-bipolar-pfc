@@ -408,10 +408,9 @@ class DynamicModelHost(EditableDevice):
         # if template_id is not None:
         #     self.template = models_dict.get(template_id, None)
 
-        template_data = data.get("template", None)
-
-        if template_data is not None:
-            self.template = blocks_dict.get(int(template_data['uid']), None)
+        template_uid = data.get("template", None)
+        if template_uid is not None:
+            self.template = blocks_dict.get(int(template_uid), None)
 
         model_uid = data.get("model", None)
         if model_uid is not None:

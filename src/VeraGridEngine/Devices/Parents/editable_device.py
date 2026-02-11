@@ -911,8 +911,11 @@ class EditableDevice:
                           idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
                           code=self.code,
                           device_type=self.device_type)
+            new_obj.disable_auto_updates()
+
         except TypeError:
             new_obj = tpe()
+            new_obj.disable_auto_updates()
 
         for prop_name, gc_prop in self.registered_properties.items():
             value = getattr(self, prop_name)
@@ -929,6 +932,7 @@ class EditableDevice:
         if forced_new_idtag:
             new_obj.idtag = uuid.uuid4().hex
 
+        new_obj.enable_auto_updates()
         return new_obj
 
     @staticmethod

@@ -231,7 +231,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 event_params_array_index += 1
 
         params_array_index = 0
-        for param in mdl.parameters.keys():
+        for param in mdl._parameters.keys():
             if param.uid not in uid2sym_params:
                 uid2sym_params[param.uid] = f"params[{params_array_index}]"
                 uid2idx_params[param.uid] = params_array_index
@@ -247,9 +247,9 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                 x[uid2idx_vars[uid]] = init_guess[key]
 
         # initialize array for model params
-        params_array = np.zeros(len(mdl.parameters.keys()))
+        params_array = np.zeros(len(mdl._parameters.keys()))
         # compute and assign parameters value
-        for param, const in mdl.parameters.items():
+        for param, const in mdl._parameters.items():
             param_val = const.value
             params_array[uid2idx_params[param.uid]] = param_val
 

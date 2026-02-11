@@ -641,7 +641,7 @@ class Block:
         self.in_vars: List[Var] = list() if in_vars is None else in_vars
         self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
-        self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
+        self._parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.alter_params: List[Var] = list() if alter_params is None else alter_params
 
@@ -660,7 +660,18 @@ class Block:
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
-
+        
+    def set_parameter(self, ref: ParamPowerFlowRefferenceType, cte: Const):
+        """
+        
+        :param ref: 
+        :param cte: 
+        :return: 
+        """
+        var = self.api_obj_mapping.get(ref, None)
+        if var is not None:
+            self._parameters[var] = cte
+            
     def __deepcopy__(self, memo):
         cls = self.__class__
         result = cls.__new__(cls)
@@ -781,8 +792,8 @@ class Block:
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
-            for param, const in b.parameters.items():
-                mdl_placeholder.parameters[param] = const
+            for param, const in b._parameters.items():
+                mdl_placeholder._parameters[param] = const
 
             for var, init_eq in b.init_eqs.items():
                 mdl_placeholder.init_eqs[var] = init_eq
@@ -792,7 +803,7 @@ class Block:
         self.state_eqs = mdl_placeholder.state_eqs
         self.diff_vars = mdl_placeholder.diff_vars
         self.event_dict = mdl_placeholder.event_dict
-        self.parameters = mdl_placeholder.parameters
+        self._parameters = mdl_placeholder._parameters
         self.init_eqs = mdl_placeholder.init_eqs
         self.external_mapping = mdl_placeholder.external_mapping
         self.children = list()

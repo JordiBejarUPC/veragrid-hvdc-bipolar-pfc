@@ -476,7 +476,7 @@ class BlockSaver:
             init_values.append({"var": var.uid, "value": value.value})
 
         parameters: List[Dict[str, float | int]] = list()
-        for var, value in blk.parameters.items():
+        for var, value in blk._parameters.items():
 
             found_var = self.var_dict.get(var.uid, None)
             if found_var is None:
