@@ -28,13 +28,13 @@ from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
 from VeraGridEngine.IO.dgs.dgs_to_veragrid import dgs_to_circuit
 from VeraGridEngine.IO.others.dpx_parser import load_dpx
 from VeraGridEngine.IO.others.ipa_parser import load_iPA
-from VeraGridEngine.IO.veragrid.json_parser import parse_json, parse_json_data_v2, parse_json_data_v3
+from VeraGridEngine.IO.veragrid.json_parser import parse_json, parse_json_data_v3
 from VeraGridEngine.IO.raw.raw_parser_writer import read_raw, write_raw
 from VeraGridEngine.IO.raw.raw_to_veragrid import psse_to_veragrid
 from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
 from VeraGridEngine.IO.epc.epc_parser import PowerWorldParser
 from VeraGridEngine.IO.cim.cim16.cim_parser import CIMImport, CIMExport
-from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, is_valid_cgmes
+from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.cgmes_to_veragrid import cgmes_to_veragrid
 from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip, get_frames_from_zip
 from VeraGridEngine.IO.veragrid.sqlite_interface import save_data_frames_to_sqlite, open_data_frames_from_sqlite
@@ -792,12 +792,12 @@ class FileSave:
         one_file_per_profile = self.options.cgmes_one_file_per_profile
         nc = compile_numerical_circuit_at(self.circuit)
         pf_results = self.options.get_power_flow_results()
-
+        cgmes_logger = DataLogger()
         cgmes_circuit = veragrid_to_cgmes(gc_model=self.circuit,
                                           num_circ=nc,
                                           cgmes_model=cgmes_circuit,
                                           pf_results=pf_results,
-                                          logger=logger)
+                                          logger=cgmes_logger)
 
         fn, _ = os.path.splitext(os.path.basename(self.file_name))
         filename_in_parts = fn.split('_')
@@ -814,18 +814,22 @@ class FileSave:
                                  comment="Scenario time set to default value."
                                  )
             model_version = filename_in_parts[4]
+
         cgmes_circuit = create_cgmes_headers(cgmes_model=cgmes_circuit,
                                              mas_names=self.circuit.get_modelling_authority_names().astype(str),
                                              profiles_to_export=profiles_to_export,
                                              version=model_version,
                                              desc="Test description.",
                                              scenario_time=scenario_time,
-                                             logger=logger)
+                                             logger=cgmes_logger)
 
         cim_exporter = CimExporter(cgmes_circuit=cgmes_circuit,
                                    profiles_to_export=profiles_to_export,
                                    one_file_per_profile=one_file_per_profile)
         cim_exporter.export(self.file_name)
+
+        # record the cgmes events in the normal logger
+        logger += cgmes_logger.get_logger()
 
         return logger
 
