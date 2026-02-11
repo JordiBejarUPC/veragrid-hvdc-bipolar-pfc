@@ -16,7 +16,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 def test_dgs_ieee_grids():
     files = [
         ('IEEE14_test.dgs', 'IEEE 14 bus.sav.xlsx'),
-        #('IEEE30_test.dgs', 'IEEE 30 bus.sav.xlsx'),
+        ('IEEE30_test.dgs', 'IEEE 30 bus.sav.xlsx'),
         ('IEEE118_v2_test.dgs', 'IEEE 118 Bus.sav.xlsx'),
     ]
 
