@@ -262,7 +262,7 @@ def determine_file_type(file_name: List[str] | str,
 
         if looks_like_ucte:
 
-            return  FileType.UCTE
+            return FileType.UCTE
 
         else:
             file_type = None  # needs further clarification
@@ -361,6 +361,7 @@ def determine_file_type(file_name: List[str] | str,
             return FileType.Iidm
         else:
             return None
+
 
 class FileOpen:
     """
@@ -463,15 +464,15 @@ class FileOpen:
 
         elif self.file_type == FileType.VeraGrid_xlsx1:
             data_dictionary = load_from_xls(self.file_name, self.logger)
-            interpret_data_v1(self.circuit, data_dictionary, self.logger)
+            self.circuit = interpret_data_v1(data_dictionary, self.logger)
 
         elif self.file_type == FileType.VeraGrid_xlsx2:
             data_dictionary = load_from_xls(self.file_name, self.logger)
-            interprete_excel_v2(self.circuit, data_dictionary)
+            self.circuit = interprete_excel_v2(data_dictionary, logger=self.logger)
 
         elif self.file_type == FileType.VeraGrid_xlsx3:
             data_dictionary = load_from_xls(self.file_name, self.logger)
-            interpret_excel_v3(self.circuit, data_dictionary, logger=self.logger)
+            self.circuit = interpret_excel_v3(data_dictionary, logger=self.logger)
 
         elif self.file_type == FileType.VeraGrid_xlsx4:
             data_dictionary = load_from_xls(self.file_name, self.logger)
@@ -483,8 +484,6 @@ class FileOpen:
             else:
                 self.logger.add("Error while reading the file :(")
                 return None
-
-
 
         elif self.file_type == FileType.VeraGrid_sqlite:
             # open file content
