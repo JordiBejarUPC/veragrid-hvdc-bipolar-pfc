@@ -3,21 +3,18 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple, Sequence, Callable, Any
-from collections import defaultdict
+from typing import Dict, List, Tuple
 import time
 import numpy as np
-import numba as nb
-import scipy.sparse as sp
-import math
-import concurrent.futures
+import pandas as pd
+
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise,
-                                                    heaviside_num, expression2numba,
-                                                    get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise)
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
+    SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType, RmsInitializationMethod
-from VeraGridEngine.basic_structures import Vec, ObjVec, IntVec, BoolVec, Logger
+from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
@@ -65,396 +62,6 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
-def compile_jac_block(block_id,
-                      block_eqs,
-                      block_offsets,
-                      used_vars_count,
-                      compiler_names_dict,
-                      alias_names_dict,
-                      namespace,
-                      VARS_NAME: str,
-                      DIFF_NAME: str,
-                      EVENT_PARAMS_NAME: str,
-                      PARAMS_NAME: str,
-                      use_jit):
-    """
-
-    :param block_id:
-    :param block_eqs:
-    :param block_offsets:
-    :param used_vars_count:
-    :param compiler_names_dict:
-    :param alias_names_dict:
-    :param namespace:
-    :param VARS_NAME:
-    :param DIFF_NAME:
-    :param EVENT_PARAMS_NAME:
-    :param PARAMS_NAME:
-    :param use_jit:
-    :return:
-    """
-    fname = f"jac_block_{block_id}"
-    src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
-    final_names_dict = {}
-    for uid, count in used_vars_count.items():
-        if count > 1:
-            final_names_dict[uid] = alias_names_dict[uid]
-            src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-        else:
-            final_names_dict[uid] = compiler_names_dict[uid]
-
-    offset = block_offsets[block_id]
-    for i, e in enumerate(block_eqs):
-        src += f"    out[{offset + i}] = {expression2numba(e.simplify(), final_names_dict)}\n"
-
-    exec(src, namespace)
-
-    if use_jit:
-        func = nb.njit(
-            nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
-            fastmath=True,
-            cache=False
-        )(namespace[fname])
-    else:
-        func = namespace[fname]
-
-    return block_id, func
-
-
-class SymbolicJacobian:
-    """
-       Class to store and evaluate a symbolic jacobian
-       """
-
-    def __init__(self,
-                 eqs: list,
-                 variables: list,
-                 diff_variables: list,
-                 compiler_names_dict: dict,
-                 alias_names_dict: dict,
-                 VARS_NAME: str,
-                 DIFF_NAME: str,
-                 EVENT_PARAMS_NAME: str,
-                 PARAMS_NAME: str,
-                 ALTER_PARAMS_NAME: str,
-                 uid2idx_vars: dict,
-                 dt=None,
-                 use_jit=True,
-                 batch_size=500,
-                 n_jobs=4):  # número de threads para compilación paralela
-
-        """
-                JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
-                :param eqs: Array of equations
-                :param variables: Array of variables to differentiate against
-                :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-                :param uid2sym_params:
-                :param use_jit: if true, the function is compiled by numba
-                :return:
-                        jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
-                            Fast evaluator in which *values* is a 1‑D NumPy vector of length
-                            ``len(variables)``and *params* is a 1‑D NumPy vector of length
-                            ``len(parameters)``
-                        sparsity_pattern : tuple(np.ndarray, np.ndarray)
-                            Row/col indices of structurally non‑zero entries.
-                """
-        if dt is None:
-            dt = Const(0.001)
-
-        # --- Build triplets and count variable usage ---------------------------------
-        used_vars_count = defaultdict(int)
-        triplets = []
-
-        for row, eq in enumerate(eqs):
-            for col, var in enumerate(variables):
-                d_expression = eq.diff(var, dt=dt)
-                if not (isinstance(d_expression, Const) and d_expression.value == 0):
-                    triplets.append((col, row, d_expression))
-                for v in get_expression_vars(d_expression):
-                    used_vars_count[v.uid] += 1
-
-        triplets.sort(key=lambda t: (t[0], t[1]))
-        cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-
-        # --- Assemble sparse CSC Jacobian structure ---------------------------------
-        nnz = len(cols_sorted)
-        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
-        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
-        for c in cols_sorted:
-            indptr[c + 1] += 1
-        np.cumsum(indptr, out=indptr)
-
-        self.nvar = len(variables)
-        neq = len(eqs)
-        self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
-
-        # --- Batch compilation ------------------------------------------------------
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": heaviside_num,
-        }
-
-        blocks = [
-            equations_sorted[i:i + batch_size]
-            for i in range(0, len(equations_sorted), batch_size)
-        ]
-        self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
-        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
-
-        # --- Compile blocks sequentially -------------------------------------------
-        # --- Compile blocks in parallel ---------------------------------------------
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-            futures = [
-                executor.submit(
-                    compile_jac_block,
-                    i, block, self.block_offsets, used_vars_count,
-                    compiler_names_dict, alias_names_dict,
-                    self.namespace, VARS_NAME, DIFF_NAME, EVENT_PARAMS_NAME, PARAMS_NAME, use_jit
-                )
-                for i, block in enumerate(blocks)
-            ]
-            for f in concurrent.futures.as_completed(futures):
-                block_id, func = f.result()
-                self.funcs[block_id] = func
-
-    def __call__(self,
-                 x: Vec,
-                 dx: Vec,
-                 variable_params: Vec,
-                 constant_params: Vec,
-                 h: float):
-        """
-
-        :param x:
-        :param dx:
-        :param variable_params:
-        :param constant_params:
-        :param h:
-        :return:
-        """
-        for func in self.funcs:
-            if func is not None:
-                func(x, dx, variable_params, constant_params, self.J.data)
-        return self.J
-
-
-class SymbolicVector:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self,
-                 eqs: List[Expr],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 VARS_NAME: str,
-                 DIFF_NAME: str,
-                 EVENT_PARAMS_NAME: str,
-                 PARAMS_NAME: str,
-                 ALTER_PARAMS_NAME: str,
-                 use_jit: bool = True):
-        """
-        Compile the array of expressions to a function that returns an array of values for those expressions
-        :param eqs: Iterable of expressions (Expr)
-        :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-        :param uid2sym_params:
-        :return: Function pointer that returns an array
-        """
-        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None] | None = None
-        used_vars_count = defaultdict(int)
-        for eq in eqs:
-            for var in get_expression_vars(eq):
-                used_vars_count[var.uid] += 1
-                if var.uid not in compiler_names_dict.keys():
-                    print()
-                if var.uid not in alias_names_dict.keys():
-                    print()
-
-        if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": heaviside_num,
-            }
-
-            fname = f"func"  # since we compile into a namespace, there won't be repeated names
-
-            # Build source
-            src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
-            final_names_dict = compiler_names_dict.copy()
-            for uid, count in used_vars_count.items():
-                if count > 1:
-                    final_names_dict[uid] = alias_names_dict[uid]
-                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-            src += "\n".join(
-                [f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}" for i, e in
-                 enumerate(eqs)]) + "\n"
-
-            # compile in python namespace
-            exec(src, self.namespace)
-
-            # compile in numba
-            if use_jit:
-                self.func = nb.njit(
-                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
-                    fastmath=True)(self.namespace[fname])
-            else:
-                self.func = self.namespace[fname]
-        else:
-            self.func = None
-
-        self.data: Vec = np.zeros(len(eqs))
-
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> Vec:
-        """
-        Call the compiled function
-        :param values:
-        :param diff_values:
-        :param event_params:
-        :param params:
-        :return:
-        """
-        if self.func is not None:
-            self.func(values, diff_values, event_params, params, self.data)
-        return self.data
-
-
-class SymbolicParamsVector:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self, eqs: Sequence[Expr],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 EVENT_PARAMS_NAME: str,
-                 TIME_NAME: str,
-                 use_jit: bool = True):
-        """
-        Compile the array of expressions to a function that returns an array of values for those expressions
-        :param eqs: Iterable of expressions (Expr)
-        :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
-        :return: Function pointer that returns an array
-        """
-        self.func: Callable[[Vec, float, Vec], None] | None = None
-        used_vars_count = defaultdict(int)
-        for eq in eqs:
-            for var in get_expression_vars(eq):
-                used_vars_count[var.uid] += 1
-
-        if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": heaviside_num,
-            }
-
-            fname = f"func"  # since we compile into a namespace, there won't be repeated names
-
-            # Build source
-            src = f"def {fname}({EVENT_PARAMS_NAME}, {TIME_NAME}, out):\n"
-            final_names_dict = compiler_names_dict.copy()
-            for uid, count in used_vars_count.items():
-                if count > 1:
-                    final_names_dict[uid] = alias_names_dict[uid]
-                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-            src += "\n".join(
-                [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in enumerate(eqs)]) + "\n"
-
-            # compile in python namespace
-            exec(src, self.namespace)
-
-            # compile in numba
-            if use_jit:
-                self.func = nb.njit(nb.void(nb.float64[:], nb.float64, nb.float64[:]),
-                                    fastmath=True)(self.namespace[fname])
-            else:
-                self.func = self.namespace[fname]
-        else:
-            self.func = None
-
-        self.data = np.zeros(len(eqs))
-
-    def __call__(self, event_params: Vec, glob_time: float) -> Vec:
-        """
-        Call the compiled function
-        :param glob_time:
-        :return:
-        """
-        if self.func is not None:
-            self.func(event_params, glob_time, self.data)
-        return self.data
-
-
-class SymbolicDerivative:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self,
-                 vars: Sequence[Var],
-                 uid2idx_vars: Dict[int, int],
-                 diff_vars: Sequence[DiffVar],
-                 compiler_names_dict: Dict[int, str],
-                 use_jit: bool = True):
-        self.func: Callable[[Vec, Vec, Vec, float, Vec], Vec] | None = None
-
-        self.data: Vec = np.zeros(len(diff_vars))
-        self.index_map: IntVec = np.zeros(len(diff_vars), dtype=np.int32)
-
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": heaviside_num,
-        }
-        fname = f"func"  # since we compile into a namespace, there won't be repeated names
-        # Build source
-        uid2dx_expression = {}
-        # TODO: order diff vars by order
-        src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
-        for i, diff_var in enumerate(diff_vars):
-            base_var_uid = diff_var.base_var.uid
-            uid = diff_var.uid
-            if diff_var.diff_order == 1:
-                j = uid2idx_vars[base_var_uid]
-                rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
-            else:
-                dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                rhs = f" ({dx_expression}- lagdx[{i}]) / h\n"
-            to_src = f"    out[{i}] = {rhs}\n"
-            uid2dx_expression[uid] = rhs
-
-            src += to_src
-        src += f"    return out"
-        exec(src, self.namespace)
-
-        # compile in python namespace
-        # compile in numba
-        if use_jit:
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
-        else:
-            self.func = self.namespace[fname]
-
-    def __call__(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
-        """
-        Call the compiled function
-        :param x:
-        :param xn:
-        :param dx:
-        :param h:
-        :return:
-        """
-        if self.func is not None:
-            self.func(x, xn, dx, h, self.data)
-        return self.data
-
-
 class RmsProblemDae(RmsProblemTemplate):
     """
     DAE (Differential-Algebraic Equation) class to store and manage.
@@ -491,7 +98,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self.St = self.power_flow_results.St / self.grid.Sbase
         self.options: RmsOptions = options
 
-        self.init_guess:  Dict[Tuple[int, str], float] = {} # this is the general init guess that will contain all the variables init value
+        # this is the general init guess that will contain all the variables init value
+        self.init_guess: Dict[int, float] = dict()
         self.sys_block: Block = Block(children=[], in_vars=[])
 
         self._algebraic_vars: List[Var] = list()
@@ -519,7 +127,6 @@ class RmsProblemDae(RmsProblemTemplate):
         # Numerical trace
         self._newton_trace_collector = None
         self._backend = SimulationBackend.SymbolicImplicit
-
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialize the RMS problem
@@ -570,7 +177,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # initialize buses
         for bus_num, elm in enumerate(self.grid.buses):
-
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
 
@@ -581,25 +187,14 @@ class RmsProblemDae(RmsProblemTemplate):
             self.add_variables_to_compilation_dicts(elm, mdl)
 
             # add init values from powerflow to initial guess
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(self.power_flow_results.voltage[bus_num]))
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(
-                np.angle(self.power_flow_results.voltage[bus_num]))
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(
-                np.real(self.power_flow_results.Sbus[bus_num] / grid.Sbase))
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(
-                np.imag(self.power_flow_results.Sbus[bus_num] / grid.Sbase))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vm, np.abs(self.power_flow_results.voltage[bus_num]))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Va, np.angle(self.power_flow_results.voltage[bus_num]))
 
-            #add model to system block
+            # add model to system block
             self.sys_block.add(mdl)
-
 
         # initialize branches
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-
             # Todo: missing default initialization for the model
             # flatten model
             elm.rms_model.model.unify_blocks()
@@ -608,14 +203,10 @@ class RmsProblemDae(RmsProblemTemplate):
             self.add_variables_to_compilation_dicts(elm, mdl)
 
             # add init values from powerflow to initial guess
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = self.Sf[branch_num].real
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qf].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Qf].name)] = self.Sf[branch_num].imag
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = self.St[branch_num].real
-            self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                             mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = self.St[branch_num].imag
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
 
             # add model to system block
             self.sys_block.add(mdl)
@@ -635,6 +226,7 @@ class RmsProblemDae(RmsProblemTemplate):
         bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
 
         for bus, region in bus_regions_dict.items():
+            bus_index = bus_dict[bus]
             for dev_type, dev_list in region.items():
                 for elm in dev_list:
                     # flatten model
@@ -665,14 +257,8 @@ class RmsProblemDae(RmsProblemTemplate):
                                 )
 
                     # fill general init guess for known variables values
-                    self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                                mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = self.init_guess[
-                        (bus.rms_model.model.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                         bus.rms_model.model.external_mapping[VarPowerFlowRefferenceType.P].name)]
-                    self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                                mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = self.init_guess[
-                        (bus.rms_model.model.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                         bus.rms_model.model.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
                     # add variable to conservation equations of the bus to which the element is connected
                     k = bus_dict[elm.bus]
@@ -681,14 +267,22 @@ class RmsProblemDae(RmsProblemTemplate):
 
                     # find init values for the variables of this model
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                            init_explicit(mdl, self.sys_vars, self._variable_parameters,
-                            self._constant_parameters,
-                            self.init_guess,
-                            self.uid2idx_vars, self._uid2idx_params, self._uid2idx_event_params,
-                            self._compiler_names_dict,
-                            self._alias_names_dict, self.VARIABLE_PARAMS_NAME, self.TIME_NAME, self.VARS_NAME,
-                            self.DIFF_NAME, self.CONSTANT_PARAMS_NAME
-                        )
+                        init_explicit(mdl=mdl,
+                                      sys_vars=self.sys_vars,
+                                      variable_parameters=self._variable_parameters,
+                                      constant_parameters=self._constant_parameters,
+                                      init_guess=self.init_guess,
+                                      uid2idx_vars=self.uid2idx_vars,
+                                      uid2idx_params=self._uid2idx_params,
+                                      uid2idx_event_params=self._uid2idx_event_params,
+                                      compiler_names_dict=self._compiler_names_dict,
+                                      alias_names_dict=self._alias_names_dict,
+                                      VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                                      TIME_NAME=self.TIME_NAME,
+                                      VARS_NAME=self.VARS_NAME,
+                                      DIFF_NAME=self.DIFF_NAME,
+                                      CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                                      )
                     elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                         self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient(
                             bus, mdl, grid, self.sys_block, self.power_flow_results,
@@ -698,10 +292,6 @@ class RmsProblemDae(RmsProblemTemplate):
                         raise ValueError("Not implemented initialization method")
 
                     self.sys_block.add(mdl)
-
-
-
-        print(self.init_guess)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
@@ -713,14 +303,13 @@ class RmsProblemDae(RmsProblemTemplate):
                     mdl.algebraic_eqs.append(P[i])
                     mdl.algebraic_eqs.append(Q[i])
 
-
         # del buses P, Q variables from init guess
-        for i, elm in enumerate(grid.buses):
-            mdl = elm.rms_model.model
-            del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                                 mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-            del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                                 mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+        # for i, elm in enumerate(grid.buses):
+        #     mdl = elm.rms_model.model
+            # del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
+            #                      mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+            # del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
+            #                      mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
         # --------------------------------------------------------------------------------------------------------------
         # collect equations
@@ -780,7 +369,7 @@ class RmsProblemDae(RmsProblemTemplate):
         #     if isinstance(eq, Const) and eq.value is None:
         #         raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
 
-##################### To be removed when order is preserved in the first part #############################
+        ##################### To be removed when order is preserved in the first part #############################
 
         # Flatten the block lists, preserving declaration order
         self._algebraic_vars: List[Var] = list()
@@ -945,7 +534,6 @@ class RmsProblemDae(RmsProblemTemplate):
             EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
             PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
             DIFF_NAME=self.DIFF_NAME,
-            ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
         )
         timings["RHS algebraic"] = _toc(t0)
 
@@ -970,7 +558,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["RHS state"] = _toc(t0)
 
@@ -1086,7 +673,18 @@ class RmsProblemDae(RmsProblemTemplate):
         if options.verbose > 0:
             print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
 
-    def add_variables_to_compilation_dicts(self, elm, mdl):
+    def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
+        """
+        add variables and parameters info to the system block
+
+        :param elm:
+        :type elm: Union[VeraGridEngine.Devices.Substation.bus.Bus, VeraGridEngine.Devices.Injections.load.Load]
+        :param mdl:
+        :type mdl: VeraGridEngine.Utils.Symbolic.block.Block
+        :return:
+        :rtype: None
+        """
+
         # i is for variables
         for v in mdl.state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self.n_vars}]"
@@ -1131,7 +729,42 @@ class RmsProblemDae(RmsProblemTemplate):
             self.add_device_var(dev=elm, var=v)
             self.n_diff_vars += 1
 
+    def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
+        """
+        add values from powerflow to initial guess
+
+        :param mdl:
+        :type mdl:
+        :param reference_powerflow:
+        :type reference_powerflow:
+        :param val:
+        :type val:
+        :return:
+        :rtype:
+        """
+        var = mdl.external_mapping[reference_powerflow]
+        self.init_guess[var.uid] = val
+
+    def get_init_guess_info(self) -> pd.DataFrame:
+        """
+        returns a df with uid, name, and initial value for the system variables
+        :return:
+        :rtype:
+        """
+
+        vars_names = list()
+        for key, value in self.init_guess.items():
+            var_name = self.sys_vars[key].name
+            vars_names.append((key, var_name, value))
+
+        return pd.DataFrame(data=vars_names, columns=["key", "var_name", "value"])
+
     def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
+        """
+
+        :return:
+        :rtype:
+        """
         return self._vars_info
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var):
@@ -1222,14 +855,9 @@ class RmsProblemDae(RmsProblemTemplate):
         """
         x = np.zeros(len(self._state_vars) + len(self._algebraic_vars))
 
-        for key, val in self.init_guess.items():
-            uid, name = key
-            if uid in self._uid2idx_vars.keys():
-                i = self._uid2idx_vars[uid]
-                x[i] = val
-            else:
-                raise ValueError(f"Missing uid {key} definition")
-
+        for uid, val in self.init_guess.items():
+            i = self._uid2idx_vars[uid]
+            x[i] = val
         return x
 
     def update_variable_params(self, t: float):
