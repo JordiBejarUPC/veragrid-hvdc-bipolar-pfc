@@ -12,6 +12,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
 from VeraGridEngine.enumerations import DiagramType, WindingType
+from VeraGridEngine.Devices.Branches.transformer_type import reverse_transformer_short_circuit_study
 
 SQRT3 = np.sqrt(3)
 
@@ -221,12 +222,23 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.rline = seq.R
     typlne.xline = seq.X
     typlne.bline = seq.B
-    typlne.cline = seq.Cnf
+
+    # Important: the importer decides "use_conductance" using (cline != 0.0).
+    # If we export tiny defaults (e.g. 1e-20), the importer will ignore bline and compute B from Cnf.
+    if seq.use_conductance:
+        typlne.cline = seq.Cnf
+    else:
+        typlne.cline = 0.0
+
+    typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
+
+    if seq.use_conductance:
+        typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
+    else:
+        typlne.cline0 = 0.0
 
     typlne.rline0 = seq.R0 if seq.R0 > 0 else 2 * seq.R
     typlne.xline0 = seq.X0 if seq.X0 > 0 else 2 * seq.X
-    typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
-    typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
 
     typlne.uline = seq.Vnom
     typlne.sline = seq.Imax
@@ -512,48 +524,60 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     # lines
     for line in grid.lines:
 
-        # try search for the template
         tpe = seq2typlne_dict.get(line.template, None)
 
-        # lines
-        for line in grid.lines:
+        # --- guard: DGS export requires length > 0 ---
+        if line.length <= 0.0:
+            line.length = 1.0
 
-            # try search for the template
-            tpe = seq2typlne_dict.get(line.template, None)
+        if tpe is None:
+            seq = line.get_line_type()
 
-            # --- guard: DGS export requires length > 0 ---
-            if line.length <= 0.0:
-                line.length = 1.0
+            # DGS TypLne expects:
+            #   rline/xline in Ohm/km
+            #   bline/bline0 in uS/km
+            vnom = line.bus_from.Vnom if line.bus_from.Vnom > 0.0 else line.bus_to.Vnom
+            if vnom > 0.0:
+                zbase = (vnom * vnom) / 100.0  # Sbase=100 MVA
+                ybase = 1.0 / zbase
 
-            if tpe is None:
-                # produce a new template
-                tpe = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
-                dgs_grid.typlnes.append(tpe)
+                # R/X: p.u./km -> Ohm/km
+                seq.R *= zbase
+                seq.X *= zbase
+                if seq.R0 > 0.0:
+                    seq.R0 *= zbase
+                if seq.X0 > 0.0:
+                    seq.X0 *= zbase
 
-            e = ElmLne()
-            e.ID = dgs_grid.new_id()
-            e.loc_name = line.name
-            e.typ_id = tpe.ID
-            e.dline = line.length
-            e.fline = 1.0
-            e.nlnum = 1
-            e.outserv = 0 if line.get_active_at(t) else 1
+                # B: p.u./km -> uS/km
+                seq.B *= (ybase * 1e6)
+                if seq.B0 > 0.0:
+                    seq.B0 *= (ybase * 1e6)
 
-            dgs_grid.elmlnes.append(e)
-            dgs_grid.add_element_cubicles(
-                element_id=e.ID,
-                dgs_buses=[bus2term_dict[line.bus_from],
-                           bus2term_dict[line.bus_to]]
-            )
+            tpe = convert_sequence_line(seq=seq, new_id=dgs_grid.new_id())
+            dgs_grid.typlnes.append(tpe)
+
+        e = ElmLne()
+        e.ID = dgs_grid.new_id()
+        e.loc_name = line.name
+        e.typ_id = tpe.ID
+        e.dline = line.length
+        e.fline = 1.0
+        e.nlnum = 1
+        e.outserv = 0 if line.get_active_at(t) else 1
+
+        dgs_grid.elmlnes.append(e)
+        dgs_grid.add_element_cubicles(
+            element_id=e.ID,
+            dgs_buses=[bus2term_dict[line.bus_from], bus2term_dict[line.bus_to]]
+        )
 
     # 2W transformers
     for tr in grid.transformers2w:
-        # Try to find the template type
         tpe = tr2typtr2_dict.get(tr.template, None)
         tpe_is_new = False
 
         if tpe is None:
-            # Create a new template type
             tpe = convert_transformer_type(tr=tr.get_transformer_type(),
                                            new_id=dgs_grid.new_id())
             dgs_grid.typtr2s.append(tpe)
@@ -567,11 +591,10 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
 
-        # Tap export (coherent with dgs_to_veragrid import)
+        # Tap export...
         if tpe_is_new:
             _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
         else:
-            # If the type already exists, keep its range and only set the current position
             if tpe.dutap > 0.0:
                 step = tpe.dutap / 100.0
                 e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
