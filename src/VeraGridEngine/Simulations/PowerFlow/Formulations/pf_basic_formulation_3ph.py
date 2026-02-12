@@ -228,16 +228,20 @@ def compute_generators(bus_idx: IntVec,
                        bus_lookup: IntVec,
                        V: CxVec,
                        P: CxVec,
-                       PF: CxVec) -> CxVec:
+                       PF: CxVec,
+                       is_controlled) -> CxVec:
 
     n = len(V)
     nelm = len(bus_idx)
     Igen = np.zeros(n, dtype=complex)
-
-    phi = np.acos(PF)
-    Q = P * np.tan(phi)
+    Q = np.zeros_like(P)
 
     for k in range(nelm):
+
+        if is_controlled[k]:
+            Q[k] = 0.0
+        else:
+            Q[k] = P[k] * np.tan(np.acos(PF[k]))
 
         f = bus_idx[k]
 
@@ -249,9 +253,9 @@ def compute_generators(bus_idx: IntVec,
         b2 = bus_lookup[b]
         c2 = bus_lookup[c]
 
-        Igen[a2] = np.conj((P[f] + Q[f] * 1j) / 3 / V[a2])
-        Igen[b2] = np.conj((P[f] + Q[f] * 1j) / 3 / V[b2])
-        Igen[c2] = np.conj((P[f] + Q[f] * 1j) / 3 / V[c2])
+        Igen[a2] = np.conj((P[k] + Q[k] * 1j) / 3 / V[a2])
+        Igen[b2] = np.conj((P[k] + Q[k] * 1j) / 3 / V[b2])
+        Igen[c2] = np.conj((P[k] + Q[k] * 1j) / 3 / V[c2])
 
     return Igen
 
@@ -880,7 +884,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf)
+                                  PF=self.nc.generator_data.pf,
+                                  is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
          Y_power_linear,
@@ -936,7 +941,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf)
+                                  PF=self.nc.generator_data.pf,
+                                  is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
          Y_power_linear,
@@ -958,6 +964,9 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
 
         Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3)
         Icalc = compute_current(self.Ybus, V)
+
+        # print('\nIbus =', abs(Ibus))
+        # print('Icalc =', abs(Icalc))
 
         dI = Icalc - Ibus  # compute the mismatch
         _f = np.r_[
@@ -988,7 +997,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=self.V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf)
+                                  PF=self.nc.generator_data.pf,
+                                  is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
          Y_power_linear,
@@ -1084,7 +1094,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=self.V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf)
+                                  PF=self.nc.generator_data.pf,
+                                  is_controlled=self.nc.generator_data.controllable)
 
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,
                                                                              bus_lookup=self.bus_lookup,

@@ -65,9 +65,9 @@ print(res_3ph.get_voltage_3ph_df())
 # ----------------------------------------------------------------------------------------------------------------------
 # 14 Bus
 # ----------------------------------------------------------------------------------------------------------------------
-# from VeraGridEngine.IO.file_handler import FileOpen
-#
-# main_circuit = FileOpen("IEEE 14 bus.raw").open()
-#
-# vge.save_file(grid=main_circuit, filename='14bus.veragrid')
-# print()
+from VeraGridEngine.IO.file_handler import FileOpen
+
+main_circuit = FileOpen("IEEE 14 bus.raw").open()
+
+vge.save_file(grid=main_circuit, filename='14bus.veragrid')
+print()
