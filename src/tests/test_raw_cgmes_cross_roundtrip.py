@@ -8,7 +8,8 @@ import os
 import pytest
 import numpy as np
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
-from VeraGridEngine.IO.file_handler import FileSavingOptions, FileOpenOptions, FileOpen, FileSave
+from VeraGridEngine.IO.file_open import FileOpenOptions, FileOpen
+from VeraGridEngine.IO.file_save import FileSavingOptions, FileSave
 from VeraGridEngine.Simulations import PowerFlowOptions
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.enumerations import CGMESVersions, SolverType, SimulationTypes

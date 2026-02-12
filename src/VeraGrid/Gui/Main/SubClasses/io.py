@@ -24,7 +24,7 @@ from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.PsseExportDialogue.psse_export import PsseExportDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
-from VeraGridEngine.IO.file_handler import determine_file_type
+from VeraGridEngine.IO.file_open import determine_file_type
 from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction

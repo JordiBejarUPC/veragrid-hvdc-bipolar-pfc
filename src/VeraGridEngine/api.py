@@ -17,7 +17,8 @@ from VeraGridEngine.Devices import *
 from VeraGridEngine.DataStructures import *
 from VeraGridEngine.Topology import *
 from VeraGridEngine.Compilers import *
-from VeraGridEngine.IO.file_handler import FileOpen, FileSave, FileSavingOptions
+from VeraGridEngine.IO.file_open import FileOpen
+from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions
 from VeraGridEngine.IO.veragrid.remote import (gather_model_as_jsons_for_communication, RemoteInstruction,
                                                SimulationTypes, send_json_data, get_certificate_path, get_certificate)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at, NumericalCircuit
@@ -354,7 +355,7 @@ def simple_opf(grid: MultiCircuit,
 def balanced_pf(grid: MultiCircuit,
                 options: PowerFlowOptions = None,
                 opf_options: OptimalPowerFlowOptions = None,
-                engine=EngineType.VeraGrid) -> OptimalPowerFlowResults:
+                engine=EngineType.VeraGrid) -> PowerFlowResults:
     """
     Run Linear Optimal Power Flow
     :param engine:
