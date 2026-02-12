@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import VeraGridEngine.api as vge
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 
 def test_ieee_grids_3ph():
