@@ -280,6 +280,50 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     return typtr2
 
 
+
+def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2) -> None:
+    """Set tap fields in TypTr2 and ElmTr2.
+
+    This makes the exported DGS coherent with the importer (dgs_to_veragrid),
+    which reconstructs tap_module from:
+      - TypTr2.dutap, TypTr2.nntap0, TypTr2.ntpmn, TypTr2.ntpmx, TypTr2.tap_side
+      - ElmTr2.nntap
+
+    Notes:
+    - VeraGrid Transformer2W exposes tap_module, tap_module_min, tap_module_max.
+    - We discretize tap positions using a fixed step (0.1%). This is enough for power-flow.
+    """
+    tap = tr.tap_module
+    tap_min = tr.tap_module_min
+    tap_max = tr.tap_module_max
+
+    if tap_min > tap_max:
+        tap_min, tap_max = tap_max, tap_min
+
+    # Fixed at 1.0 -> neutral, no range
+    if abs(tap - 1.0) < 1e-12 and abs(tap_min - 1.0) < 1e-12 and abs(tap_max - 1.0) < 1e-12:
+        tpe.tap_side = 0
+        tpe.dutap = 0.0
+        tpe.nntap0 = 0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+    # Discretization step (p.u.)
+    step = 0.001  # 0.1%
+    tpe.dutap = step * 100.0  # PowerFactory uses percent
+    tpe.nntap0 = 0
+    tpe.tap_side = 0  # HV side (we export cubicles as HV, LV)
+
+    e.nntap = int(round((tap - 1.0) / step))
+    tpe.ntpmn = int(round((tap_min - 1.0) / step))
+    tpe.ntpmx = int(round((tap_max - 1.0) / step))
+
+    if tpe.ntpmn > tpe.ntpmx:
+        tpe.ntpmn, tpe.ntpmx = tpe.ntpmx, tpe.ntpmn
+
+
 def generate_diesel_dsl_composite(dgs_grid: DgsCircuit, name: str, net_id: str) -> ElmComp:
     """
     Generate a diesel composite
@@ -471,37 +515,49 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         # try search for the template
         tpe = seq2typlne_dict.get(line.template, None)
 
-        if tpe is None:
-            # produce a new template
-            tpe = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
-            dgs_grid.typlnes.append(tpe)
+        # lines
+        for line in grid.lines:
 
-        e = ElmLne()
-        e.ID = dgs_grid.new_id()
-        e.loc_name = line.name
-        e.typ_id = tpe.ID
-        e.dline = line.length
-        e.fline = 1.0
-        e.nlnum = 1
-        e.outserv = 0 if line.get_active_at(t) else 1
+            # try search for the template
+            tpe = seq2typlne_dict.get(line.template, None)
 
-        dgs_grid.elmlnes.append(e)
-        dgs_grid.add_element_cubicles(
-            element_id=e.ID,
-            dgs_buses=[bus2term_dict[line.bus_from],
-                       bus2term_dict[line.bus_to]]
-        )
+            # --- guard: DGS export requires length > 0 ---
+            if line.length <= 0.0:
+                line.length = 1.0
+
+            if tpe is None:
+                # produce a new template
+                tpe = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
+                dgs_grid.typlnes.append(tpe)
+
+            e = ElmLne()
+            e.ID = dgs_grid.new_id()
+            e.loc_name = line.name
+            e.typ_id = tpe.ID
+            e.dline = line.length
+            e.fline = 1.0
+            e.nlnum = 1
+            e.outserv = 0 if line.get_active_at(t) else 1
+
+            dgs_grid.elmlnes.append(e)
+            dgs_grid.add_element_cubicles(
+                element_id=e.ID,
+                dgs_buses=[bus2term_dict[line.bus_from],
+                           bus2term_dict[line.bus_to]]
+            )
 
     # 2W transformers
     for tr in grid.transformers2w:
-        # try search for the template
+        # Try to find the template type
         tpe = tr2typtr2_dict.get(tr.template, None)
+        tpe_is_new = False
 
         if tpe is None:
-            # produce a new template
+            # Create a new template type
             tpe = convert_transformer_type(tr=tr.get_transformer_type(),
                                            new_id=dgs_grid.new_id())
             dgs_grid.typtr2s.append(tpe)
+            tpe_is_new = True
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
@@ -511,12 +567,23 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
 
+        # Tap export (coherent with dgs_to_veragrid import)
+        if tpe_is_new:
+            _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
+        else:
+            # If the type already exists, keep its range and only set the current position
+            if tpe.dutap > 0.0:
+                step = tpe.dutap / 100.0
+                e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
+            else:
+                e.nntap = 0
+
         hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            # the order must be HV, LV
+            # The order must be HV, LV
             dgs_buses=[bus2term_dict[hv_bus],
                        bus2term_dict[lv_bus]]
         )
