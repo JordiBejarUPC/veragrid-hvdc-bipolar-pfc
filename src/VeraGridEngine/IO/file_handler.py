@@ -409,7 +409,7 @@ class FileOpen:
 
         if self.file_type is None:
             # Try to determine the type
-            determine_file_type(file_name=self.file_name)
+            self.file_type = determine_file_type(file_name=self.file_name)
 
     def open(self,
              text_func: Union[None, Callable] = None,

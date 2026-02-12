@@ -309,9 +309,9 @@ class IoMain(ConfigurationMain):
             file_name = filenames if len(filenames) > 1 else filenames[0]
 
             # try to determine the file type
-            file_type = determine_file_type(file_name)
+            options.file_type = determine_file_type(file_name)
 
-            if file_type is None and bool_prompt_to_ask_if_unclear:
+            if options.file_type is None and bool_prompt_to_ask_if_unclear:
                 self.file_selector = FileTypeSelector(file_name=file_name)
                 self.file_selector.exec()
                 options.file_type = self.file_selector.file_type

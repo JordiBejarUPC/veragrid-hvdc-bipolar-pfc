@@ -10,6 +10,7 @@ from typing import Union, List, Tuple, Dict, TYPE_CHECKING
 import json
 import numpy as np
 import math
+from warnings import warn
 import pandas as pd
 from matplotlib import pyplot as plt
 
@@ -79,8 +80,6 @@ if TYPE_CHECKING:
 MAP_BRANCH_GRAPHIC_TYPES = Union[
     MapAcLine, MapDcLine, MapHvdcLine, MapFluidPathLine
 ]
-
-from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -997,9 +996,13 @@ class GridMapWidget(BaseDiagramWidget):
                         # get the substation graphic object
                         substation_graphics = self.graphics_manager.query(elm=objectSubs)
 
-                        # draw the voltage level
-                        self.add_api_voltage_level(substation_graphics=substation_graphics,
-                                                   api_object=location.api_object)
+                        if substation_graphics is not None:
+                            # draw the voltage level
+                            self.add_api_voltage_level(substation_graphics=substation_graphics,
+                                                       api_object=location.api_object)
+                        else:
+                            warn(f'No substation graphic found for Voltage level: '
+                                 f'{location.api_object.name} :: {location.api_object.idtag}')
 
             elif category == DeviceType.LineDevice.value:
                 for idtag, location in points_group.locations.items():
@@ -2734,15 +2737,18 @@ class GridMapWidget(BaseDiagramWidget):
                      rate=line_api.rate,
                      contingency_factor=line_api.contingency_factor,
                      protection_rating_factor=line_api.protection_rating_factor,
-                     circuit_idx=line_api.circuit_idx)
+                     circuit_idx=line_api.circuit_idx,
+                     active=line_api.active)
+        line1.color = line_api.color
 
-        # Copy other properties from the original line
-        if hasattr(line_api, 'color'):
-            line1.color = line_api.color
-        if hasattr(line_api, 'tags') and line_api.tags:
-            line1.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        if hasattr(line_api, 'active'):
-            line1.active = line_api.active
+        # SPV: Never use hasattr, we work very hard for type consistency
+        # # Copy other properties from the original line
+        # if hasattr(line_api, 'color'):
+        #     line1.color = line_api.color
+        # if hasattr(line_api, 'tags') and line_api.tags:
+        #     line1.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
+        # if hasattr(line_api, 'active'):
+        #     line1.active = line_api.active
 
         # Preserve waypoints for line 1 (from start to waypoint)
         # Add all waypoints from the original line up to the waypoint
@@ -2788,19 +2794,23 @@ class GridMapWidget(BaseDiagramWidget):
                      rate=line_api.rate,
                      contingency_factor=line_api.contingency_factor,
                      protection_rating_factor=line_api.protection_rating_factor,
-                     circuit_idx=line_api.circuit_idx)
+                     circuit_idx=line_api.circuit_idx,
+                     active=line_api.active)
 
         if line_api.template is not None:
             line1.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
             line2.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
 
+        line2.color = line_api.color
+
+        # SPV: never use hasattr, we work very hard for type consistency
         # Copy other properties from the original line
-        if hasattr(line_api, 'color'):
-            line2.color = line_api.color
-        if hasattr(line_api, 'tags') and line_api.tags:
-            line2.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        if hasattr(line_api, 'active'):
-            line2.active = line_api.active
+        # if hasattr(line_api, 'color'):
+        #     line2.color = line_api.color
+        # if hasattr(line_api, 'tags') and line_api.tags:
+        #     line2.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
+        # if hasattr(line_api, 'active'):
+        #     line2.active = line_api.active
 
         # Preserve waypoints for line 2 (from waypoint to end)
         # Add all remaining waypoints from the original line after the waypoint
@@ -2831,18 +2841,22 @@ class GridMapWidget(BaseDiagramWidget):
                                rate=line_api.rate,
                                contingency_factor=line_api.contingency_factor,
                                protection_rating_factor=line_api.protection_rating_factor,
-                               circuit_idx=line_api.circuit_idx)
+                               circuit_idx=line_api.circuit_idx,
+                               active = line_api.active)
 
         if line_api.template is not None:
             connection_line.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
 
-        # Copy other properties from the original line
-        if hasattr(line_api, 'color'):
-            connection_line.color = line_api.color
-        if hasattr(line_api, 'tags') and line_api.tags:
-            connection_line.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
-        if hasattr(line_api, 'active'):
-            connection_line.active = line_api.active
+        connection_line.color = line_api.color
+
+        # SPV: never use hasattr, we work very hard for type consistency
+        # # Copy other properties from the original line
+        # if hasattr(line_api, 'color'):
+        #     connection_line.color = line_api.color
+        # if hasattr(line_api, 'tags') and line_api.tags:
+        #     connection_line.tags = line_api.tags.copy() if isinstance(line_api.tags, list) else line_api.tags
+        # if hasattr(line_api, 'active'):
+        #     connection_line.active = line_api.active
 
         # No waypoints needed for the connection line - it will go directly from one substation to the other
 
