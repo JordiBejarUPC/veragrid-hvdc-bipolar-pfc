@@ -16,7 +16,7 @@ from scipy.sparse.linalg import gmres
 from scipy.sparse import csc_matrix
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr,
-                                                    expression2numba, _heaviside, get_expression_vars)
+                                                    expression2numba, heaviside_num, get_expression_vars)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec

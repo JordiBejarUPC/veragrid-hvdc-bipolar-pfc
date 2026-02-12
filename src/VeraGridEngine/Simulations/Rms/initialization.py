@@ -8,117 +8,175 @@ import numba as nb
 import numpy as np
 
 import uuid
+from collections import defaultdict
 
+from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, _emit_one, sin, cos, get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2implicit
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, \
-    _heaviside, piecewise, heaviside
+    heaviside_num, piecewise, heaviside
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, NaNError, SingularJacobianError, ConvergenceError, \
     SolverError
 
 from VeraGridEngine.enumerations import RmsInitializationMethod
 
 
-def _compile_equations(eqs: Sequence[Expr],
-                       uid2sym_vars: Dict[int, str],
-                       uid2sym_params: Dict[int, str],
-                       add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+
+class SymbolicVector:
     """
-    Compile the array of expressions to a function that returns an array of values for those expressions
-    :param eqs: Iterable of expressions (Expr)
-    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param uid2sym_params:
-    :param add_doc_string: add the docstring?
-    :return: Function pointer that returns an array
+    SymbolicFunction
     """
 
-    fname = f"func{uuid.uuid4().hex}"  # random name to avoid collissions
+    def __init__(self,
+                 eqs: List[Expr],
+                 compiler_names_dict: Dict[int, str],
+                 alias_names_dict: Dict[int, str],
+                 VARS_NAME: str,
+                 DIFF_NAME: str,
+                 EVENT_PARAMS_NAME: str,
+                 PARAMS_NAME: str,
+                 use_jit: bool = True):
+        """
+        Compile the array of expressions to a function that returns an array of values for those expressions
+        :param eqs: Iterable of expressions (Expr)
+        :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :param uid2sym_params:
+        :return: Function pointer that returns an array
+        """
+        self.func: Callable[[Vec, Vec, Vec, Vec, Vec], None] | None = None
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in get_expression_vars(eq):
+                used_vars_count[var.uid] += 1
+                if var.uid not in compiler_names_dict.keys():
+                    print()
+                if var.uid not in alias_names_dict.keys():
+                    print()
 
-    # Build source
-    # src = f"@nb.njit()\n"
-    src = f"def {fname}(vars, params):\n"
-    src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join(
-        [f"    out[{i}] = {expression2numba(e, uid2sym_vars, uid2sym_params)}" for i, e in enumerate(eqs)]) + "\n"
-    src += f"    return out"
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": heaviside_num,
+            }
 
-    exec(src)
-    compiled_func = locals()[fname]
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
-    return compiled_func
+            # Build source
+            src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
+            final_names_dict = compiler_names_dict.copy()
+            for uid, count in used_vars_count.items():
+                if count > 1:
+                    final_names_dict[uid] = alias_names_dict[uid]
+                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+            src += "\n".join(
+                [f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}" for i, e in
+                 enumerate(eqs)]) + "\n"
+
+            # compile in python namespace
+            exec(src, self.namespace)
+
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(
+                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
+        else:
+            self.func = None
+
+        self.data: Vec = np.zeros(len(eqs))
+
+    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec) -> Vec:
+        """
+        Call the compiled function
+        :param values:
+        :param diff_values:
+        :param event_params:
+        :param params:
+        :return:
+        """
+        if self.func is not None:
+            self.func(values, diff_values, event_params, params, self.data)
+        return self.data
 
 
-def _compile_equation(eqs: Sequence[Expr],
-                      uid2sym_vars: Dict[int, str],
-                      uid2sym_event_params: Dict[int, str],
-                      uid2sym_params: Dict[int, str],
-                      add_doc_string: bool = True) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+
+class SymbolicParamsVectorInit:
     """
-    Compile the array of expressions to a function that returns an array of values for those expressions
-    :param eqs: Iterable of expressions (Expr)
-    :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param uid2sym_params:
-    :param add_doc_string: add the docstring?
-    :return: Function pointer that returns an array
-    """
-    # TODO: Why is there a second compile equation thing here?
-    # Build source
-    src = f"def _f(vars, event_params, params):\n"
-    src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {_emit_one(e, uid2sym_vars, uid2sym_event_params, uid2sym_params)}" for i, e in
-                      enumerate(eqs)]) + "\n"
-    src += f"    return out"
-    ns: Dict[str, Any] = {
-        "math": math,
-        "np": np,
-        "nb": nb,
-        "_heaviside": _heaviside,
-        "heaviside": heaviside
-    }
-    exec(src, ns)
-    fn = nb.njit(ns["_f"], fastmath=True)
-
-    if add_doc_string:
-        fn.__doc__ = "def _f(vars)"
-    return fn
-
-
-def _compile_parameters_equations(eqs: Sequence[Expr],
-                                  compiler_tags: Dict[int, str],
-                                  add_doc_string: bool = True) -> Callable[[float], np.ndarray]:
-    """
-    Compile the array of expressions to a function that returns an array of values for those expressions
-    :param eqs: Iterable of expressions (Expr)
-    :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param add_doc_string: add the docstring?
-    :return: Function pointer that returns an array
+    SymbolicFunction
     """
 
-    # Build source
-    src = f"def _f(event_params, params, glob_time):\n"
-    src += f"    out = np.zeros({len(eqs)})\n"
-    src += "\n".join([f"    out[{i}] = {expression2numba(e, compiler_tags)}" for i, e in enumerate(eqs)]) + "\n"
-    src += f"    return out"
-    ns: Dict[str, Any] = {
-        "math": math,
-        "np": np,
-        "nb": nb,
-        "_heaviside": _heaviside,
-    }
-    exec(src, ns)
-    fn = nb.njit(ns["_f"], fastmath=True)
+    def __init__(self, eqs: Sequence[Expr],
+                 compiler_names_dict: Dict[int, str],
+                 alias_names_dict: Dict[int, str],
+                 VARS_NAME: str,
+                 EVENT_PARAMS_NAME: str,
+                 TIME_NAME: str,
+                 use_jit: bool = True,
+                 ):
+        """
+        Compile the array of expressions to a function that returns an array of values for those expressions
+        :param eqs: Iterable of expressions (Expr)
+        :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
+        :return: Function pointer that returns an array
+        """
+        self.func: Callable[[Vec, Vec, float, Vec], None] | None = None
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in get_expression_vars(eq):
+                used_vars_count[var.uid] += 1
 
-    if add_doc_string:
-        if add_doc_string:
-            fn.__doc__ = "def _f(vars)"
-    return fn
+        if len(eqs):
+            self.namespace: Dict[str, Any] = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": heaviside_num,
+            }
 
+            fname = f"func"  # since we compile into a namespace, there won't be repeated names
+
+            # Build source
+            src = f"def {fname}({VARS_NAME}, {EVENT_PARAMS_NAME}, {TIME_NAME}, out):\n"
+            final_names_dict = compiler_names_dict.copy()
+            for uid, count in used_vars_count.items():
+                if count > 1:
+                    final_names_dict[uid] = alias_names_dict[uid]
+                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
+            src += "\n".join(
+                [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in enumerate(eqs)]) + "\n"
+
+            # compile in python namespace
+            exec(src, self.namespace)
+
+            # compile in numba
+            if use_jit:
+                self.func = nb.njit(nb.void(nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
+                                    fastmath=True)(self.namespace[fname])
+            else:
+                self.func = self.namespace[fname]
+        else:
+            self.func = None
+
+        self.data = np.zeros(len(eqs))
+
+    def __call__(self, variables, event_params: Vec, glob_time: float) -> Vec:
+        """
+        Call the compiled function
+        :param glob_time:
+        :return:
+        """
+        if self.func is not None:
+            self.func(variables, event_params, glob_time, self.data)
+        return self.data
 
 def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
     """
@@ -140,9 +198,12 @@ def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
 
 
 def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars:
-        if name == var.name:
-            return var
+    lists = [block.algebraic_vars, block.state_vars]
+    for lst in lists:
+        for var in lst:
+            if name == var.name:
+                return var
+    raise ValueError(f"Could not find name {name}")
 
 
 def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarray:
@@ -182,105 +243,57 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
     return init_guess_dict, vars_list
 
 
-def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-                  array_index, use_init_values: bool):
+def init_explicit(mdl: Block, sys_vars, variable_parameters, constant_parameters, init_guess, uid2idx_vars, uid2idx_params, uid2idx_event_params,
+                  compiler_names_dict, alias_names_dict, VARIABLE_PARAMS_NAME, TIME_NAME, VARS_NAME, DIFF_NAME, PARAMS_NAME):
     """
     Initialize using explicit equations
     """
-    uid2sym_event_params: Dict[int, str] = {}
-    uid2idx_event_params: Dict[int, int] = {}
 
-    uid2sym_params: Dict[int, str] = {}
-    uid2idx_params: Dict[int, int] = {}
+    # initialize array for model variables
+    #this is general but has to be here because needs the total length of variables array
+    x = np.ones(len(sys_vars))
 
-    # already known variables:
+    # assign initial guesses for known variables
+    for uid, var in sys_vars.items():
+        key = (uid, var.name)
+        if key in init_guess:
+            x[uid2idx_vars[uid]] = init_guess[key]
 
-    for mdl in region.children:
-        mdl.unify_blocks()
-        bus_rms_mdl = bus.rms_model.model
+    # initialize array for model params
+    #this is general but has to be here because needs the total length of variables array
+    params_array = np.zeros(len(constant_parameters))
+    # compute and assign parameters value
 
-        # fill general init guess
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
-            (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-             bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[
-            (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-             bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
 
-        mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
+    for param, const in mdl.parameters.items():
+        param_val = const.value
+        params_array[uid2idx_params[param.uid]] = param_val
 
-        for var in mdl_vars:
+    # initialize array for model event params
+    #this is general but has to be here because needs the total length of variables array
+    event_params_array = np.ones(len(variable_parameters))
+    # compute and assign event parameters non undefined value
+
+    for event_param in mdl.event_dict.keys():
+        eq = mdl.event_dict[event_param]
+
+        if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
+            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME, VARIABLE_PARAMS_NAME, TIME_NAME)
+            param_val = float(eq_fn(x, event_params_array, 0.0)[0])
+            event_params_array[uid2idx_event_params[event_param.uid]] = param_val
+
+    # compute and assign missing init_vars and undefined parameters
+    vars_initialized: set[tuple[int, str]] = set()
+    while len(vars_initialized) < len(mdl.init_eqs):
+        progress = False
+
+        vars_init_at_start = len(vars_initialized)
+        for var, eq in mdl.init_eqs.items():
             key = (var.uid, var.name)
-            if key not in seen_vars:
-                sys_vars.append(key)
-                seen_vars.add(key)
+            if key not in vars_initialized:
 
-        for v in mdl_vars:
-            if v.uid not in uid2sym_vars:
-                uid2sym_vars[v.uid] = f"vars[{array_index}]"
-                uid2idx_vars[v.uid] = array_index
-                array_index += 1
-
-        event_params_array_index = 0
-        for event_param in mdl.event_dict.keys():
-            if event_param.uid not in uid2sym_event_params:
-                uid2sym_event_params[event_param.uid] = f"event_params[{event_params_array_index}]"
-                uid2idx_event_params[event_param.uid] = event_params_array_index
-                event_params_array_index += 1
-
-        params_array_index = 0
-        for param in mdl.parameters.keys():
-            if param.uid not in uid2sym_params:
-                uid2sym_params[param.uid] = f"params[{params_array_index}]"
-                uid2idx_params[param.uid] = params_array_index
-                params_array_index += 1
-
-        # initialize array for model variables
-        x = np.zeros(len(sys_vars))
-
-        # assign initial guesses for known variables
-        for uid, name in sys_vars:
-            key = (uid, name)
-            if key in init_guess:
-                x[uid2idx_vars[uid]] = init_guess[key]
-
-        # initialize array for model params
-        params_array = np.zeros(len(mdl.parameters.keys()))
-        # compute and assign parameters value
-        for param, const in mdl.parameters.items():
-            param_val = const.value
-            params_array[uid2idx_params[param.uid]] = param_val
-
-        # initialize array for model event params
-        event_params_array = np.zeros(len(mdl.event_dict.keys()))
-        # compute and assign event parameters non undefined value
-        compiler_tags = (uid2sym_t | uid2sym_params | uid2sym_event_params)
-        for event_param in mdl.event_dict.keys():
-            eq = mdl.event_dict[event_param]
-            if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
-                eq_fn = _compile_parameters_equations([eq], compiler_tags)
-                param_val = float(eq_fn(event_params_array, params_array, 0.0)[0])
-                event_params_array[uid2idx_event_params[event_param.uid]] = param_val
-
-        # compute and assign missing init_vars and undefined parameters
-        vars_initialized: set[tuple[int, str]] = set()
-        parameters_list = list(mdl.event_dict.keys())
-
-        while len(vars_initialized) < len(mdl.init_eqs):
-            progress = False
-
-            vars_init_at_start = len(vars_initialized)
-            for var, eq in mdl.init_eqs.items():
-                key = (var.uid, var.name)
-                if key in vars_initialized:
-                    continue
-
-                # get all the variables inside de initialization equation
-
+                # get all the variables inside the initialization equation
                 vars_needed = get_expression_vars(eq)
-                ######################################################
 
                 calculate_now = True
                 for v_init in vars_needed:
@@ -288,7 +301,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                     key_deps = (v_init.uid, v_init.name)
 
                     if v_init in mdl.event_dict.keys():
-                        if (isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None):
+                        if isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None:
                             calculate_now = False
                             break
 
@@ -297,32 +310,32 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             calculate_now = False
                             break
 
-                # if all((v.uid, v.name) in init_guess for v in deps):
                 if calculate_now:
 
-                    # We initialize the params with value UNDEFINED
+                    # We initialize the params with value None
                     if var in mdl.event_dict.keys():
                         if isinstance(eq, Const) and eq.value is not None:
 
                             raise ValueError(f"Parameter {var.name} already initialized")
 
                         else:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
-                            init_val = float(eq_fn(x, event_params_array, params_array))
-                            mdl.event_dict[var] = Const(init_val)
-                            event_params_array[uid2idx_event_params[var.uid]] = init_val
+                            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME, VARIABLE_PARAMS_NAME, TIME_NAME)
+                            param_val = float(eq_fn(x, event_params_array, 0.0)[0])
+                            mdl.event_dict[var] = Const(param_val)
+                            event_params_array[uid2idx_event_params[var.uid]] = param_val
 
                     # We initialize the algebraic values
                     else:
                         vars_in_eqs = get_expression_vars(eq)
 
                         if var not in vars_in_eqs:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
-                            init_val = float(eq_fn(x, event_params_array, params_array))
+                            eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                                                   DIFF_NAME, VARIABLE_PARAMS_NAME, PARAMS_NAME)
+                            init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                             init_guess[key] = init_val
                             x[uid2idx_vars[var.uid]] = init_val
                         else:
-                            eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
+                            eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME, VARIABLE_PARAMS_NAME, PARAMS_NAME)
                             init_val = 0
                             tol = 1e-8
                             error = 1
@@ -331,10 +344,10 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             x[uid2idx_vars[var.uid]] = x0
                             while error > tol:
                                 try:
-                                    init_val = float(eq_fn(x, event_params_array, params_array))
+                                    init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                                 except:
                                     x[uid2idx_vars[var.uid]] = -0.1
-                                    init_val = float(eq_fn(x, event_params_array, params_array))
+                                    init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                                 x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
                                 error = np.linalg.norm(init_val - x0)
                                 x0 = x[uid2idx_vars[var.uid]]
@@ -343,17 +356,13 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
 
                     vars_initialized.add(key)
 
-            vars_init_at_end = len(vars_initialized)
-            if vars_init_at_end > vars_init_at_start:
-                progress = True
+        vars_init_at_end = len(vars_initialized)
+        if vars_init_at_end > vars_init_at_start:
+            progress = True
 
-            if not progress:
-                unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
-                raise RuntimeError(f"Unresolvable init equations: {unresolved}")
-
-        sys_block.add(mdl)
-
-    return init_guess, sys_block
+        if not progress:
+            unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
+            raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
 
 def init_pseudo_transient(bus, region: Block, grid, sys_block, res, init_guess, time):
@@ -462,161 +471,6 @@ def pseudo_transient(bus_index, bus_block, region_system, region_time, alter_par
 
     # print('Pseudo-Transient ended')
     return x0, init_guess
-
-
-def compose_system_block(
-        time_var: Var,
-        grid: MultiCircuit,
-        TIME_NAME: str,
-        VARS_NAME: str,
-        power_flow_results: PowerFlowResults,
-        vars2device: Dict[int, PhysicalDevice],
-        use_init_values: bool,
-        method: RmsInitializationMethod = RmsInitializationMethod.Explicit
-) -> Tuple[Block, Dict[Tuple[int, str], float]]:
-    """
-    Compose all RMS models
-    :param time_var: time of the simulation
-    :param grid:
-    :param power_flow_results:
-    :param vars2device: dictionary relating uid of vars with the device they belong to
-    :param vars_glob_name2uid: dictionary relating global name of the variable and uid (used when showing results)
-    :param use_init_values:
-    :param method: RmsInitializationMethod
-    :return: System block and initial guess dictionary
-    """
-    # already computed grid power flow
-    res = power_flow_results
-
-    Sf = res.Sf / grid.Sbase
-    St = res.St / grid.Sbase
-
-    # create the system block
-    sys_block = Block(children=[], in_vars=[])
-
-    sys_block.vars2device = vars2device
-
-    # initialize containers
-    init_guess: Dict[
-        Tuple[int, str], float] = {}  # this is the general init guess that will contain all the variables init value
-    sys_vars: list[Tuple[int, str]] = []
-    seen_vars: set[Tuple[int, str]] = set()
-
-    uid2sym_vars: Dict[int, str] = {}
-    uid2idx_vars: Dict[int, int] = {}
-    uid2sym_t: Dict[int, str] = dict()
-    uid2idx_t: Dict[int, int] = dict()
-
-    # fill uid2sym_t and uid2idx_t dicts
-    array_index_t = 0
-    uid2sym_t[time_var.uid] = TIME_NAME
-    uid2idx_t[time_var.uid] = array_index_t
-
-    vars_array_index = 0
-
-    # buses
-    for i, elm in enumerate(grid.buses):
-
-        # get model and model vars
-        mdl = elm.rms_model.model
-        lists = [mdl.state_vars, mdl.algebraic_vars]
-        for lst in lists:
-            # fill system variables list
-            for var in lst:
-                key = (var.uid, var.name)
-                if key not in seen_vars:
-                    sys_vars.append(key)
-                    seen_vars.add(key)
-
-            # fill uid2sym and uid2idx dicts
-            for v in lst:
-                uid2sym_vars[v.uid] = f"{VARS_NAME}[{vars_array_index}]"
-                uid2idx_vars[v.uid] = vars_array_index
-                vars_array_index += 1
-
-            # fill init_guess
-            # TODO: initialization from power injections of PFlows results needs
-            #  to be addressed when multiple devices are connected to the same bus.
-            # (Shunt Load, for the benchmark case, two generators,...)
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(np.angle(res.voltage[i]))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(
-                np.real(res.Sbus[i] / grid.Sbase))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(
-                np.imag(res.Sbus[i] / grid.Sbase))
-
-        sys_block.add(mdl)
-
-    # branches
-    for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-        mdl = elm.rms_model.model
-        mdl_vars = mdl.state_vars + mdl.algebraic_vars
-
-        # fill system variables list
-        for var in mdl_vars:
-            key = (var.uid, var.name)
-            if key not in seen_vars:
-                sys_vars.append(key)
-                seen_vars.add(key)
-
-        # fill uid2sym and uid2idx dicts
-        for v in mdl_vars:
-            uid2sym_vars[v.uid] = f"{VARS_NAME}[{vars_array_index}]"
-            uid2idx_vars[v.uid] = vars_array_index
-
-            vars_array_index += 1
-
-        # fill init_guess
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = Sf[i].real
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qf].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Qf].name)] = Sf[i].imag
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St[i].real
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St[i].imag
-
-        sys_block.add(mdl)
-
-    # injections
-    # get injection devices grouped by buses
-    # bus_regions_dict = grid.get_injection_devices_grouped_by_bus()
-    #
-    # for bus, region in bus_regions_dict.items():
-    bus_blocks_dict = grid.compose_bus_blocks()
-
-    for bus, region in bus_blocks_dict.items():
-        # try:
-        # init_explicit(region, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
-        #               array_index, use_init_values)
-        if method == RmsInitializationMethod.Explicit:
-            init_guess_region, sys_block_region = init_explicit(
-                bus, region, sys_block, init_guess, seen_vars, sys_vars,
-                uid2sym_vars, uid2idx_vars, uid2sym_t,
-                vars_array_index, use_init_values
-            )
-        elif method == RmsInitializationMethod.PseudoTransient:
-            time, sys_block_region, init_guess_region = init_pseudo_transient(
-                bus, region, grid, sys_block, res,
-                init_guess, time_var
-            )
-
-        init_guess.update(init_guess_region)
-        sys_block = sys_block_region
-
-    # del buses P, Q
-    for i, elm in enumerate(grid.buses):
-        mdl = elm.rms_model.model
-        del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-        del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
-
-    return sys_block, init_guess
 
 
 def setP(P: ObjVec, P_used: BoolVec, k: int, val: object):

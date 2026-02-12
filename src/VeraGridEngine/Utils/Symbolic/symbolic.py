@@ -883,7 +883,7 @@ class UnOp(Expr):
 # Functional nodes
 # ----------------------------------------------------------------------------------------------------------------------
 @nb.njit
-def _heaviside(x):
+def heaviside_num(x):
     return 0.0 if x <= 0 else 1.0
 
 
@@ -904,7 +904,7 @@ functions_dict: Mapping[str, Callable[[NUMBER], NUMBER]] = {
     "conj": np.conj,
     "angle": np.angle,
     "abs": np.abs,
-    "heaviside": _heaviside
+    "heaviside": heaviside_num
 }
 
 
@@ -1089,6 +1089,9 @@ def cosh_diff(u: Expr, du: Expr) -> Expr:
 
 def heaviside(x: Expr):
     return Func(_to_expr(x), "heaviside")
+#
+# def heaviside(x: Expr):
+#     return  _heaviside(x)
 
 
 def heaviside_diff(u: Expr, du: Expr) -> Expr:
@@ -1844,7 +1847,7 @@ __all__ = [
     "hard_sat",
     "f_exc",
     'expression2numba',
-    '_heaviside',
+    'heaviside_num',
     'get_expression_vars'
 ]
 #
