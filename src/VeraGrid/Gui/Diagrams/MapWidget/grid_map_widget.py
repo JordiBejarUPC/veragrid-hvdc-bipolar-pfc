@@ -10,6 +10,7 @@ from typing import Union, List, Tuple, Dict, TYPE_CHECKING
 import json
 import numpy as np
 import math
+from warnings import warn
 import pandas as pd
 from matplotlib import pyplot as plt
 
@@ -997,9 +998,13 @@ class GridMapWidget(BaseDiagramWidget):
                         # get the substation graphic object
                         substation_graphics = self.graphics_manager.query(elm=objectSubs)
 
-                        # draw the voltage level
-                        self.add_api_voltage_level(substation_graphics=substation_graphics,
-                                                   api_object=location.api_object)
+                        if substation_graphics is not None:
+                            # draw the voltage level
+                            self.add_api_voltage_level(substation_graphics=substation_graphics,
+                                                       api_object=location.api_object)
+                        else:
+                            warn(f'No substation graphic found for Voltage level: '
+                                 f'{location.api_object.name} :: {location.api_object.idtag}')
 
             elif category == DeviceType.LineDevice.value:
                 for idtag, location in points_group.locations.items():
