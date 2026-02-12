@@ -701,7 +701,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
 
 
-
+        print(self.init_guess)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
@@ -732,10 +732,10 @@ class RmsProblemDae(RmsProblemTemplate):
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
             for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
+                # self._variable_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
             for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
+                # self._constant_parameters.append(param)
                 self._parameters_values.append(constant)
 
             # if isinstance(b, DiffBlock):
