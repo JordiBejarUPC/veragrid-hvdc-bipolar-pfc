@@ -146,7 +146,6 @@ def test_load_save_load_xlsx() -> None:
 
 
 def test_load_save_load_rms() -> None:
-
     """
         This test checks if the saving and load process is correct when the grid contains rms models
 
@@ -164,7 +163,7 @@ def test_load_save_load_rms() -> None:
     if not os.path.exists("output"):
         os.makedirs("output")
 
-    name ='2bus_genqec_load_test.veragrid'
+    name = '2bus_genqec_load_test.veragrid'
     fname = os.path.join(folder, name)
 
     # open the main grid
@@ -203,7 +202,6 @@ def test_load_save_load_rms() -> None:
     for elm in grid2.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
         grid2_rms_lines.append(elm.rms_model.model)
 
-
     # create the blocks that will be compared
     blocks_grid1: Block = Block()
     blocks_grid2: Block = Block()
@@ -227,8 +225,8 @@ def test_load_save_load_rms() -> None:
 
     if not equal:
         logger.add_error(msg="BLock dictionaries differs",
-                                                  value=blocks_grid2,
-                                                  expected_value=blocks_grid1)
+                         value=blocks_grid2,
+                         expected_value=blocks_grid1)
         logger.print()
 
     # asset for failing

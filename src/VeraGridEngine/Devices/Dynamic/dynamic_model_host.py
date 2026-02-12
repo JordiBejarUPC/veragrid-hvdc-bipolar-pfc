@@ -397,7 +397,8 @@ class DynamicModelHost(EditableDevice):
             "diagram": self.diagram.to_dict()
         }
 
-    def parse(self, data: Dict[str, str | Dict[str, List[Dict[str, Any]]]],
+    def parse(self,
+              data: Dict[str, str | Dict[str, List[Dict[str, Any]]]],
               blocks_dict: Dict[int, Block]):
         """
         Parse the data
@@ -408,17 +409,13 @@ class DynamicModelHost(EditableDevice):
         # if template_id is not None:
         #     self.template = models_dict.get(template_id, None)
 
-        template_data = data.get("template", None)
+        template_uid = data.get("template", None)
+        if template_uid is not None:
+            self.template = blocks_dict.get(int(template_uid), None)
 
-        if template_data is not None:
-            self._template = blocks_dict.get(int(template_data['uid']), None)
-
-        custom_data = data.get("model", None)
-        if custom_data is None:
-            custom_data = data.get("custom_model", None)
-
-        if custom_data is not None:
-            self._model = blocks_dict.get(int(custom_data['uid']), None)
+        model_uid = data.get("model", None)
+        if model_uid is not None:
+            self.model = blocks_dict.get(int(model_uid), None)
 
         diagram_data = data.get("diagram", None)
         if diagram_data is not None:
@@ -430,7 +427,7 @@ class DynamicModelHost(EditableDevice):
         :return:
         """
 
-        return self._model.empty()
+        return self.model.empty()
 
     def __eq__(self, other: "DynamicModelHost") -> bool:
         """
