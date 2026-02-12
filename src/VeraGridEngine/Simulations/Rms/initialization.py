@@ -2,20 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List, Tuple
 
+from typing import Dict, List
 import numpy as np
-
 
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, SymbolicParamsVectorInit
 from VeraGridEngine.Utils.Symbolic.symbolic import  get_expression_vars
-from VeraGridEngine.Utils.Symbolic.block import Block, block2implicit
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver, NaNError, ConvergenceError
 
 
 
