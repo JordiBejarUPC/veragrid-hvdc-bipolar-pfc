@@ -32,6 +32,7 @@ from VeraGridEngine.Templates.Rms.load_motor_template import MotorLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV, VSCShuntBuild, VSCShuntBuild2, PVCellBuild, PVControlBuild2
 from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
@@ -70,44 +71,33 @@ grid = gce.MultiCircuit()
 bus1 = gce.Bus(name='B1', Vnom=135, is_slack=True)
 bus2 = gce.Bus(name='B2', Vnom=135)
 bus3 = gce.Bus(name='B3', Vnom=100, is_dc=True)
-#bus4 = gce.Bus(name='B4', Vnom=100, is_dc=True)
-#bus5 = gce.Bus(name='B5', Vnom=135)
-#bus6 = gce.Bus(name='B6', Vnom=135)
 
 # Define AC lines
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
-#line25 = gce.Line(name='L25', bus_from=bus2, bus_to=bus5, r=1.05, x=0.5)
-#line56 = gce.Line(name='L56', bus_from=bus5, bus_to=bus6, r=0.001, x=0.1)
-
-# Define DC lines
-#line34 = gce.DcLine(name='L34', bus_from=bus3, bus_to=bus4, r=2.05)
 
 # Define VSCs
-vsc1 = gce.VSC(name='VSC1', bus_from=bus3, bus_to=bus2, rate=100, alpha1=0.001, alpha2=0.015, alpha3=0.00,
+vsc1 = gce.VSC(name='VSC1', bus_from=bus3, bus_to=bus2, rate=100, alpha1=0.0, alpha2=0.0, alpha3=0.0,
                control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Vm_ac,
-               control1_val=1.00, control2_val=1.02)
-
-# vsc2 = gce.VSC(name='VSC2', bus_from=bus4, bus_to=bus5, rate=100, alpha1=0.001, alpha2=0.015, alpha3=0.01,
-#                control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Qac,
-#                control1_val=1.05, control2_val=-0.21)
+               control1_val=1.03, control2_val=1.001)
 
 # Define generators
 gen1 = gce.Generator(name='Gen1', P=1.0, vset=1.00)
-#gen2 = gce.Generator(name='Gen2', P=1.0, vset=1.02)
 
 # Define loads
-load1 = gce.Load(name='Load1', P=3.0, Q=0.3)
+load1 = gce.Load(name='Load1', P=9.999, Q=0.9999)
 #load2 = gce.Load(name='Load2', P=2.0, Q=0.5)
-#load3 = gce.Load(name='Load3', G=0.5, B=0.3)  # DC load
-
 
 
 #Grid modifications
 #grid.add_load(bus = bus3, api_obj=load3)
-gen3 = gce.CurrentInjection(name='Gen3', Ir =0.2)
-grid.add_current_injection(bus=bus3, api_obj=gen3)
-
+injection = 'load'
+if injection == 'current':
+    gen3 = gce.CurrentInjection(name='Gen3', Ir =0.2)
+    grid.add_current_injection(bus=bus3, api_obj=gen3)
+elif injection == 'load':
+    gen3 = gce.Load(name='Load1', P=-0.99)
+    grid.add_load(bus=bus3, api_obj=gen3)
 
 ###############
 # Add to the grid
@@ -136,14 +126,11 @@ print('Voltage angles (deg): ', np.angle(pf_driver.results.voltage, deg=True))
 line12_mdl = block_deep_copy(get_line_rms_template().block)
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.0999999, Ql0 =-0.00999999).block)
-
+    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.09999, Ql0 =-0.009999).block)
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
-#vsc_mdl   = block_deep_copy(VSCShuntBuild2().block)
-#injection_mdl = block_deep_copy(get_load_rms_template().block)
 vsc_mdl        =  block_deep_copy(VscGflBuild().block)
-pv_control_block       =  block_deep_copy(PVControlBuild2().block)
 pv_cell_block  =  block_deep_copy(PVCellBuild().block)
+dc_source = block_deep_copy(DCVoltageSource(bus3.rms_model.model.out_vars[0]).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
@@ -161,24 +148,24 @@ vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
 vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
 
 #vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]]) 
+#pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
 
-pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
-
-#pv_control_block.connect([pv_control_block.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-#pv_control_block.connect([pv_control_block.in_vars[1]], [bus3.rms_model.model.out_vars[0]])
-#pv_control_block.connect([pv_control_block.in_vars[2]], [vsc_mdl.out_vars[2]])
-#pv_control_block.connect([pv_control_block.in_vars[3]], [vsc_mdl.out_vars[3]])
-#pv_control_block.connect([pv_control_block.in_vars[4]], [pv_cell_block.out_vars[0]])
-pv_control_block = Block()
 
 line12.rms_model.model   = line12_mdl
 gen1.rms_model.model     = genrow_mdl1
 load1.rms_model.model    = load_mdl
 vsc1.rms_model.model     = vsc_mdl
-gen3.rms_model.model     = Block(children=[pv_cell_block, pv_control_block], external_mapping= pv_cell_block.external_mapping)
+gen3.rms_model.model     = dc_source
+gen3.rms_model.model.unify_blocks()
 
 block_dimensions(vsc_mdl)
 block_dimensions(gen3.rms_model.model)
+Vpv0 = find_name_in_block('Vpv0', gen3.rms_model.model)
+Pref = find_name_in_block('P_ref', vsc_mdl)
+event = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3)
+event = RmsEvent(device=gen3, parameter=Pref, time=.2, value=0.1)
+grid.add_rms_event(event)
+
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
 slv = BlockSolver(ss, sim_time)
@@ -188,7 +175,7 @@ x0 = slv.build_init_vars_vector_from_uid(init_guess)
 dx0 = np.zeros(len(slv._diff_vars))
 Vm = find_name_in_block("Vm", slv.block_system)
 
-xlim = 0.5
+xlim = 0.3
 t, y, _ = slv.simulate(
     t0=0,
     t_end=xlim,
@@ -224,12 +211,29 @@ plt.show()
 
 pv_all = gen3.rms_model.model 
 vdc = find_name_in_block('Vdc', bus3.rms_model.model)
-vhs = vsc_mdl.out_vars[2]
-ahs = vsc_mdl.out_vars[3]
+v_d = find_name_in_block('vd', vsc_mdl)
+v_q = find_name_in_block('vq', vsc_mdl)
+v_d_c = find_name_in_block('v_d_c', vsc_mdl)
+v_q_c = find_name_in_block('v_q_c', vsc_mdl)
+P = find_name_in_block('P', vsc_mdl)
+Q = find_name_in_block('Q', vsc_mdl)
+i_d = find_name_in_block('i_d', vsc_mdl)
+i_q = find_name_in_block('i_q', vsc_mdl)
+Idc = find_name_in_block('Idc', gen3.rms_model.model)
+Vdc = find_name_in_block('Vdc', bus3.rms_model.model)
+Pdc = find_name_in_block('Pdc', dc_source)
 
-plt.plot(t, y[:, slv.get_var_idx(vdc)], label="vdc (pu)")
-plt.plot(t, y[:, slv.get_var_idx(vhs)], label="vhs (pu)")
-plt.plot(t, y[:, slv.get_var_idx(ahs)], label="ahs (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Vdc)], label="vdc (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Pdc)], label="Pdc (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(v_d_c)], label="vd converter (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(v_q_c)], label="vq converter (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(v_d)], label="vd grid (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(v_q)], label="vq grid (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(P)], label="P (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Q)], label="Q (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Idc)], label="Idc (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(i_d)], label="id (pu)")
+#plt.plot(t, y[:, slv.get_var_idx(i_q)], label="iq (pu)")
 #plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")

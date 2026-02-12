@@ -17,7 +17,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, _emit_one, 
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2implicit
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ConverterControlType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, \
     _heaviside, piecewise, \
@@ -270,10 +270,15 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         for event_param in mdl.event_dict.keys():
             eq = mdl.event_dict[event_param]
             if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq,Const):
-
-                eq_fn = _compile_parameters_equations([eq], compiler_tags)
-                param_val = float(eq_fn(event_params_array, params_array, 0.0)[0])
-                event_params_array[uid2idx_event_params[event_param.uid]] = param_val
+                if eq.has_none():
+                    eq = eq.subs({Const(None):event_param})
+                    param_val = 1.0
+                    event_params_array[uid2idx_event_params[event_param.uid]] = param_val
+                    mdl.event_dict[event_param] = eq
+                else:
+                    eq_fn = _compile_parameters_equations([eq], compiler_tags)
+                    param_val = float(eq_fn(event_params_array, params_array, 0.0)[0])
+                    event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
 
         # compute and assign missing init_vars and undefined parameters
@@ -321,9 +326,14 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                         else:
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = float(eq_fn(x, event_params_array, params_array))
-                            mdl.event_dict[var] = Const(init_val)
-                            event_params_array[uid2idx_event_params[var.uid]] = init_val
-
+                            init_param_def = mdl.event_dict[var]
+                            if isinstance(init_param_def, Const) and init_param_def.value is None:
+                                mdl.event_dict[var] = Const(init_val)
+                                event_params_array[uid2idx_event_params[var.uid]] = init_val
+                            else:
+                                init_param_def = init_param_def.subs({var: Const(init_val)})
+                                mdl.event_dict[var] = init_param_def
+                                event_params_array[uid2idx_event_params[var.uid]] = init_val
                     # We initialize the algebraic values
                     else:
                         vars_in_eqs = eq.get_vars()
@@ -599,15 +609,20 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         mdl = elm.rms_model.model
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
         St_vsc = res.St_vsc / grid.Sbase
+        Sf_vsc = (res.Pfn_vsc[i] + res.Pfp_vsc[i])/grid.Sbase
         # fill init_guess
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = res.Pfn_vsc[i] + res.Pfp_vsc[i]
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = Sf_vsc
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
                     mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St_vsc[i].real
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag
-
-    
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag    
+        
+        # if elm.control1 == ConverterControlType.Vm_dc:
+        #     dc_bus_model = elm.bus_from.rms_model.model
+        #     Vdc = dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc] 
+        #     dc_bus_model.algebraic_vars.remove(Vdc)
+        #     dc_bus_model.event_dict[Vdc] = Const(elm.control1_val) 
 
     # injections
     # get injection devices grouped by buses
@@ -738,7 +753,7 @@ def initialize_rms(grid: MultiCircuit,
         setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
         if not elm.bus_from.is_dc:
             setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
-        if not elm.bus_from.is_dc:
+        if not elm.bus_to.is_dc:
             setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
         for var in elm.rms_model.model.get_all_vars():

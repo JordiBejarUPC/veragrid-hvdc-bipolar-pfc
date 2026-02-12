@@ -1165,7 +1165,6 @@ class BlockSolver:
             while not converged and n_iter < 1e5:
                 if step_idx == 0:
                     dx = dx0.copy()
-                    dx = dx0.copy()
                 else:
                     dx = self._derivative_fn(x_new, xn, dx_last, h)
 
@@ -1216,6 +1215,8 @@ class BlockSolver:
                         print("eqs are")
                         for i in non_zero_indexes:
                             eq = all_eq[i]
+                            vars = eq.get_vars()
+                            vars_idx = [self.uid2idx_vars[var.uid] for var in vars if var.uid in self.uid2idx_vars]
                             print(f"eq {eq} with error {rhs[i]}")
                 else:
                     max_iter = max_iter_0
@@ -1276,14 +1277,7 @@ class BlockSolver:
                 lag_update_start = time.time()
                 print(f'converged is {converged} at step {step_idx} and iter {n_iter}')
 
-                if verbose:
-                    _ = 0
-
-                if discontinuity:
-                    _ = 0
-                    y[step_idx + 1] = x_new
-                else:
-                    y[step_idx + 1] = x_new
+                y[step_idx + 1] = x_new
                 t[step_idx + 1] = t[step_idx] + h
 
                 dx_last = dx.copy()

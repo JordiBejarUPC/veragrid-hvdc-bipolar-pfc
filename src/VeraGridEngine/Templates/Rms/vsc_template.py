@@ -295,11 +295,12 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
     rho_e = Var('rho_e')
     C_temp = Var('C_temp')
     G = Var('G')
+    iL0 = Var('iL0')
 
     event_dict = {
     Temp:   Const(298.15),
     gamma_p: Const(-0.004),
-    Pref:   Const(1.0),
+    Pref:   Const(0.02),
     Gref:   Const(1000.0),
     Tref:   Const(298.15),
     Rsh:    Const(1000.0),
@@ -311,6 +312,7 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
     rho_e:  Const(1.68e-8),
     C_temp: Const(1000.0),
     G:      Const(1000.0),  
+    iL0:    Const(None)
     }
 
     qe = Const(1.60217662e-19)  # Electron charge (C)
@@ -336,7 +338,7 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
             Pdc - Idc*Vdc,
             vD - Vdc - Rse*Idc,
             Is*(sym.exp(vD/(gamma*v_T)) - Const(1)) - iD,
-            iL*Sn/Vdc - G/Const(1000.0)*(Aa*rho_e*G + C_temp*(Temp - Tref)),
+            iL - iL0,
         ],
         algebraic_vars=[iD, iL, Idc, vD, Pdc],
         in_vars=inputs,
@@ -345,6 +347,13 @@ def PVCellBuild(name: str = "") -> RmsModelTemplate:
             VarPowerFlowRefferenceType.P: Pdc,
             VarPowerFlowRefferenceType.Idc: Idc,
             VarPowerFlowRefferenceType.Vdc: Vdc,
+        },
+        init_eqs={
+            Idc : Pdc/Vdc,
+            vD  : Vdc + Rse*Idc,
+            iD  : Is*(sym.exp(vD/(gamma*v_T)) - Const(1)),
+            iL0 : Idc - (- iD - vD/Rsh),
+            iL  : Idc - (- iD - vD/Rsh),
         }
     )
 

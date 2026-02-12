@@ -113,6 +113,27 @@ class Expr:
         # Todo: add comparisions
 
         return vars_found
+    
+    def has_none(self) -> bool:
+        """
+
+        :param vars_found:
+        :return:
+        """
+        if isinstance(self, Var):
+            return False
+
+        elif isinstance(self, BinOp):
+            return self.left.has_none() or self.right.has_none()
+
+        elif isinstance(self, UnOp):
+            return self.operand.has_none()
+
+        elif isinstance(self, Func):
+            return self.arg.has_none()
+
+        elif isinstance(self, Const):
+            return self.value is None
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """
@@ -268,6 +289,14 @@ class Const(Expr):
             return mapping[self]
         if self.name in mapping:
             return mapping[self.name]
+        if self.value is None:
+            has_none = False
+            for key in mapping.keys():
+                if isinstance(key, Const) and key.value is None:
+                    has_none = True
+                    none_key = key
+            if has_none:
+                return mapping[none_key]
         return self
 
     def __str__(self) -> str:
