@@ -725,6 +725,90 @@ class RmsProblemDae(RmsProblemTemplate):
         # --------------------------------------------------------------------------------------------------------------
         # collect equations
         # --------------------------------------------------------------------------------------------------------------
+        #
+        # for b in self.sys_block.get_all_blocks():
+        #     self._algebraic_vars.extend(b.algebraic_vars)
+        #     self._algebraic_eqs.extend(b.algebraic_eqs)
+        #     self._state_vars.extend(b.state_vars)
+        #     self._state_eqs.extend(b.state_eqs)
+        #     self._variable_parameters = list()
+        #     self._constant_parameters = list()
+        #     for param, eq in b.event_dict.items():
+        #         self._variable_parameters.append(param)
+        #         self._event_parameters_eqs.append(eq)
+        #     for param, constant in b.parameters.items():
+        #         self._constant_parameters.append(param)
+        #         self._parameters_values.append(constant)
+        #
+        #     # if isinstance(b, DiffBlock):
+        #     self._diff_vars.extend(b.diff_vars)
+        #
+        # self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.diff_order)
+        # self._state_algeb_vars = self._state_vars + self._algebraic_vars
+        # self._state_eqs_substituted = self._state_eqs.copy()
+        #
+        # # We define the parameter dt and delta
+        # self._dt = Var(name='dt')
+        # self._delta = Var(name='delta')
+        # self._variable_parameters.append(self._dt)
+        # self._variable_parameters.append(self._delta)
+        # self._event_parameters_eqs.append(Const(1e-3))
+        # self._event_parameters_eqs.append(Const(1))
+        #
+        # # m is for variable parameters
+        # self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self.n_variable_params}]"
+        # self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self.n_variable_params}"
+        # self._uid2idx_event_params[self._dt.uid] =  self.n_variable_params
+        # self.n_variable_params += 1
+        #
+        # self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self.n_variable_params}]"
+        # self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self.n_variable_params}"
+        # self._uid2idx_event_params[self._delta.uid] =  self.n_variable_params
+        # self.n_variable_params += 1
+        #
+        # self._n_state = len(self._state_vars)
+        # self._n_alg = len(self._algebraic_vars)
+        # self._n_vars = self._n_state + self._n_alg
+        # self._n_event_params = len(self._variable_parameters)
+        # self._n_params = len(self._constant_parameters)
+        # self._n_diff = len(self._diff_vars)
+        # self._n_algebraic = len(self._algebraic_eqs)
+        #
+        #
+        #
+        # for it, eq in enumerate(self._event_parameters_eqs):
+        #     if isinstance(eq, Const) and eq.value is None:
+        #         raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
+
+##################### To be removed when order is preserved in the first part #############################
+
+        # Flatten the block lists, preserving declaration order
+        self._algebraic_vars: List[Var] = list()
+        self._algebraic_eqs: List[Expr] = list()
+        self._algebraic_eqs_substituted: List[Expr] = list()
+        self._state_vars: List[Var] = list()
+        self._state_eqs: List[Expr] = list()
+        self._state_eqs_substituted: List[Expr] = list()
+        self._diff_vars: List[DiffVar] = list()
+        self._differential_eqs: List[Expr] = list()
+        self._reformulated_vars: List[Var] = list()
+        self._variable_parameters: List[Var] = list()
+        self._event_parameters_eqs: List[Expr] = list()
+        self._constant_parameters: List[Var] = list()
+        self._parameters_values: List[Const] = list()
+        self._stability_eqs: List[Expr] = list()
+        self._alter_params = np.zeros(
+            0)  # NOTE: this is needed for the jacobian calls but it is only relevant for EMT
+
+        # Class-level registry
+        self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
+        self._absolute_registry: Dict[Tuple[int, int], DiffVar] = dict()
+
+        self._substitute = True
+
+        # Numerical trace
+        self._newton_trace_collector = None
+        self._backend = SimulationBackend.SymbolicImplicit
 
         for b in self.sys_block.get_all_blocks():
             self._algebraic_vars.extend(b.algebraic_vars)
@@ -732,10 +816,10 @@ class RmsProblemDae(RmsProblemTemplate):
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
             for param, eq in b.event_dict.items():
-                # self._variable_parameters.append(param)
+                self._variable_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
             for param, constant in b.parameters.items():
-                # self._constant_parameters.append(param)
+                self._constant_parameters.append(param)
                 self._parameters_values.append(constant)
 
             # if isinstance(b, DiffBlock):
@@ -753,17 +837,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._event_parameters_eqs.append(Const(1e-3))
         self._event_parameters_eqs.append(Const(1))
 
-        # m is for variable parameters
-        self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self.n_variable_params}]"
-        self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self.n_variable_params}"
-        self._uid2idx_event_params[self._dt.uid] =  self.n_variable_params
-        self.n_variable_params += 1
-
-        self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self.n_variable_params}]"
-        self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self.n_variable_params}"
-        self._uid2idx_event_params[self._delta.uid] =  self.n_variable_params
-        self.n_variable_params += 1
-
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
@@ -772,7 +845,54 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_diff = len(self._diff_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
+        # variable_parameters_init = np.ones(self.get_variable_parameter_number())
+        #
+        # # TODO: think about this thing of calling twice here
+        # self._variable_parameters_values = self._event_params_fn(variable_parameters_init, 0.0)
+        # self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, 0.0)
 
+        # generate the in-code names for each variable
+        # inside the compiled functions the variables are
+        # going to be represented by an array called vars[]
+
+        self._compiler_names_dict: Dict[int, str] = dict()
+        self._alias_names_dict: Dict[int, str] = dict()
+        self._uid2idx_vars: Dict[int, int] = dict()
+        self._uid2idx_event_params: Dict[int, int] = dict()
+        self._uid2idx_params: Dict[int, int] = dict()
+        self._uid2idx_diff: Dict[int, int] = dict()
+        self._uid2idx_t: Dict[int, int] = dict()
+
+        i = 0
+        for v in self._state_vars:
+            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
+            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
+            self._uid2idx_vars[v.uid] = i
+            i += 1
+
+        for v in self._algebraic_vars:
+            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
+            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
+            self._uid2idx_vars[v.uid] = i
+            i += 1
+
+        for j, ep in enumerate(self._constant_parameters):
+            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
+            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
+            self._uid2idx_params[ep.uid] = j
+
+        for k, ep in enumerate(self._variable_parameters):
+            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+            self._uid2idx_event_params[ep.uid] = k
+
+        for k, ep in enumerate(self._diff_vars):
+            self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
+            self._alias_names_dict[ep.uid] = f"{self.DIFF_NAME}_{k}"
+            self._uid2idx_diff[ep.uid] = k
+
+        self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
+        self._uid2idx_t[self._glob_time.uid] = 0
 
         for it, eq in enumerate(self._event_parameters_eqs):
             if isinstance(eq, Const) and eq.value is None:
