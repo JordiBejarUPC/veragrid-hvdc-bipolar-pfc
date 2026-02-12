@@ -147,19 +147,17 @@ def open_ucte(files: List[str] | str,
     elif isinstance(files, list):
         ucte_grid.parse_file(files=files, logger=logger)
     else:
-        raise ValueError("Onli file names or list of files are supported")
+        raise ValueError("Only file names or list of files are supported")
 
     circuit = convert_ucte_to_veragrid(ucte_grid=ucte_grid, logger=logger)
     return circuit
 
 
-def determine_file_type(file_name: List[str] | str,
-                        logger: Logger = Logger()) -> FileType | None:
+def determine_file_type(file_name: List[str] | str) -> FileType | None:
     """
     Try to determine the type of file
     The result is stored in self.file_type
-    :param file_name:
-    :param logger: Logger
+    :param file_name: file path(s) with the extension
     """
     if isinstance(file_name, list):
 
@@ -180,8 +178,7 @@ def determine_file_type(file_name: List[str] | str,
             return FileType.UCTE
 
         else:
-            file_type = None  # needs further clarification
-            return None
+            return None  # needs further clarification
 
     else:
 
@@ -189,27 +186,7 @@ def determine_file_type(file_name: List[str] | str,
         # print(name, file_extension)
         if file_extension.lower() in ['.xls', '.xlsx']:
 
-            data_dictionary = load_from_xls(file_name, logger)
-
-            # Pass the table-like data dictionary to objects in this circuit
-            if 'version' not in data_dictionary:
-                return FileType.VeraGrid_xlsx1
-
-            elif data_dictionary['version'] == 2.0:
-                return FileType.VeraGrid_xlsx2
-
-            elif data_dictionary['version'] == 3.0:
-                return FileType.VeraGrid_xlsx3
-
-            elif data_dictionary['version'] == 4.0:
-                if data_dictionary is not None:
-                    return FileType.VeraGrid_xlsx4
-                else:
-                    logger.add("Error while reading the file :(")
-                    return None
-            else:
-                logger.add('The file could not be processed')
-                return None
+            return FileType.generic_excel
 
         elif file_extension.lower() in ['.gridcal', '.veragrid']:
 
@@ -400,6 +377,32 @@ class FileOpen:
                 self.logger.add("Error while reading the file :(")
                 return None
 
+        elif self.file_type == FileType.generic_excel:
+            data_dictionary = load_from_xls(self.file_name, self.logger)
+
+            # Pass the table-like data dictionary to objects in this circuit
+            if 'version' not in data_dictionary:
+                self.circuit = interpret_data_v1(data_dictionary, self.logger)
+
+            elif data_dictionary['version'] == 2.0:
+                self.circuit = interprete_excel_v2(data_dictionary, logger=self.logger)
+
+            elif data_dictionary['version'] == 3.0:
+                self.circuit = interpret_excel_v3(data_dictionary, logger=self.logger)
+
+            elif data_dictionary['version'] == 4.0:
+                if data_dictionary is not None:
+                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       text_func=text_func,
+                                                       progress_func=progress_func,
+                                                       logger=self.logger)
+                else:
+                    self.logger.add("Error while reading the file :(")
+                    return None
+            else:
+                self.logger.add('The excel file could not be processed')
+                return None
+
         elif self.file_type == FileType.VeraGrid_sqlite:
             # open file content
             data_dictionary = open_data_frames_from_sqlite(self.file_name,
@@ -528,4 +531,3 @@ class FileOpen:
                 return data['type'] if 'type' in data else 'Unknown json file'
         else:
             return 'Not json file'
-

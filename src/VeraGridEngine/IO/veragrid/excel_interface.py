@@ -1148,7 +1148,7 @@ def interpret_excel_v3(data: Dict[str, pd.DataFrame],
     return circuit
 
 
-def save_excel(circuit: MultiCircuit, file_path):
+def save_excel_v4(circuit: MultiCircuit, file_path):
     """
     Save the circuit information in excel format
     :param circuit: MultiCircuit instance

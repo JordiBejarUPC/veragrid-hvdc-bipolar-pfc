@@ -4,12 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import os
-import json
-
-from collections.abc import Callable
 from datetime import datetime
-from typing import Union, List, Any, Tuple, Dict, TYPE_CHECKING
+from typing import Union, List, Any, Dict, TYPE_CHECKING
 
+from VeraGridEngine.IO.file_open import determine_file_type
 from VeraGridEngine.IO.cim.cgmes.cgmes_create_instances import create_cgmes_headers
 from VeraGridEngine.IO.cim.cgmes.veragrid_to_cgmes import veragrid_to_cgmes
 from VeraGridEngine.IO.cim.cgmes.cgmes_export import CimExporter
@@ -17,37 +15,18 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.json_parser import save_json_file_v3
-from VeraGridEngine.IO.veragrid.excel_interface import (save_excel, load_from_xls, interpret_excel_v3,
-                                                        interprete_excel_v2)
-from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames, parse_veragrid_data,
-                                                    gather_model_as_jsons)
-from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
-from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
-from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
+from VeraGridEngine.IO.veragrid.excel_interface import (save_excel_v4)
+from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames, gather_model_as_jsons)
 from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
-from VeraGridEngine.IO.dgs.dgs_to_veragrid import dgs_to_circuit
-from VeraGridEngine.IO.others.dpx_parser import load_dpx
-from VeraGridEngine.IO.others.ipa_parser import load_iPA
-from VeraGridEngine.IO.veragrid.json_parser import parse_json, parse_json_data_v3
-from VeraGridEngine.IO.raw.raw_parser_writer import read_raw, write_raw
-from VeraGridEngine.IO.raw.raw_to_veragrid import psse_to_veragrid
+from VeraGridEngine.IO.raw.raw_parser_writer import write_raw
 from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
-from VeraGridEngine.IO.epc.epc_parser import PowerWorldParser
-from VeraGridEngine.IO.cim.cim16.cim_parser import CIMImport, CIMExport
+from VeraGridEngine.IO.cim.cim16.cim_parser import CIMExport
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
-from VeraGridEngine.IO.cim.cgmes.cgmes_to_veragrid import cgmes_to_veragrid
-from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip, get_frames_from_zip
-from VeraGridEngine.IO.veragrid.sqlite_interface import save_data_frames_to_sqlite, open_data_frames_from_sqlite
-from VeraGridEngine.IO.veragrid.h5_interface import save_h5, open_h5
-from VeraGridEngine.IO.raw.rawx_parser_writer import parse_rawx, write_rawx
-from VeraGridEngine.IO.others.pypsa_parser import parse_pypsa_netcdf, parse_pypsa_hdf5
-from VeraGridEngine.IO.others.pandapower_parser import Panda2VeraGrid
+from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip
+from VeraGridEngine.IO.veragrid.sqlite_interface import save_data_frames_to_sqlite
+from VeraGridEngine.IO.veragrid.h5_interface import save_h5
+from VeraGridEngine.IO.raw.rawx_parser_writer import write_rawx
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
-from VeraGridEngine.IO.ucte.devices.ucte_circuit import UcteCircuit
-from VeraGridEngine.IO.ucte.ucte_to_veragrid import convert_ucte_to_veragrid
-from VeraGridEngine.IO.others.rte_parser import rte2veragrid
-from VeraGridEngine.IO.others.anarede import PWFParser
-from VeraGridEngine.IO.iidm.iidm_parser_pypowsybl import IidmParser
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -72,7 +51,8 @@ class FileSavingOptions:
                  cgmes_profiles: Union[None, List[CgmesProfileType]] = None,
                  cgmes_one_file_per_profile: bool = False,
                  cgmes_map_areas_like_raw: bool = False,
-                 raw_version: str = "33"):
+                 raw_version: str = "33",
+                 file_type: FileType | None = None):
         """
         Constructor
         :param cgmes_boundary_set: CGMES boundary set zip file path
@@ -115,6 +95,8 @@ class FileSavingOptions:
 
         self.raw_version = raw_version
 
+        self.file_type: FileType | None = file_type
+
     def get_power_flow_results(self) -> Union[None, PowerFlowResults]:
         """
         Try to extract the power flow results
@@ -125,6 +107,265 @@ class FileSavingOptions:
                 return data.results
 
         return None
+
+
+def save_veragrid_excel(circuit: MultiCircuit, file_name: str) -> Logger:
+    """
+    Save the circuit information in excel format
+    :param circuit: MultiCircuit
+    :param file_name: file name to save to
+    :return: logger with information
+    """
+
+    logger = save_excel_v4(circuit, file_name)
+
+    return logger
+
+
+def save_veragrid(circuit: MultiCircuit,
+                  file_name: str,
+                  options: FileSavingOptions,
+                  text_func=None,
+                  progress_func=None) -> Logger:
+    """
+    Save the circuit information in zip format
+    :return: logger with information
+    """
+
+    logger = Logger()
+
+    dfs = gather_model_as_data_frames(circuit,
+                                      logger=logger,
+                                      legacy=False)
+
+    model_data = gather_model_as_jsons(circuit)
+
+    save_veragrid_data_to_zip(dfs=dfs,
+                              filename_zip=file_name,
+                              model_data=model_data,
+                              sessions_data=options.sessions_data,
+                              diagrams=circuit.diagrams,
+                              json_files=options.dictionary_of_json_files,
+                              text_func=text_func,
+                              progress_func=progress_func,
+                              logger=logger)
+
+    return logger
+
+
+def save_veragrid_sqlite(circuit: MultiCircuit,
+                         file_name: str,
+                         text_func=None,
+                         progress_func=None) -> Logger:
+    """
+    Save the circuit information in sqlite
+    :return: logger with information
+    """
+
+    logger = Logger()
+
+    dfs = gather_model_as_data_frames(circuit, logger=logger, legacy=True)
+
+    save_data_frames_to_sqlite(dfs,
+                               file_path=file_name,
+                               text_func=text_func,
+                               progress_func=progress_func)
+
+    return logger
+
+
+def save_electrical_json_v3(circuit: MultiCircuit,
+                            file_name: str,
+                            options: FileSavingOptions) -> Logger:
+    """
+    Save the circuit information in json format
+    :return:logger with information
+    """
+
+    logger = save_json_file_v3(file_name,
+                               circuit,
+                               options.sessions_data)
+    return logger
+
+
+def save_cim(circuit: MultiCircuit, file_name: str, ) -> Logger:
+    """
+    Save the circuit information in CIM format
+    :return: logger with information
+    """
+
+    cim = CIMExport(circuit)
+    cim.save(file_name=file_name)
+
+    return cim.logger
+
+
+def save_cgmes(circuit: MultiCircuit,
+               file_name: str,
+               options: FileSavingOptions,
+               text_func=None,
+               progress_func=None) -> Logger:
+    """
+    Save the circuit information in CGMES format
+    :return: logger with information
+    """
+    logger = Logger()
+    if options.cgmes_boundary_set == "":
+        logger.add_error(msg="Missing Boundary set path.")
+        return logger
+    # CGMES version should be given in the settings
+    cgmes_circuit = CgmesCircuit(cgmes_version=options.cgmes_version,
+                                 text_func=text_func,
+                                 progress_func=progress_func,
+                                 logger=logger)
+
+    data_parser = CgmesDataParser(text_func=text_func,
+                                  progress_func=progress_func,
+                                  logger=logger)
+
+    data_parser.load_files(files=[options.cgmes_boundary_set])
+
+    cgmes_circuit.parse_files(data_parser=data_parser)
+
+    profiles_to_export = options.cgmes_profiles
+    one_file_per_profile = options.cgmes_one_file_per_profile
+    nc = compile_numerical_circuit_at(circuit)
+    pf_results = options.get_power_flow_results()
+    cgmes_logger = DataLogger()
+    cgmes_circuit = veragrid_to_cgmes(gc_model=circuit,
+                                      num_circ=nc,
+                                      cgmes_model=cgmes_circuit,
+                                      pf_results=pf_results,
+                                      logger=cgmes_logger)
+
+    fn, _ = os.path.splitext(os.path.basename(file_name))
+    filename_in_parts = fn.split('_')
+
+    model_version = "001"
+    scenario_time = "2024-01-01T19:30:00Z"
+    if filename_in_parts.__len__() == 5:
+        try:
+            dt = datetime.strptime(filename_in_parts[0], "%Y%m%dT%H%MZ")
+            scenario_time = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            logger.add_error(msg="Invalid datetime format in the filename!",
+                             value=filename_in_parts[0],
+                             comment="Scenario time set to default value."
+                             )
+        model_version = filename_in_parts[4]
+
+    cgmes_circuit = create_cgmes_headers(cgmes_model=cgmes_circuit,
+                                         mas_names=circuit.get_modelling_authority_names().astype(str),
+                                         profiles_to_export=profiles_to_export,
+                                         version=model_version,
+                                         desc="Test description.",
+                                         scenario_time=scenario_time,
+                                         logger=cgmes_logger)
+
+    cim_exporter = CimExporter(cgmes_circuit=cgmes_circuit,
+                               profiles_to_export=profiles_to_export,
+                               one_file_per_profile=one_file_per_profile)
+    cim_exporter.export(file_name)
+
+    # record the cgmes events in the normal logger
+    logger += cgmes_logger.get_logger()
+
+    return logger
+
+
+def save_veragrid_h5(circuit: MultiCircuit,
+                     file_name: str,
+                     text_func=None,
+                     progress_func=None) -> Logger:
+    """
+    Save the circuit information in CIM format
+    :return: logger with information
+    """
+
+    logger = save_h5(circuit=circuit,
+                     file_path=file_name,
+                     text_func=text_func,
+                     prog_func=progress_func)
+
+    return logger
+
+
+def save_psse_raw(circuit: MultiCircuit,
+                  file_name: str,
+                  options: FileSavingOptions) -> Logger:
+    """
+    Save the circuit information in json format
+    :return:logger with information
+    """
+    logger = Logger()
+    raw_circuit = veragrid_to_raw(circuit, logger=logger)
+    logger += write_raw(file_name, raw_circuit, version=int(options.raw_version))
+    return logger
+
+
+def save_psse_rawx(circuit: MultiCircuit, file_name: str) -> Logger:
+    """
+    Save the circuit information in json format
+    :return:logger with information
+    """
+    logger = Logger()
+    raw_circuit = veragrid_to_raw(circuit, logger=logger)
+    logger += write_rawx(file_name, raw_circuit)
+    return logger
+
+
+def save_newton(circuit: MultiCircuit,
+                file_name: str) -> Logger:
+    """
+    Save the circuit information in sqlite
+    :return: logger with information
+    """
+
+    logger = Logger()
+    try:
+        from VeraGridEngine.Compilers.circuit_to_newton_pa import to_newton_pa, npa
+
+        time_series = circuit.time_profile is not None
+
+        if time_series:
+            t_idx = list(range(circuit.get_time_number()))
+        else:
+            t_idx = None
+
+        newton_grid, _ = to_newton_pa(circuit, use_time_series=time_series, time_indices=t_idx)
+
+        npa.FileHandler().save(newton_grid, file_name)
+    except ImportError:
+        logger.add_error(msg="Error while trying to import newton package!", )
+
+    return logger
+
+
+def save_pgm(circuit: MultiCircuit, file_name: str) -> Logger:
+    """
+    Save to Power Grid Model format
+    :return: logger with information
+    """
+    from VeraGridEngine.Compilers.circuit_to_pgm import save_pgm
+    logger = Logger()
+
+    save_pgm(filename=file_name,
+             circuit=circuit,
+             logger=logger,
+             time_series=circuit.has_time_series)
+
+    return logger
+
+
+def save_dgs(circuit: MultiCircuit, file_name: str) -> Logger:
+    """
+
+    :return:
+    """
+    logger = Logger()
+    dgs = circuit_to_dgs(grid=circuit)
+    dgs.write_dgs(path=file_name)
+    return logger
 
 
 class FileSave:
@@ -156,268 +397,93 @@ class FileSave:
 
         self.progress_func = progress_func
 
+        if self.options.file_type is None:
+            self.options.file_type = determine_file_type(file_name=self.file_name)
+
     def save(self) -> Logger:
         """
         Save the file in the corresponding format
         :return: logger with information
         """
-        if self.file_name.endswith('.xlsx'):
-            logger = self.save_excel()
+        logger = Logger()
 
-        elif (self.file_name.endswith('.veragrid')
-              or self.file_name.endswith('.dveragrid')
-              or self.file_name.endswith('.gridcal')):
-            logger = self.save_zip()
+        if self.options.file_type == FileType.VeraGrid_xlsx4:
+            logger = save_veragrid_excel(
+                circuit=self.circuit,
+                file_name=self.file_name
+            )
 
-        elif self.file_name.endswith('.sqlite'):
-            logger = self.save_sqlite()
+        elif self.options.file_type == FileType.VeraGrid:
+            logger = save_veragrid(
+                circuit=self.circuit,
+                file_name=self.file_name,
+                options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func
+            )
 
-        elif self.file_name.endswith('.ejson3'):
-            logger = self.save_json_v3()
+        elif self.options.file_type == FileType.VeraGrid_sqlite:
+            save_veragrid_sqlite(
+                circuit=self.circuit,
+                file_name=self.file_name,
+            )
 
-        elif self.file_name.endswith('.zip') and "CGMES" in self.options.type_selected:
-            logger = self.save_cgmes()
+        elif self.options.file_type == FileType.VeraGrid_ejson3:
+            logger = save_electrical_json_v3(
+                circuit=self.circuit,
+                file_name=self.file_name,
+                options=self.options,
+            )
 
-        elif self.file_name.endswith('.xml') and "CIM" in self.options.type_selected:
-            logger = self.save_cim()
+        elif self.options.file_type == FileType.CGMES:
+            logger = save_cgmes(
+                circuit=self.circuit,
+                file_name=self.file_name,
+                options=self.options,
+                text_func=self.text_func,
+                progress_func=self.progress_func
+            )
 
-        elif self.file_name.endswith('.gch5'):
-            logger = self.save_h5()
+        elif self.options.file_type == FileType.CIM:
+            logger = save_cim(
+                circuit=self.circuit,
+                file_name=self.file_name,
+            )
 
-        elif self.file_name.endswith('.rawx'):
-            logger = self.save_rawx()
+        elif self.options.file_type == FileType.VeraGrid_h5:
+            logger = save_veragrid_h5(
+                circuit=self.circuit,
+                file_name=self.file_name,
+            )
 
-        elif self.file_name.endswith('.raw'):
-            logger = self.save_raw()
+        elif self.options.file_type == FileType.PSSE_rawx:
+            logger = save_psse_rawx(
+                circuit=self.circuit,
+                file_name=self.file_name
+            )
 
-        elif self.file_name.endswith('.newton'):
-            logger = self.save_newton()
+        elif self.options.file_type == FileType.PSSE_raw:
 
-        elif self.file_name.endswith('.pgm'):
-            logger = self.save_pgm()
+            logger = save_psse_raw(
+                circuit=self.circuit,
+                file_name=self.file_name,
+                options=self.options,
+            )
 
-        elif self.file_name.endswith('.dgs'):
-            logger = self.save_dgs()
+        elif self.options.file_type == FileType.PGM:
+            logger = save_pgm(
+                circuit=self.circuit,
+                file_name=self.file_name,
+            )
+
+        elif self.options.file_type == FileType.DGS:
+            logger = save_dgs(
+                circuit=self.circuit,
+                file_name=self.file_name,
+            )
 
         else:
             logger = Logger()
             logger.add_error('File path extension not understood', self.file_name)
 
-        return logger
-
-    def save_excel(self) -> Logger:
-        """
-        Save the circuit information in excel format
-        :return: logger with information
-        """
-
-        logger = save_excel(self.circuit, self.file_name)
-
-        return logger
-
-    def save_zip(self) -> Logger:
-        """
-        Save the circuit information in zip format
-        :return: logger with information
-        """
-
-        logger = Logger()
-
-        dfs = gather_model_as_data_frames(self.circuit,
-                                          logger=logger,
-                                          legacy=False)
-
-        model_data = gather_model_as_jsons(self.circuit)
-
-        save_veragrid_data_to_zip(dfs=dfs,
-                                  filename_zip=self.file_name,
-                                  model_data=model_data,
-                                  sessions_data=self.options.sessions_data,
-                                  diagrams=self.circuit.diagrams,
-                                  json_files=self.options.dictionary_of_json_files,
-                                  text_func=self.text_func,
-                                  progress_func=self.progress_func,
-                                  logger=logger)
-
-        return logger
-
-    def save_sqlite(self) -> Logger:
-        """
-        Save the circuit information in sqlite
-        :return: logger with information
-        """
-
-        logger = Logger()
-
-        dfs = gather_model_as_data_frames(self.circuit, logger=logger, legacy=True)
-
-        save_data_frames_to_sqlite(dfs,
-                                   file_path=self.file_name,
-                                   text_func=self.text_func,
-                                   progress_func=self.progress_func)
-
-        return logger
-
-    def save_json_v3(self) -> Logger:
-        """
-        Save the circuit information in json format
-        :return:logger with information
-        """
-
-        logger = save_json_file_v3(self.file_name,
-                                   self.circuit,
-                                   self.options.sessions_data)
-        return logger
-
-    def save_cim(self) -> Logger:
-        """
-        Save the circuit information in CIM format
-        :return: logger with information
-        """
-
-        cim = CIMExport(self.circuit)
-        cim.save(file_name=self.file_name)
-
-        return cim.logger
-
-    def save_cgmes(self) -> Logger:
-        """
-        Save the circuit information in CGMES format
-        :return: logger with information
-        """
-        logger = Logger()
-        if self.options.cgmes_boundary_set == "":
-            logger.add_error(msg="Missing Boundary set path.")
-            return logger
-        # CGMES version should be given in the settings
-        cgmes_circuit = CgmesCircuit(cgmes_version=self.options.cgmes_version,
-                                     text_func=self.text_func,
-                                     progress_func=self.progress_func, logger=logger)
-
-        data_parser = CgmesDataParser(text_func=self.text_func,
-                                      progress_func=self.progress_func,
-                                      logger=logger)
-        data_parser.load_files(files=[self.options.cgmes_boundary_set])
-        cgmes_circuit.parse_files(data_parser=data_parser)
-        profiles_to_export = self.options.cgmes_profiles
-        one_file_per_profile = self.options.cgmes_one_file_per_profile
-        nc = compile_numerical_circuit_at(self.circuit)
-        pf_results = self.options.get_power_flow_results()
-        cgmes_logger = DataLogger()
-        cgmes_circuit = veragrid_to_cgmes(gc_model=self.circuit,
-                                          num_circ=nc,
-                                          cgmes_model=cgmes_circuit,
-                                          pf_results=pf_results,
-                                          logger=cgmes_logger)
-
-        fn, _ = os.path.splitext(os.path.basename(self.file_name))
-        filename_in_parts = fn.split('_')
-
-        model_version = "001"
-        scenario_time = "2024-01-01T19:30:00Z"
-        if filename_in_parts.__len__() == 5:
-            try:
-                dt = datetime.strptime(filename_in_parts[0], "%Y%m%dT%H%MZ")
-                scenario_time = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-            except ValueError:
-                logger.add_error(msg="Invalid datetime format in the filename!",
-                                 value=filename_in_parts[0],
-                                 comment="Scenario time set to default value."
-                                 )
-            model_version = filename_in_parts[4]
-
-        cgmes_circuit = create_cgmes_headers(cgmes_model=cgmes_circuit,
-                                             mas_names=self.circuit.get_modelling_authority_names().astype(str),
-                                             profiles_to_export=profiles_to_export,
-                                             version=model_version,
-                                             desc="Test description.",
-                                             scenario_time=scenario_time,
-                                             logger=cgmes_logger)
-
-        cim_exporter = CimExporter(cgmes_circuit=cgmes_circuit,
-                                   profiles_to_export=profiles_to_export,
-                                   one_file_per_profile=one_file_per_profile)
-        cim_exporter.export(self.file_name)
-
-        # record the cgmes events in the normal logger
-        logger += cgmes_logger.get_logger()
-
-        return logger
-
-    def save_h5(self) -> Logger:
-        """
-        Save the circuit information in CIM format
-        :return: logger with information
-        """
-
-        logger = save_h5(self.circuit, self.file_name,
-                         text_func=self.text_func,
-                         prog_func=self.progress_func)
-
-        return logger
-
-    def save_raw(self) -> Logger:
-        """
-        Save the circuit information in json format
-        :return:logger with information
-        """
-        logger = Logger()
-        raw_circuit = veragrid_to_raw(self.circuit, logger=logger)
-        logger += write_raw(self.file_name, raw_circuit, version=int(self.options.raw_version))
-        return logger
-
-    def save_rawx(self) -> Logger:
-        """
-        Save the circuit information in json format
-        :return:logger with information
-        """
-        logger = Logger()
-        raw_circuit = veragrid_to_raw(self.circuit, logger=logger)
-        logger += write_rawx(self.file_name, raw_circuit)
-        return logger
-
-    def save_newton(self) -> Logger:
-        """
-        Save the circuit information in sqlite
-        :return: logger with information
-        """
-        from VeraGridEngine.Compilers.circuit_to_newton_pa import to_newton_pa, npa
-        logger = Logger()
-
-        time_series = self.circuit.time_profile is not None
-
-        if time_series:
-            t_idx = list(range(self.circuit.get_time_number()))
-        else:
-            t_idx = None
-
-        newton_grid, _ = to_newton_pa(self.circuit, use_time_series=time_series, time_indices=t_idx)
-
-        npa.FileHandler().save(newton_grid, self.file_name)
-
-        return logger
-
-    def save_pgm(self) -> Logger:
-        """
-        Save to Power Grid Model format
-        :return: logger with information
-        """
-        from VeraGridEngine.Compilers.circuit_to_pgm import save_pgm
-        logger = Logger()
-
-        save_pgm(filename=self.file_name,
-                 circuit=self.circuit,
-                 logger=logger,
-                 time_series=self.circuit.has_time_series)
-
-        return logger
-
-    def save_dgs(self) -> Logger:
-        """
-
-        :return:
-        """
-        logger = Logger()
-        dgs = circuit_to_dgs(grid=self.circuit)
-        dgs.write_dgs(path=self.file_name)
         return logger

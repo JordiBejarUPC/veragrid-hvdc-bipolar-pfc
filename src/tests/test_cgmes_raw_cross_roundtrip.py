@@ -8,9 +8,10 @@ import os
 
 import pytest
 import numpy as np
+
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.IO.file_open import FileOpenOptions
-from VeraGridEngine.IO.file_save import FileSavingOptions, FileSave
+from VeraGridEngine.IO.file_save import FileSavingOptions, FileSave, FileType
 from VeraGridEngine.Simulations import PowerFlowOptions
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.enumerations import CGMESVersions, SolverType, SimulationTypes
@@ -47,7 +48,7 @@ def run_cgmes_to_raw(import_path: str | list[str], export_fname: str):
     # Export
     # export_dir = os.path.join(os.path.curdir, "/export_result")
     # export_name = os.path.join(export_dir, export_name)
-    options = FileSavingOptions()
+    options = FileSavingOptions(file_type=FileType.CGMES)
     options.sessions_data.append(pf_session_data)
 
     raw_export = FileSave(circuit=circuit,

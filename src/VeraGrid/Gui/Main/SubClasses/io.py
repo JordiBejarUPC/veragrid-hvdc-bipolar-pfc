@@ -24,6 +24,7 @@ from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.PsseExportDialogue.psse_export import PsseExportDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
+from VeraGridEngine.IO.file_save import FileSavingOptions
 from VeraGridEngine.IO.file_open import determine_file_type
 from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
@@ -304,7 +305,7 @@ class IoMain(ConfigurationMain):
             # lock the ui
             self.LOCK()
 
-            options = filedrv.FileOpenOptions( )
+            options = filedrv.FileOpenOptions()
 
             file_name = filenames if len(filenames) > 1 else filenames[0]
 
@@ -633,11 +634,17 @@ class IoMain(ConfigurationMain):
                     name, file_extension = os.path.splitext(filename)
 
                     if file_extension == '':
-                        filename = name + "veragrid"
+                        filename = name + ".veragrid"
 
                     # we were able to compose the file correctly, now save it
                     self.file_name = filename
-                    self.save_file_now(self.file_name, type_selected=type_selected)
+                    self.save_file_now(
+                        self.file_name,
+                        type_selected=type_selected,
+                        options=FileSavingOptions(
+                            file_type=FileType.VeraGrid
+                        )
+                    )
             else:
                 # save directly
                 self.save_file_now(self.file_name)
@@ -654,8 +661,7 @@ class IoMain(ConfigurationMain):
         # get json files to store
         json_files = {"gui_config": self.get_gui_config_data()}
 
-        options = filedrv.FileSavingOptions(cgmes_boundary_set=self.current_boundary_set,
-                                            sessions_data=sessions_data,
+        options = filedrv.FileSavingOptions(sessions_data=sessions_data,
                                             dictionary_of_json_files=json_files)
 
         return options
@@ -1069,7 +1075,11 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(self.file_name,
+                               type_selected=type_selected,
+                               options=FileSavingOptions(
+                                   file_type=FileType.DGS
+                               ))
 
     def export_cim(self):
         """
@@ -1095,7 +1105,11 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(self.file_name,
+                               type_selected=type_selected,
+                               options=FileSavingOptions(
+                                   file_type=FileType.CIM
+                               ))
 
     def export_cgmes(self):
         """
@@ -1131,7 +1145,13 @@ class IoMain(ConfigurationMain):
 
                 # we were able to compose the file correctly, now save it
                 self.file_name = filename
-                self.save_file_now(self.file_name, type_selected=type_selected)
+                self.save_file_now(
+                    self.file_name,
+                    type_selected=type_selected,
+                    options=FileSavingOptions(
+                        file_type=FileType.PGM
+                    )
+                )
         else:
             self.show_warning_toast("Power Grid Models not installed :/")
 
@@ -1159,7 +1179,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(
+                self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.VeraGrid_json
+                )
+            )
 
     def export_h5(self):
         """
@@ -1185,7 +1211,12 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(
+                self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.VeraGrid_h5
+                ))
 
     def export_excel(self):
         """
@@ -1211,7 +1242,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(
+                self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.VeraGrid_xlsx4
+                )
+            )
 
     def export_sqlite(self):
         """
@@ -1237,4 +1274,10 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name, type_selected=type_selected)
+            self.save_file_now(
+                self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.VeraGrid_sqlite
+                )
+            )
