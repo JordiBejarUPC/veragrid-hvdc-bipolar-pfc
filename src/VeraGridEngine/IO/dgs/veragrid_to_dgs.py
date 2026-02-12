@@ -583,6 +583,31 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
             dgs_grid.typtr2s.append(tpe)
             tpe_is_new = True
 
+        # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
+        # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
+        if float(tpe.uktr) == 0.0 and float(tpe.pcutr) == 0.0:
+
+            rate = float(tr.rate)
+            if rate <= 0.0:
+                rate = float(tr.Sn)
+            if rate <= 0.0:
+                rate = float(tpe.strn)
+
+            Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
+                R=float(tr.R),
+                X=float(tr.X),
+                G=float(tr.G),
+                B=float(tr.B),
+                rate=rate,
+                Sbase=float(grid.Sbase),
+            )
+
+            tpe.pfe = float(Pfe)
+            tpe.pcutr = float(Pcu)
+            tpe.uktr = float(Vsc)
+            tpe.curmg = float(I0)
+            tpe.strn = float(Sn)
+
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
         e.loc_name = tr.name
