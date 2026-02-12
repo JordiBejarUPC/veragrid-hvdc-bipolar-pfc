@@ -99,7 +99,7 @@ def run_emt_demo():
         else:
             val = 0.0
 
-        offset = len(sys_block._parameters)
+        offset = len(sys_block.parameters)
         idx = offset + solver.uid2idx_params[vin_var.uid]
 
         params[idx] = val
@@ -108,7 +108,7 @@ def run_emt_demo():
 
     x0 = np.zeros(len(sys_block.state_vars))
     dx0 = np.zeros(len(sys_block.diff_vars))
-    params0 = np.zeros(len(sys_block._parameters))
+    params0 = np.zeros(len(sys_block.parameters))
 
     t_arr, y_arr = solver.simulate_unified(
         t0=0.0,

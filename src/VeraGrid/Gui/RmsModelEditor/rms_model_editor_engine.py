@@ -332,13 +332,13 @@ class BlockItem(QGraphicsRectItem):
 
         dialog = ParameterEditorDialog(
             event_dict=self.subsys.event_dict,
-            parameters_dict=self.subsys._parameters,
+            parameters_dict=self.subsys.parameters,
             parent=None
         )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.subsys.event_dict = dialog.event_dict
-            self.subsys._parameters = dialog.parameters
+            self.subsys.parameters = dialog.parameters
 
         event.accept()
 
@@ -1296,13 +1296,13 @@ class TemplateEditor(QtWidgets.QWidget):
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 # power flow parameters
-                self.selected_template.block._parameters[
+                self.selected_template.block.parameters[
                     self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                     float(self.api_object.R / (self.api_object.R ** 2 + self.api_object.X ** 2)))
-                self.selected_template.block._parameters[
+                self.selected_template.block.parameters[
                     self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                     float(-self.api_object.X / (self.api_object.R ** 2 + self.api_object.X ** 2)))
-                self.selected_template.block._parameters[
+                self.selected_template.block.parameters[
                     self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(
                     self.api_object.B)
 
@@ -1318,7 +1318,7 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.load_params_table()
         # call non-editable parameters dialog
         if hasattr(self.selected_template.block, 'parameters'):
-            if self.selected_template.block._parameters:
+            if self.selected_template.block.parameters:
                 self.load_fix_params_table()
 
     def load_params_table(self):
@@ -1360,7 +1360,7 @@ class TemplateEditor(QtWidgets.QWidget):
         Fills the parameters table with non-editable (fixed) parameters
         """
 
-        parameters = self.selected_template.block._parameters  # {Param: Const}
+        parameters = self.selected_template.block.parameters  # {Param: Const}
 
         self.params_table.blockSignals(True)
 
@@ -1732,9 +1732,9 @@ class BlockBoxesEditor(QSplitter):
             b = Var("b")
             bsh = Var("bsh")
 
-            self.main_block._parameters[g] = Const(0.029585)
-            self.main_block._parameters[b] = Const(0.0710059)
-            self.main_block._parameters[bsh] = Const(0.03)
+            self.main_block.parameters[g] = Const(0.029585)
+            self.main_block.parameters[b] = Const(0.0710059)
+            self.main_block.parameters[bsh] = Const(0.03)
 
             self.main_block.api_obj_mapping = {
                 ParamPowerFlowRefferenceType.g: g,

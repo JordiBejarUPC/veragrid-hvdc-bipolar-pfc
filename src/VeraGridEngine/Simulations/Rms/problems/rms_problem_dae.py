@@ -284,10 +284,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                       CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                                       )
                     elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                        self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient(
-                            bus, mdl, grid, self.sys_block, self.power_flow_results,
-                            self.init_guess, self._glov_time
-                        )
+                        self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
                     else:
                         raise ValueError("Not implemented initialization method")
 
@@ -407,7 +404,7 @@ class RmsProblemDae(RmsProblemTemplate):
             for param, eq in b.event_dict.items():
                 self._variable_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
-            for param, constant in b._parameters.items():
+            for param, constant in b.parameters.items():
                 self._constant_parameters.append(param)
                 self._parameters_values.append(constant)
 
