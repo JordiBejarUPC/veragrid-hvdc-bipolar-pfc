@@ -24,7 +24,7 @@ from matplotlib import pyplot as plt
 from typing import Dict, List, Any, Callable, Sequence
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvents
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, _heaviside
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, heaviside_num
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec
