@@ -507,7 +507,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ys.size == 0:
+        if self._ys.size <= 0 and self.auto_update_enabled:
             self.fill_3_phase_from_sequence()
 
         return self._ys
@@ -525,7 +525,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ysh.size == 0:
+        if self._ysh.size <= 0 and self.auto_update_enabled:
             self.fill_3_phase_from_sequence()
 
         return self._ysh
@@ -799,9 +799,10 @@ class Line(BranchParent):
         Fill the 3x3 from the sequence values
         """
         if self.R0 > 1e-10 and self.X0 > 1e-10:
-            obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0)
+            obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0, B=self.B, B0=self.B0)
         else:
-            obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X)
+            obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X, B=self.B * 1e6, B0=self.B * 1e6)
+            obj = SequenceLineType(R=self.R, R0=self.R, X=self.X, X0=self.X, B=self.B * 1e6, B0=self.B * 1e6)
         self.ys = obj.get_ys_nabc()
         self.ysh = obj.get_ysh_nabc()
 
