@@ -34,6 +34,15 @@ def _new_uid() -> int:
 
 
 def _to_expr(val: Any) -> "Expr":
+    """
+
+    returns an expression
+
+    :param val:
+    :type val: Union[VeraGridEngine.Utils.Symbolic.symbolic.Const, VeraGridEngine.Utils.Symbolic.symbolic.Var, int, float, VeraGridEngine.Utils.Symbolic.symbolic.Func, complex, VeraGridEngine.Utils.Symbolic.symbolic.BinOp, VeraGridEngine.Utils.Symbolic.symbolic.DiffVar, VeraGridEngine.Utils.Symbolic.symbolic.UnOp]
+    :return:
+    :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.Const, VeraGridEngine.Utils.Symbolic.symbolic.Var, VeraGridEngine.Utils.Symbolic.symbolic.Func, VeraGridEngine.Utils.Symbolic.symbolic.BinOp, VeraGridEngine.Utils.Symbolic.symbolic.DiffVar, VeraGridEngine.Utils.Symbolic.symbolic.UnOp]
+    """
     if isinstance(val, Expr):
         return val
     if isinstance(val, (int, float, complex)):
@@ -49,6 +58,9 @@ def _to_expr(val: Any) -> "Expr":
 
 
 class CmpOp(Enum):
+    """
+    comparisions
+    """
     LE = "≤"  # ≤
     GE = "≥"  # ≥
     LT = "<"
@@ -109,8 +121,7 @@ class Expr:
             expr = expr._diff1(var, dt).simplify()
         return expr
 
-    def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
-        # return # pragma: no cover
+    def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
         raise NotImplementedError
 
     def simplify(self) -> "Expr":
@@ -121,9 +132,22 @@ class Expr:
         return self
 
     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
+        """
+        substitute variables
+        :param mapping:
+        :type mapping:
+        :return:
+        :rtype:
+        """
         return mapping.get(self, self)
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        returns a dictionary
+
+        :return:
+        :rtype:
+        """
         return _expr_to_dict(self)
 
     def to_json(self, **json_kwargs: Any) -> str:
@@ -208,6 +232,8 @@ class Expr:
 
 
 class Const(Expr):
+
+    # class to represent constants symbolically
 
     def __init__(self, value: NUMBER | None = None, uid: int | None = None, name: str = ""):
         super().__init__(uid=uid)
@@ -400,12 +426,22 @@ class LagVar(Expr):
         return res.eval(dt=h)
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
+        """
+        differentiation
+        :param var:
+        :type var: VeraGridEngine.Utils.Symbolic.symbolic.Var
+        :param dt:
+        :type dt:
+        :return:
+        :rtype: Union[None, VeraGridEngine.Utils.Symbolic.symbolic.Const]
+        """
         return Const(1 if self.uid == var.uid else 0)
 
     def to_dict(self) -> Dict[str, Any]:
         """
 
         :return:
+        :rtype:
         """
         d = super().to_dict()
         d["type"] = "Var"
@@ -455,7 +491,9 @@ class DiffVar(Var):
         """
 
         :return:
+        :rtype: Dict[str, str]
         """
+
         d = super().to_dict()
         d["type"] = "DiffVar"
         d["base_var"] = self.base_var.to_dict()
@@ -478,6 +516,15 @@ class DiffVar(Var):
         return origin
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
+        """
+        differentiation
+        :param var:
+        :type var: VeraGridEngine.Utils.Symbolic.symbolic.Var
+        :param dt:
+        :type dt: Union[None, VeraGridEngine.Utils.Symbolic.symbolic.Var]
+        :return:
+        :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.Const, None, VeraGridEngine.Utils.Symbolic.symbolic.BinOp]
+        """
         if dt is None:
             return Const(1 if self.uid == var.uid else 0)
         elif isinstance(self, DiffVar) or False:
@@ -554,6 +601,13 @@ class DiffVar(Var):
 
 
 def factors(expr: Expr) -> List[Expr]:
+    """
+
+    :param expr:
+    :type expr: Union[VeraGridEngine.Utils.Symbolic.symbolic.BinOp, VeraGridEngine.Utils.Symbolic.symbolic.UnOp, VeraGridEngine.Utils.Symbolic.symbolic.Const, VeraGridEngine.Utils.Symbolic.symbolic.Var, VeraGridEngine.Utils.Symbolic.symbolic.Func]
+    :return:
+    :rtype: Union[List[VeraGridEngine.Utils.Symbolic.symbolic.BinOp], List[VeraGridEngine.Utils.Symbolic.symbolic.UnOp], List[VeraGridEngine.Utils.Symbolic.symbolic.Const], List[VeraGridEngine.Utils.Symbolic.symbolic.Var], List[VeraGridEngine.Utils.Symbolic.symbolic.Func]]
+    """
     if isinstance(expr, BinOp) and expr.op == '*':
         return factors(expr.left.simplify()) + factors(expr.right.simplify())
     # Limited expansion of integer powers
@@ -571,6 +625,13 @@ def factors(expr: Expr) -> List[Expr]:
 
 
 def build_mul(factors: List[Expr]) -> Expr:
+    """
+
+    :param factors:
+    :type factors: Union[List[VeraGridEngine.Utils.Symbolic.symbolic.BinOp], List[VeraGridEngine.Utils.Symbolic.symbolic.UnOp], List[VeraGridEngine.Utils.Symbolic.symbolic.Const], List[VeraGridEngine.Utils.Symbolic.symbolic.Var], List]
+    :return:
+    :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.BinOp, VeraGridEngine.Utils.Symbolic.symbolic.UnOp, VeraGridEngine.Utils.Symbolic.symbolic.Const, VeraGridEngine.Utils.Symbolic.symbolic.Var]
+    """
     if not factors:
         return Const(1)
     expr = factors[0]
@@ -1147,51 +1208,6 @@ def piecewise(time_var: Expr, t_events: np.ndarray, new_values: np.ndarray, defa
     return result
 
 
-# class Func(PrimaryFunction):
-#     __slots__ = ("op", "arg", "fn", "fnd")
-#     def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
-#         """
-#         :param op:
-#         :param uid:
-#         """
-#         super().__init__(arg=arg, op=op, uid=uid)
-#         # optional derivative function pointer        
-#         self.fn : Callable[[NUMBER], NUMBER] = functions_dict[self.op]
-#         self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
-#     # --- evaluation ----------------------------------------------------------
-#     def eval(self, **bindings: NUMBER) -> NUMBER:
-#         return self.fn(self.arg.eval(**bindings))
-#     def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
-#         return self.fn(self.arg.eval_uid(uid_bindings))
-#     # --- differentiation (chain rule) ---------------------------------------
-#     def _diff1(self, var: Var | str) -> "Expr":
-#         u = self.arg
-#         du = u._diff1(var)
-#         if isinstance(du, Const) and du.value == 0:
-#             return Const(0)
-#         else:
-#             if self.fnd is not None:
-#                 return self.fnd(u, du)
-#             else:
-#                 raise Exception(f"No derivative defined for {self.op}")
-#     # --- simplification ------------------------------------------------------
-#     def simplify(self) -> "Expr":
-#         a = self.arg.simplify()
-#         if isinstance(a, Const):
-#             try:
-#                 return Const(self.fn(a.value))
-#             except ValueError:
-#                 pass  # domain error – keep symbolic
-#         return Func(a, self.op)
-#     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
-#         if self in mapping:
-#             return mapping[self]
-#         return Func(self.arg.subs(mapping), self.op)
-#     def __str__(self) -> str:
-#         return f"{self.op}({self.arg})"
-#     def __repr__(self) -> str:
-#         return self.__str__()
-
 functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "sin": sin_diff,
     "cos": cos_diff,
@@ -1233,12 +1249,23 @@ class Func2(Expr):
             self.arg2.eval_uid(uid_bindings),
         )
 
-    def _diff1(self, var: Var | str) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
+        """
+
+        differentiation
+
+        :param var:
+        :type var:
+        :param dt:
+        :type dt:
+        :return:
+        :rtype:
+        """
         x = self.arg1
         y = self.arg2
 
-        dx = x._diff1(var)
-        dy = y._diff1(var)
+        dx = x._diff1(var, dt)
+        dy = y._diff1(var, dt)
 
         # short-circuit: constant
         if (
@@ -1258,6 +1285,13 @@ class Func2(Expr):
 
     # --- simplification ------------------------------------------------------
     def simplify(self) -> "Expr":
+        """
+
+        simplification
+
+        :return:
+        :rtype:
+        """
         a_s = self.arg1.simplify()
         b_s = self.arg2.simplify()
 
@@ -1276,6 +1310,15 @@ class Func2(Expr):
         return Func2(self.name, a_s, b_s)
 
     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
+        """
+
+        substitude
+
+        :param mapping:
+        :type mapping:
+        :return:
+        :rtype:
+        """
         if self in mapping:
             return mapping[self]
         return Func2(
@@ -1554,42 +1597,6 @@ def expression2numba(expr: Expr,
         return s
 
 
-# def expression2numba(expr: Expr,
-#                      compiler_names_dict: Dict[int, str]) -> str:
-#     """
-#     Create a pure-Python (Numba-friendly) expression string for the function compilation
-#     :param expr: Expr (expression)
-#     :param compiler_names_dict: relate UID with compilation name i.e. {1: "vars[1]", 2: vars[2], ...}
-#     :return: string expression
-#     """
-
-#     if isinstance(expr, Const):
-#         return repr(expr.value)
-
-#     elif isinstance(expr, (Var, LagVar)):
-#         return compiler_names_dict[expr.uid]  # positional variable
-
-#     elif isinstance(expr, UnOp):
-#         return f"-({expression2numba(expr.operand, compiler_names_dict)})"
-
-#     elif isinstance(expr, BinOp):
-#         return (f"({expression2numba(expr.left, compiler_names_dict)} "
-#                 f"{expr.op} "
-#                 f"{expression2numba(expr.right, compiler_names_dict)})")
-
-#     elif isinstance(expr, Func):
-#         # if expr.op in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-#         #                "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
-#         #                "sinh", "cosh", "abs"):
-#         #     return f"np.{expr.op}({_emit(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
-#         if expr.op == "heaviside":
-#             return f"_heaviside({expression2numba(expr.arg, compiler_names_dict)})"
-#         else:
-#             return f"np.{expr.op}({expression2numba(expr.arg, compiler_names_dict)})"
-#     else:
-#         raise TypeError(type(expr))
-
-
 def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     """
     TODO: proper docstring
@@ -1613,11 +1620,7 @@ def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
         return f"({_emit_event_params_eq(expr.left, uid_map_t)} {expr.op} {_emit_event_params_eq(expr.right, uid_map_t)})"
 
     if isinstance(expr, Func):
-        # Use numpy functions for standard numeric functions
-        # if expr.op in ("real", "imag", "conj", "angle", "sin", "cos", "tan",
-        #                  "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
-        #                  "sinh", "cosh", "abs"):
-        #
+
         if expr.op == "heaviside":
             return f"_heaviside({_emit_event_params_eq(expr.arg, uid_map_t)})"
         else:
@@ -1653,10 +1656,7 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
                 f"{expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_event_params, uid_map_params)})")
 
     if isinstance(expr, Func):
-        # if expr.name in ("real", "imag", "conj", "angle", "sin", "cos", "atan",
-        #                  "exp", "log", "sqrt", "asin", "acos", "atan", "atan2",
-        #                  "sinh", "cosh", "abs"):
-        #
+
         if expr.op == "heaviside":
             return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         else:
@@ -1750,58 +1750,9 @@ _FUNC_MAP = {
     "atan": atan,
     "sinh": sinh,
     "cosh": cosh,
-    # "real": real,
-    # "imag": imag,
-    # "conj": conj,
-    # "angle": angle,
-    # "abs": abs,  #
     "heaviside": heaviside,
     "_dict_to_expression": _dict_to_expr
 }
-
-
-# TODO: eliminate with all its consequences -> Marina
-def make_symbolic(expr_str: str, variables: Dict[str, Var] | None = None) -> Expr:
-    """
-    Parse a string like "sin(x) + 2*y" into a symbolic Expr tree.
-    variables: optional mapping of variable names -> Var. If None, new Var is created.
-    """
-    tree = ast.parse(expr_str, mode="eval").body
-
-    def _convert(node: ast.AST) -> Expr:
-        # if isinstance(node, ast.Num):  # Python <3.8
-        #     return Const(node.n)
-        if isinstance(node, ast.Constant):  # Python 3.8+
-            if isinstance(node.value, (int, float, complex)):
-                return Const(node.value)
-            raise TypeError(f"Unsupported constant: {node.value}")
-        if isinstance(node, ast.Name):
-            if variables is not None and node.id in variables:
-                return variables[node.id]
-            return Var(node.id)
-        if isinstance(node, ast.BinOp):
-            op = _BINOP_MAP.get(type(node.op))
-            if op is None:
-                raise TypeError(f"Unsupported binary operator {node.op}")
-            return BinOp(_convert(node.left), op, _convert(node.right))
-        if isinstance(node, ast.UnaryOp):
-            op = _UNOP_MAP.get(type(node.op))
-            if op is None:
-                raise TypeError(f"Unsupported unary operator {node.op}")
-            return UnOp(op, _convert(node.operand))
-        if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name):
-                raise TypeError("Only simple function calls allowed")
-            fname = node.func.id
-            if fname not in _FUNC_MAP:
-                raise ValueError(f"Unknown function '{fname}'")
-            if len(node.args) != 1:
-                raise ValueError(f"Function '{fname}' takes one argument")
-            return _FUNC_MAP[fname](_convert(node.args[0]))
-        raise TypeError(f"Unsupported expression: {ast.dump(node)}")
-
-    return _convert(tree)
-
 
 def symbolic_to_string(expr: Expr) -> str:
     """
@@ -1842,21 +1793,13 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
-    "make_symbolic",
     "DiffVar",
     "hard_sat",
     "f_exc",
     'expression2numba',
     'heaviside_num',
-    'get_expression_vars'
+    'get_expression_vars',
+    '_dict_to_expr',
+    'abs',
+    '_to_expr'
 ]
-#
-# x = Var("x")
-# y = Var("y")
-#
-# expr1 = make_symbolic("sin(x) + 2*y", {"x": x, "y": y})
-# print(expr1)  # sin(x) + (2 * y)
-#
-# # You can also create new Vars on the fly:
-# expr2 = make_symbolic("exp(z) + 3")
-# print(expr2)  # exp(z) + 3

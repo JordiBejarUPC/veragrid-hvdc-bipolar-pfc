@@ -3,17 +3,15 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple, Sequence, Callable, Any
+from typing import Dict, List, Sequence, Callable, Any
 from collections import defaultdict
-import time
 import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import math
 import concurrent.futures
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise,
-                                                    heaviside_num, expression2numba,
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr,                                                    heaviside_num, expression2numba,
                                                     get_expression_vars)
 from VeraGridEngine.basic_structures import Vec, IntVec
 
@@ -34,6 +32,7 @@ def compile_jac_block(block_id,
                       PARAMS_NAME: str,
                       use_jit):
     """
+    function that builds the compiled functions
 
     :param block_id:
     :param block_eqs:
@@ -85,15 +84,12 @@ class SymbolicJacobian:
     def __init__(self,
                  eqs: list,
                  variables: list,
-                 diff_variables: list,
                  compiler_names_dict: dict,
                  alias_names_dict: dict,
                  VARS_NAME: str,
                  DIFF_NAME: str,
                  EVENT_PARAMS_NAME: str,
                  PARAMS_NAME: str,
-                 ALTER_PARAMS_NAME: str,
-                 uid2idx_vars: dict,
                  dt=None,
                  use_jit=True,
                  batch_size=500,

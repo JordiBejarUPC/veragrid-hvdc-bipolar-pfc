@@ -2,15 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Union
-
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from typing import List, Dict
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate

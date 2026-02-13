@@ -179,6 +179,7 @@ options = gce.PowerFlowOptions(
 )
 res = gce.power_flow(grid, options=options)
 
+
 print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())

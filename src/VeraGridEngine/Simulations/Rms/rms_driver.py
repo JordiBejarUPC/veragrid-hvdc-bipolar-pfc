@@ -7,13 +7,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
-from VeraGridEngine.Simulations.Rms.numerical. back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 
@@ -71,7 +70,11 @@ class RmsSimulationDriver(DriverTemplate):
         Performs the numerical integration using the chosen method.
         :return:
         """
-        self.tic()
+        res = self.pf_results
+
+        print(f"Converged: {res.converged}")
+        print(res.get_bus_df())
+        print(res.get_branch_df())
 
         problem = RmsProblemDae(grid=self.grid,
                                 options=self.options,
@@ -95,5 +98,3 @@ class RmsSimulationDriver(DriverTemplate):
             vars_glob_name2uid=problem.vars_glob_name2uid,
             devices_vars_info=problem.get_device_vars_dict()
         )
-
-        self.toc()

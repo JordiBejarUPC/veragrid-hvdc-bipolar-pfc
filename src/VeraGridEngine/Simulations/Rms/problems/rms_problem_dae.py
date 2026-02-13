@@ -154,7 +154,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
 
-        # List of state and algebraic vars
+        # Dictionary of state and algebraic vars
         self.sys_vars: Dict[int, Var] = dict()
 
         # already computed grid power flow
@@ -297,16 +297,8 @@ class RmsProblemDae(RmsProblemTemplate):
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    mdl.algebraic_eqs.append(P[i])
-                    mdl.algebraic_eqs.append(Q[i])
-
-        # del buses P, Q variables from init guess
-        # for i, elm in enumerate(grid.buses):
-        #     mdl = elm.rms_model.model
-            # del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-            #                      mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-            # del self.init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-            #                      mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+                    self._algebraic_eqs.append(P[i])
+                    self._algebraic_eqs.append(Q[i])
 
         # --------------------------------------------------------------------------------------------------------------
         # collect equations
@@ -369,22 +361,12 @@ class RmsProblemDae(RmsProblemTemplate):
         ##################### To be removed when order is preserved in the first part #############################
 
         # Flatten the block lists, preserving declaration order
-        self._algebraic_vars: List[Var] = list()
-        self._algebraic_eqs: List[Expr] = list()
-        self._algebraic_eqs_substituted: List[Expr] = list()
-        self._state_vars: List[Var] = list()
-        self._state_eqs: List[Expr] = list()
-        self._state_eqs_substituted: List[Expr] = list()
-        self._diff_vars: List[DiffVar] = list()
-        self._differential_eqs: List[Expr] = list()
-        self._reformulated_vars: List[Var] = list()
+
+        # self._diff_vars: List[DiffVar] = list()
         self._variable_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Expr] = list()
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
-        self._stability_eqs: List[Expr] = list()
-        self._alter_params = np.zeros(
-            0)  # NOTE: this is needed for the jacobian calls but it is only relevant for EMT
 
         # Class-level registry
         self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
@@ -397,19 +379,13 @@ class RmsProblemDae(RmsProblemTemplate):
         self._backend = SimulationBackend.SymbolicImplicit
 
         for b in self.sys_block.get_all_blocks():
-            self._algebraic_vars.extend(b.algebraic_vars)
-            self._algebraic_eqs.extend(b.algebraic_eqs)
-            self._state_vars.extend(b.state_vars)
-            self._state_eqs.extend(b.state_eqs)
+
             for param, eq in b.event_dict.items():
                 self._variable_parameters.append(param)
                 self._event_parameters_eqs.append(eq)
             for param, constant in b.parameters.items():
                 self._constant_parameters.append(param)
                 self._parameters_values.append(constant)
-
-            # if isinstance(b, DiffBlock):
-            self._diff_vars.extend(b.diff_vars)
 
         self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.diff_order)
         self._state_algeb_vars = self._state_vars + self._algebraic_vars
@@ -562,16 +538,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._j11_fn = SymbolicJacobian(
                 eqs=self._state_eqs,
                 variables=self._state_vars,
-                diff_variables=self._diff_vars,
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
                 dt=self._dt,
                 VARS_NAME=self.VARS_NAME,
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["J11 (dF/dx)"] = _toc(t0)
 
@@ -579,16 +552,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._j12_fn = SymbolicJacobian(
                 eqs=self._state_eqs,
                 variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
                 dt=self._dt,
                 VARS_NAME=self.VARS_NAME,
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["J12 (dF/dy)"] = _toc(t0)
 
@@ -596,16 +566,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._j21_fn = SymbolicJacobian(
                 eqs=self._algebraic_eqs,
                 variables=self._state_vars,
-                diff_variables=self._diff_vars,
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
                 dt=self._dt,
                 VARS_NAME=self.VARS_NAME,
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["J21 (dG/dx)"] = _toc(t0)
 
@@ -613,16 +580,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._j22_fn = SymbolicJacobian(
                 eqs=self._algebraic_eqs,
                 variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
                 dt=self._dt,
                 VARS_NAME=self.VARS_NAME,
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["J22 (dG/dy)"] = _toc(t0)
 
@@ -631,16 +595,13 @@ class RmsProblemDae(RmsProblemTemplate):
             self._j22_fn = SymbolicJacobian(
                 eqs=self._algebraic_eqs,
                 variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
                 dt=self._dt,
                 VARS_NAME=self.VARS_NAME,
                 EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
                 PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
             )
             timings["J22 only (no states)"] = _toc(t0)
 
@@ -690,6 +651,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._vars_glob_name2uid[v.name + elm.name] = v.uid
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
+            self._state_vars.append(v)
             self.n_vars += 1
 
         for v in mdl.algebraic_vars:
@@ -699,6 +661,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._vars_glob_name2uid[v.name + elm.name] = v.uid
             self.add_device_var(dev=elm, var=v)
             self.sys_vars[v.uid] = v
+            self._algebraic_vars.append(v)
             self.n_vars += 1
 
         # j is for parameters
@@ -724,7 +687,11 @@ class RmsProblemDae(RmsProblemTemplate):
             self._uid2idx_diff[v.uid] = self.n_diff_vars
             self._vars_glob_name2uid[v.name + elm.name] = v.uid
             self.add_device_var(dev=elm, var=v)
+            self._diff_vars.append(v)
             self.n_diff_vars += 1
+
+        self._state_eqs.extend(mdl.state_eqs)
+        self._algebraic_eqs.extend(mdl.algebraic_eqs)
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """
@@ -786,7 +753,7 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._uid2idx_vars[v.uid]
 
     @property
-    def v_glob_name2uid(self):
+    def vars_glob_name2uid(self):
         """
 
         :return:

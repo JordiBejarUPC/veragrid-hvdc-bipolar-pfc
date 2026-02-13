@@ -677,11 +677,6 @@ class BlockParser:
             uid=data["uid"]
         )
 
-        # TODO: Review if this is what is used
-        # block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
-
-        # TODO: This is a circuilar reference, and we can only fill it after all other processes
-        # block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
 
         self.block_dict[block.uid] = block
 

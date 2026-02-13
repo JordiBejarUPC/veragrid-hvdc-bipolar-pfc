@@ -9,7 +9,7 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
+from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_block,
                                                  tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
@@ -437,25 +437,25 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     # ==============================
     # We compute different outputs for every tf
-    tf2, y3_1 = tf_to_diffblock(
+    tf2, y3_1 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["T4"].value]),
         x=y2_3,
         name='gov2',
     )
-    tf3, y3_2 = tf_to_diffblock(
+    tf3, y3_2 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["T5"].value]),
         x=y3_1,
         name='gov3',
     )
-    tf4, y3_3 = tf_to_diffblock(
+    tf4, y3_3 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["T6"].value]),
         x=y3_2,
         name='gov4',
     )
-    tf5, y3_4 = tf_to_diffblock(
+    tf5, y3_4 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["T7"].value]),
         x=y3_3,
@@ -553,32 +553,32 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         algebraic_vars=[],
     )
 
-    tf, y = tf_to_diffblock(
+    tf, y = tf_to_block(
         num=np.array([1.0]),
         den=np.array([1, parameters["t6"].value]),
         x=inputs[0],
         name='stabilizer1',
     )
 
-    tf2, y2 = tf_to_diffblock(
+    tf2, y2 = tf_to_block(
         num=np.array([0, Ks * parameters["t5"].value]),
         den=np.array([1, parameters["t5"].value]),
         x=y,
         name='stabilizer2',
     )
-    tf3, y3 = tf_to_diffblock(
+    tf3, y3 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
         x=y2,
         name='stabilizer3',
     )
-    tf4, y4 = tf_to_diffblock(
+    tf4, y4 = tf_to_block(
         num=np.array([1, parameters["t1"].value]),
         den=np.array([1, parameters["t2"].value]),
         x=y3,
         name='stabilizer4',
     )
-    tf5, y5 = tf_to_diffblock(
+    tf5, y5 = tf_to_block(
         num=np.array([1, parameters["t3"].value]),
         den=np.array([1, parameters["t4"].value]),
         x=y4,
@@ -717,7 +717,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
     }
     # ---Internal Blocks---
-    tf1, y1 = tf_to_diffblock(
+    tf1, y1 = tf_to_block(
         num=np.array([1]),
         den=np.array([1, parameters["tR"].value]),
         x=inputs[1],
@@ -726,7 +726,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     # error1 = UPssPu - y + UsRefPu
     error1 = (- y1 + UsRefPu) + inputs[2]
-    tf2, y2 = tf_to_diffblock(
+    tf2, y2 = tf_to_block(
         num=np.array([0, parameters["Kf"].value]),
         den=np.array([1, parameters["tF"].value]),
         x=Vf,
@@ -734,7 +734,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     )
     error2 = error1 - y2
 
-    tf3, y3 = tf_to_diffblock(
+    tf3, y3 = tf_to_block(
         num=np.array([1, parameters["tC"].value]),
         den=np.array([1, parameters["tB"].value]),
         x=error2,
@@ -761,7 +761,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     x1 = VfeMaxPu - inputs[0] * parameters["Kd"].value
     error1 = Efe - (inputs[0] * parameters["Kd"].value + u_aux)
 
-    tf1_sub, Ve = tf_to_diffblock(
+    tf1_sub, Ve = tf_to_block(
         num=np.array([1]),
         den=np.array([0, parameters["tE"].value]),
         x=error1,

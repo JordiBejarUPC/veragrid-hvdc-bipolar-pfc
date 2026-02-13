@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-import copy
 import uuid
 import numpy as np
-from typing import Tuple, Sequence, List, Dict, Any, Optional
+from typing import Tuple, Sequence, List, Dict, Optional
 
 from enum import Enum, auto
 
-from VeraGridEngine.basic_structures import Logger, Vec
+from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, make_symbolic, _dict_to_expr, abs,
-                                                    DiffVar, hard_sat, heaviside, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, abs,
+                                                    DiffVar, heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -27,78 +26,11 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
-
-def _serialize_expr_list(exprs: List[Expr]) -> List[Dict[str, Any]]:
-    """
-
-    :param exprs:
-    :return:
-    """
-    return [expr.to_dict() for expr in exprs]
-
-
-def _serialize_var_list(vars_: List[Var | Const]) -> List[Dict[str, Any]]:
-    """
-    Serialize list of variables or constants
-    :param vars_: list of Var or Const
-    :return: List of dictionaries with the serialized data
-    """
-    return [v.to_dict() for v in vars_]
-
-
-def _deserialize_expr_list(expr_dicts: List[Dict[str, Any]]) -> List[Expr]:
-    """
-
-    :param expr_dicts:
-    :return:
-    """
-    return [Expr.from_dict(d) for d in expr_dicts]
-
-
-def _deserialize_var_list(var_dicts: List[Dict[str, Any]]) -> List[Var | Const]:
-    """
-    De-serialize previously serialized data into List of Vars or Const
-    :param var_dicts: List of serialized data
-    :return: List of Vars or Const
-    """
-    result = list()
-    for d in var_dicts:
-        if d["type"] == "Var":
-            result.append(Var(name=d["name"], uid=d["uid"]))
-        elif d["type"] == "DiffVar":
-            diff_var = _dict_to_expr(d)
-            result.append(diff_var)
-        elif d["type"] == "Const":
-            result.append(Const(value=d["value"], uid=d["uid"]))
-        else:
-            raise ValueError(f"Unknown variable type {d['type']}")
-    return result
-
-
-def block2implicit(block: Block):
-    diff_block = block.copy()
-
-    for i, eq in enumerate(block.state_eqs):
-        state_var = block.state_vars[i]  # Todo: not robust, order has to be followed
-        if state_var.diff_var is None:
-            dt_var = DiffVar(name='dt_' + state_var.name, base_var=state_var)
-            diff_block.diff_vars.append(dt_var)
-        else:
-            dt_var = state_var.diff_var
-        eq = eq - dt_var
-        diff_block.algebraic_eqs.append(eq)
-        diff_block.algebraic_vars.append(state_var)
-
-    diff_block.state_eqs = []
-    diff_block.state_vars = []
-
-    for i, child_block in enumerate(diff_block.children):
-        diff_block.children[i] = block2implicit(child_block)
-
-    return diff_block
-
-
-def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = None, name: Optional[str] = ''):
+def tf_to_block(num: np.ndarray,
+                den: np.ndarray,
+                x: Var | Expr,
+                y: Var = None,
+                name: Optional[str] = '') -> Tuple[Block, Var]:
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
     den: list of denominator coefficients [a0, a1, ..., an]
@@ -107,8 +39,6 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
     """
     if len(num) > len(den):
         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    # if num[-1] == 0 or den[-1] == 0:
-    #     raise ValueError("Leading coefficient of cannot be zero.")
 
     if y is None:
         y = Var('y_' + name)
@@ -146,13 +76,17 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = No
 
     block = Block()
     block.algebraic_vars = [y] + aux_vars
+    block.algebraic_vars = [y] + aux_vars
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
 
     return block, y
 
 
-def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = None,
+def tf_to_diffblock_with_output(num: np.ndarray,
+                                den: np.ndarray,
+                                x: Var | Expr,
+                                y: Var = None,
                                 name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
@@ -208,7 +142,10 @@ def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr,
     return block, y, x
 
 
-def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = None, name: Optional[str] = ''):
+def tf_to_diffblock_with_states(num: np.ndarray,
+                                den: np.ndarray,
+                                x: Var | Expr,
+                                y: Var = None, name: Optional[str] = ''):
     """
     num: numerator coefficients [b0,...,bm]
     den: denominator coefficients [a0,...,an], with an != 0
@@ -273,7 +210,8 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
     return block, y_states[0]
 
 
-def tf_to_block_with_states(num: np.ndarray, den: np.ndarray, x):
+def tf_to_block_with_states(num: np.ndarray,
+                            den: np.ndarray, x):
     """
     num: numerator coefficients [b0,...,bm]
     den: denominator coefficients [a0,...,an], with an != 0
@@ -552,27 +490,6 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
     return block, y
 
 
-def compare_blocks_dict(dict1, dict2):
-    logger = Logger()
-
-    for (prp_name1, prp1), (prp_name2, prp2) in zip(dict1.items(), dict2.items()):
-        if prp_name1 == prp_name2 and prp_name1 == "children":
-            for child_dict1, child_dict2 in zip(prp1, prp2):
-                if len(child_dict1) == len(child_dict2):
-                    compare_blocks_dict(child_dict1, child_dict2)
-                else:
-                    logger.add_error(msg="children number differs",
-                                     value=len(child_dict1),
-                                     expected_value=len(child_dict2))
-        else:
-            if prp1 != prp2:
-                logger.add_error(msg=f'different {prp_name1}',
-                                 value=prp1,
-                                 expected_value=prp2)
-
-    return logger.error_count() == 0, logger
-
-
 class Block:
     """
     Class representing a Block
@@ -584,7 +501,6 @@ class Block:
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
                  diff_vars: List[DiffVar] | None = None,
-                 lag_vars: List[LagVar] | None = None,
                  reformulated_vars: List[DiffVar] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
@@ -628,7 +544,6 @@ class Block:
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
         self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
-        self.lag_vars: List[LagVar] = list() if lag_vars is None else lag_vars
         self.reformulated_vars: List[DiffVar] = list() if reformulated_vars is None else reformulated_vars
         self.differential_eqs: List[Expr] = list() if differential_eqs is None else differential_eqs
 
@@ -663,7 +578,8 @@ class Block:
         
     def set_parameter(self, ref: ParamPowerFlowRefferenceType, cte: Const):
         """
-        
+        assign a parameter to the block parameters
+
         :param ref: 
         :param cte: 
         :return: 
@@ -671,21 +587,10 @@ class Block:
         var = self.api_obj_mapping.get(ref, None)
         if var is not None:
             self.parameters[var] = cte
-            
-    def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-
-        # copy all attributes manually
-        for attr in self.__dict__:
-            value = getattr(self, attr)
-            setattr(result, attr, copy.deepcopy(value, memo))
-
-        return result
 
     def check_empty(self) -> bool:
         """
+        check if a model does not have state and algebraic variables
 
         :return:
         """
@@ -693,7 +598,7 @@ class Block:
 
     def empty(self) -> bool:
         """
-
+        check if a model is empty
         :return:
         """
         if not self.children:
@@ -710,22 +615,10 @@ class Block:
 
         return False
 
-    @classmethod
-    def from_block(cls, block: Block, **kwargs):
-        """
-            This function creates a block with no state equations
-        """
-        if len(block.state_eqs) == 0 and len(block.state_vars) == 0:
-            return block  # already a DiffBlock
-
-        # Create a new instance of DiffBlock, copying fields from the original Block
-        obj = cls.__new__(cls)  # create instance without __init__
-        obj.__dict__ = block.__dict__.copy()
-        obj.__dict__.update(kwargs)  # add DiffBlock-specific fields
-        return obj
-
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
+
+        returns the value of the external mapping coresponding to d VarPowerFlowRefferenceType
 
         :param d:
         :return:
@@ -740,9 +633,9 @@ class Block:
         """
         return self.var_mapping[d]
 
-    def add(self, val: "Block"):
+    def add(self, val: Block):
         """
-        Add another block
+        Add another block to children of the model
         :param val: Block
         """
         self.children.append(val)
@@ -776,7 +669,7 @@ class Block:
 
     def unify_blocks(self):
         """
-        This function collects all variables and equations of a block
+        This function collects all variables and equations of a block, returns a flat block
         Returns
         -------
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
@@ -810,15 +703,20 @@ class Block:
 
     def get_vars(self) -> List[Var]:
         """
-        Get a list of algebraic + state vars
+        returns variables of the flat block
         :return: List[Var]
         """
+        vars_list = list()
+        variables_lists = [self.algebraic_vars, self.state_vars, self.diff_vars]
+        for lst in variables_lists:
+            for var in lst:
+                vars_list.append(var)
 
-        return self.algebraic_vars + self.state_vars + self.diff_vars
+        return vars_list
 
     def get_all_vars(self):
         """
-
+        returns all the variables of a block
         :return:
         """
         variables: List[Var] = list()
@@ -838,7 +736,7 @@ class Block:
         """
         init_eqs_new = dict()
         event_dict_new = dict()
-        external_mapping_new = dict()
+
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
             self.algebraic_eqs[i] = new_equ
@@ -889,12 +787,8 @@ class Block:
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
 
-
-class ParametersRefContainer(Enum):
-    Container_Name = auto()
-
-
 class BlockType(Enum):
+    "this class contains the existing types of blocks"
     CONST = auto()
     GAIN = auto()
     SUM = auto()
@@ -969,14 +863,6 @@ def variable(name: str = "variable_", vartype: str = "vartype_") -> Tuple[Var, B
     else:
         blk = Block(algebraic_vars=[y])
     return y, blk
-
-
-def equation(expr: str = 'expression', etype: str = "etype") -> Block:
-    if etype == 'state':
-        blk = Block(state_eqs=[make_symbolic(expr)])
-    else:
-        blk = Block(algebraic_eqs=[make_symbolic(expr)])
-    return blk
 
 
 def adder(item_name: str = "") -> Block:
@@ -1102,10 +988,10 @@ def integrator(u: Var | Const, name: str = "x") -> Tuple[Var, Block]:
 
 
 def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
-    up, blk_kp = gain(kp, err, f"{name}_up")
-    ie, blk_int = integrator(err, f"{name}_int")
-    ui, blk_ki = gain(ki, ie, f"{name}_ui")
-    u, blk_sum = adder([up, ui], f"{name}_u")
+    up, blk_kp = gain()
+    ie, blk_int = integrator(err)
+    ui, blk_ki = gain()
+    u, blk_sum = adder()
     return Block(name="",
                  children=[blk_kp, blk_int, blk_ki, blk_sum],
                  in_vars=[err],

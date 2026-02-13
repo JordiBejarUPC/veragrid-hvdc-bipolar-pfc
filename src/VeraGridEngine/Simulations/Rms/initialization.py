@@ -7,40 +7,12 @@ from typing import Dict, List
 import numpy as np
 
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, SymbolicParamsVectorInit
-from VeraGridEngine.Utils.Symbolic.symbolic import  get_expression_vars
+from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 
 
-
-def delete_vars_from_block(block: Block, deleted_vars: List[Var]):
-    """
-
-    :param block:
-    :param deleted_vars:
-    :return:
-    """
-    deleted_vars_uid = set(var.uid for var in deleted_vars)
-    for b in block.get_all_blocks():
-        algebraic_vars_copy = b.algebraic_vars.copy()
-        b.algebraic_vars = []
-        for var in algebraic_vars_copy:
-            if var.uid not in deleted_vars_uid:
-                b.algebraic_vars.append(var)
-            else:
-                # print(f'Deleting var {var.name} from block {b.name}')
-                _ = 0
-
-
-def find_name_in_block(name: str, block: Block):
-    lists = [block.algebraic_vars, block.state_vars]
-    for lst in lists:
-        for var in lst:
-            if name == var.name:
-                return var
-    raise ValueError(f"Could not find name {name}")
-
-
+# ask Maria for usages and delete
 def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarray:
     """
     Helper function to build the initial vector
@@ -60,76 +32,85 @@ def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarra
     return x
 
 
-def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
-    for var in dev_mdl.state_vars:
-        vars_list.append(var)
-        init_guess_dict.update({var: np.random.rand()})
-    for var in dev_mdl.algebraic_vars:
-        vars_list.append(var)
-        init_guess_dict.update({var: np.random.rand()})
-    # if hasattr(dev_mdl, 'diff_vars'):
-    #     for var in dev_mdl.diff_vars:
-    #         vars_list.append(var)
-    #         init_guess_dict.update({var: np.random.rand()})
-    if dev_mdl.children:
-        for child in dev_mdl.children:
-            parse_vars(child, init_guess_dict, vars_list)
-
-    return init_guess_dict, vars_list
-
-
 def init_explicit(mdl: Block,
-                  sys_vars:Dict[int, Var],
-                  variable_parameters:List[Var],
-                  constant_parameters:List[Var],
+                  sys_vars: Dict[int, Var],
+                  variable_parameters: List[Var],
+                  constant_parameters: List[Var],
                   init_guess: Dict[int, float],
                   uid2idx_vars: Dict[int, int],
-                  uid2idx_params:Dict[int, int],
-                  uid2idx_event_params:Dict[int, int],
-                  compiler_names_dict:Dict[int, str],
-                  alias_names_dict:Dict[int, str],
+                  uid2idx_params: Dict[int, int],
+                  uid2idx_event_params: Dict[int, int],
+                  compiler_names_dict: Dict[int, str],
+                  alias_names_dict: Dict[int, str],
                   VARIABLE_PARAMS_NAME: str,
-                  TIME_NAME:str,
-                  VARS_NAME:str,
-                  DIFF_NAME:str,
-                  CONSTANT_PARAMS_NAME:str):
+                  TIME_NAME: str,
+                  VARS_NAME: str,
+                  DIFF_NAME: str,
+                  CONSTANT_PARAMS_NAME: str):
     """
-    Initialize using explicit equations
+
+    initialize model using explicit equations
+
+    :param mdl:
+    :type mdl: VeraGridEngine.Utils.Symbolic.block.Block
+    :param sys_vars:
+    :type sys_vars: Union[List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var]]
+    :param variable_parameters:
+    :type variable_parameters: List[VeraGridEngine.Utils.Symbolic.symbolic.Var]
+    :param constant_parameters:
+    :type constant_parameters: List[VeraGridEngine.Utils.Symbolic.symbolic.Var]
+    :param init_guess:
+    :type init_guess: Dict[Tuple[int, str], float]
+    :param uid2idx_vars:
+    :type uid2idx_vars: Dict[int, int]
+    :param uid2idx_params:
+    :type uid2idx_params: Dict[int, int]
+    :param uid2idx_event_params:
+    :type uid2idx_event_params: Dict[int, int]
+    :param compiler_names_dict:
+    :type compiler_names_dict: Dict[int, str]
+    :param alias_names_dict:
+    :type alias_names_dict: Dict[int, str]
+    :param VARIABLE_PARAMS_NAME:
+    :type VARIABLE_PARAMS_NAME: str
+    :param TIME_NAME:
+    :type TIME_NAME: str
+    :param VARS_NAME:
+    :type VARS_NAME: str
+    :param DIFF_NAME:
+    :type DIFF_NAME: str
+    :param CONSTANT_PARAMS_NAME:
+    :type CONSTANT_PARAMS_NAME:
+    :return:
+    :rtype: Union[None, Tuple[Dict[Tuple[int, str], float], VeraGridEngine.Utils.Symbolic.block.Block]]
     """
 
     # initialize array for model variables
-    #this is general but has to be here because needs the total length of variables array
     x = np.ones(len(sys_vars))
 
     # assign initial guesses for known variables
-
     for uid, val in init_guess.items():
         x[uid2idx_vars[uid]] = val
 
     # initialize array for model params
-    #this is general but has to be here because needs the total length of variables array
     params_array = np.zeros(len(constant_parameters))
+
     # compute and assign parameters value
-
-
     for param, const in mdl.parameters.items():
-        param_val = const.value
-        params_array[uid2idx_params[param.uid]] = param_val
+        params_array[uid2idx_params[param.uid]] = const.value
 
-    # initialize array for model event params
-    #this is general but has to be here because needs the total length of variables array
+    # compute and assign known event parameters value
     event_params_array = np.ones(len(variable_parameters))
-    # compute and assign event parameters non undefined value
-
     for event_param in mdl.event_dict.keys():
         eq = mdl.event_dict[event_param]
 
         if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
-            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME, VARIABLE_PARAMS_NAME, TIME_NAME)
+            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                                             VARIABLE_PARAMS_NAME, TIME_NAME)
             param_val = float(eq_fn(x, event_params_array, 0.0)[0])
             event_params_array[uid2idx_event_params[event_param.uid]] = param_val
 
-    # compute and assign missing init_vars and undefined parameters
+    # compute and assign missing init_vars and None event parameters
     vars_initialized: List[int] = list()
     while len(vars_initialized) < len(mdl.init_eqs):
         progress = False
@@ -165,7 +146,8 @@ def init_explicit(mdl: Block,
                             raise ValueError(f"Parameter {var.name} already initialized")
 
                         else:
-                            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME, VARIABLE_PARAMS_NAME, TIME_NAME)
+                            eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                                                             VARIABLE_PARAMS_NAME, TIME_NAME)
                             param_val = float(eq_fn(x, event_params_array, 0.0)[0])
                             mdl.event_dict[var] = Const(param_val)
                             event_params_array[uid2idx_event_params[var.uid]] = param_val
@@ -211,5 +193,11 @@ def init_explicit(mdl: Block,
             unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
             raise RuntimeError(f"Unresolvable init equations: {unresolved}")
 
+
 def init_pseudo_transient():
+    """
+    initialize model using pseudotransient method
+    :return:
+    :rtype:
+    """
     raise NotImplementedError(f'pseudotransient initialization method not implemented yet')
