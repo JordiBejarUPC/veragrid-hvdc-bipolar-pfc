@@ -96,8 +96,7 @@ def test_ieee_grids_3ph():
     Checks the .RAW files of IEEE grids against the PSS/e results
     This test checks 2 things:
     - PSS/e import fidelity
-    - PSS/e vs VeraGrid results
-    :return: Nothing if ok, fails if not
+    - PSS/e vs VeraGrid results, for both positive-sequence and three-phase methods
     """
 
     files = [
