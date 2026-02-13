@@ -905,10 +905,10 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                            Idelta=self.nc.load_data.I3_delta,
                                                            Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3)
-        Icalc = compute_current(self.Ybus, V)
+        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3) / (V / np.abs(V))
+        Icalc = compute_current(self.Ybus, V) / (V / np.abs(V))
 
-        dI = Icalc - Ibus  # compute the mismatch
+        dI = (Icalc - Ibus)  # compute the mismatch
         _f = np.r_[
             dI[self.idx_dP].real,
             dI[self.idx_dQ].imag
@@ -962,13 +962,13 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                            Idelta=self.nc.load_data.I3_delta,
                                                            Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3)
-        Icalc = compute_current(self.Ybus, V)
+        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3) / (V / np.abs(V))
+        Icalc = compute_current(self.Ybus, V) / (V / np.abs(V))
 
         # print('\nIbus =', abs(Ibus))
         # print('Icalc =', abs(Icalc))
 
-        dI = Icalc - Ibus  # compute the mismatch
+        dI = (Icalc - Ibus)  # compute the mismatch
         _f = np.r_[
             dI[self.idx_dP].real,
             dI[self.idx_dQ].imag
@@ -1018,10 +1018,10 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                            Idelta=self.nc.load_data.I3_delta,
                                                            Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3)
-        Icalc = compute_current(self.Ybus, self.V)
+        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3) / (self.V / np.abs(self.V))
+        Icalc = compute_current(self.Ybus, self.V) / (self.V / np.abs(self.V))
 
-        dI = Icalc - Ibus  # compute the mismatch
+        dI = (Icalc - Ibus)  # compute the mismatch
         self._f = np.r_[
             dI[self.idx_dP].real,
             dI[self.idx_dQ].imag
@@ -1111,8 +1111,8 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                                                                      Idelta=self.nc.load_data.I3_delta,
                                                                                      Ifloating=self.nc.load_data.I3_floatingstar)
 
-        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3)
-        Icalc = compute_current(self.Ybus, self.V)
+        Ibus = (Igen + Ipower + Icurrent) / (self.nc.Sbase / 3) / (self.V / np.abs(self.V))
+        Icalc = compute_current(self.Ybus, self.V) / (self.V / np.abs(self.V))
 
         self._f = compute_fx(Icalc, Ibus, self.idx_dP, self.idx_dQ)
 

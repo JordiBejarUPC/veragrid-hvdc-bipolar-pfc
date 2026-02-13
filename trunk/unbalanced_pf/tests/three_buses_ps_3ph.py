@@ -1,5 +1,4 @@
 import VeraGridEngine.api as vge
-from VeraGridEngine import ShuntConnectionType
 
 grid = vge.MultiCircuit()
 
@@ -57,7 +56,6 @@ grid.add_line(obj=line_pv_pq)
 # ----------------------------------------------------------------------------------------------------------------------
 load = vge.Load(P=10.0,
                 Q=5.0)
-load.conn = ShuntConnectionType.GroundedStar
 grid.add_load(bus=bus_pq, api_obj=load)
 
 # ----------------------------------------------------------------------------------------------------------------------
