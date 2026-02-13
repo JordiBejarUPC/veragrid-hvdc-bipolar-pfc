@@ -133,12 +133,12 @@ def init_explicit(mdl: Block,
                     if v_init in mdl.event_dict.keys():
                         if isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None:
                             calculate_now = False
-                            break
+
 
                     else:
                         if key_deps not in init_guess and v_init.uid != var.uid:
                             calculate_now = False
-                            break
+
 
                 if calculate_now:
 
