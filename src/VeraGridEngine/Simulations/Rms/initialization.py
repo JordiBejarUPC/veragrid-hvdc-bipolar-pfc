@@ -9,7 +9,7 @@ import numpy as np
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, SymbolicParamsVectorInit
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 
 
 # ask Maria for usages and delete
@@ -35,6 +35,7 @@ def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarra
 def init_explicit(mdl: Block,
                   sys_vars: Dict[int, Var],
                   variable_parameters: List[Var],
+                  event_parameters_eqs: List[Expr | Const],
                   constant_parameters: List[Var],
                   init_guess: Dict[int, float],
                   uid2idx_vars: Dict[int, int],
@@ -57,6 +58,8 @@ def init_explicit(mdl: Block,
     :type sys_vars: Union[List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var], List[Tuple[int, str]], Dict[int, VeraGridEngine.Utils.Symbolic.symbolic.Var]]
     :param variable_parameters:
     :type variable_parameters: List[VeraGridEngine.Utils.Symbolic.symbolic.Var]
+    :param event_parameters_eqs:
+    :type event_parameters_eqs:
     :param constant_parameters:
     :type constant_parameters: List[VeraGridEngine.Utils.Symbolic.symbolic.Var]
     :param init_guess:
@@ -148,9 +151,13 @@ def init_explicit(mdl: Block,
                         else:
                             eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
                                                              VARIABLE_PARAMS_NAME, TIME_NAME)
+
                             param_val = float(eq_fn(x, event_params_array, 0.0)[0])
                             mdl.event_dict[var] = Const(param_val)
                             event_params_array[uid2idx_event_params[var.uid]] = param_val
+                            index= variable_parameters.index(var)
+                            if event_parameters_eqs[index].value is None:
+                                event_parameters_eqs[index] = Const(param_val)
 
                     # We initialize the algebraic values
                     else:
