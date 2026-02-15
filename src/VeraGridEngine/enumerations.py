@@ -1481,6 +1481,8 @@ class FileType(Enum):
     UCTE = 'UCTE'
     RTE_xml = "RTE_XML"
     IPA = "IPA"
+    PGM = "Power grid models"
+    generic_excel = "Generic Excel"
 
     def __str__(self):
         return self.value

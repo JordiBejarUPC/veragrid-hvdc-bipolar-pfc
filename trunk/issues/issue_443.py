@@ -2,7 +2,7 @@ import VeraGridEngine.api as gce  # For interfacing with the GridCal API
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.Compilers.circuit_to_newton_pa import translate_newton_pa_pf_results, newton_pa_pf
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_open import FileOpen
 import VeraGridEngine.enumerations as en
 from sklearn.metrics import mean_squared_error
 

@@ -1,6 +1,7 @@
 import VeraGridEngine.api as vge
 import numpy as np
 import pandas as pd
+from VeraGridEngine import ShuntConnectionType
 
 grid = vge.MultiCircuit()
 
@@ -20,6 +21,9 @@ grid.add_bus(obj=bus_load)
 gen_slack = vge.Generator()
 grid.add_generator(bus=bus_slack, api_obj=gen_slack)
 
+gen_load = vge.Generator(P=5, power_factor=1.0, is_controlled=False)
+grid.add_generator(bus=bus_load, api_obj=gen_load)
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Line
 # ----------------------------------------------------------------------------------------------------------------------
@@ -34,32 +38,18 @@ grid.add_line(obj=line_slack_load)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-# load = vge.Load(Ir=10.0,
-#                 Ii=-5.0)
-# grid.add_load(bus=bus_load, api_obj=load)
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Shunts
-# ----------------------------------------------------------------------------------------------------------------------
-shunt = vge.Shunt(G=10.0,
-                  B=5.0)
-grid.add_shunt(bus=bus_load, api_obj=shunt)
-
-# shunt = vge.Shunt(G1=10.0 / 3,
-#                   G2=10.0 / 3,
-#                   G3=10.0 / 3,
-#                   B1=5.0 / 3,
-#                   B2=5.0 / 3,
-#                   B3=5.0 / 3)
-# grid.add_shunt(bus=bus_load, api_obj=shunt)
+load = vge.Load(P=10.0,
+                Q=5.0)
+load.conn = ShuntConnectionType.GroundedStar
+grid.add_load(bus=bus_load, api_obj=load)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
 res = vge.power_flow(grid=grid, options=vge.PowerFlowOptions())
 
-vge.save_file(grid=grid, filename='positive_sequence_3ph_pf.veragrid')
-pd.set_option("display.float_format", "{:.5f}".format)
+# vge.save_file(grid=grid, filename='positive_sequence_3ph_pf.veragrid')
+# pd.set_option("display.float_format", "{:.5f}".format)
 
 print("\nPositive-sequence power flow results:")
 print(res.get_voltage_df())
