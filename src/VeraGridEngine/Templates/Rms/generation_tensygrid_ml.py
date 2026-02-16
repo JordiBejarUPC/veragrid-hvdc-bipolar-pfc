@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
                                                  tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-
+import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars:
@@ -41,6 +41,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
+    algebraic_eqs = []
+    algebraic_vars = []
     inputs: List[Var] = [Var("Vm_" + name),
                          Var("Va_" + name),
                          Var("Tm_" + name),
@@ -72,6 +74,12 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     Te = Var("Te" + name)
     IRPu = Var("IRPu" + name)
 
+    #Auxiliary Variables
+    V_dag_aux = Var('V_dag_aux')
+    V_qag_aux = Var('V_qag_aux')
+    Psi_sqrt1 = Var('Psi_sqrt1')
+    Psi_sqrt2 = Var('Psi_sqrt2')
+
     # Saturated resistances
     Xd_2prime_sat = Var('Xd_2prime_sat' + name)
     Xq_2prime_sat = Var('Xq_2prime_sat' + name)
@@ -87,6 +95,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     fn = Var('fn')  # system frequency [Hz]
     ws = Var('ws')  # synchronous speed [rad/s]
     M = Var('M')  # inertia constant
+    H = Var('H')  # inertia constant
     D = Var('D')  # damping (optional)
     Rs = Var('Rs')  # stator resistance
     Ra = Var('Ra')  # armature resistance (if distinct)
@@ -130,6 +139,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         fn: Const(50.0),
         ws: Const(2*pi*50),
         M: Const(3.5),
+        H: Const(1)/M,
         D: Const(10.0),
         Rs: Const(0.003),
         Ra: Const(0.003),
@@ -172,14 +182,18 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     Ed_2prime_expr = Psiq_prime * Xqaux2 + Ed_prime * Xqaux3
     Iq_sat = Var('Iq_sat')
     Id_sat = Var('Iq_sat')
-    #Sat = 1 + Sa
-    # Xd_2prime_sat = (Xd_2prime - Xl)/Sat + Xl
-    # Xq_2prime_sat = (Xq_2prime - Xl)/Sat + Xl
+
+
+    #we call trig_transform to get cos(Vm-delta) and siN(Vm-delta)
+    ml_trig_block, u_cos, u_sin = sym_ml.trig_transform(inputs[1]-delta)
+
+    #We call ml_postive_part to ge (Psi_ag-B)^+ := max(Psi_ag-B, 0)
+    ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(Psi_ag-B)
 
     templ.block = Block(
         state_eqs=[
             (omega - Const(1)) * ws,  # dδ/dt
-            (inputs[2] - Te - D * (omega - Const(1))) * (1 / M),  # dω/dt
+            (inputs[2] - Te - D * (omega - Const(1))) * (H),  # dω/dt
             (inputs[3]  - Sat * Eq1) / Td0_prime,  # dEq'/dt
             -Sat * Ed1 / Tq0_prime,  # dEd'/dt
             (-Psiq_prime + Iq_sat * Xq_prime_minus_Xl + Ed_prime),  # dPsiq'/dt
@@ -187,8 +201,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Psiq_prime, Psid_prime],
         algebraic_eqs=[
-            Vd - (-inputs[0] * sym.sin(inputs[1] - delta)),  # from input block
-            Vq - (inputs[0] * sym.cos(inputs[1] - delta)),  # from input block
+            Vd - (-inputs[0] * u_sin),  # from input block
+            Vq - (inputs[0] * u_cos),  # from input block
             Pg - (Vd * Id + Vq * Iq),  # from input block
             Qg - (Vq * Id - Vd * Iq),  # from input block
             Vd - (omega * Ed_2prime_expr + Iq * Xq_2prime_sat - Id * Ra),
@@ -212,9 +226,13 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             # flux
             V_dag - (Vd + Id * Ra - Iq * Xl),
             V_qag - (Vq + Iq * Ra + Id * Xl),
-            omega * Psi_ag - sym.sqrt(V_qag * V_qag + V_dag * V_dag),
+            Psi_sqrt1 - Psi_sqrt2,
+            V_qag_aux - V_qag,
+            V_dag_aux - V_dag,
+            Psi_sqrt1*Psi_sqrt2 - (V_qag_aux * V_qag + V_dag * V_dag_aux),
+            omega * Psi_ag - Psi_sqrt1,
             # saturations (quadratic)
-            Sa - A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-5))) ** 2,
+            Sa - A*Psi_plus,
 
             # Eq1, Eq2, Ed1, Ed2 exciter
             IRPu - Eq1 * Sat,
@@ -223,13 +241,15 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         # saturated resistance
                         Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat,
                         # flux
-                        Sa, Sat, V_dag, V_qag, Psi_ag,
-                        IRPu],
+                        Sa, Sat, V_dag, V_qag, Psi_ag, IRPu,
+                        #auxiliary variables
+                        Psi_sqrt1, Psi_sqrt2, V_qag_aux, V_dag_aux
+                        ],
         init_eqs={
             # Air Gap Voltages and delta
             omega: Const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-5))) ** 2,
+            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-11))) ** 2,
             Sat: Const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
@@ -271,6 +291,10 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
             Iq_sat: Iq/Sat,
             Id_sat: Id/Sat,
 
+            Psi_sqrt1: Psi_ag, 
+            Psi_sqrt2: Psi_sqrt1, 
+            V_qag_aux: V_qag, 
+            V_dag_aux: V_dag,
             #We initialize some specific parameters:
         },
         # external_mapping={
@@ -282,6 +306,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
+        children=[ml_positive_part, ml_trig_block],
         name="genqec"
     )
 
@@ -389,14 +414,17 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    y2_1 = sym.hard_sat(y2, Uc, Uo)
+    ml_block1, y2_1 = sym_ml.ml_hard_sat(y2, Uc, Uo)
+    
+    #y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
         num=np.array([1]),
         den=np.array([0, 1]),
         x=y2_1,
         name='gov1',
     )
-    algebraic_eqs.append(y2_3 - sym.hard_sat(y2_2, Pmin, Pmax))
+    ml_block2, y2_bis =  sym_ml.ml_hard_sat(y2_2, Pmin, Pmax)
+    algebraic_eqs.append(y2_3 - y2_bis)
 
     # ==============================
     # We compute different outputs for every tf
@@ -451,9 +479,9 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
             y3_3: Pm_ref,
             y3_4: Pm_ref,
             Tm: Pm_ref
-        }
+        },
     )
-
+    templ.block.children.extend([ml_block1, ml_block2])
     return templ
 
 
@@ -531,9 +559,9 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         name='stabilizer5',
     )
 
+    ml_block, Vpss_sat = sym_ml.ml_hard_sat(y5, VPssMinPu, VPssMaxPu)
     algebraic_eqs = list()
-    algebraic_eqs.append(sym.hard_sat(y5, VPssMinPu, VPssMaxPu) - Vpss)
-    block_1 = Block()
+    algebraic_eqs.append(Vpss_sat - Vpss)
 
     templ.block = Block(
         children=[tf, tf2, tf3, tf4, tf5],
@@ -555,7 +583,7 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
     )
 
     templ.block.add(vars_block)
-    templ.block.add(block_1)
+    templ.block.add(ml_block)
 
     return templ
 
@@ -689,15 +717,16 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     min_const = max(events_dict[VaMinPu].value, events_dict[EfeMinPu].value)
     max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
 
-    tf4, y4 = tf_to_diffblock_with_antiwindup(
+    #TODO: Try with AnitWindup
+    tf4, y4 = tf_to_diffblock(
         num=np.array([parameters["Ka"].value]),
         den=np.array([1, parameters["tA"].value]),
         x=y3,
-        sat_min = min_const,
-        sat_max = max_const,
+        #sat_min = min_const,
+        #sat_max = max_const,
         name='exciter4',
     )
-    y6 = sym.hard_sat(y4, min_const, max_const)
+    ml_block2, y6 = sym_ml.ml_hard_sat(y4, min_const, max_const)
 
     # exciter submodel
 
@@ -718,14 +747,16 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Se_threshold = parameters['Ke'].value
 
-    Sx = ( (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold))
+    ml_block_exp, V_exp = sym_ml.exponential_ml(BEx * (Ve - Se_threshold)) 
+    ml_block_hv , V_hv  = sym_ml.ml_heaviside(Ve - Se_threshold)
+    Sx = (V_exp - Const(1)) * V_hv
     aux_expr = parameters['Ke'].value * Ve + AEx * Ve * Sx
     algebraic_eqs_submodel.append(u_aux - aux_expr)
     algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1 * Ve)
 
     f_input = Var('f_input')
     f_output = Var('f_output')
-    f_output_res = sym.f_exc(f_input)
+    ml_block3, f_output_res = sym_ml.ml_f_exc(f_input)
     algebraic_vars_submodel.append(f_input)
     algebraic_vars_submodel.append(f_output)
     algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * parameters["Kc"].value)
@@ -751,11 +782,9 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Ve_sat = sym.hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
     Ve_expr = sym.hard_sat(y_subexciter1, VeMinPu, Const(1000))
-    aux_expr = parameters['Ke'].value * Ve_expr + AEx * Ve_expr * (sym.exp(BEx * (Ve_expr - Se_threshold)) - Const(1)) * sym.heaviside(
-        Ve_expr - Se_threshold)
-
+    aux_expr = parameters['Ke'].value * Ve_expr + AEx * Ve_expr *Sx
     templ.block = Block(
-        children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block],
+        children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block, ml_block_exp, ml_block_hv, ml_block2, ml_block3],
         out_vars=[Vf],
         in_vars=inputs,
         event_dict=events_dict,
@@ -1050,6 +1079,7 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
+    templ.block.unify_blocks()
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],

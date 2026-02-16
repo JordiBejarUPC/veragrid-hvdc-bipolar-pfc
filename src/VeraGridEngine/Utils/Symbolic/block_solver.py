@@ -1156,7 +1156,7 @@ class BlockSolver:
             params = np.array([const.value for const in self._parameters_values])
 
             if step_idx == 0:
-                tol = 1e-8
+                tol = 1e-7
                 xn = x0.copy()
                 initial_step_start = time.time()
             else:
@@ -1218,6 +1218,7 @@ class BlockSolver:
                             vars = eq.get_vars()
                             vars_idx = [self.uid2idx_vars[var.uid] for var in vars if var.uid in self.uid2idx_vars]
                             print(f"eq {eq} with error {rhs[i]}")
+                        exit()
                 else:
                     max_iter = max_iter_0
 
@@ -1225,7 +1226,6 @@ class BlockSolver:
                     break
 
                 Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
-                delta = sp.linalg.spsolve(Jf, -rhs)
 
                 solved = False
                 linear_start = time.time()

@@ -15,7 +15,7 @@ from enum import Enum, auto
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, BinOp, Func, make_symbolic,  _dict_to_expr,  abs, DiffVar, hard_sat, heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -202,7 +202,6 @@ def tf_to_diffblock_with_output(num: np.ndarray, den: np.ndarray, x: Var | Expr,
     block.algebraic_vars = [y] + aux_vars
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
-
     return block, y, x
 
 
@@ -864,6 +863,10 @@ class Block:
         """
         Function to connect two blocks by variables sharing
         """
+
+        # all_diff_vars = []
+        # for b in self.get_all_blocks():
+        #     all_diff_vars.extend(b.diff_vars)
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
