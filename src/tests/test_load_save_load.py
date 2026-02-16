@@ -168,7 +168,6 @@ def test_load_save_load_rms() -> None:
 
     # open the main grid
     grid1 = gce.open_file(fname)
-    # grid1.rms_models = list()
 
     name, ext = os.path.splitext(os.path.basename(fname))
 
@@ -178,13 +177,13 @@ def test_load_save_load_rms() -> None:
 
     # open the main grid again
     grid2 = gce.open_file(fname2)
-    #
-    # # compare the original grid with the saved one to check that they are equal
-    # equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
-    # if not equal:
-    #     logger.print()
-    # # asset for failing
-    # assert equal
+
+    # compare the original grid with the saved one to check that they are equal
+    equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
+    if not equal:
+        logger.print()
+    # asset for failing
+    assert equal
 
     # compare the rms models inside the elements of the grid
 

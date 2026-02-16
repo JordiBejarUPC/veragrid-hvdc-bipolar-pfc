@@ -25,6 +25,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
 from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
@@ -2218,6 +2219,14 @@ class MultiCircuit(Assets):
                                             device_property=prop.name,
                                             value=v2,
                                             expected_value=v1)
+
+                            elif prop.tpe == SubObjectType.DaeBlockType:
+                                if not compare_blocks(v1, v2):
+                                    logger.add_error(msg="Different snapshot values",
+                                                     device_class=template_elm.device_type.value,
+                                                     device_property=prop.name,
+                                                     value=v2,
+                                                     expected_value=v1)
                             else:
                                 if v1 != v2:
                                     logger.add_error(msg="Different snapshot values",

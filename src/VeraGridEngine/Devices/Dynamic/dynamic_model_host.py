@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import uuid
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy, compare_blocks
 from VeraGridEngine.enumerations import DeviceType
 
 
@@ -392,6 +392,7 @@ class DynamicModelHost(EditableDevice):
         :return: Data to save
         """
         return {
+            "idtag": self.idtag,
             "template": self.template.uid if self.template is not None else None,
             "model": self.model.uid,
             "diagram": self.diagram.to_dict()
@@ -408,6 +409,8 @@ class DynamicModelHost(EditableDevice):
         # template_id = data.get("template", None)
         # if template_id is not None:
         #     self.template = models_dict.get(template_id, None)
+
+        self.idtag = data.get("idtag", None)
 
         template_uid = data.get("template", None)
         if template_uid is not None:
@@ -429,7 +432,7 @@ class DynamicModelHost(EditableDevice):
 
         return self.model.empty()
 
-    def __eq__(self, other: "DynamicModelHost") -> bool:
+    def __eq__(self, other: DynamicModelHost) -> bool:
         """
 
         :param other:
@@ -439,7 +442,7 @@ class DynamicModelHost(EditableDevice):
 
             if self.template is None:
                 if other.template is None:
-                    return self.model == other.model
+                    return compare_blocks(self.model, other.model)
                 else:
                     return False
             else:

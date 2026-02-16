@@ -1077,9 +1077,9 @@ class DataBaseTableMain(DiagramsMain):
                         self.rms_events_Editor_window.resize(int(1.81 * 700.0), 700)
 
                         # TODO: check if we are actually editing the object directly
-                        # if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                        #     # update event
-                        #     self.circuit.rms_events[idx] = self.rms_events_Editor_window.get_updated_event()
+                        if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                            # update event
+                            self.circuit.rms_events[idx] = self.rms_events_Editor_window.get_updated_event()
 
                     else:
 

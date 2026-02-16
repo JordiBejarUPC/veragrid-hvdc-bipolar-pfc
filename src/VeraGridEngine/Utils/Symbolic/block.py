@@ -575,7 +575,63 @@ class Block:
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
-        
+
+    def __eq__(self, other):
+
+        """
+            Create depp copy of a block
+            :param block1:
+            :param block2:
+            :param testing:
+            :return:
+            """
+
+        saver1 = BlockSaver()
+        d1 = saver1.save_block(self, main=False)
+        const_save1 = saver1.get_const_to_save()
+        vars_save1 = saver1.get_vars_to_save()
+        diff_vars_save1 = saver1.get_diff_vars_to_save()
+        blocks1 = saver1.get_blocks()
+
+        saver2 = BlockSaver()
+        d2 = saver2.save_block(other, main=False)
+        const_save2 = saver2.get_const_to_save()
+        vars_save2 = saver2.get_vars_to_save()
+        diff_vars_save2 = saver2.get_diff_vars_to_save()
+        blocks2 = saver2.get_blocks()
+
+        # if const_save1 != const_save2:
+        #     if testing:
+        #         logger.add_error(msg="List of constants differs",
+        #                          value=const_save2,
+        #                          expected_value=const_save1)
+        #         return logger.error_count() == 0, logger
+        #     else:
+        #         return False
+        #
+        # if vars_save1 != vars_save2:
+        #     if testing:
+        #         logger.add_error(msg="List of vars differs",
+        #                          value=vars_save2,
+        #                          expected_value=vars_save1)
+        #         return logger.error_count() == 0, logger
+        #     else:
+        #         return False
+        #
+        # if diff_vars_save1 != diff_vars_save2:
+        #     if testing:
+        #         logger.add_error(msg="List of diffvars differs",
+        #                          value=diff_vars_save2,
+        #                          expected_value=diff_vars_save1)
+        #         return logger.error_count() == 0, logger
+        #     else:
+        #         return False
+
+        return (
+                (blocks1, const_save1, vars_save1, diff_vars_save1)
+                == (blocks2, const_save2, vars_save2, diff_vars_save2)
+        )
+
     def set_parameter(self, ref: ParamPowerFlowRefferenceType, cte: Const):
         """
         assign a parameter to the block parameters
