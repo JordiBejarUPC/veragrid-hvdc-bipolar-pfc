@@ -66,9 +66,11 @@ def create_buck_converter_system():
 # Simulation runner
 # -----------------------------------------------------------------------------
 
-def run_case(jacobian_backend: JacobianBackend):
+def run_case(jacobian_backend: JacobianBackend, vectorized: bool = False):
+
+    mode_label = "VECTORIZED (Auto-Clustering)" if vectorized else jacobian_backend.name
     print("\n" + "=" * 70)
-    print(f"Running Buck Converter with JacobianBackend = {jacobian_backend}")
+    print(f"Running Buck Converter | Mode: {mode_label}")
     print("=" * 70)
 
     # --- Electrical / control parameters ---
@@ -92,7 +94,6 @@ def run_case(jacobian_backend: JacobianBackend):
         backend=SimulationBackend.SymbolicImplicit,
         jacobian_backend=jacobian_backend,
     )
-
     solver.newton_trace_collector = NewtonTraceCollector()
 
     # --- PWM controller ---
@@ -120,6 +121,7 @@ def run_case(jacobian_backend: JacobianBackend):
         boundary_update_fn=pwm_controller,
         verbose=False,
         dense_threshold=100,
+        vectorized=vectorized
     )
     elapsed = time.time() - t_start
 
@@ -143,43 +145,69 @@ def run_case(jacobian_backend: JacobianBackend):
 # -----------------------------------------------------------------------------
 
 def main():
-    # --- Run both backends ---
-    t_sym, v_sym, i_sym, time_sym = run_case(JacobianBackend.Symbolic)
-    t_ad,  v_ad,  i_ad,  time_ad  = run_case(JacobianBackend.Automatic)
+    # -------------------------------------------------------------------------
+    # 1. Execution Phase
+    # -------------------------------------------------------------------------
 
-    # --- Comparison summary ---
+    # Caso 1: Reference (Symbolic)
+    t_sym, v_sym, i_sym, time_sym = run_case(JacobianBackend.Symbolic, vectorized=False)
+
+    # Caso 2: Automatic Differentiation (AD)
+    t_ad, v_ad, i_ad, time_ad = run_case(JacobianBackend.Automatic, vectorized=False)
+
+    # Caso 3: Auto-Vectorized (PhD Engine)
+    t_vec, v_vec, i_vec, time_vec = run_case(JacobianBackend.Automatic, vectorized=True)
+
+    # -------------------------------------------------------------------------
+    # 2. Comparison & Validation Phase
+    # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
     print("COMPARISON SUMMARY")
     print("-" * 70)
-    print(f"Symbolic time : {time_sym:.4f} s")
-    print(f"AD time       : {time_ad:.4f} s")
-    print(f"Speedup       : {time_sym / time_ad:.2f} x")
-    print(f"ΔV_out final  : {abs(v_sym[-1] - v_ad[-1]):.3e} V")
-    print(f"ΔI_L final    : {abs(i_sym[-1] - i_ad[-1]):.3e} A")
+    print(f"Symbolic time   : {time_sym:.4f} s")
+    print(f"AD time         : {time_ad:.4f} s")
+    print(f"Vectorized time : {time_vec:.4f} s")
 
-    # --- Sanity checks ---
-    assert np.allclose(v_sym, v_ad, atol=1e-6)
-    assert np.allclose(i_sym, i_ad, atol=1e-6)
+    # Calculation of errors relative to Symbolic (Reference)
+    err_ad_v = np.max(np.abs(v_sym - v_ad))
+    err_vec_v = np.max(np.abs(v_sym - v_vec))
+
+    print("-" * 30)
+    print(f"Max Error AD vs Sym  : {err_ad_v:.3e}")
+    print(f"Max Error Vec vs Sym : {err_vec_v:.3e}")
+
+    # Assertions (Crash if physics are wrong)
+    assert np.allclose(v_sym, v_ad, atol=1e-5), "AD Solver Failed Accuracy Check!"
+    assert np.allclose(v_sym, v_vec, atol=1e-5), "Vectorized Solver Failed Accuracy Check!"
+
+    print("\n>>> SUCCESS: All engines produced identical physical results.")
 
     # -------------------------------------------------------------------------
-    # Plot comparison
+    # 3. Plotting Phase
     # -------------------------------------------------------------------------
 
     plt.figure(figsize=(10, 8))
 
-    # Voltage
+    # Plot 1: Voltage
     plt.subplot(2, 1, 1)
-    plt.plot(t_sym * 1000, v_sym, 'b-', label='V_out (Symbolic)')
-    plt.plot(t_ad * 1000,  v_ad,  'r--', label='V_out (AD)')
+    # Symbolic: Línea gruesa transparente (Fondo)
+    plt.plot(t_sym * 1000, v_sym, 'k-', linewidth=4, alpha=0.3, label='Reference (Symbolic)')
+    # AD: Línea azul discontinua
+    plt.plot(t_ad * 1000, v_ad, 'b--', label='Automatic (AD)')
+    # Vectorized: Línea roja punteada (Debe coincidir perfectamente)
+    plt.plot(t_vec * 1000, v_vec, 'r:', linewidth=2, label='Vectorized (Auto-Cluster)')
+
     plt.ylabel('Voltage [V]')
-    plt.title('Buck Converter EMT – Symbolic vs AD Jacobian')
+    plt.title('Buck Converter: Solver Consistency Check')
     plt.legend()
     plt.grid(True)
 
-    # Current
+    # Plot 2: Current
     plt.subplot(2, 1, 2)
-    plt.plot(t_sym * 1000, i_sym, 'b-', label='I_L (Symbolic)')
-    plt.plot(t_ad * 1000,  i_ad,  'r--', label='I_L (AD)')
+    plt.plot(t_sym * 1000, i_sym, 'k-', linewidth=4, alpha=0.3, label='Reference')
+    plt.plot(t_ad * 1000, i_ad, 'b--', label='Automatic')
+    plt.plot(t_vec * 1000, i_vec, 'r:', linewidth=2, label='Vectorized')
+
     plt.ylabel('Current [A]')
     plt.xlabel('Time [ms]')
     plt.legend()

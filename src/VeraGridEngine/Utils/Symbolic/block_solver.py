@@ -4,31 +4,36 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Set, Literal
-from collections import defaultdict
 import numpy as np
 import uuid
 import numba as nb
+from numba.typed import Dict as NbDict
 import math
 import scipy.sparse as sp
 import concurrent.futures
 import time
 import matplotlib.pyplot as plt
 from scipy.sparse import csc_matrix
+from collections import defaultdict
+import hashlib
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import  _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
-                                                    expression2numba, _heaviside)
+                                                    expression2numba, _heaviside, BinOp, UnOp, Func)
 from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, DynamicIntegrationMethod,SimulationBackend,
                                          JacobianBackend)
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
-from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
+from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler,MatrixVectorizedCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics,NewtonDiagnosticsConfig,
                                                        NewtonSolveContext,dense_lstsq_fallback,
                                                        sparse_lsqr_fallback)
+
+from scipy.linalg import lu_factor, lu_solve
+from scipy.sparse.linalg import splu
 
 def _tic():
     return time.perf_counter()
@@ -219,15 +224,21 @@ def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
 
-
 def _collect_var_uids_expr(expr, out_set):
     """
     Collect variable UIDs appearing in an expression, INCLUDING DiffVar.base_var.uid.
-    This is needed because eq.get_vars() may not include DiffVar dependencies.
+    OPTIMIZED: Uses visited set to handle DAGs/shared subexpressions instantly.
     """
     stack = [expr]
+    visited = set()
+
     while stack:
         n = stack.pop()
+
+        # Avoid processing the same node twice (Exponential speedup on DAGs)
+        if id(n) in visited:
+            continue
+        visited.add(id(n))
 
         # Var
         if hasattr(n, "uid") and n.__class__.__name__ == "Var":
@@ -263,29 +274,16 @@ def _collect_var_uids_expr(expr, out_set):
         o = getattr(n, "operand", None)
         if o is not None:
             stack.append(o)
-        # -----------------------------------------------
 
         args = getattr(n, "args", None)
         if args is not None:
-            # args could be tuple/list of Expr
             for ch in args:
                 stack.append(ch)
 
 
 class SparseADJacobian:
     """
-    Sparse Jacobian evaluator based on:
-      1) Static sparsity detection from AST (eq.get_vars()) using variable.uid
-      2) Graph coloring on column intersection graph
-      3) Forward-mode AD JVP kernel compiled by EquationCompiler + Numba
-
-    This avoids O(N^2) symbolic differentiation during setup.
-
-    Runtime API (used by JIT Newton loop):
-        J = jac(states, params, history, d_history, h, history2=None)
-
-    where `params` is the concatenation [event_params, static_params] matching
-    the order used in EquationCompiler(parameters=...).
+    Sparse Jacobian evaluator with DEBUG TIMING.
     """
 
     def __init__(self,
@@ -295,6 +293,9 @@ class SparseADJacobian:
                  method_str: str,
                  use_cse: bool = True,
                  dtype=np.float64):
+
+        t_start = time.perf_counter()
+        print(f"   [AD-Debug] Init started for {len(equations)} eqs...")
 
         self.equations = equations
         self.variables = variables
@@ -306,26 +307,63 @@ class SparseADJacobian:
         self.n_rows = len(equations)
         self.n_cols = len(variables)
 
-        # UID -> index mapping (STRICT UID IDENTITY)
-        self.var_map: Dict[int, int] = {v.uid: i for i, v in enumerate(variables)}
-        self.param_map: Dict[int, int] = {p.uid: i for i, p in enumerate(parameters)}
+        self.var_map = {v.uid: i for i, v in enumerate(variables)}
+        self.param_map = {p.uid: i for i, p in enumerate(parameters)}
 
-        # 1) Sparsity superset from AST (ignores numeric zeros / topology state -> EMT-safe superset)
-        col_rows: List[List[int]] = [[] for _ in range(self.n_cols)]
+        t_maps = time.perf_counter()
+        print(f"   [AD-Debug] Maps built in {t_maps - t_start:.4f}s")
 
+        # 1) Sparsity Detection
+        col_rows = [[] for _ in range(self.n_cols)]
+
+        # We manually inline the collection logic to debug/optimize loop
+        count_edges = 0
         for r, eq in enumerate(equations):
+            # Fast traversal
+            stack = [eq]
+            visited = set()
             uids = set()
-            _collect_var_uids_expr(eq, uids)
 
+            while stack:
+                n = stack.pop()
+                if id(n) in visited: continue
+                visited.add(id(n))
+
+                if hasattr(n, "uid") and n.__class__.__name__ == "Var":
+                    uids.add(n.uid)
+                    continue
+                if n.__class__.__name__ == "DiffVar":
+                    if getattr(n, "base_var", None): uids.add(n.base_var.uid)
+                    continue
+                if n.__class__.__name__ == "LagVar":
+                    if getattr(n, "base_var", None): uids.add(n.base_var.uid)
+                    continue
+
+                # Child push
+                l = getattr(n, "left", None)
+                if l: stack.append(l)
+                r_node = getattr(n, "right", None)
+                if r_node: stack.append(r_node)
+                a = getattr(n, "arg", None)
+                if a: stack.append(a)
+                o = getattr(n, "operand", None)
+                if o: stack.append(o)
+                args = getattr(n, "args", None)
+                if args: stack.extend(args)
+
+            # Map UIDs to columns
             for uid in uids:
                 j = self.var_map.get(uid, -1)
                 if j >= 0:
                     col_rows[j].append(r)
+                    count_edges += 1
 
-        # Unique + sorted row lists per column
         self.col_rows = [sorted(set(rows)) for rows in col_rows]
 
-        # 2) Build CSC structure (indices, indptr)
+        t_sparsity = time.perf_counter()
+        print(f"   [AD-Debug] Sparsity Analysis done in {t_sparsity - t_maps:.4f}s. Edges found: {count_edges}")
+
+        # 2) CSC Structure
         indptr = np.zeros(self.n_cols + 1, dtype=np.int32)
         nnz = 0
         for j in range(self.n_cols):
@@ -334,27 +372,29 @@ class SparseADJacobian:
 
         indices = np.empty(nnz, dtype=np.int32)
         data = np.zeros(nnz, dtype=self.dtype)
-
         k = 0
         for j in range(self.n_cols):
-            rows = self.col_rows[j]
-            for r in rows:
+            for r in self.col_rows[j]:
                 indices[k] = r
                 k += 1
 
         self.J = csc_matrix((data, indices, indptr), shape=(self.n_rows, self.n_cols))
 
-        # 3) Graph coloring (column intersection graph)
-        self.colors, self.n_colors = self._greedy_color_columns(self.col_rows, self.n_rows)
+        t_csc = time.perf_counter()
+        print(f"   [AD-Debug] CSC Matrix built in {t_csc - t_sparsity:.4f}s")
 
-        # Columns grouped by color (deterministic)
-        groups: List[List[int]] = [[] for _ in range(self.n_colors)]
+        # 3) Coloring
+        self.colors, self.n_colors = self._greedy_color_columns(self.col_rows, self.n_rows)
+        groups = [[] for _ in range(self.n_colors)]
         for j in range(self.n_cols):
             groups[self.colors[j]].append(j)
         self.color_groups = groups
 
-        # 4) Precompute scatter mapping into CSC .data for each (color, col, row)
-        color_cols: List[int] = []
+        t_color = time.perf_counter()
+        print(f"   [AD-Debug] Graph Coloring done in {t_color - t_csc:.4f}s. Colors: {self.n_colors}")
+
+        # 4) Precompute scatter map
+        color_cols = []
         color_ptr = np.zeros(self.n_colors + 1, dtype=np.int32)
         for c in range(self.n_colors):
             color_ptr[c] = len(color_cols)
@@ -369,7 +409,6 @@ class SparseADJacobian:
 
         row_idx = np.empty(total_map, dtype=np.int32)
         data_idx = np.empty(total_map, dtype=np.int32)
-
         pos = 0
         indptr_arr = self.J.indptr
         for kk, j in enumerate(color_cols):
@@ -386,33 +425,44 @@ class SparseADJacobian:
         self.row_idx = row_idx
         self.data_idx = data_idx
 
-        # 5) Compile AD kernel (JVP only) and JIT it with Numba
+        t_scatter = time.perf_counter()
+        print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
+
+        # 5) Compile Optimization: Colored Kernels
         self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method_str)
-        py_ad = self._compiler.compile_ad_kernel(
-            equations,
-            func_name=f"ad_step_{uuid.uuid4().hex[:8]}",
-            use_cse=use_cse
-        )
-        self.ad_kernel = _safe_njit(py_ad, cache=False, fastmath=True)
-        # Reusable seeds buffer
+        self.ad_kernels = []
+
+        print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
+        t_comp_start = time.perf_counter()
+
+        for c in range(self.n_colors):
+            active_cols = set(self.color_groups[c])
+            k_name = f"ad_step_color_{c}_{uuid.uuid4().hex[:4]}"
+
+            py_ad = self._compiler.compile_ad_kernel(
+                equations,
+                func_name=k_name,
+                use_cse=use_cse,
+                active_indices=active_cols
+            )
+
+            kernel = _safe_njit(py_ad, cache=False, fastmath=True)
+            self.ad_kernels.append(kernel)
+
+        t_comp_end = time.perf_counter()
+        print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
+        print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
+
         self._seeds = np.zeros(self.n_cols, dtype=self.dtype)
 
     @staticmethod
     def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
-        """
-        Greedy graph coloring of the column intersection graph.
-        Two columns are adjacent if they share at least one row (structural overlap).
-        """
         n_cols = len(col_rows)
-
-        # Build row -> columns incidence
-        row_cols: List[List[int]] = [[] for _ in range(n_rows)]
+        row_cols = [[] for _ in range(n_rows)]
         for j in range(n_cols):
             for r in col_rows[j]:
                 row_cols[r].append(j)
-
-        # Build adjacency sets
-        adj: List[Set[int]] = [set() for _ in range(n_cols)]
+        adj = [set() for _ in range(n_cols)]
         for cols in row_cols:
             m = len(cols)
             for a in range(m):
@@ -422,27 +472,20 @@ class SparseADJacobian:
                     if jb != ja:
                         adj[ja].add(jb)
                         adj[jb].add(ja)
-
         degrees = np.array([len(adj[j]) for j in range(n_cols)], dtype=np.int32)
-        order = list(np.argsort(-degrees))  # descending degree
-
+        order = list(np.argsort(-degrees))
         colors = -np.ones(n_cols, dtype=np.int32)
         max_color = -1
-
         used = np.zeros(n_cols, dtype=np.bool_)
         for j in order:
             used[:] = False
             for nbj in adj[j]:
                 c = colors[nbj]
-                if c >= 0:
-                    used[c] = True
+                if c >= 0: used[c] = True
             c = 0
-            while c < n_cols and used[c]:
-                c += 1
+            while c < n_cols and used[c]: c += 1
             colors[j] = c
-            if c > max_color:
-                max_color = c
-
+            if c > max_color: max_color = c
         return colors, int(max_color + 1)
 
     def __call__(self,
@@ -454,29 +497,16 @@ class SparseADJacobian:
                  history2: np.ndarray | None = None) -> csc_matrix:
 
         data = self.J.data
-        seeds = self._seeds
-        seeds[:] = 0.0
+        dummy_seeds = self._seeds
 
         for c in range(self.n_colors):
-            # Seed columns of this color with 1.0
-            k0 = int(self.color_ptr[c])
-            k1 = int(self.color_ptr[c + 1])
-            for k in range(k0, k1):
-                j = int(self.color_cols[k])
-                seeds[j] = 1.0
-
-            jvp = self.ad_kernel(states, seeds, params, history, d_history, h, history2)
+            kernel = self.ad_kernels[c]
+            jvp = kernel(states, dummy_seeds, params, history, d_history, h, history2)
 
             _scatter_color_jvp_to_csc_data(jvp, data,
-                                          self.color_ptr, self.color_cols,
-                                          self.col_ptr, self.row_idx, self.data_idx,
-                                          c)
-
-            # Unseed
-            for k in range(k0, k1):
-                j = int(self.color_cols[k])
-                seeds[j] = 0.0
-
+                                           self.color_ptr, self.color_cols,
+                                           self.col_ptr, self.row_idx, self.data_idx,
+                                           c)
         return self.J
 
 class SymbolicVector:
@@ -970,76 +1000,80 @@ class BlockSolver:
         )
         timings["Event parameters"] = _toc(t0)
 
-        if len(self._state_eqs) != 0:
+        if self.backend == SimulationBackend.LegacyExternal:
+            if len(self._state_eqs) != 0:
 
-            t0 = _tic()
-            self._rhs_state_fn = SymbolicVector(
-                eqs=self._state_eqs,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-            )
-            timings["RHS state"] = _toc(t0)
+                t0 = _tic()
+                self._rhs_state_fn = SymbolicVector(
+                    eqs=self._state_eqs,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                )
+                timings["RHS state"] = _toc(t0)
 
-            t0 = _tic()
-            self._j11_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._state_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-                uid2idx_vars=self.uid2idx_vars,
-                dt=self.dt
-            )
-            timings["J11 (dF/dx)"] = _toc(t0)
+                t0 = _tic()
+                self._j11_fn = SymbolicJacobian(
+                    eqs=self._state_eqs,
+                    variables=self._state_vars,
+                    diff_variables=self._diff_vars,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                    uid2idx_vars=self.uid2idx_vars,
+                    dt=self.dt
+                )
+                timings["J11 (dF/dx)"] = _toc(t0)
 
-            t0 = _tic()
-            self._j12_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-                uid2idx_vars=self.uid2idx_vars,
-                dt=self.dt
-            )
-            timings["J12 (dF/dy)"] = _toc(t0)
+                t0 = _tic()
+                self._j12_fn = SymbolicJacobian(
+                    eqs=self._state_eqs,
+                    variables=self._algebraic_vars,
+                    diff_variables=self._diff_vars,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                    uid2idx_vars=self.uid2idx_vars,
+                    dt=self.dt
+                )
+                timings["J12 (dF/dy)"] = _toc(t0)
 
-            t0 = _tic()
-            self._j21_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._state_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-                uid2idx_vars=self.uid2idx_vars,
-                dt=self.dt
-            )
-            timings["J21 (dG/dx)"] = _toc(t0)
+                t0 = _tic()
+                self._j21_fn = SymbolicJacobian(
+                    eqs=self._algebraic_eqs,
+                    variables=self._state_vars,
+                    diff_variables=self._diff_vars,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                    uid2idx_vars=self.uid2idx_vars,
+                    dt=self.dt
+                )
+                timings["J21 (dG/dx)"] = _toc(t0)
 
-            t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-                uid2idx_vars=self.uid2idx_vars,
-                dt=self.dt
-            )
-            timings["J22 (dG/dy)"] = _toc(t0)
+                t0 = _tic()
+                self._j22_fn = SymbolicJacobian(
+                    eqs=self._algebraic_eqs,
+                    variables=self._algebraic_vars,
+                    diff_variables=self._diff_vars,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                    uid2idx_vars=self.uid2idx_vars,
+                    dt=self.dt
+                )
+                timings["J22 (dG/dy)"] = _toc(t0)
+
+            else:
+                t0 = _tic()
+                self._j22_fn = SymbolicJacobian(
+                    eqs=self._algebraic_eqs,
+                    variables=self._algebraic_vars,
+                    diff_variables=self._diff_vars,
+                    compiler_names_dict=self.compiler_names_dict,
+                    alias_names_dict=self.alias_names_dict,
+                    uid2idx_vars=self.uid2idx_vars,
+                    dt=self.dt
+                )
+                timings["J22 only (no states)"] = _toc(t0)
 
         else:
-            t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self.compiler_names_dict,
-                alias_names_dict=self.alias_names_dict,
-                uid2idx_vars=self.uid2idx_vars,
-                dt=self.dt
-            )
-            timings["J22 only (no states)"] = _toc(t0)
+            print("   [Info] Skipping Legacy Matrix Compilation (JIT Backend active).")
 
         print(
             f"Model compiled with {self._n_vars} variables, "
@@ -1195,6 +1229,27 @@ class BlockSolver:
             return sp.csc_matrix((data, indices, indptr), shape=(len(eqs), len(variables)))
 
         return jac_fn
+
+    def _build_vectorized_signature(self, method_str: str) -> str:
+        import hashlib
+        h = hashlib.sha256()
+        h.update(str(method_str).encode())
+
+        h.update(str(self._n_vars).encode())
+        h.update(str(self._n_state).encode())
+        h.update(str(self._n_algebraic).encode())
+
+        for eq in self._state_eqs_substituted:
+            h.update(str(eq).encode())
+        for eq in self._algebraic_eqs_substituted:
+            h.update(str(eq).encode())
+
+        for v in self._state_vars:
+            h.update(v.name.encode())
+        for v in self._algebraic_vars:
+            h.update(v.name.encode())
+
+        return h.hexdigest()
 
     def rhs_pseudo_transient(self, x: Vec, xn: Vec, dx: Vec, event_params: Vec, params: Vec,
                              sim_step, h: float) -> Vec:
@@ -1478,47 +1533,32 @@ class BlockSolver:
     # ==============================================================================
     # 1. UNIFIED SIMULATION INTERFACE
     # ==============================================================================
-
-    def simulate_unified(self,
-                 t0: float,
-                 t_end: float,
-                 h: float,
-                 x0: Vec,
-                 dx0: Vec,
-                 params0: Vec,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
-                 boundary_update_fn=None,
-                 verbose: bool = False,
-                 dense_threshold: int = 100,
-                 **kwargs):
+    def simulate_unified(self, t0, t_end, h, x0, dx0, params0,
+                         method=DynamicIntegrationMethod.Trapezoid,
+                         boundary_update_fn=None, verbose=False,
+                         dense_threshold=100, vectorized=False, **kwargs):
         """
-        Main simulation entry point. Dispatches the simulation to the appropriate engine
-        (Implicit JIT or Explicit Legacy) based on the solver configuration.
-
-        :param t0: Start time of the simulation.
-        :param t_end: End time of the simulation.
-        :param h: Time step size (fixed).
-        :param x0: Initial state vector (includes algebraic variables).
-        :param dx0: Initial derivative vector (optional, for implicit methods).
-        :param params0: Initial parameters vector (optional).
-        :param method: Integration scheme (e.g., Trapezoid, BDF2).
-        :param solver_type: Solver engine type (Implicit JIT or Explicit Legacy).
-        :param boundary_update_fn: Callback function for boundary/control updates per step.
-        :param verbose: If True, prints simulation progress and stats.
-        :param dense_threshold: Threshold N. Systems with N <= threshold use dense linear algebra.
-        :return: Tuple (time_array, trajectory_array).
+        Unified simulation entry point.
         """
 
-        # --- Totally implicit (JIT / EMT) ---
+        # --- PATH C: Vectorized (O(1) Compilation) ---
+        if vectorized:
+            if self.backend != SimulationBackend.SymbolicImplicit:
+                raise ValueError("Vectorized mode requires SimulationBackend.SymbolicImplicit")
+
+            return self._simulate_vectorized(
+                t0, t_end, h, x0, dx0, params0,
+                method_str=method.value,
+                boundary_update_fn=boundary_update_fn,
+                verbose=verbose,
+                dense_threshold=dense_threshold
+            )
+
+        # --- PATH A: Implicit JIT (Standard) ---
         if self.backend == SimulationBackend.SymbolicImplicit:
-
-            # Implicit-by-design engine
-            if method not in {
-                DynamicIntegrationMethod.Trapezoid,
-                DynamicIntegrationMethod.BDF2,
-                DynamicIntegrationMethod.BackEuler
-            }:
-                raise ValueError(f"Method {method} not supported by totally implicit engine.")
+            if method not in {DynamicIntegrationMethod.Trapezoid, DynamicIntegrationMethod.BDF2,
+                              DynamicIntegrationMethod.BackEuler}:
+                raise ValueError(f"Method {method} not supported by JIT engine.")
 
             return self._simulate_jit_dispatch(
                 t0, t_end, h, x0, dx0, params0,
@@ -1528,16 +1568,10 @@ class BlockSolver:
                 dense_threshold=dense_threshold
             )
 
+        # --- PATH B: Legacy / Classic ---
         elif self.backend == SimulationBackend.LegacyExternal:
-
-            if method not in {
-                DynamicIntegrationMethod.Euler,
-                DynamicIntegrationMethod.RungeKutta4
-            }:
+            if method not in {DynamicIntegrationMethod.Euler, DynamicIntegrationMethod.RungeKutta4}:
                 raise ValueError(f"Method {method} not supported by classic solver.")
-
-            if boundary_update_fn is not None:
-                print("Warning: Classic backend ignores boundary_update_fn.")
 
             return self._simulate_classic(
                 t0, t_end, h, x0, dx0, params0,
@@ -1547,27 +1581,26 @@ class BlockSolver:
             )
 
         else:
-            raise ValueError(f"Unknown backend: {self.backend}")
+            raise ValueError(f"Unknown simulation backend: {self.backend}")
 
     # ==============================================================================
-    # 2. JIT IMPLICIT ENGINE
+    # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
     # ==============================================================================
 
     def _build_jit_kernel(self, method_str: str):
         """
-        Compiles the numerical residual function using the JIT compiler and caches it.
-        It maps symbolic variables to the compiled array indices.
+        Compiles the numerical residual function using JIT.
+        It uses a batching strategy (splitting equations into chunks) to prevent
+        Numba/LLVM from hanging when compiling very large non-linear systems.
         """
         print(f"--- [JIT] Compiling Implicit Kernel ({method_str}) ---")
 
         if not hasattr(self, 'jit_kernels'):
             self.jit_kernels = {}
 
-        # Use actual variable (Objects) for the compiler mapping
         sorted_vars = self._state_vars + self._algebraic_vars
         all_params = self._event_parameters + self._parameters
 
-        # Build residual equations: DiffVar - RHS = 0
         equations = []
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
@@ -1575,26 +1608,189 @@ class BlockSolver:
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
 
-        # Compile and cache
         self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method_str)
-        kernel = self.jit_compiler.compile(equations, func_name=f"jit_step_{method_str}", use_cse=True)
 
-        self.jit_kernels[method_str] = kernel
+        # Batch compilation strategy
+        BATCH_SIZE = 100
+        n_eqs = len(equations)
+        batched_kernels = []
 
-    def _build_jit_ad(self, method_str: str):
+        for i in range(0, n_eqs, BATCH_SIZE):
+            chunk = equations[i: i + BATCH_SIZE]
+            fname = f"jit_step_{method_str}_part_{i}"
+
+            # Compile inplace: the function writes directly to the 'residuals' array
+            py_func = self.jit_compiler.compile(chunk, func_name=fname, use_cse=True, offset=i, inplace=True)
+            jit_func = nb.njit(cache=True, fastmath=True)(py_func)
+            batched_kernels.append(jit_func)
+
+        self.jit_kernels[method_str] = batched_kernels
+
+    # ==============================================================================
+    #  HELPER: SYMBOLIC TOPOLOGY ANALYSIS
+    # ==============================================================================
+
+    def _get_vars_in_expr(self, expr: Expr) -> Set[int]:
         """
-        Builds AD-based residual kernel + sparse AD Jacobian.
+        Recursively collects UIDs of all variables (Var, DiffVar, LagVar)
+        present in an expression using a non-recursive stack traversal.
         """
-        print(f"--- [JIT-AD] Compiling Implicit Kernel + AD Jacobian ({method_str}) ---")
+        found = set()
+        stack = [expr]
+        visited = set()
 
-        if method_str in self.jit_kernels_ad:
+        while stack:
+            node = stack.pop()
+            if id(node) in visited: continue
+            visited.add(id(node))
+
+            if isinstance(node, Var):
+                found.add(node.uid)
+            elif isinstance(node, DiffVar):
+                found.add(node.base_var.uid)
+                found.add(node.uid)
+            elif isinstance(node, LagVar):
+                pass  # Lags usually treated as constants in this context
+
+            if hasattr(node, 'args'):
+                stack.extend(node.args)
+            elif hasattr(node, 'left'):
+                stack.append(node.left)
+                stack.append(node.right)
+            elif hasattr(node, 'operand'):
+                stack.append(node.operand)
+            elif hasattr(node, 'arg'):
+                stack.append(node.arg)
+
+        return found
+
+    def _build_jit_symbolic_hybrid(self, method_str: str, use_sparse: bool):
+        """
+        Compiles a Hybrid Symbolic Jacobian.
+        It generates a Numba kernel that evaluates the Jacobian entries and
+        returns either a Scipy CSC Matrix (Sparse mode) or a Numpy Array (Dense mode).
+        """
+        cache_key = f"{method_str}_{use_sparse}"
+        if hasattr(self, 'jit_jacobians_symbolic') and cache_key in self.jit_jacobians_symbolic:
             return
 
-        # --- Variables and parameters (same as legacy) ---
+        print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
+        t0 = time.time()
+
+        sorted_vars = self._state_vars + self._algebraic_vars
+        all_params = self._event_parameters + self._parameters
+        var_uid_to_idx = {v.uid: i for i, v in enumerate(sorted_vars)}
+
+        equations = []
+        base_var_uid_to_diff_var = {}
+        for i, rhs in enumerate(self._state_eqs):
+            sv = self._state_vars[i]
+            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            base_var_uid_to_diff_var[sv.uid] = d_term
+            equations.append(d_term - rhs)
+        equations.extend(self._algebraic_eqs)
+
+        N = len(sorted_vars)
+        n_states = len(self._state_vars)
+        jac_exprs, rows, cols = [], [], []
+        alpha_sym = Var("alpha_scaling_factor")
+
+        if use_sparse:
+            nnz = 0
+            for r, eq in enumerate(equations):
+                dependencies = self._get_vars_in_expr(eq)
+                if r < n_states: dependencies.add(self._state_vars[r].uid)
+
+                for v in sorted_vars:
+                    if v.uid in dependencies:
+                        c = var_uid_to_idx[v.uid]
+                        d_direct = eq.diff(v)
+                        d_diff = Const(0)
+
+                        if v.uid in base_var_uid_to_diff_var:
+                            d_diff = eq.diff(base_var_uid_to_diff_var[v.uid])
+
+                        final_expr = (d_direct + alpha_sym * d_diff) if not (
+                                    isinstance(d_diff, Const) and d_diff.value == 0) else d_direct
+                        final_expr = final_expr.simplify()
+
+                        if not (isinstance(final_expr, Const) and final_expr.value == 0):
+                            jac_exprs.append(final_expr)
+                            rows.append(r)
+                            cols.append(c)
+                            nnz += 1
+            print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
+        else:
+            for r, eq in enumerate(equations):
+                for c, v in enumerate(sorted_vars):
+                    d_direct = eq.diff(v)
+                    d_diff = Const(0)
+                    if v.uid in base_var_uid_to_diff_var:
+                        d_diff = eq.diff(base_var_uid_to_diff_var[v.uid])
+                    final_expr = d_direct + alpha_sym * d_diff
+                    jac_exprs.append(final_expr.simplify())
+
+        compile_params = all_params + [alpha_sym]
+        compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method_str)
+        func_name = f"jac_eval_{method_str}_{'sparse' if use_sparse else 'dense'}"
+        kernel_py = compiler.compile(jac_exprs, func_name=func_name, use_cse=True)
+        kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
+
+        if use_sparse:
+            np_rows = np.array(rows, dtype=np.int32)
+            np_cols = np.array(cols, dtype=np.int32)
+
+            def sparse_evaluator(states, params, history, d_history, h, history2=None):
+                if method_str == 'trapezoidal':
+                    alpha_val = 2.0 / h
+                elif method_str == 'bdf2':
+                    alpha_val = 1.5 / h
+                else:
+                    alpha_val = 1.0 / h
+
+                params_with_alpha = np.empty(len(params) + 1, dtype=np.float64)
+                params_with_alpha[:-1] = params
+                params_with_alpha[-1] = alpha_val
+                data = kernel_jit(states, params_with_alpha, history, d_history, h, history2)
+                return sp.csc_matrix((data, (np_rows, np_cols)), shape=(N, N))
+
+            final_artifact = sparse_evaluator
+        else:
+            def dense_evaluator(states, params, history, d_history, h, history2=None):
+                if method_str == 'trapezoidal':
+                    alpha_val = 2.0 / h
+                elif method_str == 'bdf2':
+                    alpha_val = 1.5 / h
+                else:
+                    alpha_val = 1.0 / h
+
+                params_with_alpha = np.empty(len(params) + 1, dtype=np.float64)
+                params_with_alpha[:-1] = params
+                params_with_alpha[-1] = alpha_val
+                flat_data = kernel_jit(states, params_with_alpha, history, d_history, h, history2)
+                return flat_data.reshape((N, N))
+
+            final_artifact = dense_evaluator
+
+        if not hasattr(self, 'jit_jacobians_symbolic'): self.jit_jacobians_symbolic = {}
+        self.jit_jacobians_symbolic[cache_key] = final_artifact
+        print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
+
+    def _build_jit_ad(self, method_str: str, only_jacobian: bool = False):
+        """
+        Compiles the residual kernel using batching and prepares the Sparse AD Jacobian.
+        Arg: only_jacobian: If True, skips residual compilation (used by Vectorized Engine).
+        """
+
+        if method_str in self.jit_kernels_ad and not only_jacobian:
+            return
+
+        print(
+            f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({method_str}) ---")
+
         sorted_vars = self._state_vars + self._algebraic_vars
         all_params = self._event_parameters + self._parameters
 
-        # --- Build residual equations: DiffVar - RHS ---
         equations = []
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
@@ -1602,344 +1798,531 @@ class BlockSolver:
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
 
-        # --- Compile residual kernel (SAME compiler as AD) ---
-        compiler = EquationCompiler(
-            variables=sorted_vars,
-            parameters=all_params,
-            method=method_str
-        )
+        if not only_jacobian and method_str not in self.jit_kernels_ad:
+            compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method_str)
+            BATCH_SIZE = 100
+            n_eqs = len(equations)
+            batched_kernels = []
 
-        kernel_py = compiler.compile(
-            equations,
-            func_name=f"jit_step_{method_str}_ad",
-            use_cse=True
-        )
+            print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
+            t0 = time.time()
 
-        kernel = nb.njit(cache=False, fastmath=True)(kernel_py)
+            for i in range(0, n_eqs, BATCH_SIZE):
+                chunk = equations[i: i + BATCH_SIZE]
+                fname = f"jit_step_{method_str}_ad_part_{i}"
+                py_func = compiler.compile(chunk, func_name=fname, use_cse=True, offset=i, inplace=True)
+                jit_func = nb.njit(cache=True, fastmath=True)(py_func)
+                batched_kernels.append(jit_func)
 
-        # --- Build Sparse AD Jacobian ---
-        jac = SparseADJacobian(
-            equations=equations,
-            variables=sorted_vars,
-            parameters=all_params,
-            method_str=method_str,
-            use_cse=True
-        )
+            print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
+            self.jit_kernels_ad[method_str] = batched_kernels
 
-        self.jit_kernels_ad[method_str] = kernel
-        self.jit_jacobians_ad[method_str] = jac
+        # --- PART 2: JACOBIAN (O(N) setup, but needed for Vectorized) ---
+        if method_str not in self.jit_jacobians_ad:
+            jac = SparseADJacobian(equations=equations, variables=sorted_vars, parameters=all_params,
+                                   method_str=method_str, use_cse=True)
+            self.jit_jacobians_ad[method_str] = jac
+
+    def _canonicalize_expression(self, expr: Expr) -> Tuple[str, List[Var]]:
+        """
+        Traverses a symbolic expression to generate a unique structural signature (hash string)
+        and extracts the list of variable inputs in specific order.
+        Variables are replaced by generic placeholders (VAR_0, VAR_1) to detect identical algebraic forms.
+        """
+        unique_vars = {}
+        found_vars_ordered = []
+
+        def _visit_recursive(node):
+            # Handle Variables (State/Algebraic)
+            if isinstance(node, Var):
+                if node.uid not in unique_vars:
+                    placeholder = f"__VAR_{len(unique_vars)}__"
+                    unique_vars[node.uid] = placeholder
+                    found_vars_ordered.append(node)
+                return unique_vars[node.uid]
+
+            # Handle Differential Variables (Map to base variable)
+            elif isinstance(node, DiffVar):
+                # DiffVars in implicit residuals are treated as state inputs + derivative operator
+                # We map them to the base variable UID for topological lookup
+                base_uid = node.base_var.uid
+                if base_uid not in unique_vars:
+                    placeholder = f"__VAR_{len(unique_vars)}__"
+                    unique_vars[base_uid] = placeholder
+                    found_vars_ordered.append(node.base_var)
+                return unique_vars[base_uid]
+
+            elif isinstance(node, Const):
+                return f"{float(node.value):.6g}"
+
+            elif isinstance(node, BinOp):
+                left = _visit_recursive(node.left)
+                right = _visit_recursive(node.right)
+                return f"({left}{node.op}{right})"
+
+            elif isinstance(node, UnOp):
+                operand = _visit_recursive(node.operand)
+                return f"{node.op}({operand})"
+
+            elif isinstance(node, Func):
+                arg = _visit_recursive(node.arg)
+                return f"{node.op}({arg})"
+
+            return str(node)
+
+        canonical_str = _visit_recursive(expr)
+        return canonical_str, found_vars_ordered
+
+    def _auto_detect_vectorization(self, method_str: str):
+        print(f"--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
+        t0 = time.time()
+
+        groups = defaultdict(lambda: {
+            'idx_matrix': [],
+            'row_indices': [],
+            'template_eq': None,
+            'template_vars': None
+        })
+
+        # 1. Clustering Phase
+        for i, rhs_eq in enumerate(self._state_eqs):
+            sv = self._state_vars[i]
+            d_term = DiffVar(name="d_template", base_var=sv)
+            residual_eq = d_term - rhs_eq
+
+            sig_str, all_vars_found = self._canonicalize_expression(residual_eq)
+            eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
+
+            group = groups[eq_hash]
+
+            state_vars_in_order = []
+            var_indices = []
+
+            for v in all_vars_found:
+                target_var = v.base_var if isinstance(v, DiffVar) else v
+                if target_var.uid in self.uid2idx_vars:
+                    state_vars_in_order.append(v)
+                    var_indices.append(self.uid2idx_vars[target_var.uid])
+
+            if group['template_eq'] is None:
+                group['template_eq'] = residual_eq
+                group['template_vars'] = state_vars_in_order
+
+            group['idx_matrix'].append(var_indices)
+            group['row_indices'].append(i)
+
+        print(f"   [AUTO-VEC] Detected {len(groups)} unique patterns in {len(self._state_eqs)} equations.")
+
+        # 2. Compilation Phase (MATRICIAL)
+        self.vec_kernels = []
+        all_params = self._event_parameters + self._parameters
+
+        vec_compiler = MatrixVectorizedCompiler([], all_params, method=method_str)
+
+        for signature, data in groups.items():
+            topology_matrix = np.array(data['idx_matrix'], dtype=np.int32)
+            target_rows = np.array(data['row_indices'], dtype=np.int32)
+
+            k_name = f"vec_kernel_{signature[:8]}"
+
+            # Compilamos usando la lógica matricial
+            py_func = vec_compiler.compile_matrix_kernel(
+                data['template_eq'],
+                func_name=k_name,
+                template_vars=data['template_vars']
+            )
+            kernel_func = nb.njit(cache=True, fastmath=True)(py_func)
+
+            self.vec_kernels.append({
+                'func': kernel_func,
+                'indices': topology_matrix,  # Totally matrix (without dictionaries)
+                'target': target_rows  # Array raw
+            })
+
+        # 3. Fused Dispatch Setup
+        t_fuse = time.time()
+        self.fused_residual = self._compile_fused_residual(self.vec_kernels)
+
+        # flatten arguments in raw tuple for Numba
+        # Format: (target_0, indices_0, target_1, indices_1, ...)
+        self.vec_flat_args = []
+        for k in self.vec_kernels:
+            self.vec_flat_args.append(k['target'])
+            self.vec_flat_args.append(k['indices'])
+
+        self.vec_flat_args = tuple(self.vec_flat_args)
+
+        print(f"   [AUTO-VEC] Fused Kernel compiled in {time.time() - t_fuse:.4f}s")
+
+        # 4. Jacobian Setup
+        if method_str not in self.jit_jacobians_ad:
+            self._build_jit_ad(method_str, only_jacobian=True)
+        self.vec_jacobian = self.jit_jacobians_ad[method_str]
+
+        self.vectorized_ready = True
+        print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
     def _simulate_jit(self, t0, t_end, h, x0, dx0, params0, method_str, boundary_update_fn, verbose,
                       dense_threshold):
         """
-        Optimized internal simulation loop using JIT-compiled kernels and hybrid linear solvers.
+        Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
         """
+        t_start = time.time()
 
-        # 1. Kernel Retrieval
-        if not hasattr(self, 'jit_kernels'):
-            self.jit_kernels = {}
-        if method_str not in self.jit_kernels:
-            self._build_jit_kernel(method_str)
-        current_kernel = self.jit_kernels[method_str]
+        if not hasattr(self, 'jit_kernels'): self.jit_kernels = {}
+        if method_str not in self.jit_kernels: self._build_jit_kernel(method_str)
 
-        # 2. Linear Solver Strategy Configuration
+        kernel_list = self.jit_kernels[method_str]
+        n_eqs = self._n_vars
+
         use_dense_solver = (self._n_vars <= dense_threshold)
+        self._build_jit_symbolic_hybrid(method_str, use_sparse=not use_dense_solver)
+        jac_key = f"{method_str}_{not use_dense_solver}"
+        current_jacobian = self.jit_jacobians_symbolic[jac_key]
 
         if verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
             print(
                 f"   [Config] System N={self._n_vars}. Using {mode_str} linear solver (Threshold={dense_threshold}).")
 
-        # 3. Initialization
         steps = int(np.ceil((t_end - t0) / h))
         t = np.linspace(t0, t_end, steps + 1)
         y = np.zeros((steps + 1, self._n_vars))
         y[0] = x0.copy()
-
-        x_prev = x0.copy()
-        dx_prev = dx0.copy() if dx0 is not None else np.zeros(self._n_vars)
-        x_prev2 = x0.copy()
-
-        static_vals = np.array([c.value for c in self._parameters_values])
-        if params0 is not None and len(params0) == len(self._event_parameters):
-            ev_params = params0
-        else:
-            ev_params = np.zeros(len(self._event_parameters))
-
-        # Integration Coefficients
-        if method_str == DynamicIntegrationMethod.Trapezoid.value:
-            alpha = 2.0 / h
-            h_eff = h / 2.0
-        elif method_str == DynamicIntegrationMethod.BDF2.value:
-            alpha = 1.5 / h
-            h_eff = h * (2.0 / 3.0)
-        else:
-            alpha = 1.0 / h
-            h_eff = h
-
-        # Jacobian Scaling Factors
-        row_scale = np.ones(self._n_vars)
-        row_scale[:self._n_state] = alpha
-
-        row_scaler_dense = None
-        row_scaler_sparse = None
-
-        if use_dense_solver:
-            row_scaler_dense = row_scale[:, None]  # Broadcasting for dense arrays
-        else:
-            row_scaler_sparse = sp.diags(row_scale, format='csc')
-
-        x_iter = x0.copy()
-        t_start = time.time()
-
-        if verbose:
-            print(f"-> Starting JIT Simulation ({method_str}, {steps} steps)...")
-
-        diag_cfg = NewtonDiagnosticsConfig(
-            step_norm_explode=1e6,
-            dense_cond_warn=1e12,
-            compute_dense_cond=True,
-            enable_fallback=True,
-        )
-
-        dense_solve = with_newton_diagnostics(
-            np.linalg.solve,
-            fallback_solve=dense_lstsq_fallback,
-            collector=self.newton_trace_collector,
-            config=diag_cfg,
-            solver_name="dense",
-        )
-
-        sparse_solve = with_newton_diagnostics(
-            sp.linalg.spsolve,
-            fallback_solve=sparse_lsqr_fallback,
-            collector=self.newton_trace_collector,
-            config=diag_cfg,
-            solver_name="sparse",
-        )
-
-        # 4. Main Time Loop
-        for i in range(steps):
-            t_curr = t[i + 1]
-
-            # Update dynamic parameters
-            ev_params = self._event_params_fn(ev_params, float(t_curr))
-            full_params = np.concatenate((ev_params, static_vals))
-
-            # External Control / Boundary Update
-            if boundary_update_fn:
-                boundary_update_fn(t_curr, x_prev, full_params)
-
-            # Newton-Raphson Iteration
-            for k in range(15):
-                # Linear Solve (diagnostics wrapper)
-                ctx = NewtonSolveContext(
-                    t=float(t_curr),
-                    step_idx=int(i),
-                    newton_iter=int(k),
-                    phase="jit",
-                    method=str(method_str),
-                )
-                # Evaluate Residuals (JIT)
-                res = current_kernel(x_iter, full_params, x_prev, dx_prev, h, x_prev2)
-
-                res_norm_inf = float(np.linalg.norm(res, np.inf))
-                ctx.res_norm_inf = res_norm_inf
-
-                if np.linalg.norm(res, np.inf) < 1e-6:
-                    break
-
-                # Jacobian Evaluation
-                dx_guess = (x_iter - x_prev) * alpha - dx_prev
-                J_base = self.jacobian_implicit(x_iter, dx_guess, ev_params, static_vals, h_eff)
-
-                if use_dense_solver:
-                    J_dense = J_base.toarray()
-                    J_final = J_dense * row_scaler_dense
-                    delta = dense_solve(J_final, -res, ctx)
-                else:
-                    res_s = row_scale * res
-                    J_final = row_scaler_sparse @ J_base
-                    delta = sparse_solve(J_final, -res_s, ctx)
-
-                x_iter += delta
-
-            # Update History
-            y[i + 1] = x_iter
-
-            if method_str == DynamicIntegrationMethod.Trapezoid.value:
-                dx_new = np.zeros_like(dx_prev)
-                mask = slice(0, self._n_state)
-                dx_new[mask] = alpha * (x_iter[mask] - x_prev[mask]) - dx_prev[mask]
-                dx_prev = dx_new
-            elif method_str == DynamicIntegrationMethod.BDF2.value:
-                x_prev2 = x_prev.copy()
-
-            x_prev = x_iter.copy()
-
-        if verbose:
-            print(f"JIT Finished: {time.time() - t_start:.4f}s")
-        return t, y
-
-    def _simulate_jit_ad(self, t0, t_end, h, x0, dx0, params0,
-                         method_str, boundary_update_fn,
-                         verbose, dense_threshold):
-
-        # --- Build AD kernels if needed ---
-        if method_str not in self.jit_kernels_ad:
-            self._build_jit_ad(method_str)
-
-        current_kernel = self.jit_kernels_ad[method_str]
-        current_jacobian = self.jit_jacobians_ad[method_str]
-
-        use_dense_solver = (self._n_vars <= dense_threshold)
-
-        steps = int(np.ceil((t_end - t0) / h))
-        t = np.linspace(t0, t_end, steps + 1)
-        y = np.zeros((steps + 1, self._n_vars))
-        y[0] = x0.copy()
-
-        x_prev = x0.copy()
-        dx_prev = dx0.copy() if dx0 is not None else np.zeros(self._n_vars)
-        x_prev2 = x0.copy()
-
+        x_prev, dx_prev, x_prev2 = x0.copy(), (dx0.copy() if dx0 is not None else np.zeros(self._n_vars)), x0.copy()
         static_vals = np.array([c.value for c in self._parameters_values])
         ev_params = params0 if params0 is not None else np.zeros(len(self._event_parameters))
-
         x_iter = x0.copy()
 
-        diag_cfg = NewtonDiagnosticsConfig(
-            step_norm_explode=1e6,
-            dense_cond_warn=1e12,
-            compute_dense_cond=True,
-            enable_fallback=True,
-        )
+        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=True,
+                                           enable_fallback=True)
+        dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
+                                              collector=self.newton_trace_collector, config=diag_cfg,
+                                              solver_name="dense")
+        sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
+                                               collector=self.newton_trace_collector, config=diag_cfg,
+                                               solver_name="sparse")
 
-        dense_solve = with_newton_diagnostics(
-            np.linalg.solve,
-            fallback_solve=dense_lstsq_fallback,
-            collector=self.newton_trace_collector,
-            config=diag_cfg,
-            solver_name="dense",
-        )
-
-        sparse_solve = with_newton_diagnostics(
-            sp.linalg.spsolve,
-            fallback_solve=sparse_lsqr_fallback,
-            collector=self.newton_trace_collector,
-            config=diag_cfg,
-            solver_name="sparse",
-        )
+        if verbose: print(f"-> Starting JIT Simulation ({method_str}, {steps} steps)...")
 
         for i in range(steps):
             t_curr = t[i + 1]
-
             ev_params = self._event_params_fn(ev_params, float(t_curr))
             full_params = np.concatenate((ev_params, static_vals))
+            if boundary_update_fn: boundary_update_fn(t_curr, x_prev, full_params)
 
-            if boundary_update_fn:
-                boundary_update_fn(t_curr, x_prev, full_params)
+            for k in range(15):
+                ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
+                                         method=str(method_str))
 
+                # Execute batched residuals
+                res = np.zeros(n_eqs, dtype=np.float64)
+                for kn in kernel_list:
+                    kn(x_iter, full_params, x_prev, dx_prev, h, res, x_prev2)
+
+                if np.linalg.norm(res, np.inf) < 1e-6: break
+                J_final = current_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
+                                           h=h, history2=x_prev2)
+                if use_dense_solver:
+                    delta = dense_solve(J_final, -res, ctx)
+                else:
+                    delta = sparse_solve(J_final, -res, ctx)
+                x_iter += delta
+
+            y[i + 1] = x_iter
+            if method_str == 'trapezoidal':
+                alpha = 2.0 / h
+                dx_prev[:self._n_state] = alpha * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
+                    :self._n_state]
+            elif method_str == 'bdf2':
+                x_prev2 = x_prev.copy()
+            else:
+                dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
+            if method_str != 'bdf2': x_prev2 = x_prev.copy()
+            x_prev = x_iter.copy()
+
+        if verbose: print(f"JIT Finished: {time.time() - t_start:.4f}s")
+        return t, y
+
+    def _simulate_jit_ad(self, t0, t_end, h, x0, dx0, params0, method_str, boundary_update_fn, verbose,
+                         dense_threshold):
+        """
+        Main JIT simulation loop using the Automatic Differentiation (AD) backend.
+        """
+        t_start = time.time()
+        if method_str not in self.jit_kernels_ad: self._build_jit_ad(method_str)
+
+        kernel_list = self.jit_kernels_ad[method_str]
+        current_jacobian = self.jit_jacobians_ad[method_str]
+        n_eqs = self._n_vars
+
+        use_dense_solver = (self._n_vars <= dense_threshold)
+        steps = int(np.ceil((t_end - t0) / h))
+        t = np.linspace(t0, t_end, steps + 1)
+        y = np.zeros((steps + 1, self._n_vars))
+        y[0] = x0.copy()
+        x_prev, dx_prev, x_prev2 = x0.copy(), (dx0.copy() if dx0 is not None else np.zeros(self._n_vars)), x0.copy()
+        static_vals = np.array([c.value for c in self._parameters_values])
+        ev_params = params0 if params0 is not None else np.zeros(len(self._event_parameters))
+        x_iter = x0.copy()
+
+        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=True,
+                                           enable_fallback=True)
+        dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
+                                              collector=self.newton_trace_collector, config=diag_cfg,
+                                              solver_name="dense")
+        sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
+                                               collector=self.newton_trace_collector, config=diag_cfg,
+                                               solver_name="sparse")
+
+        for i in range(steps):
+            t_curr = t[i + 1]
+            ev_params = self._event_params_fn(ev_params, float(t_curr))
+            full_params = np.concatenate((ev_params, static_vals))
+            if boundary_update_fn: boundary_update_fn(t_curr, x_prev, full_params)
             x_iter[:] = x_prev
 
             for k in range(15):
-                ctx = NewtonSolveContext(
-                    t=float(t_curr),
-                    step_idx=int(i),
-                    newton_iter=int(k),
-                    phase="jit",
-                    method=str(method_str),
-                )
+                ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
+                                         method=str(method_str))
 
-                res = current_kernel(
-                    x_iter, full_params,
-                    x_prev, dx_prev, h, x_prev2
-                )
+                # Execute batched residuals
+                res = np.zeros(n_eqs, dtype=np.float64)
+                for kn in kernel_list:
+                    kn(x_iter, full_params, x_prev, dx_prev, h, res, x_prev2)
 
-                # --- DEBUG: solo para el caso stiff + AD + BackEuler (primer paso/primer Newton) ---
-                debug_stiff = (
-                        method_str == DynamicIntegrationMethod.BackEuler.value
-                        and self._n_vars == 1
-                )
-
-                if debug_stiff and i == 0 and k == 0:
-                    print("\n=== DEBUG STIFF / AD (step 0, newton 0) ===")
-                    print("x_iter =", x_iter.copy())
-                    print("x_prev =", x_prev.copy())
-                    print("h =", h)
-                    print("res =", res.copy())
-
-                if np.linalg.norm(res, np.inf) < 1e-5:
-                    break
-
-                J = current_jacobian(
-                    states=x_iter,
-                    params=full_params,
-                    history=x_prev,
-                    d_history=dx_prev,
-                    h=h,
-                    history2=x_prev2
-                )
-
-                if debug_stiff and i == 0 and k == 0:
-                    Jdense = J.toarray()
-                    print("J =\n", Jdense)
-
+                if np.linalg.norm(res, np.inf) < 1e-5: break
+                J = current_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev, h=h,
+                                     history2=x_prev2)
                 if use_dense_solver:
                     delta = dense_solve(J.toarray(), -res, ctx)
                 else:
                     delta = sparse_solve(J, -res, ctx)
-
-                if debug_stiff and i == 0 and k == 0:
-                    print("delta =", delta.copy())
-
                 x_iter += delta
 
             y[i + 1] = x_iter
-
-            if method_str == DynamicIntegrationMethod.Trapezoid.value:
+            if method_str == 'trapezoidal':
                 dx_prev[:self._n_state] = (
-                        (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state])
-                        - dx_prev[:self._n_state]
-                )
-            elif method_str == DynamicIntegrationMethod.BDF2.value:
+                            (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[:self._n_state])
+            elif method_str == 'bdf2':
                 x_prev2 = x_prev.copy()
             else:
-                # Backward Euler: keep dx_prev coherent
-                dx_prev[:self._n_state] = (
-                        (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
-                )
-
-            # Keep history2 coherent even when not BDF2
-            if method_str != DynamicIntegrationMethod.BDF2.value:
-                x_prev2 = x_prev.copy()
-
+                dx_prev[:self._n_state] = ((x_iter[:self._n_state] - x_prev[:self._n_state]) / h)
+            if method_str != 'bdf2': x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
+        if verbose: print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")
         return t, y
 
     def _simulate_jit_dispatch(self, *args, **kwargs):
         """
-        Dispatches the JIT simulation to the appropriate backend depending on
-        the configured JacobianBackend.
-
-        Supported backends:
-          - JacobianBackend.Symbolic  -> legacy symbolic Jacobian
-          - JacobianBackend.Automatic -> sparse forward-mode AD + graph coloring
+        Dispatches simulation to the appropriate backend (AD vs SD).
         """
-
         backend = getattr(self, "_jacobian_backend", JacobianBackend.Symbolic)
-
         if backend == JacobianBackend.Automatic:
             return self._simulate_jit_ad(*args, **kwargs)
-
         elif backend == JacobianBackend.Symbolic:
             return self._simulate_jit(*args, **kwargs)
-
         else:
-            raise ValueError(
-                f"Unsupported Jacobian backend: {backend}"
-            )
+            raise ValueError(f"Unsupported Jacobian backend: {backend}")
+
+    def _compile_fused_residual(self, kernels_data):
+        print(f"   [AUTO-VEC] Fusing {len(kernels_data)} kernels into a monolithic dispatcher (In-Place)...")
+
+        namespace = {'np': np, 'nb': nb}
+
+        lines = [
+            "def fused_residual_kernel(states, params, history, d_history, h, args, out, history2=None):",
+            "    # Zero-out buffer explicitly",
+            "    out[:] = 0.0"
+        ]
+
+        for i, k_data in enumerate(kernels_data):
+            func_key = f"func_{i}"
+            namespace[func_key] = k_data['func']
+
+            idx_target = 2 * i
+            idx_indices = 2 * i + 1
+
+            lines.append(f"    # Cluster {i}")
+            lines.append(f"    target_{i} = args[{idx_target}]")
+            lines.append(f"    indices_{i} = args[{idx_indices}]")
+
+            lines.append(f"    r_part_{i} = {func_key}(states, params, history, d_history, h, indices_{i}, history2)")
+
+            lines.append(f"    out[target_{i}] = r_part_{i}")
+
+        # Sin return
+        full_source = "\n".join(lines)
+
+        exec(full_source, namespace)
+        py_func = namespace['fused_residual_kernel']
+        return nb.njit(fastmath=True, cache=False)(py_func)
+
+    def _simulate_vectorized(self, t0, t_end, h, x0, dx0, params0, method_str, boundary_update_fn, verbose,
+                             dense_threshold):
+        """
+        High-Performance Vectorized Simulation Loop.
+
+        Strategy: Adaptive "Dishonest" Newton Method.
+        1. Zero-Allocation: Pre-allocated buffers for states and residuals.
+        2. LU Caching: The Jacobian is factorized only when convergence degrades.
+        3. Fast Dispatch: Uses the fused JIT kernel for O(1) residual assembly.
+        """
+
+        # 0. Auto-fallback for small systems (vectorization overhead outweighs benefits)
+        if self._n_vars < 100:
+            return self._simulate_jit_ad(t0, t_end, h, x0, dx0, params0, method_str, boundary_update_fn, verbose,
+                                         dense_threshold)
+
+        if not hasattr(self, 'vectorized_ready'):
+            self._auto_detect_vectorization(method_str)
+
+        # 1. Time and State Setup
+        steps = int(np.ceil((t_end - t0) / h))
+        t = np.linspace(t0, t_end, steps + 1)
+
+        # Main result buffer
+        y = np.zeros((steps + 1, self._n_vars), dtype=np.float64)
+        y[0] = x0.copy()
+
+        # State buffers (avoiding malloc inside the loop)
+        x_prev = x0.copy()
+        dx_prev = dx0.copy() if dx0 is not None else np.zeros(self._n_vars, dtype=np.float64)
+        x_prev2 = x0.copy()
+        x_iter = x0.copy()
+        res_global = np.zeros(self._n_vars, dtype=np.float64)
+
+        # 2. Parameters Setup
+        static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
+        n_ev = len(self._event_parameters)
+        ev_params = np.asarray(params0 if params0 is not None else np.zeros(n_ev), dtype=np.float64)
+        full_params = np.empty(n_ev + len(static_params), dtype=np.float64)
+        full_params[n_ev:] = static_params
+
+        # 3. Solver Configuration
+        # Threshold to switch between LAPACK (Dense) and SuperLU (Sparse)
+        use_dense = (self._n_vars <= 300)
+
+        # 4. JIT Warmup (Ensure compilation happens before the timed loop)
+        if not hasattr(self, "_vec_warmup_done"): self._vec_warmup_done = {}
+        warm_key = (str(method_str), int(self._n_vars))
+        if not self._vec_warmup_done.get(warm_key, False):
+            if verbose: print(f"-> VECTORIZED warmup ({method_str})...")
+            self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
+            _ = self.vec_jacobian(states=x_prev, params=full_params, history=x_prev, d_history=dx_prev, h=h,
+                                  history2=x_prev2)
+            self._vec_warmup_done[warm_key] = True
+
+        # ---------------------------------------------------------------------
+        # MAIN SIMULATION LOOP
+        # ---------------------------------------------------------------------
+
+        # Persistent Cache for Jacobian and LU Factorization
+        cached_J = None
+        cached_lu = None
+
+        # Constants for fast access
+        fused_residual_fn = self.fused_residual
+        vec_jacobian_fn = self.vec_jacobian
+        vec_args = self.vec_flat_args
+
+        t_start = time.time()
+        if verbose: print(f"-> Starting VECTORIZED Simulation [Adaptive Newton Strategy]...")
+
+        for i in range(steps):
+            t_curr = t[i + 1]
+
+            # Update Time-Dependent Parameters
+            ev_params = self._event_params_fn(ev_params, float(t_curr))
+            full_params[:n_ev] = ev_params
+
+            if boundary_update_fn:
+                boundary_update_fn(t_curr, x_prev, full_params)
+
+            # Prediction: Zero-order hold (start from previous state)
+            x_iter[:] = x_prev
+
+            last_res_norm = 1.0
+
+            # --- NEWTON-RAPHSON LOOP ---
+            for k in range(15):
+                # A. Calculate Residual (In-Place JIT)
+                fused_residual_fn(x_iter, full_params, x_prev, dx_prev, h, vec_args, res_global, x_prev2)
+
+                # B. Check Convergence
+                res_norm = np.max(np.abs(res_global))
+                if res_norm < 1e-6:
+                    break
+
+                # C. Adaptive Jacobian Update Logic
+                # We recompute J only if:
+                # 1. It is the very first step (cached_lu is None).
+                # 2. Convergence is degrading (Contraction rate > 0.5).
+
+                recompute = (cached_lu is None)
+
+                if not recompute and k > 0:
+                    # Calculate contraction rate of the error
+                    contraction_rate = res_norm / (last_res_norm + 1e-16)
+
+                    if contraction_rate > 0.5:
+                        recompute = True
+
+                # D. Recompute and Factorize (Heavy Operation)
+                if recompute:
+                    cached_J = vec_jacobian_fn(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
+                                               h=h, history2=x_prev2)
+
+                    if use_dense:
+                        # Dense LU Factorization (LAPACK)
+                        cached_lu = lu_factor(cached_J.toarray())
+                    else:
+                        # Sparse LU Factorization (SuperLU)
+                        try:
+                            # reuse_symbolic=True speeds up if sparsity pattern is constant
+                            cached_lu = splu(cached_J.tocsc())
+                        except RuntimeError:
+                            # Handle singular matrix or decomposition failure
+                            cached_lu = None
+
+                            # E. Linear Solve (Back-Substitution)
+                if cached_lu is None:
+                    # Fallback if factorization failed
+                    delta = sp.linalg.spsolve(cached_J, -res_global)
+                else:
+                    if use_dense:
+                        delta = lu_solve(cached_lu, -res_global)
+                    else:
+                        delta = cached_lu.solve(-res_global)
+
+                # F. Update State
+                x_iter += delta
+                last_res_norm = res_norm
+
+            # Store result
+            y[i + 1] = x_iter
+
+            # Update History (Vectorized)
+            if method_str == 'trapezoidal':
+                # dx = (2/h)*(x_n - x_n-1) - dx_n-1
+                dx_prev[:self._n_state] *= -1.0
+                dx_prev[:self._n_state] += (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state])
+            elif method_str == 'bdf2':
+                x_prev2[:] = x_prev
+                dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
+                    :self._n_state]) / h
+            else:  # Backward Euler
+                dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
+
+            if method_str != 'bdf2': x_prev2[:] = x_prev
+            x_prev[:] = x_iter
+
+        total_time = time.time() - t_start
+        if verbose:
+            print(f"VECTORIZED Finished: {total_time:.4f}s")
+
+        return t, y
 
     # ==============================================================================
     # 3. LEGACY ENGINE WRAPPER
@@ -1949,21 +2332,15 @@ class BlockSolver:
         """
         Wrapper for legacy explicit integration methods.
         """
-        if method == DynamicIntegrationMethod.Euler:
-            return self._simulate_fixed(t0, t_end, h, x0, params0, stepper="euler")
-
-        if method == DynamicIntegrationMethod.RungeKutta4:
-            return self._simulate_fixed(t0, t_end, h, x0, params0, stepper="rk4")
-
+        if method == DynamicIntegrationMethod.Euler: return self._simulate_fixed(t0, t_end, h, x0, params0,
+                                                                                 stepper="euler")
+        if method == DynamicIntegrationMethod.RungeKutta4: return self._simulate_fixed(t0, t_end, h, x0, params0,
+                                                                                       stepper="rk4")
         if method == DynamicIntegrationMethod.BackEuler:
-            return self._simulate_implicit_euler_diff(
-                t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, params0=params0,
-                max_iter=kwargs.get('newton_max_iter', 1000),
-                verbose=verbose,
-                followed_vars=kwargs.get('followed_vars', None)
-            )
-
-        raise ValueError(f"Legacy method {method} not implemented in _simulate_classic")
+            return self._simulate_implicit_euler_diff(t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, params0=params0,
+                                                      max_iter=kwargs.get('newton_max_iter', 1000), verbose=verbose,
+                                                      followed_vars=kwargs.get('followed_vars', None))
+        raise ValueError(f"Legacy method {method} not implemented")
 
     def _simulate_implicit_euler_diff(self, t0: float, t_end: float, h: float, x0: Vec, dx0: Vec, params0: Vec,
                                       max_iter=1e6, verbose=False, followed_vars=None):
@@ -2956,4 +3333,3 @@ class BlockSolver:
             Collector used to store Newton iteration diagnostics.
         """
         self.newton_trace_collector = collector
-

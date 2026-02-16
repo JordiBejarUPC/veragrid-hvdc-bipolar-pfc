@@ -36,6 +36,8 @@ import math
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any,Dict, List, Callable
+import os
+import importlib.util
 import hashlib
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, DiffVar, LagVar
@@ -86,38 +88,33 @@ class BDF2Method(DiscretizationMethod):
 class SubexpressionAnalyzer:
     """
     Find and catalog subexpressions that appear multiple times.
-
-    Algorithm:
-    1. Traverse the AST of each equation
-    2. Generate a unique hash for each subexpression
-    3. Count occurrences
-    4. Assign temporary variables to frequent expressions
+    OPTIMIZED: Uses memoization for complexity calc and string generation.
     """
 
     def __init__(self, threshold: int = 2):
-        """
-        :param threshold: Minimum number of occurrences to consider CSE
-        """
         self.threshold = threshold
         self.expr_counts: Dict[str, int] = {}
         self.expr_objects: Dict[str, Expr] = {}
         self.expr_complexity: Dict[str, int] = {}
 
+        # Caches
+        self.memo_complexity = {}
+        self.memo_canonical = {}
+        self.visited_traversal = set()
+
     def analyze(self, equations: List[Expr]) -> Dict[str, str]:
-        """
-        Returns hash mapping -> temporary_variable_name.
-        """
-        # Reset
+        # Reset caches
         self.expr_counts.clear()
         self.expr_objects.clear()
         self.expr_complexity.clear()
+        self.memo_complexity.clear()
+        self.memo_canonical.clear()
 
-        # First pass: counting
+        self.visited_traversal.clear()
+
         for eq in equations:
             self._count_subexpressions(eq)
 
-        # Second pass: assign temporary variables
-        # Sort by profit (count * complexity)
         candidates = []
         for expr_hash, count in self.expr_counts.items():
             if count >= self.threshold:
@@ -126,87 +123,90 @@ class SubexpressionAnalyzer:
                 candidates.append((benefit, expr_hash))
 
         candidates.sort(reverse=True)
-
-        # Assign names
         temp_vars = {}
         for i, (_, expr_hash) in enumerate(candidates):
             temp_vars[expr_hash] = f"_t{i}"
-
         return temp_vars
 
-    def _count_subexpressions(self, node: Expr, depth: int = 0):
-        """Traverse the AST counting nodes."""
-        # Ignore trivial nodes
-        if isinstance(node, (Const, Var)):
+    def _count_subexpressions(self, node: Expr):
+        if isinstance(node, (Const, Var, DiffVar)):
             return
 
-        # DiffVar is special—we don't count it as a CSE candidate.
-        if isinstance(node, DiffVar):
-            return
-
-        # Calculate complexity (number of operations)
         complexity = self._calculate_complexity(node)
 
-        # We only consider expressions with complexity > 1
         if complexity > 1:
             expr_hash = self._hash_expr(node)
             self.expr_counts[expr_hash] = self.expr_counts.get(expr_hash, 0) + 1
             self.expr_objects[expr_hash] = node
             self.expr_complexity[expr_hash] = complexity
 
-        # Recursion
+        if id(node) in self.visited_traversal:
+            return
+        self.visited_traversal.add(id(node))
+
         if isinstance(node, BinOp):
-            self._count_subexpressions(node.left, depth + 1)
-            self._count_subexpressions(node.right, depth + 1)
+            self._count_subexpressions(node.left)
+            self._count_subexpressions(node.right)
         elif isinstance(node, UnOp):
-            self._count_subexpressions(node.operand, depth + 1)
+            self._count_subexpressions(node.operand)
         elif isinstance(node, Func):
-            self._count_subexpressions(node.arg, depth + 1)
+            self._count_subexpressions(node.arg)
 
     def _calculate_complexity(self, node: Expr) -> int:
-        """Estimate the computational cost of an expression."""
+        if id(node) in self.memo_complexity:
+            return self.memo_complexity[id(node)]
+
+        res = 0
         if isinstance(node, (Const, Var, DiffVar)):
-            return 0
+            res = 0
         elif isinstance(node, BinOp):
-            # Multiplication/division cost more than addition/subtraction.
             op_cost = 2 if node.op in ['*', '/', '**'] else 1
-            return op_cost + self._calculate_complexity(node.left) + \
-                self._calculate_complexity(node.right)
+            res = op_cost + self._calculate_complexity(node.left) + \
+                  self._calculate_complexity(node.right)
         elif isinstance(node, UnOp):
-            return 1 + self._calculate_complexity(node.operand)
+            res = 1 + self._calculate_complexity(node.operand)
         elif isinstance(node, Func):
-            return 5 + self._calculate_complexity(node.arg)
-        return 1
+            res = 5 + self._calculate_complexity(node.arg)
+        else:
+            res = 1
+
+        self.memo_complexity[id(node)] = res
+        return res
 
     def _hash_expr(self, node: Expr) -> str:
-        """Generates a unique hash based on structure."""
         canonical = self._expr_to_canonical_string(node)
         return hashlib.md5(canonical.encode()).hexdigest()[:12]
 
     def _expr_to_canonical_string(self, node: Expr) -> str:
-        """Converts expression to canonical representation."""
+        if id(node) in self.memo_canonical:
+            return self.memo_canonical[id(node)]
+
+        res = ""
         if isinstance(node, Const):
-            return f"C{node.value}"
+            res = f"C{node.value}"
         elif isinstance(node, Var):
-            return f"V{node.name}"
+            res = f"V{node.name}"
         elif isinstance(node, DiffVar):
-            return f"D{node.base_var.name}"
+            res = f"D{node.base_var.name}"
         elif isinstance(node, BinOp):
             left = self._expr_to_canonical_string(node.left)
             right = self._expr_to_canonical_string(node.right)
-            # Normalize commutative operations
             if node.op in ['+', '*']:
                 if left > right:
                     left, right = right, left
-            return f"({left}{node.op}{right})"
+            res = f"({left}{node.op}{right})"
         elif isinstance(node, UnOp):
             operand = self._expr_to_canonical_string(node.operand)
-            return f"{node.op}{operand}"
+            res = f"{node.op}{operand}"
         elif isinstance(node, Func):
-            return f"{node.op}({self._expr_to_canonical_string(node.arg)})"
+            res = f"{node.op}({self._expr_to_canonical_string(node.arg)})"
         elif isinstance(node, LagVar):
-            return f"L{node.lag}{node.base_var.name}"
-        return str(node)
+            res = f"L{node.lag}{node.base_var.name}"
+        else:
+            res = str(node)
+
+        self.memo_canonical[id(node)] = res
+        return res
 
 
 # ==============================================================================
@@ -223,23 +223,29 @@ class SymbolicToPythonVisitor:
         self.cse_map = {}
         self.analyzer = None
         self.in_cse_def = False
+        self._str_cache = {}
 
     def visit(self, node: Expr, precedence: int = 0) -> str:
-        # CSE Check
         if self.analyzer and self.cse_map and not self.in_cse_def:
             if not isinstance(node, (Var, Const, DiffVar, LagVar)):
                 h = self.analyzer._hash_expr(node)
                 if h in self.cse_map:
                     return self.cse_map[h]
 
-        # Double Dispatch: Redirect PrimaryFunction to visit_Func
+        cache_key = (id(node), precedence)
+        if cache_key in self._str_cache:
+            return self._str_cache[cache_key]
+
         if isinstance(node, Func):
             type_name = 'Func'
         else:
             type_name = type(node).__name__
 
         visitor = getattr(self, f'visit_{type_name}', self.generic_visit)
-        return visitor(node, precedence)
+        result = visitor(node, precedence)
+
+        self._str_cache[cache_key] = result
+        return result
 
     def generic_visit(self, node, _):
         raise NotImplementedError(f"Node not supported: {type(node)}")
@@ -294,156 +300,160 @@ class SymbolicToPythonVisitor:
 # =============================================================================================
 
 class ADVisitor(SymbolicToPythonVisitor):
-    """
-    Forward-mode AD visitor (dual numbers) returning (val_code, dot_code).
-
-    - dot_code is the directional derivative wrt `states`, seeded by `seeds`.
-    - params are treated as constants (dot = 0.0), keeping solver agnostic.
-    - Supports CSE by returning (_tK, _tK_d) when a subexpression is lifted.
-    """
-
     def __init__(self, var_map: Dict[int, int], param_map: Dict[int, int],
-                 method: DiscretizationMethod, seeds_var: str = 'seeds'):
+                 method: DiscretizationMethod, seeds_var: str = 'seeds',
+                 active_indices: set = None):
         super().__init__(var_map, param_map, method)
         self.seeds_var = seeds_var
+        self.active_indices = active_indices
+
+    def _is_zero(self, s):
+        return s in ["0.0", "0", "0.00", "(-0.0)"]
+
+    def _is_one(self, s):
+        return s in ["1.0", "1", "1.00"]
 
     def visit(self, node: Expr, precedence: int = 0):
-        # CSE Check (dual)
+        # 1. CSE Check
         if self.analyzer and self.cse_map and not self.in_cse_def:
             if not isinstance(node, (Var, Const, DiffVar, LagVar)):
                 h = self.analyzer._hash_expr(node)
-                if h in self.cse_map:
-                    t = self.cse_map[h]
-                    return t, f"{t}_d"
+                if h in self.cse_map: return self.cse_map[h], f"{self.cse_map[h]}_d"
 
-        # Double Dispatch
+        # 2. Cache Check (Critical for AD speed)
+        cache_key = (id(node), precedence)
+        if cache_key in self._str_cache:
+            return self._str_cache[cache_key]
+
+        # 3. Visit
         if isinstance(node, Func):
             type_name = 'Func'
         else:
             type_name = type(node).__name__
-
         visitor = getattr(self, f'visit_{type_name}', self.generic_visit)
-        return visitor(node, precedence)
+        res = visitor(node, precedence)
 
-    # ---- primitives ----
+        # 4. Store
+        self._str_cache[cache_key] = res
+        return res
+
     def visit_Const(self, node: Const, _):
         return str(node.value), "0.0"
 
     def visit_Var(self, node: Var, _):
         if node.uid in self.var_map:
             i = self.var_map[node.uid]
-            return f"states[{i}]", f"{self.seeds_var}[{i}]"
-        if node.uid in self.param_map:
-            j = self.param_map[node.uid]
-            return f"params[{j}]", "0.0"
-        raise ValueError(f"Variable '{node.name}' (UID: {node.uid}) Not mapped in compiler.")
+            val = f"states[{i}]"
+            if self.active_indices is not None:
+                return val, "1.0" if i in self.active_indices else "0.0"
+            return val, f"{self.seeds_var}[{i}]"
+        if node.uid in self.param_map: return f"params[{self.param_map[node.uid]}]", "0.0"
+        raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped.")
 
     def visit_LagVar(self, node: LagVar, _):
-        # history is constant within Newton => dot=0
         base_uid = node.base_var.uid
-        if node.lag == 1 and base_uid in self.var_map:
-            return f"history[{self.var_map[base_uid]}]", "0.0"
+        if node.lag == 1 and base_uid in self.var_map: return f"history[{self.var_map[base_uid]}]", "0.0"
         raise NotImplementedError("Complex LagVar not supported.")
 
     def visit_DiffVar(self, node: DiffVar, prec: int):
         base_uid = node.base_var.uid
-        if base_uid not in self.var_map:
-            raise ValueError(
-                f"Base var '{node.base_var.name}' not mapped for DiffVar"
-            )
-
         i = self.var_map[base_uid]
+        if self.active_indices is not None:
+            seed = "1.0" if i in self.active_indices else "0.0"
+        else:
+            seed = f"{self.seeds_var}[{i}]"
 
-        # Discretized value (residual term)
         if isinstance(self.method, BackwardEulerMethod):
             val = f"((states[{i}] - history[{i}]) / h)"
-            dot = f"(+{self.seeds_var}[{i}] / h)"
-
+            dot = "0.0" if seed == "0.0" else ("(1.0/h)" if seed == "1.0" else f"({seed}/h)")
         elif isinstance(self.method, TrapezoidalMethod):
             val = f"((2.0/h)*(states[{i}] - history[{i}]) - d_history[{i}])"
-            dot = f"(+2.0*{self.seeds_var}[{i}] / h)"
-
+            dot = "0.0" if seed == "0.0" else ("(2.0/h)" if seed == "1.0" else f"(2.0*{seed}/h)")
         elif isinstance(self.method, BDF2Method):
             val = f"((1.5*states[{i}] - 2.0*history[{i}] + 0.5*history2[{i}]) / h)"
-            dot = f"(+1.5*{self.seeds_var}[{i}] / h)"
-
+            dot = "0.0" if seed == "0.0" else ("(1.5/h)" if seed == "1.0" else f"(1.5*{seed}/h)")
         else:
-            raise NotImplementedError("Unknown discretization method")
+            raise NotImplementedError
+        return (f"({val})", f"({dot})") if prec > 10 else (val, dot)
 
-        if prec > 10:
-            return f"({val})", f"({dot})"
-        return val, dot
-
-    # ---- operators ----
     def visit_BinOp(self, node: BinOp, prec: int):
         curr_prec = self.OP_PRECEDENCE.get(node.op, 0)
         lv, ld = self.visit(node.left, curr_prec)
         rv, rd = self.visit(node.right, curr_prec)
-
         op = node.op
-        if op == '+':
-            v = f"{lv} + {rv}"
-            d = f"({ld} + {rd})"
-        elif op == '-':
-            v = f"{lv} - {rv}"
-            d = f"({ld} - {rd})"
-        elif op == '*':
-            v = f"{lv} * {rv}"
-            d = f"(({ld})*({rv}) + ({lv})*({rd}))"
-        elif op == '/':
-            v = f"{lv} / {rv}"
-            d = f"(({ld})*({rv}) - ({lv})*({rd})) / (({rv})*({rv}))"
-        elif op == '**':
-            if isinstance(node.right, Const):
-                p = float(node.right.value)
-                v = f"({lv})**({p})"
-                d = f"({p})*(({lv})**({p - 1.0}))*({ld})"
-            else:
-                v = f"({lv})**({rv})"
-                d = f"(({v}) * ( ({rd})*np.log({lv}) + ({rv})*({ld})/({lv}) ))"
-        else:
-            raise NotImplementedError(f"Unsupported BinOp: {op}")
 
-        v_out = f"({v})" if curr_prec < prec else v
-        d_out = f"({d})" if curr_prec < prec else d
-        return v_out, d_out
+        v = ""
+        if op == '+':
+            v = rv if self._is_zero(lv) else (lv if self._is_zero(rv) else f"{lv} + {rv}")
+        elif op == '-':
+            v = lv if self._is_zero(rv) else (f"-{rv}" if self._is_zero(lv) else f"{lv} - {rv}")
+        elif op == '*':
+            v = "0.0" if (self._is_zero(lv) or self._is_zero(rv)) else (
+                rv if self._is_one(lv) else (lv if self._is_one(rv) else f"{lv} * {rv}"))
+        elif op == '/':
+            v = "0.0" if self._is_zero(lv) else (lv if self._is_one(rv) else f"{lv} / {rv}")
+        elif op == '**':
+            v = "1.0" if self._is_zero(rv) else (lv if self._is_one(rv) else (
+                f"({lv})**({node.right.value})" if isinstance(node.right, Const) else f"({lv})**({rv})"))
+
+        d = "0.0"
+        if op == '+':
+            d = rd if self._is_zero(ld) else (ld if self._is_zero(rd) else f"({ld} + {rd})")
+        elif op == '-':
+            d = f"(-{rd})" if self._is_zero(ld) else (ld if self._is_zero(rd) else f"({ld} - {rd})")
+        elif op == '*':
+            t1 = "0.0"
+            if not self._is_zero(ld): t1 = rv if self._is_one(ld) else (ld if self._is_one(rv) else f"({ld})*({rv})")
+            t2 = "0.0"
+            if not self._is_zero(rd): t2 = lv if self._is_one(rd) else (rd if self._is_one(lv) else f"({lv})*({rd})")
+            d = t2 if t1 == "0.0" else (t1 if t2 == "0.0" else f"({t1} + {t2})")
+        elif op == '/':
+            if self._is_zero(ld) and self._is_zero(rd):
+                d = "0.0"
+            elif self._is_zero(rd):
+                d = ld if self._is_one(rv) else f"({ld}) / ({rv})"
+            else:
+                d = f"(({ld})*({rv}) - ({lv})*({rd})) / (({rv})*({rv}))"
+        elif op == '**':
+            if not (self._is_zero(ld) and self._is_zero(rd)):
+                if isinstance(node.right, Const):
+                    val = float(node.right.value)
+                    if val == 1.0:
+                        d = ld
+                    elif val == 2.0:
+                        d = f"2.0*({lv})*({ld})"
+                    else:
+                        d = f"({val})*(({lv})**({val - 1}))*({ld})"
+                else:
+                    d = f"(({v}) * ( ({rd})*np.log({lv}) + ({rv})*({ld})/({lv}) ))"
+
+        return (f"({v})", f"({d})") if curr_prec < prec else (v, d)
 
     def visit_UnOp(self, node: UnOp, _):
         ov, od = self.visit(node.operand, 100)
-        if node.op == '+':
-            return f"(+({ov}))", f"(+({od}))"
-        if node.op == '-':
-            return f"(-({ov}))", f"(-({od}))"
-        raise NotImplementedError(f"Unsupported UnOp: {node.op}")
+        if self._is_zero(od):
+            s = f"{node.op}({ov})"
+            if node.op == '+': s = ov
+            return s, "0.0"
+        if node.op == '+': return f"(+({ov}))", f"(+({od}))"
+        if node.op == '-': return f"(-({ov}))", f"(-({od}))"
+        raise NotImplementedError
 
     def visit_Func(self, node: Func, _):
         av, ad = self.visit(node.arg, 0)
-        op = node.op
+        if self._is_zero(ad):
+            if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
+            if node.op == 'abs': return f"np.abs({av})", "0.0"
+            return f"np.{node.op}({av})", "0.0"
 
-        # Non-smooth / event-like ops: derivative treated as 0 inside Newton
-        if op == 'heaviside':
-            return f"_heaviside({av})", "0.0"
-
-        if op == 'abs':
-            # piecewise derivative: sign(x)*dx (sign(0)->0 is acceptable)
-            return f"np.abs({av})", f"(np.sign({av})*({ad}))"
-
-        # Smooth numpy unary functions
-        if op == 'sin':
-            return f"np.sin({av})", f"(np.cos({av})*({ad}))"
-        if op == 'cos':
-            return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
-        if op == 'exp':
-            v = f"np.exp({av})"
-            return v, f"({v})*({ad})"
-        if op == 'log':
-            return f"np.log({av})", f"({ad})/({av})"
-        if op == 'sqrt':
-            v = f"np.sqrt({av})"
-            return v, f"0.5*({ad})/({v})"
-
-        # If your AST uses other ops (tanh, asin, etc.), add cases here explicitly.
-        raise NotImplementedError(f"ADVisitor: unsupported function '{op}'")
+        if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
+        if node.op == 'abs': return f"np.abs({av})", f"(np.sign({av})*({ad}))"
+        if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
+        if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+        if node.op == 'exp': return f"np.exp({av})", f"({f'np.exp({av})'})*({ad})"
+        if node.op == 'log': return f"np.log({av})", f"({ad})/({av})"
+        if node.op == 'sqrt': return f"np.sqrt({av})", f"0.5*({ad})/({f'np.sqrt({av})'})"
+        raise NotImplementedError
 
 # ==============================================================================
 # 5. Compiler (sym-num)(discretized)
@@ -472,123 +482,200 @@ class EquationCompiler:
 
         self.visitor = SymbolicToPythonVisitor(self.var_map, self.param_map, self.strategy)
 
-    def compile(self, equations: List[Expr], func_name: str = "step_fn", use_cse: bool = True) -> Callable:
-        lines = []
-        lines.append(f"def {func_name}(states, params, history, d_history, h, history2=None):")
+    def _compile_to_file(self, full_source: str, func_name: str) -> Callable:
+        """
+        Writes source code to a file in __pycache_jit__ and imports it.
+        This allows Numba's cache=True to work.
+        """
+        import sys
 
-        # ---CSE Block ---
+        header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import _heaviside\n\n"
+        full_content = header + full_source
+
+        root_dir = os.getcwd()
+        cache_dir = os.path.join(root_dir, "__pycache_jit__")
+        os.makedirs(cache_dir, exist_ok=True)
+
+        if cache_dir not in sys.path:
+            sys.path.append(cache_dir)
+
+        content_hash = hashlib.md5(full_content.encode('utf-8')).hexdigest()[:16]
+        mod_name = f"{func_name}_{content_hash}"
+        filename = f"{mod_name}.py"
+        filepath = os.path.join(cache_dir, filename)
+
+        if not os.path.exists(filepath):
+            with open(filepath, "w") as f:
+                f.write(full_content)
+
+        if mod_name in sys.modules:
+            return getattr(sys.modules[mod_name], func_name)
+
+        spec = importlib.util.spec_from_file_location(mod_name, filepath)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = module
+        spec.loader.exec_module(module)
+
+        return getattr(module, func_name)
+
+    def compile(self, equations: List[Expr], func_name: str = "step_fn", use_cse: bool = True,
+                offset: int = 0, inplace: bool = False) -> Callable:
+
+        # Header depends on mode
+        if inplace:
+            # Writes to 'residuals' array starting at 'offset'
+            lines = [f"def {func_name}(states, params, history, d_history, h, residuals, history2=None):"]
+        else:
+            # Allocates and returns
+            lines = [f"def {func_name}(states, params, history, d_history, h, history2=None):"]
+
+        # --- CSE Block ---
         if use_cse:
             analyzer = SubexpressionAnalyzer()
             cse_map = analyzer.analyze(equations)
-
             self.visitor.analyzer = analyzer
             self.visitor.cse_map = cse_map
+            self.visitor._str_cache = {}
 
             if cse_map:
                 sorted_cse = sorted(cse_map.items(), key=lambda x: int(x[1][2:]))
-
                 for expr_hash, var_name in sorted_cse:
                     expr_obj = analyzer.expr_objects[expr_hash]
-
                     self.visitor.in_cse_def = True
                     expr_code = self.visitor.visit(expr_obj)
                     self.visitor.in_cse_def = False
-
                     lines.append(f"    {var_name} = {expr_code}")
 
-        lines.append(f"    residuals = np.zeros({len(equations)}, dtype=np.float64)")
+        # --- Body ---
+        if not inplace:
+            lines.append(f"    residuals = np.zeros({len(equations)}, dtype=np.float64)")
 
         for i, eq in enumerate(equations):
             code = self.visitor.visit(eq)
-            lines.append(f"    residuals[{i}] = {code}")
+            # Apply offset if inplace
+            target_idx = i + offset if inplace else i
+            lines.append(f"    residuals[{target_idx}] = {code}")
 
-        lines.append("    return residuals")
+        if not inplace:
+            lines.append("    return residuals")
 
         # Clean visitor
         self.visitor.cse_map = {}
         self.visitor.analyzer = None
+        self.visitor._str_cache = {}
 
         full_source = "\n".join(lines)
 
-        from .symbolic import _heaviside
-        context = {'np': np, 'math': math, '_heaviside': _heaviside}
-        local_scope = {}
+        return self._compile_to_file(full_source, func_name)
 
-        try:
-            exec(full_source, context, local_scope)
-        except Exception as e:
-            print(f"Error compiling:\n{full_source}")
-            raise e
+    def compile_ad_kernel(self, equations: List[Expr], func_name: str = "ad_step", use_cse: bool = True,
+                          active_indices: set = None) -> Callable:
+        # (Este método no cambia, mantenlo igual que antes)
+        adv = ADVisitor(self.var_map, self.param_map, self.strategy, seeds_var='seeds', active_indices=active_indices)
+        lines = [f"def {func_name}(states, seeds, params, history, d_history, h, history2=None):"]
 
-        compiled = local_scope[func_name]
-        compiled.source_code = full_source
-        return compiled
-
-    def compile_ad_kernel(self, equations: List[Expr], func_name: str = "ad_step", use_cse: bool = True) -> Callable:
-        """
-        Compiles a forward-mode AD kernel that returns only the JVP:
-
-            jvp = J(states) @ seeds
-
-        Signature (as required by SparseADJacobian / BlockSolver):
-            def ad_step(states, seeds, params, history, d_history, h, history2=None) -> np.ndarray
-
-        Notes:
-          - `params` is the concatenation of event parameters + static parameters in the same order
-            used when building `EquationCompiler(parameters=...)`.
-          - `history`, `d_history`, `history2` are treated as constants within Newton => their dots are 0.
-        """
-        adv = ADVisitor(self.var_map, self.param_map, self.strategy, seeds_var='seeds')
-
-        lines: List[str] = []
-        lines.append(f"def {func_name}(states, seeds, params, history, d_history, h, history2=None):")
-
-        # --- CSE Block (dual: _tK and _tK_d) ---
         if use_cse:
             analyzer = SubexpressionAnalyzer()
             cse_map = analyzer.analyze(equations)
-
             adv.analyzer = analyzer
             adv.cse_map = cse_map
+            adv._str_cache = {}
 
             if cse_map:
                 sorted_cse = sorted(cse_map.items(), key=lambda x: int(x[1][2:]))
-
                 for expr_hash, var_name in sorted_cse:
                     expr_obj = analyzer.expr_objects[expr_hash]
-
                     adv.in_cse_def = True
                     expr_val, expr_dot = adv.visit(expr_obj)
                     adv.in_cse_def = False
-
                     lines.append(f"    {var_name} = {expr_val}")
-                    lines.append(f"    {var_name}_d = {expr_dot}")
+                    if expr_dot != "0.0": lines.append(f"    {var_name}_d = {expr_dot}")
 
         n = len(equations)
         lines.append(f"    jvp = np.zeros({n}, dtype=np.float64)")
-
         for i, eq in enumerate(equations):
-            val , dot = adv.visit(eq)
-            lines.append(f"    jvp[{i}] = {dot}")
-
+            val, dot = adv.visit(eq)
+            if dot != "0.0": lines.append(f"    jvp[{i}] = {dot}")
         lines.append("    return jvp")
 
-        # cleanup
         adv.cse_map = {}
         adv.analyzer = None
+        adv._str_cache = {}
 
         full_source = "\n".join(lines)
 
-        from .symbolic import _heaviside
-        context = {'np': np, 'math': math, '_heaviside': _heaviside}
-        local_scope: Dict[str, Any] = {}
+        return self._compile_to_file(full_source, func_name)
 
-        try:
-            exec(full_source, context, local_scope)
-        except Exception as e:
-            print(f"Error compiling AD kernel:\n{full_source}")
-            raise e
 
-        compiled = local_scope[func_name]
-        compiled.source_code = full_source
-        return compiled
+# ==============================================================================
+# 6. Matrix Vectorized Compiler (HPC Optimized - No Dictionaries)
+# ==============================================================================
+
+class MatrixVectorizedVisitor(SymbolicToPythonVisitor):
+    """
+    Visitor optimizado para HPC. En lugar de buscar nombres en un diccionario (lento),
+    accede a columnas de una matriz de índices (rápido).
+    Genera código tipo: states[indices[:, 5]]
+    """
+
+    def __init__(self, var_map, param_map, method, col_map):
+        super().__init__(var_map, param_map, method)
+        self.col_map = col_map  # Mapea nombre_variable -> indice_columna (int)
+
+    def visit_Var(self, node: Var, _) -> str:
+        # Los parámetros siguen igual (acceso global por índice)
+        if node.uid in self.param_map:
+            return f"params[{self.param_map[node.uid]}]"
+
+        # Estados: Acceso directo a columna de matriz
+        # Esto elimina el hash lookup del diccionario en tiempo de ejecución
+        col_idx = self.col_map[node.name]
+        return f"states[indices[:, {col_idx}]]"
+
+    def visit_DiffVar(self, node: DiffVar, prec: int) -> str:
+        # Discretización vectorial sobre matriz
+        base_name = node.base_var.name
+        col_idx = self.col_map[base_name]
+        idx_access = f"indices[:, {col_idx}]"
+
+        # Hardcoded discretization strings for arrays to ensure performance
+        if isinstance(self.method, TrapezoidalMethod):
+            term = f"((2.0/h) * (states[{idx_access}] - history[{idx_access}]) - d_history[{idx_access}])"
+        elif isinstance(self.method, BackwardEulerMethod):
+            term = f"((states[{idx_access}] - history[{idx_access}]) / h)"
+        elif isinstance(self.method, BDF2Method):
+            term = f"((1.5*states[{idx_access}] - 2.0*history[{idx_access}] + 0.5*history2[{idx_access}]) / h)"
+        else:
+            raise NotImplementedError(f"Method {type(self.method)} not supported in matrix vectorization.")
+
+        return f"({term})" if prec > 10 else term
+
+
+class MatrixVectorizedCompiler(EquationCompiler):
+    """
+    Compilador que usa el Visitor Matricial.
+    Genera kernels que aceptan 'indices' como un array 2D de int32.
+    """
+
+    def compile_matrix_kernel(self, template_eq: Expr, func_name: str, template_vars: List[Var]) -> Callable:
+        # 1. Crear mapa de columnas determinista (Var -> 0, Var -> 1, ...)
+        col_map = {}
+        for i, v in enumerate(template_vars):
+            name = v.base_var.name if isinstance(v, DiffVar) else v.name
+            col_map[name] = i
+
+        # 2. Generar código fuente usando el Visitor Matricial
+        visitor = MatrixVectorizedVisitor(self.var_map, self.param_map, self.strategy, col_map)
+        rhs_code = visitor.visit(template_eq)
+
+        # 3. Empaquetar en función (indices es ahora un array 2D int32)
+        lines = [
+            f"def {func_name}(states, params, history, d_history, h, indices, history2=None):",
+            f"    # Vectorized Matrix Kernel (No Dicts)",
+            f"    residuals = {rhs_code}",
+            f"    return residuals"
+        ]
+        full_source = "\n".join(lines)
+
+        # 4. Compilar a archivo (para caché de Numba)
+        return self._compile_to_file(full_source, func_name)
