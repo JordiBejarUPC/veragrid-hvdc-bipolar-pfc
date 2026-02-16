@@ -585,7 +585,7 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
         # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
-        if float(tpe.uktr) == 0.0 and float(tpe.pcutr) == 0.0:
+        if tpe_is_new or float(tpe.uktr) == 0.0 or float(tpe.pcutr) == 0.0:
 
             rate = float(tr.rate)
             if rate <= 0.0:
