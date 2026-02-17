@@ -12,6 +12,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
 from VeraGridEngine.enumerations import DiagramType, WindingType
+from VeraGridEngine.Devices.Branches.transformer_type import reverse_transformer_short_circuit_study
 
 SQRT3 = np.sqrt(3)
 
@@ -221,12 +222,23 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.rline = seq.R
     typlne.xline = seq.X
     typlne.bline = seq.B
-    typlne.cline = seq.Cnf
+
+    # Important: the importer decides "use_conductance" using (cline != 0.0).
+    # If we export tiny defaults (e.g. 1e-20), the importer will ignore bline and compute B from Cnf.
+    if seq.use_conductance:
+        typlne.cline = seq.Cnf
+    else:
+        typlne.cline = 0.0
+
+    typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
+
+    if seq.use_conductance:
+        typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
+    else:
+        typlne.cline0 = 0.0
 
     typlne.rline0 = seq.R0 if seq.R0 > 0 else 2 * seq.R
     typlne.xline0 = seq.X0 if seq.X0 > 0 else 2 * seq.X
-    typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
-    typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
 
     typlne.uline = seq.Vnom
     typlne.sline = seq.Imax
@@ -235,43 +247,6 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
 
     return typlne
 
-def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2) -> None:
-    """
-    Fill TypTr2 + ElmTr2 tap fields so dgs_to_veragrid reconstructs tap_module.
-    Assumes VeraGrid Transformer2W has: tap_module, tap_module_min, tap_module_max.
-    """
-    tap = float(tr.tap_module)
-    tap_min = float(tr.tap_module_min)
-    tap_max = float(tr.tap_module_max)
-
-    if tap_min > tap_max:
-        tap_min, tap_max = tap_max, tap_min
-
-    # If fixed at 1.0 → keep neutral
-    if abs(tap - 1.0) < 1e-12 and abs(tap_min - 1.0) < 1e-12 and abs(tap_max - 1.0) < 1e-12:
-        tpe.tap_side = 0
-        tpe.dutap = 0.0
-        tpe.nntap0 = 0
-        tpe.ntpmn = 0
-        tpe.ntpmx = 0
-        e.nntap = 0
-        return
-
-    # Discretization step (p.u.)
-    step = 0.001
-    tpe.dutap = step * 100.0  # Percent
-    tpe.nntap0 = 0
-    tpe.tap_side = 0  # HV
-
-    def to_pos(x: float) -> int:
-        return int(round((x - 1.0) / step))
-
-    e.nntap = to_pos(tap)
-    tpe.ntpmn = to_pos(tap_min)
-    tpe.ntpmx = to_pos(tap_max)
-
-    if tpe.ntpmn > tpe.ntpmx:
-        tpe.ntpmn, tpe.ntpmx = tpe.ntpmx, tpe.ntpmn
 
 def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     """
@@ -315,6 +290,50 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     typtr2.tr2cn_l = wtpe_dict[tr.conn_lv]
 
     return typtr2
+
+
+
+def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2) -> None:
+    """Set tap fields in TypTr2 and ElmTr2.
+
+    This makes the exported DGS coherent with the importer (dgs_to_veragrid),
+    which reconstructs tap_module from:
+      - TypTr2.dutap, TypTr2.nntap0, TypTr2.ntpmn, TypTr2.ntpmx, TypTr2.tap_side
+      - ElmTr2.nntap
+
+    Notes:
+    - VeraGrid Transformer2W exposes tap_module, tap_module_min, tap_module_max.
+    - We discretize tap positions using a fixed step (0.1%). This is enough for power-flow.
+    """
+    tap = tr.tap_module
+    tap_min = tr.tap_module_min
+    tap_max = tr.tap_module_max
+
+    if tap_min > tap_max:
+        tap_min, tap_max = tap_max, tap_min
+
+    # Fixed at 1.0 -> neutral, no range
+    if abs(tap - 1.0) < 1e-12 and abs(tap_min - 1.0) < 1e-12 and abs(tap_max - 1.0) < 1e-12:
+        tpe.tap_side = 0
+        tpe.dutap = 0.0
+        tpe.nntap0 = 0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+    # Discretization step (p.u.)
+    step = 0.001  # 0.1%
+    tpe.dutap = step * 100.0  # PowerFactory uses percent
+    tpe.nntap0 = 0
+    tpe.tap_side = 0  # HV side (we export cubicles as HV, LV)
+
+    e.nntap = int(round((tap - 1.0) / step))
+    tpe.ntpmn = int(round((tap_min - 1.0) / step))
+    tpe.ntpmx = int(round((tap_max - 1.0) / step))
+
+    if tpe.ntpmn > tpe.ntpmx:
+        tpe.ntpmn, tpe.ntpmx = tpe.ntpmx, tpe.ntpmn
 
 
 def generate_diesel_dsl_composite(dgs_grid: DgsCircuit, name: str, net_id: str) -> ElmComp:
@@ -505,12 +524,37 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     # lines
     for line in grid.lines:
 
-        # try search for the template
         tpe = seq2typlne_dict.get(line.template, None)
 
+        # --- guard: DGS export requires length > 0 ---
+        if line.length <= 0.0:
+            line.length = 1.0
+
         if tpe is None:
-            # produce a new template
-            tpe = convert_sequence_line(seq=line.get_line_type(), new_id=dgs_grid.new_id())
+            seq = line.get_line_type()
+
+            # DGS TypLne expects:
+            #   rline/xline in Ohm/km
+            #   bline/bline0 in uS/km
+            vnom = line.bus_from.Vnom if line.bus_from.Vnom > 0.0 else line.bus_to.Vnom
+            if vnom > 0.0:
+                zbase = (vnom * vnom) / 100.0  # Sbase=100 MVA
+                ybase = 1.0 / zbase
+
+                # R/X: p.u./km -> Ohm/km
+                seq.R *= zbase
+                seq.X *= zbase
+                if seq.R0 > 0.0:
+                    seq.R0 *= zbase
+                if seq.X0 > 0.0:
+                    seq.X0 *= zbase
+
+                # B: p.u./km -> uS/km
+                seq.B *= (ybase * 1e6)
+                if seq.B0 > 0.0:
+                    seq.B0 *= (ybase * 1e6)
+
+            tpe = convert_sequence_line(seq=seq, new_id=dgs_grid.new_id())
             dgs_grid.typlnes.append(tpe)
 
         e = ElmLne()
@@ -525,8 +569,7 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.elmlnes.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            dgs_buses=[bus2term_dict[line.bus_from],
-                       bus2term_dict[line.bus_to]]
+            dgs_buses=[bus2term_dict[line.bus_from], bus2term_dict[line.bus_to]]
         )
 
     # 2W transformers
@@ -540,6 +583,31 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
             dgs_grid.typtr2s.append(tpe)
             tpe_is_new = True
 
+        # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
+        # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
+        if tpe_is_new or float(tpe.uktr) == 0.0 or float(tpe.pcutr) == 0.0:
+
+            rate = float(tr.rate)
+            if rate <= 0.0:
+                rate = float(tr.Sn)
+            if rate <= 0.0:
+                rate = float(tpe.strn)
+
+            Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
+                R=float(tr.R),
+                X=float(tr.X),
+                G=float(tr.G),
+                B=float(tr.B),
+                rate=rate,
+                Sbase=float(grid.Sbase),
+            )
+
+            tpe.pfe = float(Pfe)
+            tpe.pcutr = float(Pcu)
+            tpe.uktr = float(Vsc)
+            tpe.curmg = float(I0)
+            tpe.strn = float(Sn)
+
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
         e.loc_name = tr.name
@@ -548,23 +616,24 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
 
-        # --- TAP EXPORT (minimal + coherent) ---
-        # If type is new, we set type tap range + element tap position.
-        # If type is reused, we still set the element position, and we assume shared type has correct range.
+        # Tap export...
         if tpe_is_new:
             _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
         else:
-            if float(getattr(tpe, "dutap", 0.0)) > 0.0:
-                step = float(tpe.dutap) / 100.0
+            if tpe.dutap > 0.0:
+                step = tpe.dutap / 100.0
                 e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
             else:
                 e.nntap = 0
+
         hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            dgs_buses=[bus2term_dict[hv_bus], bus2term_dict[lv_bus]]
+            # The order must be HV, LV
+            dgs_buses=[bus2term_dict[hv_bus],
+                       bus2term_dict[lv_bus]]
         )
 
     # diagrams
