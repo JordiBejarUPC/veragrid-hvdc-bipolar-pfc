@@ -30,6 +30,7 @@ def convert_bus(bus: dev.Bus, new_id: str, t: int | None = None) -> ElmTerm:
     elm_term.loc_name = bus.name
     elm_term.uknom = bus.Vnom
     elm_term.unknom = bus.Vnom / SQRT3
+    elm_term.vtarget = 1.0
     elm_term.outserv = 0 if bus.get_active_at(t) else 1
 
     if bus.is_slack:
@@ -56,22 +57,60 @@ def convert_bus_graphic(elm_term, bus: dev.Bus, new_id: str) -> IntGrf:
     return int_grf
 
 
-def convert_shunt(load: dev.Shunt, new_id: str, t: int | None = None) -> ElmShnt:
+def convert_shunt(shunt: dev.Shunt, new_id: str, ushnm_kv: float, t: int | None = None) -> ElmShnt:
     """
+    Export VeraGrid fixed Shunt to PowerFactory ElmShnt.
 
-    :param load:
-    :param new_id:
-    :param t:
-    :return:
+    VeraGrid:
+      - G in MW @ v=1 p.u.
+      - B in MVAr @ v=1 p.u. (positive capacitive, negative inductive)
+
+    DGS (ElmShnt) fields used by our importer:
+      - shtype: 1 reactor, 2 capacitor
+      - qtotn: total rated MVAr magnitude (usually stored as magnitude in PF)
+      - qcapn/ncapa (capacitor steps) and qrean (reactor) as fallback
     """
     e = ElmShnt()
     e.ID = new_id
-    e.loc_name = load.name
-    e.p = float(load.get_G_at(t))
-    e.qlini = float(load.get_B_at(t))
-    e.scale0 = 1.0
-    e.outserv = 0 if load.get_active_at(t) else 1
+    e.loc_name = shunt.name
 
+    g_mw = float(shunt.get_G_at(t))
+    b_mvar = float(shunt.get_B_at(t))
+
+    # Nominal voltage of the connection bus (kV)
+    e.ushnm = float(ushnm_kv)
+
+    # Technology / type (match typical PF export style)
+    e.ctech = 1
+
+    # Capacitor vs reactor (sign convention)
+    if b_mvar >= 0.0:
+        e.shtype = 2  # capacitor
+        e.qcapn = abs(b_mvar)
+        e.ncapx = 1
+        e.ncapa = 1
+        e.qrean = 0.0
+    else:
+        e.shtype = 1  # reactor
+        e.qcapn = 0.0
+        e.ncapx = 1
+        e.ncapa = 1
+        e.qrean = abs(b_mvar)
+
+    # Total MVAr magnitude (importer prefers this when != 0)
+    e.qtotn = abs(b_mvar)
+
+    # Fixed shunt (not switchable by default)
+    e.iswitch = 0
+
+    # Frequency (optional but sane)
+    e.fres = 50.0
+
+    # Active losses are not represented in this common PF DGS shunt model.
+    # If you ever want to represent G, you'd need a different PF object/model.
+    e.greaf0 = 0.0
+
+    e.outserv = 0 if shunt.get_active_at(t) else 1
     return e
 
 
@@ -189,8 +228,9 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.outserv = 0 if gen.get_active_at(t) else 1
     e.pgini = gen.get_P_at(t)
     e.qgini = gen.get_Q_at(t)
-    e.q_min = gen.get_Qmin_at(t) / Sbase
-    e.q_max = gen.get_Qmax_at(t) / Sbase
+    sn = 0.01 if gen.Snom == 0 else gen.Snom  # same base as tpe.sgn
+    e.q_min = gen.get_Qmin_at(t) / sn
+    e.q_max = gen.get_Qmax_at(t) / sn
     e.usetp = gen.get_Vset_at(t)
     e.ip_ctrl = 1 if gen.bus.is_slack else 0
     e.typ_id = tpe.ID
@@ -322,11 +362,22 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
         e.nntap = 0
         return
 
-    # Discretization step (p.u.)
-    step = 0.001  # 0.1%
-    tpe.dutap = step * 100.0  # PowerFactory uses percent
+    # Choose a single "step" so taps become small integers like PF exports (e.g. -1..0..+1)
+    max_dev = max(abs(tap - 1.0), abs(tap_min - 1.0), abs(tap_max - 1.0))
+
+    if max_dev < 1e-12:
+        tpe.tap_side = 0
+        tpe.dutap = 0.0
+        tpe.nntap0 = 0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+    step = max_dev
+    tpe.dutap = step * 100.0  # percent per step
     tpe.nntap0 = 0
-    tpe.tap_side = 0  # HV side (we export cubicles as HV, LV)
+    tpe.tap_side = 0  # HV side
 
     e.nntap = int(round((tap - 1.0) / step))
     tpe.ntpmn = int(round((tap_min - 1.0) / step))
@@ -440,8 +491,8 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
 
     # Shunts
     for shunt in grid.shunts:
-        e = convert_shunt(shunt, new_id=dgs_grid.new_id(), t=t)
         term = bus2term_dict[shunt.bus]
+        e = convert_shunt(shunt, new_id=dgs_grid.new_id(), ushnm_kv=term.uknom, t=t)
         dgs_grid.elmshnts.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
 
