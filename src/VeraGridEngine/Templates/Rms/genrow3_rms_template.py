@@ -99,7 +99,7 @@ def get_genrow3_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
                 psiq: -R1 * i_d - v_d,
                 te: psid * i_q - psiq * i_d,
                 tm: te,
-                et: Const(0),
+                et: delta/(2 * np.pi * freq),
                 tm0: tm,
                 vf: psid + X1 * i_d
             }

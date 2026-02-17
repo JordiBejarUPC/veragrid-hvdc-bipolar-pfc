@@ -75,3 +75,6 @@ class RmsProblemTemplate(ABC):
 
     def get_dt(self):
         return NotImplementedError("get_dt")
+
+    def get_dt_value(self):
+        return NotImplementedError("get_dt_value")

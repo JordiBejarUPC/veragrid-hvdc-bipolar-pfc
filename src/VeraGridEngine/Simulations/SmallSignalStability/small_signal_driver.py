@@ -42,7 +42,7 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec):
         the A matrix is computed as:
         A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
     """
-    h = problem.get_dt()
+    h = problem.get_dt_value()
 
     fx = problem.get_j11(x, dx, h)  # ∂f/∂x
     fy = problem.get_j12(x, dx, h)  # ∂f/∂y

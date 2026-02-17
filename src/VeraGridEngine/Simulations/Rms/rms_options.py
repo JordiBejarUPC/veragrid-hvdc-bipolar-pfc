@@ -13,7 +13,7 @@ class RmsOptions(OptionsTemplate):
     """
 
     def __init__(self,
-                 time_step: float = 0.01,
+                 time_step: float = 0.001,
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,

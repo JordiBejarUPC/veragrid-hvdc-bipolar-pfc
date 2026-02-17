@@ -766,3 +766,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def get_dt(self):
         return self._dt
+    
+    def get_dt_value(self):
+        dt_value = self._variable_parameters_values[-2]
+        return dt_value

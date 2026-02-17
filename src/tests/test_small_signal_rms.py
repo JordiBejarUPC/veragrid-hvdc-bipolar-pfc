@@ -11,6 +11,10 @@ from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
+from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
+from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
+from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
@@ -129,9 +133,9 @@ def stability_kundur_no_shunt():
                         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     # load
-    load1 = gce.Load(name="load1", P=9.999999, Q=0.999999)
+    load1 = gce.Load(name="load1",  P=967.0, Q=100.0)
 
-    load2 = gce.Load(name="load2", P=9.999999, Q=0.999999)
+    load2 = gce.Load(name="load2", P=1767.0, Q=100.0)
 
     # Generators
     fn_1 = 60.0
@@ -172,7 +176,7 @@ def stability_kundur_no_shunt():
 
     # Generators
     gen1 = Generator(
-        name="Gen1", P=10.0, vset=1.03, Snom=900.0,
+        name="Gen1", P=700.0, vset=1.03, Snom=900.0,
         x1=xd_1, r1=ra_1, freq=fn_1,
         tm0=6.999999999999999,
         vf=1.1410480598099169,
@@ -182,7 +186,7 @@ def stability_kundur_no_shunt():
     )
 
     gen2 = Generator(
-        name="Gen2", P=10.0, vset=1.01, Snom=900.0,
+        name="Gen2", P=700.0, vset=1.01, Snom=900.0,
         x1=xd_2, r1=ra_2, freq=fn_2,
         tm0=6.999999999999998,
         vf=1.1801018702912192,
@@ -192,7 +196,7 @@ def stability_kundur_no_shunt():
     )
 
     gen3 = Generator(
-        name="Gen3", P=10.0, vset=1.03, Snom=900.0,
+        name="Gen3", P=719.091, vset=1.03, Snom=900.0,
         x1=xd_3, r1=ra_3, freq=fn_3,
         tm0=7.331838148595014,
         vf=1.15513088317088697,
@@ -202,7 +206,7 @@ def stability_kundur_no_shunt():
     )
 
     gen4 = Generator(
-        name="Gen4", P=10.0, vset=1.01, Snom=900.0,
+        name="Gen4", P=700.0, vset=1.01, Snom=900.0,
         x1=xd_4, r1=ra_4, freq=fn_4,
         tm0=6.999999999999998,
         vf=1.2028207647478641,
@@ -247,10 +251,10 @@ def stability_kundur_no_shunt():
 
     # Build rms models from template
     # generators
-    genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl3 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl4 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
+    genrow_mdl2 = block_deep_copy(get_genrow2_rms_template().block)
+    genrow_mdl3 = block_deep_copy(get_genrow3_rms_template().block)
+    genrow_mdl4 = block_deep_copy(get_genrow4_rms_template().block)
 
     # lines
     line0_mdl = block_deep_copy(get_line_rms_template().block)
@@ -537,7 +541,6 @@ def stability_kundur_no_shunt():
     power_flow = PowerFlowDriver(grid, pf_options)
     power_flow.run()
     res = power_flow.results
-
     rms_options = RmsOptions(time_step=0.001,
                          simulation_time=10,
                          tolerance=1e-6,

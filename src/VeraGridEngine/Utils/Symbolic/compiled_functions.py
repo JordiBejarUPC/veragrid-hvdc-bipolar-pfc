@@ -49,7 +49,7 @@ def compile_jac_block(block_id,
     :return:
     """
     fname = f"jac_block_{block_id}"
-    src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, out):\n"
+    src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, h, out):\n"
     final_names_dict = {}
     for uid, count in used_vars_count.items():
         if count > 1:
@@ -66,7 +66,7 @@ def compile_jac_block(block_id,
 
     if use_jit:
         func = nb.njit(
-            nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+            nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
             fastmath=True,
             cache=False
         )(namespace[fname])
@@ -110,16 +110,17 @@ class SymbolicJacobian:
                         sparsity_pattern : tuple(np.ndarray, np.ndarray)
                             Row/col indices of structurally non‑zero entries.
                 """
-        if dt is None:
-            dt = Const(0.001)
-
+        
+        h = Var('h')
+        alias_names_dict[h.uid] = 'h'
+        compiler_names_dict[h.uid] = 'h'
         # --- Build triplets and count variable usage ---------------------------------
         used_vars_count = defaultdict(int)
         triplets = []
 
         for row, eq in enumerate(eqs):
             for col, var in enumerate(variables):
-                d_expression = eq.diff(var, dt=dt)
+                d_expression = eq.diff(var, dt=h)
                 if not (isinstance(d_expression, Const) and d_expression.value == 0):
                     triplets.append((col, row, d_expression))
                 for v in get_expression_vars(d_expression):
@@ -153,7 +154,7 @@ class SymbolicJacobian:
             for i in range(0, len(equations_sorted), batch_size)
         ]
         self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
-        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
+        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, float, Vec], None] | None] = [None] * len(blocks)
 
         # --- Compile blocks sequentially -------------------------------------------
         # --- Compile blocks in parallel ---------------------------------------------
@@ -188,7 +189,7 @@ class SymbolicJacobian:
         """
         for func in self.funcs:
             if func is not None:
-                func(x, dx, variable_params, constant_params, self.J.data)
+                func(x, dx, variable_params, constant_params, h, self.J.data)
         return self.J
 
 

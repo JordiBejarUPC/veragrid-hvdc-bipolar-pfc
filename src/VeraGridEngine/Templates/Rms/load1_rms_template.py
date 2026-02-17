@@ -31,11 +31,11 @@ def get_load1_rms_template(name = "Load rms template") -> RmsModelTemplate:
     Ql = Var("Ql")
     Pl = Var("Pl")
 
-    templ.block.event_dict[Pl0] = Const(-0.0999999)
-    templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
+    # templ.block.event_dict[Pl0] = Const(-0.0999999)
+    # templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
 
-    # templ.block.event_dict[Pl0] = Const(-9.670000000007317)
-    # templ.block.event_dict[Ql0] = Const(-0.9999999999967969)
+    templ.block.event_dict[Pl0] = Const(-9.670000000007317)
+    templ.block.event_dict[Ql0] = Const(-0.9999999999967969)
 
     templ.block.algebraic_vars = [Pl, Ql]
 
