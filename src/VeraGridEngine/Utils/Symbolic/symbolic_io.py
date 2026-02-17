@@ -475,6 +475,15 @@ class BlockSaver:
 
             init_values.append({"var": var.uid, "value": value.value})
 
+        event_dict_def: List[Dict[str, float | int]] = list()
+        for var, value in blk.event_dict_def.items():
+
+            found_var = self.var_dict.get(var.uid, None)
+            if found_var is None:
+                raise ValueError(f"Parameter not previously defined {var.name}")
+
+            event_dict_def.append({"var": var.uid, "value": value.value})
+
         parameters: List[Dict[str, float | int]] = list()
         for var, value in blk.parameters.items():
 
@@ -531,6 +540,7 @@ class BlockSaver:
                                 for dyn_param_type, param in blk.api_obj_mapping.items()},
 
             "event_dict": events_list,
+            "event_dict_def": event_dict_def,
             "name": blk.name,
             "children": [child.uid for child in blk.children],
             "in_vars": in_vars,
@@ -637,6 +647,11 @@ class BlockParser:
                                          var_dict=self.var_dict,
                                          diff_var_dict=self.diff_var_dict)
 
+        event_dict_def: Dict[Var, Const] = dict()
+        for entry in data["event_dict_def"]:
+            var = self.var_dict[entry["var"]]
+            event_dict_def[var] = Const(entry["value"])
+
         parameters: Dict[Var, Const] = dict()
         for entry in data["parameters"]:
             var = self.var_dict[entry["var"]]
@@ -668,6 +683,7 @@ class BlockParser:
             out_vars=out_vars,
             init_eqs=init_eqs,
             event_dict=event_dict,
+            event_dict_def=event_dict_def,
             children=children,  # TODO think about this
             parameters=parameters,
             init_values=init_values,
