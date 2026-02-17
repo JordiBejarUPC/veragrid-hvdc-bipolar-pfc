@@ -90,6 +90,8 @@ class RmsSimulationDriver(DriverTemplate):
 
         t, y = solver.simulate()
 
+        problem.reset_system()
+
         self.results = RmsResults(
             values=solver.y,
             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),

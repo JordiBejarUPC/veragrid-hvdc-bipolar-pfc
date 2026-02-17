@@ -21,7 +21,7 @@ from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import  _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
-                                                    expression2numba, _heaviside, BinOp, UnOp, Func)
+                                                    expression2numba, heaviside_num, BinOp, UnOp, Func)
 from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, DynamicIntegrationMethod,SimulationBackend,
                                          JacobianBackend)
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy

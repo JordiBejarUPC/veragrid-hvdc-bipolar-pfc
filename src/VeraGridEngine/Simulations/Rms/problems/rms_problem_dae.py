@@ -216,32 +216,13 @@ class RmsProblemDae(RmsProblemTemplate):
                     elm.rms_model.model.unify_blocks()
                     mdl = elm.rms_model.model
 
-                    # add events
-                    if elm.rms_model.model.event_dict is not None:
-                        collect_events = {
-                            key: {"times": [], "values": []}
-                            for key in elm.rms_model.model.event_dict.keys()
-                        }
-                        # find out if there are events affecting the device parameters
-                        rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
-                        if len(rms_evts) != 0:
-                            for rms_evt in rms_evts:
-                                collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-                                collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-                                # TODO: implement the function in block: apply_event
-                            for param, events_info in collect_events.items():
-                                default_value = elm.rms_model.model.event_dict[param]
-                                elm.rms_model.model.event_dict[param] = piecewise(
-                                    time_var=self._glob_time,
-                                    t_events=np.array(events_info["times"]),
-                                    new_values=np.array(events_info["values"]),
-                                    default_value=default_value
-                                )
                     self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
                     # fill general init guess for known variables values
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.P,
+                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q,
+                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
                     # add variable to conservation equations of the bus to which the element is connected
                     k = bus_dict[elm.bus]
@@ -253,7 +234,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         init_explicit(mdl=mdl,
                                       sys_vars=self.sys_vars,
                                       variable_parameters=self._variable_parameters,
-                                      event_parameters_eqs = self._event_parameters_eqs,
+                                      event_parameters_eqs=self._event_parameters_eqs,
                                       constant_parameters=self._constant_parameters,
                                       init_guess=self.init_guess,
                                       uid2idx_vars=self.uid2idx_vars,
@@ -272,6 +253,30 @@ class RmsProblemDae(RmsProblemTemplate):
                     else:
                         raise ValueError("Not implemented initialization method")
 
+                    # add events
+                    if elm.rms_model.model.event_dict is not None:
+                        collect_events = {
+                            key: {"times": [], "values": []}
+                            for key in elm.rms_model.model.event_dict.keys()
+                        }
+                        # find out if there are events affecting the device parameters
+                        rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
+                        if len(rms_evts) != 0:
+                            for rms_evt in rms_evts:
+                                collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+                                collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+                                # TODO: implement the function in block: apply_event
+                            for param, events_info in collect_events.items():
+                                default_value = elm.rms_model.model.event_dict[param]
+                                elm.rms_model.model.event_dict_def[param] = default_value
+                                elm.rms_model.model.event_dict[param] = piecewise(
+                                    time_var=self._glob_time,
+                                    t_events=np.array(events_info["times"]),
+                                    new_values=np.array(events_info["values"]),
+                                    default_value=default_value
+                                )
+
+
                     self.sys_block.add(mdl)
 
         # add the nodal balance equations
@@ -283,6 +288,20 @@ class RmsProblemDae(RmsProblemTemplate):
                 else:
                     self._algebraic_eqs.append(P[i])
                     self._algebraic_eqs.append(Q[i])
+
+        self._variable_parameters: List[Var] = list()
+        self._event_parameters_eqs: List[Expr | Const] = list()
+        self._constant_parameters: List[Var] = list()
+        self._parameters_values: List[Const] = list()
+
+        for b in self.sys_block.get_all_blocks():
+
+            for param, eq in b.event_dict.items():
+                self._variable_parameters.append(param)
+                self._event_parameters_eqs.append(eq)
+            for param, constant in b.parameters.items():
+                self._constant_parameters.append(param)
+                self._parameters_values.append(constant)
 
 
         # We define the parameter dt and delta
@@ -305,6 +324,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_event_params += 1
 
         ##################### To be removed when order is preserved in the first part #############################
+
+
 
         self._state_algeb_vars = list(self.sys_vars.values())
 
@@ -587,6 +608,19 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._state_eqs.extend(mdl.state_eqs)
         self._algebraic_eqs.extend(mdl.algebraic_eqs)
+
+    def reset_system(self):
+
+        bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
+
+        for bus, region in bus_regions_dict.items():
+            for dev_type, dev_list in region.items():
+                for elm in dev_list:
+                    # reset events
+                    if elm.rms_model.model.event_dict is not None:
+                        elm.rms_model.model.event_dict.update(elm.rms_model.model.event_dict_def)
+
+
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """
