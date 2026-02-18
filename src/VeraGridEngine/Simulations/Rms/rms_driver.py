@@ -47,7 +47,9 @@ class RmsSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = RmsResults(values=np.empty(0),
+        self.results = RmsResults(well_initialized = True,
+                                  converged = True,
+                                  values=np.empty(0),
                                   time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
                                   variables=list(),
                                   uid2idx=dict(),
@@ -80,6 +82,8 @@ class RmsSimulationDriver(DriverTemplate):
                                 options=self.options,
                                 pf_results=self.pf_results)
 
+
+
         solver = self.integartion_methods_dict[self.options.integration_method](
             problem=problem,
             t0=0,
@@ -88,11 +92,12 @@ class RmsSimulationDriver(DriverTemplate):
             max_iter=self.options.max_iter
         )
 
-        t, y = solver.simulate()
+        t, y, well_initialized, converged = solver.simulate()
 
-        problem.reset_system()
 
         self.results = RmsResults(
+            well_initialized=well_initialized,
+            converged=converged,
             values=solver.y,
             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
             variables=problem.state_and_algebraic_vars,

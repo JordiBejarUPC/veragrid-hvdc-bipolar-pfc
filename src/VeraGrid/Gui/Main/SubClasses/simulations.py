@@ -3312,10 +3312,16 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
 
-            # if results.converged:
-            #     self.show_info_toast("Power flow converged :)")
-            # else:
-            #     self.show_warning_toast("Power flow not converged :/")
+            if results.well_initialized:
+                self.show_info_toast("System well initialized:)")
+            else:
+                self.show_warning_toast("System bad initialized :/")
+
+
+            if results.converged:
+                self.show_info_toast("Simulation converged :)")
+            else:
+                self.show_warning_toast("Simulation did not converge :/")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')

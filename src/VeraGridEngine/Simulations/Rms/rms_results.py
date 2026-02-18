@@ -18,6 +18,8 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 class RmsResults(ResultsTemplate):
 
     def __init__(self,
+                 well_initialized: bool,
+                 converged: bool,
                  values: np.ndarray,
                  time_array: DateVec,
                  variables: List[Var],
@@ -47,6 +49,8 @@ class RmsResults(ResultsTemplate):
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
         )
+        self.well_initialized = well_initialized
+        self.converged = converged
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         self.devices_vars_info = devices_vars_info
         self.devices =devices_vars_info.keys()

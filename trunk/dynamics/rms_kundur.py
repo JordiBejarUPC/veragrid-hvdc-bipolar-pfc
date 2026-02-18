@@ -30,6 +30,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+from trunk.dynamics.scripting_genqec_exc_gov_simple import well_initialized
 
 pr = profile.Profile()
 pr.disable()
@@ -606,7 +607,7 @@ def rms_kundur():
         max_iter=options.max_iter
     )
 
-    solver.simulate()
+    t, y, well_init, converged = solver.simulate()
 
     # sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
     #

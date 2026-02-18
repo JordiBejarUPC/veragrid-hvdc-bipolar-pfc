@@ -417,7 +417,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
                     max_iter=self.rms_options.max_iter
                 )
 
-                t, y = solver.simulate()
+                t, y, well_initialized, converged = solver.simulate()
                 i = int(self.assessment_time / self.rms_options.time_step)
                 x = y[i]
 

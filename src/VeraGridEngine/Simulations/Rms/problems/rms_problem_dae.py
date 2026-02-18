@@ -13,6 +13,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, p
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
     SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
@@ -166,7 +167,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = elm.rms_model.model
+            mdl = block_deep_copy(elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -182,7 +183,7 @@ class RmsProblemDae(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = elm.rms_model.model
+            mdl = block_deep_copy(elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -214,9 +215,9 @@ class RmsProblemDae(RmsProblemTemplate):
                 for elm in dev_list:
                     # flatten model
                     elm.rms_model.model.unify_blocks()
-                    mdl = elm.rms_model.model
+                    mdl = block_deep_copy(elm.rms_model.model)
 
-                    self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
+                    self.add_variables_to_compilation_dicts(elm, mdl)
 
                     # fill general init guess for known variables values
                     self.set_init_guess(mdl, VarPowerFlowRefferenceType.P,
@@ -254,10 +255,10 @@ class RmsProblemDae(RmsProblemTemplate):
                         raise ValueError("Not implemented initialization method")
 
                     # add events
-                    if elm.rms_model.model.event_dict is not None:
+                    if mdl.event_dict is not None:
                         collect_events = {
                             key: {"times": [], "values": []}
-                            for key in elm.rms_model.model.event_dict.keys()
+                            for key in mdl.event_dict.keys()
                         }
                         # find out if there are events affecting the device parameters
                         rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
@@ -268,8 +269,8 @@ class RmsProblemDae(RmsProblemTemplate):
                                 # TODO: implement the function in block: apply_event
                             for param, events_info in collect_events.items():
                                 default_value = elm.rms_model.model.event_dict[param]
-                                elm.rms_model.model.event_dict_def[param] = default_value
-                                elm.rms_model.model.event_dict[param] = piecewise(
+                                # mdl.event_dict_def[param] = default_value
+                                mdl.event_dict[param] = piecewise(
                                     time_var=self._glob_time,
                                     t_events=np.array(events_info["times"]),
                                     new_values=np.array(events_info["values"]),
@@ -281,7 +282,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = elm.rms_model.model
+            mdl = block_deep_copy(elm.rms_model.model)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -608,18 +609,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._state_eqs.extend(mdl.state_eqs)
         self._algebraic_eqs.extend(mdl.algebraic_eqs)
-
-    def reset_system(self):
-
-        bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
-
-        for bus, region in bus_regions_dict.items():
-            for dev_type, dev_list in region.items():
-                for elm in dev_list:
-                    # reset events
-                    if elm.rms_model.model.event_dict is not None:
-                        elm.rms_model.model.event_dict.update(elm.rms_model.model.event_dict_def)
-
 
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):

@@ -209,7 +209,7 @@ solver = BackEulerImplicitIntegration(
     max_iter=options.max_iter
 )
 
-t, y = solver.simulate()
+t, y, well_initialized, converged = solver.simulate()
 
 # sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 #
