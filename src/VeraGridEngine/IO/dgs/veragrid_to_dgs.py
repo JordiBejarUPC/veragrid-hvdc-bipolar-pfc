@@ -338,48 +338,71 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
 
     This makes the exported DGS coherent with the importer (dgs_to_veragrid),
     which reconstructs tap_module from:
-      - TypTr2.dutap, TypTr2.nntap0, TypTr2.ntpmn, TypTr2.ntpmx, TypTr2.tap_side
+      - TypTr2.dutap, TypTr2.nntap0, TypTr2.ntpmn, TypTr2.ntpmx, TypTr2.tap_side, TypTr2.itapch
       - ElmTr2.nntap
 
     Notes:
     - VeraGrid Transformer2W exposes tap_module, tap_module_min, tap_module_max.
-    - We discretize tap positions using a fixed step (0.1%). This is enough for power-flow.
+    - We must NOT choose step = max_dev. That makes most taps round to 0.
+    - If tap_min/max look like garbage defaults, we ignore them.
     """
-    tap = tr.tap_module
-    tap_min = tr.tap_module_min
-    tap_max = tr.tap_module_max
+    tap = float(tr.tap_module)
+    tap_min = float(tr.tap_module_min)
+    tap_max = float(tr.tap_module_max)
 
+    # sanitize
     if tap_min > tap_max:
         tap_min, tap_max = tap_max, tap_min
 
-    # Fixed at 1.0 -> neutral, no range
-    if abs(tap - 1.0) < 1e-12 and abs(tap_min - 1.0) < 1e-12 and abs(tap_max - 1.0) < 1e-12:
-        tpe.tap_side = 0
-        tpe.dutap = 0.0
-        tpe.nntap0 = 0
-        tpe.ntpmn = 0
-        tpe.ntpmx = 0
-        e.nntap = 0
-        return
+    tol = 1e-12
+    tap_dev = abs(tap - 1.0)
+    min_dev = abs(tap_min - 1.0)
+    max_dev = abs(tap_max - 1.0)
 
-    # Choose a single "step" so taps become small integers like PF exports (e.g. -1..0..+1)
-    max_dev = max(abs(tap - 1.0), abs(tap_min - 1.0), abs(tap_max - 1.0))
-
-    if max_dev < 1e-12:
-        tpe.tap_side = 0
-        tpe.dutap = 0.0
-        tpe.nntap0 = 0
-        tpe.ntpmn = 0
-        tpe.ntpmx = 0
-        e.nntap = 0
-        return
-
-    step = max_dev
-    tpe.dutap = step * 100.0  # percent per step
+    # Default: tap changer on HV side (0). If VeraGrid has a proper attribute, map it here.
+    tpe.tap_side = 0
+    tpe.phitr = 0.0
     tpe.nntap0 = 0
-    tpe.tap_side = 0  # HV side
 
-    e.nntap = int(round((tap - 1.0) / step))
+    # Fully neutral -> no tap changer
+    if tap_dev < tol and min_dev < tol and max_dev < tol:
+        tpe.itapch = 0
+        tpe.dutap = 0.0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+
+    # Choose a step that produces a non-zero integer position for the actual tap.
+    # Good generic heuristic: smallest non-zero deviation among tap/min/max.
+    devs = [d for d in (tap_dev, min_dev, max_dev) if d > 1e-9]
+    if len(devs) == 0:
+        # practically neutral
+        tpe.itapch = 0
+        tpe.dutap = 0.0
+        tpe.ntpmn = 0
+        tpe.ntpmx = 0
+        e.nntap = 0
+        return
+
+    step = min(devs)
+
+    # Ensure that the current tap does not round to 0 if tap != 1.0
+    n = int(round((tap - 1.0) / step))
+    if n == 0 and tap_dev > 1e-6:
+        step = tap_dev
+        n = int(round((tap - 1.0) / step))
+
+    # If still 0 (numerical weirdness), fall back to single-step encoding
+    if n == 0 and tap_dev > 1e-6:
+        n = -1 if tap < 1.0 else 1
+
+    # Export final fields
+    tpe.itapch = 1
+    tpe.dutap = float(step * 100.0)  # percent per step
+    e.nntap = int(n)
+
     tpe.ntpmn = int(round((tap_min - 1.0) / step))
     tpe.ntpmx = int(round((tap_max - 1.0) / step))
 
@@ -565,12 +588,17 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.typlnes.append(typtr2)
         seq2typlne_dict[seq] = typtr2
 
-    # transformer types
-    tr2typtr2_dict: Dict[dev.TransformerType, TypTr2] = dict()
-    for tr in grid.transformer_types:
-        typtr2 = convert_transformer_type(tr=tr, new_id=dgs_grid.new_id())
+    # transformer types (base types)
+    base_tr2typtr2_dict: Dict[dev.TransformerType, TypTr2] = dict()
+    for trt in grid.transformer_types:
+        typtr2 = convert_transformer_type(tr=trt, new_id=dgs_grid.new_id())
         dgs_grid.typtr2s.append(typtr2)
-        tr2typtr2_dict[tr] = typtr2
+        base_tr2typtr2_dict[trt] = typtr2
+
+    # tap-aware transformer type cache:
+    # Two transformers must not share TypTr2 if their tap definition (step/range/side) differs,
+    # because TypTr2 contains dutap/ntpmn/ntpmx/nntap0/tap_side/itapch.
+    tr2typtr2_by_tap: Dict[Tuple[dev.TransformerType, float, float, float], TypTr2] = dict()
 
     # lines
     for line in grid.lines:
@@ -625,13 +653,24 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
 
     # 2W transformers
     for tr in grid.transformers2w:
-        tpe = tr2typtr2_dict.get(tr.template, None)
+
+        # Tap signature (rounded) so that transformers with different tap definitions
+        # do NOT share the same TypTr2.
+        tap_key = (
+            tr.template,
+            round(float(tr.tap_module_min), 6),
+            round(float(tr.tap_module_max), 6),
+            round(float(tr.tap_module), 6),
+        )
+
+        tpe = tr2typtr2_by_tap.get(tap_key, None)
         tpe_is_new = False
 
         if tpe is None:
-            tpe = convert_transformer_type(tr=tr.get_transformer_type(),
-                                           new_id=dgs_grid.new_id())
+            # Build a new type for this tap definition (don't reuse base template type blindly)
+            tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
             dgs_grid.typtr2s.append(tpe)
+            tr2typtr2_by_tap[tap_key] = tpe
             tpe_is_new = True
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
