@@ -596,6 +596,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.Qmin = Qmin
         self.Qmax = Qmax
 
+        self.V_last_iter: CxVec = V0
+
         # Indices ------------------------------------------------------------------------------------------------------
 
         # Bus indices (initial values)
@@ -2041,16 +2043,17 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                         wecc_wt_type_4b = None
                         if any(self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.WECC_WT_Type_4B
                                for j in range(self.nc.nvsc)):
-                            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import \
-                                wecc_wt_type_4b
+                            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls_no_ifs import \
+                                wecc_wt_type_4b_no_ifs
 
-                        self.Pt_vsc[i], self.Qt_vsc[i] = wecc_wt_type_4b(V_measured=self.V[self.nc.vsc_data.T[i]],
-                                                                                 P_measured=self.Pt_vsc[i],
-                                                                                 Q_measured=self.Qt_vsc[i],
-                                                                                 S_base_vg=self.nc.Sbase,
-                                                                                 S_rated_vsc=self.nc.vsc_data.rates[i],
-                                                                                 Vpf=abs(self.V0[self.nc.vsc_data.T[i]])
-                                                                                 )
+                        self.Pt_vsc[i], self.Qt_vsc[i] = wecc_wt_type_4b_no_ifs(
+                            V_measured=self.V[self.nc.vsc_data.T[i]],
+                            P_measured=self.Pt_vsc[i],
+                            Q_measured=self.Qt_vsc[i],
+                            S_base_vg=self.nc.Sbase,
+                            S_rated_vsc=self.nc.vsc_data.rates[i],
+                            Vpf=abs(self.V0[self.nc.vsc_data.T[i]])
+                            )
 
                     elif self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.Standard:
 
@@ -2203,6 +2206,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self._error = compute_fx_error(self._f)
 
         # converged?
+        # voltage_diff = np.abs(self.V - self.V_last_iter)
+        # self._converged = self._error < self.options.tolerance and max(voltage_diff) < self.options.tolerance
+        # self.V_last_iter = self.V
+
         self._converged = self._error < self.options.tolerance
 
         if self.options.verbose > 1:

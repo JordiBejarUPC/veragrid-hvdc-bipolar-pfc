@@ -16,8 +16,8 @@ grid.add_bus(obj=bus_dc)
 bus_wt = vge.Bus(name='Bus WT', Vnom=20.0, xpos=0, ypos=300)
 grid.add_bus(obj=bus_wt)
 
-# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
-bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
+bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=15) # Rf = 60
+# bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=7.5) # Rf = 30
 # bus_ac = vge.Bus(name='Bus AC', Vnom=20.0, xpos=0, ypos=600, r_fault=3.75) # Rf = 15
 grid.add_bus(obj=bus_ac)
 
@@ -62,7 +62,7 @@ grid.add_line(line_slack_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 vsc = vge.VSC(bus_from=bus_dc,
               bus_to=bus_wt,
-              rate=2,
+              rate=2.0,
               alpha1=0.0,
               alpha2=0.0,
               alpha3=0.0,
@@ -76,7 +76,7 @@ grid.add_vsc(vsc)
 # ----------------------------------------------------------------------------------------------------------------------
 #   Generators
 # ----------------------------------------------------------------------------------------------------------------------
-generator_dc = vge.Generator(P=2.0, power_factor=1.0)
+generator_dc = vge.Generator()
 grid.add_generator(bus_dc, generator_dc)
 
 generator_ac = vge.Generator(r1=0.1, x1=1)
@@ -104,9 +104,9 @@ pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 limit_i_vsc=True,
                                 verbose=1,
                                 max_iter=150,
-                                tolerance=1e-12)
+                                tolerance=1e-6)
 
-grid.add_short_circuit_definition(
+grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
         device=grid.buses[2],
         method=MethodShortCircuit.sequences_vsc,

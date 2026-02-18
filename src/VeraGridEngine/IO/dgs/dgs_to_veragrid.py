@@ -1132,7 +1132,7 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
     )
 
     # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
-    stagen.ip_ctrl = int(elmgenstat.ip_ctrl)
+    # stagen.ip_ctrl = int(elmgenstat.ip_ctrl)
     return bus, stagen
 
 
