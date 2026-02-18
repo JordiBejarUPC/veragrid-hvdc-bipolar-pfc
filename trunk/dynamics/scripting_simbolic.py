@@ -23,7 +23,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, DiffVar, cos, sin, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, StabilizerBuild
@@ -38,10 +38,10 @@ def test_diff_block_in_harmonic_oscillator():
     y_var = Var('y')
     dt = Const(0.001)
 
-    dx = DiffVar('dx', base_var=x)
-    dy = DiffVar('dy', base_var=y_var)
-    d2x = DiffVar('d2x', base_var=dx)
-    d3x = DiffVar('d3x', base_var=d2x)
+    dx = Var('dx', base_var=x)
+    dy = Var('dy', base_var=y_var)
+    d2x = Var('d2x', base_var=dx)
+    d3x = Var('d3x', base_var=d2x)
 
     # build system: dx + y = 0, dy - x = 0
     diff_block = Block(
@@ -99,8 +99,8 @@ def test_diff_block_second_order_oscillator():
     x = Var('x')
     dt = Const(0.001)
 
-    dx = DiffVar('dx', base_var=x)
-    d2x = DiffVar('d2x', base_var=dx)
+    dx = Var('dx', base_var=x)
+    d2x = Var('d2x', base_var=dx)
 
     # build system: d2x + dx + x = 0
     diff_block = Block(

@@ -15,7 +15,7 @@ This suite verifies:
 import unittest
 import numpy as np
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 
@@ -29,7 +29,7 @@ class TestEquationCompiler(unittest.TestCase):
         Sets up a common decay equation (dx/dt = -x) for basic tests.
         """
         self.x = Var('x')
-        self.dx = DiffVar(name='dx', base_var=self.x)
+        self.dx = Var(name='dx', base_var=self.x)
         self.decay_eq = self.dx + self.x
 
     def test_trapezoidal_calculation(self):
@@ -100,8 +100,8 @@ class TestEquationCompiler(unittest.TestCase):
         x = Var('x')
         y = Var('y')
         k = Var('k')
-        dx = DiffVar(name='dx', base_var=x)
-        dy = DiffVar(name='dy', base_var=y)
+        dx = Var(name='dx', base_var=x)
+        dy = Var(name='dy', base_var=y)
 
         eq1 = dx - y
         eq2 = dy + k * x
@@ -184,8 +184,8 @@ class TestEquationCompiler(unittest.TestCase):
         """
         x = Var('x')
         v = Var('v')
-        dx = DiffVar(name='dx', base_var=x)
-        dv = DiffVar(name='dv', base_var=v)
+        dx = Var(name='dx', base_var=x)
+        dv = Var(name='dv', base_var=v)
 
         # Equations: dx/dt = v, dv/dt = -x
         eq1 = dx - v

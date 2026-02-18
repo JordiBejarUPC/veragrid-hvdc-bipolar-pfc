@@ -8,7 +8,7 @@ import numpy as np
 from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block import Var, DiffVar, Const
+from VeraGridEngine.Utils.Symbolic.block import Var, Const
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -29,14 +29,14 @@ def get_generator_emt_template() -> EmtModelTemplate:
 
     et = Var("et")
 
-    d_omega = DiffVar('d_omega', base_var=omega)
-    d_theta = DiffVar('d_theta', base_var=theta)
-    d_psi_d = DiffVar('d_psi_d', base_var=psi_d)
-    d_psi_q = DiffVar('d_psi_q', base_var=psi_q)
-    d_psi_0 = DiffVar('d_psi_0', base_var=psi_0)
-    d_psi_f = DiffVar('d_psi_f', base_var=psi_f)
+    d_omega = Var('d_omega', base_var=omega)
+    d_theta = Var('d_theta', base_var=theta)
+    d_psi_d = Var('d_psi_d', base_var=psi_d)
+    d_psi_q = Var('d_psi_q', base_var=psi_q)
+    d_psi_0 = Var('d_psi_0', base_var=psi_0)
+    d_psi_f = Var('d_psi_f', base_var=psi_f)
 
-    d_et = DiffVar('d_et', base_var=et)
+    d_et = Var('d_et', base_var=et)
 
     i_a = Var("i_a")
     i_b = Var("i_b")

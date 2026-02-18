@@ -5,12 +5,12 @@
 
 from __future__ import annotations
 from typing import Dict, Any, List
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar, Expr, Const, BinOp, UnOp, Func
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
-def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | DiffVar]) -> List[Dict[str, Any]]:
+def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dict[str, Any]]:
     """
     Save the list of all unique vars, diffvars and const
     :param obj_dict: Dictionary storing the unique objects
@@ -38,7 +38,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | DiffVar]) -> List
 
         elif isinstance(expr, Var):
 
-            if isinstance(expr, DiffVar):
+            if expr.base_var is not None:
                 lst.append({
                     "type": "DiffVar",
                     "name": expr.name,
@@ -104,7 +104,7 @@ def parse_vars_dict(data_list: List[Dict[str, Any]]) -> Dict[int, Var]:
 def parse_diff_var_dict(
         data_list: List[Dict[str, Any]],
         var_dict: Dict[int, Var],
-        diff_var_dict: Dict[int, DiffVar]) -> Dict[int, Var | Const | DiffVar]:
+        diff_var_dict: Dict[int, Var]) -> Dict[int, Var | Const | Var]:
     """
 
     :param data_list: 
@@ -112,7 +112,7 @@ def parse_diff_var_dict(
     :param diff_var_dict: dictionary of diffVars
     :return: 
     """
-    obj_dict: Dict[int, Var | Const | DiffVar] = dict()
+    obj_dict: Dict[int, Var | Const | Var] = dict()
     for data in data_list:
         assert data["type"] == "DiffVar"
 
@@ -131,7 +131,7 @@ def parse_diff_var_dict(
         else:
             base_var = obj_dict[data["base_var"]]
 
-        obj = DiffVar(name=data["name"],
+        obj = Var(name=data["name"],
                       uid=data["uid"],
                       base_var=base_var)
 
@@ -144,7 +144,7 @@ def parse_diff_var_dict(
 def expr_to_dict(expr: Expr,
                  const_dict: Dict[int, Const],
                  var_dict: Dict[int, Var],
-                 diff_var_dict: Dict[int, DiffVar]) -> Dict[str, Any]:
+                 diff_var_dict: Dict[int, Var]) -> Dict[str, Any]:
     """
     Serialise any `Expr` tree into a plain Python dictionary that’s
     JSON-friendly.  Each node type becomes a small dict that records:
@@ -176,7 +176,7 @@ def expr_to_dict(expr: Expr,
 
     elif isinstance(expr, Var):
 
-        if isinstance(expr, DiffVar):
+        if expr.base_var is not None:
 
             c = diff_var_dict.get(expr.uid, None)
 
@@ -239,7 +239,7 @@ def expr_to_dict(expr: Expr,
 def expr_list_to_list(lst: List[Expr],
                       const_dict: Dict[int, Const],
                       var_dict: Dict[int, Var],
-                      diff_var_dict: Dict[int, DiffVar]) -> List[Dict[str, Any]]:
+                      diff_var_dict: Dict[int, Var]) -> List[Dict[str, Any]]:
     """
 
     :param lst:
@@ -263,7 +263,7 @@ def expr_list_to_list(lst: List[Expr],
 def parse_expr(data: Dict[str, Any],
                const_dict: Dict[int, Const],
                var_dict: Dict[int, Var],
-               diff_var_dict: Dict[int, DiffVar]) -> Const | Var | DiffVar | UnOp | BinOp | Func:
+               diff_var_dict: Dict[int, Var]) -> Const | Var | Var | UnOp | BinOp | Func:
     """
     De-Serialize expression from dictionary
     :param data: Some dictionary containing the expression
@@ -321,7 +321,7 @@ def parse_expr(data: Dict[str, Any],
 def parse_expr_list(lst: List[Dict[str, Any]],
                     const_dict: Dict[int, Const],
                     var_dict: Dict[int, Var],
-                    diff_var_dict: Dict[int, DiffVar]) -> List[Const | Var | DiffVar | UnOp | BinOp | Func]:
+                    diff_var_dict: Dict[int, Var]) -> List[Const | Var | Var | UnOp | BinOp | Func]:
     """
 
     :param lst:
@@ -348,7 +348,7 @@ class BlockSaver:
     def __init__(self):
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
-        self.diff_var_dict: Dict[int, DiffVar] = dict()
+        self.diff_var_dict: Dict[int, Var] = dict()
         self.main_block_uids: List[int] = list()
         self.blocks: Dict[int, Dict[str, Any]] = dict()
 
@@ -549,7 +549,7 @@ class BlockParser:
     def __init__(self):
         self.var_dict: Dict[int, Var] = dict()
         self.const_dict: Dict[int, Const] = dict()
-        self.diff_var_dict: Dict[int, DiffVar] = dict()
+        self.diff_var_dict: Dict[int, Var] = dict()
         self.block_dict: Dict[int, Block] = dict()
 
     def parse_consts(self, data: List[Dict[str, Any]]):

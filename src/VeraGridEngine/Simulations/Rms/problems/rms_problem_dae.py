@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
     SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -107,7 +107,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._algebraic_eqs: List[Expr] = list()
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
-        self._diff_vars: List[DiffVar] = list()
+        self._diff_vars: List[Var] = list()
         self._variable_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Expr | Const] = list()
         self._constant_parameters: List[Var] = list()

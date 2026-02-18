@@ -20,7 +20,7 @@ import hashlib
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import  _compile_equations
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, cos, sin,
                                                     expression2numba,get_namespace, BinOp, UnOp, Func)
 from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, DynamicIntegrationMethod,SimulationBackend,
                                          JacobianBackend)
@@ -643,7 +643,7 @@ class SymbolicDerivative:
     def __init__(self,
                  vars: Sequence[Var],
                  uid2idx_vars: Dict[int, int],
-                 diff_vars: Sequence[DiffVar],
+                 diff_vars: Sequence[Var],
                  compiler_names_dict: Dict[int, str],
                  use_jit: bool = True):
         self.func: Callable[[Vec, Vec], None] | None = None
@@ -797,7 +797,7 @@ class BlockSolver:
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
         self._state_eqs_substituted: List[Expr] = list()
-        self._diff_vars: List[DiffVar] = list()
+        self._diff_vars: List[Var] = list()
         self._differential_eqs: List[Expr] = list()
         self._reformulated_vars: List[Var] = list()
         self._event_parameters: List[Var] = list()
@@ -807,8 +807,8 @@ class BlockSolver:
         self._stability_eqs: List[Expr] = list()
 
         # Class-level registry
-        self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
-        self._absolute_registry: Dict[Tuple[int, int], DiffVar] = dict()
+        self._registry: Dict[int, Var] = dict()  # int uuid , DiffVar
+        self._absolute_registry: Dict[Tuple[int, int], Var] = dict()
 
         self.v_glob_name2uid = block_system.vars_glob_name2uid
         self.glob_time: Var = glob_time
@@ -1149,7 +1149,7 @@ class BlockSolver:
                     eq = eq.subs({lag_var: lag_var.base_var})
 
             for col, var in enumerate(variables):
-                diff_var = DiffVar(var.name + '_diff', base_var=var)
+                diff_var = Var(var.name + '_diff', base_var=var)
                 # d_expression = eq.diff(var).simplify() + (1/self.dt)*eq.diff(diff_var).simplify()
                 d_expression = eq.diff(var).simplify()
                 for diff_var in diff_vars:
@@ -1584,7 +1584,7 @@ class BlockSolver:
         equations = []
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
 
@@ -1625,10 +1625,12 @@ class BlockSolver:
             visited.add(id(node))
 
             if isinstance(node, Var):
-                found.add(node.uid)
-            elif isinstance(node, DiffVar):
-                found.add(node.base_var.uid)
-                found.add(node.uid)
+                if Var.base_var is not None:
+                    found.add(node.base_var.uid)
+                    found.add(node.uid)
+                else:
+                    found.add(node.uid)
+
             elif isinstance(node, LagVar):
                 pass  # Lags usually treated as constants in this context
 
@@ -1665,7 +1667,7 @@ class BlockSolver:
         base_var_uid_to_diff_var = {}
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             base_var_uid_to_diff_var[sv.uid] = d_term
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
@@ -1774,7 +1776,7 @@ class BlockSolver:
         equations = []
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
 
@@ -1815,22 +1817,21 @@ class BlockSolver:
         def _visit_recursive(node):
             # Handle Variables (State/Algebraic)
             if isinstance(node, Var):
-                if node.uid not in unique_vars:
-                    placeholder = f"__VAR_{len(unique_vars)}__"
-                    unique_vars[node.uid] = placeholder
-                    found_vars_ordered.append(node)
-                return unique_vars[node.uid]
-
-            # Handle Differential Variables (Map to base variable)
-            elif isinstance(node, DiffVar):
-                # DiffVars in implicit residuals are treated as state inputs + derivative operator
-                # We map them to the base variable UID for topological lookup
-                base_uid = node.base_var.uid
-                if base_uid not in unique_vars:
-                    placeholder = f"__VAR_{len(unique_vars)}__"
-                    unique_vars[base_uid] = placeholder
-                    found_vars_ordered.append(node.base_var)
-                return unique_vars[base_uid]
+                if Var.base_var is not None:
+                    # DiffVars in implicit residuals are treated as state inputs + derivative operator
+                    # We map them to the base variable UID for topological lookup
+                    base_uid = node.base_var.uid
+                    if base_uid not in unique_vars:
+                        placeholder = f"__VAR_{len(unique_vars)}__"
+                        unique_vars[base_uid] = placeholder
+                        found_vars_ordered.append(node.base_var)
+                    return unique_vars[base_uid]
+                else:
+                    if node.uid not in unique_vars:
+                        placeholder = f"__VAR_{len(unique_vars)}__"
+                        unique_vars[node.uid] = placeholder
+                        found_vars_ordered.append(node)
+                    return unique_vars[node.uid]
 
             elif isinstance(node, Const):
                 return f"{float(node.value):.6g}"
@@ -1867,7 +1868,7 @@ class BlockSolver:
         # 1. Clustering Phase
         for i, rhs_eq in enumerate(self._state_eqs):
             sv = self._state_vars[i]
-            d_term = DiffVar(name="d_template", base_var=sv)
+            d_term = Var(name="d_template", base_var=sv)
             residual_eq = d_term - rhs_eq
 
             sig_str, all_vars_found = self._canonicalize_expression(residual_eq)
@@ -1879,7 +1880,7 @@ class BlockSolver:
             var_indices = []
 
             for v in all_vars_found:
-                target_var = v.base_var if isinstance(v, DiffVar) else v
+                target_var = v.base_var if v.base_var is not None else v
                 if target_var.uid in self.uid2idx_vars:
                     state_vars_in_order.append(v)
                     var_indices.append(self.uid2idx_vars[target_var.uid])

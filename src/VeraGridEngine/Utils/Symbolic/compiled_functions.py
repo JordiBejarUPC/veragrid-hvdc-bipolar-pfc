@@ -11,7 +11,7 @@ import scipy.sparse as sp
 import math
 import concurrent.futures
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr,                                                    heaviside_num, expression2numba,
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr,                                                    heaviside_num, expression2numba,
                                                     get_expression_vars)
 from VeraGridEngine.basic_structures import Vec, IntVec
 
@@ -350,7 +350,7 @@ class SymbolicDerivative:
     def __init__(self,
                  vars: Sequence[Var],
                  uid2idx_vars: Dict[int, int],
-                 diff_vars: Sequence[DiffVar],
+                 diff_vars: Sequence[Var],
                  compiler_names_dict: Dict[int, str],
                  use_jit: bool = True):
         self.func: Callable[[Vec, Vec, Vec, float, Vec], Vec] | None = None

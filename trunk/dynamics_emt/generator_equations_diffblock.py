@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, DiffVar, Const
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
@@ -148,19 +148,19 @@ Pe = Var("Pe") #23
 Qe = Var("Qe") #24
 Pm = Var("Pm") #24
 
-d_w = DiffVar('d_w', base_var=w)
-d_theta = DiffVar('d_theta', base_var=theta)
-d_psi_d = DiffVar('d_psid', base_var=psi_d)
-d_psi_f = DiffVar('d_psif', base_var=psi_f)
-d_psi_q = DiffVar('d_psiq', base_var=psi_q)
-d_psi_0 = DiffVar('d_psi0', base_var=psi_0)
+d_w = Var('d_w', base_var=w)
+d_theta = Var('d_theta', base_var=theta)
+d_psi_d = Var('d_psid', base_var=psi_d)
+d_psi_f = Var('d_psif', base_var=psi_f)
+d_psi_q = Var('d_psiq', base_var=psi_q)
+d_psi_0 = Var('d_psi0', base_var=psi_0)
 
 
 et = Var("et")
-d_et = DiffVar('d_et', base_var=et)
+d_et = Var('d_et', base_var=et)
 
 ev = Var("ev")
-d_ev = DiffVar('d_ev', base_var=ev)
+d_ev = Var('d_ev', base_var=ev)
 
 
 

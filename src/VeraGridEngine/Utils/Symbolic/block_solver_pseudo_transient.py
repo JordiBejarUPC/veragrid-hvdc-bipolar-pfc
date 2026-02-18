@@ -19,8 +19,8 @@ from scipy.sparse import csc_matrix
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import _compile_equations
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
-                                                    expression2numba, _heaviside, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr, cos, sin,
+                                                    expression2numba, heaviside_num, get_expression_vars)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, IntVec
@@ -333,7 +333,7 @@ class SymbolicDerivative:
     def __init__(self,
                  vars: Sequence[Var],
                  uid2idx_vars: Dict[int, int],
-                 diff_vars: Sequence[DiffVar],
+                 diff_vars: Sequence[Var],
                  compiler_names_dict: Dict[int, str],
                  use_jit: bool = True):
         self.func: Callable[[Vec, Vec, Vec, float, Vec], Vec] | None = None
@@ -471,7 +471,7 @@ class BlockSolver:
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
         self._state_eqs_substituted: List[Expr] = list()
-        self._diff_vars: List[DiffVar] = list()
+        self._diff_vars: List[Var] = list()
         self._differential_eqs: List[Expr] = list()
         self._reformulated_vars: List[Var] = list()
         self._event_parameters: List[Var] = list()
@@ -482,8 +482,8 @@ class BlockSolver:
         self._stability_eqs: List[Expr] = list()
 
         # Class-level registry
-        self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
-        self._absolute_registry: Dict[Tuple[int, int], DiffVar] = dict()
+        self._registry: Dict[int, Var] = dict()  # int uuid , DiffVar
+        self._absolute_registry: Dict[Tuple[int, int], Var] = dict()
 
         self.v_glob_name2uid = block_system.vars_glob_name2uid
         self.glob_time: Var = glob_time

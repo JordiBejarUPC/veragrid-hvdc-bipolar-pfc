@@ -10,7 +10,7 @@ import scipy.sparse as sp
 import time
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr)
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
@@ -121,10 +121,12 @@ class JitSymbolicSolver:
             visited.add(id(node))
 
             if isinstance(node, Var):
-                found.add(node.uid)
-            elif isinstance(node, DiffVar):
-                found.add(node.base_var.uid)
-                found.add(node.uid)
+                if Var.base_var is not None:
+                    found.add(node.base_var.uid)
+                    found.add(node.uid)
+                else:
+                    found.add(node.uid)
+
             elif isinstance(node, LagVar):
                 pass
 
@@ -161,7 +163,7 @@ class JitSymbolicSolver:
         base_var_uid_to_diff_var = {}
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             base_var_uid_to_diff_var[sv.uid] = d_term
             equations.append(d_term - rhs)
         equations.extend(self.algebraic_eqs)

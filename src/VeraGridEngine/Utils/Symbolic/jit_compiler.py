@@ -40,7 +40,7 @@ import os
 import importlib.util
 import hashlib
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, DiffVar, LagVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, LagVar
 
 
 # ==============================================================================
@@ -129,7 +129,7 @@ class SubexpressionAnalyzer:
         return temp_vars
 
     def _count_subexpressions(self, node: Expr):
-        if isinstance(node, (Const, Var, DiffVar)):
+        if isinstance(node, (Const, Var)):
             return
 
         complexity = self._calculate_complexity(node)
@@ -157,7 +157,7 @@ class SubexpressionAnalyzer:
             return self.memo_complexity[id(node)]
 
         res = 0
-        if isinstance(node, (Const, Var, DiffVar)):
+        if isinstance(node, (Const, Var)):
             res = 0
         elif isinstance(node, BinOp):
             op_cost = 2 if node.op in ['*', '/', '**'] else 1
@@ -185,9 +185,10 @@ class SubexpressionAnalyzer:
         if isinstance(node, Const):
             res = f"C{node.value}"
         elif isinstance(node, Var):
-            res = f"V{node.name}"
-        elif isinstance(node, DiffVar):
-            res = f"D{node.base_var.name}"
+            if Var.base_var is not None:
+                res = f"D{node.base_var.name}"
+            else:
+                res = f"V{node.name}"
         elif isinstance(node, BinOp):
             left = self._expr_to_canonical_string(node.left)
             right = self._expr_to_canonical_string(node.right)
@@ -227,7 +228,7 @@ class SymbolicToPythonVisitor:
 
     def visit(self, node: Expr, precedence: int = 0) -> str:
         if self.analyzer and self.cse_map and not self.in_cse_def:
-            if not isinstance(node, (Var, Const, DiffVar, LagVar)):
+            if not isinstance(node, (Var, Const, LagVar)):
                 h = self.analyzer._hash_expr(node)
                 if h in self.cse_map:
                     return self.cse_map[h]
@@ -269,7 +270,7 @@ class SymbolicToPythonVisitor:
 
         raise ValueError(f"Variable '{node.name}' (UID: {node.uid}) Not mapped in compiler.")
 
-    def visit_DiffVar(self, node: DiffVar, prec: int) -> str:
+    def visit_DiffVar(self, node: Var, prec: int) -> str:
         base_uid = node.base_var.uid
         if base_uid not in self.var_map:
             raise ValueError(f"Base var '{node.base_var.name}' (UID: {base_uid})"
@@ -316,7 +317,7 @@ class ADVisitor(SymbolicToPythonVisitor):
     def visit(self, node: Expr, precedence: int = 0):
         # 1. CSE Check
         if self.analyzer and self.cse_map and not self.in_cse_def:
-            if not isinstance(node, (Var, Const, DiffVar, LagVar)):
+            if not isinstance(node, (Var, Const, LagVar)):
                 h = self.analyzer._hash_expr(node)
                 if h in self.cse_map: return self.cse_map[h], f"{self.cse_map[h]}_d"
 
@@ -355,7 +356,7 @@ class ADVisitor(SymbolicToPythonVisitor):
         if node.lag == 1 and base_uid in self.var_map: return f"history[{self.var_map[base_uid]}]", "0.0"
         raise NotImplementedError("Complex LagVar not supported.")
 
-    def visit_DiffVar(self, node: DiffVar, prec: int):
+    def visit_DiffVar(self, node: Var, prec: int):
         base_uid = node.base_var.uid
         i = self.var_map[base_uid]
         if self.active_indices is not None:
@@ -632,7 +633,7 @@ class MatrixVectorizedVisitor(SymbolicToPythonVisitor):
         col_idx = self.col_map[node.name]
         return f"states[indices[:, {col_idx}]]"
 
-    def visit_DiffVar(self, node: DiffVar, prec: int) -> str:
+    def visit_DiffVar(self, node: Var, prec: int) -> str:
         # Discretización vectorial sobre matriz
         base_name = node.base_var.name
         col_idx = self.col_map[base_name]
@@ -661,7 +662,7 @@ class MatrixVectorizedCompiler(EquationCompiler):
         # 1. Crear mapa de columnas determinista (Var -> 0, Var -> 1, ...)
         col_map = {}
         for i, v in enumerate(template_vars):
-            name = v.base_var.name if isinstance(v, DiffVar) else v.name
+            name = v.base_var.name if v.base_var is not None else v.name
             col_map[name] = i
 
         # 2. Generar código fuente usando el Visitor Matricial

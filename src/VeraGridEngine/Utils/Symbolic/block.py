@@ -15,7 +15,7 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, abs,
-                                                    DiffVar, heaviside)
+                                                    heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -58,14 +58,14 @@ def tf_to_block(num: np.ndarray,
     base_var = x
     for i in range(1, len(num)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
         diff_vars_x.append(x.diff_var)
         base_var = x.diff_var
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
         diff_vars_y.append(y.diff_var)
         base_var = y.diff_var
@@ -117,14 +117,14 @@ def tf_to_diffblock_with_output(num: np.ndarray,
     base_var = x
     for i in range(1, len(num)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
         diff_vars_x.append(x.diff_var)
         base_var = x.diff_var
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + y.name, base_var=base_var)
 
             diff_vars.append(new_diff)
         diff_vars_y.append(y.diff_var)
@@ -184,13 +184,13 @@ def tf_to_diffblock_with_states(num: np.ndarray,
     diff_vars = []
     for i in range(len(y_states) - 1):
         if y_states[i].diff_var is None:
-            dy = DiffVar(f"d_{y_states[i].name}", base_var=y_states[i])
+            dy = Var(f"d_{y_states[i].name}", base_var=y_states[i])
             diff_vars.append(dy)
         diff_eqs.append(y_states[i + 1] - y_states[i].diff_var)
 
     for i in range(len(num) - 1):
         if x_states[i].diff_var is None:
-            dx = DiffVar(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
+            dx = Var(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
             diff_vars.append(dx)
         diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
 
@@ -313,7 +313,7 @@ def tf_to_diffblock_with_antiwindup(num: Vec,
     base_var = x
     for i in range(1, len(num)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + x.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
         diff_vars_x.append(x.diff_var)
         base_var = x.diff_var
@@ -322,7 +322,7 @@ def tf_to_diffblock_with_antiwindup(num: Vec,
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
-            new_diff = DiffVar(name=f'dt_{i}_' + y.name, base_var=base_var)
+            new_diff = Var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
         diff_vars_y.append(y.diff_var)
         base_var = y.diff_var
@@ -425,14 +425,14 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
 
     base = x
     for i in range(1, len(num)):
-        dv = DiffVar(f'dt_{i}_{x.name}', base)
+        dv = Var(f'dt_{i}_{x.name}', base)
         diff_vars.append(dv)
         diff_x.append(dv)
         base = dv
 
     base = y
     for i in range(1, len(den)):
-        dv = DiffVar(f'dt_{i}_{y.name}', base)
+        dv = Var(f'dt_{i}_{y.name}', base)
         diff_vars.append(dv)
         diff_y.append(dv)
         base = dv
@@ -500,8 +500,8 @@ class Block:
                  state_eqs: List[Expr] | None = None,
                  algebraic_vars: List[Var] | None = None,
                  algebraic_eqs: List[Expr] | None = None,
-                 diff_vars: List[DiffVar] | None = None,
-                 reformulated_vars: List[DiffVar] | None = None,
+                 diff_vars: List[Var] | None = None,
+                 reformulated_vars: List[Var] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
                  alter_params: List[Var] | None = None,
@@ -543,8 +543,8 @@ class Block:
         self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
-        self.diff_vars: List[DiffVar] = list() if diff_vars is None else diff_vars
-        self.reformulated_vars: List[DiffVar] = list() if reformulated_vars is None else reformulated_vars
+        self.diff_vars: List[Var] = list() if diff_vars is None else diff_vars
+        self.reformulated_vars: List[Var] = list() if reformulated_vars is None else reformulated_vars
         self.differential_eqs: List[Expr] = list() if differential_eqs is None else differential_eqs
 
         # initialization

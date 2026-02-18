@@ -18,7 +18,7 @@ from typing import Dict, List, Any
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar, Const, Expr, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger

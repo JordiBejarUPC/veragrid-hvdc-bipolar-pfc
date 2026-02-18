@@ -13,7 +13,7 @@ to verify that the generated code behaves as expected.
 import numpy as np
 import matplotlib.pyplot as plt
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 
@@ -69,8 +69,8 @@ def run_demo():
     k = Var('k')
     c = Var('c')
 
-    dpos = DiffVar(name='dpos', base_var=pos)
-    dvel = DiffVar(name='dvel', base_var=vel)
+    dpos = Var(name='dpos', base_var=pos)
+    dvel = Var(name='dvel', base_var=vel)
 
     # Residual equations
     # 1) dpos/dt - vel = 0

@@ -293,7 +293,7 @@ class Var(Expr):
 
     __slots__ = ("name", "uid", "diff_var", "base_var")
 
-    def __init__(self, name: str, uid: int | None = None, diff_var: DiffVar | None = None, base_var: Var | None = None):
+    def __init__(self, name: str, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
         """
 
         :param name:
@@ -350,14 +350,14 @@ class Var(Expr):
     #     return obj
 
     @staticmethod
-    def parse(data: Dict[str, Any]) -> "DiffVar":
+    def parse(data: Dict[str, Any]) -> "Var":
         # reconstruct base_var
         base_data = data["base_var"]
         base_var = _dict_to_expr(base_data)
         if not isinstance(base_var, Var):
             raise TypeError("base_var must be a Var")
 
-        obj = DiffVar(name=data["name"], base_var=base_var)
+        obj = Var(name=data["name"], base_var=base_var)
         obj.uid = data["uid"]
         return obj
 
@@ -388,7 +388,7 @@ class Var(Expr):
     def diff_order(self) -> int:
         order = 0
         var = self
-        while isinstance(var, DiffVar):
+        while var.base_var is not None:
             var = var.base_var
             order += 1
         return order
@@ -396,7 +396,7 @@ class Var(Expr):
     @property
     def origin_var(self) -> Var:
         origin = self.base_var
-        while isinstance(origin, DiffVar):
+        while origin.base_var is not None:
             origin = origin.base_var
         return origin
 
@@ -412,7 +412,7 @@ class Var(Expr):
         """
         if dt is None or self.base_var is None:
             return Const(1 if self.uid == var.uid else 0)
-        elif isinstance(self, DiffVar) or False:
+        elif self.base_var is not None:
             # ∂(dx/dt)/∂x = 1/h
             if var.uid == self.uid:
                 return Const(1)
@@ -507,7 +507,7 @@ class LagVar(Expr):
         # Optionally, you could add checks here to ensure base_var is an instance of Var
         if not isinstance(self.base_var, Var):
             raise TypeError(f"base_var must be an argument")
-        if isinstance(self.base_var, DiffVar):
+        if self.base_var.base_var is not None:
             raise TypeError(f"Base variable must not be DiffVar")
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -577,155 +577,6 @@ class LagVar(Expr):
         d["base_var"] = self.base_var.to_dict()
         d["lag"] = self.lag
         return d
-
-
-class DiffVar(Var):
-    """
-    dx
-    """
-
-    __slots__ = ("base_var",)
-
-    def __init__(self, name: str, base_var: Var | None = None, uid: int | None = None):
-        """
-
-        :param name:
-        :param base_var:
-        """
-        super().__init__(name=name, uid=uid)
-        self.base_var: Var = base_var  # assign reference to base var
-
-        self.base_var.diff_var = self  # assign reference to me in the base var
-
-    def __eq__(self, other):
-        return isinstance(other, DiffVar) and self.base_var.uid == other.base_var.uid
-
-    def __hash__(self):
-        return hash(self.base_var)
-
-    @staticmethod
-    def parse(data: Dict[str, Any]) -> "DiffVar":
-        # reconstruct base_var
-        base_data = data["base_var"]
-        base_var = _dict_to_expr(base_data)
-        if not isinstance(base_var, Var):
-            raise TypeError("base_var must be a Var")
-
-        obj = DiffVar(name=data["name"], base_var=base_var)
-        obj.uid = data["uid"]
-        return obj
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-
-        :return:
-        :rtype: Dict[str, str]
-        """
-
-        d = super().to_dict()
-        d["type"] = "DiffVar"
-        d["base_var"] = self.base_var.to_dict()
-        return d
-
-    @property
-    def diff_order(self) -> int:
-        order = 0
-        var = self
-        while isinstance(var, DiffVar):
-            var = var.base_var
-            order += 1
-        return order
-
-    @property
-    def origin_var(self) -> Var:
-        origin = self.base_var
-        while isinstance(origin, DiffVar):
-            origin = origin.base_var
-        return origin
-
-    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
-        """
-        differentiation
-        :param var:
-        :type var: VeraGridEngine.Utils.Symbolic.symbolic.Var
-        :param dt:
-        :type dt: Union[None, VeraGridEngine.Utils.Symbolic.symbolic.Var]
-        :return:
-        :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.Const, None, VeraGridEngine.Utils.Symbolic.symbolic.BinOp]
-        """
-        if dt is None:
-            return Const(1 if self.uid == var.uid else 0)
-        elif isinstance(self, DiffVar) or False:
-            # ∂(dx/dt)/∂x = 1/h
-            if var.uid == self.uid:
-                return Const(1)
-            elif var.uid == self.base_var.uid:
-                return Const(1) / dt
-            elif var.uid == self.origin_var.uid:
-                # recursive chain rule
-                return (Const(1) / dt) * self.base_var.diff(var, dt=dt)
-            else:
-                return Const(0)
-
-        elif var.uid == self.base_var.uid:
-            h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(var, dt=dt)
-            return dh_dt
-        elif var.uid == self.origin_var.uid:
-            h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(self.base_var, dt=dt)
-            return dh_dt
-        return Const(1 if self.uid == var.uid else 0)
-
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
-        """
-
-        :param x0:
-        :param dx0:
-        :param lag_x:
-        :param dt:
-        :return:
-        """
-        # function that initializes the lag of the same order for the same original_var
-        diff_order = self.diff_order
-        central_difference = True
-        res = Expr()
-        for i in range(diff_order):
-            res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
-        return res.eval()
-
-    def approximation_expr(self, dt: Optional[Var | None], central=False) -> Tuple:
-        """
-        Computes the n-th backward finite difference approximation of the derivative
-        using the closed-form backward difference formula.
-        """
-        origin_name = self.origin_var.name
-        lag_var_0 = self.origin_var
-        if dt is None:
-            dt = Const(1.0)
-        origin_name = self.origin_var.name
-        lag_total = self.diff_order
-        if self.diff_order == 1 and central:
-            lag_var_2 = Var("aux_2")
-            return (lag_var_0 - lag_var_2) / (2 * dt), lag_total
-
-        # Compute the sum: ∑_{i=0}^{n} (-1)^i * C(n, i) * f(x - i*dt)
-        terms = []
-        minus1 = Const(-1)
-
-        for i in range(lag_total + 1):
-            if i == 0:
-                lag_var = lag_var_0
-            else:
-                lag_var = Var(name=f"{origin_name}_lag_{i}")
-            coeff = minus1 ** i * Const(math.comb(lag_total, i))
-            terms.append(coeff * lag_var)
-
-        finite_diff_sum = sum(terms)
-
-        # Divide by dt^n for n-th derivative
-        result = finite_diff_sum / (dt ** lag_total)
-        return result.simplify(), lag_total
 
 
 def factors(expr: Expr) -> List[Expr]:
@@ -1497,15 +1348,15 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
             return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
         return {"type": "Const", "value": expr.value, "uid": expr.uid}
 
-    if isinstance(expr, Var) and not isinstance(expr, DiffVar):
-        return {"type": "Var", "name": expr.name, "uid": expr.uid}
-
-    if isinstance(expr, DiffVar):
-        return {"type": "DiffVar",
-                "name": expr.name,
-                "uid": expr.uid,
-                "base_var": _expr_to_dict(expr.base_var),
-                }
+    if isinstance(expr, Var) and not Var.base_var is None:
+        if Var.base_var is None:
+            return {"type": "Var", "name": expr.name, "uid": expr.uid, "base_var": "None"}
+        else:
+            return {"type": "DiffVar",
+                    "name": expr.name,
+                    "uid": expr.uid,
+                    "base_var": _expr_to_dict(expr.base_var),
+                    }
 
     # ------------------------------------------------------------------
     # Composite nodes
@@ -1568,21 +1419,7 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
         if not isinstance(base_var, Var):
             raise TypeError("base_var must be a Var")
 
-        obj = DiffVar(name=data["name"], base_var=base_var)
-
-        # registry_data = data["registry"]
-        # for base_uid, dv_info in registry_data.items():
-        #     bvar = Var(dv_info["name"], uid=dv_info["base_uid"])
-        #     dv = DiffVar(name=dv_info["name"], base_var=bvar, uid=dv_info["uid"])
-        #     object.__setattr__(dv, "uid", dv_info["uid"])
-        #     DiffVar._registry[dv_info["base_uid"]] = dv
-        #
-        # abs_data = data.get("absolute_registry", {})
-        # for key_str, dv_uid in abs_data.items():
-        #     origin_uid, order = map(int, key_str.split(","))
-        #     dv = next((v for v in DiffVar._registry.values() if v.uid == dv_uid), None)
-        #     if dv is not None:
-        #         DiffVar._absolute_registry[(origin_uid, order)] = dv
+        obj = Var(name=data["name"], base_var=base_var)
 
     elif t == "BinOp":
         obj = BinOp(_dict_to_expr(data["left"]), data["op"], _dict_to_expr(data["right"]))
@@ -1922,7 +1759,7 @@ def symbolic_to_string(expr: Expr) -> str:
 # -----------------------------------------------------------------------------
 
 __all__ = [
-    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison", "LagVar", "DiffVar",
+    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison", "LagVar",
     "sin", "cos", "tan", "exp", "log", "sqrt",
     "asin", "acos", "atan", "sinh", "cosh",
     "diff", "eval_uid",
@@ -1930,7 +1767,6 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
-    "DiffVar",
     "hard_sat",
     "f_exc",
     'expression2numba',

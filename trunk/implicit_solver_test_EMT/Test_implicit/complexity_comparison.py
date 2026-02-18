@@ -17,7 +17,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 
@@ -68,8 +68,8 @@ def create_coupled_system(n_oscillators):
 
     eqs = []
     for i in range(n_oscillators):
-        dx = DiffVar(name=f"dx_{i}", base_var=vars_pos[i])
-        dv = DiffVar(name=f"dv_{i}", base_var=vars_vel[i])
+        dx = Var(name=f"dx_{i}", base_var=vars_pos[i])
+        dv = Var(name=f"dv_{i}", base_var=vars_vel[i])
 
         # Eq 1: Kinematics (dx/dt = v)
         eqs.append(dx - vars_vel[i])

@@ -8,7 +8,7 @@ import numpy as np
 from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block import Var, DiffVar, Const
+from VeraGridEngine.Utils.Symbolic.block import Var, Const
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 
@@ -22,10 +22,10 @@ def get_exemple_floquet_emt_template() -> EmtModelTemplate:
 
     # vars
     x = Var("x")
-    d_x = DiffVar('d_x', base_var=x)
+    d_x = Var('d_x', base_var=x)
 
     theta = Var("theta")
-    d_theta = DiffVar('d_theta', base_var=theta)
+    d_theta = Var('d_theta', base_var=theta)
 
 
     # params

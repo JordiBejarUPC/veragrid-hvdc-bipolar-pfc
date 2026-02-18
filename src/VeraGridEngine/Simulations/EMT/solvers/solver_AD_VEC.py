@@ -15,7 +15,6 @@ import scipy.sparse as sp
 from scipy.sparse import csc_matrix
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Utils.Symbolic.symbolic import DiffVar
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 from VeraGridEngine.Utils.Symbolic.diagnostic import (
     with_newton_diagnostics,
@@ -424,7 +423,7 @@ class AdVecSolver:
         equations: List[Any] = []
         for i, rhs in enumerate(self._state_eqs):
             sv = self._state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             equations.append(d_term - rhs)
         equations.extend(self._algebraic_eqs)
         return equations

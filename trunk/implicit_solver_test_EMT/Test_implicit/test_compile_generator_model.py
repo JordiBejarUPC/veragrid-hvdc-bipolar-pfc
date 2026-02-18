@@ -16,7 +16,7 @@ This test validates:
 import unittest
 import numpy as np
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar, cos, sin
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, cos, sin
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
@@ -46,13 +46,13 @@ def get_generator_emt_template() -> EmtModelTemplate:
     et = Var("et")
 
     # Differential Variables (DiffVars) - Using constructor instead of get_or_create
-    d_omega = DiffVar(name='d_omega', base_var=omega)
-    d_theta = DiffVar(name='d_theta', base_var=theta)
-    d_psi_d = DiffVar(name='d_psi_d', base_var=psi_d)
-    d_psi_q = DiffVar(name='d_psi_q', base_var=psi_q)
-    d_psi_0 = DiffVar(name='d_psi_0', base_var=psi_0)
-    d_psi_f = DiffVar(name='d_psi_f', base_var=psi_f)
-    d_et = DiffVar(name='d_et', base_var=et)
+    d_omega = Var(name='d_omega', base_var=omega)
+    d_theta = Var(name='d_theta', base_var=theta)
+    d_psi_d = Var(name='d_psi_d', base_var=psi_d)
+    d_psi_q = Var(name='d_psi_q', base_var=psi_q)
+    d_psi_0 = Var(name='d_psi_0', base_var=psi_0)
+    d_psi_f = Var(name='d_psi_f', base_var=psi_f)
+    d_et = Var(name='d_et', base_var=et)
 
     # Algebraic Variables
     i_a = Var("i_a")
