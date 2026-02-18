@@ -489,7 +489,7 @@ class EquationCompiler:
         """
         import sys
 
-        header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import _heaviside\n\n"
+        header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import heaviside_num as _heaviside\n\n"
         full_content = header + full_source
 
         root_dir = os.getcwd()

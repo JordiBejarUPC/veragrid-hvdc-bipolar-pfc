@@ -3,1026 +3,358 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple, Sequence, Callable, Any
-from collections import defaultdict
+"""
+Module providing the EmtProblemDae class, which acts as the electrical
+parser for the generic BaseProblem layer. It translates electrical components
+(buses, branches, injections) into the unified DAE mathematical structure.
+"""
+
+from __future__ import annotations
+
 import time
 import numpy as np
-import numba as nb
-import scipy.sparse as sp
-import math
-from VeraGridEngine.Devices import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, DiffVar, Const, Expr, piecewise,
-                                                    _heaviside, expression2numba,
-                                                    get_expression_vars)
+import pandas as pd
+from typing import Dict, List, Any
 
-from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType
-from VeraGridEngine.basic_structures import Vec, ObjVec, IntVec, BoolVec, Logger
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
-from VeraGridEngine.Simulations.Rms.initialization import compose_system_block
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, DiffVar, Const, Expr, piecewise
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
+from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
+# Assuming BaseProblem is accessible in your generic problems folder
+from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
 
-def _tic():
+
+def _tic() -> float:
+    """
+    Returns the current performance counter time.
+    """
     return time.perf_counter()
 
 
-def _toc(t0):
+def _toc(t0: float) -> float:
+    """
+    Returns the elapsed time since t0.
+    """
     return time.perf_counter() - t0
 
 
-def setP(P: ObjVec, P_used: BoolVec, k: int, val: object):
+def set_p(p: ObjVec, p_used: BoolVec, k: int, val: object):
     """
-
-    :param P:
-    :param P_used:
-    :param k:
-    :param val:
-    :return:
+    Accumulates real power equations for a specific node.
     """
-    if not P_used[k]:
-        P[k] = val
-        P_used[k] = 1
+    if not p_used[k]:
+        p[k] = val
+        p_used[k] = True
     else:
-        P[k] += val
+        p[k] += val
 
 
-def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
+def set_q(q: ObjVec, q_used: BoolVec, k: int, val: object):
     """
-
-    :param Q:
-    :param Q_used:
-    :param k:
-    :param val:
-    :return:
+    Accumulates reactive power equations for a specific node.
     """
-    if not Q_used[k]:
-        Q[k] = val
-        Q_used[k] = 1
+    if not q_used[k]:
+        q[k] = val
+        q_used[k] = True
     else:
-        Q[k] += val
+        q[k] += val
 
 
-class SymbolicJacobian:
+class EmtProblemDae(BaseProblem):
     """
-    Class to store and evaluate a symbolic jacobian
-    """
-
-    def __init__(self,
-                 eqs: list,
-                 variables: list,
-                 diff_variables: list,
-                 compiler_names_dict: dict,
-                 alias_names_dict: dict,
-                 VARS_NAME: str,
-                 DIFF_NAME: str,
-                 EVENT_PARAMS_NAME: str,
-                 PARAMS_NAME: str,
-                 ALTER_PARAMS_NAME: str,
-                 uid2idx_vars: dict,
-                 dt=None,
-                 use_jit=True,
-                 batch_size=500,
-                 n_jobs=4):  # número de threads para compilación paralela
-
-        """
-                JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
-                :param eqs: Array of equations
-                :param variables: Array of variables to differentiate against
-                :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-                :param uid2sym_params:
-                :param use_jit: if true, the function is compiled by numba
-                :return:
-                        jac_fn : callable(values: np.ndarray, params: np.ndarray) -> scipy.sparse.csc_matrix
-                            Fast evaluator in which *values* is a 1‑D NumPy vector of length
-                            ``len(variables)``and *params* is a 1‑D NumPy vector of length
-                            ``len(parameters)``
-                        sparsity_pattern : tuple(np.ndarray, np.ndarray)
-                            Row/col indices of structurally non‑zero entries.
-                """
-        if dt is None:
-            dt = Const(0.001)
-
-        # --- Build triplets and count variable usage ---------------------------------
-        used_vars_count = defaultdict(int)
-        triplets = []
-
-        for row, eq in enumerate(eqs):
-            for col, var in enumerate(variables):
-                d_expression = eq.diff(var, dt=dt)
-                if not (isinstance(d_expression, Const) and d_expression.value == 0):
-                    triplets.append((col, row, d_expression))
-                for v in get_expression_vars(d_expression):
-                    used_vars_count[v.uid] += 1
-
-        triplets.sort(key=lambda t: (t[0], t[1]))
-        cols_sorted, rows_sorted, equations_sorted = zip(*triplets) if triplets else ([], [], [])
-
-        # --- Assemble sparse CSC Jacobian structure ---------------------------------
-        nnz = len(cols_sorted)
-        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
-        indptr = np.zeros(len(variables) + 1, dtype=np.int32)
-        for c in cols_sorted:
-            indptr[c + 1] += 1
-        np.cumsum(indptr, out=indptr)
-
-        self.nvar = len(variables)
-        neq = len(eqs)
-        self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
-
-        # --- Batch compilation ------------------------------------------------------
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
-
-        blocks = [
-            equations_sorted[i:i + batch_size]
-            for i in range(0, len(equations_sorted), batch_size)
-        ]
-        self.block_offsets = [i for i in range(0, len(equations_sorted), batch_size)]
-        self.funcs: List[Callable[[Vec, Vec, Vec, Vec, Vec, Vec], None] | None] = [None] * len(blocks)
-
-        # --- Compile blocks sequentially -------------------------------------------
-        # --- Compile blocks in parallel ---------------------------------------------
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-            futures = [
-                executor.submit(
-                    compile_jac_block,
-                    i, block, self.block_offsets, used_vars_count,
-                    compiler_names_dict, alias_names_dict,
-                    self.namespace, VARS_NAME, DIFF_NAME, EVENT_PARAMS_NAME, PARAMS_NAME, ALTER_PARAMS_NAME, use_jit
-                )
-                for i, block in enumerate(blocks)
-            ]
-            for f in concurrent.futures.as_completed(futures):
-                block_id, func = f.result()
-                self.funcs[block_id] = func
-
-    def __call__(self,
-                 x: Vec,
-                 dx: Vec,
-                 variable_params: Vec,
-                 constant_params: Vec,
-                 alter_params: Vec,
-                 h: float):
-        """
-
-        :param x:
-        :param dx:
-        :param variable_params:
-        :param constant_params:
-        :param alter_params:
-        :param h:
-        :return:
-        """
-        for func in self.funcs:
-            if func is not None:
-                func(x, dx, variable_params, constant_params, alter_params, self.J.data)
-        return self.J
-
-
-class SymbolicVector:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self,
-                 eqs: List[Expr],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 VARS_NAME: str,
-                 DIFF_NAME: str,
-                 EVENT_PARAMS_NAME: str,
-                 PARAMS_NAME: str,
-                 ALTER_PARAMS_NAME: str,
-                 use_jit: bool = True):
-        """
-        Compile the array of expressions to a function that returns an array of values for those expressions
-        :param eqs: Iterable of expressions (Expr)
-        :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-        :param uid2sym_params:
-        :return: Function pointer that returns an array
-        """
-        self.func: Callable[[Vec, Vec, Vec, Vec, Vec, Vec], None] | None = None
-        used_vars_count = defaultdict(int)
-        for eq in eqs:
-            for var in get_expression_vars(eq):
-                used_vars_count[var.uid] += 1
-                if var.uid not in compiler_names_dict.keys():
-                    print()
-                if var.uid not in alias_names_dict.keys():
-                    print()
-
-        if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": _heaviside,
-            }
-
-            fname = f"func"  # since we compile into a namespace, there won't be repeated names
-
-            # Build source
-            src = f"def {fname}({VARS_NAME}, {DIFF_NAME}, {EVENT_PARAMS_NAME}, {PARAMS_NAME}, {ALTER_PARAMS_NAME}, out):\n"
-            final_names_dict = compiler_names_dict.copy()
-            for uid, count in used_vars_count.items():
-                if count > 1:
-                    final_names_dict[uid] = alias_names_dict[uid]
-                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-            src += "\n".join(
-                [f"    out[{i}] = {expression2numba(e.simplify(), final_names_dict)}" for i, e in
-                 enumerate(eqs)]) + "\n"
-
-            # compile in python namespace
-            exec(src, self.namespace)
-
-            # compile in numba
-            if use_jit:
-                self.func = nb.njit(
-                    nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
-                    fastmath=True)(self.namespace[fname])
-            else:
-                self.func = self.namespace[fname]
-        else:
-            self.func = None
-
-        self.data: Vec = np.zeros(len(eqs))
-
-    def __call__(self, values: Vec, diff_values: Vec, event_params: Vec, params: Vec, alter_params: Vec) -> Vec:
-        """
-        Call the compiled function
-        :param values:
-        :param diff_values:
-        :param event_params:
-        :param params:
-        :return:
-        """
-        if self.func is not None:
-            self.func(values, diff_values, event_params, params, alter_params, self.data)
-        return self.data
-
-
-class SymbolicParamsVector:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self, eqs: Sequence[Expr],
-                 compiler_names_dict: Dict[int, str],
-                 alias_names_dict: Dict[int, str],
-                 EVENT_PARAMS_NAME: str,
-                 TIME_NAME: str,
-                 use_jit: bool = True):
-        """
-        Compile the array of expressions to a function that returns an array of values for those expressions
-        :param eqs: Iterable of expressions (Expr)
-        :param uid2sym_t: dictionary relating the uid of a var with its array name (i.e. var[0])
-        :return: Function pointer that returns an array
-        """
-        self.func: Callable[[Vec, float, Vec], None] | None = None
-        used_vars_count = defaultdict(int)
-        for eq in eqs:
-            for var in get_expression_vars(eq):
-                used_vars_count[var.uid] += 1
-
-        if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": _heaviside,
-            }
-
-            fname = f"func"  # since we compile into a namespace, there won't be repeated names
-
-            # Build source
-            src = f"def {fname}({EVENT_PARAMS_NAME}, {TIME_NAME}, out):\n"
-            final_names_dict = compiler_names_dict.copy()
-            for uid, count in used_vars_count.items():
-                if count > 1:
-                    final_names_dict[uid] = alias_names_dict[uid]
-                    src += f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}\n"
-            src += "\n".join(
-                [f"    out[{i}] = {expression2numba(e, compiler_names_dict)}" for i, e in enumerate(eqs)]) + "\n"
-
-            # compile in python namespace
-            exec(src, self.namespace)
-
-            # compile in numba
-            if use_jit:
-                self.func = nb.njit(nb.void(nb.float64[:], nb.float64, nb.float64[:]),
-                                    fastmath=True)(self.namespace[fname])
-            else:
-                self.func = self.namespace[fname]
-        else:
-            self.func = None
-
-        self.data = np.zeros(len(eqs))
-
-    def __call__(self, event_params: Vec, glob_time: float) -> Vec:
-        """
-        Call the compiled function
-        :param glob_time:
-        :return:
-        """
-        if self.func is not None:
-            self.func(event_params, glob_time, self.data)
-        return self.data
-
-
-class SymbolicDerivative:
-    """
-    SymbolicFunction
-    """
-
-    def __init__(self,
-                 vars: Sequence[Var],
-                 uid2idx_vars: Dict[int, int],
-                 diff_vars: Sequence[DiffVar],
-                 compiler_names_dict: Dict[int, str],
-                 use_jit: bool = True):
-        self.func: Callable[[Vec, Vec, Vec, float, Vec], Vec] | None = None
-
-        self.data: Vec = np.zeros(len(diff_vars))
-        self.index_map: IntVec = np.zeros(len(diff_vars), dtype=np.int32)
-
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
-        fname = f"func"  # since we compile into a namespace, there won't be repeated names
-        # Build source
-        uid2dx_expression = {}
-        # TODO: order diff vars by order
-        src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
-        for i, diff_var in enumerate(diff_vars):
-            base_var_uid = diff_var.base_var.uid
-            uid = diff_var.uid
-            if diff_var.diff_order == 1:
-                j = uid2idx_vars[base_var_uid]
-                rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
-            else:
-                dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                rhs = f" ({dx_expression}- lagdx[{i}]) / h\n"
-            to_src = f"    out[{i}] = {rhs}\n"
-            uid2dx_expression[uid] = rhs
-
-            src += to_src
-        src += f"    return out"
-        exec(src, self.namespace)
-
-        # compile in python namespace
-        # compile in numba
-        if use_jit:
-            self.func = nb.njit(nb.float64[:](nb.float64[:], nb.float64[:], nb.float64[:], nb.float64, nb.float64[:]),
-                                fastmath=True)(self.namespace[fname])
-        else:
-            self.func = self.namespace[fname]
-
-    def __call__(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
-        """
-        Call the compiled function
-        :param x:
-        :param xn:
-        :param dx:
-        :param h:
-        :return:
-        """
-        if self.func is not None:
-            self.func(x, xn, dx, h, self.data)
-        return self.data
-
-
-class EmtProblemDae(EmtProblemTemplate):
-    """
-    DAE (Differential-Algebraic Equation) class to store and manage.
+    Electrical parser layer for the EMT DAE Problem.
 
     Responsibilities:
-        - Store state and algebraic variables (x, y)
-        - Store Jacobian matrices
-        - Store residual equations
-        - Store sparsity patterns
+      - Traverses the MultiCircuit to extract electrical devices.
+      - Constructs nodal power balances.
+      - Processes external piecewise events into the unified block.
+      - Maintains mapping between physical devices and symbolic variables.
+      - Delegates all mathematical and indexing plumbing to BaseProblem.
     """
-    VARS_NAME = "vars"
-    VARIABLE_PARAMS_NAME = "vprms"
-    CONSTANT_PARAMS_NAME = "cprms"
-    DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
-    TIME_NAME = "glob_time"
 
-    def __init__(self,
-                 grid: MultiCircuit,
-                 options: EmtOptions,
-                 pf_results: PowerFlowResults3Ph | None):
+    def __init__(
+            self,
+            grid: MultiCircuit,
+            options: EmtOptions,
+            pf_results: PowerFlowResults3Ph | None,
+    ):
         """
-
-        :param grid:
-        :param options:
-        :param pf_results:
+        Initializes the EMT Problem by parsing the grid and passing the
+        resulting mathematical block to the BaseProblem constructor.
         """
-        super().__init__()
-
         self.logger = Logger()
+        self.grid = grid
+        self.options = options
+        self.power_flow_results = pf_results
 
-        # --------------------------------------------------------------------------------------------------------------
-        # Initialize the RMS problem
-        # --------------------------------------------------------------------------------------------------------------
-        self._glob_time: Var = Var(self.TIME_NAME)
-
-        vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
-        vars_glob_name2uid: Dict[str, int] = dict()
-        # find events
-        rms_events = grid.rms_events
+        self._vars_glob_name2uid: Dict[str, int] = dict()
+        self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
+        self._temp_init_guess: Dict[int, float] = dict()
 
-        # already computed grid power flow
+        sys_block = Block(children=[], in_vars=[])
+        glob_time = Var(self.TIME_NAME)
 
-        bus_dict = dict()
+        t_build = _tic()
 
-        # balance equation arrays
-        n = len(grid.buses)
-        P: ObjVec = np.zeros(n, dtype=object)
-        Q: ObjVec = np.zeros(n, dtype=object)
-        P_used: IntVec = np.zeros(n, dtype=int)
-        Q_used: IntVec = np.zeros(n, dtype=int)
+        self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
 
-        # initialize buses
-        for i, elm in enumerate(grid.buses):
-            bus_dict[elm] = i
-            for var in elm.emt_model.model.get_all_vars():
-                vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
+        sys_block.unify_blocks()
+        self._deduplicate_block_entities(sys_block)
 
-        # initialize branches
-        for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+        super().__init__(sys_block=sys_block, glob_time=glob_time)
 
+        self.init_guess.update(self._temp_init_guess)
+
+        t_done = _toc(t_build)
+
+        if getattr(options, "verbose", 0) > 0:
+            print(
+                f"EMT electrical problem parsed in {t_done:.4f}s | "
+                f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
+                f"eqs(state={len(self._state_eqs)}, alg={len(self._algebraic_eqs)})"
+            )
+
+    def _build_structure_and_collect(
+            self,
+            sys_block: Block,
+            grid: MultiCircuit,
+            pf_results: PowerFlowResults3Ph | None,
+            glob_time: Var
+    ):
+        """
+        Traverses the electrical grid to collect models, inject nodal balances,
+        and assemble the root system block.
+        """
+        bus_dict: Dict[Any, int] = dict()
+
+        n_bus = len(grid.buses)
+        P: ObjVec = np.zeros(n_bus, dtype=object)
+        Q: ObjVec = np.zeros(n_bus, dtype=object)
+        P_used: BoolVec = np.zeros(n_bus, dtype=bool)
+        Q_used: BoolVec = np.zeros(n_bus, dtype=bool)
+
+        for bus_idx, elm in enumerate(grid.buses):
+            bus_dict[elm] = bus_idx
             mdl = elm.emt_model.model
+            mdl.unify_blocks()
+
+            self._add_model_to_system_mappings(elm, mdl)
+            sys_block.add(mdl)
+
+            if pf_results is not None:
+                self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
+
+        for branch_idx, elm in enumerate(
+                grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)
+        ):
+            mdl = elm.emt_model.model
+            mdl.unify_blocks()
+
+            self._add_model_to_system_mappings(elm, mdl)
+            sys_block.add(mdl)
+
             f = bus_dict[elm.bus_from]
             t = bus_dict[elm.bus_to]
-            # add variable to conservation equations of the bus to which the element is connected
-            setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
-            setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-            setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
-            setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+            try:
+                set_p(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
+                set_p(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
+                set_q(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
+                set_q(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+            except Exception:
+                pass
 
-            for var in elm.emt_model.model.get_all_vars():
-                vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
-                self.add_device_var(dev=elm, var=var)
+            if pf_results is not None:
+                self._try_set_branch_pf_init(
+                    mdl=mdl,
+                    branch_index=branch_idx,
+                    pf_results=pf_results,
+                    sbase=getattr(grid, "Sbase", 1.0),
+                )
 
-        # initialize injections
+        emt_events = getattr(grid, "emt_events", None)
+        if emt_events is None:
+            emt_events = getattr(grid, "rms_events", [])
+
         for elm in grid.get_injection_devices_iter():
+            mdl = elm.emt_model.model
+            mdl.unify_blocks()
 
-            # create dictionary for collecting events of the same parameter
-
-            if elm.emt_model.model.event_dict is not None:
+            if mdl.event_dict is not None:
                 collect_events = {
                     key: {"times": [], "values": []}
-                    for key in elm.emt_model.model.event_dict.keys()
+                    for key in mdl.event_dict.keys()
                 }
-                # find out if there are events affecting the device parameters
-                rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
-                if len(rms_evts) != 0:
-                    for rms_evt in rms_evts:
-                        collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-                        collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-                        # TODO: implement the function in block: apply_event
-                    for param, events_info in collect_events.items():
-                        default_value = elm.emt_model.model.event_dict[param]
-                        elm.emt_model.model.event_dict[param] = piecewise(
-                            time_var=self._glob_time,
-                            t_events=np.array(events_info["times"]),
-                            new_values=np.array(events_info["values"]),
-                            default_value=default_value
-                        )
 
-            # after applying the events the model has to be "build"
-            mdl = elm.emt_model.model
+                dev_events = [evt for evt in emt_events if evt.device_idtag == elm.idtag]
+                for evt in dev_events:
+                    if evt.parameter in collect_events:
+                        collect_events[evt.parameter]["times"].append(evt.time)
+                        collect_events[evt.parameter]["values"].append(evt.value)
 
-            # add variable to conservation equations of the bus to which the element is connected
-            k = bus_dict[elm.bus]
-            setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
-            setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
+                for param, info in collect_events.items():
+                    if len(info["times"]) == 0:
+                        continue
+                    default_value = mdl.event_dict[param]
+                    mdl.event_dict[param] = piecewise(
+                        time_var=glob_time,
+                        t_events=np.array(info["times"], dtype=np.float64),
+                        new_values=np.array(info["values"], dtype=np.float64),
+                        default_value=default_value,
+                    )
 
-            for var in elm.emt_model.model.get_all_vars():
-                vars2device[var.uid] = elm
-                vars_glob_name2uid[var.name + elm.name] = var.uid
+            self._add_model_to_system_mappings(elm, mdl)
+            sys_block.add(mdl)
 
-        # add the nodal balance equations
-        for i, elm in enumerate(grid.buses):
-            mdl = elm.emt_model.model
+            bus_idx = bus_dict[elm.bus]
+            try:
+                set_p(P, P_used, bus_idx, mdl.E(VarPowerFlowRefferenceType.P))
+                set_q(Q, Q_used, bus_idx, mdl.E(VarPowerFlowRefferenceType.Q))
+            except Exception:
+                pass
+
+            if pf_results is not None:
+                self._try_set_inj_pf_init(
+                    mdl=mdl,
+                    bus_index=bus_idx,
+                    pf_results=pf_results,
+                    sbase=getattr(grid, "Sbase", 1.0),
+                )
+
+        for i, bus in enumerate(grid.buses):
+            mdl = bus.emt_model.model
             if len(mdl.algebraic_eqs) == 0:
-                if P_used[i] == 0 and Q_used[i] == 0:
+                if (not P_used[i]) and (not Q_used[i]):
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    mdl.algebraic_eqs.append(P[i])
-                    mdl.algebraic_eqs.append(Q[i])
+                    if P_used[i]:
+                        mdl.algebraic_eqs.append(P[i])
+                    if Q_used[i]:
+                        mdl.algebraic_eqs.append(Q[i])
 
-        self._block_system, self._initial_guess_mapping = compose_system_block(
-            time_var=self._glob_time,
-            grid=grid,
-            TIME_NAME=self.TIME_NAME,
-            VARS_NAME=self.VARS_NAME,
-            power_flow_results=pf_results,
-            vars2device=vars2device,
-            vars_glob_name2uid=vars_glob_name2uid,
-            use_init_values=options.use_init_values,
-            method=options.initialization_method
-        )
-
-        # --------------------------------------------------------------------------------------------------------------
-        # collect equations
-        # --------------------------------------------------------------------------------------------------------------
-
-        # Flatten the block lists, preserving declaration order
-        self._algebraic_vars: List[Var] = list()
-        self._algebraic_eqs: List[Expr] = list()
-        self._algebraic_eqs_substituted: List[Expr] = list()
-        self._state_vars: List[Var] = list()
-        self._state_eqs: List[Expr] = list()
-        self._state_eqs_substituted: List[Expr] = list()
-        self._diff_vars: List[DiffVar] = list()
-        self._differential_eqs: List[Expr] = list()
-        self._reformulated_vars: List[Var] = list()
-        self._variable_parameters: List[Var] = list()
-        self._event_parameters_eqs: List[Expr] = list()
-        self._constant_parameters: List[Var] = list()
-        self._parameters_values: List[Const] = list()
-        self._stability_eqs: List[Expr] = list()
-        self._alter_params = np.zeros(0)  # NOTE: this is needed for the jacobian calls but it is only relevant for EMT
-
-        # Class-level registry
-        self._registry: Dict[int, DiffVar] = dict()  # int uuid , DiffVar
-        self._absolute_registry: Dict[Tuple[int, int], DiffVar] = dict()
-
-        # self.v_glob_name2uid = self.block_system.vars_glob_name2uid
-
-        self._substitute = True
-
-        # Numerical trace
-        self._newton_trace_collector = None
-        self._backend = SimulationBackend.SymbolicImplicit
-
-        for b in self._block_system.get_all_blocks():
-            self._algebraic_vars.extend(b.algebraic_vars)
-            self._algebraic_eqs.extend(b.algebraic_eqs)
-            self._state_vars.extend(b.state_vars)
-            self._state_eqs.extend(b.state_eqs)
-            for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
-                self._event_parameters_eqs.append(eq)
-            for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
-                self._parameters_values.append(constant)
-
-            # if isinstance(b, DiffBlock):
-            self._diff_vars.extend(b.diff_vars)
-
-        self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.diff_order)
-        self._state_algeb_vars = self._state_vars + self._algebraic_vars
-        self._state_eqs_substituted = self._state_eqs.copy()
-
-        # We define the parameter dt and delta
-        self._dt = Var(name='dt')
-        self._delta = Var(name='delta')
-        self._variable_parameters.append(self._dt)
-        self._variable_parameters.append(self._delta)
-        self._event_parameters_eqs.append(Const(1e-3))
-        self._event_parameters_eqs.append(Const(1))
-
-        self._n_state = len(self._state_vars)
-        self._n_alg = len(self._algebraic_vars)
-        self._n_vars = self._n_state + self._n_alg
-        self._n_event_params = len(self._variable_parameters)
-        self._n_params = len(self._constant_parameters)
-        self._n_diff = len(self._diff_vars)
-        self._n_algebraic = len(self._algebraic_eqs)
-
-        # generate the in-code names for each variable
-        # inside the compiled functions the variables are
-        # going to be represented by an array called vars[]
-
-        self._compiler_names_dict: Dict[int, str] = dict()
-        self._alias_names_dict: Dict[int, str] = dict()
-        self._uid2idx_vars: Dict[int, int] = dict()
-        self._uid2idx_event_params: Dict[int, int] = dict()
-        self._uid2idx_params: Dict[int, int] = dict()
-        self._uid2idx_diff: Dict[int, int] = dict()
-        self._uid2idx_t: Dict[int, int] = dict()
-
-        i = 0
-        for v in self._state_vars:
-            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
-            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
-            self._uid2idx_vars[v.uid] = i
-            i += 1
-
-        for v in self._algebraic_vars:
-            self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
-            self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
-            self._uid2idx_vars[v.uid] = i
-            i += 1
-
-        for j, ep in enumerate(self._constant_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
-            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
-            self._uid2idx_params[ep.uid] = j
-
-        for k, ep in enumerate(self._variable_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-            self._uid2idx_event_params[ep.uid] = k
-
-        for k, ep in enumerate(self._diff_vars):
-            self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.DIFF_NAME}_{k}"
-            self._uid2idx_diff[ep.uid] = k
-
-        self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
-        self._uid2idx_t[self._glob_time.uid] = 0
-
-        for it, eq in enumerate(self._event_parameters_eqs):
-            if isinstance(eq, Const) and eq.value is None:
-                raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
-
-        # Substitute in state eqs
-
-        # Substitute in algebraic eqs
-        self._stability_eqs = list()
-        self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
-
-        # fill stability equations by putting algebraic equations equal zero
-        for it, eq in enumerate(self._algebraic_eqs):
-            for diff_var in self._diff_vars:
-                eq = eq.subs({diff_var: Const(0)})
-                eq = eq.simplify()
-            self._stability_eqs.append(eq)
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Compile RHS and Jacobian
-        # --------------------------------------------------------------------------------------------------------------
-
+    def _add_model_to_system_mappings(self, elm: ALL_DEV_TYPES, mdl: Block):
         """
-                   state Var   algeb var  
-        state eq |J11        | J12       |    | ∆ state var|    | ∆ state eq |
-                 |           |           |    |            |    |            |
-                 ------------------------- x  |------------|  = |------------|
-        algeb eq |J21        | J22       |    | ∆ algeb var|    | ∆ algeb eq |
-                 |           |           |    |            |    |            |
+        Populates tracking dictionaries to maintain the relationship between
+        electrical devices and their corresponding symbolic variables.
         """
-        timings = dict()
+        for v in mdl.state_vars:
+            self.add_device_var(dev=elm, var=v)
+            self._vars_glob_name2uid[v.name + elm.name] = v.uid
+            self._vars2device[v.uid] = elm
 
-        print("Compiling...")
+        for v in mdl.algebraic_vars:
+            self.add_device_var(dev=elm, var=v)
+            self._vars_glob_name2uid[v.name + elm.name] = v.uid
+            self._vars2device[v.uid] = elm
 
-        t0 = _tic()
-        self._derivative_fn = SymbolicDerivative(
-            vars=self._state_algeb_vars,
-            uid2idx_vars=self._uid2idx_vars,
-            diff_vars=self._diff_vars,
-            compiler_names_dict=self._compiler_names_dict
-        )
-        timings["SymbolicDerivative"] = _toc(t0)
+        for dv in mdl.diff_vars:
+            self.add_device_var(dev=elm, var=dv)
+            self._vars_glob_name2uid[dv.name + elm.name] = dv.uid
+            self._vars2device[dv.uid] = elm
 
-        t0 = _tic()
-        self._rhs_algeb_fn = SymbolicVector(
-            eqs=self._algebraic_eqs,
-            compiler_names_dict=self._compiler_names_dict,
-            alias_names_dict=self._alias_names_dict,
-            VARS_NAME=self.VARS_NAME,
-            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-            DIFF_NAME=self.DIFF_NAME,
-            ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-        )
-        timings["RHS algebraic"] = _toc(t0)
+    def _try_set_bus_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph):
+        """
+        Attempts to initialize bus variables based on PowerFlow results.
+        """
+        try:
+            if VarPowerFlowRefferenceType.Vm in mdl.external_mapping:
+                v = pf_results.voltage[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vm, float(np.abs(v)))
+            if VarPowerFlowRefferenceType.Va in mdl.external_mapping:
+                v = pf_results.voltage[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Va, float(np.angle(v)))
+        except Exception:
+            pass
 
-        t0 = _tic()
-        self._event_params_fn = SymbolicParamsVector(
-            eqs=self._event_parameters_eqs,
-            compiler_names_dict=self._compiler_names_dict,
-            alias_names_dict=self._alias_names_dict,
-            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-            TIME_NAME=self.TIME_NAME,
-        )
-        timings["Event parameters"] = _toc(t0)
+    def _try_set_branch_pf_init(self, mdl: Block, branch_index: int, pf_results: PowerFlowResults3Ph, sbase: float):
+        """
+        Attempts to initialize branch variables based on PowerFlow results.
+        """
+        try:
+            sf = pf_results.Sf[branch_index] / sbase
+            st = pf_results.St[branch_index] / sbase
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, float(np.real(sf)))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, float(np.imag(sf)))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, float(np.real(st)))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, float(np.imag(st)))
+        except Exception:
+            pass
 
-        if len(self._state_eqs) != 0:
+    def _try_set_inj_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph, sbase: float):
+        """
+        Attempts to initialize injection variables based on PowerFlow results.
+        """
+        try:
+            sbus = pf_results.Sbus[bus_index] / sbase
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(sbus)))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(sbus)))
+        except Exception:
+            pass
 
-            t0 = _tic()
-            self._rhs_state_fn = SymbolicVector(
-                eqs=self._state_eqs,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["RHS state"] = _toc(t0)
+    def _deduplicate_block_entities(self, block: Block):
+        """
+        Removes duplicated symbolic objects within the block by UID
+        while preserving their first appearance order.
+        """
 
-            t0 = _tic()
-            self._j11_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._state_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["J11 (dF/dx)"] = _toc(t0)
+        def _unique_keep_order(seq):
+            seen = set()
+            out = []
+            for x in seq:
+                if x.uid not in seen:
+                    seen.add(x.uid)
+                    out.append(x)
+            return out
 
-            t0 = _tic()
-            self._j12_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["J12 (dF/dy)"] = _toc(t0)
-
-            t0 = _tic()
-            self._j21_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._state_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["J21 (dG/dx)"] = _toc(t0)
-
-            t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["J22 (dG/dy)"] = _toc(t0)
-
-        else:
-            t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                diff_variables=self._diff_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                uid2idx_vars=self._uid2idx_vars,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-                ALTER_PARAMS_NAME=self.ALTER_PARAMS_NAME,
-            )
-            timings["J22 only (no states)"] = _toc(t0)
-
-        if options.verbose > 0:
-            print(
-                f"Model compiled with {self._n_vars} variables, "
-                f"{len(self._algebraic_eqs_substituted)} algebraic eqs and "
-                f"{len(self._state_eqs_substituted)} state eqs"
-            )
-
-            print("\nCompilation timing summary:")
-            for k, v in timings.items():
-                print(f"  {k: 30s}: {v: 8.4f} s")
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Collect parameters' vectors
-        # --------------------------------------------------------------------------------------------------------------
-
-        self._variable_parameters = np.ones(self.get_variable_parameter_number())
-
-        # TODO: think about this thing of calling twice here
-        self._variable_params = self._event_params_fn(self._variable_parameters, 0.0)
-        self._variable_params = self._event_params_fn(self._variable_params, 0.0)
-
-        self._constant_params = np.array([const.value for const in self._parameters_values])
-
-        if options.verbose > 0:
-            print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
-
-    def get_vars_info(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
-        return self._vars_info
+        block.state_vars = _unique_keep_order(block.state_vars)
+        block.algebraic_vars = _unique_keep_order(block.algebraic_vars)
+        block.diff_vars = _unique_keep_order(block.diff_vars)
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var):
         """
-        Associate a variable with a device
-        :param dev: Device
-        :param var: Variable
+        Registers a variable belonging to a specific device.
         """
         var_list = self._vars_info.get(dev, None)
-
         if var_list is None:
             self._vars_info[dev] = [var]
         else:
             var_list.append(var)
 
-    @property
-    def v_glob_name2uid(self):
+    def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """
-
-        :return:
+        Sets the temporary initial guess for a given variable during the parsing phase.
         """
-        return self._block_system.vars_glob_name2uid
+        if not hasattr(mdl, "external_mapping") or mdl.external_mapping is None:
+            return
+        if reference_powerflow in mdl.external_mapping:
+            var = mdl.external_mapping[reference_powerflow]
+            self._temp_init_guess[var.uid] = float(val)
 
-    def get_all_vars_number(self) -> int:
-        return self._n_vars
-
-    def get_diff_var_number(self) -> int:
+    def get_init_guess_info(self) -> pd.DataFrame:
         """
-        Get the number of diff vars
-        :return:
+        Returns a DataFrame containing all initialized guesses for variables.
         """
-        return len(self._diff_vars)
+        rows = []
+        all_vars = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
+        for uid, value in self.init_guess.items():
+            if uid in all_vars:
+                rows.append((uid, all_vars[uid].name, value))
+        return pd.DataFrame(rows, columns=["uid", "var_name", "value"])
 
-    def get_algebraic_var_number(self) -> int:
-        return len(self._algebraic_vars)
-
-    def get_states_number(self) -> int:
-        return self._n_state
-
-    def get_variable_parameter_number(self) -> int:
-        return len(self._constant_parameters)
-
-    def get_x0(self) -> Vec:
+    def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         """
-        Helper function to build the initial vector
-        :return: array matching with the mapping, matching the solver ordering
+        Returns the dictionary mapping electrical devices to their variables.
         """
-        x = np.zeros(len(self._state_vars) + len(self._algebraic_vars))
+        return self._vars_info
 
-        for key, val in self._initial_guess_mapping.items():
-            uid, name = key
-            if uid in self._uid2idx_vars.keys():
-                i = self._uid2idx_vars[uid]
-                x[i] = val
-            else:
-                raise ValueError(f"Missing uid {key} definition")
-
-        return x
-
-    def update_variable_params(self, t: float):
+    @property
+    def vars_glob_name2uid(self) -> Dict[str, int]:
         """
-        Update the variable parameters
-        :param t:
-        :return:
+        Returns the dictionary mapping global variable names to UIDs.
         """
-        self._variable_parameters = self._event_params_fn(self._variable_parameters, t)
-
-    def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
-        raise self._derivative_fn(x, xn, dx, h)
-
-    def rhs_state(self, x: Vec, dx: Vec, ) -> Vec:
-        raise self._rhs_state_fn(x, dx,
-                                 self._variable_params,
-                                 self._constant_params,
-                                 self._alter_params)
-
-    def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
-        raise self._rhs_algeb_fn(x, dx,
-                                 self._variable_params,
-                                 self._constant_params,
-                                 self._alter_params)
-
-    def get_j11(self, x: Vec, dx: Vec, h: float):
-        raise self._j11_fn(x, dx,
-                           self._variable_params,
-                           self._constant_params,
-                           self._alter_params,
-                           h)
-
-    def get_j12(self, x: Vec, dx: Vec, h: float):
-        raise self._j12_fn(x, dx,
-                           self._variable_params,
-                           self._constant_params,
-                           self._alter_params,
-                           h)
-
-    def get_j21(self, x: Vec, dx: Vec, h: float):
-        raise self._j21_fn(x, dx,
-                           self._variable_params,
-                           self._constant_params,
-                           self._alter_params,
-                           h)
-
-    def get_j22(self, x: Vec, dx: Vec, h: float):
-        raise self._j22_fn(x, dx,
-                           self._variable_params,
-                           self._constant_params,
-                           self._alter_params,
-                           h)
-
-    def get_state_vars(self):
-        return self._state_vars
-
-    def get_algebraic_vars(self):
-        return self._algebraic_vars
-
-    def get_state_eqs(self):
-        return self._state_eqs
-
-    def get_algebraic_eqs(self):
-        return self._algebraic_eqs
-
-    def get_variable_parameters(self):
-        return self._variable_parameters
-
-    def get_constant_parameters(self):
-        return self._constant_parameters
-
-    def get_parameters_values(self):
-        return self._parameters_values
-
-    def def_event_params_fn(self, ev_param: SymbolicParamsVector ,tm:float):
-        return self._event_params_fn(ev_param, tm)
-
-    def get_dt(self):
-        return self._dt
-
-    @property
-    def block_system(self):
-        return self._block_system
-
-    @property
-    def n_vars(self):
-        return self._n_vars
-
-    @property
-    def n_state(self):
-        return self._n_state
-
-    @property
-    def n_alg(self):
-        return self._n_alg
-
-    @property
-    def constant_parameters(self):
-        return self._constant_parameters
-
-    @property
-    def variable_parameters(self):
-        return self._variable_parameters
-
-    @property
-    def parameters_values(self):
-        return self._parameters_values
-
-    @property
-    def event_params_fn(self):
-        return self._event_params_fn
-
-    @property
-    def algebraic_vars(self):
-        return self._algebraic_vars
-
-    @property
-    def state_vars(self):
-        return self._state_vars
-
-    @property
-    def state_eqs(self):
-        return self._state_eqs
-
-    @property
-    def algebraic_eqs(self):
-        return self._algebraic_eqs
+        return self._vars_glob_name2uid
