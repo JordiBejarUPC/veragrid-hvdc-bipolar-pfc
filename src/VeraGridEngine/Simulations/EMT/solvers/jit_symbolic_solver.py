@@ -78,7 +78,7 @@ class JitSymbolicSolver:
         equations = []
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
-            d_term = DiffVar(name=f"d_{sv.name}", base_var=sv)
+            d_term = Var(name=f"d_{sv.name}", base_var=sv)
             equations.append(d_term - rhs)
 
         equations.extend(self.algebraic_eqs)
