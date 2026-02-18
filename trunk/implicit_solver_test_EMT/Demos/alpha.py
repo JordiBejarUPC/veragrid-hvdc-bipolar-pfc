@@ -4,227 +4,188 @@
 # SPDX-License-Identifier: MPL-2.0
 
 """
-ARCHITECTURAL VALIDATION DEMO
-=============================
-Validates the transition from monolithic scripts to the new PhD Normalized Architecture:
-  DeviceInterface -> EmtProblemBase -> ImplicitJitSolver
+EMT simulation of a DC-DC Buck Converter using the NEW ARCHITECTURE.
 
-Physics: DC-DC Buck Converter (Same as legacy demo).
+This demo compares:
+  - SD: Symbolic Jacobian Engine
+  - AD: Sparse Automatic Differentiation Engine
+  - AD_VEC: Auto-Vectorized AD Engine
 """
 
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-# 1. Import Core Symbolic Elements (The Engine)
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-from VeraGridEngine.enumerations import (
-    DynamicIntegrationMethod,
-    SimulationBackend,
-    JacobianBackend,
-)
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 
-from VeraGridEngine.Simulations.EMT.Devices.device_interface import EmtDeviceInterface
-from VeraGridEngine.Simulations.EMT.problems.emt_problem import EmtProblemBase
-from VeraGridEngine.Simulations.EMT.numerical_method.implicit_jit import ImplicitJitSolver
+from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+
+from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
+from VeraGridEngine.Simulations.EMT.solvers.solver_AD_VEC import AdVecSolver
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 
 
-# ==============================================================================
-# LAYER 1: DEVICE DEFINITION (Physics)
-# ==============================================================================
-class BuckConverterDevice(EmtDeviceInterface):
-    """
-    Physical definition of the Buck Converter.
-    Inherits from the standard DeviceInterface to enable automatic clustering.
-    """
+# -----------------------------------------------------------------------------
+# Model definition (Idéntico, la física no cambia)
+# -----------------------------------------------------------------------------
 
-    def build_model(self):
-        # 1. Define Variables
-        i_L = Var("i_L")
-        v_C = Var("v_C")
+def create_buck_converter_system():
+    i_L = Var("i_L")
+    v_C = Var("v_C")
 
-        # 2. Define Parameters
-        self.Vin_sw = Var("Vin_sw")
-        R = Var("R")
-        L = Var("L")
-        C = Var("C")
+    Vin_sw = Var("Vin_sw")
+    R = Var("R")
+    L = Var("L")
+    C = Var("C")
 
-        # 3. Register State Equations
-        # di_L/dt = (Vin - v_C) / L
-        self.add_state_equation(
-            diff_var=i_L,
-            rhs_expr=(self.Vin_sw - v_C) / L
-        )
-
-        # dv_C/dt = (i_L - v_C/R) / C
-        self.add_state_equation(
-            diff_var=v_C,
-            rhs_expr=(i_L - v_C / R) / C
-        )
-
-        # 4. Set Parameter Values
-        self.block.parameters = {
-            self.Vin_sw: Const(0.0),
+    block = Block(
+        name="BuckConverter",
+        state_vars=[i_L, v_C],
+        state_eqs=[
+            (Vin_sw - v_C) / L,
+            (i_L - v_C / R) / C,
+        ],
+        parameters={
+            Vin_sw: Const(0.0),
             R: Const(5.0),
             L: Const(100e-6),
             C: Const(470e-6),
-        }
+        },
+    )
 
-        # Save refs for plotting later
-        self.i_L_ref = i_L
-        self.v_C_ref = v_C
-
-
-# ==============================================================================
-# LAYER 2: PROBLEM DEFINITION (Topology)
-# ==============================================================================
-class BuckSystem(EmtProblemBase):
-    """
-    The Simulation Case.
-    Assembles the device into the root system.
-    """
-
-    def build_structure(self):
-        # Instantiate the device
-        self.buck_dev = BuckConverterDevice("Buck1")
-
-        # Add its symbolic block to the global system root
-        # (In a complex grid, TopologyAssembler would connect ports here)
-        self.root_block.add(self.buck_dev.get_block())
+    return block, Vin_sw
 
 
-# ==============================================================================
-# LAYER 3: EXECUTION RUNNER (Numerical Method)
-# ==============================================================================
-def run_architectural_case(jacobian_backend: JacobianBackend, vectorized: bool = False):
-    label = "VECTORIZED (PhD Engine)" if vectorized else f"Standard ({jacobian_backend.name})"
-    print(f"\n[Arch-Test] Running: {label}")
+# -----------------------------------------------------------------------------
+# Simulation runner
+# -----------------------------------------------------------------------------
 
-    # --- Parameters ---
+def run_case(backend_str: str):
+    print("\n" + "=" * 70)
+    print(f"Running Buck Converter | Backend: {backend_str}")
+    print("=" * 70)
+
+    # --- Electrical / control parameters ---
     V_IN = 48.0
     V_OUT_REF = 12.0
-    T_SW = 1.0 / 20e3
+    F_SW = 20e3
+    T_SW = 1.0 / F_SW
     DUTY = V_OUT_REF / V_IN
+
     DT = 1e-6
     T_TOTAL = 0.020
 
-    # 1. Instantiate the Problem (Topology Container)
-    problem = BuckSystem("Buck_Validation_Case")
+    # --- 1. Construir modelo y el Problema Base ---
+    block, vin_var = create_buck_converter_system()
+    block.unify_blocks()
+    glob_time = Var("t_glob")
 
-    # ---: Build the internal structure ---
-    problem.build_structure()
+    problem = BaseProblem(sys_block=block, glob_time=glob_time)
+    problem.set_newton_trace_collector(NewtonTraceCollector())
 
-    # 2. Instantiate the Driver (ImplicitJitSolver)
-    driver = ImplicitJitSolver(
-        system_block=problem.root_block,
-        time_var=problem.t_sym,
-        backend=SimulationBackend.SymbolicImplicit,
-        jacobian_backend=jacobian_backend
-    )
+    # --- 2. Seleccionar el Solver JIT ---
+    if backend_str == "SD":
+        solver = JitSymbolicSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    elif backend_str == "AD":
+        solver = JitAdSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    elif backend_str == "AD_VEC":
+        solver = AdVecSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    else:
+        raise ValueError(f"Backend desconocido: {backend_str}")
 
-    # 3. Compile (JIT Analysis)
-    driver.compile(verbose=False)
-
-    # Enable Diagnostics (Optional)
-    driver.enable_diagnostics()
-
-    # --- Setup PWM Controller ---
-    try:
-        param_uid = problem.buck_dev.Vin_sw.uid
-    except AttributeError:
-        print("Error: buck_dev not found in problem. Did build_structure() run?")
-        return None, None, None, 0.0
-
-    engine_ref = driver._engine
-
-    # Locate the parameter index in the flattened array of the compiled engine
-    p_idx = len(engine_ref._event_parameters) + engine_ref.uid2idx_params[param_uid]
-
-    def pwm_controller_arch(t, x, params):
-        t_mod = t % T_SW
+    # --- 3. Controlador PWM ---
+    def pwm_controller(t_curr, x_prev, full_params):
+        t_mod = t_curr % T_SW
         val = V_IN if t_mod < (DUTY * T_SW) else 0.0
-        params[p_idx] = val
 
-    # --- Simulation Loop ---
-    steps = int(T_TOTAL / DT)
+        # En la nueva arquitectura, full_params = [event_params..., constant_params...]
+        offset = problem.get_variable_parameter_number()
+        idx = problem.uid2idx_params[vin_var.uid]
+        full_params[offset + idx] = val
 
-    # Initial State Vector (Zeros)
-    x_curr = np.zeros(engine_ref._n_vars)
-
+    # --- 4. Ejecutar simulación ---
     t_start = time.time()
 
-    t_arr, y_arr = engine_ref.simulate_unified(
-        t0=0.0,
-        t_end=T_TOTAL,
-        h=DT,
-        x0=x_curr,
-        dx0=None,
-        params0=None,
-        method=DynamicIntegrationMethod.Trapezoid,
-        boundary_update_fn=pwm_controller_arch,
-        vectorized=vectorized,
-        dense_threshold=100,
-        verbose=False
-    )
+    if backend_str == "SD":
+        t_arr, y_arr = solver.simulate(boundary_update_fn=pwm_controller)
+    else:
+        x0 = problem.get_x0()
+        dx0 = np.zeros(problem.get_all_vars_number())
+        params0 = np.zeros(problem.get_variable_parameter_number())
+        t_arr, y_arr = solver.simulate(x0=x0, dx0=dx0, params0=params0, boundary_update_fn=pwm_controller)
 
     elapsed = time.time() - t_start
 
-    # --- Extract Results ---
-    idx_v = engine_ref.uid2idx_vars[problem.buck_dev.v_C_ref.uid]
-    idx_i = engine_ref.uid2idx_vars[problem.buck_dev.i_L_ref.uid]
+    # --- 5. Extraer variables ---
+    idx_iL = problem.get_var_idx(block.state_vars[0])
+    idx_vC = problem.get_var_idx(block.state_vars[1])
 
-    sol_v = y_arr[:, idx_v]
-    sol_i = y_arr[:, idx_i]
+    sol_i = y_arr[:, idx_iL]
+    sol_v = y_arr[:, idx_vC]
 
-    print(f"   Steps: {steps} | Time: {elapsed:.4f}s")
-    print(f"   Final V: {sol_v[-1]:.4f} V")
+    print(f"Elapsed time : {elapsed:.4f} s")
+    print(f"Final V_out  : {sol_v[-1]:.6f} V")
+    print(f"Final I_L    : {sol_i[-1]:.6f} A")
+
+    collector = problem.get_newton_trace_collector()
+    if collector:
+        print(f"Newton iters : {len(collector.records)}")
 
     return t_arr, sol_v, sol_i, elapsed
 
 
-# ==============================================================================
-# MAIN COMPARISON
-# ==============================================================================
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
 def main():
-    print("======================================================================")
-    print("   VERAGRID NEW ARCHITECTURE VALIDATION")
-    print("   DeviceInterface -> ProblemBase -> ImplicitJitSolver")
-    print("======================================================================")
+    # 1. Fase de Ejecución
+    t_sym, v_sym, i_sym, time_sym = run_case("SD")
+    t_ad, v_ad, i_ad, time_ad = run_case("AD")
+    t_vec, v_vec, i_vec, time_vec = run_case("AD_VEC")
 
-    # 1. Run Standard AD (Baseline)
-    t1, v1, i1, time1 = run_architectural_case(JacobianBackend.Automatic, vectorized=False)
+    # 2. Fase de Comparación y Validación
+    print("\n" + "-" * 70)
+    print("COMPARISON SUMMARY (NEW SOLVERS)")
+    print("-" * 70)
+    print(f"SD (Symbolic) time : {time_sym:.4f} s")
+    print(f"AD time            : {time_ad:.4f} s")
+    print(f"AD_VEC time        : {time_vec:.4f} s")
 
-    # 2. Run Vectorized PhD Engine (The Goal)
-    t2, v2, i2, time2 = run_architectural_case(JacobianBackend.Automatic, vectorized=True)
+    err_ad_v = np.max(np.abs(v_sym - v_ad))
+    err_vec_v = np.max(np.abs(v_sym - v_vec))
 
-    # 3. Validation
-    err_max = np.max(np.abs(v1 - v2))
-    print("\n----------------------------------------------------------------------")
-    print(f"VALIDATION RESULT:")
-    print(f"   Max Discrepancy (Vectorized vs Standard): {err_max:.6e}")
+    print("-" * 30)
+    print(f"Max Error AD vs SD      : {err_ad_v:.3e}")
+    print(f"Max Error AD_VEC vs SD  : {err_vec_v:.3e}")
 
-    if err_max < 1e-5:
-        print("   >>> SUCCESS: The new architecture is numerically exact.")
-    else:
-        print("   >>> FAIL: Discrepancy detected.")
+    # Asegurarnos de que todos los motores den el mismo resultado físico
+    assert np.allclose(v_sym, v_ad, atol=1e-5), "AD Solver Failed Accuracy Check!"
+    assert np.allclose(v_sym, v_vec, atol=1e-5), "AD_VEC Solver Failed Accuracy Check!"
 
-    # 4. Plot
-    plt.figure(figsize=(10, 6))
+    print("\n>>> SUCCESS: All new engines produced identical physical results.")
+
+    # 3. Fase de Ploteo
+    plt.figure(figsize=(10, 8))
+
     plt.subplot(2, 1, 1)
-
-    plt.plot(t1 * 1000, v1, 'k', linewidth=4, alpha=0.3, label="Standard AD")
-
-    plt.plot(t2 * 1000, v2, 'r--', label="New Vectorized Engine")
-    plt.ylabel("Voltage [V]")
-    plt.title("Architectural Consistency Check")
+    plt.plot(t_sym * 1000, v_sym, 'k-', linewidth=4, alpha=0.3, label='SD (Reference)')
+    plt.plot(t_ad * 1000, v_ad, 'b--', label='AD')
+    plt.plot(t_vec * 1000, v_vec, 'r:', linewidth=2, label='AD_VEC')
+    plt.ylabel('Voltage [V]')
+    plt.title('Buck Converter: New Architecture Consistency Check')
     plt.legend()
     plt.grid(True)
 
     plt.subplot(2, 1, 2)
-    plt.plot(t1 * 1000, i1, 'k', linewidth=4, alpha=0.3)
-    plt.plot(t2 * 1000, i2, 'r--')
-    plt.ylabel("Current [A]")
-    plt.xlabel("Time [ms]")
+    plt.plot(t_sym * 1000, i_sym, 'k-', linewidth=4, alpha=0.3, label='SD')
+    plt.plot(t_ad * 1000, i_ad, 'b--', label='AD')
+    plt.plot(t_vec * 1000, i_vec, 'r:', linewidth=2, label='AD_VEC')
+    plt.ylabel('Current [A]')
+    plt.xlabel('Time [ms]')
+    plt.legend()
     plt.grid(True)
 
     plt.tight_layout()

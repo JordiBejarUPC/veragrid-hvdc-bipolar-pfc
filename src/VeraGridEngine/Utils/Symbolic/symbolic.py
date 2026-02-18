@@ -947,6 +947,15 @@ class UnOp(Expr):
 def heaviside_num(x):
     return 0.0 if x <= 0 else 1.0
 
+def get_namespace() -> Dict[str, Any]:
+    namespace = {
+                "math": math,
+                "np": np,
+                "nb": nb,
+                "_heaviside": heaviside_num,
+            }
+    return namespace
+
 
 functions_dict: Mapping[str, Callable[[NUMBER], NUMBER]] = {
     "sin": math.sin,
@@ -1801,5 +1810,6 @@ __all__ = [
     'get_expression_vars',
     '_dict_to_expr',
     'abs',
-    '_to_expr'
-]
+    '_to_expr',
+    'get_namespace'
+    ]

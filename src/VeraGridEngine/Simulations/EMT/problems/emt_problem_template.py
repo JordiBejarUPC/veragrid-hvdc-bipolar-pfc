@@ -6,7 +6,7 @@
 from abc import ABC
 from typing import List, Dict
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Any
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -19,28 +19,22 @@ class EmtProblemTemplate(ABC):
         raise NotImplementedError("get_device_vars_dict")
 
     def get_all_vars_number(self) -> int:
-        return 0
+        raise 0
 
     def get_diff_var_number(self) -> int:
-        return 0
+        raise 0
 
     def get_algebraic_var_number(self) -> int:
-        return 0
+        raise 0
 
     def get_states_number(self) -> int:
-        return 0
+        raise 0
 
     def get_variable_parameter_number(self) -> int:
-        return 0
-
-    # def get_constant_parameters(self) -> Vec:
-    #     raise NotImplementedError("get_constant_parameters")
+        raise 0
 
     def get_x0(self) -> Vec:
         raise NotImplementedError("get_x0")
-
-    # def compute_event_params(self, parameters: Vec, time_value: float) -> Vec:
-    #     raise NotImplementedError("compute_event_params")
 
     def update_variable_params(self, t: float):
         raise NotImplementedError("update_variable_params")
@@ -66,31 +60,37 @@ class EmtProblemTemplate(ABC):
     def get_j22(self, x: Vec, dx: Vec, h: float):
         raise NotImplementedError("get_j22")
 
+    # ==============================================================================
+    # SYMBOLIC & JIT GETTERS
+    # ==============================================================================
+
     def get_state_vars(self):
-        return NotImplementedError("get_state_vars")
+        raise NotImplementedError("get_state_vars")
 
     def get_algebraic_vars(self):
-        return NotImplementedError("get_algebraic_vars")
+        raise NotImplementedError("get_algebraic_vars")
 
     def get_state_eqs(self):
-        return NotImplementedError("get_state_eqs")
+        raise NotImplementedError("get_state_eqs")
 
     def get_algebraic_eqs(self):
-        return NotImplementedError("get_algebraic_eqs")
+        raise NotImplementedError("get_algebraic_eqs")
 
     def get_variable_parameters(self):
-        return NotImplementedError("get_variable_parameters")
+        raise NotImplementedError("get_variable_parameters")
 
     def get_constant_parameters(self):
-        return NotImplementedError("get_constant_parameters")
+        raise NotImplementedError("get_constant_parameters")
 
     def get_parameters_values(self):
-        return NotImplementedError("get_parameters_values")
+        raise NotImplementedError("get_parameters_values")
 
-    def def_event_params_fn(self,ev_param: None, tm:float):
-        return NotImplementedError("get_event_params_fn")
+    def def_event_params_fn(self,ev_param: Vec,tm:float)-> Vec:
+        raise NotImplementedError("get_event_params_fn")
 
     def get_dt(self):
-        return NotImplementedError("get_dt")
+        raise NotImplementedError("get_dt")
 
+    def get_newton_trace_collector(self) -> Any:
+        raise NotImplementedError("get_newton_trace_collector")
 

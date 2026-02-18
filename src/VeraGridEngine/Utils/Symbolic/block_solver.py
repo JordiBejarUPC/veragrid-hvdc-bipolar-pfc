@@ -21,7 +21,7 @@ from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import  _compile_equations
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, DiffVar, Const, Expr, cos, sin,
-                                                    expression2numba, heaviside_num, BinOp, UnOp, Func)
+                                                    expression2numba,get_namespace, BinOp, UnOp, Func)
 from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, DynamicIntegrationMethod,SimulationBackend,
                                          JacobianBackend)
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
@@ -155,12 +155,7 @@ class SymbolicJacobian:
         self.J = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(neq, self.nvar))
 
         # --- Batch compilation ------------------------------------------------------
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
+        self.namespace: Dict[str, Any] = get_namespace()
 
         blocks = [
             equations_sorted[i:i + batch_size]
@@ -536,12 +531,7 @@ class SymbolicVector:
                     print()
 
         if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": _heaviside,
-            }
+            self.namespace: Dict[str, Any] = get_namespace()
 
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
@@ -606,12 +596,7 @@ class SymbolicParamsVector:
                 used_vars_count[var.uid] += 1
 
         if len(eqs):
-            self.namespace: Dict[str, Any] = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": _heaviside,
-            }
+            self.namespace: Dict[str, Any] = get_namespace()
 
             fname = f"func"  # since we compile into a namespace, there won't be repeated names
 
@@ -665,12 +650,7 @@ class SymbolicDerivative:
         self.data: Vec = np.zeros(len(diff_vars))
         self.index_map: IntVec = np.zeros(len(diff_vars), dtype=np.int32)
 
-        self.namespace: Dict[str, Any] = {
-            "math": math,
-            "np": np,
-            "nb": nb,
-            "_heaviside": _heaviside,
-        }
+        self.namespace: Dict[str, Any] = get_namespace()
         fname = f"func"  # since we compile into a namespace, there won't be repeated names
         # Build source
         uid2dx_expression = {}
