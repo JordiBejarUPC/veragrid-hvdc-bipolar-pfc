@@ -211,31 +211,6 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-# sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
-#
-# slv = BlockSolver(ss, sim_time)
-#
-#
-# x0 = slv.build_init_vars_vector_from_uid(init_guess)
-# dx0 = np.zeros(len(slv.diff_vars))
-# Vm = find_name_in_block("Vm", slv.block_system)
-#
-
-# t, y, _ = slv.simulate(
-#     t0=0,
-#     t_end=xlim,
-#     h=0.001,
-#     x0=x0,
-#     dx0=dx0,
-#     method=DynamicIntegrationMethod.BackEuler,
-#     newton_tol=1e-8,
-#     newton_max_iter=1000,
-#     followed_vars=None,
-#     initialized=False,
-#     verbose=False,
-
-# )
-
 pr.disable()
 
 xlim = options.simulation_time

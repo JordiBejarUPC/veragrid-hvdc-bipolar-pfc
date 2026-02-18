@@ -511,7 +511,6 @@ class Block:
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
-                 event_dict_def: Dict[Var, Const] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
                  name: str = "",
@@ -576,8 +575,6 @@ class Block:
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
-        self.event_dict_def: Dict[Var, Const] = dict() if event_dict_def is None else event_dict_def
-
 
     def set_parameter(self, ref: ParamPowerFlowRefferenceType, cte: Const):
         """
