@@ -361,28 +361,6 @@ class Var(Expr):
         obj.uid = data["uid"]
         return obj
 
-    # def to_dict(self) -> Dict[str, Any]:
-    #     """
-    #
-    #     :return:
-    #     """
-    #     d = super().to_dict()
-    #     d["type"] = "Var"
-    #     d["name"] = self.name
-    #     d["uid"] = self.uid
-    #     return d
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-
-        :return:
-        :rtype: Dict[str, str]
-        """
-
-        d = super().to_dict()
-        d["type"] = "DiffVar"
-        d["base_var"] = self.base_var.to_dict()
-        return d
 
     @property
     def diff_order(self) -> int:
