@@ -339,9 +339,15 @@ class Var(Expr):
         return self.name
 
     def __eq__(self, other):
+        # Comparación entre Var: booleano por uid
         if isinstance(other, Var):
             return self.uid == other.uid
-        return False
+
+        # Comparación simbólica con cualquier Expr o número
+        if isinstance(other, Expr) or isinstance(other, (int, float)):
+            return Comparison(self, "==", other)
+
+        return NotImplemented
 
     # @staticmethod
     # def parse(data: Dict[str, Any]) -> "Var":
@@ -1320,21 +1326,28 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
     # ------------------------------------------------------------------
     # Atomic nodes
     # ------------------------------------------------------------------
+
     if isinstance(expr, Const):
         val = expr.value
         if isinstance(val, complex):
             return {"type": "Const", "value": [val.real, val.imag], "kind": "complex", "uid": expr.uid}
-        return {"type": "Const", "value": expr.value, "uid": expr.uid}
+        return {"type": "Const", "value": val, "uid": expr.uid}
 
-    if isinstance(expr, Var) and not Var.base_var is None:
-        if Var.base_var is None:
-            return {"type": "Var", "name": expr.name, "uid": expr.uid, "base_var": "None"}
+    if isinstance(expr, Var):
+        if expr.base_var is None:
+            return {
+                "type": "Var",
+                "name": expr.name,
+                "uid": expr.uid,
+                "base_var": "None"
+            }
         else:
-            return {"type": "DiffVar",
-                    "name": expr.name,
-                    "uid": expr.uid,
-                    "base_var": _expr_to_dict(expr.base_var),
-                    }
+            return {
+                "type": "Var",
+                "name": expr.name,
+                "uid": expr.uid,
+                "base_var": _expr_to_dict(expr.base_var),
+            }
 
     # ------------------------------------------------------------------
     # Composite nodes
@@ -1386,18 +1399,17 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr:
         else:
             obj = Const(data["value"])
     elif t == "Var":
-        obj = Var(data["name"])
+        if data["base_var"] == "None":
+            obj = Var(data["name"])
+        else:
+            # reconstruct base_var
+            base_data = data["base_var"]
+            base_var = _dict_to_expr(base_data)
+            if not isinstance(base_var, Var):
+                raise TypeError("base_var must be a Var")
 
+            obj = Var(name=data["name"], base_var=base_var)
 
-    elif t == "DiffVar":
-
-        # reconstruct base_var
-        base_data = data["base_var"]
-        base_var = _dict_to_expr(base_data)
-        if not isinstance(base_var, Var):
-            raise TypeError("base_var must be a Var")
-
-        obj = Var(name=data["name"], base_var=base_var)
 
     elif t == "BinOp":
         obj = BinOp(_dict_to_expr(data["left"]), data["op"], _dict_to_expr(data["right"]))
