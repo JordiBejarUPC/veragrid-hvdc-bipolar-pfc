@@ -453,6 +453,10 @@ class DynamicModelHost(EditableDevice):
         else:
             return False
 
+        #     return True
+        # else:
+        #     return False
+
     def copy(self, forced_new_idtag: bool = False) -> "DynamicModelHost":
         """
         Deep copy of DynamicModelHost

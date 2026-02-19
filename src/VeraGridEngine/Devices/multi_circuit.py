@@ -2335,6 +2335,7 @@ class MultiCircuit(Assets):
             return True, logger, dgrid
 
         for new_elm in self.items():  # for every device...
+
             action = ActionType.NoAction
 
             # try to search for the counterpart in the base circuit

@@ -3,7 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import math
-import cProfile as profile
+import cProfile
+import pstats
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -48,8 +49,9 @@ import VeraGridEngine.api as gce
 # Build VeraGrid object
 ###########################################################################################################################
 
-pr = profile.Profile()
-pr.disable()
+profiler = cProfile.Profile()
+profiler.enable()
+
 
 
 def find_name_in_block(name: str, block: Block):
@@ -186,7 +188,7 @@ print(res.get_branch_df())
 
 params_mapping = dict()
 
-pr.enable()
+
 
 options = RmsOptions(time_step=0.001,
                  simulation_time=1,
@@ -211,7 +213,8 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-pr.disable()
+profiler.disable()
+profiler.dump_stats("profiling_stats.prof")
 
 xlim = options.simulation_time
 
@@ -248,7 +251,6 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-pr.dump_stats('profile.pstat')
 
 
 #

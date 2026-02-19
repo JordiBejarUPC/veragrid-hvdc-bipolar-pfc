@@ -7,6 +7,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+import cProfile
+import pstats
+
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -78,6 +81,9 @@ class RmsSimulationDriver(DriverTemplate):
         print(res.get_bus_df())
         print(res.get_branch_df())
 
+        profiler = cProfile.Profile()
+        profiler.enable()
+
         problem = RmsProblemDae(grid=self.grid,
                                 options=self.options,
                                 pf_results=self.pf_results)
@@ -94,6 +100,10 @@ class RmsSimulationDriver(DriverTemplate):
 
         t, y, well_initialized, converged = solver.simulate()
 
+        profiler.disable()
+
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats(10)
 
         self.results = RmsResults(
             well_initialized=well_initialized,
@@ -105,3 +115,5 @@ class RmsSimulationDriver(DriverTemplate):
             vars_glob_name2uid=problem.vars_glob_name2uid,
             devices_vars_info=problem.get_device_vars_dict()
         )
+
+

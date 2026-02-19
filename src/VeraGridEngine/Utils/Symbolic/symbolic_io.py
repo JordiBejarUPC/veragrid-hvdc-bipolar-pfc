@@ -728,32 +728,6 @@ def compare_blocks(block1: Block, block2: Block, testing=False):
     diff_vars_save2 = saver2.get_diff_vars_to_save()
     blocks2 = saver2.get_blocks()
 
-    # if const_save1 != const_save2:
-    #     if testing:
-    #         logger.add_error(msg="List of constants differs",
-    #                          value=const_save2,
-    #                          expected_value=const_save1)
-    #         return logger.error_count() == 0, logger
-    #     else:
-    #         return False
-    #
-    # if vars_save1 != vars_save2:
-    #     if testing:
-    #         logger.add_error(msg="List of vars differs",
-    #                          value=vars_save2,
-    #                          expected_value=vars_save1)
-    #         return logger.error_count() == 0, logger
-    #     else:
-    #         return False
-    #
-    # if diff_vars_save1 != diff_vars_save2:
-    #     if testing:
-    #         logger.add_error(msg="List of diffvars differs",
-    #                          value=diff_vars_save2,
-    #                          expected_value=diff_vars_save1)
-    #         return logger.error_count() == 0, logger
-    #     else:
-    #         return False
 
     return (
             (blocks1, const_save1, vars_save1, diff_vars_save1)
