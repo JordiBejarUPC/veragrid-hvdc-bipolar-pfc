@@ -6,10 +6,11 @@
 import numpy as np
 import numba as nb
 from matplotlib import pyplot as plt
-import scipy.linalg
-from scipy.sparse.linalg import spsolve
+import scipy.linalg as la
 import scipy.sparse.linalg as spla
 import math
+import time
+import scipy.sparse as sp
 
 from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -19,28 +20,15 @@ from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 
 # def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
-def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec):
+def compute_state_matrix(problem, x: Vec, dx: Vec, dense: bool = True):
     """
-    Small Signal Stability analysis
-    :param problem: RmsProblemTemplate
-    :param x: variables (1D numpy array)
-    :param dx: derivatives (1D numpy array)
-
-    :return: np array state matrix(A)
-
-    Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
-        Tx'=f(x,y)
-        0=g(x,y)
-        the A matrix is computed as:
-        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+    Small Signal Stability analysis core matrix computation.
     """
     h = problem.get_dt_value()
 
@@ -49,31 +37,64 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec):
     gx = problem.get_j21(x, dx, h)  # ∂g/∂x
     gy = problem.get_j22(x, dx, h)  # ∂g/∂y
 
-    gyx = spsolve(gy, gx)
-    return fx - fy @ gyx
+    gy_lu = spla.splu(gy)
+
+    if dense:
+        gy_inv_gx = gy_lu.solve(gx.toarray())
+        A = fx.toarray() - fy.toarray() @ gy_inv_gx
+
+        A_bal, scale_factors = la.matrix_balance(A, separate=False)
+
+        return A_bal, A
+    else:
+        n_states = fx.shape[0]
+
+        def matvec(v):
+            return fx @ v - fy @ gy_lu.solve(gx @ v)
+
+        def rmatvec(v):
+            return fx.T @ v - gx.T @ gy_lu.solve(fy.T @ v, trans='T')
+
+        A_op = spla.LinearOperator((n_states, n_states), matvec=matvec, rmatvec=rmatvec)
+        return A_op, None
+
 
 @nb.njit(cache=True)
-def compute_participation_factors(An, Am, v, w, n_eigenvalues, num_states):
+def compute_participation_factors(v, w):
     """
-    :param An: number of rows(states) in the state matrix
-    :param Am: number of columns(modes) in the state matrix
-    :param v: right eigenvectors
-    :param w: left eigenvectors
-    :param n_eigenvalues: number of eigenvalues
-    :param num_states: number of states
-    :return: participation factors
+    Calculates normalized participation factors correctly for both dense and sparse.
+    Compatible with strict Numba (without keep dims).
+    :param v: right eigenvectors (columns)
+    :param w: left eigenvectors (columns)
     """
-    participation_factors = np.zeros((An, Am))
-    for row in range(w.shape[0]):
-        for column in range(w.shape[0]):
-            participation_factors[row, column] = abs(w[row, column]) * abs(v[row, column])
+    n_rows = v.shape[0]
+    k = v.shape[1]
 
-    # normalize participation factors
-    pfact_abs = np.ones(num_states) @ participation_factors
-    for i in range(n_eigenvalues):
-        participation_factors[:, i] /= pfact_abs[i]
+    for i in range(k):
+        norm_factor = 0j
+        for j in range(n_rows):
+            norm_factor += w[j, i] * v[j, i]
 
-    return participation_factors
+        if np.abs(norm_factor) > 1e-15:
+            for j in range(n_rows):
+                w[j, i] = w[j, i] / norm_factor
+
+    PF = np.empty_like(v, dtype=np.float64)
+    for i in range(k):
+        for j in range(n_rows):
+            PF[j, i] = np.abs(w[j, i] * v[j, i])
+
+    PF_norm = np.empty_like(PF)
+    for i in range(k):
+        col_sum = np.sum(PF[:, i])
+        if col_sum > 1e-15:
+            for j in range(n_rows):
+                PF_norm[j, i] = PF[j, i] / col_sum
+        else:
+            for j in range(n_rows):
+                PF_norm[j, i] = PF[j, i]
+
+    return PF_norm
 
 # @nb.njit(cache=True)
 def select_eigs_without_conjugates(eigenvalues):
@@ -175,157 +196,116 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_dense_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, verbose: int = 0):
-    """
-    Small Signal Stability analysis "dense matrix"
-    :param problem: RmsProblemTemplate
-    :param x: variables (1D numpy array)
-    :param dx: derivatives (1D numpy array)
-    :param verbose: verbosity level (0 for none)
-    :return:
-        stability: str
-            "Unstable", "Marginally stable" or "Asymptotically stable"
-        eigenvalues:  1D row numpy array
-        participation factors: 2D array csc matrix.
-            Participation factors of mode i stored in PF[:,i]
+def run_dense_small_signal_stability(problem, x: Vec, dx: Vec, verbose: int = 0):
+    # We obtain the balanced matrix
+    A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx, dense=True)
 
-    Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
-        Tx'=f(x,y)
-        0=g(x,y)
-        the A matrix is computed as:
-        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+    # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
+    eigenvalues, w_raw, v = la.eig(A_bal, left=True, right=True)
+    w = w_raw.conj()
 
-    2. Find eigenvalues and right(V) and left(W) eigenvectors
+    participation_factors = compute_participation_factors(v=v, w=w)
 
-    3. Calculate normalized participation factors PF = W · V
-
-    4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
-    """
-    A = compute_state_matrix(problem= problem,
-                             x=x,
-                             dx=dx) # sparse state matrix csc matrix
-    num_states = A.shape[0]
-
-    # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
-    eigenvalues, w, v = scipy.linalg.eig(A.toarray(), left=True, right=True)
-
-    # find participation factors
-    participation_factors = compute_participation_factors(An=A.shape[0],
-                                                          Am=A.shape[1],
-                                                          v=v,
-                                                          w=w,
-                                                          n_eigenvalues=len(eigenvalues),
-                                                          num_states=num_states)
-
-    # find damping ratios and oscillation frequencies only for the complex conjugate modes
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
-
-    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
-                                                                            eig_no_conjugates = eig_no_conjugates)
+    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates)
 
     if verbose:
-        print("State matrix:", A.toarray())
         print("Eigenvalues:", eigenvalues)
-        print("Participation factors:", participation_factors)
-        print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
-        print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
+
+    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A_orig
 
 
-    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A.toarray()
+def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose: int = 0):
+    t0 = time.perf_counter()
+    h = problem.get_dt_value()
 
-def run_sparse_small_signal_stability(problem: RmsProblemTemplate, x: Vec, dx:Vec, k:int, verbose: int = 0):
-    """
-    Small Signal Stability analysis "sparse matrix"
-    :param problem: RmsProblemTemplate
-    :param x: variables (1D numpy array)
-    :param dx: derivatives (1D numpy array)
-    :param k: number of modes to be calculated (int)
-    :param verbose: verbosity level (0 for none)
-    :return:
-        stability: str
-            "Unstable", "Marginally stable" or "Asymptotically stable"
-        eigenvalues:  1D row numpy array
-        participation factors: 2D array csc matrix.
-            Participation factors of mode i stored in PF[:,i]
+    # Obtain sparse submatrices
+    fx = problem.get_j11(x, dx, h)
+    fy = problem.get_j12(x, dx, h)
+    gx = problem.get_j21(x, dx, h)
+    gy = problem.get_j22(x, dx, h)
 
-    Small Signal Stability analysis:
-    1. Calculate the state matrix (A) from the state space model. From the semi-explicit DAE model:
-        Tx'=f(x,y)
-        0=g(x,y)
-        the A matrix is computed as:
-        A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
+    n_states = fx.shape[0]
 
-    2. Find eigenvalues and right(V) and left(W) eigenvectors
+    #1. BUILD THE ENHANCED JACOBIAN (Sparse)
+    J_top = sp.hstack([fx, fy])
+    J_bot = sp.hstack([gx, gy])
+    J_aug = sp.vstack([J_top, J_bot], format='csc')
 
-    3. Calculate normalized participation factors PF = W · V
+    #2. SUPER-LU FACTORIZATION OF THE ENTIRE SYSTEM
+    J_aug_lu = spla.splu(J_aug)
 
-    4. Calculate damping ratios and oscillation frequencies of the complex conjugate poles
-    """
-    A = compute_state_matrix(problem= problem,
-                             x=x,
-                             dx=dx) # sparse state matrix csc matrix
-    num_states = A.shape[0]
+    #3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
+    def matvec_inv(b):
+        rhs = np.zeros(J_aug.shape[0], dtype=np.float64)
+        rhs[:n_states] = b
+        sol = J_aug_lu.solve(rhs)
+        return sol[:n_states]
 
-    # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
-    eigenvalues_r, v = spla.eigs(
-        A,
-        k=k,
-        sigma=0.0,  # shift-invert → critical modes
-        which="LM"
-    )
+    def rmatvec_inv(b):
+        rhs = np.zeros(J_aug.shape[0], dtype=np.float64)
+        rhs[:n_states] = b
+        sol = J_aug_lu.solve(rhs, trans='T')
+        return sol[:n_states]
 
-    # reduced A matrix
-    A_r = v.conj().T @ (A @ v)
+    Inv_A_op = spla.LinearOperator((n_states, n_states), matvec=matvec_inv, rmatvec=rmatvec_inv)
 
-    # dense eigenvalues decomposition
-    eigenvalues, w_r, v_r = scipy.linalg.eig(
-        A_r,
-        left=True,
-        right=True
-    )
+    # 4. MODAL EXTRACTION
+    # In small systems, k_search cannot exceed the dimension of the operator.
+    k_search = min(k + 6, n_states - 2)
+    if k_search <= 0:
+        k_search = k
 
-    # lift left eivenvectors
-    w = v @ w_r
+    mu_R, v_raw = spla.eigs(Inv_A_op, k=k_search, which="LM", tol=1e-10)
+    mu_L, w_raw = spla.eigs(Inv_A_op.T, k=k_search, which="LM", tol=1e-10)
 
-    # find participation factors
-    # participation_factors = compute_participation_factors(An=A_r.shape[0],
-    #                                                       Am=A_r.shape[1],
-    #                                                       v=v,
-    #                                                       w=w,
-    #                                                       n_eigenvalues=len(eigenvalues),
-    #                                                       num_states=num_states)
+    # Tolerance for filtering algebraic noise (mu -> 0 means lambda -> inf)
+    tol_mu = 1e-8
 
+    # --- Rights Filtering ---
+    valid_mask_R = np.abs(mu_R) > tol_mu
+    mu_R_valid = mu_R[valid_mask_R]
+    v_valid = v_raw[:, valid_mask_R]
+    eigenvalues_R = 1.0 / mu_R_valid
 
-    # # bu-orthonormalization
-    for i in range(k):
-        norm_factor = w[:, i].conj().T @ v[:, i]
-        if np.abs(norm_factor) < 1e-12:
-            raise RuntimeError("Bi-orthogonality lost in reduced projection")
-        w[:, i] /= norm_factor
+    # --- Left Filtering ---
+    valid_mask_L = np.abs(mu_L) > tol_mu
+    mu_L_valid = mu_L[valid_mask_L]
+    w_valid = w_raw[:, valid_mask_L]
+    eigenvalues_L = 1.0 / mu_L_valid
 
-    # reduced participation factors
-    PF = np.abs(v * w)
-    participation_factors = PF / PF.sum(axis=0, keepdims=True)
+    # 5. STRICT MATCHING
+    # To avoid Arnoldi asymmetries, we use a metric that combines Re and Im.
+    # We sort from lowest to highest natural frequency.
+    order_R = np.argsort(np.abs(eigenvalues_R.imag) + np.abs(eigenvalues_R.real))
+    order_L = np.argsort(np.abs(eigenvalues_L.imag) + np.abs(eigenvalues_L.real))
 
+    eigenvalues_R = eigenvalues_R[order_R]
 
-    # find damping ratios and oscillation frequencies only for the complex conjugate modes
+    v_valid = v_valid[:, order_R]
+    w_valid = w_valid[:, order_L]
+
+    # We strictly truncate to the requested k modes.
+    if len(eigenvalues_R) > k:
+        eigenvalues_R = eigenvalues_R[:k]
+        v_valid = v_valid[:, :k]
+
+    # We use w_valid shape for validate the size of L_eigen
+    if w_valid.shape[1] > k:
+        w_valid = w_valid[:, :k]
+
+    eigenvalues = eigenvalues_R
+
+    #6. PARTICIPATION
+    participation_factors = compute_participation_factors(v=v_valid, w=w_valid)
+
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
-    #
-    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues = eigenvalues,
-                                                                            eig_no_conjugates = eig_no_conjugates)
+    damping_ratios, conjugate_freq = compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates)
 
     if verbose:
-        print("Reduced state matrix:", A_r.toarray())
-        print("Eigenvalues:", eigenvalues)
-        print("Participation factors:", participation_factors)
-        print("Daming ratios:", [str(r) if not np.isnan(r) else '-' for r in damping_ratios])
-        print("Oscillation frequencies[Hz]:", [str(r) if not np.isnan(r) else '-' for r in conjugate_freq])
+        print(f"Sparse SSS Math Time: {(time.perf_counter() - t0) * 1000:.2f} ms")
 
-
-    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A_r.toarray(), A_r.toarray()
-
-
+    return eigenvalues, participation_factors, damping_ratios, conjugate_freq, None, None
 
 class SmallSignalStabilityDriver(DriverTemplate):
     """

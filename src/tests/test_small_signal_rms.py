@@ -28,9 +28,11 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+import time
 
 
 def stability_kundur_no_shunt():
+    t_start_total = time.perf_counter()
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
@@ -516,6 +518,14 @@ def stability_kundur_no_shunt():
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
 
+    t_end_setup = time.perf_counter()
+
+    ###########################################################################################################################
+    # Power Flow Execution
+    ###########################################################################################################################
+
+    t_start_pf = time.perf_counter()
+
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
         retry_with_other_methods=False,
@@ -541,6 +551,13 @@ def stability_kundur_no_shunt():
     power_flow = PowerFlowDriver(grid, pf_options)
     power_flow.run()
     res = power_flow.results
+
+    t_end_pf = time.perf_counter()
+
+    ###########################################################################################################################
+    # RMS Problem Compilation and SSS Driver Execution
+    ###########################################################################################################################
+
     rms_options = RmsOptions(time_step=0.001,
                          simulation_time=10,
                          tolerance=1e-6,
@@ -552,20 +569,33 @@ def stability_kundur_no_shunt():
 
     ss_options = SmallSignalStabilityOptions(ss_assessment_time = 0)
 
+    t_start_problem = time.perf_counter()
+
     problem = RmsProblemDae(grid=grid,
                             options=rms_options,
                             pf_results=res)
 
+    t_end_problem = time.perf_counter()
+
+    t_start_sss = time.perf_counter()
     small_signal_driver = SmallSignalStabilityDriver(grid=grid,
                                                      problem= problem,
                                                      rms_options = rms_options,
                                                      ss_options = ss_options)
 
     small_signal_driver.run()
+    t_end_sss = time.perf_counter()
 
     eigenvalues = small_signal_driver.results.eigenvalues
     PFactors = small_signal_driver.results.participation_factors
 
+    print(f"\n--- PROFILING SUMMARY ---")
+    print(f"Grid Setup Time:           {t_end_setup - t_start_total:.4f} s")
+    print(f"Power Flow Time:           {t_end_pf - t_start_pf:.4f} s")
+    print(f"RMS Problem Setup/Compile: {t_end_problem - t_start_problem:.4f} s")
+    print(f"SSS Solver Execution:      {t_end_sss - t_start_sss:.4f} s")
+    print(f"Total Time:                {t_end_sss - t_start_total:.4f} s")
+    print("-------------------------\n")
 
     return eigenvalues, PFactors
 
