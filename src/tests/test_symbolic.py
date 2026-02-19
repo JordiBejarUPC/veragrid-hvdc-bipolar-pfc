@@ -7,6 +7,7 @@ from scipy.sparse import csc_matrix
 from types import MappingProxyType
 from typing import Any, Callable, Dict
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 
 # -----------------------------------------------------------------------------
 # Atomic & basic operations
@@ -207,6 +208,86 @@ def test_json_roundtrip_uid():
     clone = sym.Expr.from_json(expr.to_json())
     assert expr.uid == clone.uid
     assert expr.eval(x=0.9) == clone.eval(x=0.9)
+
+
+def test_symbolic_jacobian_nonlinear_5x5():
+    # -----------------------------
+    # Variables
+    # --------sym.---------------------
+    x0 = sym.Var("x0")
+    x1 = sym.Var("x1")
+    x2 = sym.Var("x2")
+    x3 = sym.Var("x3")
+    x4 = sym.Var("x4")
+
+    variables = [x0, x1, x2, x3, x4]
+
+    # -----------------------------
+    # Functions
+    # -----------------------------
+    f1 = x0 ** 2 + sym.sin(x1) + x2 * x3
+    f2 = x1 ** 2 + sym.cos(x2) + x3 * x4
+    f3 = x0 * x4 + x1 * x2
+    f4 = sym.sin(x0) + x2 ** 2 + x3
+    f5 = x0 * x1 + x4 ** 2
+
+    eqs = [f1, f2, f3, f4, f5]
+
+    # -----------------------------
+    # Dictionaries for compilation
+    # -----------------------------
+    compiler_names_dict: Dict[int, str] = {}
+    alias_names_dict: Dict[int, str] = {}
+
+    VARS_NAME = "x"
+
+    for i, v in enumerate(variables):
+        compiler_names_dict[v.uid] = f"{VARS_NAME}[{i}]"
+        alias_names_dict[v.uid] = f"{VARS_NAME}_{i}"
+
+    # -----------------------------
+    # Symbolic Jacobian
+    # -----------------------------
+    jac = SymbolicJacobian(
+        eqs=eqs,
+        variables=variables,
+        compiler_names_dict=compiler_names_dict,
+        alias_names_dict=alias_names_dict,
+        VARS_NAME="x",
+        DIFF_NAME="dx",
+        EVENT_PARAMS_NAME="vp",
+        PARAMS_NAME="cp",
+        use_jit=False,
+        batch_size=10,
+        n_jobs=1
+    )
+
+    # -----------------------------
+    # Evaluation point
+    # -----------------------------
+    xval = np.array([1.0, 2.0, 0.5, -1.0, 0.8])
+    dx = np.zeros_like(xval)
+    vp = np.zeros(0)
+    cp = np.zeros(0)
+
+    J_compiled = jac(xval, dx, vp, cp, h=1e-8).toarray()
+
+    # -----------------------------
+    # Numeric calculation
+    # -----------------------------
+    J_expected = np.array([
+        [2 * xval[0], np.cos(xval[1]), xval[3], xval[2], 0.0],
+        [0.0, 2 * xval[1], -np.sin(xval[2]), xval[4], xval[3]],
+        [xval[4], xval[2], xval[1], 0.0, xval[0]],
+        [np.cos(xval[0]), 0.0, 2 * xval[2], 1.0, 0.0],
+        [xval[1], xval[0], 0.0, 0.0, 2 * xval[4]]
+    ])
+
+    print("J_compiled:\n", J_compiled)
+    print("J_expected:\n", J_expected)
+
+    assert np.allclose(J_compiled, J_expected, atol=1e-8)
+
 
 # -----------------------------------------------------------------------------
 # 9. Immutability checks
