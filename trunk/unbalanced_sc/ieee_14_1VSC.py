@@ -12,10 +12,12 @@ Sbase = 100e6
 Zbase = Ubase**2 / Sbase
 grid.buses[9].r_fault = 10 / Zbase
 
-grid.vsc_devices[0].control1_val = 9.0
-grid.vsc_devices[0].control2_val = 0.0
+grid.vsc_devices[0].control1_val = -9.0
+grid.vsc_devices[0].control2_val = -0.0
 grid.vsc_devices[0].fault_control = ConverterFaultControlType.WECC_WT_Type_4B
 grid.vsc_devices[0].rate = 9.0
+
+vge.save_file(grid, 'ieee_14_1VSC_modified.veragrid')
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
@@ -26,7 +28,7 @@ pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
                                 verbose=1)
 res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 
-# print(res_pf.get_voltage_df())
+print(res_pf.get_voltage_df())
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation

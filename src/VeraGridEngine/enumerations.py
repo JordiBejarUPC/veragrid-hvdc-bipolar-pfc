@@ -616,6 +616,8 @@ class ConverterControlType(Enum):
     Pac = 'P_ac'
     Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
     Imax = 'Imax'
+    Fault1 = 'Fault1'
+    Fault2 = 'Fault2'
 
     def __str__(self) -> str:
         return str(self.value)

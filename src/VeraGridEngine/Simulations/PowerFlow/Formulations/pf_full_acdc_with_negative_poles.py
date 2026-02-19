@@ -860,7 +860,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Imax = 'Imax'
             """
 
-            if control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Vm_dc:
+            if control1 == ConverterControlType.Fault1 and control2 == ConverterControlType.Fault2:
+                u_vsc_pfp.append(k)
+                u_vsc_pt.append(k)
+                u_vsc_qt.append(k)
+
+            elif control1 == ConverterControlType.Vm_dc and control2 == ConverterControlType.Vm_dc:
                 self.logger.add_error(
                     f"VSC control1 and control2 are the same for VSC indexed at {k},"
                     f" control1: {control1}, control2: {control2}")
@@ -2043,17 +2048,17 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                         wecc_wt_type_4b = None
                         if any(self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.WECC_WT_Type_4B
                                for j in range(self.nc.nvsc)):
-                            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls_no_ifs import \
-                                wecc_wt_type_4b_no_ifs
+                            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import \
+                                wecc_wt_type_4b
 
-                        self.Pt_vsc[i], self.Qt_vsc[i] = wecc_wt_type_4b_no_ifs(
+                        self.Pt_vsc[i], self.Qt_vsc[i] = wecc_wt_type_4b(
                             V_measured=self.V[self.nc.vsc_data.T[i]],
                             P_measured=self.Pt_vsc[i],
-                            Q_measured=self.Qt_vsc[i],
                             S_base_vg=self.nc.Sbase,
                             S_rated_vsc=self.nc.vsc_data.rates[i],
                             Vpf=abs(self.V0[self.nc.vsc_data.T[i]])
                             )
+                        print()
 
                     elif self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.Standard:
 
@@ -2380,6 +2385,30 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
+    def compute_f_vsc(self) -> Vec:
+
+        P_ref, Q_ref = 0.0, 0.0
+
+        for vsc_i in range(len(self.u_vsc_pt)):
+            # Lazy import to avoid circular dependency - only import if needed
+            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import wecc_wt_type_4b
+
+            P_ref, Q_ref = wecc_wt_type_4b(
+                V_measured=self.V[self.nc.vsc_data.T[self.u_vsc_pt]],
+                P_measured=self.Pt_vsc[self.u_vsc_pt],
+                S_base_vg=self.nc.Sbase,
+                S_rated_vsc=self.nc.vsc_data.rates[self.u_vsc_pt],
+                Vpf=abs(self.V0[self.nc.vsc_data.T[self.u_vsc_pt]])
+            )
+
+        f_vsc = np.r_[
+            P_ref - self.Pt_vsc[self.u_vsc_pt],
+            Q_ref - self.Qt_vsc[self.u_vsc_qt]
+        ]
+
+        return f_vsc
+
+
     def Jacobian(self, autodiff: bool = False) -> CSC:
         """
         Get the Jacobian
@@ -2481,6 +2510,17 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 Yp=self.adm.Ybus.indptr,
                 Yx=self.adm.Ybus.data
             )
+
+            for vsc_p_i in self.u_vsc_pt:
+
+                x_vsc = np.r_[
+                    self.Pt_vsc[self.u_vsc_pt],
+                    self.Qt_vsc[self.u_vsc_qt],
+                ]
+
+                J_vsc = calc_autodiff_jacobian(func=self.compute_f_vsc,
+                                               x=x_vsc,
+                                               h=1e-7)
 
             return J_sym
 

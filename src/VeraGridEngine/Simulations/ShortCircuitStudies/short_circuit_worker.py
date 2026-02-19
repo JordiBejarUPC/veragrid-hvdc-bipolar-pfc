@@ -12,7 +12,7 @@ from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit import short_c
 from VeraGridEngine.Topology.admittance_matrices import compute_admittances
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results import ShortCircuitResults
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import polar_to_rect
-from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
+from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit, ConverterControlType
 from VeraGridEngine.basic_structures import CxVec, Vec, IntVec
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (compute_ybus,
                                                                                         compute_current_loads,
@@ -834,8 +834,9 @@ def short_circuit_vsc(nc: NumericalCircuit,
             Egen = Ugen + Igen / Ygen[bus_gen_idx[gen_i]]
             I0_linear[bus_gen_idx[gen_i]] += Ygen[bus_gen_idx[gen_i]] * Egen
 
-        nc.vsc_data.control1_val = nc.vsc_data.control1_val / 10
-        nc.vsc_data.control2_val = nc.vsc_data.control1_val / 10
+        for vsc_i in range(len(nc.vsc_data.control1)):
+            nc.vsc_data.control1[vsc_i] = ConverterControlType.Fault1
+            nc.vsc_data.control2[vsc_i] = ConverterControlType.Fault2
 
         if len(indices.vd) > 0:
 

@@ -99,12 +99,13 @@ res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation
 # ----------------------------------------------------------------------------------------------------------------------
+print()
 pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
                                 limit_i_vsc=True,
                                 verbose=1,
                                 max_iter=150,
-                                tolerance=1e-6)
+                                tolerance=1e-12)
 
 grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
