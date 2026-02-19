@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 
 def _tic():
@@ -326,8 +327,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
         ##################### To be removed when order is preserved in the first part #############################
 
-
-
         self._state_algeb_vars = list(self.sys_vars.values())
 
         self._n_state = len(self._state_vars)
@@ -389,20 +388,10 @@ class RmsProblemDae(RmsProblemTemplate):
             self._stability_eqs.append(eq)
 
         # --------------------------------------------------------------------------------------------------------------
-        # Compile RHS and Jacobian
+        # Compile RHS and Jacobian using JIT Compiler adaptation
         # --------------------------------------------------------------------------------------------------------------
-
-        """
-                   state Var   algeb var  
-        state eq |J11        | J12       |    | ∆ state var|    | ∆ state eq |
-                 |           |           |    |            |    |            |
-                 ------------------------- x  |------------|  = |------------|
-        algeb eq |J21        | J22       |    | ∆ algeb var|    | ∆ algeb eq |
-                 |           |           |    |            |    |            |
-        """
         timings = dict()
-
-        print("Compiling...")
+        print("Compiling RMS using JIT Native Compiler...")
 
         t0 = _tic()
         self._derivative_fn = SymbolicDerivative(
@@ -414,18 +403,6 @@ class RmsProblemDae(RmsProblemTemplate):
         timings["SymbolicDerivative"] = _toc(t0)
 
         t0 = _tic()
-        self._rhs_algeb_fn = SymbolicVector(
-            eqs=self._algebraic_eqs,
-            compiler_names_dict=self._compiler_names_dict,
-            alias_names_dict=self._alias_names_dict,
-            VARS_NAME=self.VARS_NAME,
-            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-            DIFF_NAME=self.DIFF_NAME,
-        )
-        timings["RHS algebraic"] = _toc(t0)
-
-        t0 = _tic()
         self._event_params_fn = SymbolicParamsVector(
             eqs=self._event_parameters_eqs,
             compiler_names_dict=self._compiler_names_dict,
@@ -435,105 +412,53 @@ class RmsProblemDae(RmsProblemTemplate):
         )
         timings["Event parameters"] = _toc(t0)
 
-        if len(self._state_eqs) != 0:
+        t0 = _tic()
+        rms_compiler = RMSCompiler(
+            variables=self._state_algeb_vars,
+            diff_vars=self._diff_vars,
+            v_params=self._variable_parameters,
+            c_params=self._constant_parameters,
+            dt_var=self._dt,
+            compiler_names_dict=self._compiler_names_dict
+        )
+        timings["Compiler Setup"] = _toc(t0)
 
+        t0 = _tic()
+        self._rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs, "rhs_algeb")
+        timings["RHS algebraic"] = _toc(t0)
+
+        if len(self._state_eqs) != 0:
             t0 = _tic()
-            self._rhs_state_fn = SymbolicVector(
-                eqs=self._state_eqs,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs, "rhs_state")
             timings["RHS state"] = _toc(t0)
 
             t0 = _tic()
-            self._j11_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._state_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
             timings["J11 (dF/dx)"] = _toc(t0)
 
             t0 = _tic()
-            self._j12_fn = SymbolicJacobian(
-                eqs=self._state_eqs,
-                variables=self._algebraic_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
             timings["J12 (dF/dy)"] = _toc(t0)
 
             t0 = _tic()
-            self._j21_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._state_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
             timings["J21 (dG/dx)"] = _toc(t0)
 
             t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 (dG/dy)"] = _toc(t0)
 
         else:
             t0 = _tic()
-            self._j22_fn = SymbolicJacobian(
-                eqs=self._algebraic_eqs,
-                variables=self._algebraic_vars,
-                compiler_names_dict=self._compiler_names_dict,
-                alias_names_dict=self._alias_names_dict,
-                dt=self._dt,
-                VARS_NAME=self.VARS_NAME,
-                EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                DIFF_NAME=self.DIFF_NAME,
-            )
+            self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 only (no states)"] = _toc(t0)
 
         if options.verbose > 0:
-            print(
-                f"Model compiled with {self._n_vars} variables, "
-                f"{len(self._algebraic_eqs_substituted)} algebraic eqs and "
-                f"{len(self._state_eqs_substituted)} state eqs"
-            )
-
+            print(f"Model compiled with {self._n_vars} variables")
             print("\nCompilation timing summary:")
             for k, v in timings.items():
                 print(f"  {k: 30s}: {v: 8.4f} s")
-
-        # --------------------------------------------------------------------------------------------------------------
-        # Collect parameters' vectors
-        # --------------------------------------------------------------------------------------------------------------
+            print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())
 
@@ -753,7 +678,7 @@ class RmsProblemDae(RmsProblemTemplate):
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
         return self._derivative_fn(x, xn, dx, h)
 
-    def rhs_state(self, x: Vec, dx: Vec, ) -> Vec:
+    def rhs_state(self, x: Vec, dx: Vec) -> Vec:
         return self._rhs_state_fn(x, dx,
                                   self._variable_parameters_values,
                                   self._constant_params)

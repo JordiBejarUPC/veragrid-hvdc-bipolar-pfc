@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Tuple, Callable, List, Any, Dict, Optional
 import uuid
 import time
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 import numpy as np
 import numba as nb
@@ -132,6 +133,10 @@ class SparseADJacobian:
 
                 if cname == "Var" and hasattr(n, "uid"):
                     uids.add(n.uid)
+
+                    bv = getattr(n, "base_var", None)
+                    if bv is not None:
+                        uids.add(bv.uid)
                     continue
 
                 if cname == "DiffVar":

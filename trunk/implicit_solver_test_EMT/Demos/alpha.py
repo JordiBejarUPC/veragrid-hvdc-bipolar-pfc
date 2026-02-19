@@ -26,7 +26,6 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD_VEC import AdVecSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 
-
 # -----------------------------------------------------------------------------
 # Model definition (Idéntico, la física no cambia)
 # -----------------------------------------------------------------------------
@@ -190,7 +189,6 @@ def main():
 
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == "__main__":
     main()
