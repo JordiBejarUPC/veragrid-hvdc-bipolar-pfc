@@ -1866,6 +1866,9 @@ class DiagramsMain(CompiledArraysMain):
             elif isinstance(sel_obj, dev.Shunt):
                 root_bus = sel_obj.bus
 
+            elif isinstance(sel_obj, dev.ControllableShunt):
+                root_bus = sel_obj.bus
+
             elif isinstance(sel_obj, dev.Line):
                 root_bus = sel_obj.bus_from
 

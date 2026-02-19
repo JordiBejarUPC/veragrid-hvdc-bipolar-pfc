@@ -695,6 +695,9 @@ def get_veragrid_transformer(
         tr3w.winding3.tap_phase = psse_elm.ANG3
         tr3w.compute_delta_to_star()
 
+        tr3w.bus0.Vm0 = psse_elm.VMSTAR
+        tr3w.bus0.Va0 = np.deg2rad(psse_elm.ANSTAR)
+
         return tr3w, 3
 
     else:
