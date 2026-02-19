@@ -1218,7 +1218,7 @@ class BlockSolver:
                             vars = eq.get_vars()
                             vars_idx = [self.uid2idx_vars[var.uid] for var in vars if var.uid in self.uid2idx_vars]
                             print(f"eq {eq} with error {rhs[i]}")
-                        exit()
+                            exit()
                 else:
                     max_iter = max_iter_0
 

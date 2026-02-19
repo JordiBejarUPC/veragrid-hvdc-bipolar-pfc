@@ -854,37 +854,60 @@ class Transformer2W(ControllableBranchParent):
 
         return Yff, Yft, Ytf, Ytt
 
-    def initialize_rms(self):
+    def initialize_rms(self, name:str = ""):
         if self.rms_model.empty():
-            Qf = Var("Qf")
-            Qt = Var("Qt")
-            Pf = Var("Pf")
-            Pt = Var("Pt")
+            Qf = Var("Qf" + name)
+            Qt = Var("Qt" + name)
+            Pf = Var("Pf" + name)
+            Pt = Var("Pt" + name)
+            m  = Var('m') 
+            phi  = Var('phi') 
 
             ys = 1.0 / complex(self.R, self.X)
-            g = Var("g")
-            b = Var("b")
-            bsh = Var("bsh")
+            ysh = self.G + 1j * self.B
+            gt = Var("g")
+            bt = Var("b")
+            gFe = Var('gFe')
+            bmu = Var('bmu')
+            vtap_f, vtap_t = self.get_virtual_taps()
+            print(f"DEBUG Trafo: R={self.R}, X={self.X}, G={self.G}, B={self.B}")
+            print(f"DEBUG Trafo: tap={self.tap_module}, vtap_f={vtap_f}, vtap_t={vtap_t}")
+            print(f"R(ys) is {ys.real}")
+            print(f"I(ys) is {ys.imag}")
+            print(f"R(ysh) is {ysh.real}")
+            print(f"I(ysh) is {ysh.imag}")
 
-            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            if self.tap_module_control_mode == TapModuleControl.Qt or True:
+                Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+                Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+                Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+                Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            else:
+                Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+                Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+                Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+                Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
+            theta_hk = Vaf - Vat
             block = Block(
                 algebraic_vars=[Pf, Pt, Qf, Qt],
                 algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
-                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
-                        Vaf - Vat) + b * Vmf * Vmt * sin(
-                        Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
-                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
-                        Vat - Vaf) + b * Vmt * Vmf * sin(
-                        Vat - Vaf + np.pi / 2)),
-                ])
+                    # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
+                    Pf - ((Vmf ** 2 * (gFe / 2 + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
+                        theta_hk - phi) - bt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(theta_hk - phi)),
+                    Qf - (-Vmf ** 2 * (bmu / 2 + bt) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(theta_hk - phi)),
+                    # To side: Pt = Re(Vt * (Ytf*Vf + Ytt*Vt)*)
+                    Pt - ((Vmt ** 2 * (gFe / 2 + gt)) / vtap_t ** 2 - gt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(theta_hk - phi)),
+                    Qt - (-Vmt ** 2 * (bmu / 2 + bt) / vtap_t ** 2 + gt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(theta_hk - phi)),
+                ],
+                event_dict = {
+                    m : Const(self.tap_module),
+                    phi : Const(self.tap_phase + phase_displacement)
+                }
+            )
 
             block.external_mapping = {
                 VarPowerFlowRefferenceType.Pf: Pf,
@@ -893,8 +916,21 @@ class Transformer2W(ControllableBranchParent):
                 VarPowerFlowRefferenceType.Qt: Qt,
             }
 
-            block.event_dict = {g: Const(ys.real),
-                                b: Const(ys.imag),
-                                bsh: Const(self.B)}
+            # Calculate phase displacement matching transformer_admittance logic
+            conn_y_from = self.conn_f == WindingType.NeutralStar or self.conn_f == WindingType.GroundedStar
+            conn_y_to = self.conn_t == WindingType.NeutralStar or self.conn_t == WindingType.GroundedStar
+            
+            if self.conn_f == WindingType.Delta and conn_y_to: # Dy
+                phase_displacement = np.deg2rad(60.0)
+            elif conn_y_from and self.conn_t == WindingType.Delta: # Yd
+                phase_displacement = np.deg2rad(0.0)
+            else:
+                phase_displacement = 0.0
+
+            block.parameters[gt] = Const(ys.real)
+            block.parameters[bt] = Const(ys.imag)
+            block.parameters[gFe] = Const(ysh.real)
+            block.parameters[bmu] = Const(ysh.imag)
+
 
             self.rms_model.model = block

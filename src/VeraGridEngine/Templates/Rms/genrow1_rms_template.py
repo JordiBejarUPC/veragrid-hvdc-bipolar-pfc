@@ -56,7 +56,7 @@ def get_genrow1_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     templ.block.event_dict[D] = Const(10.0 * 9.0)
     templ.block.event_dict[omega_ref] = Const(1.0)
     templ.block.event_dict[Kp] = Const(-20)
-    templ.block.event_dict[Ki] = Const(-100)
+    templ.block.event_dict[Ki] = Const(00)
     templ.block.event_dict[vf] = Const(None)
     templ.block.event_dict[tm0] = Const(None)
     
@@ -99,7 +99,7 @@ def get_genrow1_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
                 psiq: -R1 * i_d - v_d,
                 te: psid * i_q - psiq * i_d,
                 tm: te,
-                et: Const(0),
+                et: delta / (2 * np.pi * freq),
                 tm0: tm,
                 vf: psid + X1 * i_d
             }
