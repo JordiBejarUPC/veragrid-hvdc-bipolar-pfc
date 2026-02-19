@@ -224,6 +224,9 @@ class DgsCircuit:
             c.obj_id = element_id
             c.obj_bus = i
             c.fold_id = b.ID
+            c.it2p1 = 0
+            c.it2p2 = 1
+            c.it2p3 = 2
             self.stacubics.append(c)
 
             # Create the switch that belongs to this cubicle

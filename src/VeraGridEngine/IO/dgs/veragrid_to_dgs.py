@@ -228,9 +228,8 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.outserv = 0 if gen.get_active_at(t) else 1
     e.pgini = gen.get_P_at(t)
     e.qgini = gen.get_Q_at(t)
-    sn = 0.01 if gen.Snom == 0 else gen.Snom  # same base as tpe.sgn
-    e.q_min = gen.get_Qmin_at(t) / sn
-    e.q_max = gen.get_Qmax_at(t) / sn
+    e.q_min = gen.get_Qmin_at(t) / Sbase
+    e.q_max = gen.get_Qmax_at(t) / Sbase
     e.usetp = gen.get_Vset_at(t)
     e.ip_ctrl = 1 if gen.bus.is_slack else 0
     e.typ_id = tpe.ID
@@ -493,6 +492,31 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     net.frnom = grid.fBase
     dgs_grid.elmnets.append(net)
 
+    # Default load type. Assign to all loads so typ_id is never empty.
+    typlod = TypLod()
+    typlod.ID = dgs_grid.new_id()
+    typlod.loc_name = "Default Load Type"
+    typlod.fold_id = net.ID
+
+    # Defaults (voltage dependency coefficients)
+    typlod.systp = 0
+    typlod.phtech = 0
+
+    typlod.aP = 1.0
+    typlod.bP = 0.0
+    typlod.kpu0 = 0.0
+    typlod.kpu1 = 1.0
+    typlod.kpu = 2.0
+
+    typlod.aQ = 1.0
+    typlod.bQ = 0.0
+    typlod.kqu0 = 0.0
+    typlod.kqu1 = 1.0
+    typlod.kqu = 2.0
+
+    dgs_grid.typlods.append(typlod)
+
+
     # buses
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
     bus_v_controlled: Dict[dev.Bus, bool] = dict()
@@ -508,6 +532,23 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     # Loads
     for load in grid.loads:
         e = convert_load(load, new_id=dgs_grid.new_id(), t=t)
+
+        # Folder/type linkage
+        e.fold_id = net.ID
+        e.typ_id = typlod.ID
+
+        # Input mode/scaling
+        e.mode_inp = "DEF"
+        e.pf_recap = 0
+        e.i_scale = 1
+
+        # Provide S and cos(phi) consistent with P/Q
+        p = float(e.plini)
+        q = float(e.qlini)
+        s = (p * p + q * q) ** 0.5
+        e.slini = float(s)
+        e.coslini = float(p / s) if s > 0.0 else 1.0
+
         term = bus2term_dict[load.bus]
         dgs_grid.elmlods.append(e)
         dgs_grid.add_element_cubicles(element_id=e.ID, dgs_buses=[term])
@@ -672,6 +713,8 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
             dgs_grid.typtr2s.append(tpe)
             tr2typtr2_by_tap[tap_key] = tpe
             tpe_is_new = True
+            if float(tpe.frnom) == 0.0:
+                tpe.frnom = float(net.frnom)
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
         # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
@@ -705,6 +748,15 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.ntnum = 1
         e.ratfac = 1
         e.outserv = 0 if tr.get_active_at(t) else 1
+
+        # PF-like folder placement
+        e.fold_id = net.ID
+
+        # PF-like tap controller defaults
+        e.usetp = 1.0
+        e.usp_low = 0.99
+        e.usp_up = 1.01
+        e.t2ldc = 0
 
         # Tap export...
         if tpe_is_new:
