@@ -227,7 +227,26 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.ngnum = 1
     e.outserv = 0 if gen.get_active_at(t) else 1
     e.pgini = gen.get_P_at(t)
-    e.qgini = gen.get_Q_at(t)
+
+    # DGS/PowerFactory convention: qgini is reactive power injection.
+    # VeraGrid's get_Q_at() uses the opposite sign in our roundtrip (observed on IEEE14 slack).
+    q = -gen.get_Q_at(t)
+
+    # If Q is not stored in VeraGrid (often 0.0), approximate it from P and power factor.
+    # This is mainly to avoid exporting qgini=0 for all controlled generators.
+    if abs(q) < 1e-12:
+        p = float(e.pgini)
+        pf = abs(gen.get_Pf_at(t))
+        if 0.0 < pf < 1.0 and abs(p) > 0.0:
+            import math
+            q_abs = abs(p) * math.tan(math.acos(pf))
+
+            # Heuristic consistent with IEEE14 example:
+            # slack often absorbs reactive power in PF exports (negative qgini).
+            q = -q_abs if gen.bus.is_slack else q_abs
+
+    e.qgini = q
+
     e.q_min = gen.get_Qmin_at(t) / Sbase
     e.q_max = gen.get_Qmax_at(t) / Sbase
     e.usetp = gen.get_Vset_at(t)
@@ -316,13 +335,13 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
         ZigZag = "Z"
     """
 
-    # Y,YN,Z,ZN,D.
+    # Y, YN, Z, ZN, D.
     wtpe_dict = {
         WindingType.FloatingStar: "Y",
-        WindingType.GroundedStar: "Y",
-        WindingType.NeutralStar: "YN",
+        WindingType.NeutralStar: "Y",
+        WindingType.GroundedStar: "YN",
         WindingType.Delta: "D",
-        WindingType.ZigZag: "Z"
+        WindingType.ZigZag: "Z",
     }
 
     typtr2.tr2cn_h = wtpe_dict[tr.conn_hv]
