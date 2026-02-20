@@ -138,9 +138,9 @@ def get_generator_emt_template() -> EmtModelTemplate:
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: Pe,
         VarPowerFlowRefferenceType.Q: Qe,
-        VarPowerFlowRefferenceType.Ia: i_a,
-        VarPowerFlowRefferenceType.Ib: i_b,
-        VarPowerFlowRefferenceType.Ic: i_c,
+        VarPowerFlowRefferenceType.i_A: i_a,
+        VarPowerFlowRefferenceType.i_B: i_b,
+        VarPowerFlowRefferenceType.i_C: i_c,
         VarPowerFlowRefferenceType.theta: theta,
     }
 

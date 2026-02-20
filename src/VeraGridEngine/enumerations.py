@@ -2531,10 +2531,24 @@ class VarPowerFlowRefferenceType(Enum):
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
 
-    Ia = "Ia"  # Injection current at phase a in p.u.
-    Ib = "Ib"  # Injection current at phase b in p.u.
-    Ic = "Ic"  # Injection current at phase c in p.u.
+    # from Power Flow 3ph
+    v_N = "v_N"  # Bus voltage at phase N.
+    v_A = "v_A" # Bus voltage at phase A.
+    v_B = "v_B"  # Bus voltage at phase B.
+    v_C = "v_C"  # Bus voltage at phase C.
+    i_N = "i_N" # Injection current at phase N in p.u.
+    i_A = "i_A"  # Injection current at phase A in p.u.
+    i_B = "i_B"  # Injection current at phase B in p.u.
+    i_C = "i_C"  # Injection current at phase C in p.u.
     theta = "theta"  # Rotor angle in a synchronous generator in rad
+
+    Sf_A = "Sf_A" # Branch active power from in phase A in p.u.
+    Sf_B = "Sf_B"  # Branch active power from in phase B in p.u.
+    Sf_C = "Sf_C"  # Branch active power from in phase C in p.u.
+    St_A = "St_A"  # Branch active power from in phase A in p.u.
+    St_B = "St_B"  # Branch active power from in phase B in p.u.
+    St_C = "St_C"  # Branch active power from in phase C in p.u.
+
 
     def __str__(self):
         return self.value

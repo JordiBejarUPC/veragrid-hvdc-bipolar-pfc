@@ -261,13 +261,31 @@ class EmtProblemDae(BaseProblem):
         """
         Attempts to initialize bus variables based on PowerFlow results.
         """
+        # try:
+        #     if VarPowerFlowRefferenceType.Vm in mdl.external_mapping:
+        #         v = pf_results.voltage[bus_index]
+        #         self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vm, float(np.abs(v)))
+        #     if VarPowerFlowRefferenceType.Va in mdl.external_mapping:
+        #         v = pf_results.voltage[bus_index]
+        #         self.set_init_guess(mdl, VarPowerFlowRefferenceType.Va, float(np.angle(v)))
+        # except Exception:
+        #     pass
+
+        # buses have different phases
         try:
-            if VarPowerFlowRefferenceType.Vm in mdl.external_mapping:
-                v = pf_results.voltage[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vm, float(np.abs(v)))
-            if VarPowerFlowRefferenceType.Va in mdl.external_mapping:
-                v = pf_results.voltage[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Va, float(np.angle(v)))
+            if VarPowerFlowRefferenceType.v_N in mdl.external_mapping:
+                v_N = pf_results.voltage_N[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, float(np.abs(v_N)))
+            if VarPowerFlowRefferenceType.v_A in mdl.external_mapping:
+                v_A = pf_results.voltage_A[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, float(np.abs(v_A)))
+            if VarPowerFlowRefferenceType.v_B in mdl.external_mapping:
+                v_B = pf_results.voltage_B[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, float(np.abs(v_B)))
+            if VarPowerFlowRefferenceType.v_C in mdl.external_mapping:
+                v_C = pf_results.voltage_C[bus_index]
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, float(np.abs(v_C)))
+
         except Exception:
             pass
 
@@ -275,13 +293,55 @@ class EmtProblemDae(BaseProblem):
         """
         Attempts to initialize branch variables based on PowerFlow results.
         """
+        # try:
+        #     sf = pf_results.Sf[branch_index] / sbase
+        #     st = pf_results.St[branch_index] / sbase
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, float(np.real(sf)))
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, float(np.imag(sf)))
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, float(np.real(st)))
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, float(np.imag(st)))
+        # except Exception:
+        #     pass
+
         try:
-            sf = pf_results.Sf[branch_index] / sbase
-            st = pf_results.St[branch_index] / sbase
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, float(np.real(sf)))
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, float(np.imag(sf)))
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, float(np.real(st)))
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, float(np.imag(st)))
+            Sf = 0.0
+            St = 0.0
+
+            if VarPowerFlowRefferenceType.Sf_A in mdl.external_mapping:
+                Sf_A = pf_results.Sf_A[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Sf_A, float(Sf_A))
+                Sf += Sf_A
+            if VarPowerFlowRefferenceType.Sf_B in mdl.external_mapping:
+                Sf_B = pf_results.Sf_B[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Sf_B, float(Sf_B))
+                Sf += Sf_B
+            if VarPowerFlowRefferenceType.Sf_C in mdl.external_mapping:
+                Sf_C = pf_results.Sf_C[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Sf_C, float(Sf_C))
+                Sf += Sf_C
+            if VarPowerFlowRefferenceType.St_A in mdl.external_mapping:
+                St_A = pf_results.St_A[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.St_A, float(St_A))
+                St += St_A
+            if VarPowerFlowRefferenceType.St_B in mdl.external_mapping:
+                St_B = pf_results.St_B[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.St_B, float(St_B))
+                St += St_B
+            if VarPowerFlowRefferenceType.St_C in mdl.external_mapping:
+                St_C = pf_results.St_C[branch_index] / sbase
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.St_C, float(St_C))
+                St += St_C
+
+            Pf = np.real(Sf)
+            Qf = np.real(Sf)
+            Pt = np.real(St)
+            Qt = np.real(St)
+
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Pf)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, Qf)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, Pt)
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, Qt)
+
         except Exception:
             pass
 
@@ -289,10 +349,23 @@ class EmtProblemDae(BaseProblem):
         """
         Attempts to initialize injection variables based on PowerFlow results.
         """
+        # try:
+        #     sbus = pf_results.Sbus[bus_index] / sbase
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(sbus)))
+        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(sbus)))
+        # except Exception:
+        #     pass
+
         try:
-            sbus = pf_results.Sbus[bus_index] / sbase
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(sbus)))
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(sbus)))
+            Sbus_N = pf_results.Sbus_N[bus_index] / sbase
+            Sbus_A = pf_results.Sbus_A[bus_index] / sbase
+            Sbus_B = pf_results.Sbus_B[bus_index] / sbase
+            Sbus_C = pf_results.Sbus_C[bus_index] / sbase
+
+            Sbus = Sbus_N + Sbus_A + Sbus_B + Sbus_C
+
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(Sbus)))
+            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(Sbus)))
         except Exception:
             pass
 
