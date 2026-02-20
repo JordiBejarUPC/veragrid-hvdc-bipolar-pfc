@@ -19,15 +19,16 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (GenqecBuild,
-                                                                      GovernorBuild,
-                                                                      StabilizerBuild,
-                                                                      ExciterBuild)
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec,
+                                                                      get_governor,
+                                                                      get_stabilizer,
+                                                                      get_exciter)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Utils.Symbolic.block import (
-    Block,
+from VeraGridEngine.Utils.Symbolic.block import (Block, BlockType)
+from VeraGridEngine.Templates.predefined_blocks import (
     constant,
     gain,
     adder,
@@ -35,13 +36,12 @@ from VeraGridEngine.Utils.Symbolic.block import (
     product,
     divide,
     absolut,
-    generic,
-    BlockType
+    generic
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, symbolic_to_string, Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
@@ -66,7 +66,10 @@ def change_font_size(obj, font_size: int):
     obj.setFont(font1)
 
 
-def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str = "") -> Block | None:
+def create_block_of_type(var_factory: VarFactory,
+                         block_type: BlockType,
+                         api_object: Any,
+                         item_name: str = "") -> Block | None:
     """
     Create a Block appropriate for block_type.
     """
@@ -107,31 +110,31 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GENRAW (simple model)
     if block_type == BlockType.GENRAW:
-        return get_genrow_rms_template().block
+        return get_genrow_rms_template(var_factory).block
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        return GenqecBuild(item_name).block
+        return get_genqec(var_factory, item_name).block
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        return GovernorBuild(item_name).block
+        return get_governor(var_factory, item_name).block
 
     # STABILIZER (stabilizer)
     if block_type == BlockType.STAB:
-        return StabilizerBuild(item_name).block
+        return get_stabilizer(var_factory, item_name).block
 
     # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        return ExciterBuild(item_name).block
+        return get_exciter(var_factory, item_name).block
 
     # LINE (line)
     if block_type == BlockType.LINE:
-        return get_line_rms_template().block
+        return get_line_rms_template(var_factory).block
 
     # LOAD (line)
     if block_type == BlockType.LOAD:
-        return get_load_rms_template().block
+        return get_load_rms_template(var_factory).block
 
     else:
         return None
@@ -294,7 +297,6 @@ class BlockItem(QGraphicsRectItem):
 
         self.setAcceptHoverEvents(True)
 
-
         self.setBrush(QBrush(QColor("#C0C0C0")))
 
     def set_subsystem(self, block: Block):
@@ -401,17 +403,28 @@ class ModelHostItem(QGraphicsRectItem):
            :param name:
            """
 
-    def __init__(self, model_host_sys: DynamicModelHost, api_object_name, api_object, templates_list,
+    def __init__(self,
+                 var_factory: VarFactory,
+                 model_host_sys: DynamicModelHost,
+                 api_object_name,
+                 api_object,
+                 templates_list,
                  templates_catalogue):
         """
 
-        :param block_sys: Block
+        :param var_factory:
+        :param model_host_sys:
+        :param api_object_name:
+        :param api_object:
+        :param templates_list:
+        :param templates_catalogue:
         """
         super().__init__(0, 0, 100, 60)
 
         # ------------------------
         # API
         # ------------------------
+        self.var_factory = var_factory
         self.model_host = model_host_sys
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -422,10 +435,14 @@ class ModelHostItem(QGraphicsRectItem):
         self.name_item = QGraphicsTextItem(self.model_host.model.name, self)
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
-        self.editor_window = RmsModelEditorGUI(api_object_model_host=self.model_host,
-                                               templates_list=self.templates_list,
-                                               templates_catalogue=self.templates_catalogue,
-                                               api_object_name=self.api_object_name, api_object=self.api_object)
+        self.editor_window = RmsModelEditorGUI(
+            var_factory=self.var_factory,
+            api_object_model_host=self.model_host,
+            templates_list=self.templates_list,
+            templates_catalogue=self.templates_catalogue,
+            api_object_name=self.api_object_name,
+            api_object=self.api_object
+        )
 
         self.setBrush(QBrush(QColor("#C0C0C0")))
         self.setFlags(
@@ -542,23 +559,23 @@ class ParameterEditorDialog(QDialog):
 
     parametersUpdated = Signal(dict)
 
-    def __init__(
-            self,
-            event_dict: Dict[Var, Expr],
-            parameters_dict: Dict[Var, Const],
-            parent=None,
-    ):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 event_dict: Dict[Var, Expr],
+                 parameters_dict: Dict[Var, Const],
+                 parent=None, ):
         super().__init__(parent)
 
         self.setWindowTitle("Edit Model Parameters")
         self.resize(450, 350)
 
         # ---- Work on COPIES ----
+        self.var_factory = var_factory
         self.event_dict: Dict[Var, Expr] = copy.deepcopy(event_dict)
         self.parameters: Dict[Var, Const] = copy.deepcopy(parameters_dict)
 
         # Keeps row -> Var mapping
-        self._vars_order: list["Var"] = []
+        self._vars_order: list["Var"] = list()
 
         # ---- Layout ----
         layout = QVBoxLayout(self)
@@ -669,7 +686,7 @@ class ParameterEditorDialog(QDialog):
         except ValueError:
             value = text
 
-        self.event_dict[var] = Const(value=value, name=var.name)
+        self.event_dict[var] = self.var_factory.add_const(value=value, name=var.name)
 
         # Optional: live update signal
         self.parametersUpdated.emit(self.event_dict)
@@ -778,7 +795,10 @@ class InitialValuesDialog(QDialog):
     Will be necessary for numerical initialization
     """
 
-    def __init__(self, var_const_dict: Dict[Var, Const], parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 var_const_dict: Dict[Var, Const],
+                 parent: Optional[QtWidgets.QWidget] = None):
         """
 
         :param var_const_dict:
@@ -787,6 +807,7 @@ class InitialValuesDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Initial Values")
 
+        self.var_factory = var_factory
         self.var_const_dict = var_const_dict
 
         layout = QVBoxLayout(self)
@@ -841,7 +862,7 @@ class InitialValuesDialog(QDialog):
             spin = self.table.cellWidget(row, 2)
             new_value = float(spin.value())
 
-            result[var] = Const(new_value)
+            result[var] = self.var_factory.add_const(new_value)
 
         return result
 
@@ -1209,9 +1230,15 @@ class TemplateEditor(QtWidgets.QWidget):
     parametersUpdated = Signal(dict)  # Emited when changing a parameters
     templateApplied = Signal(object)  # Emited when appplying a template to a model
 
-    def __init__(self, templates_list, templates_catalogue, api_object, parent=None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 templates_list,
+                 templates_catalogue,
+                 api_object,
+                 parent=None):
         super().__init__(parent)
 
+        self.var_factory = var_factory
         self.templates_catalogue = templates_catalogue
         self.model = Block()
         self.api_object = api_object
@@ -1274,13 +1301,6 @@ class TemplateEditor(QtWidgets.QWidget):
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
-                # P, Q = self.api_object.P, self.api_object.Q
-                # for param in self.selected_template.block.event_dict.keys():
-                #     if param.name == 'Pl0':
-                #         self.selected_template.block.event_dict[param] = Const(P)
-                #     if param.name == 'Ql0':
-                #         self.selected_template.block.event_dict[param] = Const(Q)
-
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
@@ -1297,13 +1317,16 @@ class TemplateEditor(QtWidgets.QWidget):
 
                 # power flow parameters
                 self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                    self.selected_template.block.api_obj_mapping[
+                        ParamPowerFlowRefferenceType.g]] = self.var_factory.add_const(
                     float(self.api_object.R / (self.api_object.R ** 2 + self.api_object.X ** 2)))
                 self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                    self.selected_template.block.api_obj_mapping[
+                        ParamPowerFlowRefferenceType.b]] = self.var_factory.add_const(
                     float(-self.api_object.X / (self.api_object.R ** 2 + self.api_object.X ** 2)))
                 self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(
+                    self.selected_template.block.api_obj_mapping[
+                        ParamPowerFlowRefferenceType.bsh]] = self.var_factory.add_const(
                     self.api_object.B)
 
         # Update label above the table
@@ -1395,7 +1418,7 @@ class TemplateEditor(QtWidgets.QWidget):
         except ValueError:
             value = value_str
 
-        self.selected_template.block.event_dict[var] = Const(value=value, name=var.name)
+        self.selected_template.block.event_dict[var] = self.var_factory.add_const(value=value, name=var.name)
 
         self.parametersUpdated.emit(self.selected_template.block.event_dict)
 
@@ -1424,6 +1447,7 @@ class BlockBoxesEditor(QSplitter):
     """
 
     def __init__(self,
+                 var_factory: VarFactory,
                  api_object_name: str,
                  block: Block,
                  diagram: BlockDiagram,
@@ -1433,6 +1457,7 @@ class BlockBoxesEditor(QSplitter):
                  parent=None):
         super().__init__(parent)
 
+        self.var_factory = var_factory
         self.api_object = api_object
         self.api_object_name = api_object_name
         self.main_block = block
@@ -1633,8 +1658,8 @@ class BlockBoxesEditor(QSplitter):
             name = "mapping From"
             bus_from_mapping_item = BlockItem(name=name)
 
-            Pf = Var('Pf_placeholder')
-            Qf = Var('Qf_placeholder')
+            Pf = self.var_factory.add_var('Pf_placeholder')
+            Qf = self.var_factory.add_var('Qf_placeholder')
 
             bus_from_mapping_blk = Block(
                 in_vars=[Pf, Qf],
@@ -1666,8 +1691,8 @@ class BlockBoxesEditor(QSplitter):
 
             bus_to_mapping_item = BlockItem(name=name)
 
-            Pt = Var('Pt_placeholder')
-            Qt = Var('Qt_placeholder')
+            Pt = self.var_factory.add_var('Pt_placeholder')
+            Qt = self.var_factory.add_var('Qt_placeholder')
 
             bus_to_mapping_blk = Block(
                 in_vars=[Pt, Qt],
@@ -1699,8 +1724,8 @@ class BlockBoxesEditor(QSplitter):
             name = "mapping Bus"
 
             bus_mapping_item = BlockItem(name=name)
-            P = Var('P_placeholder')
-            Q = Var('Q_placeholder')
+            P = self.var_factory.add_var('P_placeholder')
+            Q = self.var_factory.add_var('Q_placeholder')
 
             bus_mapping_blk = Block(
                 in_vars=[P, Q],
@@ -1728,13 +1753,13 @@ class BlockBoxesEditor(QSplitter):
 
     def add_api_obj_mapping(self):
         if self.api_object.device_type == DeviceType.LineDevice:
-            g = Var("g")
-            b = Var("b")
-            bsh = Var("bsh")
+            g = self.var_factory.add_var("g")
+            b = self.var_factory.add_var("b")
+            bsh = self.var_factory.add_var("bsh")
 
-            self.main_block.parameters[g] = Const(0.029585)
-            self.main_block.parameters[b] = Const(0.0710059)
-            self.main_block.parameters[bsh] = Const(0.03)
+            self.main_block.parameters[g] = self.var_factory.add_const(0.029585)
+            self.main_block.parameters[b] = self.var_factory.add_const(0.0710059)
+            self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
 
             self.main_block.api_obj_mapping = {
                 ParamPowerFlowRefferenceType.g: g,
@@ -1909,8 +1934,14 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
                 self.main_block.add(model_host.model)
-                item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
-                                     self.templates_catalogue, self.api_object)
+                item = ModelHostItem(
+                    var_factory=self.var_factory,
+                    model_host_sys=model_host,
+                    api_object_name=self.api_object_name,
+                    templates_list=self.templates_list,
+                    templates_catalogue=self.templates_catalogue,
+                    api_object=self.api_object
+                )
 
                 item.setPos(QPointF(x0, y0))
                 self.scene.addItem(item)
@@ -1981,9 +2012,14 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host_sys=model_host, api_object_name=node.api_object_name,
-                                     api_object=self.api_object, templates_list=self.templates_list,
-                                     templates_catalogue=self.templates_catalogue)
+                item = ModelHostItem(
+                    var_factory=self.var_factory,
+                    model_host_sys=model_host,
+                    api_object_name=node.api_object_name,
+                    api_object=self.api_object,
+                    templates_list=self.templates_list,
+                    templates_catalogue=self.templates_catalogue
+                )
 
                 item.setPos(QPointF(node.x, node.y))
                 self.scene.addItem(item)
@@ -2168,8 +2204,15 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
     RmsModelEditorGUI
     """
 
-    def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
-                 api_object=None, main_editor=False, parent=None):
+    def __init__(self,
+                 var_factory: VarFactory,
+                 api_object_model_host,
+                 templates_list,
+                 templates_catalogue,
+                 api_object_name,
+                 api_object=None,
+                 main_editor=False,
+                 parent=None):
         """
 
         :param api_object_model_host:
@@ -2188,6 +2231,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.setWindowTitle("RMS Model Editor")
         self.resize(1000, 700)
 
+        self.var_factory = var_factory
         self.api_object_name = api_object_name
         self.model_host = api_object_model_host
         self.templates_list = templates_list
@@ -2197,13 +2241,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.current_editor = None
 
-        self.tempaltes_name = "Templates"
+        self.templates_name = "Templates"
         self.block_editor_name = "Block Editor"
         self.equationseditor_name = "Equations editor"
 
         # set modes
         self.ui.model_selector_comboBox.setModel(gf.get_list_model([
-            self.tempaltes_name,
+            self.templates_name,
             self.block_editor_name,
             self.equationseditor_name
         ]))
@@ -2283,7 +2327,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             # delete it from the gui
             widget_to_remove.setParent(None)
 
-        if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
+        if self.ui.model_selector_comboBox.currentText() == self.templates_name:
             self.ui.mainLayout.addWidget(self.template_editor)
             self.current_editor = self.template_editor
 
@@ -2306,7 +2350,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         Logic when aplying the window
         :return:
         """
-        if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
+        if self.ui.model_selector_comboBox.currentText() == self.templates_name:
             if self.template_editor.selected_template is not None:
                 self.template_editor.apply_template()
                 self.model_host.template = self.template_editor.model
@@ -2350,7 +2394,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                     values_dict: Dict[Var, Const] = dict()
                     variables = model.get_all_vars()
                     for var in variables:
-                        values_dict.update({var: Const(0)})
+                        values_dict.update({var: self.var_factory.add_const(0)})
 
                 init_guess_editor = InitialValuesDialog(values_dict)
                 result = init_guess_editor.exec()
@@ -2370,7 +2414,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 values_dict: Dict[Var, Const] = dict()
                 variables = model.get_all_vars()
                 for var in variables:
-                    values_dict.update({var: Const(0)})
+                    values_dict.update({var: self.var_factory.add_const(0)})
 
             # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
 

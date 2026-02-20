@@ -1148,10 +1148,10 @@ class DeviceType(Enum):
     DynamicModelHostDevice = "Dynamic Model Host"
 
     RmsModelTemplateDevice = "RMS template"
-
     RmsEventDevice = "Rms Event"
-
     RmsEventsGroupDevice = "Rms Events Group"
+
+    VarFactory = "Var Factory"
 
     def __str__(self) -> str:
         return str(self.value)

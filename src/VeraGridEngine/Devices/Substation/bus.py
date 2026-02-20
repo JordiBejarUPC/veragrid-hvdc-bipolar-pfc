@@ -565,28 +565,6 @@ class Bus(PhysicalDevice):
         assert len(self.rms_model.model.algebraic_vars) == 2
         return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
 
-    def initialize_rms(self):
-        """
-        Initialize the RMS model
-        """
-
-        Vm = Var("Vm")
-        Va = Var("Va")
-        P = Var("P")
-        Q = Var("Q")
-
-        block = Block(
-            algebraic_vars=[Vm, Va],
-            out_vars = [Vm, Va])
-
-        block.external_mapping = {
-            VarPowerFlowRefferenceType.Vm: Vm,
-            VarPowerFlowRefferenceType.Va: Va,
-            VarPowerFlowRefferenceType.P: P,
-            VarPowerFlowRefferenceType.Q: Q
-        }
-
-        self.rms_model.model = block
 
     def initialize_emt(self):
         """

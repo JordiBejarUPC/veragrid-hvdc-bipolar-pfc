@@ -63,26 +63,16 @@ class Load(LoadParent):
         '_n_customers',
         '_n_customers_prof',
 
-        'Pl0',
-        'Ql0',
-        'Pl',
-        'Ql',
-        'init_params',
-        'Vm',
-        'Va',
-        'Pl_0',
-        'Ql_0'
     )
 
     def __init__(self, name='Load', idtag=None, code='',
                  G=0.0, B=0.0, Ir=0.0, Ii=0.0, P=0.0, Q=0.0, Cost=1200.0,
                  P1=0.0, P2=0.0, P3=0.0, Q1=0.0, Q2=0.0, Q3=0.0,
                  G1=0.0, G2=0.0, G3=0.0, B1=0.0, B2=0.0, B3=0.0,
-                 Ir1=0.0, Ir2=0.0, Ir3=0.0, Ii1=0.0, Ii2=0.0, Ii3=0.0, Pl0=1.0, Ql0=1.0,
+                 Ir1=0.0, Ir2=0.0, Ir3=0.0, Ii1=0.0, Ii2=0.0, Ii3=0.0,
                  active=True, mttf=0.0, mttr=0.0, capex=0, opex=0,
                  n_customers: int = 0,
                  contracted_power: float = 0.0,
-                 init_params: dict[str, float] | None = None,
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The load object implements the so-called ZIP model, in which the load can be
@@ -180,14 +170,6 @@ class Load(LoadParent):
         self._n_customers_prof = Profile(default_value=self._n_customers, data_type=int)
 
         self._contract_power: float = contracted_power
-
-        self.Pl0 = Pl0
-        self.Ql0 = Ql0
-
-        self.Pl_0 = Var('Pl_0')
-        self.Ql_0 = Var('Ql_0')
-
-        self.init_params = init_params if init_params is not None else dict()
 
         self.register(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof')

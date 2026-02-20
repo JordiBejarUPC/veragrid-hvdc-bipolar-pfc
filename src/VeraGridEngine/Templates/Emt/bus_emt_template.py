@@ -4,22 +4,23 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
-def get_bus_emt_template() -> EmtModelTemplate:
+def get_bus_emt_template(var_factory: VarFactory) -> EmtModelTemplate:
     """
     Get the EMT template of a bus
     :return: EmtModelTemplate
     """
     templ = EmtModelTemplate()
 
-    v_A = Var("v_A")
-    v_B = Var("v_B")
-    v_C = Var("v_C")
+    v_A = var_factory.add_var("v_A")
+    v_B = var_factory.add_var("v_B")
+    v_C = var_factory.add_var("v_C")
 
-    P = Var("P")
-    Q = Var("Q")
+    P = var_factory.add_var("P")
+    Q = var_factory.add_var("Q")
 
     templ.block = Block(
         alter_params=[v_A, v_B, v_C],

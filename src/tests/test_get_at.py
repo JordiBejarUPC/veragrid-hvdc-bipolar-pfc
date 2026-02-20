@@ -23,7 +23,7 @@ def test_load_getters_match_profiles():
         G1=1.1, B1=2.1, Ir1=3.1, Ii1=4.1,
         G2=1.2, B2=2.2, Ir2=3.2, Ii2=4.2,
         G3=1.3, B3=2.3, Ir3=3.3, Ii3=4.3,
-        Pl0=5.0, Ql0=6.0
+        P=5.0, Q=6.0
     )
 
     # Create simple time-dependent profiles

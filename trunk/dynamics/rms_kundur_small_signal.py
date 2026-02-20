@@ -291,36 +291,36 @@ def rms_kundur_small_signal():
 
     # Build rms models from template
     # generators
-    genrow_mdl1 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl2 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl3 = block_deep_copy(get_complete_generator_template().block)
-    genrow_mdl4 = block_deep_copy(get_complete_generator_template().block)
+    genrow_mdl1 = get_complete_generator_template(grid.var_factory).block
+    genrow_mdl2 = get_complete_generator_template(grid.var_factory).block
+    genrow_mdl3 = get_complete_generator_template(grid.var_factory).block
+    genrow_mdl4 = get_complete_generator_template(grid.var_factory).block
 
     # lines
-    line0_mdl = block_deep_copy(get_line_rms_template().block)
-    line1_mdl = block_deep_copy(get_line_rms_template().block)
-    line2_mdl = block_deep_copy(get_line_rms_template().block)
-    line3_mdl = block_deep_copy(get_line_rms_template().block)
-    line4_mdl = block_deep_copy(get_line_rms_template().block)
-    line5_mdl = block_deep_copy(get_line_rms_template().block)
-    line6_mdl = block_deep_copy(get_line_rms_template().block)
-    line7_mdl = block_deep_copy(get_line_rms_template().block)
-    line8_mdl = block_deep_copy(get_line_rms_template().block)
-    line9_mdl = block_deep_copy(get_line_rms_template().block)
-    line10_mdl = block_deep_copy(get_line_rms_template().block)
-    line11_mdl = block_deep_copy(get_line_rms_template().block)
-    line12_mdl = block_deep_copy(get_line_rms_template().block)
-    line13_mdl = block_deep_copy(get_line_rms_template().block)
+    line0_mdl = get_line_rms_template(grid.var_factory).block
+    line1_mdl = get_line_rms_template(grid.var_factory).block
+    line2_mdl = get_line_rms_template(grid.var_factory).block
+    line3_mdl = get_line_rms_template(grid.var_factory).block
+    line4_mdl = get_line_rms_template(grid.var_factory).block
+    line5_mdl = get_line_rms_template(grid.var_factory).block
+    line6_mdl = get_line_rms_template(grid.var_factory).block
+    line7_mdl = get_line_rms_template(grid.var_factory).block
+    line8_mdl = get_line_rms_template(grid.var_factory).block
+    line9_mdl = get_line_rms_template(grid.var_factory).block
+    line10_mdl = get_line_rms_template(grid.var_factory).block
+    line11_mdl = get_line_rms_template(grid.var_factory).block
+    line12_mdl = get_line_rms_template(grid.var_factory).block
+    line13_mdl = get_line_rms_template(grid.var_factory).block
 
     #trafos
-    trafo1_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo2_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo3_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo4_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo1_mdl = get_line_rms_template(grid.var_factory).block
+    trafo2_mdl = get_line_rms_template(grid.var_factory).block
+    trafo3_mdl = get_line_rms_template(grid.var_factory).block
+    trafo4_mdl = get_line_rms_template(grid.var_factory).block
 
     #loads
-    load1_mdl = block_deep_copy(get_load1_rms_template().block)
-    load2_mdl = block_deep_copy(get_load2_rms_template().block)
+    load1_mdl = get_load1_rms_template(grid.var_factory).block
+    load2_mdl = get_load2_rms_template(grid.var_factory).block
 
     # connection with buses
 

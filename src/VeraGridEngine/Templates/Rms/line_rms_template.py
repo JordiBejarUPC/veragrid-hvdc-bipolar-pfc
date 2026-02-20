@@ -5,13 +5,14 @@
 
 from typing import List
 import numpy as np
-from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
+
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
-def get_line_rms_template(name="Line_rms_template") -> RmsModelTemplate:
+def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Line
     :return: RmsModelTemplate
@@ -20,23 +21,23 @@ def get_line_rms_template(name="Line_rms_template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    inputs: List[Var] = [Var("Vmf_" + name),
-                         Var("Vaf_" + name),
-                         Var("Vmt_" + name),
-                         Var("Vat_" + name)]
+    inputs: List[vfactory.add_var] = [vfactory.add_var("Vmf_" + name),
+                         vfactory.add_var("Vaf_" + name),
+                         vfactory.add_var("Vmt_" + name),
+                         vfactory.add_var("Vat_" + name)]
 
-    Qf = Var("Qf")
-    Qt = Var("Qt")
-    Pf = Var("Pf")
-    Pt = Var("Pt")
+    Qf = vfactory.add_var("Qf")
+    Qt = vfactory.add_var("Qt")
+    Pf = vfactory.add_var("Pf")
+    Pt = vfactory.add_var("Pt")
 
-    g = Var("g")
-    b = Var("b")
-    bsh = Var("bsh")
+    g = vfactory.add_var("g")
+    b = vfactory.add_var("b")
+    bsh = vfactory.add_var("bsh")
 
-    templ.block.parameters[g] = Const(5)
-    templ.block.parameters[b] = Const(-12)
-    templ.block.parameters[bsh] = Const(0.03)
+    templ.block.parameters[g] = vfactory.add_const(5)
+    templ.block.parameters[b] = vfactory.add_const(-12)
+    templ.block.parameters[bsh] = vfactory.add_const(0.03)
 
     templ.block.algebraic_vars = [Pf, Pt, Qf, Qt]
 

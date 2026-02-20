@@ -54,7 +54,7 @@ bus1.ph_a = True
 bus1.ph_b = True
 bus1.ph_c = True
 
-bus1_template = get_bus_emt_template()
+bus1_template = get_bus_emt_template(grid.var_factory)
 bus1.emt_model.model = bus1_template.block
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase)

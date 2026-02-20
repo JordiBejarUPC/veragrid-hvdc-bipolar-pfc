@@ -32,7 +32,7 @@ from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue, get_rms_model_catalogue)
+                                get_sequence_lines_catalogue)
 
 
 class IoMain(ConfigurationMain):
@@ -975,7 +975,7 @@ class IoMain(ConfigurationMain):
         if not self.circuit.sequence_line_types:
             self.circuit.sequence_line_types += get_sequence_lines_catalogue()
         if not self.circuit.rms_models:
-            self.circuit.rms_models += get_rms_model_catalogue()
+            self.circuit.add_rms_model_catalogue()
 
     def load_custom_catalogue(self):
         """

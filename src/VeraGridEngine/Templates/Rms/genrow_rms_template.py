@@ -3,14 +3,15 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
 import numpy as np
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, exp, imag, log, conj, real, abs
 
-def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
+
+def get_genrow_rms_template(vfactory: VarFactory, name="Genrow rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Genrow
     :return: RmsModelTemplate
@@ -19,48 +20,48 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    inputs: List[Var] = [Var("Vm_" + name),
-                         Var("Va_" + name)]
+    inputs = [vfactory.add_var("Vm_" + name),
+              vfactory.add_var("Va_" + name)]
 
-    P_g: Var = Var('P_g')
-    Q_g: Var = Var('Q_g')
+    P_g = vfactory.add_var('P_g')
+    Q_g = vfactory.add_var('Q_g')
 
-    delta = Var("delta")
-    omega = Var("omega")
-    psid = Var("psid")
-    psiq = Var("psiq")
-    i_d = Var("i_d")
-    i_q = Var("i_q")
-    v_d = Var("v_d")
-    v_q = Var("v_q")
-    te = Var("te")
-    et = Var("et")
-    tm = Var("tm")
+    delta = vfactory.add_var("delta")
+    omega = vfactory.add_var("omega")
+    psid = vfactory.add_var("psid")
+    psiq = vfactory.add_var("psiq")
+    i_d = vfactory.add_var("i_d")
+    i_q = vfactory.add_var("i_q")
+    v_d = vfactory.add_var("v_d")
+    v_q = vfactory.add_var("v_q")
+    te = vfactory.add_var("te")
+    et = vfactory.add_var("et")
+    tm = vfactory.add_var("tm")
 
     # Parameters
-    R1 = Var("R1")
-    X1 = Var("X1")
-    freq = Var("frequ")
-    M = Var("M")
-    D = Var("D")
-    omega_ref = Var("omega_ref")
-    Kp = Var("Kp")
-    Ki = Var("Ki")
-    
-    vf = Var("vf")
-    tm0 = Var("tm0")
+    R1 = vfactory.add_var("R1")
+    X1 = vfactory.add_var("X1")
+    freq = vfactory.add_var("frequ")
+    M = vfactory.add_var("M")
+    D = vfactory.add_var("D")
+    omega_ref = vfactory.add_var("omega_ref")
+    Kp = vfactory.add_var("Kp")
+    Ki = vfactory.add_var("Ki")
 
-    templ.block.event_dict[R1] = Const(0.3)
-    templ.block.event_dict[X1] = Const(0.86138701)
-    templ.block.event_dict[freq] = Const(50.0)
-    templ.block.event_dict[M] = Const(4.0)
-    templ.block.event_dict[D] = Const(1.0)
-    templ.block.event_dict[omega_ref] = Const(1.0)
-    templ.block.event_dict[Kp] = Const(0.0)
-    templ.block.event_dict[Ki] = Const(0.0)
-    templ.block.event_dict[vf] = Const(None)
-    templ.block.event_dict[tm0] = Const(None)
-    
+    vf = vfactory.add_var("vf")
+    tm0 = vfactory.add_var("tm0")
+
+    templ.block.event_dict[R1] = vfactory.add_const(0.3)
+    templ.block.event_dict[X1] = vfactory.add_const(0.86138701)
+    templ.block.event_dict[freq] = vfactory.add_const(50.0)
+    templ.block.event_dict[M] = vfactory.add_const(4.0)
+    templ.block.event_dict[D] = vfactory.add_const(1.0)
+    templ.block.event_dict[omega_ref] = vfactory.add_const(1.0)
+    templ.block.event_dict[Kp] = vfactory.add_const(0.0)
+    templ.block.event_dict[Ki] = vfactory.add_const(0.0)
+    templ.block.event_dict[vf] = vfactory.add_const(None)
+    templ.block.event_dict[tm0] = vfactory.add_const(None)
+
     templ.block.algebraic_vars = [P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et]
 
     templ.block.algebraic_eqs = [
@@ -79,31 +80,31 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
 
     templ.block.state_vars = [delta, omega]
     templ.block.state_eqs = [
-                (2 * np.pi * freq) * (omega - omega_ref),
-                (tm - te - D * (omega - omega_ref)) / M,
-            ]
-    
+        (2 * np.pi * freq) * (omega - omega_ref),
+        (tm - te - D * (omega - omega_ref)) / M,
+    ]
+
     templ.block.init_eqs = {
-                delta: imag(
-                    log((inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
-                        conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))))) / (
-                            abs(inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
-                                conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1])))))))),
-                omega: omega_ref,
-                v_d: real((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
-                v_q: imag((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
-                i_d: real(
-                    conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
-                i_q: imag(
-                    conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
-                psid: R1 * i_q + v_q,
-                psiq: -R1 * i_d - v_d,
-                te: psid * i_q - psiq * i_d,
-                tm: te,
-                et: Const(0),
-                tm0: tm,
-                vf: psid + X1 * i_d
-            }
+        delta: imag(
+            log((inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
+                conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))))) / (
+                    abs(inputs[0] * exp(1j * inputs[1]) + (R1 + 1j * X1) * (
+                        conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1])))))))),
+        omega: omega_ref,
+        v_d: real((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
+        v_q: imag((inputs[0] * exp(1j * inputs[1])) * exp(-1j * (delta - np.pi / 2))),
+        i_d: real(
+            conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
+        i_q: imag(
+            conj((P_g + 1j * Q_g) / (inputs[0] * exp(1j * inputs[1]))) * exp(-1j * (delta - np.pi / 2))),
+        psid: R1 * i_q + v_q,
+        psiq: -R1 * i_d - v_d,
+        te: psid * i_q - psiq * i_d,
+        tm: te,
+        et: vfactory.add_const(0),
+        tm0: tm,
+        vf: psid + X1 * i_d
+    }
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: inputs[0],
@@ -131,7 +132,6 @@ def get_genrow_rms_template(name = "Genrow rms template") -> RmsModelTemplate:
         ParamPowerFlowRefferenceType.vf: vf,
         ParamPowerFlowRefferenceType.tm0: tm0,
     }
-
 
     templ.block.in_vars = inputs
     templ.block.out_vars = [P_g, Q_g]
