@@ -6,7 +6,7 @@ from __future__ import annotations
 import math
 import re
 import numpy as np
-from typing import Dict, List, Tuple, Set
+from typing import Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -1109,7 +1109,7 @@ def convert_dgs_to_load(elmlod: ElmLod,
         name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
         P=p_mw,
         Q=q_mvar,
-        active=0 if elmlod.outserv else 1
+        active=False if elmlod.outserv else True
     )
 
     return bus, load
@@ -1139,11 +1139,13 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
         name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
         P=elmgenstat.pgini,
         Q=elmgenstat.qgini,
-        active=0 if elmgenstat.outserv else 1
+        active=False if elmgenstat.outserv else True
     )
 
     # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
-    stagen.ip_ctrl = int(elmgenstat.ip_ctrl)
+    if int(elmgenstat.ip_ctrl) == 1:
+        stagen.bus.is_slack = True
+
     return bus, stagen
 
 
@@ -1164,7 +1166,7 @@ def convert_dgs_to_external_grid(elmxnet: ElmXnet,
 
     xgrid = dev.ExternalGrid(
         name=elmxnet.loc_name or f"Load_{_ref_id(elmxnet.ID)}",
-        active=0 if elmxnet.outserv else 1
+        active=False if elmxnet.outserv else True
     )
 
     if elmxnet.bustp == b'SL':
@@ -2288,7 +2290,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 )
                 continue
 
-        trafo3w = convert_dgs_to_transformer3w(
+        trafo3w: dev.Transformer3W = convert_dgs_to_transformer3w(
             tr3=elmtr3,
             buses=grid.buses,
             stacubic_dict=stacubic_dict,
@@ -2306,7 +2308,9 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if fold_id is not None and fold_id != "":
             bg = branch_group_by_id.get(fold_id)
             if bg is not None:
-                trafo3w.group = bg
+                trafo3w.winding1.group = bg
+                trafo3w.winding2.group = bg
+                trafo3w.winding3.group = bg
 
         grid.add_transformer3w(obj=trafo3w)
 
