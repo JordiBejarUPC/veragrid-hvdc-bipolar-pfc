@@ -80,7 +80,7 @@ class VarFactory(EditableDevice):
         :return:
         """
         v = Var(name=name, uid=uid, diff_var=diff_var, base_var=base_var)
-        self._diff_vars_dict[v.uid] = v
+        self._diff_var_dict[v.uid] = v
         return v
 
     def get_diff_var(self, uid: int) -> Var:

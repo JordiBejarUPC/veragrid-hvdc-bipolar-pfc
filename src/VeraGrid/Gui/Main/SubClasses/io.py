@@ -32,7 +32,7 @@ from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue, get_rms_model_catalogue)
+                                get_sequence_lines_catalogue)
 
 
 class IoMain(ConfigurationMain):

@@ -402,9 +402,6 @@ class Assets:
 
         self.device_associations: Dict[str, List[str]] = dict()
 
-        self.register(key='rms_event', units='', tpe=SubObjectType.RmsEventType,
-                      definition='RMS event', display=False)
-
         """
         self.type_name = 'Shunt'
 

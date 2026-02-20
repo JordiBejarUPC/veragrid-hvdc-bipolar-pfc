@@ -10,9 +10,10 @@ import math
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType, tf_to_block,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType, )
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
+                                                                 tf_to_diffblock_with_antiwindup)
 
 
 def find_name_in_block(name: str, block: Block):
@@ -414,6 +415,7 @@ def get_governor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     u1 = inputs[0] - omega_ref
     lead_lag_block, y1, x1 = tf_to_diffblock_with_output(
+        var_factory=vfactory,
         num=np.array([1, parameters["T2"].value]),
         den=np.array([1, parameters["T1"].value]),
         x=u1,
@@ -429,6 +431,7 @@ def get_governor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     y2 = x2 * (1 / parameters["T3"].value)
     y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([0, 1]),
         x=y2_1,
@@ -439,24 +442,28 @@ def get_governor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     # ==============================
     # We compute different outputs for every tf
     tf2, y3_1 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T4"].value]),
         x=y2_3,
         name='gov2',
     )
     tf3, y3_2 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T5"].value]),
         x=y3_1,
         name='gov3',
     )
     tf4, y3_3 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T6"].value]),
         x=y3_2,
         name='gov4',
     )
     tf5, y3_4 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T7"].value]),
         x=y3_3,
@@ -555,6 +562,7 @@ def get_stabilizer(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     )
 
     tf, y = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1.0]),
         den=np.array([1, parameters["t6"].value]),
         x=inputs[0],
@@ -562,24 +570,28 @@ def get_stabilizer(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     )
 
     tf2, y2 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([0, Ks * parameters["t5"].value]),
         den=np.array([1, parameters["t5"].value]),
         x=y,
         name='stabilizer2',
     )
     tf3, y3 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
         x=y2,
         name='stabilizer3',
     )
     tf4, y4 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1, parameters["t1"].value]),
         den=np.array([1, parameters["t2"].value]),
         x=y3,
         name='stabilizer4',
     )
     tf5, y5 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1, parameters["t3"].value]),
         den=np.array([1, parameters["t4"].value]),
         x=y4,
@@ -720,6 +732,7 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     }
     # ---Internal Blocks---
     tf1, y1 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["tR"].value]),
         x=inputs[1],
@@ -729,6 +742,7 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     # error1 = UPssPu - y + UsRefPu
     error1 = (- y1 + UsRefPu) + inputs[2]
     tf2, y2 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([0, parameters["Kf"].value]),
         den=np.array([1, parameters["tF"].value]),
         x=Vf,
@@ -737,6 +751,7 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     error2 = error1 - y2
 
     tf3, y3 = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1, parameters["tC"].value]),
         den=np.array([1, parameters["tB"].value]),
         x=error2,
@@ -746,6 +761,7 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
 
     tf4, y4 = tf_to_diffblock_with_antiwindup(
+        var_factory=vfactory,
         num=np.array([parameters["Ka"].value]),
         den=np.array([1, parameters["tA"].value]),
         x=y3,
@@ -764,6 +780,7 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     error1 = Efe - (inputs[0] * parameters["Kd"].value + u_aux)
 
     tf1_sub, Ve = tf_to_block(
+        var_factory=vfactory,
         num=np.array([1]),
         den=np.array([0, parameters["tE"].value]),
         x=error1,

@@ -27,8 +27,8 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Utils.Symbolic.block import (
-    Block,
+from VeraGridEngine.Utils.Symbolic.block import (Block, BlockType)
+from VeraGridEngine.Templates.predefined_blocks import (
     constant,
     gain,
     adder,
@@ -36,8 +36,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
     product,
     divide,
     absolut,
-    generic,
-    BlockType
+    generic
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
