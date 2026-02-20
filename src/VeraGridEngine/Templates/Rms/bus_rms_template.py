@@ -10,7 +10,6 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 
 
-
 class BusRmsTemplate(RmsModelTemplate):
 
     def __init__(self, vf: VarFactory, name: str = "rms_bus_template"):
@@ -23,22 +22,22 @@ class BusRmsTemplate(RmsModelTemplate):
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-
         self.Vm = vf.add_var("Vm")
         self.Va = vf.add_var("Va")
         self.P = vf.add_var("P")
         self.Q = vf.add_var("Q")
 
         self.block = Block(
-            algebraic_vars=[self.Vm, self.Va, self.P, self.Q]
+            algebraic_vars=[self.Vm, self.Va, self.P, self.Q],
+            out_vars=[self.Vm, self.Va]
         )
 
-        self._block.external_mapping={
-                VarPowerFlowRefferenceType.Vm: self.Vm,
-                VarPowerFlowRefferenceType.Va: self.Va,
-                VarPowerFlowRefferenceType.P: self.P,
-                VarPowerFlowRefferenceType.Q: self.Q
-            }
+        self._block.external_mapping = {
+            VarPowerFlowRefferenceType.Vm: self.Vm,
+            VarPowerFlowRefferenceType.Va: self.Va,
+            VarPowerFlowRefferenceType.P: self.P,
+            VarPowerFlowRefferenceType.Q: self.Q
+        }
 
 
 def initialize_bus_rms(bus: Bus, vf: VarFactory):
