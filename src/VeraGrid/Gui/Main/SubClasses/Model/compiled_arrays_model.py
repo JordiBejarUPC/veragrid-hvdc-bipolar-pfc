@@ -39,9 +39,12 @@ class CompiledArraysModule:
     available_structures = {
         "Bus arrays": [
             'V', 'Va', 'Vm',
-            'S', 'P', 'Q',
-            'I',
-            'Y',
+            'S',
+            'P',
+            'Q',
+            'I-load',
+            'Y-load',
+            'Y-shunt',
             'Qmin',
             'Qmax',
         ],
@@ -216,16 +219,23 @@ class CompiledArraysModule:
                 index=island.bus_data.names,
             )
 
-        elif structure_type == 'I':
+        elif structure_type == 'I-load':
             df = PackDf(
                 data=island.get_current_injections_pu(),
                 columns=['Current (p.u.)'],
                 index=island.bus_data.names,
             )
 
-        elif structure_type == 'Y':
+        elif structure_type == 'Y-load':
             df = PackDf(
                 data=island.get_admittance_injections_pu(),
+                columns=['Admittance (p.u.)'],
+                index=island.bus_data.names,
+            )
+
+        elif structure_type == 'Y-shunt':
+            df = PackDf(
+                data=island.get_Yshunt_bus_pu(),
                 columns=['Admittance (p.u.)'],
                 index=island.bus_data.names,
             )

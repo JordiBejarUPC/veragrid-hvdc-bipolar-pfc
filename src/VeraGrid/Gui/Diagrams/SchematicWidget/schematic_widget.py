@@ -699,28 +699,38 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_object = self.create_transformer_3w_graphics(elm=elm,
                                                                              x=location.x,
                                                                              y=location.y)
+                        self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
                         self.add_to_scene(graphic_object=graphic_object)
 
-                        w1_graphics = self.add_api_winding(branch=elm.winding1,
-                                                           from_port=graphic_object.terminals[0],
-                                                           draw_labels=location.draw_labels,
-                                                           logger=logger)
-                        self.graphics_manager.add_device(elm=elm.winding1, graphic=w1_graphics)
-                        graphic_object.connection_lines[0] = w1_graphics
+                        w1_graphics = self.add_api_winding(
+                            branch=elm.winding1,
+                            from_port=graphic_object.terminals[0],
+                            draw_labels=location.draw_labels,
+                            logger=logger
+                        )
+                        if w1_graphics is not None:
+                            self.graphics_manager.add_device(elm=elm.winding1, graphic=w1_graphics)
+                            graphic_object.connection_lines[0] = w1_graphics
 
-                        w2_graphics = self.add_api_winding(branch=elm.winding2,
-                                                           from_port=graphic_object.terminals[1],
-                                                           draw_labels=location.draw_labels,
-                                                           logger=logger)
-                        self.graphics_manager.add_device(elm=elm.winding2, graphic=w2_graphics)
-                        graphic_object.connection_lines[1] = w2_graphics
+                        w2_graphics = self.add_api_winding(
+                            branch=elm.winding2,
+                            from_port=graphic_object.terminals[1],
+                            draw_labels=location.draw_labels,
+                            logger=logger
+                        )
+                        if w2_graphics is not None:
+                            self.graphics_manager.add_device(elm=elm.winding2, graphic=w2_graphics)
+                            graphic_object.connection_lines[1] = w2_graphics
 
-                        w3_graphics = self.add_api_winding(branch=elm.winding3,
-                                                           from_port=graphic_object.terminals[2],
-                                                           draw_labels=location.draw_labels,
-                                                           logger=logger)
-                        self.graphics_manager.add_device(elm=elm.winding3, graphic=w3_graphics)
-                        graphic_object.connection_lines[2] = w3_graphics
+                        w3_graphics = self.add_api_winding(
+                            branch=elm.winding3,
+                            from_port=graphic_object.terminals[2],
+                            draw_labels=location.draw_labels,
+                            logger=logger
+                        )
+                        if w3_graphics is not None:
+                            self.graphics_manager.add_device(elm=elm.winding3, graphic=w3_graphics)
+                            graphic_object.connection_lines[2] = w3_graphics
 
                         graphic_object.set_position(x=location.x, y=location.y)
                         graphic_object.change_size(h=location.h, w=location.w)
@@ -1827,7 +1837,7 @@ class SchematicWidget(BaseDiagramWidget):
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
         # Bus provided, search its graphics
-        bus_graphic0 = self.graphics_manager.query_preferring_busbars(obj_from)
+        bus_graphic0 = self.graphics_manager.query(obj_from)
         if bus_graphic0 is None:
             # could not find any graphics :(
             from_port = None
@@ -1836,7 +1846,7 @@ class SchematicWidget(BaseDiagramWidget):
             from_port = bus_graphic0.get_terminal()
 
         # Bus provided, search its graphics
-        bus_graphic1 = self.graphics_manager.query_preferring_busbars(obj_to)
+        bus_graphic1 = self.graphics_manager.query(obj_to)
         if bus_graphic1 is None:
             # could not find any graphics :(
             to_port = None
@@ -1856,7 +1866,7 @@ class SchematicWidget(BaseDiagramWidget):
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
         # Bus provided, search its graphics
-        bus_graphic1 = self.graphics_manager.query_preferring_busbars(obj_to)
+        bus_graphic1 = self.graphics_manager.query(obj_to)
         if bus_graphic1 is None:
             # could not find any graphics :(
             to_port = None
@@ -2187,12 +2197,21 @@ class SchematicWidget(BaseDiagramWidget):
         :return: WindingGraphicItem or None
         """
 
-        return self.add_api_branch(branch=branch,
-                                   new_graphic_func=WindingGraphicItem,
-                                   from_port=from_port,
-                                   to_port=to_port,
-                                   draw_labels=draw_labels,
-                                   logger=logger)
+        # NOTE: The from port has to come from the 3W object
+        #       The to port has to be found looking at the bus_to
+        #       (that is alwas the non center bus in the 3W arrangement)
+
+        bus_to_graphics = self.graphics_manager.query(branch.bus_to)
+
+        if bus_to_graphics is None:
+            return None
+        else:
+            return self.add_api_branch(branch=branch,
+                                       new_graphic_func=WindingGraphicItem,
+                                       from_port=from_port,
+                                       to_port=bus_to_graphics.get_terminal(),
+                                       draw_labels=draw_labels,
+                                       logger=logger)
 
     def add_api_switch(self,
                        branch: Switch,
@@ -5099,18 +5118,18 @@ def get_devices_to_expand(circuit: MultiCircuit,
                           buses: List[Bus],
                           max_level: int = 1,
                           restrict_to_voltage_levels: Set | None = None) -> Tuple[List[Bus],
-                                                                                   List[Line],
-                                                                                   List[DcLine],
-                                                                                   List[Transformer2W],
-                                                                                   List[Transformer3W],
-                                                                                   List[Winding],
-                                                                                   List[HvdcLine],
-                                                                                   List[VSC],
-                                                                                   List[UPFC],
-                                                                                   List[SeriesReactance],
-                                                                                   List[Switch],
-                                                                                   List[FluidNode],
-                                                                                   List[FluidPath]]:
+List[Line],
+List[DcLine],
+List[Transformer2W],
+List[Transformer3W],
+List[Winding],
+List[HvdcLine],
+List[VSC],
+List[UPFC],
+List[SeriesReactance],
+List[Switch],
+List[FluidNode],
+List[FluidPath]]:
     """
     get lists of devices to expand given a root bus
     :param circuit: MultiCircuit
@@ -5143,10 +5162,14 @@ def get_devices_to_expand(circuit: MultiCircuit,
             has_winding = True
 
     # create a pool of buses
-    bus_pool = [(b, 0) for b in buses]  # store the bus objects and their level from the root
+    bus_pool: List[Tuple[bus, int]] = list()  # store the bus objects and their level from the root
+
+    for b in buses:
+        bus_pool.append((b, 0))
 
     # create a map of the tr3 that own the windings
     windings2tr3 = dict()
+
     for tr3 in circuit.transformers3w:
         windings2tr3[tr3.winding1] = tr3
         windings2tr3[tr3.winding2] = tr3
@@ -5250,7 +5273,24 @@ def get_devices_to_expand(circuit: MultiCircuit,
         else:
             raise Exception(f'Unrecognized branch type {obj.device_type.value}')
 
-    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
+    # we need to add the tr3 buses, if any of the buses is selected
+    buses_tr3 = set()
+    for tr3 in transformers3w:
+        # print(tr3)
+        if tr3.bus1 in buses:
+            buses_tr3.add(tr3.bus2)
+            buses_tr3.add(tr3.bus3)
+        elif tr3.bus2 in buses:
+            buses_tr3.add(tr3.bus1)
+            buses_tr3.add(tr3.bus3)
+        elif tr3.bus3 in buses:
+            buses_tr3.add(tr3.bus1)
+            buses_tr3.add(tr3.bus2)
+
+    for b in buses_tr3:
+        buses.add(b)
+
+    return (list(buses ), lines, dc_lines, transformers2w, list(transformers3w),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 

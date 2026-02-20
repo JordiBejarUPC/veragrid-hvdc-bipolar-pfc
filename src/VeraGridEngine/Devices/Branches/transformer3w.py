@@ -33,6 +33,13 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
         return 1e-20, 1e-20, 1e-20
 
 
+def delta_to_star2(z12: float, z23: float, z31: float) -> Tuple[float, float, float]:
+    z1 = (z12 + z31 - z23) / 2
+    z2 = (z12 + z23 - z31) / 2
+    z3 = (z31 + z23 - z12) / 2
+    return z1, z2, z3
+
+
 def star_to_delta(z1: float, z2: float, z3: float) -> Tuple[float, float, float]:
     """
     Perform the star->delta transformation
@@ -384,8 +391,8 @@ class Transformer3W(PhysicalDevice):
         and apply it to the windings
         """
 
-        r1, r2, r3 = delta_to_star(self.r12, self.r23, self.r31)
-        x1, x2, x3 = delta_to_star(self.x12, self.x23, self.x31)
+        r1, r2, r3 = delta_to_star2(self.r12, self.r23, self.r31)
+        x1, x2, x3 = delta_to_star2(self.x12, self.x23, self.x31)
 
         self.winding1.R = r1
         self.winding1.X = x1
