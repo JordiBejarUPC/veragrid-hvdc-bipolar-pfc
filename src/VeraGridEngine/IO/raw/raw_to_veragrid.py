@@ -317,7 +317,8 @@ def get_veragrid_transformer(
         psse_bus_dict: Dict[int, dev.Bus],
         Sbase: float,
         logger: Logger,
-        adjust_taps_to_discrete_positions: bool = False) -> Tuple[Union[dev.Transformer2W, dev.Transformer3W], int]:
+        adjust_taps_to_discrete_positions: bool = False,
+        simple_naming: bool = True) -> Tuple[Union[dev.Transformer2W, dev.Transformer3W], int]:
     """
 
     :param psse_elm:
@@ -325,6 +326,7 @@ def get_veragrid_transformer(
     :param Sbase:
     :param logger:
     :param adjust_taps_to_discrete_positions: Modify the tap angle and module to the discrete positions
+    :param simple_naming:
     :return:
     """
 
@@ -358,8 +360,11 @@ def get_veragrid_transformer(
         bus_from = psse_bus_dict[psse_elm.I]
         bus_to = psse_bus_dict[psse_elm.J]
 
-        name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(psse_elm.I, bus_from.name, bus_from.Vnom,
-                                                    psse_elm.J, bus_to.name, bus_to.Vnom, psse_elm.CKT)
+        if simple_naming:
+            name = "{0}_{1}_{2}".format(psse_elm.I, psse_elm.J, psse_elm.CKT)
+        else:
+            name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(psse_elm.I, bus_from.name, bus_from.Vnom,
+                                                        psse_elm.J, bus_to.name, bus_to.Vnom, psse_elm.CKT)
 
         name = name.replace("'", "").replace(" ", "").strip()
 
@@ -695,6 +700,9 @@ def get_veragrid_transformer(
         tr3w.winding3.tap_phase = psse_elm.ANG3
         tr3w.compute_delta_to_star()
 
+        tr3w.bus0.Vm0 = psse_elm.VMSTAR
+        tr3w.bus0.Va0 = np.deg2rad(psse_elm.ANSTAR)
+
         return tr3w, 3
 
     else:
@@ -704,13 +712,15 @@ def get_veragrid_transformer(
 def get_veragrid_line(psse_elm: RawBranch,
                       psse_bus_dict: Dict[int, dev.Bus],
                       Sbase: float,
-                      logger: Logger) -> dev.Line:
+                      logger: Logger,
+                      simple_naming: bool) -> dev.Line:
     """
 
     :param psse_elm:
     :param psse_bus_dict:
     :param Sbase:
     :param logger:
+    :param simple_naming
     :return:
     """
 
@@ -721,8 +731,11 @@ def get_veragrid_line(psse_elm: RawBranch,
     code = str(i) + '_' + str(j) + '_' + str(psse_elm.CKT).replace("'", "").strip()
 
     if psse_elm.NAME.strip() == '':
-        name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(i, bus_from.name, bus_from.Vnom, j, bus_to.name, bus_to.Vnom,
-                                                    psse_elm.CKT)
+        if simple_naming:
+            name = "{0}_{1}_{2}".format(i, j, psse_elm.CKT)
+        else:
+            name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(i, bus_from.name, bus_from.Vnom, j, bus_to.name, bus_to.Vnom,
+                                                        psse_elm.CKT)
         name = name.replace("'", "").replace(" ", "").strip()
     else:
         name = psse_elm.NAME.strip()
@@ -989,13 +1002,15 @@ def get_upfc_from_facts(psse_elm: RawFACTS,
 def psse_to_veragrid(psse_circuit: PsseCircuit,
                      logger: Logger,
                      branch_connection_voltage_tolerance: float = 0.1,
-                     adjust_taps_to_discrete_positions: bool = False) -> MultiCircuit:
+                     adjust_taps_to_discrete_positions: bool = False,
+                     simple_naming: bool = True) -> MultiCircuit:
     """
 
     :param psse_circuit: PsseCircuit instance
     :param logger: Logger
     :param branch_connection_voltage_tolerance: tolerance in p.u. of a branch voltage to be considered a transformer
     :param adjust_taps_to_discrete_positions: Modify the tap angle and module to the discrete positions
+    :param simple_naming: use from_to_ckt, instead of
     :return: MultiCircuit instance
     """
 
@@ -1098,7 +1113,8 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
             psse_bus_dict=psse_bus_dict,
             Sbase=psse_circuit.SBASE,
             logger=logger,
-            adjust_taps_to_discrete_positions=adjust_taps_to_discrete_positions
+            adjust_taps_to_discrete_positions=adjust_taps_to_discrete_positions,
+            simple_naming=simple_naming
         )
 
         if transformer.idtag not in branches_already_there:
@@ -1118,7 +1134,7 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     # Go through the Branches
     for psse_branch in psse_circuit.branches:
         # get the object
-        branch = get_veragrid_line(psse_branch, psse_bus_dict, psse_circuit.SBASE, logger)
+        branch = get_veragrid_line(psse_branch, psse_bus_dict, psse_circuit.SBASE, logger, simple_naming)
 
         # detect if this branch is actually a transformer
         if branch.should_this_be_a_transformer(branch_connection_voltage_tolerance, logger=logger):
