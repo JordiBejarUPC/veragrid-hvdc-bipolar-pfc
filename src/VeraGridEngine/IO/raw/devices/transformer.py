@@ -1266,6 +1266,7 @@ class RawTransformer(RawObject):
         else:
             raise Exception("Invalid value of CM")
 
+        # NOTE: ANG1 seems to be related to the vector group and not the tap angle...
         tap_angle = np.deg2rad(self.ANG1)  # ANG2 is ignored for 2W transformers
 
         return r, x, g, b, tap_module, tap_angle

@@ -351,6 +351,7 @@ def get_veragrid_transformer(
     psse_elm.CKT = str(psse_elm.CKT).replace("'", "")
 
     psse_elm.NAME = psse_elm.NAME.replace("'", "").strip()
+    ckt = psse_elm.CKT.replace("@", "").replace("*", "")
 
     if psse_elm.windings == 0:
         # guess the number of windings
@@ -361,14 +362,14 @@ def get_veragrid_transformer(
         bus_to = psse_bus_dict[psse_elm.J]
 
         if simple_naming:
-            name = "{0}_{1}_{2}".format(psse_elm.I, psse_elm.J, psse_elm.CKT)
+            name = "{0}_{1}_{2}".format(psse_elm.I, psse_elm.J, ckt)
         else:
             name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(psse_elm.I, bus_from.name, bus_from.Vnom,
-                                                        psse_elm.J, bus_to.name, bus_to.Vnom, psse_elm.CKT)
+                                                        psse_elm.J, bus_to.name, bus_to.Vnom, ckt)
 
         name = name.replace("'", "").replace(" ", "").strip()
 
-        code = str(psse_elm.I) + '_' + str(psse_elm.J) + '_' + str(psse_elm.CKT)
+        code = str(psse_elm.I) + '_' + str(psse_elm.J) + '_' + str(ckt)
         code = code.strip().replace("'", "")
 
         """            
@@ -619,7 +620,7 @@ def get_veragrid_transformer(
         bus_1 = psse_bus_dict[abs(psse_elm.I)]
         bus_2 = psse_bus_dict[abs(psse_elm.J)]
         bus_3 = psse_bus_dict[abs(psse_elm.K)]
-        code = str(psse_elm.I) + '_' + str(psse_elm.J) + '_' + str(psse_elm.K) + '_' + str(psse_elm.CKT)
+        code = str(psse_elm.I) + '_' + str(psse_elm.J) + '_' + str(psse_elm.K) + '_' + str(ckt)
 
         V1 = bus_1.Vnom if psse_elm.NOMV1 == 0 else psse_elm.NOMV1
         V2 = bus_2.Vnom if psse_elm.NOMV2 == 0 else psse_elm.NOMV2
@@ -695,9 +696,10 @@ def get_veragrid_transformer(
                                  rate23=psse_elm.RATE2_1,
                                  rate31=psse_elm.RATE3_1)
 
-        tr3w.winding1.tap_phase = psse_elm.ANG1
-        tr3w.winding2.tap_phase = psse_elm.ANG2
-        tr3w.winding3.tap_phase = psse_elm.ANG3
+        # NOTE: These seem to be related tho the vector group and not to the power flow tap
+        tr3w.winding1.tap_phase = np.deg2rad(psse_elm.ANG1)
+        tr3w.winding2.tap_phase = np.deg2rad(psse_elm.ANG2)
+        tr3w.winding3.tap_phase = np.deg2rad(psse_elm.ANG3)
         tr3w.compute_delta_to_star()
 
         tr3w.bus0.Vm0 = psse_elm.VMSTAR
@@ -728,14 +730,15 @@ def get_veragrid_line(psse_elm: RawBranch,
     j = abs(psse_elm.J)
     bus_from = psse_bus_dict[i]
     bus_to = psse_bus_dict[j]
-    code = str(i) + '_' + str(j) + '_' + str(psse_elm.CKT).replace("'", "").strip()
+    ckt = psse_elm.CKT.replace("@", "").replace("*", "")
+    code = str(i) + '_' + str(j) + '_' + str(ckt).replace("'", "").strip()
 
     if psse_elm.NAME.strip() == '':
         if simple_naming:
-            name = "{0}_{1}_{2}".format(i, j, psse_elm.CKT)
+            name = "{0}_{1}_{2}".format(i, j, ckt)
         else:
             name = "{0}_{1}_{2}_{3}_{4}_{5}_{6}".format(i, bus_from.name, bus_from.Vnom, j, bus_to.name, bus_to.Vnom,
-                                                        psse_elm.CKT)
+                                                        ckt)
         name = name.replace("'", "").replace(" ", "").strip()
     else:
         name = psse_elm.NAME.strip()
