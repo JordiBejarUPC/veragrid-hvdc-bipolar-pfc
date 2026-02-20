@@ -5,19 +5,19 @@
 
 from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block import Var
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
-def get_bus_emt_template() -> EmtModelTemplate():
+def get_bus_emt_template(var_factory: VarFactory) -> EmtModelTemplate:
     """
     Get the EMT template of a bus
     :return: EmtModelTemplate
     """
     templ = EmtModelTemplate()
 
-    v_a = Var("v_a")
-    v_b = Var("v_b")
-    v_c = Var("v_c")
+    v_a = var_factory.add_var("v_a")
+    v_b = var_factory.add_var("v_b")
+    v_c = var_factory.add_var("v_c")
 
     templ.block = Block(
         alter_params=[v_a, v_b, v_c],

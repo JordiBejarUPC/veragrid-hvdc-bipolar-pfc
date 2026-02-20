@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
@@ -16,7 +15,7 @@ from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_te
 from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
 from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
 from VeraGridEngine.Utils.Symbolic import Block
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
@@ -52,18 +51,6 @@ def stability_kundur_no_shunt():
     bus10 = Bus(name="Bus10", Vnom=230)
     bus11 = Bus(name="Bus11", Vnom=230)
 
-    bus1.initialize_rms()
-    bus2.initialize_rms()
-    bus3.initialize_rms()
-    bus4.initialize_rms()
-    bus5.initialize_rms()
-    bus6.initialize_rms()
-    bus7.initialize_rms()
-    bus8.initialize_rms()
-    bus9.initialize_rms()
-    bus10.initialize_rms()
-    bus11.initialize_rms()
-
     grid.add_bus(bus1)
     grid.add_bus(bus2)
     grid.add_bus(bus3)
@@ -75,6 +62,9 @@ def stability_kundur_no_shunt():
     grid.add_bus(bus9)
     grid.add_bus(bus10)
     grid.add_bus(bus11)
+
+    for bus in grid.buses:
+        initialize_bus_rms(bus, vf=grid.var_factory)
 
     # Line
 
@@ -223,33 +213,33 @@ def stability_kundur_no_shunt():
 
     # Build dynamic_model_host
 
-    gen1_dynhost = DynamicModelHost()
-    gen2_dynhost = DynamicModelHost()
-    gen3_dynhost = DynamicModelHost()
-    gen4_dynhost = DynamicModelHost()
+    # gen1_dynhost = DynamicModelHost()
+    # gen2_dynhost = DynamicModelHost()
+    # gen3_dynhost = DynamicModelHost()
+    # gen4_dynhost = DynamicModelHost()
 
-    line0_dynhost = DynamicModelHost()
-    line1_dynhost = DynamicModelHost()
-    line2_dynhost = DynamicModelHost()
-    line3_dynhost = DynamicModelHost()
-    line4_dynhost = DynamicModelHost()
-    line5_dynhost = DynamicModelHost()
-    line6_dynhost = DynamicModelHost()
-    line7_dynhost = DynamicModelHost()
-    line8_dynhost = DynamicModelHost()
-    line9_dynhost = DynamicModelHost()
-    line10_dynhost = DynamicModelHost()
-    line11_dynhost = DynamicModelHost()
-    line12_dynhost = DynamicModelHost()
-    line13_dynhost = DynamicModelHost()
+    # line0_dynhost = DynamicModelHost()
+    # line1_dynhost = DynamicModelHost()
+    # line2_dynhost = DynamicModelHost()
+    # line3_dynhost = DynamicModelHost()
+    # line4_dynhost = DynamicModelHost()
+    # line5_dynhost = DynamicModelHost()
+    # line6_dynhost = DynamicModelHost()
+    # line7_dynhost = DynamicModelHost()
+    # line8_dynhost = DynamicModelHost()
+    # line9_dynhost = DynamicModelHost()
+    # line10_dynhost = DynamicModelHost()
+    # line11_dynhost = DynamicModelHost()
+    # line12_dynhost = DynamicModelHost()
+    # line13_dynhost = DynamicModelHost()
 
-    trafo1_dynhost = DynamicModelHost()
-    trafo2_dynhost = DynamicModelHost()
-    trafo3_dynhost = DynamicModelHost()
-    trafo4_dynhost = DynamicModelHost()
-
-    load1_dynhost = DynamicModelHost()
-    load2_dynhost = DynamicModelHost()
+    # trafo1_dynhost = DynamicModelHost()
+    # trafo2_dynhost = DynamicModelHost()
+    # trafo3_dynhost = DynamicModelHost()
+    # trafo4_dynhost = DynamicModelHost()
+    #
+    # load1_dynhost = DynamicModelHost()
+    # load2_dynhost = DynamicModelHost()
 
     # Build rms models from template
     # generators
@@ -259,26 +249,26 @@ def stability_kundur_no_shunt():
     genrow_mdl4 = block_deep_copy(get_genrow4_rms_template().block)
 
     # lines
-    line0_mdl = block_deep_copy(get_line_rms_template().block)
-    line1_mdl = block_deep_copy(get_line_rms_template().block)
-    line2_mdl = block_deep_copy(get_line_rms_template().block)
-    line3_mdl = block_deep_copy(get_line_rms_template().block)
-    line4_mdl = block_deep_copy(get_line_rms_template().block)
-    line5_mdl = block_deep_copy(get_line_rms_template().block)
-    line6_mdl = block_deep_copy(get_line_rms_template().block)
-    line7_mdl = block_deep_copy(get_line_rms_template().block)
-    line8_mdl = block_deep_copy(get_line_rms_template().block)
-    line9_mdl = block_deep_copy(get_line_rms_template().block)
-    line10_mdl = block_deep_copy(get_line_rms_template().block)
-    line11_mdl = block_deep_copy(get_line_rms_template().block)
-    line12_mdl = block_deep_copy(get_line_rms_template().block)
-    line13_mdl = block_deep_copy(get_line_rms_template().block)
+    line0_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line1_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line2_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line3_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line4_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line5_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line6_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line7_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line8_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line9_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line10_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line11_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    line13_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
 
     # trafos
-    trafo1_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo2_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo3_mdl = block_deep_copy(get_line_rms_template().block)
-    trafo4_mdl = block_deep_copy(get_line_rms_template().block)
+    trafo1_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    trafo2_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    trafo3_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+    trafo4_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
 
     # loads
     load1_mdl = block_deep_copy(get_load1_rms_template().block)
@@ -433,62 +423,33 @@ def stability_kundur_no_shunt():
 
     # add models to dyn_host
 
-    gen1_dynhost.model = big_gen1
-    gen2_dynhost.model = big_gen2
-    gen3_dynhost.model = big_gen3
-    gen4_dynhost.model = big_gen4
+    gen1.rms_model.model = big_gen1
+    gen2.rms_model.model = big_gen2
+    gen3.rms_model.model = big_gen3
+    gen4.rms_model.model = big_gen4
 
-    line0_dynhost.model = line0_mdl
-    line1_dynhost.model = line1_mdl
-    line2_dynhost.model = line2_mdl
-    line3_dynhost.model = line3_mdl
-    line4_dynhost.model = line4_mdl
-    line5_dynhost.model = line5_mdl
-    line6_dynhost.model = line6_mdl
-    line7_dynhost.model = line7_mdl
-    line8_dynhost.model = line8_mdl
-    line9_dynhost.model = line9_mdl
-    line10_dynhost.model = line10_mdl
-    line11_dynhost.model = line11_mdl
-    line12_dynhost.model = line12_mdl
-    line13_dynhost.model = line13_mdl
+    line0.rms_model.model.model = line0_mdl
+    line1.rms_model.model.model = line1_mdl
+    line2.rms_model.model.model = line2_mdl
+    line3.rms_model.model.model = line3_mdl
+    line4.rms_model.model.model = line4_mdl
+    line5.rms_model.model.model = line5_mdl
+    line6.rms_model.model.model = line6_mdl
+    line7.rms_model.model.model = line7_mdl
+    line8.rms_model.model.model = line8_mdl
+    line9.rms_model.model.model = line9_mdl
+    line10.rms_model.model.model = line10_mdl
+    line11.rms_model.model.model = line11_mdl
+    line12.rms_model.model.model = line12_mdl
+    line13.rms_model.model.model = line13_mdl
 
-    trafo1_dynhost.model = trafo1_mdl
-    trafo2_dynhost.model = trafo2_mdl
-    trafo3_dynhost.model = trafo3_mdl
-    trafo4_dynhost.model = trafo4_mdl
+    trafo_G1.rms_model.model.model = trafo1_mdl
+    trafo_G2.rms_model.model.model = trafo2_mdl
+    trafo_G3.rms_model.model.model = trafo3_mdl
+    trafo_G4.rms_model.model.model = trafo4_mdl
 
-    load1_dynhost.model = load1_mdl
-    load2_dynhost.model = load2_mdl
-
-    # attach rms models to Veragrid objects
-    gen1.rms_model = gen1_dynhost
-    gen2.rms_model = gen2_dynhost
-    gen3.rms_model = gen3_dynhost
-    gen4.rms_model = gen4_dynhost
-
-    line0.rms_model = line0_dynhost
-    line1.rms_model = line1_dynhost
-    line2.rms_model = line2_dynhost
-    line3.rms_model = line3_dynhost
-    line4.rms_model = line4_dynhost
-    line5.rms_model = line5_dynhost
-    line6.rms_model = line6_dynhost
-    line7.rms_model = line7_dynhost
-    line8.rms_model = line8_dynhost
-    line9.rms_model = line9_dynhost
-    line10.rms_model = line10_dynhost
-    line11.rms_model = line11_dynhost
-    line12.rms_model = line12_dynhost
-    line13.rms_model = line13_dynhost
-
-    trafo_G1.rms_model = trafo1_dynhost
-    trafo_G2.rms_model = trafo2_dynhost
-    trafo_G3.rms_model = trafo3_dynhost
-    trafo_G4.rms_model = trafo4_dynhost
-
-    load1.rms_model = load1_dynhost
-    load2.rms_model = load2_dynhost
+    load1.rms_model.model.model = load1_mdl
+    load2.rms_model.model.model = load2_mdl
 
     grid.add_line(line0)
     grid.add_line(line1)

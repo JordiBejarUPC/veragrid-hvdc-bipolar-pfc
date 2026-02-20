@@ -3,30 +3,35 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import numpy as np
-from typing import List
-
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 
 
 
 class BusRmsTemplate(RmsModelTemplate):
 
-    def __init__(self, name: str = "rms_bus_template"):
+    def __init__(self, vf: VarFactory, name: str = "rms_bus_template"):
+        """
+        Created the RMS Template of a Bus
+        :param vf: VarFactory
+        :param name: Name of the RMS Model
+        """
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
 
-        self.Vm = Var("Vm")
-        self.Va = Var("Va")
-        self.P = Var("P")
-        self.Q = Var("Q")
+        self.Vm = vf.add_var("Vm")
+        self.Va = vf.add_var("Va")
+        self.P = vf.add_var("P")
+        self.Q = vf.add_var("Q")
 
         self.block = Block(
-            algebraic_vars=[self.Vm, self.Va, self.P, self.Q])
+            algebraic_vars=[self.Vm, self.Va, self.P, self.Q]
+        )
 
         self._block.external_mapping={
                 VarPowerFlowRefferenceType.Vm: self.Vm,
@@ -34,3 +39,13 @@ class BusRmsTemplate(RmsModelTemplate):
                 VarPowerFlowRefferenceType.P: self.P,
                 VarPowerFlowRefferenceType.Q: self.Q
             }
+
+
+def initialize_bus_rms(bus: Bus, vf: VarFactory):
+    """
+
+    :param bus:
+    :param vf:
+    :return:
+    """
+    bus.rms_model.model = BusRmsTemplate(vf=vf).block

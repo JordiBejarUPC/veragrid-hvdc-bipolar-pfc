@@ -44,6 +44,7 @@ class EmtCircuit:
         self.gen_emt_data: EmtGenerator = EmtGenerator(n_elm=self.n_gen)
         self.load_emt_data: EmtLoad = EmtLoad(n_elm=self.n_load)
 
+        # NOTE: Used only during simulation, no need to add into the var factory
         self.tme: Var = Var("tme")
 
         self.h: float = 0

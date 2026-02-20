@@ -975,7 +975,7 @@ class IoMain(ConfigurationMain):
         if not self.circuit.sequence_line_types:
             self.circuit.sequence_line_types += get_sequence_lines_catalogue()
         if not self.circuit.rms_models:
-            self.circuit.rms_models += get_rms_model_catalogue()
+            self.circuit.add_rms_model_catalogue()
 
     def load_custom_catalogue(self):
         """

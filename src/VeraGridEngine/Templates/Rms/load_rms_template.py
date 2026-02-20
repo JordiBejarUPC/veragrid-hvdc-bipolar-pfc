@@ -3,14 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from typing import List
-
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
 
 
-def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
+def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Load
     :return: RmsModelTemplate
@@ -19,18 +17,18 @@ def get_load_rms_template(name = "Load rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    inputs: List[Var] = [Var("Vm_" + name),
-                         Var("Va_" + name)
+    inputs: List[vfactory.add_var] = [vfactory.add_var("Vm_" + name),
+                         vfactory.add_var("Va_" + name)
                          ]
 
-    Pl0 = Var("Pl0")
-    Ql0 = Var("Ql0")
+    Pl0 = vfactory.add_var("Pl0")
+    Ql0 = vfactory.add_var("Ql0")
 
-    Ql = Var("Ql")
-    Pl = Var("Pl")
+    Ql = vfactory.add_var("Ql")
+    Pl = vfactory.add_var("Pl")
 
-    templ.block.event_dict[Pl0] = Const(-0.0999999)
-    templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
+    templ.block.event_dict[Pl0] = vfactory.add_const(-0.0999999)
+    templ.block.event_dict[Ql0] = vfactory.add_const(-0.009999999862208533)
 
     templ.block.algebraic_vars = [Pl, Ql]
 

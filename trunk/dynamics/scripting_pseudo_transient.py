@@ -26,10 +26,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, StabilizerBuild
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_genqec, get_governor, get_exciter, get_stabilizer
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
+# from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.enumerations import RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -93,16 +93,16 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = GenqecBuild().block.copy()
+genqec1_mdl = get_genqec().block.copy()
 
 
-exc1_mdl = ExciterBuild().block.copy()
+exc1_mdl = get_exciter().block.copy()
 
 
-gov1_mdl = GovernorBuild().block.copy()
+gov1_mdl = get_governor().block.copy()
 
 
-stabil1_mdl = StabilizerBuild().block.copy()
+stabil1_mdl = get_stabilizer().block.copy()
 
 
 

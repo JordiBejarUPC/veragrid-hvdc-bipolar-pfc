@@ -1038,7 +1038,12 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
 
-                        self.rms_model_Editor_window = RmsModelEditorGUI(self.circuit.rms_models, model_host=elm)
+                        self.rms_model_Editor_window = RmsModelEditorGUI(
+                            var_factory=self.circuit.var_factory,
+                            templates_list=self.circuit.rms_models,
+                            model_host=elm
+                        )
+
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)
                         self.rms_model_Editor_window.show()
 
@@ -1647,5 +1652,3 @@ class DataBaseTableMain(DiagramsMain):
 
         else:
             return
-
-

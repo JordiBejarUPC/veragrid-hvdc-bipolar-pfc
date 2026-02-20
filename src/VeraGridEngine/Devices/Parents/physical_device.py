@@ -151,5 +151,3 @@ class PhysicalDevice(EditableDevice):
         """
         return self.owners.to_list()
 
-    def initialize_rms(self):
-        pass

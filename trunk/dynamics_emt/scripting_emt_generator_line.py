@@ -65,9 +65,9 @@ bus2.ph_b = True
 bus2.ph_c = True
 
 # Asignar templates simbólicos a los buses
-bus1_template = get_bus_emt_template()
+bus1_template = get_bus_emt_template(grid.var_factory)
 bus1.emt_model.model = bus1_template.block
-bus2_template = get_bus_emt_template()
+bus2_template = get_bus_emt_template(grid.var_factory)
 bus2.emt_model.model = bus2_template.block
 
 # --- LÍNEA DE TRANSMISIÓN ---
