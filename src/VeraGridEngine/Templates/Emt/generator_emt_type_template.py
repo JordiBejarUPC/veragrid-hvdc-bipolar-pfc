@@ -9,16 +9,19 @@ from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block import Var, Const
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 
 
-def get_generator_emt_template() -> EmtModelTemplate:
+def get_generator_emt_template(name="emt type generator template") -> EmtModelTemplate:
     """
     Get the EMT template of a generator
     :return: EmtModelTemplate
     """
     
     templ = EmtModelTemplate()
+
+    templ.tpe = DeviceType.GeneratorDevice
+    templ.name = name
 
     theta = Var("theta")
     omega = Var("omega")
@@ -141,7 +144,7 @@ def get_generator_emt_template() -> EmtModelTemplate:
         VarPowerFlowRefferenceType.i_A: i_a,
         VarPowerFlowRefferenceType.i_B: i_b,
         VarPowerFlowRefferenceType.i_C: i_c,
-        VarPowerFlowRefferenceType.theta: theta,
+        # VarPowerFlowRefferenceType.theta: theta,
     }
 
     templ.block.event_dict = {freq: Const(50.0),
@@ -161,13 +164,13 @@ def get_generator_emt_template() -> EmtModelTemplate:
                        Ki: Const(2.0),
                        # v_f0: Const(-0.018508071106644895)}
                        v_f0: Const(-0.017823457188517983)}
-                       # v_f0: Const(-6.263353826055606e-05)}
 
 
 
 
 
     templ.block.init_eqs = {
+        # TODO: add theta init eq
         omega: Const(1.0),
         Pm: Pe,
         et: Const(0.0),
