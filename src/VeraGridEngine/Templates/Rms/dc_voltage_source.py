@@ -14,6 +14,30 @@ from VeraGridEngine.Utils.Symbolic.block import (Block, Var, DiffVar, Const, Var
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def DCVoltageSource(Vdc, name: str = "") -> RmsModelTemplate:
+    """
+    Builds an RMS model template for a DC voltage source with capacitive filtering.
+    
+    Models a DC voltage source (e.g., photovoltaic array, battery) connected through
+    a DC-link capacitor and series resistance. The model captures the DC-side dynamics
+    and power injection into the AC grid.
+    
+    The circuit consists of:
+    - DC voltage source (Vpv) with internal resistance (Rpv)
+    - DC-link capacitor (C) for energy storage and ripple filtering
+    - DC current (Idc) and power (Pdc) output to the converter
+    
+    The differential-algebraic equations governing the system:
+        - Algebraic: Pdc = Idc * Vdc (power balance)
+        - Algebraic: Vpv = Vpv0 (source voltage)
+        - Differential: C*dVdc/dt + Idc = (Vpv - Vdc)/Rpv (capacitor dynamics)
+    
+    Args:
+        Vdc: DC voltage variable (pu)
+        name (str): Name of the DC voltage source model
+    
+    Returns:
+        RmsModelTemplate: Configured RMS model template for DC voltage source simulation
+    """
     templ = RmsModelTemplate()
 
     #Vars:

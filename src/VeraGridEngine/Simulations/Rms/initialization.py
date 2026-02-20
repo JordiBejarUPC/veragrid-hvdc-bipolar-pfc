@@ -400,7 +400,8 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
                             eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
                             init_val = float(eq_fn(x, event_params_array, params_array))
                             init_param_def = mdl.event_dict[var]
-                            if isinstance(init_param_def, Const) and init_param_def.value is None:
+                            if isinstance(init_param_def, Const):
+                                # Always update Const values with the calculated init value
                                 mdl.event_dict[var] = Const(init_val)
                                 event_params_array[uid2idx_event_params[var.uid]] = init_val
                             else:
@@ -715,13 +716,14 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
                     mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St_vsc[i].real
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag    
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag
         
-        # if elm.control1 == ConverterControlType.Vm_dc:
-        #     dc_bus_model = elm.bus_from.rms_model.model
-        #     Vdc = dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc] 
-        #     dc_bus_model.algebraic_vars.remove(Vdc)
-        #     dc_bus_model.event_dict[Vdc] = Const(elm.control1_val) 
+        # Initialize Vdc from the DC bus (bus_from)
+        dc_bus_model = elm.bus_from.rms_model.model
+        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
+                    mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] = init_guess[
+            (dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
+             dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] 
 
     # injections
     # get injection devices grouped by buses

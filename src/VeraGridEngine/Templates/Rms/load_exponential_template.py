@@ -15,7 +15,29 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def ExponentialLoadBuild(name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplate:
     """
-     generator with quadratic saturation
+    Builds an RMS model template for an exponential load.
+    
+    Exponential load model represents load power consumption as an exponential function
+    of voltage magnitude. The power varies with voltage raised to an exponent.
+    
+    The power equations are:
+        P = P0 * (V/V0)^a
+        Q = Q0 * (V/V0)^b
+    
+    Where:
+        - a is the active power voltage exponent (default 5.0 for constant impedance-like behavior)
+        - b is the reactive power voltage exponent (default 5.0 for constant impedance-like behavior)
+    
+    This model is useful for representing loads where power consumption is highly 
+    sensitive to voltage changes, such as heating loads or certain electronic devices.
+    
+    Args:
+        name (str): Name of the load model
+        Pl0 (float): Initial active power at nominal voltage (pu)
+        Ql0 (float): Initial reactive power at nominal voltage (pu)
+    
+    Returns:
+        RmsModelTemplate: Configured RMS model template for exponential load simulation
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice

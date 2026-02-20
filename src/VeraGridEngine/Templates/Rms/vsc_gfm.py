@@ -74,7 +74,8 @@ def build_gfm_converter_model(inputs: List[Var],
         I_max: Const(1.2),
     }
 
-    # Variables
+    # Variables - P and Q represent terminal power (flowing into the grid)
+    # They are linked to Pt_vsc and Qt_vsc via algebraic equations
     P = Var('P')
     Q = Var('Q')
     omega = Var('omega')
@@ -114,8 +115,12 @@ def build_gfm_converter_model(inputs: List[Var],
     algebraic_eqs.append(Q - Const(1.5) * (vq_g * id_g - vd_g * iq_g))
     
     # Droop control with Low-pass filters
+    # Transfer function: 1/(tau*s + 1)
+    # At steady state: output = input, derivative = 0
     block_P, P_lowpass = tf_to_diffblock(num=[Const(1)], den=[tau_P, Const(1)], x=P, name='P_loop')
     block_Q, Q_lowpass = tf_to_diffblock(num=[Const(1)], den=[tau_Q, Const(1)], x=Q, name='Q_loop')
+    block_P.init_eqs = {P_lowpass: P}
+    block_Q.init_eqs = {Q_lowpass: Q}
     res_block.add(block_P)
     res_block.add(block_Q)
 
@@ -136,6 +141,8 @@ def build_gfm_converter_model(inputs: List[Var],
     # PI controllers for voltage
     block_vd, id_hat = tf_to_diffblock(num=[Ki_icl, Kp_icl], den=[0, 1], x=vd_ref - vd_f, name='vd_ctrl')
     block_vq, iq_hat = tf_to_diffblock(num=[Ki_icl, Kp_icl], den=[0, 1], x=vq_ref - vq_f, name='vq_ctrl')
+    # Initialize PI controllers: at steady state with zero error, output is constant
+    # We'll set initial values in core_block init_eqs
     res_block.add(block_vd)
     res_block.add(block_vq)
     
@@ -162,8 +169,8 @@ def build_gfm_converter_model(inputs: List[Var],
         diff_vars=[dt_theta],
         event_dict=event_dict,
         init_eqs={
-            P: Pt_vsc,
-            Q: Qt_vsc,
+            P: -Pt_vsc,
+            Q: -Qt_vsc,
             P_ref: P,
             Q_ref: Q,
             theta: Va,
@@ -184,8 +191,8 @@ def build_gfm_converter_model(inputs: List[Var],
             vq_c_ref: vq_f + Lf * omega * id_c,
             vd_hat: vd_c_ref - (vd_f - Lf * omega * iq_c),
             vq_hat: vq_c_ref - (vq_f + Lf * omega * id_c),
-            id_hat: id_c_ref - (id_g - Cf * omega * vq_f),
-            iq_hat: iq_c_ref - (iq_g + Cf * omega * vd_f)
+            id_hat: Const(0.0),
+            iq_hat: Const(0.0)
         },
         external_mapping={
             VarPowerFlowRefferenceType.P: P,

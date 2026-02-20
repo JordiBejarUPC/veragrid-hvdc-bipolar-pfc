@@ -15,7 +15,27 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
-     generator with quadratic saturation
+    Builds an RMS model template for a dynamic tap-changing load with PI voltage control.
+
+    This load model represents a load equipped with an on-load tap changer (OLTC) or similar
+    voltage regulation device. A PI controller adjusts the effective voltage ratio (m) to
+    maintain the load voltage within desired bounds.
+
+    The model includes:
+    - State equation for tap position/ratio (m) controlled by PI regulator
+    - Algebraic equations for active and reactive power with exponential voltage dependency
+    - Power equations: P = P0*(V/m)^alpha_p, Q = Q0*(V/m)^alpha_q
+
+    The PI controller adjusts m based on voltage deviation from reference:
+        dm/dt = -Kd*m + Ki*(V/m - 1 + Kd/Ki*V0)
+
+    Args:
+        name (str): Name of the load model
+        Pl0 (float): Initial active power at nominal voltage (pu)
+        Ql0 (float): Initial reactive power at nominal voltage (pu)
+
+    Returns:
+        RmsModelTemplate: Configured RMS model template for dynamic tap load simulation
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice

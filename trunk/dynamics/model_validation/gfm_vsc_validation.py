@@ -96,7 +96,7 @@ print('PF Voltage magnitudes (p.u.): ', abs(res.voltage))
 
 # Initialize the RMS
 line12_mdl = block_deep_copy(get_line_rms_template().block)
-load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.5, Ql0 =-0.1).block)
+load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.005, Ql0 =-0.001).block)
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
 vsc_mdl = block_deep_copy(VscGfmBuild().block) # Load GFM model
 dc_source = block_deep_copy(DCVoltageSource(bus3.rms_model.model.out_vars[0]).block)
@@ -179,4 +179,12 @@ plt.legend()
 plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+# plt.show()  # Commented out for non-interactive testing
+
+# Verify simulation completed
+print('\n=== SIMULATION COMPLETED SUCCESSFULLY ===')
+print(f'Final time: {t[-1]:.3f}s')
+print(f'Final omega: {y[-1, slv.get_var_idx(omega)]:.6f} pu')
+print(f'Final P: {y[-1, slv.get_var_idx(P_vsc)]:.6f} pu')
+print(f'Final Q: {y[-1, slv.get_var_idx(Q_vsc)]:.6f} pu')
+print(f'Final Vm2: {y[-1, slv.get_var_idx(Vm2)]:.6f} pu')

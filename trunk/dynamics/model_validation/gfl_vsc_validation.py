@@ -51,14 +51,19 @@ def block_dimensions(block:Block):
     return 
 
 def find_name_in_block(name: str, block: Block):
+    """Recursively find a variable by name in the block and all its children."""
+    # Check in the current block's variables
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
         if name == var.name:
             return var
-
+    
+    # Recursively search in children
     for mdl in block.children:
         res = find_name_in_block(name, mdl)
         if res is not None:
             return res
+    
+    return None
 
 pr = profile.Profile()
 pr.disable()
@@ -76,28 +81,30 @@ bus3 = gce.Bus(name='B3', Vnom=100, is_dc=True)
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
 
-# Define VSCs
+# Select control modes for the VSC
+# Options for control1: ConverterControlType.Pac, ConverterControlType.Pdc, ConverterControlType.Vm_dc
+# Options for control2: ConverterControlType.Qac, ConverterControlType.Vm_ac
+CONTROL1_MODE = ConverterControlType.Vm_dc
+CONTROL2_MODE = ConverterControlType.Vm_ac
+
+# Define VSCs with the selected control modes
 vsc1 = gce.VSC(name='VSC1', bus_from=bus3, bus_to=bus2, rate=100, alpha1=0.0, alpha2=0.0, alpha3=0.0,
-               control1=ConverterControlType.Vm_dc, control2=ConverterControlType.Vm_ac,
+               control1=CONTROL1_MODE, control2=CONTROL2_MODE,
                control1_val=1.03, control2_val=1.001)
 
 # Define generators
-gen1 = gce.Generator(name='Gen1', P=1.0, vset=1.00)
+gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00)
 
 # Define loads
-load1 = gce.Load(name='Load1', P=9.999, Q=0.9999)
+load1 = gce.Load(name='Load1', P=10, Q=1.0)
 #load2 = gce.Load(name='Load2', P=2.0, Q=0.5)
 
 
 #Grid modifications
 #grid.add_load(bus = bus3, api_obj=load3)
 injection = 'load'
-if injection == 'current':
-    gen3 = gce.CurrentInjection(name='Gen3', Ir =0.2)
-    grid.add_current_injection(bus=bus3, api_obj=gen3)
-elif injection == 'load':
-    gen3 = gce.Load(name='Load1', P=-0.99)
-    grid.add_load(bus=bus3, api_obj=gen3)
+gen3 = gce.Load(name='Load1', P=-1.0, Q =-0.1)
+grid.add_load(bus=bus3, api_obj=gen3)
 
 ###############
 # Add to the grid
@@ -126,9 +133,15 @@ print('Voltage angles (deg): ', np.angle(pf_driver.results.voltage, deg=True))
 line12_mdl = block_deep_copy(get_line_rms_template().block)
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.09999, Ql0 =-0.009999).block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.1, Ql0 =-0.01).block)
+else:
+    raise ValueError(f"Unknown load type: {load_type}")
+    
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
-vsc_mdl        =  block_deep_copy(VscGflBuild().block)
+
+# Build VSC model with the same control modes used in the VSC device
+vsc_mdl = block_deep_copy(VscGflBuild(control1=CONTROL1_MODE, control2=CONTROL2_MODE).block)
+
 pv_cell_block  =  block_deep_copy(PVCellBuild().block)
 dc_source = block_deep_copy(DCVoltageSource(bus3.rms_model.model.out_vars[0]).block)
 
@@ -143,9 +156,10 @@ line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
 line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+# Updated connections for new VSC model with 3 inputs: [Vm, Va, Vdc]
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])  # Vm
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])  # Va
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])  # Vdc
 
 #vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]]) 
 #pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
@@ -161,10 +175,22 @@ gen3.rms_model.model.unify_blocks()
 block_dimensions(vsc_mdl)
 block_dimensions(gen3.rms_model.model)
 Vpv0 = find_name_in_block('Vpv0', gen3.rms_model.model)
-Pref = find_name_in_block('P_ref', vsc_mdl)
-event = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3)
-event = RmsEvent(device=gen3, parameter=Pref, time=.2, value=0.1)
-grid.add_rms_event(event)
+
+# Find appropriate reference variable based on control mode
+if CONTROL1_MODE == ConverterControlType.Vm_dc:
+    ref_var = find_name_in_block('Vdc_ref', vsc_mdl)
+    print(f"Using Vdc_ref for control mode {CONTROL1_MODE}")
+elif CONTROL1_MODE in [ConverterControlType.Pac, ConverterControlType.Pdc]:
+    ref_var = find_name_in_block('P_ref', vsc_mdl)
+    print(f"Using P_ref for control mode {CONTROL1_MODE}")
+else:
+    ref_var = find_name_in_block('P_ref', vsc_mdl)
+    print(f"Using P_ref for control mode {CONTROL1_MODE}")
+
+event1 = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3)
+event2 = RmsEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
+grid.add_rms_event(event1)
+grid.add_rms_event(event2)
 
 sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
@@ -173,7 +199,7 @@ params_mapping = {}
 params0 = slv.build_init_params_vector(params_mapping)
 x0 = slv.build_init_vars_vector_from_uid(init_guess)
 dx0 = np.zeros(len(slv._diff_vars))
-Vm = find_name_in_block("Vm", slv.block_system)
+Vm_var = find_name_in_block("Vm", slv.block_system)
 
 xlim = 0.3
 t, y, _ = slv.simulate(
@@ -195,8 +221,9 @@ Pg = genrow_mdl1.out_vars[0]
 Qg = genrow_mdl1.out_vars[1]
 delta = find_name_in_block("delta", genrow_mdl1)
 
+plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Vm_var)], label="Vm (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
 
@@ -207,6 +234,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
+plt.title(f'VSC GFL Control: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 plt.show()
 
 pv_all = gen3.rms_model.model 
@@ -223,6 +251,7 @@ Idc = find_name_in_block('Idc', gen3.rms_model.model)
 Vdc = find_name_in_block('Vdc', bus3.rms_model.model)
 Pdc = find_name_in_block('Pdc', dc_source)
 
+plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, slv.get_var_idx(Vdc)], label="vdc (pu)")
 plt.plot(t, y[:, slv.get_var_idx(Pdc)], label="Pdc (pu)")
 #plt.plot(t, y[:, slv.get_var_idx(v_d_c)], label="vd converter (pu)")
@@ -242,4 +271,14 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
+plt.title(f'VSC DC Side: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 plt.show()
+
+print(f"\nSimulation completed with control modes: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}")
+print("Supported combinations:")
+print("  - Pac + Qac: Active and reactive power control")
+print("  - Pac + Vm_ac: Active power and AC voltage control")
+print("  - Pdc + Qac: DC power and reactive power control")
+print("  - Pdc + Vm_ac: DC power and AC voltage control")
+print("  - Vm_dc + Qac: DC voltage and reactive power control")
+print("  - Vm_dc + Vm_ac: DC voltage and AC voltage control")

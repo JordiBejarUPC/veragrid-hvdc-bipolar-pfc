@@ -15,7 +15,28 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def ZIPLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
-     generator with quadratic saturation
+    Builds an RMS model template for a ZIP load.
+    
+    ZIP load model represents load power consumption as a combination of constant impedance (Z),
+    constant current (I), and constant power (P) components. The active and reactive power 
+    are calculated as quadratic functions of voltage magnitude.
+    
+    The power equations are:
+        P = P0 * (a1*(V/V0)^2 + a2*(V/V0) + a3)
+        Q = Q0 * (a4*(V/V0)^2 + a5*(V/V0) + a6)
+    
+    Where coefficients must sum to 1.0 for both active (a1+a2+a3) and reactive (a4+a5+a6) power.
+    
+    Args:
+        name (str): Name of the load model
+        Pl0 (float): Initial active power at nominal voltage (pu)
+        Ql0 (float): Initial reactive power at nominal voltage (pu)
+    
+    Returns:
+        RmsModelTemplate: Configured RMS model template for ZIP load simulation
+    
+    Raises:
+        ValueError: If ZIP coefficients do not sum to 1.0 within tolerance
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
