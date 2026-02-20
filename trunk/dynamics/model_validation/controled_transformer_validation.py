@@ -86,7 +86,7 @@ trafo_1 = gce.Transformer2W(name='Trafo 2-3',
                             bus_to=bus3,
                             template=trafo_type,
                             tap_phase_control_mode=TapPhaseControl.Pf,
-                            Pset=2.0,  # Regulate through flow to 5 MW
+                            Pset=1.0,  # Regulate through flow to 5 MW
                             tap_phase_min=-np.pi/6,
                             tap_phase_max=np.pi/6)
 trafo_1.regulation_bus = bus3
@@ -140,8 +140,8 @@ print("Branch names in NC:", nc.passive_branch_data.names)
 
 options = PowerFlowOptions(gce.SolverType.NR, 
                            verbose=2, 
-                           control_taps_modules=True, 
-                           control_taps_phase=True)
+                           control_taps_modules=False, 
+                           control_taps_phase=False)
 
 # Initial guesses
 V0 = nc.bus_data.Vbus
@@ -304,3 +304,43 @@ plt.xlim([0, xlim])
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+
+exit()
+#saved alternative model
+        # yff = (ys + ysh / 2) / (self.tap_module * self.tap_module * vtap_f * vtap_f)
+        # yft = -ys / (self.tap_module * np.exp(-1.0j * (self.tap_phase + phase_displacement)) * vtap_f * vtap_t)
+        # ytf = -ys / (self.tap_module * np.exp(1.0j * (self.tap_phase + phase_displacement)) * vtap_t * vtap_f)
+        # ytt = (ys + ysh / 2) / (vtap_t * vtap_t
+        # print(f'yff is {yff} ytt is {ytt}')
+        # print(f'yft is {yft} ytf is {ytf}'
+        # theta_ft = Vaf - Vat
+        # gamma_ff = (np.angle(yff))
+        # gamma_tt = (np.angle(ytt))
+        # gamma_ft = (np.angle(yft))
+        # gamma_tf = (np.angle(ytf))
+        # Pf_expr =  Vmf**2*np.abs(yff)*np.cos(gamma_ff) + Vmf*Vmt*np.abs(yft)*cos(theta_ft - gamma_ft)
+        # Qf_expr = -Vmf**2*np.abs(yff)*np.sin(gamma_ff) + Vmf*Vmt*np.abs(yft)*sin(theta_ft - gamma_ft)
+        # Pt_expr =  Vmt**2*np.abs(ytt)*np.cos(gamma_tt) + Vmf*Vmt*np.abs(ytf)*cos(-theta_ft - gamma_tf)
+        # Qt_expr = -Vmt**2*np.abs(ytt)*np.sin(gamma_tt) + Vmf*Vmt*np.abs(ytf)*sin(-theta_ft - gamma_tf)
+        # block = Block(
+        #     algebraic_vars=[Pf, Pt, Qf, Qt],
+        #     algebraic_eqs=[
+        #         # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
+        #         Pf -Pf_expr,
+        #         Pt -Pt_expr,
+        #         Qf -Qf_expr,
+        #         Qt -Qt_expr,
+        #     ],
+        #     event_dict = {
+        #         m : Const(self.tap_module),
+        #         phi : Const(self.tap_phase)
+        #     }
+        # )
+        # block.external_mapping = {
+        #     VarPowerFlowRefferenceType.Pf: Pf,
+        #     VarPowerFlowRefferenceType.Pt: Pt,
+        #     VarPowerFlowRefferenceType.Qf: Qf,
+        #     VarPowerFlowRefferenceType.Qt: Qt,
+        # }
+    

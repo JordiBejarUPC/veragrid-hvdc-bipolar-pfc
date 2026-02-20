@@ -162,8 +162,8 @@ def build_gfm_converter_model(inputs: List[Var],
         diff_vars=[dt_theta],
         event_dict=event_dict,
         init_eqs={
-            P: -Pt_vsc,
-            Q: -Qt_vsc,
+            P: Pt_vsc,
+            Q: Qt_vsc,
             P_ref: P,
             Q_ref: Q,
             theta: Va,
@@ -233,7 +233,7 @@ def VscGfmBuild(name: str = "") -> RmsModelTemplate:
     
     vsc_wrapper = Block(
         algebraic_eqs=[
-            Pf_vsc - (P - (a0 + a1 * Im + a2 * Im**2)),
+            Pf_vsc - (P + (a0 + a1 * Im + a2 * Im**2)),
             Pt_vsc + P,
             Qt_vsc + Q,
         ],

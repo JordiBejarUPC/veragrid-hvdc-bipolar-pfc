@@ -1293,7 +1293,6 @@ class Func2(Expr):
     uid: int = field(default_factory=_new_uid, init=False)
 
     _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
-        "atan2": np.atan2,
         "min": np.minimum,
         "max": np.maximum,
     })

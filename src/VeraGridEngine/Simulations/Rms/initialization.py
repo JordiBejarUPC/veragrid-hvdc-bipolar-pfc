@@ -182,6 +182,79 @@ def parse_vars(dev_mdl, init_guess_dict, vars_list) -> tuple[Dict, List]:
     return init_guess_dict, vars_list
 
 
+def _process_branch_init_eqs(mdl: Block, init_guess: dict, uid2sym_vars: dict, uid2idx_vars: dict, x: np.ndarray):
+    """
+    Process init_eqs for branch models (transformers, etc.) without bus-specific mappings.
+    This resolves equations like y_ = Pf for control loops.
+    """
+    # Build event params mappings
+    uid2sym_event_params: Dict[int, str] = {}
+    uid2idx_event_params: Dict[int, int] = {}
+    event_params_array_index = 0
+    for event_param in mdl.event_dict.keys():
+        if event_param.uid not in uid2idx_event_params:
+            uid2sym_event_params[event_param.uid] = f"event_params[{event_params_array_index}]"
+            uid2idx_event_params[event_param.uid] = event_params_array_index
+            event_params_array_index += 1
+    
+    # Build params mappings
+    uid2sym_params: Dict[int, str] = {}
+    uid2idx_params: Dict[int, int] = {}
+    params_array_index = 0
+    for param in mdl.parameters.keys():
+        if param.uid not in uid2idx_params:
+            uid2sym_params[param.uid] = f"params[{params_array_index}]"
+            uid2idx_params[param.uid] = params_array_index
+            params_array_index += 1
+    
+    event_params_array = np.zeros(len(uid2idx_event_params))
+    for ep, idx in uid2idx_event_params.items():
+        if ep in mdl.event_dict and isinstance(mdl.event_dict[ep], Const):
+            event_params_array[idx] = mdl.event_dict[ep].value if mdl.event_dict[ep].value is not None else 0.0
+    
+    params_array = np.zeros(len(uid2idx_params))
+    
+    # Process init_eqs
+    vars_initialized: set[tuple[int, str]] = set()
+    
+    while len(vars_initialized) < len(mdl.init_eqs):
+        progress = False
+        vars_init_at_start = len(vars_initialized)
+        
+        for var, eq in mdl.init_eqs.items():
+            key = (var.uid, var.name)
+            if key in vars_initialized:
+                continue
+            
+            vars_needed = eq.get_vars()
+            calculate_now = True
+            
+            for v_init in vars_needed:
+                key_deps = (v_init.uid, v_init.name)
+                if v_init in mdl.event_dict.keys():
+                    if isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None:
+                        calculate_now = False
+                        break
+                else:
+                    if key_deps not in init_guess and v_init.uid != var.uid:
+                        calculate_now = False
+                        break
+            
+            if calculate_now:
+                # This is an algebraic variable initialization
+                eq_fn = _compile_equation([eq], uid2sym_vars, uid2sym_event_params, uid2sym_params)
+                init_val = float(eq_fn(x, event_params_array, params_array))
+                init_guess[key] = init_val
+                if var.uid in uid2idx_vars:
+                    x[uid2idx_vars[var.uid]] = init_val
+                vars_initialized.add(key)
+                progress = True
+        
+        if not progress and len(vars_initialized) == vars_init_at_start:
+            unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
+            raise RuntimeError(f"Unresolvable init equations for branch: {unresolved}")
+
+
 def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                   array_index, use_init_values: bool):
     """
@@ -603,6 +676,32 @@ def compose_system_block(time: Var, grid: MultiCircuit,
                         mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St[i].imag
 
         sys_block.add(mdl)
+
+    # Process init_eqs for branches with controls (transformers, etc.)
+    for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
+        if elm.rms_model.model.init_eqs:
+            mdl = elm.rms_model.model
+            
+            # Build variable mappings for this branch
+            mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
+            uid2sym_vars_local = uid2sym_vars.copy()
+            uid2idx_vars_local = uid2idx_vars.copy()
+            array_index = vars_array_index
+            
+            for v in mdl_vars:
+                if v.uid not in uid2sym_vars_local:
+                    uid2sym_vars_local[v.uid] = f"vars[{array_index}]"
+                    uid2idx_vars_local[v.uid] = array_index
+                    array_index += 1
+            
+            # Process init_eqs
+            x = np.zeros(len(uid2idx_vars_local))
+            for var_key, val in init_guess.items():
+                if var_key[0] in uid2idx_vars_local:
+                    x[uid2idx_vars_local[var_key[0]]] = val
+            
+            # Simple init_eqs processing for branches
+            _process_branch_init_eqs(mdl, init_guess, uid2sym_vars_local, uid2idx_vars_local, x)
 
     # Populating VSCs init guess
     for i, elm in enumerate(grid.get_vsc()):
