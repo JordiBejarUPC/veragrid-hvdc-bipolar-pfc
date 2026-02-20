@@ -24,13 +24,13 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 import VeraGridEngine.api as gce
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from trunk.dynamics.scripting_genqec_exc_gov_simple import well_initialized
+
 
 pr = profile.Profile()
 pr.disable()
@@ -67,19 +67,6 @@ def rms_kundur():
     bus10 = Bus(name="Bus10", Vnom=230)
     bus11 = Bus(name="Bus11", Vnom=230)
 
-
-    bus1.initialize_rms()
-    bus2.initialize_rms()
-    bus3.initialize_rms()
-    bus4.initialize_rms()
-    bus5.initialize_rms()
-    bus6.initialize_rms()
-    bus7.initialize_rms()
-    bus8.initialize_rms()
-    bus9.initialize_rms()
-    bus10.initialize_rms()
-    bus11.initialize_rms()
-
     grid.add_bus(bus1)
     grid.add_bus(bus2)
     grid.add_bus(bus3)
@@ -91,6 +78,9 @@ def rms_kundur():
     grid.add_bus(bus9)
     grid.add_bus(bus10)
     grid.add_bus(bus11)
+
+    for bus in grid.buses:
+        initialize_bus_rms(bus, vf=grid.var_factory)
 
     # Line
 
@@ -639,29 +629,29 @@ def rms_kundur():
     # plot
 
     # omega = genrow_mdl1.out_vars[2]
-    Pg = genrow_mdl1.out_vars[0]
-    Qg = genrow_mdl1.out_vars[1]
+    # Pg = genrow_mdl1.out_vars[0]
+    # Qg = genrow_mdl1.out_vars[1]
     # Ir = genrow_mdl1.out_vars[3]
     # Efd = genrow_mdl1.in_vars[3]
     # Te = genrow_mdl1.out_vars[4]
 
-    delta = find_name_in_block("delta", genrow_mdl1)
+    # delta = find_name_in_block("delta", genrow_mdl1)
 
     # Generator state variables
     # plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
-    plt.plot(t, y[:, solver.get_var_idx(delta)], label="delta (pu)")
-    plt.plot(t, y[:, solver.get_var_idx(Pg)], label="P (pu)")
-    plt.plot(t, y[:, solver.get_var_idx(Qg)], label="Q (pu)")
+    # plt.plot(t, y[:, solver.get_var_idx(delta)], label="delta (pu)")
+    # plt.plot(t, y[:, solver.get_var_idx(Pg)], label="P (pu)")
+    # plt.plot(t, y[:, solver.get_var_idx(Qg)], label="Q (pu)")
     # plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
 
-    plt.legend(loc='upper right', ncol=2)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Values (pu)")
-    plt.xlim([0, 15])
-    # plt.ylim([0.85, 1.15])
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    # plt.legend(loc='upper right', ncol=2)
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Values (pu)")
+    # plt.xlim([0, 15])
+    # # plt.ylim([0.85, 1.15])
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
 
 
 if __name__ == '__main__':

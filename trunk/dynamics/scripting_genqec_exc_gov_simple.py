@@ -16,6 +16,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImpl
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -46,11 +47,13 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 
-bus0.initialize_rms()
-bus1.initialize_rms()
+
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
+
+for bus in grid.buses:
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -129,8 +132,6 @@ grid.add_rms_event(event)
 grid.add_line(line0)
 grid.add_load(bus=bus1, api_obj=load)
 grid.add_generator(bus=bus0, api_obj=gen0)
-
-gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
