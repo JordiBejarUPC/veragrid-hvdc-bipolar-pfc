@@ -80,13 +80,13 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # generator
-genqec_mdl = block_deep_copy(get_complete_generator_template(grid.var_factory).block)
+genqec_mdl = get_complete_generator_template(grid.var_factory).block
 
 # line
-line_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+line_mdl = get_line_rms_template(grid.var_factory).block
 
 # load
-load_mdl = block_deep_copy(get_load_rms_template(grid.var_factory).block)
+load_mdl = get_load_rms_template(grid.var_factory).block
 
 # connection with buses
 

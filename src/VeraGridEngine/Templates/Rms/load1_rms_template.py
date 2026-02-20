@@ -3,16 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import numpy as np
-
-from typing import List
-
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
 
 
-def get_load1_rms_template(name = "Load rms template") -> RmsModelTemplate:
+def get_load1_rms_template(var_factory: VarFactory, name="Load rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Load
     :return: RmsModelTemplate
@@ -21,27 +17,27 @@ def get_load1_rms_template(name = "Load rms template") -> RmsModelTemplate:
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    inputs: List[Var] = [Var("Vm_" + name),
-                         Var("Va_" + name)
-                         ]
+    inputs = [var_factory.add_var("Vm_" + name),
+              var_factory.add_var("Va_" + name)
+              ]
 
-    Pl0 = Var("Pl0")
-    Ql0 = Var("Ql0")
+    Pl0 = var_factory.add_var("Pl0")
+    Ql0 = var_factory.add_var("Ql0")
 
-    Ql = Var("Ql")
-    Pl = Var("Pl")
+    Ql = var_factory.add_var("Ql")
+    Pl = var_factory.add_var("Pl")
 
-    # templ.block.event_dict[Pl0] = Const(-0.0999999)
-    # templ.block.event_dict[Ql0] = Const(-0.009999999862208533)
+    # templ.block.event_dict[Pl0] = var_factory.add_const(-0.0999999)
+    # templ.block.event_dict[Ql0] = var_factory.add_const(-0.009999999862208533)
 
-    templ.block.event_dict[Pl0] = Const(-9.670000000007317)
-    templ.block.event_dict[Ql0] = Const(-0.9999999999967969)
+    templ.block.event_dict[Pl0] = var_factory.add_const(-9.670000000007317)
+    templ.block.event_dict[Ql0] = var_factory.add_const(-0.9999999999967969)
 
     templ.block.algebraic_vars = [Pl, Ql]
 
     templ.block.algebraic_eqs = [
-                Pl - Pl0,
-                Ql - Ql0]
+        Pl - Pl0,
+        Ql - Ql0]
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Va: inputs[0],

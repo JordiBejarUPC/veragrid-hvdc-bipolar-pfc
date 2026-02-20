@@ -92,13 +92,13 @@ def tf_to_diffblock_with_output(
         raise ValueError("Leading coefficient of cannot be zero.")
 
     if y is None:
-        y = Var('y_' + name)
+        y = var_factory.add_var('y_' + name)
 
     aux_eqs = []
     aux_vars = []
     # check if is an expression
     if not isinstance(x, Var):
-        u = Var('u_' + name)
+        u = var_factory.add_var('u_' + name)
         aux_eqs.append((u - x).simplify())
         aux_vars.append(u)
         x = u
