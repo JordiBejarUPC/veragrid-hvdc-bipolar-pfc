@@ -7,6 +7,7 @@ import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import time
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
@@ -175,6 +176,9 @@ class SparseADJacobian:
 
                 if hasattr(n, "uid") and n.__class__.__name__ == "Var":
                     uids.add(n.uid)
+                    bv = getattr(n, "base_var", None)
+                    if bv is not None:
+                        uids.add(bv.uid)
                     continue
                 if n.__class__.__name__ == "DiffVar":
                     if getattr(n, "base_var", None): uids.add(n.base_var.uid)

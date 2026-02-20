@@ -32,14 +32,18 @@ in a monolithic residual evaluation function optimized for the high-frequency
 computation requirements of Electromagnetic Transient (EMT) simulations.
 """
 
-import math
+# Import libraries for utils
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Any,Dict, List, Callable
+from typing import Dict, List, Callable
 import os
 import importlib.util
 import hashlib
+import scipy.sparse as sp
 
+#RMS
+from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars,expression2numba
+#Totally integrated
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, LagVar
 
 
@@ -81,6 +85,13 @@ class BDF2Method(DiscretizationMethod):
     def discretize_dot(self, state_idx: int, h_var: str = 'h', seeds_var: str = 'seeds') -> str:
         return f"((1.5*{seeds_var}[{state_idx}]) / {h_var})"
 
+class ContinuousMethod(DiscretizationMethod):
+    """Strategy for continuous systems (RMS Small Signal). Does not discretize."""
+    def discretize(self, state_idx: int, h_var: str = 'h') -> str:
+        return f"dx[{state_idx}]"
+
+    def discretize_dot(self, state_idx: int, h_var: str = 'h', seeds_var: str = 'seeds') -> str:
+        return "0.0"
 
 # ==============================================================================
 # 2. CSE (Common Subexpression Elimination) Analyzer (large systems)
@@ -185,8 +196,9 @@ class SubexpressionAnalyzer:
         if isinstance(node, Const):
             res = f"C{node.value}"
         elif isinstance(node, Var):
-            if Var.base_var is not None:
-                res = f"D{node.base_var.name}"
+            base_var = getattr(node, 'base_var', None)
+            if base_var is not None:
+                res = f"D{base_var.name}"
             else:
                 res = f"V{node.name}"
         elif isinstance(node, BinOp):
@@ -264,9 +276,17 @@ class SymbolicToPythonVisitor:
     def visit_Const(self, node: Const, _) -> str:
         return str(node.value)
 
-    def visit_Var(self, node: Var, _) -> str:
-        if node.uid in self.var_map: return f"states[{self.var_map[node.uid]}]"
-        if node.uid in self.param_map: return f"params[{self.param_map[node.uid]}]"
+    def visit_Var(self, node: Var, prec: int) -> str:
+        if node.uid in self.var_map:
+            return f"states[{self.var_map[node.uid]}]"
+        if node.uid in self.param_map:
+            return f"params[{self.param_map[node.uid]}]"
+
+        if getattr(node, 'base_var', None) is not None:
+            return self.visit_DiffVar(node, prec)
+
+        if node.name == 'h':
+            return 'h'
 
         raise ValueError(f"Variable '{node.name}' (UID: {node.uid}) Not mapped in compiler.")
 
@@ -342,13 +362,26 @@ class ADVisitor(SymbolicToPythonVisitor):
         return str(node.value), "0.0"
 
     def visit_Var(self, node: Var, _):
+        # 1. Standard mapping for states
         if node.uid in self.var_map:
             i = self.var_map[node.uid]
             val = f"states[{i}]"
+            # Use 1.0 for the 'active' column being differentiated, 0.0 otherwise
             if self.active_indices is not None:
-                return val, "1.0" if i in self.active_indices else "0.0"
-            return val, f"{self.seeds_var}[{i}]"
-        if node.uid in self.param_map: return f"params[{self.param_map[node.uid]}]", "0.0"
+                seed_val = "1.0" if i in self.active_indices else "0.0"
+            else:
+                seed_val = f"{self.seeds_var}[{i}]"
+            return val, seed_val
+
+        # 2. Parameter mapping
+        if node.uid in self.param_map:
+            return f"params[{self.param_map[node.uid]}]", "0.0"
+
+        # 3. Fallback for Derivatives: If node is d_x, call visit_DiffVar
+        # to get the discretization AND the correct AD seed.
+        if getattr(node, 'base_var', None) is not None:
+            return self.visit_DiffVar(node, 100)
+
         raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped.")
 
     def visit_LagVar(self, node: LagVar, _):
@@ -466,7 +499,8 @@ class EquationCompiler:
     METHODS = {
         'trapezoidal': TrapezoidalMethod(),
         'be': BackwardEulerMethod(),
-        'bdf2': BDF2Method()
+        'bdf2': BDF2Method(),
+        'continuous': ContinuousMethod()
     }
 
     def __init__(self, variables: List[Var], parameters: List[Var] = None, method: str = 'trapezoidal'):
@@ -571,7 +605,6 @@ class EquationCompiler:
 
     def compile_ad_kernel(self, equations: List[Expr], func_name: str = "ad_step", use_cse: bool = True,
                           active_indices: set = None) -> Callable:
-        # (Este método no cambia, mantenlo igual que antes)
         adv = ADVisitor(self.var_map, self.param_map, self.strategy, seeds_var='seeds', active_indices=active_indices)
         lines = [f"def {func_name}(states, seeds, params, history, d_history, h, history2=None):"]
 
@@ -614,32 +647,40 @@ class EquationCompiler:
 
 class MatrixVectorizedVisitor(SymbolicToPythonVisitor):
     """
-    Visitor optimizado para HPC. En lugar de buscar nombres en un diccionario (lento),
-    accede a columnas de una matriz de índices (rápido).
-    Genera código tipo: states[indices[:, 5]]
+    HPC-optimized visitor. Instead of performing dictionary lookups (slow),
+    it accesses state variable indices directly from a mapping matrix (fast).
+    Generates code such as: states[indices[:, 5]]
     """
 
     def __init__(self, var_map, param_map, method, col_map):
         super().__init__(var_map, param_map, method)
-        self.col_map = col_map  # Mapea nombre_variable -> indice_columna (int)
+        self.col_map = col_map  # Maps variable_name -> column_index (int)
 
     def visit_Var(self, node: Var, _) -> str:
-        # Los parámetros siguen igual (acceso global por índice)
+        # Parameters remain unchanged (global index access)
         if node.uid in self.param_map:
             return f"params[{self.param_map[node.uid]}]"
 
-        # Estados: Acceso directo a columna de matriz
-        # Esto elimina el hash lookup del diccionario en tiempo de ejecución
-        col_idx = self.col_map[node.name]
-        return f"states[indices[:, {col_idx}]]"
+        # States: Direct matrix column access.
+        # This eliminates runtime dictionary hash lookups.
+        if node.uid in self.var_map:
+            # Usamos el nombre para mapear a la columna de la matriz
+            col_idx = self.col_map[node.name]
+            return f"states[indices[:, {col_idx}]]"
+
+        # EMT Support: If the node is a derivative, call visit_DiffVar
+        if getattr(node, 'base_var', None) is not None:
+            return self.visit_DiffVar(node, 100)
+
+        raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped in matrix visitor.")
 
     def visit_DiffVar(self, node: Var, prec: int) -> str:
-        # Discretización vectorial sobre matriz
+        # Vectorized discretization over index matrices
         base_name = node.base_var.name
         col_idx = self.col_map[base_name]
         idx_access = f"indices[:, {col_idx}]"
 
-        # Hardcoded discretization strings for arrays to ensure performance
+        # set direct discretization strings for arrays to ensure performance
         if isinstance(self.method, TrapezoidalMethod):
             term = f"((2.0/h) * (states[{idx_access}] - history[{idx_access}]) - d_history[{idx_access}])"
         elif isinstance(self.method, BackwardEulerMethod):
@@ -654,22 +695,22 @@ class MatrixVectorizedVisitor(SymbolicToPythonVisitor):
 
 class MatrixVectorizedCompiler(EquationCompiler):
     """
-    Compilador que usa el Visitor Matricial.
-    Genera kernels que aceptan 'indices' como un array 2D de int32.
+    Compiler utilizing the Matrix Vectorized Visitor.
+    Generates kernels that accept 'indices' as a 2D int32 array for batch processing.
     """
 
     def compile_matrix_kernel(self, template_eq: Expr, func_name: str, template_vars: List[Var]) -> Callable:
-        # 1. Crear mapa de columnas determinista (Var -> 0, Var -> 1, ...)
+        # 1. Create a deterministic column map (Var index within the kernel)
         col_map = {}
         for i, v in enumerate(template_vars):
             name = v.base_var.name if v.base_var is not None else v.name
             col_map[name] = i
 
-        # 2. Generar código fuente usando el Visitor Matricial
+        # 2. Generate source code using the Matrix Visitor
         visitor = MatrixVectorizedVisitor(self.var_map, self.param_map, self.strategy, col_map)
         rhs_code = visitor.visit(template_eq)
 
-        # 3. Empaquetar en función (indices es ahora un array 2D int32)
+        # 3. Package into a function (indices is now a 2D int32 array)
         lines = [
             f"def {func_name}(states, params, history, d_history, h, indices, history2=None):",
             f"    # Vectorized Matrix Kernel (No Dicts)",
@@ -678,5 +719,132 @@ class MatrixVectorizedCompiler(EquationCompiler):
         ]
         full_source = "\n".join(lines)
 
-        # 4. Compilar a archivo (para caché de Numba)
+        # 4. Compile to file (enabling Numba's persistent cache)
         return self._compile_to_file(full_source, func_name)
+
+# ==============================================================================
+# 7. RMS Native Compiler (Continuous Time & Sparse Jacobians)
+# ==============================================================================
+class RMSCompiler(EquationCompiler):
+    """
+    O(N) compiler for RMS (Root Mean Square) Continuous-Time Simulations.
+
+    This compiler generates highly optimized Right-Hand Side (RHS) vectors and
+    Sparse Jacobian matrices using a structural analysis approach. By leveraging
+    the official `expression2numba` translator, it ensures 100% mathematical
+    consistency with legacy systems while drastically reducing symbolic evaluation
+    and compilation times.
+    """
+
+    def __init__(self,
+                 variables: List[Var],
+                 diff_vars: List[Var],
+                 v_params: List[Var],
+                 c_params: List[Var],
+                 dt_var: Var,
+                 compiler_names_dict: Dict[int, str]):
+        """
+        Initializes the RMS Compiler with the system's mathematical components.
+
+        Args:
+            variables (List[Var]): State and algebraic variables of the system.
+            diff_vars (List[Var]): Differential variables (dx/dt).
+            v_params (List[Var]): Variable (event-driven) parameters.
+            c_params (List[Var]): Constant parameters.
+            dt_var (Var): The symbolic variable representing the integration time step.
+            compiler_names_dict (Dict[int, str]): Dictionary mapping variable UIDs to
+                                                  their executable string representations.
+        """
+        super().__init__(variables, c_params, method='continuous')
+        self.dt_var = dt_var
+        self.compiler_names_dict = compiler_names_dict
+
+    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable:
+        """
+        Compiles the residual equations (RHS) into a fast, executable JIT function.
+
+        Args:
+            equations (List[Expr]): The list of symbolic expressions to evaluate.
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function computing the RHS residuals.
+        """
+        # Use the exact array names expected by the legacy solver interface: vars, diff, vprms, cprms
+        lines = [f"def {func_name}(vars, diff, vprms, cprms):"]
+        lines.append(f"    out = np.zeros({len(equations)}, dtype=np.float64)")
+
+        for i, eq in enumerate(equations):
+            expr_str = expression2numba(eq, self.compiler_names_dict)
+            lines.append(f"    out[{i}] = {expr_str}")
+
+        lines.append("    return out")
+
+        return self._compile_to_file("\n".join(lines), func_name)
+
+    def compile_sparse_jacobian(self, eqs: List[Expr], wrt_vars: List[Var], func_name: str) -> Callable:
+        """
+        Compiles a sparse Jacobian evaluator using an O(N) structural extraction algorithm.
+
+        Args:
+            eqs (List[Expr]): The list of symbolic equations (F or G).
+            wrt_vars (List[Var]): The variables to differentiate with respect to (x or y).
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: A function that populates and returns a scipy.sparse.csc_matrix.
+        """
+        wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
+        triplets = []
+
+        # O(N) Algorithmic Extraction:
+        # We uniquely differentiate variables that explicitly exist in the equation's AST.
+        for row, eq in enumerate(eqs):
+            for v_in_eq in get_expression_vars(eq):
+                if v_in_eq.uid in wrt_map:
+                    col, var = wrt_map[v_in_eq.uid]
+
+                    # Differentiate with respect to the physical time variable (dt_var)
+                    d_expr = eq.diff(var, dt=self.dt_var)
+
+                    if not (isinstance(d_expr, Const) and d_expr.value == 0):
+                        triplets.append((col, row, d_expr))
+
+        triplets.sort(key=lambda t: (t[0], t[1]))
+
+        # Handle edge case: Empty Jacobian matrix (no dependencies found)
+        if not triplets:
+            J_empty = sp.csc_matrix((len(eqs), len(wrt_vars)))
+            return lambda vars, diff, vprms, cprms, h: J_empty
+
+        # Extract sorted coordinates and corresponding symbolic derivatives
+        cols_sorted = [t[0] for t in triplets]
+        rows_sorted = [t[1] for t in triplets]
+        d_exprs = [t[2] for t in triplets]
+
+        # Precompute CSC (Compressed Sparse Column) pointer arrays
+        nnz = len(cols_sorted)
+        indices = np.fromiter(rows_sorted, dtype=np.int32, count=nnz)
+        indptr = np.zeros(len(wrt_vars) + 1, dtype=np.int32)
+        for c in cols_sorted:
+            indptr[c + 1] += 1
+        np.cumsum(indptr, out=indptr)
+
+        # Initialize the sparse matrix template
+        J_template = sp.csc_matrix((np.zeros(nnz), indices, indptr), shape=(len(eqs), len(wrt_vars)))
+
+        # The Jacobian receives 'h' in its signature for solver compatibility,
+        # even though 'expression2numba' internally resolves 'dt' via vprms[...]
+        lines = [f"def {func_name}_filler(vars, diff, vprms, cprms, h, data_out):"]
+        for i, expr in enumerate(d_exprs):
+            expr_str = expression2numba(expr, self.compiler_names_dict)
+            lines.append(f"    data_out[{i}] = {expr_str}")
+
+        filler_fn = self._compile_to_file("\n".join(lines), f"{func_name}_filler")
+
+        # Wrapper function to evaluate and return the actual CSC matrix natively
+        def jac_evaluator(vars, diff, vprms, cprms, h):
+            filler_fn(vars, diff, vprms, cprms, h, J_template.data)
+            return J_template
+
+        return jac_evaluator
