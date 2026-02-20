@@ -2542,6 +2542,15 @@ class VarPowerFlowRefferenceType(Enum):
     i_C = "i_C"  # Injection current at phase C in p.u.
     theta = "theta"  # Rotor angle in a synchronous generator in rad
 
+    P_N = "P_N" # Bus active power in phase N in p.u.
+    P_A = "P_A"  # Bus active power in phase A in p.u.
+    P_B = "P_B"  # Bus active power in phase B in p.u.
+    P_C = "P_C"  # Bus active power in phase C in p.u.
+    Q_N = "Q_N"  # Bus reactive power in phase N in p.u.
+    Q_A = "Q_A"  # Bus reactive power in phase A in p.u.
+    Q_B = "Q_B"  # Bus reactive power in phase B in p.u.
+    Q_C = "Q_C"  # Bus reactive power in phase C in p.u.
+
     Sf_A = "Sf_A" # Branch active power from in phase A in p.u.
     Sf_B = "Sf_B"  # Branch active power from in phase B in p.u.
     Sf_C = "Sf_C"  # Branch active power from in phase C in p.u.
