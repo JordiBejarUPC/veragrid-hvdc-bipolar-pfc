@@ -69,7 +69,7 @@ gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
 P = 160.0
 # Rload = 1 / 0.3833
 Rload = 3.0
-load1 = Load(name="load1", R=Rload, P1 =P/3 , P2 =P/3 , P3 =P/3, Q1= 0.0, Q2= 0.0, Q3= 0.0) # R in p.u.2.75
+load1 = Load(name="load1", P1 =P/3 , P2 =P/3 , P3 =P/3, Q1= 0.0, Q2= 0.0, Q3= 0.0) # R in p.u.2.75
 
 grid.add_bus(bus1)
 grid.add_generator(bus=bus1, api_obj=gen1)

@@ -446,6 +446,26 @@ class Line(BranchParent):
             )
             self._rms_model = value
 
+    @BranchParent.emt_model.setter
+    def emt_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            # TODO: add here line properties !?!
+            # value.model.set_parameter(
+            #     ParamPowerFlowRefferenceType.g,
+            #     Const(float(self.R / (self.R ** 2 + self.X ** 2)))
+            # )
+            #
+            # value.model.set_parameter(
+            #     ParamPowerFlowRefferenceType.b,
+            #     Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
+            # )
+            #
+            # value.model.set_parameter(
+            #     ParamPowerFlowRefferenceType.bsh,
+            #     Const(self.B)
+            # )
+            self._emt_model = value
+
     def set_length(self, val: float):
         """
         Set the line length and change the electric parameters of the line as a consequence.

@@ -33,12 +33,11 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecBuild, GovernorBuild, ExciterBuild, \
-    StabilizerBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
@@ -89,7 +88,9 @@ line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.02958579881656
                  rate=900.0)
 
 # load
-load = gce.Load(P= 9.999999, Q= 0.999999)
+P= 9.999999
+Q= 0.999999
+load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
@@ -112,14 +113,13 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # generator
-# gen_mdl = block_deep_copy(get_complete_generator_template().block)
-gen_mdl = block_deep_copy(get_generator_emt_template().block)
+gen_mdl = get_generator_emt_template(grid.var_factory).block
 
 # line
-line_mdl = block_deep_copy(get_line_rms_template().block) # TODO
+line_mdl = get_line_rms_template(grid.var_factory).block # TODO
 
 # load
-load_mdl = block_deep_copy(get_load_rms_template().block) # TODO
+load_mdl = get_load_rms_template(grid.var_factory).block # TODO
 
 # connection with buses
 
@@ -212,10 +212,6 @@ print("res.St_B = ", res.St_B)
 print("res.St_C = ", res.St_C)
 
 print(f"Converged: {res.converged}")
-print(f"res:{res}")
-
-
-print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
@@ -236,7 +232,7 @@ options = EmtOptions(time_step = 5e-6,
 #                  max_iter=1000,
 #                  verbose=0)
 
-problem = RmsProblemDae(grid=grid,
+problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
@@ -247,6 +243,15 @@ problem = RmsProblemDae(grid=grid,
 #     h=options.time_step,
 #     max_iter=options.max_iter
 # )
+
+solver = AdVecSolver(problem = problem,
+                     t0 = 0.0,
+                     t_end = options.simulation_time,
+                     h = options.time_step,
+                     method_str="trapezoidal",
+                     verbose = False)
+
+t, y = solver.simulate()
 
 # t, y, well_initialized, converged = solver.simulate()
 

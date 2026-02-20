@@ -58,6 +58,7 @@ class BranchParent(PhysicalDevice):
         'bus_to_pos',
         'group',
         '_rms_model',
+        '_emt_model',
     )
 
     def __init__(self,
@@ -245,6 +246,18 @@ class BranchParent(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
+
+    @property
+    def emt_model(self) -> DynamicModelHost:
+        """
+        Get the EMT model
+        """
+        return self._emt_model
+
+    @emt_model.setter
+    def emt_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._emt_model = value
 
     @property
     def bus_from(self) -> Bus:

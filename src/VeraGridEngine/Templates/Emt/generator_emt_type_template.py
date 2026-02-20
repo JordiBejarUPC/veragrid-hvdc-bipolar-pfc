@@ -17,7 +17,7 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
     Get the EMT template of a generator
     :return: EmtModelTemplate
     """
-    
+
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
