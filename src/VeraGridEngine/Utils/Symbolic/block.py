@@ -10,10 +10,7 @@ import numpy as np
 from typing import Tuple, Sequence, List, Dict, Optional
 
 from enum import Enum, auto
-
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Devices.Dynamic.events import RmsEvent
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, abs,
                                                     heaviside)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -534,7 +531,6 @@ class Block:
         self.name: str = name
 
         self.uid: int = _new_uid() if uid is None else uid
-        self.vars2device: Dict[int, PhysicalDevice] = dict()
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
@@ -647,14 +643,14 @@ class Block:
         """
         self.children.remove(val)
 
-    def apply_events(self, events: List[RmsEvent]):
-        """
-        Apply events to this block
-        :param events:
-        :return:
-        """
-        # TODO Implement filling self.event_dicts with the RmsEvents info
-        pass
+    # def apply_events(self, events: List[RmsEvent]):
+    #     """
+    #     Apply events to this block
+    #     :param events:
+    #     :return:
+    #     """
+    #     # TODO Implement filling self.event_dicts with the RmsEvents info
+    #     pass
 
     def get_all_blocks(self) -> List[Block]:
         """

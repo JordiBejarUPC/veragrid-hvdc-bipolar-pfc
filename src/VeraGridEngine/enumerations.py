@@ -1195,6 +1195,7 @@ class SubObjectType(Enum):
     AdmittanceMatrix = "Admittance Matrix"
     DynamicModelHostType = "DynamicModuleHost"
     DaeBlockType = "DaeBlock"
+    RmsEventType = "RmsEvent"
 
     def __str__(self) -> str:
         return str(self.value)

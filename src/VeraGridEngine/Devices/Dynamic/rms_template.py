@@ -61,15 +61,3 @@ class RmsModelTemplate(PointerDeviceParent):
     @block.setter
     def block(self, obj: Block):
         self._block = obj
-
-    # @property
-    # def init_values(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     return self._init_values
-    #
-    # @init_values.setter
-    # def init_values(self, obj: Dict[Var, Const]):
-    #     self._init_values = obj

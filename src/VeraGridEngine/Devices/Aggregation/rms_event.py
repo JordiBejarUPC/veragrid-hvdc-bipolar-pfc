@@ -6,6 +6,7 @@
 from typing import Union, Any
 import numpy as np
 
+from VeraGridEngine import SubObjectType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 #
 # from VeraGridEngine.Devices.Branches import *
@@ -13,34 +14,8 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
-#
-# INJECTION_DEVICE_TYPES = Union[
-#     Generator,
-#     Battery,
-#     Load,
-#     ExternalGrid,
-#     StaticGenerator,
-#     Shunt,
-#     ControllableShunt,
-#     CurrentInjection,
-# ]
-#
-# BRANCH_TYPES = Union[
-#     Line,
-#     DcLine,
-#     Transformer2W,
-#     HvdcLine,
-#     VSC,
-#     UPFC,
-#     Winding,
-#     Switch,
-#     SeriesReactance
-# ]
-#
-# INJECTIONS_BRANCHES_TYPES = Union[
-#     INJECTION_DEVICE_TYPES,
-#     BRANCH_TYPES]
 
 
 class RmsEvent(PointerDeviceParent):
@@ -48,7 +23,6 @@ class RmsEvent(PointerDeviceParent):
     Investment
     """
     __slots__ = (
-        'device',
         'parameter',
         'time',
         'value',
@@ -57,7 +31,7 @@ class RmsEvent(PointerDeviceParent):
 
     def __init__(self,
                  device: EditableDevice | None = None,
-                 parameter: Any = None,
+                 parameter: Var = None,
                  time: float = None,
                  value: float = None,
                  idtag: Union[str, None] = None,
@@ -88,7 +62,6 @@ class RmsEvent(PointerDeviceParent):
 
 
         self._group: RmsEventsGroup = group
-        self.device = device
         self.parameter: Any = parameter
         self.time: float = time
         self.value: float = value

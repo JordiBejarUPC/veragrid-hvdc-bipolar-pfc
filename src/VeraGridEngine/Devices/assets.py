@@ -14,7 +14,7 @@ from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat, ObjVec, Bo
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType
+from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
@@ -396,6 +396,9 @@ class Assets:
         self.device_type_name_dict: Dict[str, DeviceType] = dict()
 
         self.device_associations: Dict[str, List[str]] = dict()
+
+        self.register(key='rms_event', units='', tpe=SubObjectType.RmsEventType,
+                      definition='RMS event', display=False)
 
         """
         self.type_name = 'Shunt'
@@ -4421,7 +4424,7 @@ class Assets:
     def add_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
         Add rms events group
-        :param obj: InvestmentsGroup
+        :param obj: RmsEventsGroup
         """
         self._rms_events_groups.append(obj)
 

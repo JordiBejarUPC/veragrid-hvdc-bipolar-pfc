@@ -57,6 +57,10 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'rms_model_template': dev.RmsModelTemplate(),
 
+        'rms_event_group': dev.RmsEventsGroup(),
+
+        'rms_event': dev.RmsEvent(),
+
         'bus': dev.Bus(),
 
         'bus_bar': dev.BusBar(),
@@ -445,6 +449,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
                 data[name] = obj.uid
             else:
                 raise ValueError("must be a block")
+
+        # elif prop.tpe == SubObjectType.RmsEventType:
+        #     data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)

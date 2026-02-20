@@ -500,8 +500,6 @@ class BlockSaver:
         d = {
             "uid": blk.uid,
 
-            "vars2device": {var_uid: dev.idtag for var_uid, dev in blk.vars2device.items()},
-
             "vars_glob_name2uid": blk.vars_glob_name2uid,
 
             "state_vars": [v.uid for v in blk.state_vars],
