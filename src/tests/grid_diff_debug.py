@@ -72,13 +72,16 @@ def grid_modifications() -> None:
     We compute the difference between the modified grids and the base, and we merge
     We should get a file with the independent modifications, and some sort of message for colliding modifications
     """
-    original = gce.open_file(filename=os.path.join("data", "grids", "case14.gridcal"))  # we use this for diff
+    original = gce.open_file(filename=os.path.join("data", "grids", "data/grids/case14.gridcal"))  # we use this for diff
+
+    gce.save_file(grid=original, filename="data/grids/case14.gridcal")
+
 
     # NOTE: it may fail if new properties are added, just save the original file
     # gce.save_file(original, os.path.join("data", "grids", "case14.gridcal"))
 
-    grid1 = gce.open_file(filename=os.path.join("data", "grids", "case14.gridcal"))
-    grid2 = gce.open_file(filename=os.path.join("data", "grids", "case14.gridcal"))
+    grid1 = gce.open_file(filename=os.path.join("data", "grids", "data/grids/case14.gridcal"))
+    grid2 = gce.open_file(filename=os.path.join("data", "grids", "data/grids/case14.gridcal"))
 
     grid1.remove_diagram(diagram=grid1.diagrams[0])
     grid2.remove_diagram(diagram=grid2.diagrams[0])
@@ -105,7 +108,7 @@ def grid_modifications() -> None:
 
     # If it was done in a single PC:
 
-    merged_grid = gce.open_file(filename=os.path.join("data", "grids", "case14.gridcal"))
+    merged_grid = gce.open_file(filename=os.path.join("data", "grids", "data/grids/case14.gridcal"))
 
     merged_grid.add_bus(busPC1)
     merged_grid.add_line(linePC1)
@@ -144,4 +147,4 @@ def grid_modifications() -> None:
     return
 
 
-add_stuff_roundtrip()
+grid_modifications()
