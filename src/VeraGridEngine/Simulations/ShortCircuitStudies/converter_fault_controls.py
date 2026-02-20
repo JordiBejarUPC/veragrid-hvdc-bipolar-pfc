@@ -185,8 +185,8 @@ def wecc_wt_type_4b(V_measured, P_measured, S_base_vg, S_rated_vsc, Vpf):
                          Sn=S_rated_vsc # Converter's nominal power [MVA]
                          )
 
-    print("\nPref =", Pref, 'MW')
-    print("\nQref =", Qref, 'MVAr\n')
+    # print("\nPref =", Pref, 'MW')
+    # print("\nQref =", Qref, 'MVAr\n')
 
     return -Pref/S_base_vg, -Qref/S_base_vg
 

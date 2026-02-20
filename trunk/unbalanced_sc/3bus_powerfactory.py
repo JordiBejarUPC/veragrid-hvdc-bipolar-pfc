@@ -102,10 +102,10 @@ res_pf = vge.power_flow(grid=grid, options=pf_options_1)
 print()
 pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=True,
+                                limit_i_vsc=False,
                                 verbose=1,
                                 max_iter=150,
-                                tolerance=1e-12)
+                                tolerance=1e-6)
 
 grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
@@ -131,5 +131,5 @@ Ibase = Sbase / (np.sqrt(3) * Ubase)
 Sbase_pf = 2e6
 Ubase_pf = 20e3
 Ibase_pf = Sbase_pf / (np.sqrt(3) * Ubase_pf)
-print('\n VSC Current =', np.round(np.abs(res_sc.vsc_It[0]) * Ibase / Ibase_pf, 6))
-print('\n VSC Power =', np.round(res_sc.vsc_St[0], 6))
+print('\n VSC Current =', np.round(np.abs(res_sc.vsc_It[0]) * Ibase / Ibase_pf, 4))
+print('\n VSC Power =', np.round(res_sc.vsc_St[0], 4))

@@ -1664,6 +1664,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Pfn_vsc_ = self.Pfn_vsc.copy()
         Pt_vsc_ = self.Pt_vsc.copy()
         Qt_vsc_ = self.Qt_vsc.copy()
+        Pt_ref_ = self.Pt_vsc.copy()
+        Qt_ref_ = self.Qt_vsc.copy()
 
         # update the vectors
         Va_[self.i_u_va] = x[0:a]
@@ -1797,6 +1799,18 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # Add the 3rd equation per VSC
         current_vsc = It**2 - Imax_vsc**2
 
+        for vsc_i in self.u_vsc_pt:
+            # Lazy import to avoid circular dependency - only import if needed
+            from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import wecc_wt_type_4b
+
+            Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
+                V_measured=self.V[self.nc.vsc_data.T[vsc_i]],
+                P_measured=self.Pt_vsc[vsc_i],
+                S_base_vg=self.nc.Sbase,
+                S_rated_vsc=self.nc.vsc_data.rates[vsc_i],
+                Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]])
+            )
+
         # HVDC ---------------------------------------------------------------------------------------------------------
         tm[4] = time.time()
 
@@ -1848,7 +1862,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Pf_cbr - self.cbr_pf_set,
             Pt_cbr - self.cbr_pt_set,
             Qf_cbr - self.cbr_qf_set,
-            Qt_cbr - self.cbr_qt_set
+            Qt_cbr - self.cbr_qt_set,
+            Pt_ref_[self.u_vsc_pt] - Pt_vsc_[self.u_vsc_pt],
+            Qt_ref_[self.u_vsc_qt] - Qt_vsc_[self.u_vsc_qt]
         ]
 
         tm[7] = time.time()
@@ -2385,31 +2401,42 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def compute_f_vsc(self) -> Vec:
+    def compute_f_vsc(self, x: Vec) -> Vec:
 
-        P_ref, Q_ref = 0.0, 0.0
+        e = len(self.u_vsc_pt)
+        f = e + len(self.u_vsc_qt)
 
-        for vsc_i in range(len(self.u_vsc_pt)):
+        # copy the sliceable vectors
+        Pt_vsc_ = self.Pt_vsc.copy()
+        Qt_vsc_ = self.Qt_vsc.copy()
+        Pt_ref_ = self.Pt_vsc.copy()
+        Qt_ref_ = self.Qt_vsc.copy()
+
+        # update the vectors
+        Pt_vsc_[self.u_vsc_pt] = x[0:e]
+        Qt_vsc_[self.u_vsc_qt] = x[e:f]
+
+        for vsc_i in self.u_vsc_pt:
             # Lazy import to avoid circular dependency - only import if needed
             from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import wecc_wt_type_4b
 
-            P_ref, Q_ref = wecc_wt_type_4b(
-                V_measured=self.V[self.nc.vsc_data.T[self.u_vsc_pt]],
-                P_measured=self.Pt_vsc[self.u_vsc_pt],
+            Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
+                V_measured=self.V[self.nc.vsc_data.T[vsc_i]],
+                P_measured=self.Pt_vsc[vsc_i],
                 S_base_vg=self.nc.Sbase,
-                S_rated_vsc=self.nc.vsc_data.rates[self.u_vsc_pt],
-                Vpf=abs(self.V0[self.nc.vsc_data.T[self.u_vsc_pt]])
+                S_rated_vsc=self.nc.vsc_data.rates[vsc_i],
+                Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]])
             )
 
         f_vsc = np.r_[
-            P_ref - self.Pt_vsc[self.u_vsc_pt],
-            Q_ref - self.Qt_vsc[self.u_vsc_qt]
+            Pt_ref_[self.u_vsc_pt] - Pt_vsc_[self.u_vsc_pt],
+            Qt_ref_ [self.u_vsc_qt]- Qt_vsc_[self.u_vsc_qt]
         ]
 
         return f_vsc
 
 
-    def Jacobian(self, autodiff: bool = False) -> CSC:
+    def Jacobian(self, autodiff: bool = True) -> CSC:
         """
         Get the Jacobian
         :return:
@@ -2511,16 +2538,16 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 Yx=self.adm.Ybus.data
             )
 
-            for vsc_p_i in self.u_vsc_pt:
+            x_vsc = np.r_[
+                self.Pt_vsc[self.u_vsc_pt],
+                self.Qt_vsc[self.u_vsc_qt],
+            ]
 
-                x_vsc = np.r_[
-                    self.Pt_vsc[self.u_vsc_pt],
-                    self.Qt_vsc[self.u_vsc_qt],
-                ]
+            f_vsc = self.compute_f_vsc
 
-                J_vsc = calc_autodiff_jacobian(func=self.compute_f_vsc,
-                                               x=x_vsc,
-                                               h=1e-7)
+            J_vsc = calc_autodiff_jacobian(func=f_vsc,
+                                           x=x_vsc,
+                                           h=1e-7)
 
             return J_sym
 
