@@ -410,12 +410,12 @@ def init_explicit_regions(grid: MultiCircuit,
                 # # P = 1.1498999999999997
                 # # Q = -8.012344526598184e-18
                 # #rload = 3.0
-                P = 0.9999965986510249
-                Q = -2.9044748908918416e-17
-                S = P + 1j * Q
-                S_a = S / 3
-                S_b = S / 3
-                S_c = S / 3
+                # P = 0.9999965986510249
+                # Q = -2.9044748908918416e-17
+                # S = P + 1j * Q
+                # S_a = S / 3
+                # S_b = S / 3
+                # S_c = S / 3
                 #
                 # # rload = 1/0.3833
                 # # va = 0.7722782435188278
@@ -423,22 +423,22 @@ def init_explicit_regions(grid: MultiCircuit,
                 # # vc = 0.6398675721469198
                 #
                 # # rload = 3.0 p.u.
-                va = 0.6973992259905542
-                vb = -1.4141693402474556
-                vc = 0.7167701142569014
+                # va = 0.6973992259905542
+                # vb = -1.4141693402474556
+                # vc = 0.7167701142569014
+                # #
+                # vd = (2 / 3) * (va - 0.5 * vb - 0.5 * vc)
+                # vq = (np.sqrt(3) / 3) * (vb - vc)
+                # v0 = (va + vb + vc) / 3  # ~0 si equilibrat
+
+                # V_peak = np.sqrt(vd ** 2 + vq ** 2)
+                # V_rms = V_peak / np.sqrt(2)
                 #
-                vd = (2 / 3) * (va - 0.5 * vb - 0.5 * vc)
-                vq = (np.sqrt(3) / 3) * (vb - vc)
-                v0 = (va + vb + vc) / 3  # ~0 si equilibrat
-
-                V_peak = np.sqrt(vd ** 2 + vq ** 2)
-                V_rms = V_peak / np.sqrt(2)
-
-                theta_e = np.arctan2(vq, vd)
-
-                V_a = V_rms * np.exp(1j * theta_e)
-                V_b = V_rms * np.exp(1j * (theta_e - 2 * np.pi / 3))
-                V_c = V_rms * np.exp(1j * (theta_e + 2 * np.pi / 3))
+                # theta_e = np.arctan2(vq, vd)
+                #
+                # V_a = V_rms * np.exp(1j * theta_e)
+                # V_b = V_rms * np.exp(1j * (theta_e - 2 * np.pi / 3))
+                # V_c = V_rms * np.exp(1j * (theta_e + 2 * np.pi / 3))
 
                 # fi trampilla ---------------------------------------------------
 
