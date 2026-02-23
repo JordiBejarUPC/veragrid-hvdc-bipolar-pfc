@@ -24,6 +24,7 @@ def _new_uid() -> int:
     return uuid.uuid4().int
 
 
+
 class Block:
     """
     Class representing a Block
@@ -260,7 +261,7 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
-    def update_equations(self, old, new):
+    def  update_equations(self, old, new):
         """
         this function changes the variable old for the variable new in a block
         :param old:
@@ -302,7 +303,7 @@ class Block:
                 self.external_mapping.update({var_pf_ref: new})
 
     def update_model(self, old, new):
-        """
+        """<
         :param old:
         :param new:
         :return:
@@ -316,6 +317,10 @@ class Block:
         """
         Function to connect two blocks by variables sharing
         """
+
+        # all_diff_vars = []
+        # for b in self.get_all_blocks():
+        #     all_diff_vars.extend(b.diff_vars)
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)

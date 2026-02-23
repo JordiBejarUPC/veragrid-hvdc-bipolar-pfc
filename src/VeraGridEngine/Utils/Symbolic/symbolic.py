@@ -74,6 +74,15 @@ class Comparison:
     op: CmpOp  # "<=", ">=", "=="
     rhs: Union["Expr", NUMBER]
 
+    def to_expression(self) -> Expr:
+        if self.op == CmpOp.LE or self.op == CmpOp.LT:
+            return heaviside(self.rhs - self.lhs)
+        elif self.op == CmpOp.GE or self.op == CmpOp.GT:
+            return heaviside(self.lhs - self.rhs)
+        elif self.op == CmpOp.EQ:
+            eps = Const(1e-6)
+            return heaviside(self.lhs - self.rhs + eps)*heaviside(self.rhs - self.lhs + eps)
+
 
 class Expr:
     """
@@ -88,6 +97,7 @@ class Expr:
         :param uid: (optional UID)
         """
         self.uid: int = _new_uid() if uid is None else uid  # real dataclass field lives in subclasses
+
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """
@@ -257,6 +267,14 @@ class Const(Expr):
             return mapping[self]
         if self.name in mapping:
             return mapping[self.name]
+        if self.value is None:
+            has_none = False
+            for key in mapping.keys():
+                if isinstance(key, Const) and key.value is None:
+                    has_none = True
+                    none_key = key
+            if has_none:
+                return mapping[none_key]
         return self
 
     def __str__(self) -> str:
@@ -285,15 +303,22 @@ class Const(Expr):
         d["kind"] = "float"
         return d
 
+class VarType(Enum):
+    Parameter = "parameter"
+    State = "state"
+    Algebraic = "algebraic"
+    Differential = "differential"
 
 class Var(Expr):
     """
     Any variable
     """
 
+
     __slots__ = ("name", "uid", "diff_var", "base_var")
 
     def __init__(self, name: str, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
+
         """
 
         :param name:
@@ -306,6 +331,7 @@ class Var(Expr):
         self.base_var: Var = base_var  # assign reference to base var
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
+
 
     def __deepcopy__(self, memo):
         return Var(self.name, self.uid, self.diff_var)
@@ -321,9 +347,11 @@ class Var(Expr):
             return uid_bindings[self.uid]
         except KeyError as exc:
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
+
     #
     # def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
     #     return Const(1 if self.uid == var.uid else 0)
+
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
         if self in mapping:
@@ -562,7 +590,6 @@ class LagVar(Expr):
         d["lag"] = self.lag
         return d
 
-
 def factors(expr: Expr) -> List[Expr]:
     """
 
@@ -683,6 +710,8 @@ class BinOp(Expr):
             if isinstance(v, Const):
                 # numeric exponent
                 n = v.value
+                return Const(n) * (u ** Const(n - 1)) * du
+            elif isinstance(v, Var) and v.tpe == VarType.Parameter:
                 return Const(n) * (u ** Const(n - 1)) * du
             else:
                 # general exponent: u**v = exp(v*log u)
@@ -1011,6 +1040,8 @@ class Func(Expr):
 def abs(x: Expr):  # TODO: Rename to not shadow
     return Func(_to_expr(x), "abs")
 
+def abs_diff(u: Expr, du: Expr) -> Expr:
+    return heaviside(u) * du
 
 def real(x: Expr):
     return Func(_to_expr(x), "real")
@@ -1192,6 +1223,7 @@ functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
     "atan": atan_diff,
     "sinh": sinh_diff,
     "cosh": cosh_diff,
+    "abs": abs_diff,
     "heaviside": heaviside_diff
 }
 
@@ -1204,7 +1236,6 @@ class Func2(Expr):
     uid: int = field(default_factory=_new_uid, init=False)
 
     _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
-        "atan2": np.atan2,
         "min": np.minimum,
         "max": np.maximum,
     })

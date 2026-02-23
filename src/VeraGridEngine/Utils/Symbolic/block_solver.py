@@ -655,16 +655,16 @@ class SymbolicDerivative:
         # Build source
         uid2dx_expression = {}
         #TODO: order diff vars by order
-        src = f"def {fname}(vars, lagvars, lagdx, h, out):\n"
+        src = f"def {fname}(x, x_last, dx, h, out):\n"
         for i, diff_var in enumerate(diff_vars):
             base_var_uid = diff_var.base_var.uid
             uid = diff_var.uid
             if diff_var.diff_order == 1:
                 j = uid2idx_vars[base_var_uid]
-                rhs = f" (vars[{j}] - lagvars[{j}]) / h\n"
+                rhs = f" (x[{j}] - x_last[{j}]) / h\n"
             else:
                 dx_expression = uid2dx_expression[diff_var.base_var.uid]
-                rhs = f" ({dx_expression}- lagdx[{i}]) / h\n"
+                rhs = f" ({dx_expression}- dx[{i}]) / h\n"
             to_src = f"    out[{i}] = {rhs}\n"
             uid2dx_expression[uid] = rhs
 
@@ -793,7 +793,6 @@ class BlockSolver:
         # Flatten the block lists, preserving declaration order
         self._algebraic_vars: List[Var] = list()
         self._algebraic_eqs: List[Expr] = list()
-        self._algebraic_eqs_substituted: List[Expr] = list()
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
         self._state_eqs_substituted: List[Expr] = list()
@@ -804,7 +803,6 @@ class BlockSolver:
         self._event_parameters_eqs: List[Expr] = list()
         self._parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
-        self._stability_eqs: List[Expr] = list()
 
         # Class-level registry
         self._registry: Dict[int, Var] = dict()  # int uuid , DiffVar
@@ -920,24 +918,8 @@ class BlockSolver:
         # define parameters
         self.alpha = 1
         alpha = self.alpha
-        lag_can_be_0 = False  # TODO: will this allways be False??
-        if lag_can_be_0:
-            lag_init = 0
-        else:
-            lag_init = 1
 
-        # Substitute in state eqs
 
-        # Substitute in algebraic eqs
-        self._stability_eqs = list()
-        self._algebraic_eqs_substituted = self._algebraic_eqs.copy() + self._differential_eqs.copy()
-
-        # fill stability equations by putting algebraic equations equal zero
-        for it, eq in enumerate(self._algebraic_eqs):
-            for diff_var in self._diff_vars:
-                eq = eq.subs({diff_var: Const(0)})
-                eq = eq.simplify()
-            self._stability_eqs.append(eq)
 
         i = len(self.uid2idx_vars)
         l = 0
@@ -1057,8 +1039,8 @@ class BlockSolver:
 
         print(
             f"Model compiled with {self._n_vars} variables, "
-            f"{len(self._algebraic_eqs_substituted)} algebraic eqs and "
-            f"{len(self._state_eqs_substituted)} state eqs"
+            f"{len(self._algebraic_eqs)} algebraic eqs and "
+            f"{len(self._state_eqs)} state eqs"
         )
 
         print("\nCompilation timing summary:")
@@ -1376,7 +1358,8 @@ class BlockSolver:
                 i = self.uid2idx_vars[uid]
                 x[i] = val
             else:
-                raise ValueError(f"Missing uid {key} definition")
+                x[i] = 0.0
+                #raise ValueError(f"Missing uid {key} definition")
 
         return x
 
@@ -2414,22 +2397,25 @@ class BlockSolver:
 
                 residual = np.linalg.norm(rhs, np.inf)
                 converged = residual < tol
-                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
 
                 if step_idx == 0:
-                    Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
-                    delta = sp.linalg.spsolve(Jf, -rhs)
+                    if steady_state:
+                        alpha = 1.0
+                        xn = (1-alpha)*x_new + alpha*xn
+                        _ = 0
                     if converged:
                         print("System well initialized.")
                         print(f"x is {x_new}")
                     else:
                         print(f"System bad initialized. DAE resiudal is {residual}.")
-                        print(f'rhs is {rhs}')
+                        print(f'residual is {residual}')
                         non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
                         all_eq = self._state_eqs + self._algebraic_eqs
                         print("eqs are")
                         for i in non_zero_indexes:
                             eq = all_eq[i]
+                            vars = eq.get_vars()
+                            vars_idx = [self.uid2idx_vars[var.uid] for var in vars if var.uid in self.uid2idx_vars]
                             print(f"eq {eq} with error {rhs[i]}")
                         exit()
                 else:
@@ -2437,6 +2423,8 @@ class BlockSolver:
 
                 if converged:
                     break
+
+                Jf = self.jacobian_implicit(x_new, dx, params_current, params, h)
 
                 solved = False
                 linear_start = time.time()
@@ -2459,7 +2447,7 @@ class BlockSolver:
                             if j < len(self._algebraic_vars):
                                 var_name = self._algebraic_vars[j].name
                                 print(f"  {var_name:20s} {v[j]:+.3e}")
-                    print("Using LSQR")
+                    print(f"Using LSQR in step {step_idx}, iter {n_iter}")
 
                 if not solved:
                     nan_indices = np.where(np.isnan(rhs))[0]
@@ -2488,14 +2476,7 @@ class BlockSolver:
                 lag_update_start = time.time()
                 print(f'converged is {converged} at step {step_idx} and iter {n_iter}')
 
-                if verbose:
-                    _ = 0
-
-                if discontinuity:
-                    _ = 0
-                    y[step_idx + 1] = x_new
-                else:
-                    y[step_idx + 1] = x_new
+                y[step_idx + 1] = x_new
                 t[step_idx + 1] = t[step_idx] + h
 
                 dx_last = dx.copy()
