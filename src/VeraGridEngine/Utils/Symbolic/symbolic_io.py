@@ -615,7 +615,7 @@ def block_deep_copy(block: Block, var_factory: VarFactory):
     return block2
 
 
-def compare_blocks(block1: Block, block2: Block, var_factory: VarFactory, testing=False):
+def compare_blocks(block1: Block, block2: Block, var_factory1: VarFactory ,var_factory2: VarFactory, testing=False):
     """
     Create depp copy of a block
     :param block1:
@@ -625,14 +625,14 @@ def compare_blocks(block1: Block, block2: Block, var_factory: VarFactory, testin
     :return:
     """
 
-    saver1 = BlockSaver(var_factory)
+    saver1 = BlockSaver(var_factory1)
     d1 = saver1.save_block(block1, main=False)
     const_save1 = saver1.get_const_to_save()
     vars_save1 = saver1.get_vars_to_save()
     diff_vars_save1 = saver1.get_diff_vars_to_save()
     blocks1 = saver1.get_blocks()
 
-    saver2 = BlockSaver(var_factory)
+    saver2 = BlockSaver(var_factory2)
     d2 = saver2.save_block(block2, main=False)
     const_save2 = saver2.get_const_to_save()
     vars_save2 = saver2.get_vars_to_save()

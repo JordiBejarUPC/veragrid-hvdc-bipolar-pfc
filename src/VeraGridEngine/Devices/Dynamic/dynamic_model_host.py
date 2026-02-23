@@ -335,7 +335,7 @@ class DynamicModelHost(EditableDevice):
         # prop template is a pointer and prop model is a copy
         if isinstance(val, Block):
             self._template = val
-            self._model = block_deep_copy(val)
+            self._model = val.deep_copy()
         elif val is None:
             self._template = None
         else:
@@ -442,7 +442,7 @@ class DynamicModelHost(EditableDevice):
 
             if self.template is None:
                 if other.template is None:
-                    return compare_blocks(self.model, other.model)
+                    return self.model.compare(other.model)
                 else:
                     return False
             else:
@@ -467,6 +467,6 @@ class DynamicModelHost(EditableDevice):
             idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
             code=self.code
         )
-        obj._model = block_deep_copy(self._model)
+        obj._model = self._model.deep_copy()
         obj._template = self._template
         return obj

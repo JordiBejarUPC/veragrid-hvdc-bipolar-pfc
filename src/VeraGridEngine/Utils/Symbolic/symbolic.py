@@ -1325,7 +1325,7 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
     raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
 
-def _dict_to_expr(data: Dict[str, Any]) -> Expr:
+def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const:
     """
     De-Serialize expression from dictionary
     :param data:

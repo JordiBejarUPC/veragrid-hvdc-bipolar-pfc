@@ -2221,7 +2221,7 @@ class MultiCircuit(Assets):
                                             expected_value=v1)
 
                             elif prop.tpe == SubObjectType.DaeBlockType:
-                                if not compare_blocks(v1, v2):
+                                if not compare_blocks(v1, v2, self.var_factory, grid2.var_factory):
                                     logger.add_error(msg="Different snapshot values",
                                                      device_class=template_elm.device_type.value,
                                                      device_property=prop.name,
