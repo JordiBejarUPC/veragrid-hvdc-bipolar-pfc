@@ -116,7 +116,7 @@ class SchematicLibraryModel(QStandardItemModel):
         self.add(name=self.cn_name, icon_name="cn_icon")
         self.add(name=self.transformer3w_name, icon_name="transformer3w")
         self.add(name=self.fluid_node_name, icon_name="dam")
-        # self.add(name=self.vsc_name, icon_name="vsc_icon")  # Add VSC TODO: for the future release
+        self.add(name=self.vsc_name, icon_name="to_vsc")
 
     def add(self, name: str, icon_name: str):
         """
@@ -607,6 +607,46 @@ class SchematicWidget(BaseDiagramWidget):
         graphic_object = VscGraphicItem3Term(editor=self, api_object=elm)
         graphic_object.setPos(QPointF(x, y))
         return graphic_object
+
+    def create_vsc_terminal_connection(self,
+                                       bus_port: Union[BarTerminalItem, RoundTerminalItem],
+                                       vsc_terminal: Union[BarTerminalItem, RoundTerminalItem]) -> bool:
+        """
+        Create a bus-to-terminal graphical connection for a 3-terminal VSC and
+        assign the corresponding API bus to that terminal.
+        :param bus_port: Bus terminal
+        :param vsc_terminal: VSC terminal
+        :return: connection success
+        """
+        if not isinstance(bus_port, (BarTerminalItem, RoundTerminalItem)):
+            return False
+        if not isinstance(vsc_terminal, RoundTerminalItem):
+            return False
+
+        vsc_graphic = vsc_terminal.get_parent()
+        if not isinstance(vsc_graphic, VscGraphicItem3Term):
+            return False
+
+        bus_graphic = bus_port.get_parent()
+        if not isinstance(bus_graphic, BusGraphicItem):
+            return False
+
+        conn_line = LineGraphicTemplateItem(from_port=bus_port,
+                                            to_port=vsc_terminal,
+                                            editor=self)
+
+        success = vsc_graphic.set_connection(terminal_type=vsc_terminal.terminal_type,
+                                             bus=bus_graphic.api_object,
+                                             conn_line=conn_line)
+        if success:
+            self.add_to_scene(conn_line)
+            conn_line.setZValue(-1)
+            return True
+
+        # Revert terminal callbacks when the connection is rejected.
+        conn_line.unregister_port_from()
+        conn_line.unregister_port_to()
+        return False
 
     def draw_additional_diagram(self,
                                 diagram: SchematicDiagram,
@@ -1315,6 +1355,18 @@ class SchematicWidget(BaseDiagramWidget):
                                                               bus=bus,
                                                               conn=winding_graphics,
                                                               set_voltage=True)
+
+                    elif self.started_branch.connected_between_bus_and_vsc3():
+                        self.create_vsc_terminal_connection(
+                            bus_port=self.started_branch.get_terminal_from(),
+                            vsc_terminal=self.started_branch.get_terminal_to()
+                        )
+
+                    elif self.started_branch.connected_between_vsc3_and_bus():
+                        self.create_vsc_terminal_connection(
+                            bus_port=self.started_branch.get_terminal_to(),
+                            vsc_terminal=self.started_branch.get_terminal_from()
+                        )
 
                     elif self.started_branch.connected_between_fluid_nodes():  # fluid path
 
