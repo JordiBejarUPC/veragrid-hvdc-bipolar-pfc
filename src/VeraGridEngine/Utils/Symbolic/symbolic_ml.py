@@ -8,16 +8,20 @@ from dataclasses import replace
 import numpy as np
 import math
 from typing import Dict, Any, List
-from VeraGridEngine.Utils.Symbolic.block import (Block, Expr, Var, DiffVar, Const, Func, BinOp, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, Func, BinOp)
+from VeraGridEngine.Templates.templates_common_functions import (tf_to_diffblock_with_output, 
+                                                                  tf_to_diffblock_with_antiwindup)
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
-def ml_positive_part(u:Expr, name:str=''):
-    u_plus1 = Var('u_plus1_'+name)
-    u_plus2 = Var('u_plus2_'+name)
-    u_minus1 = Var('u_minus1_' +name)
-    u_minus2 = Var('u_minus2_' +name)
+
+def ml_positive_part(vf: VarFactory, u:Expr, name:str=''):
+    u_plus1 = vf.add_var('u_plus1_'+name)
+    u_plus2 = vf.add_var('u_plus2_'+name)
+    u_minus1 = vf.add_var('u_minus1_' +name)
+    u_minus2 = vf.add_var('u_minus2_' +name)
     positive_part_block = Block(
         algebraic_eqs=[
             u - (u_plus1*u_plus2 - u_minus1*u_minus2),
@@ -27,18 +31,18 @@ def ml_positive_part(u:Expr, name:str=''):
         ],
         algebraic_vars=[u_plus1, u_plus2, u_minus1, u_minus2],
         init_eqs={
-            u_plus1 : sym.sqrt(sym.max(u,0)),
+            u_plus1 : sym.sqrt(sym.max(u, Const(0))),
             u_plus2 : u_plus1,
-            u_minus1: sym.sqrt(sym.max(-u,0)),
+            u_minus1: sym.sqrt(sym.max(-u, Const(0))),
             u_minus2: u_minus1,
         }
     )
     return positive_part_block, u_plus1*u_plus2, u_minus1*u_minus2
 
-def ml_positive_part_alt(A:Expr, name:str=''):
-    u_plus1 = Var('u_plus1_'+name)
-    u_plus2 = Var('u_plus2_'+name)
-    u_plus3 = Var('abs_'+name)
+def ml_positive_part_alt(vf: VarFactory, A:Expr, name:str=''):
+    u_plus1 = vf.add_var('u_plus1_'+name)
+    u_plus2 = vf.add_var('u_plus2_'+name)
+    u_plus3 = vf.add_var('abs_'+name)
     positive_part_block = Block(
         algebraic_eqs=[
             u_plus1-u_plus2,
@@ -49,30 +53,30 @@ def ml_positive_part_alt(A:Expr, name:str=''):
     )
     return positive_part_block, (u_plus3), (A-u_plus3) 
 
-def ml_max(u:Expr, v:Expr, alternative:bool = True, name:str=''):
+def ml_max(vf: VarFactory, u:Expr, v:Expr, alternative:bool = True, name:str=''):
     if not alternative:
-        hv_var, block_hv = ml_heaviside(u-v)
+        hv_var, block_hv = ml_heaviside(vf, u-v)
         max_expr = hv_var*u + (Const(1)-hv_var)*v
     else:
-        pos_part_uv, neg_part_uv, block_hv = ml_positive_part_alt(u-v)
+        pos_part_uv, neg_part_uv, block_hv = ml_positive_part_alt(vf, u-v)
         max_expr = u + neg_part_uv
     return max_expr, block_hv
 
-def ml_hard_sat(u:Expr, u_min, u_max:Const, name:str=""):
-    block1, expr1_plus, expr1_minus = ml_positive_part(u - u_max, name+"_max")
-    block2, expr2_plus, expr2_minus = ml_positive_part(u - u_min, name+"_min")
+def ml_hard_sat(vf: VarFactory, u:Expr, u_min, u_max:Const, name:str=""):
+    block1, expr1_plus, expr1_minus = ml_positive_part(vf, u - u_max, name+"_max")
+    block2, expr2_plus, expr2_minus = ml_positive_part(vf, u - u_min, name+"_min")
     final_expr = u_min + expr2_plus - expr1_plus 
     final_block = Block(children=[block1, block2])
     return final_block, final_expr 
 
-def exponential_ml(x:Expr, name:str=""):
+def exponential_ml(vf: VarFactory, x:Expr, name:str=""):
     algebraic_eqs = []
     algebraic_vars = []
-    y = Var('exp_' + name)
-    dy = DiffVar('dt_'+y.name, base_var=y)
+    y = vf.add_var('exp_' + name)
+    dy = vf.add_diff_var('dt_'+y.name, base_var=y)
     
     if not isinstance(x, Var):
-        u = Var(name + '_aux')
+        u = vf.add_var(name + '_aux')
         aux_block = Block(
             algebraic_eqs=[u-x],
             algebraic_vars=[u],
@@ -81,7 +85,8 @@ def exponential_ml(x:Expr, name:str=""):
     else:
         u = x
 
-    du = DiffVar('dt_'+u.name, base_var=u)
+    du = vf.add_diff_var('dt_'+u.name, base_var=u)
+    children = [aux_block] if aux_block is not None else []
     block = Block(
         algebraic_eqs= [dy - du*y] + algebraic_eqs,
         algebraic_vars=[y] + algebraic_vars,
@@ -89,16 +94,16 @@ def exponential_ml(x:Expr, name:str=""):
         init_eqs={
             y: sym.exp(u)
         }, 
-        children = [aux_block]  
+        children=children
     )
     return block, y
 
-def ml_heaviside(u:Expr, name:str=''):
-    u_plus1 = Var('u_plus1_' + name)
-    u_plus2 = Var('u_plus2_' + name)
-    u_minus1 = Var('u_minus1_' + name)
-    u_minus2 = Var('u_minus2_' + name)
-    hv = Var('hv_' + name)
+def ml_heaviside(vf: VarFactory, u:Expr, name:str=''):
+    u_plus1 = vf.add_var('u_plus1_' + name)
+    u_plus2 = vf.add_var('u_plus2_' + name)
+    u_minus1 = vf.add_var('u_minus1_' + name)
+    u_minus2 = vf.add_var('u_minus2_' + name)
+    hv = vf.add_var('hv_' + name)
     positive_part_block = Block(
         algebraic_eqs=[
             u - (u_plus1*u_plus2 - u_minus1*u_minus2),
@@ -110,20 +115,21 @@ def ml_heaviside(u:Expr, name:str=''):
         algebraic_vars=[hv, u_plus1, u_plus2, u_minus1, u_minus2],
         init_eqs={
             hv      : sym.heaviside(u), 
-            u_plus1 : sym.sqrt(sym.max(u,0)),
+            u_plus1 : sym.sqrt(sym.max(u, Const(0))),
             u_plus2 : u_plus1,
-            u_minus1: sym.sqrt(sym.max(-u,0)),
+            u_minus1: sym.sqrt(sym.max(-u, Const(0))),
             u_minus2: u_minus1,
         }
     )
     return positive_part_block, hv
 
-def ml_piecewise_aux(x: Expr, name: str = None):
-    x, all_blocks, _ = ml_piecewise(x, name=name, counter=0)
+def ml_piecewise_aux(vf: VarFactory, x: Expr, name: str = None):
+    x, all_blocks, _ = ml_piecewise(vf, x, name=name, counter=0)
     block = Block(children = all_blocks)
     return block, x
 
 def ml_piecewise(
+        vf: VarFactory,
         x: Expr,
         name: str = '',
         counter: int = 0
@@ -140,19 +146,19 @@ def ml_piecewise(
     # --- Heaviside function case ---
     if isinstance(x, Func) and x.op == "heaviside":
         local_name = f"{name or 'hv'}_{counter}"
-        y, block = ml_heaviside(x.arg, local_name)
+        y, block = ml_heaviside(vf, x.arg, local_name)
         return y, [block], counter + 1
 
     # --- General function (like sin, exp, etc.) ---
     if isinstance(x, Func):
-        new_arg, blocks, counter = ml_piecewise(x.arg, name, counter)
+        new_arg, blocks, counter = ml_piecewise(vf, x.arg, name, counter)
         x = Func(new_arg, x.op)
         return x, blocks, counter
 
     # --- Binary operator case (e.g. +, -, *, /, **) ---
     if isinstance(x, BinOp):
-        left_new, blocks_left, counter = ml_piecewise(x.left, name, counter)
-        right_new, blocks_right, counter = ml_piecewise(x.right, name, counter)
+        left_new, blocks_left, counter = ml_piecewise(vf, x.left, name, counter)
+        right_new, blocks_right, counter = ml_piecewise(vf, x.right, name, counter)
         x = BinOp(left=left_new, op= x.op, right=right_new)
         all_blocks = blocks_left + blocks_right
         return x, all_blocks, counter
@@ -160,9 +166,9 @@ def ml_piecewise(
     # --- fallback ---
     raise ValueError(f"Unsupported expression type: {type(x)}")
 
-def park_transform(X:Var, ang:Var, delta:Var, multilinear:bool = False):
-    Xd = Var('Xd')
-    Xq = Var('Xq')
+def park_transform(vf: VarFactory, X:Var, ang:Var, delta:Var, multilinear:bool = False):
+    Xd = vf.add_var('Xd')
+    Xq = vf.add_var('Xq')
     sqrt_2 = Const(np.sqrt(2))
     if not multilinear:
         block = Block(
@@ -173,12 +179,12 @@ def park_transform(X:Var, ang:Var, delta:Var, multilinear:bool = False):
             algebraic_vars= [Xd, Xq]
         )
     else:
-        u_cos = Var('u_cos')
-        u_sin = Var('u_sin')
-        d_u_cos = Var('d_u_cos', base_var=u_cos)
-        d_u_sin = Var('d_u_sin', base_var=u_sin)
-        d_delta = Var('d_delta', base_var=delta)
-        d_ang = Var('d_ang', base_var=ang)
+        u_cos = vf.add_var('u_cos')
+        u_sin = vf.add_var('u_sin')
+        d_u_cos = vf.add_diff_var('d_u_cos', base_var=u_cos)
+        d_u_sin = vf.add_diff_var('d_u_sin', base_var=u_sin)
+        d_delta = vf.add_diff_var('d_delta', base_var=delta)
+        d_ang = vf.add_diff_var('d_ang', base_var=ang)
         block = Block(
             algebraic_eqs= [
             Xd - X*u_cos*sqrt_2,
@@ -194,9 +200,10 @@ def park_transform(X:Var, ang:Var, delta:Var, multilinear:bool = False):
     
     return Xd, Xq, block
 
-def trig_transform(u:Expr, type = 'usual'):
+def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
+    aux_block = None
     if not isinstance(u, Var):
-        x = Var('x')
+        x = vf.add_var('x')
         aux_block = Block(
             algebraic_eqs=[x - u],
             algebraic_vars=[x],
@@ -205,11 +212,11 @@ def trig_transform(u:Expr, type = 'usual'):
     else:
         x = u
     if type == 'usual':
-        u_cos = Var('u_cos')
-        u_sin = Var('u_sin')
-        d_u_cos = DiffVar('d_u_cos', base_var=u_cos)
-        d_u_sin = DiffVar('d_u_sin', base_var=u_sin)
-        dx = DiffVar('d_delta', base_var=x)
+        u_cos = vf.add_var('u_cos')
+        u_sin = vf.add_var('u_sin')
+        d_u_cos = vf.add_diff_var('d_u_cos', base_var=u_cos)
+        d_u_sin = vf.add_diff_var('d_u_sin', base_var=u_sin)
+        dx = vf.add_diff_var('d_delta', base_var=x)
         block = Block(
             algebraic_vars= [u_cos, u_sin],
             algebraic_eqs =[
@@ -225,19 +232,19 @@ def trig_transform(u:Expr, type = 'usual'):
             }
         )
     elif type == 'norm':
-        u_cos = Var('u_cos')
-        u_sin = Var('u_sin')
-        u_cos_n = Var('u_cos_n')
-        u_sin_n = Var('u_sin_n')
+        u_cos = vf.add_var('u_cos')
+        u_sin = vf.add_var('u_sin')
+        u_cos_n = vf.add_var('u_cos_n')
+        u_sin_n = vf.add_var('u_sin_n')
 
-        norm = Var('norm')
-        u_cos_aux = Var('u_cos_aux')
-        u_sin_aux = Var('u_sin_aux')
-        norm_aux = Var('norm_aux')
+        norm = vf.add_var('norm')
+        u_cos_aux = vf.add_var('u_cos_aux')
+        u_sin_aux = vf.add_var('u_sin_aux')
+        norm_aux = vf.add_var('norm_aux')
 
-        d_u_cos = Var('d_u_cos', base_var=u_cos)
-        d_u_sin = Var('d_u_sin', base_var=u_sin)
-        dx = Var('d_delta', base_var=x)
+        d_u_cos = vf.add_diff_var('d_u_cos', base_var=u_cos)
+        d_u_sin = vf.add_diff_var('d_u_sin', base_var=u_sin)
+        dx = vf.add_diff_var('d_delta', base_var=x)
         block = Block(
             algebraic_vars= [u_cos, u_sin],
             differential_eqs=[
@@ -262,15 +269,15 @@ def trig_transform(u:Expr, type = 'usual'):
         block.add(norm_block)
 
     elif type =='singular':
-        int_xsinx = Var('int_xsinx')
-        int_xcosx = Var('int_xcosx')
-        dt_int_xsinx = Var('dt_int_xsinx', base_var=int_xsinx)
-        dt_int_xcosx = Var('dt_int_xcosx', base_var=int_xcosx)
-        u_cos = Var('u_cos')
-        u_sin = Var('u_sin')
-        d_u_cos = Var('d_u_cos', base_var=u_cos)
-        d_u_sin = Var('d_u_sin', base_var=u_sin)
-        dx = Var('d_delta', base_var=x)
+        int_xsinx = vf.add_var('int_xsinx')
+        int_xcosx = vf.add_var('int_xcosx')
+        dt_int_xsinx = vf.add_diff_var('dt_int_xsinx', base_var=int_xsinx)
+        dt_int_xcosx = vf.add_diff_var('dt_int_xcosx', base_var=int_xcosx)
+        u_cos = vf.add_var('u_cos')
+        u_sin = vf.add_var('u_sin')
+        d_u_cos = vf.add_diff_var('d_u_cos', base_var=u_cos)
+        d_u_sin = vf.add_diff_var('d_u_sin', base_var=u_sin)
+        dx = vf.add_diff_var('d_delta', base_var=x)
         block = Block(
             algebraic_vars= [u_cos, u_sin, int_xcosx, int_xsinx],
             algebraic_eqs=[
@@ -284,13 +291,13 @@ def trig_transform(u:Expr, type = 'usual'):
             diff_vars=[ dx, dt_int_xcosx, dt_int_xsinx],
         )
     else:
-        u_cos = Var('u_cos')
-        u_sin = Var('u_sin')
-        int_sin2 = Var('int_sin2')
-        int_sin2cos2 = Var('int_sin2cos2')
-        dt_int_sin2 = Var('dt_int_sin2', base_var=int_sin2)
-        dt_int_sin2cos2 = Var('dt_int_sin2cos2', base_var=int_sin2cos2)
-        dx = Var('d_delta', base_var=x)
+        u_cos = vf.add_var('u_cos')
+        u_sin = vf.add_var('u_sin')
+        int_sin2 = vf.add_var('int_sin2')
+        int_sin2cos2 = vf.add_var('int_sin2cos2')
+        dt_int_sin2 = vf.add_diff_var('dt_int_sin2', base_var=int_sin2)
+        dt_int_sin2cos2 = vf.add_diff_var('dt_int_sin2cos2', base_var=int_sin2cos2)
+        dx = vf.add_diff_var('d_delta', base_var=x)
         block = Block(
             algebraic_vars= [u_cos, u_sin, int_sin2, int_sin2cos2],
             algebraic_eqs=[
@@ -304,17 +311,18 @@ def trig_transform(u:Expr, type = 'usual'):
             diff_vars=[dx, dt_int_sin2, dt_int_sin2cos2],
         )
 
-    block.add(aux_block)
+    if aux_block is not None:
+        block.add(aux_block)
     return block, u_cos, u_sin
 
-def ml_f_exc(In:Expr):
-    ml_block1, hv1 = ml_heaviside(Const(0.433) - In)
-    ml_block2, hv2 = ml_heaviside(Const(0.75) - In)
-    ml_block3, hv3 = ml_heaviside(Const(1.0) - In)
+def ml_f_exc(vf: VarFactory, In:Expr):
+    ml_block1, hv1 = ml_heaviside(vf, Const(0.433) - In)
+    ml_block2, hv2 = ml_heaviside(vf, Const(0.75) - In)
+    ml_block3, hv3 = ml_heaviside(vf, Const(1.0) - In)
 
-    In_aux = Var('In_aux')
-    sqrt1 = Var('sqrt1')
-    sqrt2 = Var('sqrt2')
+    In_aux = vf.add_var('In_aux')
+    sqrt1 = vf.add_var('sqrt1')
+    sqrt2 = vf.add_var('sqrt2')
     exp1 = (Const(1) - Const(0.577) * In)
     exp2 = ( Const(0.75) - In*In_aux)
     exp3 = (Const(1.732) - In * Const(1.732))
