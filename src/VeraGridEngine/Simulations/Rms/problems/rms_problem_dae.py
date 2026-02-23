@@ -168,7 +168,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -184,7 +184,7 @@ class RmsProblemDae(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -216,7 +216,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 for elm in dev_list:
                     # flatten model
                     elm.rms_model.model.unify_blocks()
-                    mdl = block_deep_copy(elm.rms_model.model)
+                    mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
                     self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -283,7 +283,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
