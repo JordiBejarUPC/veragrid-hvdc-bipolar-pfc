@@ -655,10 +655,18 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.typtr2s.append(typtr2)
         base_tr2typtr2_dict[trt] = typtr2
 
-    # tap-aware transformer type cache:
-    # Two transformers must not share TypTr2 if their tap definition (step/range/side) differs,
-    # because TypTr2 contains dutap/ntpmn/ntpmx/nntap0/tap_side/itapch.
-    tr2typtr2_by_tap: Dict[Tuple[dev.TransformerType, float, float, float], TypTr2] = dict()
+    # Export-aware transformer type cache:
+    # Two transformers must not share TypTr2 if either:
+    #   - their tap definition differs (TypTr2 stores tap metadata), OR
+    #   - their electrical model differs (the importer rebuilds R/X from TypTr2.uktr + TypTr2.pcutr).
+    #
+    # Therefore the cache key must include BOTH:
+    #   - base template + tap range definition
+    #   - electrical signature (R, X, G, B, rating used for reverse short-circuit study)
+    tr2typtr2_cache: Dict[
+        Tuple[dev.TransformerType, float, float, float, float, float, float, float],
+        TypTr2
+    ] = dict()
 
     # lines
     for line in grid.lines:
@@ -714,51 +722,43 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     # 2W transformers
     for tr in grid.transformers2w:
 
-        # Tap signature (rounded) so that transformers with different tap definitions
-        # do NOT share the same TypTr2.
-        tap_key = (
-            tr.template,
-            round(float(tr.tap_module_min), 6),
-            round(float(tr.tap_module_max), 6),
-            round(float(tr.tap_module), 6),
-        )
+        # Get actual connected buses first (we will force TypTr2 nominal voltages from them)
+        hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
-        tpe = tr2typtr2_by_tap.get(tap_key, None)
-        tpe_is_new = False
+        # IMPORTANT (robust roundtrip mode):
+        # Create ONE TypTr2 per ElmTr2. Reusing/caching transformer types can merge
+        # different transformers (especially in RAW-imported cases) and produce wrong
+        # HV/LV nominal voltages or wrong type assignments.
+        tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
+        dgs_grid.typtr2s.append(tpe)
+        tpe_is_new = True
 
-        if tpe is None:
-            # Build a new type for this tap definition (don't reuse base template type blindly)
-            tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
-            dgs_grid.typtr2s.append(tpe)
-            tr2typtr2_by_tap[tap_key] = tpe
-            tpe_is_new = True
-            if float(tpe.frnom) == 0.0:
-                tpe.frnom = float(net.frnom)
+        if float(tpe.frnom) == 0.0:
+            tpe.frnom = float(net.frnom)
+
+        # Force nominal voltages from the actual connected buses (not from template)
+        # to avoid template contamination and shared-type issues.
+        tpe.utrn_h = float(hv_bus.Vnom)
+        tpe.utrn_l = float(lv_bus.Vnom)
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
-        # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
-        if tpe_is_new or float(tpe.uktr) == 0.0 or float(tpe.pcutr) == 0.0:
+        # To preserve the exact electrical model in roundtrip, rebuild TypTr2 on system base.
+        rate = float(grid.Sbase)
 
-            rate = float(tr.rate)
-            if rate <= 0.0:
-                rate = float(tr.Sn)
-            if rate <= 0.0:
-                rate = float(tpe.strn)
+        Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
+            R=float(tr.R),
+            X=float(tr.X),
+            G=float(tr.G),
+            B=float(tr.B),
+            rate=rate,
+            Sbase=float(grid.Sbase),
+        )
 
-            Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
-                R=float(tr.R),
-                X=float(tr.X),
-                G=float(tr.G),
-                B=float(tr.B),
-                rate=rate,
-                Sbase=float(grid.Sbase),
-            )
-
-            tpe.pfe = float(Pfe)
-            tpe.pcutr = float(Pcu)
-            tpe.uktr = float(Vsc)
-            tpe.curmg = float(I0)
-            tpe.strn = float(Sn)
+        tpe.pfe = float(Pfe)
+        tpe.pcutr = float(Pcu)
+        tpe.uktr = float(Vsc)
+        tpe.curmg = float(I0)
+        tpe.strn = float(Sn)
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
@@ -777,17 +777,8 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.usp_up = 1.01
         e.t2ldc = 0
 
-        # Tap export...
-        if tpe_is_new:
-            _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
-        else:
-            if tpe.dutap > 0.0:
-                step = tpe.dutap / 100.0
-                e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
-            else:
-                e.nntap = 0
-
-        hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
+        # Export tap fields from VeraGrid -> TypTr2/ElmTr2
+        _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
 
         dgs_grid.elmtr2s.append(e)
         dgs_grid.add_element_cubicles(

@@ -116,7 +116,6 @@ def test_roundtrip_raw_to_dgs_to_dgs_ieee_grids():
 
             v_ok = np.allclose(v1, v2, atol=1e-4)
             flow_ok = np.allclose(p1, p2, atol=1e-2)
-
             assert v_ok
             assert flow_ok
 
