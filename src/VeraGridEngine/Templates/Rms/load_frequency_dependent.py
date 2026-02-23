@@ -9,58 +9,60 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from VeraGridEngine.Templates.templates_common_functions import tf_to_block
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-def FrequencyLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
+def FrequencyLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    inputs = [Var("Vm_"), Var('Va_')]
+    inputs = [vfactory.add_var("Vm_"), vfactory.add_var('Va_')]
 
     #Vars:
-    m = Var('m')
-    P = Var('P')
-    Q = Var('Q')
+    m = vfactory.add_var('m')
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q')
     Va = inputs[1]
 
     #Parameters:
-    P0 = Var('Pl0')
-    Q0 = Var('Ql0')
-    V0 = Var('V0')
-    Kd = Var('Kd')
-    Ki = Var('Ki')
-    alpha_p = Var('alpha_p')
-    alpha_q = Var('alpha_q')
-    beta_p = Var('beta_p')
-    beta_q = Var('beta_q')
-    Tf = Var('Tf')
-    theta0 = Var('theta0')
+    P0 = vfactory.add_var('Pl0')
+    Q0 = vfactory.add_var('Ql0')
+    V0 = vfactory.add_var('V0')
+    Kd = vfactory.add_var('Kd')
+    Ki = vfactory.add_var('Ki')
+    alpha_p = vfactory.add_var('alpha_p')
+    alpha_q = vfactory.add_var('alpha_q')
+    beta_p = vfactory.add_var('beta_p')
+    beta_q = vfactory.add_var('beta_q')
+    Tf = vfactory.add_var('Tf')
+    theta0 = vfactory.add_var('theta0')
     
-    block1, d_omega = tf_to_diffblock(
-        num = [0, Const(1)],
-        den = [Const(1), Tf],
+    block1, d_omega = tf_to_block(
+        vfactory,
+        num = [0, vfactory.add_const(1)],
+        den = [vfactory.add_const(1), Tf],
         x= (Va - theta0),
         name = "frequency_measure"
 
     )
     # ZIP coefficients (classic formulation)
     event_dict = {
-        P0: Const(Pl0),
-        Q0: Const(Ql0),
-        V0: Const(None),
+        P0: vfactory.add_const(Pl0),
+        Q0: vfactory.add_const(Ql0),
+        V0: vfactory.add_const(None),
 
         # Exponential Parameters
-        alpha_p: Const(1.2),  
-        alpha_q: Const(1.2),
-        beta_p: Const(1.2),
-        beta_q: Const(1.2),
+        alpha_p: vfactory.add_const(1.2),  
+        alpha_q: vfactory.add_const(1.2),
+        beta_p: vfactory.add_const(1.2),
+        beta_q: vfactory.add_const(1.2),
 
-        Tf : Const(0.1),
-        theta0: Const(None),
+        Tf : vfactory.add_const(0.1),
+        theta0: vfactory.add_const(None),
     }  
     
     init_eqs = {
@@ -71,8 +73,8 @@ def FrequencyLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     }
     templ.block = Block(
         algebraic_eqs = [
-            P - P0*(inputs[0])**alpha_p*(Const(1) + d_omega)**beta_p,
-            Q - Q0*(inputs[0])**alpha_q*(Const(1) + d_omega)**beta_q,
+            P - P0*(inputs[0])**alpha_p*(vfactory.add_const(1) + d_omega)**beta_p,
+            Q - Q0*(inputs[0])**alpha_q*(vfactory.add_const(1) + d_omega)**beta_q,
         ],
         algebraic_vars=[P,Q],
         init_eqs = init_eqs,
@@ -89,4 +91,3 @@ def FrequencyLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     templ.block.in_vars = inputs
     
     return templ
-    

@@ -9,11 +9,11 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
+def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     Builds an RMS model template for a dynamic tap-changing load with PI voltage control.
 
@@ -30,6 +30,7 @@ def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
         dm/dt = -Kd*m + Ki*(V/m - 1 + Kd/Ki*V0)
 
     Args:
+        vfactory: VarFactory instance for creating variables
         name (str): Name of the load model
         Pl0 (float): Initial active power at nominal voltage (pu)
         Ql0 (float): Initial reactive power at nominal voltage (pu)
@@ -39,37 +40,37 @@ def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    inputs = [Var("Vm_")]
+    inputs = [vfactory.add_var("Vm_")]
 
     #Vars:
-    m = Var('m')
-    P = Var('P')
-    Q = Var('Q')
+    m = vfactory.add_var('m')
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q')
 
     #Parameters:
-    P0 = Var('Pl0')
-    Q0 = Var('Ql0')
-    V0 = Var('V0')
-    Kd = Var('Kd')
-    Ki = Var('Ki')
-    alpha_p = Var('alpha_p')
-    alpha_q = Var('alpha_q')
-    m_max = Var('m_max')
-    m_min = Var('m_min')
+    P0 = vfactory.add_var('Pl0')
+    Q0 = vfactory.add_var('Ql0')
+    V0 = vfactory.add_var('V0')
+    Kd = vfactory.add_var('Kd')
+    Ki = vfactory.add_var('Ki')
+    alpha_p = vfactory.add_var('alpha_p')
+    alpha_q = vfactory.add_var('alpha_q')
+    m_max = vfactory.add_var('m_max')
+    m_min = vfactory.add_var('m_min')
     
     # ZIP coefficients (classic formulation)
     event_dict = {
-        P0: Const(Pl0),
-        Q0: Const(Ql0),
-        V0: Const(None),
+        P0: vfactory.add_const(Pl0),
+        Q0: vfactory.add_const(Ql0),
+        V0: vfactory.add_const(None),
 
         # Exponential Parameters
-        alpha_p: Const(1.2),  
-        alpha_q: Const(1.2),
+        alpha_p: vfactory.add_const(1.2),  
+        alpha_q: vfactory.add_const(1.2),
 
         #PI parameters
-        Kd: Const(0.1),
-        Ki: Const(0.1),
+        Kd: vfactory.add_const(0.1),
+        Ki: vfactory.add_const(0.1),
     }  
     
     init_eqs = {
@@ -80,7 +81,7 @@ def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     }
     templ.block = Block(
         state_eqs=[
-            -Kd*m + Ki(inputs[0]/m - Const(1) + Kd/Ki*V0)
+            -Kd*m + Ki(inputs[0]/m - vfactory.add_const(1) + Kd/Ki*V0)
         ],
         state_vars= [m],
         algebraic_eqs = [
@@ -101,4 +102,3 @@ def DynamicTapLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     templ.block.in_vars = inputs
     
     return templ
-    

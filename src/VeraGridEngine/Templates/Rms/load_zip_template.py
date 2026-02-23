@@ -9,11 +9,11 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-def ZIPLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
+def ZIPLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     Builds an RMS model template for a ZIP load.
     
@@ -28,6 +28,7 @@ def ZIPLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     Where coefficients must sum to 1.0 for both active (a1+a2+a3) and reactive (a4+a5+a6) power.
     
     Args:
+        vfactory: VarFactory instance for creating variables
         name (str): Name of the load model
         Pl0 (float): Initial active power at nominal voltage (pu)
         Ql0 (float): Initial reactive power at nominal voltage (pu)
@@ -40,38 +41,38 @@ def ZIPLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    inputs = [Var("Vm_")]
+    inputs = [vfactory.add_var("Vm_")]
 
     #Vars:
-    P = Var('P')
-    Q = Var('Q')
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q')
 
     #Parameters:
-    P0 = Var('P0')
-    Q0 = Var('Q0')
-    V0 = Var('V0')
-    a1 = Var('a1')
-    a2 = Var('a2')
-    a3 = Var('a3')
-    a4 = Var('a4')
-    a5 = Var('a5')
-    a6 = Var('a6')
+    P0 = vfactory.add_var('P0')
+    Q0 = vfactory.add_var('Q0')
+    V0 = vfactory.add_var('V0')
+    a1 = vfactory.add_var('a1')
+    a2 = vfactory.add_var('a2')
+    a3 = vfactory.add_var('a3')
+    a4 = vfactory.add_var('a4')
+    a5 = vfactory.add_var('a5')
+    a6 = vfactory.add_var('a6')
     
     # ZIP coefficients (classic formulation)
     event_dict = {
-        P0: Const(Pl0),
-        Q0: Const(Ql0),
-        V0: Const(None),
+        P0: vfactory.add_const(Pl0),
+        Q0: vfactory.add_const(Ql0),
+        V0: vfactory.add_const(None),
 
         # Active power ZIP
-        a1: Const(0.1),  # Z
-        a2: Const(0.1),  # I
-        a3: Const(0.8),  # P
+        a1: vfactory.add_const(0.1),  # Z
+        a2: vfactory.add_const(0.1),  # I
+        a3: vfactory.add_const(0.8),  # P
 
         # Reactive power ZIP
-        a4: Const(0.1),  # Z
-        a5: Const(0.1),  # I
-        a6: Const(0.8),  # P
+        a4: vfactory.add_const(0.1),  # Z
+        a5: vfactory.add_const(0.1),  # I
+        a6: vfactory.add_const(0.8),  # P
     }
 
     # --- Validation (fail fast) ---
@@ -118,4 +119,3 @@ def ZIPLoadBuild(name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     templ.block.in_vars = inputs
     
     return templ
-    

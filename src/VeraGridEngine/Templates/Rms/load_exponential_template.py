@@ -9,11 +9,11 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-def ExponentialLoadBuild(name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplate:
+def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplate:
     """
     Builds an RMS model template for an exponential load.
     
@@ -32,6 +32,7 @@ def ExponentialLoadBuild(name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplat
     sensitive to voltage changes, such as heating loads or certain electronic devices.
     
     Args:
+        vfactory: VarFactory instance for creating variables
         name (str): Name of the load model
         Pl0 (float): Initial active power at nominal voltage (pu)
         Ql0 (float): Initial reactive power at nominal voltage (pu)
@@ -42,27 +43,27 @@ def ExponentialLoadBuild(name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplat
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
 
-    inputs = [Var("Vm")]
+    inputs = [vfactory.add_var("Vm")]
 
     #Vars:
-    P = Var('P')
-    Q = Var('Q')
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q')
     
     #Parameters:
-    P0 = Var('Pl0')
-    Q0 = Var('Ql0')
-    V0 = Var('V0')
-    a = Var('a')
-    b = Var('b')
+    P0 = vfactory.add_var('Pl0')
+    Q0 = vfactory.add_var('Ql0')
+    V0 = vfactory.add_var('V0')
+    a = vfactory.add_var('a')
+    b = vfactory.add_var('b')
     
     # ZIP coefficients (classic formulation)
     events_dict = {
-        P0: Const(Pl0),
-        Q0: Const(Ql0),
-        V0: Const(None),
+        P0: vfactory.add_const(Pl0),
+        Q0: vfactory.add_const(Ql0),
+        V0: vfactory.add_const(None),
         
-        a: Const(5),
-        b: Const(5),
+        a: vfactory.add_const(5),
+        b: vfactory.add_const(5),
     }
     
     init_eqs = {

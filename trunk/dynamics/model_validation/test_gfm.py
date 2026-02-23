@@ -10,30 +10,23 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
-
-from VeraGridEngine import VarPowerFlowRefferenceType, power_flow, DynamicIntegrationMethod
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
-from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild # New GFM model
+from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
@@ -78,9 +71,8 @@ grid.add_bus(bus1)
 grid.add_bus(bus2) 
 grid.add_bus(bus3)
 
-bus1.initialize_rms()
-bus2.initialize_rms()
-bus3.initialize_rms()
+for bus in grid.buses:
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -94,12 +86,19 @@ pf_driver.run()
 res = pf_driver.results
 print('PF Voltage magnitudes (p.u.): ', abs(res.voltage))
 
+# Build dynamic_model_host
+line12_dynhost = DynamicModelHost()
+load_dynhost = DynamicModelHost()
+gen_dynhost = DynamicModelHost()
+gen3_dynhost = DynamicModelHost()
+vsc_dynhost = DynamicModelHost()
+
 # Initialize the RMS
-line12_mdl = block_deep_copy(get_line_rms_template().block)
-load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.005, Ql0 =-0.001).block)
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
-vsc_mdl = block_deep_copy(VscGfmBuild().block) # Load GFM model
-dc_source = block_deep_copy(DCVoltageSource(bus3.rms_model.model.out_vars[0]).block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+vsc_mdl = block_deep_copy(VscGfmBuild(grid.var_factory).block)
+dc_source = block_deep_copy(DCVoltageSource(grid.var_factory, bus3.rms_model.model.out_vars[0]).block)
 
 # Connections
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
@@ -116,11 +115,24 @@ vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
 vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
 vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
 
-line12.rms_model.model = line12_mdl
-gen1.rms_model.model = genrow_mdl1
-load1.rms_model.model = load_mdl
-vsc1.rms_model.model = vsc_mdl
-gen3.rms_model.model = dc_source
+# external mapping
+big_gen1 = Block(children=[genrow_mdl1])
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+
+# add models to dyn_host
+line12_dynhost.model = line12_mdl
+load_dynhost.model = load_mdl
+gen_dynhost.model = big_gen1
+gen3_dynhost.model = dc_source
+vsc_dynhost.model = vsc_mdl
+
+# attach rms models to Veragrid objects
+line12.rms_model = line12_dynhost
+load1.rms_model = load_dynhost
+gen1.rms_model = gen_dynhost
+vsc1.rms_model = vsc_dynhost
+gen3.rms_model = gen3_dynhost
 
 # Event: Change P_ref of GFM at t=0.5
 Pref = find_name_in_block('P_ref', vsc_mdl)
@@ -128,13 +140,28 @@ event = RmsEvent(device=vsc1, parameter=Pref, time=0.5, value=0.6)
 grid.add_rms_event(event)
 
 # Initialize RMS simulation
-sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+options = RmsOptions(time_step=0.001,
+                     simulation_time=1.0,
+                     tolerance=1e-6,
+                     integration_method=DynamicIntegrationMethod.BackEuler,
+                     initialization_method=RmsInitializationMethod.Explicit,
+                     use_init_values=False,
+                     max_iter=100,
+                     verbose=0)
 
-slv = BlockSolver(ss, sim_time)
-params_mapping = {}
-params0 = slv.build_init_params_vector(params_mapping)
-x0 = slv.build_init_vars_vector_from_uid(init_guess)
-dx0 = np.zeros(len(slv._diff_vars))
+problem = RmsProblemDae(grid=grid,
+                        options=options,
+                        pf_results=res)
+
+solver = BackEulerImplicitIntegration(
+    problem=problem,
+    t0=0,
+    t_end=options.simulation_time,
+    h=options.time_step,
+    max_iter=options.max_iter
+)
+
+t, y, well_initialized, converged = solver.simulate()
 
 # Variables to follow
 Vm2 = find_name_in_block("Vm_", bus2.rms_model.model)
@@ -142,37 +169,23 @@ omega = find_name_in_block("omega", vsc_mdl)
 P_vsc = find_name_in_block("P", vsc_mdl)
 Q_vsc = find_name_in_block("Q", vsc_mdl)
 
-xlim = 0.01
-t, y, _ = slv.simulate(
-    t0=0,
-    t_end=xlim,
-    h=1e-3,
-    x0=x0,
-    dx0=dx0,
-    params0=params0,
-    method=DynamicIntegrationMethod.BackEuler,
-    newton_tol=1e-8,
-    newton_max_iter=100,
-    verbose=True,
-)
-
 # Plotting
 plt.figure(figsize=(10, 8))
 plt.subplot(3, 1, 1)
-plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
+plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
 plt.ylabel("Frequency (pu)")
 plt.legend()
 plt.grid(True)
 
 plt.subplot(3, 1, 2)
-plt.plot(t, y[:, slv.get_var_idx(P_vsc)], label="P (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Q_vsc)], label="Q (pu)")
+plt.plot(t, y[:, problem.get_var_idx(P_vsc)], label="P (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Q_vsc)], label="Q (pu)")
 plt.ylabel("Power (pu)")
 plt.legend()
 plt.grid(True)
 
 plt.subplot(3, 1, 3)
-plt.plot(t, y[:, slv.get_var_idx(Vm2)], label="Vm Bus 2 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Vm2)], label="Vm Bus 2 (pu)")
 plt.ylabel("Voltage (pu)")
 plt.xlabel("Time (s)")
 plt.legend()
@@ -184,7 +197,7 @@ plt.tight_layout()
 # Verify simulation completed
 print('\n=== SIMULATION COMPLETED SUCCESSFULLY ===')
 print(f'Final time: {t[-1]:.3f}s')
-print(f'Final omega: {y[-1, slv.get_var_idx(omega)]:.6f} pu')
-print(f'Final P: {y[-1, slv.get_var_idx(P_vsc)]:.6f} pu')
-print(f'Final Q: {y[-1, slv.get_var_idx(Q_vsc)]:.6f} pu')
-print(f'Final Vm2: {y[-1, slv.get_var_idx(Vm2)]:.6f} pu')
+print(f'Final omega: {y[-1, problem.get_var_idx(omega)]:.6f} pu')
+print(f'Final P: {y[-1, problem.get_var_idx(P_vsc)]:.6f} pu')
+print(f'Final Q: {y[-1, problem.get_var_idx(Q_vsc)]:.6f} pu')
+print(f'Final Vm2: {y[-1, problem.get_var_idx(Vm2)]:.6f} pu')

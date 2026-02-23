@@ -9,29 +9,29 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
-def ShuntLoadBuild(name: str = "") -> RmsModelTemplate:
+def ShuntLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.ShuntDevice
     res_block = Block()
     pi = math.pi
     #Inputs:
-    inputs = [Var('Vm'), Var('Va')]
+    inputs = [vfactory.add_var('Vm'), vfactory.add_var('Va')]
     Vm = inputs[0]
     Va = inputs[1]
     #Variables:
-    P = Var('P')
-    Q = Var('Q')
-    g = Var('g')
-    b = Var('b')
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q')
+    g = vfactory.add_var('g')
+    b = vfactory.add_var('b')
 
     events_dict = {
-        g: Const(0.0),
-        b: Const(0.4),
+        g: vfactory.add_const(0.0),
+        b: vfactory.add_const(0.4),
     }
     
     res_block = Block(
@@ -41,8 +41,8 @@ def ShuntLoadBuild(name: str = "") -> RmsModelTemplate:
         ],
         algebraic_vars=[P, Q],
         init_eqs={
-            P: Const(0.0),
-            Q: Const(0.1),
+            P: vfactory.add_const(0.0),
+            Q: vfactory.add_const(0.1),
         }
     )
 

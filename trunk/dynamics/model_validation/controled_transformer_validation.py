@@ -14,20 +14,18 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
 from VeraGridEngine import VarPowerFlowRefferenceType, SimulationTypes
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV, VSCShuntBuild, VSCShuntBuild2, PVCellBuild, PVControlBuild2
-from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
-from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapModuleControl, TapPhaseControl
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapModuleControl, TapPhaseControl, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import WindingType
 import VeraGridEngine.api as gce
@@ -111,9 +109,8 @@ grid.add_bus(bus1)
 grid.add_bus(bus2) 
 grid.add_bus(bus3)
 
-bus1.initialize_rms()
-bus2.initialize_rms()
-bus3.initialize_rms()
+for bus in grid.buses:
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_generator(bus=bus1, api_obj=gen1)
@@ -138,7 +135,7 @@ print("Pset from NC:", nc.active_branch_data.Pset)
 print("Control modes (Phase):", nc.active_branch_data.tap_phase_control_mode)
 print("Branch names in NC:", nc.passive_branch_data.names)
 
-options = PowerFlowOptions(gce.SolverType.NR, 
+pf_options = PowerFlowOptions(gce.SolverType.NR, 
                            verbose=2, 
                            control_taps_modules=False, 
                            control_taps_phase=False)
@@ -154,15 +151,15 @@ Qmin, Qmax = nc.get_reactive_power_limits()
 pf_form = PfGeneralizedFormulation(V0=V0, S0=S0, I0=I0, Y0=Y0, 
                                    Qmin=Qmin, Qmax=Qmax, 
                                    nc=nc, 
-                                   options=options, 
+                                   options=pf_options, 
                                    logger=logger)
 
 print("\nSolving using Generalized Power Flow Formulation...")
 numeric_results = newton_raphson_fx(problem=pf_form,
-                                    tol=options.tolerance,
-                                    max_iter=options.max_iter,
-                                    trust=options.trust_radius,
-                                    verbose=options.verbose,
+                                    tol=pf_options.tolerance,
+                                    max_iter=pf_options.max_iter,
+                                    trust=pf_options.trust_radius,
+                                    verbose=pf_options.verbose,
                                     logger=logger)
 
 if not numeric_results.converged:
@@ -214,15 +211,23 @@ print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx_1].imag:.6f}, Qt={res.St[trafo_id
 print(f"Trafo 1 Tap Module: {trafo_1.tap_module:.6f}, Phase: {np.degrees(trafo_1.tap_phase):.6f} deg")
 print(f"Trafo 2 Tap Module: {trafo_2.tap_module:.6f}, Phase: {np.degrees(trafo_2.tap_phase):.6f} deg")
 
+# Build dynamic_model_host
+line12_dynhost = DynamicModelHost()
+load_dynhost = DynamicModelHost()
+gen_dynhost = DynamicModelHost()
+
 #Initialise the RMS
-line12_mdl = block_deep_copy(get_line_rms_template().block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
 trafo_1.initialize_rms(name = "trafo1")
 trafo_2.initialize_rms(name = "trafo2")
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.1, Ql0 =-0.02).block)
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.02).block)
+else:
+    raise ValueError(f"Unknown load type: {load_type}")
+    
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
@@ -235,50 +240,61 @@ line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
 line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
 
+# external mapping
+big_gen1 = Block(children=[genrow_mdl1])
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-line12.rms_model.model   = line12_mdl
-gen1.rms_model.model     = genrow_mdl1
-load1.rms_model.model    = load_mdl
+# add models to dyn_host
+line12_dynhost.model = line12_mdl
+load_dynhost.model = load_mdl
+gen_dynhost.model = big_gen1
+
+# attach rms models to Veragrid objects
+line12.rms_model = line12_dynhost
+load1.rms_model = load_dynhost
+gen1.rms_model = gen_dynhost
 
 Pl0 = find_name_in_block('P0', load_mdl)
 event = RmsEvent(device=load1, parameter=Pl0, time=.2, value=0.1)
 grid.add_rms_event(event)
 
-sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+options = RmsOptions(time_step=0.001,
+                     simulation_time=0.3,
+                     tolerance=1e-6,
+                     integration_method=DynamicIntegrationMethod.BackEuler,
+                     initialization_method=RmsInitializationMethod.Explicit,
+                     use_init_values=False,
+                     max_iter=1000,
+                     verbose=0)
 
-slv = BlockSolver(ss, sim_time)
-params_mapping = {}
-params0 = slv.build_init_params_vector(params_mapping)
-x0 = slv.build_init_vars_vector_from_uid(init_guess)
-dx0 = np.zeros(len(slv._diff_vars))
-Vm = find_name_in_block("Vm", slv.block_system)
+problem = RmsProblemDae(grid=grid,
+                        options=options,
+                        pf_results=res)
 
-xlim = 0.3
-t, y, _ = slv.simulate(
+solver = BackEulerImplicitIntegration(
+    problem=problem,
     t0=0,
-    t_end=xlim,
-    h=1e-3,
-    x0=x0,
-    dx0=dx0,
-    params0=params0,
-    method=DynamicIntegrationMethod.BackEuler,
-    newton_tol=1e-8,
-    newton_max_iter=1000,
-    followed_vars=None,
-    initialized=False,
-    verbose=False,
+    t_end=options.simulation_time,
+    h=options.time_step,
+    max_iter=options.max_iter
 )
+
+t, y, well_initialized, converged = solver.simulate()
+
+xlim = options.simulation_time
 
 Pg = genrow_mdl1.out_vars[0]
 Qg = genrow_mdl1.out_vars[1]
 delta = find_name_in_block("delta", genrow_mdl1)
+Vm = find_name_in_block("Vm", genrow_mdl1)
 
 plt.figure(figsize=(10, 6))
 plt.subplot(2, 1, 1)
-plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
+plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
 
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
@@ -292,10 +308,10 @@ Qf1 = find_name_in_block('Qf', trafo_1.rms_model.model)
 Pf2 = find_name_in_block('Pf', trafo_2.rms_model.model)
 Qf2 = find_name_in_block('Qf', trafo_2.rms_model.model)
 
-plt.plot(t, y[:, slv.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Pf2)], label="Pf Trafo 2 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Qf2)], label="Qf Trafo 2 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Pf2)], label="Pf Trafo 2 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Qf2)], label="Qf Trafo 2 (pu)")
 
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")

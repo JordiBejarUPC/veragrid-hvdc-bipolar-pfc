@@ -798,17 +798,16 @@ class RMSCompiler(EquationCompiler):
         triplets = []
 
         # O(N) Algorithmic Extraction:
-        # We uniquely differentiate variables that explicitly exist in the equation's AST.
+        # We check ALL variable-equation pairs to correctly handle chain rules
+        # through differential variables. This is less efficient than checking only
+        # variables that appear in each equation, but it ensures correctness.
         for row, eq in enumerate(eqs):
-            for v_in_eq in get_expression_vars(eq):
-                if v_in_eq.uid in wrt_map:
-                    col, var = wrt_map[v_in_eq.uid]
+            for col, var in enumerate(wrt_vars):
+                # Differentiate with respect to the physical time variable (dt_var)
+                d_expr = eq.diff(var, dt=self.dt_var)
 
-                    # Differentiate with respect to the physical time variable (dt_var)
-                    d_expr = eq.diff(var, dt=self.dt_var)
-
-                    if not (isinstance(d_expr, Const) and d_expr.value == 0):
-                        triplets.append((col, row, d_expr))
+                if not (isinstance(d_expr, Const) and d_expr.value == 0):
+                    triplets.append((col, row, d_expr))
 
         triplets.sort(key=lambda t: (t[0], t[1]))
 

@@ -235,6 +235,15 @@ class Expr:
     def __hash__(self) -> int:
         return hash(self.uid)
 
+    def get_vars(self) -> List["Var"]:
+        """
+        Get all variables in this expression.
+        :return: List of Var objects
+        """
+        result: Set[Var] = set()
+        _collect_vars(self, result)
+        return list(result)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Atomic nodes
@@ -435,17 +444,6 @@ class Var(Expr):
                 return (Const(1) / dt) * self.base_var.diff(var, dt=dt)
             else:
                 return Const(0)
-
-        elif var.uid == self.base_var.uid:
-            h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(var, dt=dt)
-            return dh_dt
-        elif var.uid == self.origin_var.uid:
-            h_t = self.approximation_expr(dt=dt)[0]
-            dh_dt = h_t.diff(self.base_var, dt=dt)
-            return dh_dt
-        return Const(1 if self.uid == var.uid else 0)
-
     def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
         """
 

@@ -93,26 +93,26 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 # generator
-genqec1_mdl = get_genqec().block.copy()
+genqec1_mdl = get_genqec().block
 
 
-exc1_mdl = get_exciter().block.copy()
+exc1_mdl = get_exciter().block
 
 
-gov1_mdl = get_governor().block.copy()
+gov1_mdl = get_governor().block
 
 
-stabil1_mdl = get_stabilizer().block.copy()
+stabil1_mdl = get_stabilizer().block
 
 
 
 
 #line
-line0_mdl = get_line_rms_template().block.copy()
+line0_mdl = get_line_rms_template().block
 
 
 #load
-load_mdl = get_load_rms_template().block.copy()
+load_mdl = get_load_rms_template().block
 
 
 ## Build big generators by connecting elements

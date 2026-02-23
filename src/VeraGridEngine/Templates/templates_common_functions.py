@@ -487,3 +487,65 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
     )
 
     return block, y
+
+
+def deadband_block(
+        var_factory: VarFactory,
+        x: Var | Expr,
+        y: Var = None,
+        name: Optional[str] = '',
+        deadband: Expr = Const(0.1)) -> Tuple[Block, Var]:
+    """
+    Creates a deadband function block.
+    
+    The deadband function returns:
+    - 0 when input is within the deadband [-deadband, +deadband]
+    - input - deadband when input > deadband
+    - input + deadband when input < -deadband
+    
+    Parameters:
+    -----------
+    var_factory: VarFactory instance for creating variables
+    x: input signal (Var or Expr)
+    y: output variable (optional, created if None)
+    name: name prefix for variables
+    deadband: deadband threshold (default 0.1)
+    
+    Returns:
+    --------
+    Tuple of (Block, output_var)
+    """
+    if y is None:
+        y = var_factory.add_var('y_deadband_' + name)
+    
+    aux_eqs = []
+    aux_vars = []
+    
+    # Wrap input expression if needed
+    if not isinstance(x, Var):
+        u = var_factory.add_var('u_deadband_' + name)
+        aux_eqs.append((u - x).simplify())
+        aux_vars.append(u)
+        x = u
+    
+    # Deadband logic using Heaviside step functions
+    # y = (u - deadband) * H(u - deadband) + (u + deadband) * H(-deadband - u)
+    #   = (u - deadband) * H(u - deadband) + (u + deadband) * H(-u - deadband)
+    
+    h_pos = heaviside(x - deadband)
+    h_neg = heaviside(-x - deadband)
+    
+    # Output expression
+    output_expr = (x - deadband) * h_pos + (x + deadband) * h_neg
+    
+    # Algebraic equation: y - output_expr = 0
+    eq = (y - output_expr).simplify()
+    
+    block = Block(
+        name=name + '_deadband',
+        algebraic_vars=[y] + aux_vars,
+        algebraic_eqs=[eq] + aux_eqs,
+        diff_vars=[]
+    )
+    
+    return block, y

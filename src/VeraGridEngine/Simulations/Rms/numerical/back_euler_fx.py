@@ -137,7 +137,7 @@ class BackEulerImplicitIntegration:
             xn = self.y[step_idx, :]
             tol = 1e-7
 
-            while not converged and n_iter < 10:
+            while not converged and n_iter < self.max_iter_0:
                 if step_idx == 0:
                     dx = dx0.copy()
                 else:
