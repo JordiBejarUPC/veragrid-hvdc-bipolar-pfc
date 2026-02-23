@@ -2530,6 +2530,8 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+    Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
+    Idc = "Idc"  # Bus current for DC Bus in p.u.
 
     # from Power Flow 3ph
     v_N = "v_N"  # Bus voltage at phase N.

@@ -232,6 +232,7 @@ def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
             Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
+            Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
@@ -858,6 +859,242 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     return templ
 
+def OELBuild(vfactory:VarFactory, name: str = "") -> RmsModelTemplate:
+    """
+    
+    :param name: 
+    :return: 
+    """
+    templ = RmsModelTemplate()
+
+    oel_block = Block(name='exciter_limiter_block')
+    algebraic_eqs = []
+    algebraic_vars = []
+    differential_vars = []
+
+    inputs = [vfactory.add_var("OEL_input")]
+    Input_OEL = inputs[0]
+    #OEL_input_options are Efd or I_f
+
+    #parameters
+    # time constants
+    T_en     = vfactory.add_var('T_en')
+    T_off    = vfactory.add_var('T_off')
+    T_roel   = vfactory.add_var('T_roel')
+    T_doel   = vfactory.add_var('T_doel')
+    T_b1oel  = vfactory.add_var('T_b1oel')
+    T_c1oel  = vfactory.add_var('T_c1oel')
+    T_b2oel  = vfactory.add_var('T_b2oel')
+    T_aoel   = vfactory.add_var('T_aoel')
+    T_fcl    = vfactory.add_var('T_fcl')
+
+    T_min    = vfactory.add_var('T_min')
+    T_max    = vfactory.add_var('T_max')
+
+    # voltage limits
+    V_oelmin = vfactory.add_var('V_oelmin')
+    V_oelmax = vfactory.add_var('V_oelmax')
+    V_invmin = vfactory.add_var('V_invmin')
+    V_invmax = vfactory.add_var('V_invmax')
+
+    # gains
+    K_poel   = vfactory.add_var('K_poel')
+    K_ioel   = vfactory.add_var('K_ioel')
+    K_doel   = vfactory.add_var('K_doel')
+    K_ru     = vfactory.add_var('K_ru')
+    K_zru    = vfactory.add_var('K_zru')
+    K_rd     = vfactory.add_var('K_rd')
+    K_act    = vfactory.add_var('K_act')
+    K1       = vfactory.add_var('K1')
+    K2       = vfactory.add_var('K2')
+    Kfb      = vfactory.add_var('Kfb')
+
+    # fixed ramps
+    Fixed_RU = vfactory.add_var('Fixed_RU')
+    Fixed_RD = vfactory.add_var('Fixed_RD')
+
+    # current-related parameters
+    I_tfpu   = vfactory.add_var('I_tfpu')
+    I_THoff  = vfactory.add_var('I_THoff')
+    I_reset  = vfactory.add_var('I_reset')
+    I_inst   = vfactory.add_var('I_inst')
+    I_lim    = vfactory.add_var('I_lim')
+
+    # scaling and auxiliary
+    K_scale  = vfactory.add_var('K_scale')
+    C1       = vfactory.add_var('C1')
+    C2       = vfactory.add_var('C2')
+
+    # switches
+    SW1      = vfactory.add_var('SW1')
+
+    
+    Ierr = vfactory.add_var('Ierr')
+    V_oel = vfactory.add_var('V_oel')
+    Ipu = vfactory.add_var('Ipu')
+    
+    event_dict = {
+    # time constants
+    T_en:    vfactory.add_const(1.0),
+    T_off:   vfactory.add_const(1.0),
+    T_roel:  vfactory.add_const(1.0),
+    T_doel:  vfactory.add_const(1.0),
+    T_b1oel: vfactory.add_const(1.0),
+    T_c1oel: vfactory.add_const(1.0),
+    T_b2oel: vfactory.add_const(1.0),
+    T_aoel:  vfactory.add_const(1.0),
+    T_fcl:   vfactory.add_const(1.0),
+    T_min:   vfactory.add_const(1.0),
+    T_max:   vfactory.add_const(1.0),
+
+    # voltage limits
+    V_oelmin: vfactory.add_const(-1.0),
+    V_oelmax: vfactory.add_const(1.0),
+    V_invmin: vfactory.add_const(-1.0),
+    V_invmax: vfactory.add_const(1.0),
+
+    # gains
+    K_poel: vfactory.add_const(1.0),
+    K_ioel: vfactory.add_const(1.0),
+    K_doel: vfactory.add_const(1.0),
+    K_ru:   vfactory.add_const(1.0),
+    K_zru:  vfactory.add_const(1.0),
+    K_rd:   vfactory.add_const(1.0),
+    K_act:  vfactory.add_const(1.0),
+    K1:     vfactory.add_const(1.0),
+    K2:     vfactory.add_const(1.0),
+    Kfb:    vfactory.add_const(1.0),
+
+    # ramp limits
+    Fixed_RU: vfactory.add_const(1.0),
+    Fixed_RD: vfactory.add_const(1.0),
+
+    # currents
+    I_tfpu:  vfactory.add_const(1.0),
+    I_THoff: vfactory.add_const(1.0),
+    I_reset: vfactory.add_const(1.0),
+    I_inst:  vfactory.add_const(1.0),
+    I_lim:   vfactory.add_const(0.0),
+
+    # scaling
+    K_scale: vfactory.add_const(4.6),  # Ifield rated / Ibase
+    C1:      vfactory.add_const(1.0),
+    C2:      vfactory.add_const(1.0),
+
+    # switches
+    SW1: vfactory.add_const(1.0),
+    }
+
+    oel_block.event_params = event_dict
+    #equations
+    block_Ipu, Ipu = tf_to_block(
+        var_factory= vfactory,
+        num = [K_scale],    
+        den = [1, T_roel],
+        x= Input_OEL,
+        name= 'exciter_limiter_Ipu',
+    )
+    oel_block.add(block_Ipu)
+    I_errinv1 = K1*((Ipu/I_tfpu)**C1 - 1)
+    I_errinv2_aux = K2*((Ipu/I_tfpu)**C2 - 1)
+
+    #OEL TIMER LOGIC
+    I_errinv2 = sym.hard_sat(I_errinv2_aux, V_invmin, V_invmax)
+    W = I_errinv2 + sym.heaviside(I_tfpu - Ipu)*Fixed_RU + (vfactory.add_const(1)-sym.heaviside(I_tfpu - Ipu))*Fixed_RD
+
+    
+
+    T = vfactory.add_var('T')
+    block4, T = tf_to_block(
+        var_factory=vfactory,
+        num = [1],
+        den = [0, 1],
+        x= W - Kfb*sym.hard_sat(T, T_min, T_max),
+        y = T,
+        name= 'exciter_limiter_T',
+    )        
+    oel_block.add(block4)
+
+    Terr = T_fcl - W - Kfb*sym.hard_sat(T, T_min, T_max)
+    
+    #OEL RAMP LOGIC
+    C = (vfactory.add_const(1) -SW1)*(K_ru) + I_errinv1*(SW1)
+    D = (vfactory.add_const(1) -SW1)*(K_rd) + I_errinv1*(SW1)
+    Z = C*sym.heaviside(Terr - K_zru*T_fcl) + D*(sym.heaviside(-Terr))
+
+    block5, I_a = tf_to_block(
+        var_factory= vfactory,
+        num = [1],
+        den = [0, 1],
+        x= Z,
+        name= 'exciter_limiter_Ipu',
+    )
+    oel_block.add(block5)
+
+    I_ref = sym.hard_sat(I_a, I_lim, I_inst)
+
+
+    block7, y_1 = tf_to_block(
+        var_factory=vfactory,
+        num = [1],
+        den = [1, T_aoel],
+        x= I_ref,
+        name= 'exciter_limiter_Iref',
+    )
+    oel_block.add(block7)
+
+    I_act = K_act*Ipu 
+    x = vfactory.add_var('x')
+    dx = vfactory.add_diff_var('x', base_var=x)
+    algebraic_eqs.append(dx-(sym.heaviside(T_en-x)*sym.heaviside(I_act - I_ref) - (vfactory.add_const(1) - sym.heaviside(I_act - I_ref))*sym.heaviside(x)*vfactory.add_const(1000))) 
+    b1 = (x - T_en >= 0).to_expression()
+    b2 = (Terr <= 0).to_expression() #(Terr <= 0) when comparisons are supported
+    b3 = (T_en == 0).to_expression()
+
+    y = vfactory.add_var('y')
+    dy = vfactory.add_diff_var('y', base_var=y)
+    algebraic_eqs.append(dy-(sym.heaviside(T_off-y)*sym.heaviside(I_ref - I_act - I_THoff) - (vfactory.add_const(1) - sym.heaviside(I_ref - I_act - I_THoff))*sym.heaviside(y)*vfactory.add_const(1000))) 
+    c1 = (I_ref == I_inst).to_expression()
+    c2 = sym.heaviside(y - T_off + vfactory.add_const(1e-3))
+
+    I_bias = vfactory.add_var('I_bias')
+    algebraic_eqs.append(I_bias - (1 -(1-b1)*(1-b2)*(1-b3))*(c1*c2))
+    algebraic_vars.append(x)
+    algebraic_vars.append(y)
+    algebraic_vars.append(I_bias)
+    differential_vars.append(dx)
+    differential_vars.append(dy)
+
+
+    Ierr = y_1 - K_act*Ipu + I_bias
+
+
+    block8, V_oel = tf_to_block(
+        var_factory=vfactory,
+        num = [K_doel*K_poel],
+        den = [0, 1, T_doel],
+        x= K_poel*Ierr,
+        name= 'exciter_limiter_Voel',
+    )
+    oel_block.add(block8)
+
+    
+    V_oel_sat = vfactory.add_var('V_oel_sat')
+    algebraic_vars.append(V_oel_sat)
+    algebraic_eqs.append(sym.hard_sat(V_oel, V_oelmin, V_oelmax) - V_oel_sat)
+
+    end_block = Block(
+        algebraic_eqs = algebraic_eqs,
+        algebraic_vars = algebraic_vars,
+        diff_vars = differential_vars,
+    )       
+
+    oel_block.add(end_block)
+    
+    oel_block.in_vars = inputs
+    oel_block.out_vars = [V_oel_sat]
+    templ.block = oel_block
+    return oel_block, V_oel_sat
 
 def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
     """

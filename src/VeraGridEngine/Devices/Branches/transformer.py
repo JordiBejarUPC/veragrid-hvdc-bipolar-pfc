@@ -15,7 +15,7 @@ from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPha
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock, tf_to_diffblock_with_antiwindup
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -855,11 +855,141 @@ class Transformer2W(ControllableBranchParent):
 
         return Yff, Yft, Ytf, Ytt
 
-    def initialize_rms(self) -> None:
-        """
+    def initialize_rms(self, Sbase:float = 100, name:str = ""):
+        if self.rms_model.empty():
+            Qf = Var("Qf")
+            Qt = Var("Qt")
+            Pf = Var("Pf")
+            Pt = Var("Pt")
+            m  = Var('m') 
+            phi  = Var('phi') 
 
-        :return:
-        """
-        if self._rms_model.empty():
-            line_template = get_line_rms_template()
-            self.rms_model.model = line_template.block
+            ys = 1.0 / complex(self.R, self.X)
+            ysh = self.G + 1j * self.B
+            gt = Var("g")
+            bt = Var("b")
+            gFe = Var('gFe')
+            bmu = Var('bmu')
+            vtap_f, vtap_t = self.get_virtual_taps()
+            print(f"DEBUG Trafo: R={self.R}, X={self.X}, G={self.G}, B={self.B}")
+            print(f"DEBUG Trafo: tap={self.tap_module}, vtap_f={vtap_f}, vtap_t={vtap_t}")
+
+            print(f"vtap  p is {vtap_f}")
+            print(f"vtap  t is {vtap_t}")    
+            print(f'ys is {ys} ysh is {ysh}')
+
+            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+
+            # Calculate phase displacement matching transformer_admittance logic
+            conn_y_from = self.conn_f == WindingType.NeutralStar or self.conn_f == WindingType.GroundedStar
+            conn_y_to = self.conn_t == WindingType.NeutralStar or self.conn_t == WindingType.GroundedStar
+            
+            if self.conn_f == WindingType.Delta and conn_y_to: # Dy
+                phase_displacement = np.deg2rad(60.0)
+            elif conn_y_from and self.conn_t == WindingType.Delta: # Yd
+                phase_displacement = np.deg2rad(0.0)
+            else:
+                phase_displacement = 0.0
+            theta_hk = Vaf - Vat
+            block = Block(
+                algebraic_vars=[Pf, Pt, Qf, Qt],
+                algebraic_eqs=[
+                    # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
+                    Pf - ((Vmf ** 2 * (gFe  + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(
+                        theta_hk - phi) - bt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(theta_hk - phi - phase_displacement)),
+                    Qf - (-Vmf ** 2 * (bmu / 2 + bt) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * Vmf * Vmt * sin(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmf * Vmt * cos(theta_hk - phi - phase_displacement)),
+                    # To side: Pt = Re(Vt * (Ytf*Vf + Ytt*Vt)*)
+                    Pt - ((Vmt ** 2 * (gFe  + gt)) / vtap_t ** 2 - gt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(theta_hk - phi - phase_displacement)),
+                    Qt - (-Vmt ** 2 * (bmu / 2 + bt) / vtap_t ** 2 + gt / (m * vtap_f * vtap_t) * Vmt * Vmf * sin(
+                        theta_hk - phi) + bt / (m * vtap_f * vtap_t) * Vmt * Vmf * cos(theta_hk - phi - phase_displacement)),
+                ],
+                event_dict = {
+                    m : Const(self.tap_module),
+                    phi : Const(self.tap_phase)
+                }
+            )
+
+            block.external_mapping = {
+                VarPowerFlowRefferenceType.Pf: Pf,
+                VarPowerFlowRefferenceType.Pt: Pt,
+                VarPowerFlowRefferenceType.Qf: Qf,
+                VarPowerFlowRefferenceType.Qt: Qt,
+            }
+
+
+
+            block.parameters[gt] = Const(ys.real)
+            block.parameters[bt] = Const(ys.imag)
+            block.parameters[gFe] = Const(ysh.real)
+            block.parameters[bmu] = Const(ysh.imag)
+
+            if self.tap_module_control_mode != TapModuleControl.fixed:
+                del block.event_dict[m]
+                block.init_eqs[m] = Const(self.tap_module)
+
+                Ki = Var('Ki_mod')
+                Kd = Var('Kd_mod')
+                var_ref = Var('var_ref')
+
+                block.event_dict[Ki] = Const(0.1)
+                block.event_dict[Kd] = Const(0.1)
+                
+                if self.tap_module_control_mode == TapModuleControl.Qf:
+                    control_var = Qf
+                    block.event_dict[var_ref] = Const(self.Qset)
+                elif self.tap_module_control_mode == TapModuleControl.Qt:
+                    control_var = Qt
+                    block.event_dict[var_ref] = Const(self.Qset)
+                elif self.tap_module_control_mode == TapModuleControl.Vm:
+                    control_var = Vmt
+                    block.event_dict[var_ref] = Const(self.vset)  
+
+                PI_control_block, _ = tf_to_diffblock(
+                    num = [Ki],
+                    den = [Kd, Const(1)],
+                    x = control_var - var_ref,
+                    y = m,
+                )
+                block.add(PI_control_block)
+
+            if self.tap_phase_control_mode != TapPhaseControl.fixed:
+                del block.event_dict[phi]
+                block.init_eqs[phi] = Const(self.tap_phase)
+
+                Ki = Var('Ki_phase')
+                Kp = Var('Kp_phase')
+                Tm = Var('Tm')
+                var_ref = Var('var_ref')
+                block.event_dict[Ki] = Const(0.1)
+                block.event_dict[Kp] = Const(0.1)
+                block.event_dict[Tm] = Const(0.1)
+                
+                if self.tap_phase_control_mode == TapPhaseControl.Pf:
+                    control_var = Pf
+                    block.event_dict[var_ref] = Const(self.Pset/Sbase)
+                elif self.tap_phase_control_mode == TapPhaseControl.Pt:
+                    control_var = Pt
+                    block.event_dict[var_ref] = Const(self.Pset/Sbase)
+
+                Lead_Lag_block, control_var_mes = tf_to_diffblock(
+                    num = [Const(1)],
+                    den = [Const(1), Tm],
+                    x = control_var,
+                )
+
+                PI_control_block, _ = tf_to_diffblock(
+                    num = [Ki, Kp],
+                    den = [0, Const(1)],
+                    x = control_var_mes - var_ref,
+                    y = phi,
+                )
+                block.init_eqs[control_var_mes] = control_var
+                block.children.extend([PI_control_block, Lead_Lag_block])
+
+
+            self.rms_model.model = block
