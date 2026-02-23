@@ -353,7 +353,7 @@ def get_veragrid_transformer(
     psse_elm.CKT = str(psse_elm.CKT).replace("'", "")
 
     psse_elm.NAME = psse_elm.NAME.replace("'", "").strip()
-    ckt = psse_elm.CKT.replace("@", "").replace("*", "")
+    ckt = str(psse_elm.CKT).replace("@", "").replace("*", "")
 
     if psse_elm.windings == 0:
         # guess the number of windings
@@ -773,7 +773,7 @@ def get_veragrid_line(psse_elm: RawBranch,
     j = abs(psse_elm.J)
     bus_from = psse_bus_dict[i]
     bus_to = psse_bus_dict[j]
-    ckt = psse_elm.CKT.replace("@", "").replace("*", "")
+    ckt = str(psse_elm.CKT).replace("@", "").replace("*", "")
     code = str(i) + '_' + str(j) + '_' + str(ckt).replace("'", "").strip()
 
     if psse_elm.NAME.strip() == '':
