@@ -107,7 +107,6 @@ def convert_shunt(shunt: dev.Shunt, new_id: str, ushnm_kv: float, t: int | None 
     e.fres = 50.0
 
     # Active losses are not represented in this common PF DGS shunt model.
-    # If you ever want to represent G, you'd need a different PF object/model.
     e.greaf0 = 0.0
 
     e.outserv = 0 if shunt.get_active_at(t) else 1
@@ -229,20 +228,15 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.pgini = gen.get_P_at(t)
 
     # DGS/PowerFactory convention: qgini is reactive power injection.
-    # VeraGrid's get_Q_at() uses the opposite sign in our roundtrip (observed on IEEE14 slack).
     q = -gen.get_Q_at(t)
 
     # If Q is not stored in VeraGrid (often 0.0), approximate it from P and power factor.
-    # This is mainly to avoid exporting qgini=0 for all controlled generators.
     if abs(q) < 1e-12:
         p = float(e.pgini)
         pf = abs(gen.get_Pf_at(t))
         if 0.0 < pf < 1.0 and abs(p) > 0.0:
             import math
             q_abs = abs(p) * math.tan(math.acos(pf))
-
-            # Heuristic consistent with IEEE14 example:
-            # slack often absorbs reactive power in PF exports (negative qgini).
             q = -q_abs if gen.bus.is_slack else q_abs
 
     e.qgini = q
@@ -281,8 +275,6 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.xline = seq.X
     typlne.bline = seq.B
 
-    # Important: the importer decides "use_conductance" using (cline != 0.0).
-    # If we export tiny defaults (e.g. 1e-20), the importer will ignore bline and compute B from Cnf.
     if seq.use_conductance:
         typlne.cline = seq.Cnf
     else:
@@ -393,7 +385,6 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
 
 
     # Choose a step that produces a non-zero integer position for the actual tap.
-    # Good generic heuristic: smallest non-zero deviation among tap/min/max.
     devs = [d for d in (tap_dev, min_dev, max_dev) if d > 1e-9]
     if len(devs) == 0:
         # practically neutral
@@ -656,13 +647,6 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         base_tr2typtr2_dict[trt] = typtr2
 
     # Export-aware transformer type cache:
-    # Two transformers must not share TypTr2 if either:
-    #   - their tap definition differs (TypTr2 stores tap metadata), OR
-    #   - their electrical model differs (the importer rebuilds R/X from TypTr2.uktr + TypTr2.pcutr).
-    #
-    # Therefore the cache key must include BOTH:
-    #   - base template + tap range definition
-    #   - electrical signature (R, X, G, B, rating used for reverse short-circuit study)
     tr2typtr2_cache: Dict[
         Tuple[dev.TransformerType, float, float, float, float, float, float, float],
         TypTr2
@@ -725,10 +709,7 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         # Get actual connected buses first (we will force TypTr2 nominal voltages from them)
         hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
-        # IMPORTANT (robust roundtrip mode):
         # Create ONE TypTr2 per ElmTr2. Reusing/caching transformer types can merge
-        # different transformers (especially in RAW-imported cases) and produce wrong
-        # HV/LV nominal voltages or wrong type assignments.
         tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
         dgs_grid.typtr2s.append(tpe)
         tpe_is_new = True
@@ -742,7 +723,6 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         tpe.utrn_l = float(lv_bus.Vnom)
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
-        # To preserve the exact electrical model in roundtrip, rebuild TypTr2 on system base.
         rate = float(grid.Sbase)
 
         Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
@@ -783,26 +763,11 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.elmtr2s.append(e)
 
         # Preserve branch orientation as stored in VeraGrid (bus_from -> bus_to)
-        # so branch-flow signs remain stable in RAW->DGS roundtrips.
-        # TypTr2 is still built using HV/LV (tpe.utrn_h / tpe.utrn_l).
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
             dgs_buses=[bus2term_dict[tr.bus_from],
                        bus2term_dict[tr.bus_to]]
         )
 
-    # diagrams
-    # for dia in grid.diagrams:
-    #     if dia.diagram_type == DiagramType.Schematic:
-    #         intgrfnet = IntGrfnet()
-    #         intgrfnet.loc_name = dia.name
-    #         intgrfnet.pDataFolder = net.ID
-    #         dgs_grid.intgrfnets.append(intgrfnet)
-    #
-    #         for dtype, point_group in dia.data.items():
-    #             for idtag, point in point_group.locations.items():
-    #                 point.x
-    #                 point.y
-    #                 point.api_object.
 
     return dgs_grid
