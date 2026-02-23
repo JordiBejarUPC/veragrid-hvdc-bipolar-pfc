@@ -267,22 +267,22 @@ class EmtProblemDae(BaseProblem):
         """
 
         try:
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_N] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
                 V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
                 v_N = np.sqrt(2) * V_N_rms * np.cos(V_N_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_A] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
                 V_A_rms, V_A_angle = np.abs(pf_results.voltage_A[bus_index]), np.angle(pf_results.voltage_A[bus_index])
                 v_A = np.sqrt(2) * V_A_rms * np.cos(V_A_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_B] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
                 V_B_rms, V_B_angle = np.abs(pf_results.voltage_B[bus_index]), np.angle(pf_results.voltage_B[bus_index])
                 v_B = np.sqrt(2) * V_B_rms * np.cos(V_B_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_C] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
                 V_C_rms, V_C_angle = np.abs(pf_results.voltage_C[bus_index]), np.angle(pf_results.voltage_C[bus_index])
                 v_C = np.sqrt(2) * V_C_rms * np.cos(V_C_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
@@ -343,7 +343,7 @@ class EmtProblemDae(BaseProblem):
         """
         try:
             Sbus = 0.0
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_N] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
                 Sbus_N = pf_results.Sbus_N[bus_index] / sbase
                 V_N = pf_results.voltage_N[bus_index]
                 I_N = np.conj(Sbus_N / V_N)
@@ -353,7 +353,7 @@ class EmtProblemDae(BaseProblem):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_N, i_N)
                 Sbus += Sbus_N
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_A] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
                 Sbus_A = pf_results.Sbus_A[bus_index] / sbase
                 V_A = pf_results.voltage_A[bus_index]
                 I_A = np.conj(Sbus_A / V_A)
@@ -363,7 +363,7 @@ class EmtProblemDae(BaseProblem):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_A, i_A)
                 Sbus += Sbus_A
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_B] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
                 Sbus_B = pf_results.Sbus_B[bus_index] / sbase
                 V_B = pf_results.voltage_B[bus_index]
                 I_B = np.conj(Sbus_B / V_B)
@@ -373,7 +373,7 @@ class EmtProblemDae(BaseProblem):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_B, i_B)
                 Sbus += Sbus_B
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.v_C] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
                 Sbus_C = pf_results.Sbus_C[bus_index] / sbase
                 V_C = pf_results.voltage_C[bus_index]
                 I_C = np.conj(Sbus_C / V_C)
@@ -383,7 +383,7 @@ class EmtProblemDae(BaseProblem):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_C, i_C)
                 Sbus += Sbus_C
 
-            if mdl.external_mapping[VarPowerFlowRefferenceType.theta] is not None:
+            if mdl.E(VarPowerFlowRefferenceType.theta) is not None:
                 V_A = pf_results.voltage_A[bus_index]
                 V_B = pf_results.voltage_B[bus_index]
                 V_C = pf_results.voltage_C[bus_index]
