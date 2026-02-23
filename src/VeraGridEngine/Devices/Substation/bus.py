@@ -560,37 +560,9 @@ class Bus(PhysicalDevice):
         Initializes rms model if not initialized
         :return: Vm, Va rms vars
         """
-        if self.rms_model.model.empty():
-            self.initialize_rms()
+        # if self.rms_model.model.empty():
+        #     self.initialize_rms()
         assert len(self.rms_model.model.algebraic_vars) == 2
         return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
 
-
-    def initialize_emt(self):
-        """
-        Initialize the RMS model
-        """
-
-        v_A = Var("v_A")
-        v_B = Var("v_B")
-        v_C = Var("v_C")
-
-        P = Var("P")
-        Q = Var("Q")
-
-        block = Block(
-            alter_params=[v_A, v_B, v_C],
-            algebraic_vars=[v_A, v_B, v_C],
-            out_vars=[v_A, v_B, v_C],
-        )
-
-        block.external_mapping = {
-            VarPowerFlowRefferenceType.v_A: v_A,
-            VarPowerFlowRefferenceType.v_B: v_B,
-            VarPowerFlowRefferenceType.v_C: v_C,
-            VarPowerFlowRefferenceType.P: P,
-            VarPowerFlowRefferenceType.Q: Q
-        }
-
-        self.emt_model.model = block
 

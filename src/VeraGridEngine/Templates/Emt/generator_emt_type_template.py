@@ -6,8 +6,8 @@
 
 import numpy as np
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 
@@ -39,9 +39,9 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
 
     d_et = var_factory.add_diff_var('d_et', base_var=et)
 
-    i_a = var_factory.add_var("i_a")
-    i_b = var_factory.add_var("i_b")
-    i_c = var_factory.add_var("i_c")
+    i_A = var_factory.add_var("i_A")
+    i_B = var_factory.add_var("i_B")
+    i_C = var_factory.add_var("i_C")
 
     v_d = var_factory.add_var("v_d")
     v_q = var_factory.add_var("v_q")
@@ -50,14 +50,11 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
     i_d = var_factory.add_var("i_d")
     i_q = var_factory.add_var("i_q")
     i_0 = var_factory.add_var("i_0")
-    # i_1d = var_factory.add_var("i_1d")
-    # i_1q = var_factory.add_var("i_1q")
 
     v_f = var_factory.add_var("v_f")
     i_f = var_factory.add_var("i_f")
 
     Te = var_factory.add_var("Te")
-    # et = var_factory.add_var("et")
     Tm = var_factory.add_var("Tm")
     Pe = var_factory.add_var('Pe')
     Qe = var_factory.add_var('Qe')
@@ -82,14 +79,12 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
     Kp = var_factory.add_var("Kp")
     Ki = var_factory.add_var("Ki")
 
-    Rload = var_factory.add_var("Rload")
-
     v_f0 = var_factory.add_var("v_f0")  # this will disappear when the generator and the exciter model are decoupled
 
     # in vars
-    v_a = var_factory.add_var("v_a")
-    v_b = var_factory.add_var("v_b")
-    v_c = var_factory.add_var("v_c")
+    v_A = var_factory.add_var("v_A")
+    v_B = var_factory.add_var("v_B")
+    v_C = var_factory.add_var("v_C")
 
     templ.block = Block(
         state_eqs=[
@@ -109,29 +104,29 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
             psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),  # i_f
             psi_0 - L0 * i_0,  # i_0
 
-            v_d - (2 / 3) * (v_a * sym.cos(theta) + v_b * sym.cos(theta - 2 * np.pi / 3) + v_c * sym.cos(theta + 2 * np.pi / 3)),  # v_d
-            v_q - (2 / 3) * (v_a * sym.sin(theta) + v_b * sym.sin(theta - 2 * np.pi / 3) + v_c * sym.sin(theta + 2 * np.pi / 3)),  # v_q
-            v_0 - (2 / 3) * (v_a * 0.5 + v_b * 0.5 + v_c * 0.5),  # v_0
+            v_d - (2 / 3) * (v_A * sym.cos(theta) + v_B * sym.cos(theta - 2 * np.pi / 3) + v_C * sym.cos(theta + 2 * np.pi / 3)),  # v_d
+            v_q - (2 / 3) * (v_A * sym.sin(theta) + v_B * sym.sin(theta - 2 * np.pi / 3) + v_C * sym.sin(theta + 2 * np.pi / 3)),  # v_q
+            v_0 - (2 / 3) * (v_A * 0.5 + v_B * 0.5 + v_C * 0.5),  # v_0
 
-            i_a - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),  # i_a
-            i_b - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),  # i_b
-            i_c - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),  # i_c
+            i_A - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),  # i_A
+            i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),  # i_B
+            i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),  # i_C
 
             Te + (3 / 2) * (psi_d * i_q - psi_q * i_d),  # T_e
 
-            Pe - (i_a * v_a + i_b * v_b + i_c * v_c),  # Pe
-            Qe - (1 / np.sqrt(3)) * ((v_a - v_b) * i_c + (v_b - v_c) * i_a + (v_c - v_a) * i_b),  # Qe
+            Pe - (i_A * v_A + i_B * v_B + i_C * v_C),  # Pe
+            Qe - (1 / np.sqrt(3)) * ((v_A - v_B) * i_C + (v_B - v_C) * i_A + (v_C - v_A) * i_B),  # Qe
 
             Tm - (Te + Kp * (omega_ref - omega) + Ki * et),  # Tm
             v_f - v_f0,  # v_f
             Pm - Pe  # Pm
             # Pm - omega * Tm  # Pm
         ],
-        algebraic_vars=[i_d, i_q, i_f, i_0,  # v_a, v_b, v_c,
-                        v_d, v_q, v_0, i_a, i_b, i_c, Te, Pe, Qe,
+        algebraic_vars=[i_d, i_q, i_f, i_0,  # v_A, v_B, v_C,
+                        v_d, v_q, v_0, i_A, i_B, i_C, Te, Pe, Qe,
                         Tm, v_f, Pm],
-        in_vars=[v_a, v_b, v_c],
-        out_vars=[i_a, i_b, i_c],
+        in_vars=[v_A, v_B, v_C],
+        out_vars=[i_A, i_B, i_C],
     )
 
     templ.block.diff_vars = [d_psi_d, d_psi_q, d_psi_0, d_psi_f, d_theta, d_omega, d_et]
@@ -139,9 +134,9 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: Pe,
         VarPowerFlowRefferenceType.Q: Qe,
-        VarPowerFlowRefferenceType.i_A: i_a,
-        VarPowerFlowRefferenceType.i_B: i_b,
-        VarPowerFlowRefferenceType.i_C: i_c,
+        VarPowerFlowRefferenceType.i_A: i_A,
+        VarPowerFlowRefferenceType.i_B: i_B,
+        VarPowerFlowRefferenceType.i_C: i_C,
         # VarPowerFlowRefferenceType.theta: theta,
     }
 
@@ -163,23 +158,19 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
                        # v_f0: var_factory.add_const(-0.018508071106644895)}
                        v_f0: var_factory.add_const(-0.017823457188517983)}
 
-
-
-
-
     templ.block.init_eqs = {
         omega: var_factory.add_const(1.0),
         # TODO: add theta init eq
         Pm: Pe,
         et: var_factory.add_const(0.0),
 
-        v_d: 2 / 3 * (sym.cos(theta) * v_a + sym.cos(theta - 2 * np.pi / 3) * v_b + sym.cos(theta + 2 * np.pi / 3) * v_c),
-        v_q: 2 / 3 * (sym.sin(theta) * v_a + sym.sin(theta - 2 * np.pi / 3) * v_b + sym.sin(theta + 2 * np.pi / 3) * v_c),
-        v_0: 2 / 3 * (0.5 * v_a + 0.5 * v_b + 0.5 * v_c),
+        v_d: 2 / 3 * (sym.cos(theta) * v_A + sym.cos(theta - 2 * np.pi / 3) * v_B + sym.cos(theta + 2 * np.pi / 3) * v_C),
+        v_q: 2 / 3 * (sym.sin(theta) * v_A + sym.sin(theta - 2 * np.pi / 3) * v_B + sym.sin(theta + 2 * np.pi / 3) * v_C),
+        v_0: 2 / 3 * (0.5 * v_A + 0.5 * v_B + 0.5 * v_C),
 
-        i_d: 2 / 3 * (sym.cos(theta) * i_a + sym.cos(theta - 2 * np.pi / 3) * i_b + sym.cos(theta + 2 * np.pi / 3) * i_c),
-        i_q: 2 / 3 * (sym.sin(theta) * i_a + sym.sin(theta - 2 * np.pi / 3) * i_b + sym.sin(theta + 2 * np.pi / 3) * i_c),
-        i_0: 2 / 3 * (0.5 * i_a + 0.5 * i_b + 0.5 * i_c),
+        i_d: 2 / 3 * (sym.cos(theta) * i_A + sym.cos(theta - 2 * np.pi / 3) * i_B + sym.cos(theta + 2 * np.pi / 3) * i_C),
+        i_q: 2 / 3 * (sym.sin(theta) * i_A + sym.sin(theta - 2 * np.pi / 3) * i_B + sym.sin(theta + 2 * np.pi / 3) * i_C),
+        i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
 
         psi_d: (i_q * Ra - v_q) / omega,
         i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
@@ -193,8 +184,6 @@ def get_generator_emt_template(var_factory: VarFactory, name="emt type generator
         Te: - (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
     }
-
-
 
     return templ
 
