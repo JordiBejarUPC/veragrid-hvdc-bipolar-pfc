@@ -781,11 +781,14 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
 
         dgs_grid.elmtr2s.append(e)
+
+        # Preserve branch orientation as stored in VeraGrid (bus_from -> bus_to)
+        # so branch-flow signs remain stable in RAW->DGS roundtrips.
+        # TypTr2 is still built using HV/LV (tpe.utrn_h / tpe.utrn_l).
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            # The order must be HV, LV
-            dgs_buses=[bus2term_dict[hv_bus],
-                       bus2term_dict[lv_bus]]
+            dgs_buses=[bus2term_dict[tr.bus_from],
+                       bus2term_dict[tr.bus_to]]
         )
 
     # diagrams
