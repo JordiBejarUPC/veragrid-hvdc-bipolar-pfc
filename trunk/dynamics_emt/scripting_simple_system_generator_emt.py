@@ -28,20 +28,16 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
-from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.bus_emt_template import initialize_bus_emt
 
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD_VEC import AdVecSolver
@@ -76,9 +72,8 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 
-# this could be an emt_model from a template but since buses will not have "templates", the default one is used
-bus0.initialize_emt()
-bus1.initialize_emt()
+for bus in grid.buses:
+    initialize_bus_emt(bus, vf=grid.var_factory)
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)

@@ -6,8 +6,8 @@
 
 import numpy as np
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.Emt.emt_model_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
