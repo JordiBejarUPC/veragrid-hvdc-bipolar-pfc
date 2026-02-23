@@ -259,32 +259,29 @@ class EmtProblemDae(BaseProblem):
 
     def _try_set_bus_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph):
         """
-        Attempts to initialize bus variables based on PowerFlow results.
+        Attempts to initialize bus variables based on PowerFlow3ph results.
+        Phasor results are transformed into instantaneous in the abc domain.
         """
-        # try:
-        #     if VarPowerFlowRefferenceType.Vm in mdl.external_mapping:
-        #         v = pf_results.voltage[bus_index]
-        #         self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vm, float(np.abs(v)))
-        #     if VarPowerFlowRefferenceType.Va in mdl.external_mapping:
-        #         v = pf_results.voltage[bus_index]
-        #         self.set_init_guess(mdl, VarPowerFlowRefferenceType.Va, float(np.angle(v)))
-        # except Exception:
-        #     pass
-
-        # buses have different phases
         try:
             if VarPowerFlowRefferenceType.v_N in mdl.external_mapping:
-                v_N = pf_results.voltage_N[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, float(np.abs(v_N)))
+                V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
+                v_N = np.sqrt(2) * V_N_rms * np.cos(V_N_angle)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
+
             if VarPowerFlowRefferenceType.v_A in mdl.external_mapping:
-                v_A = pf_results.voltage_A[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, float(np.abs(v_A)))
+                V_A_rms, V_A_angle = np.abs(pf_results.voltage_A[bus_index]), np.angle(pf_results.voltage_A[bus_index])
+                v_A = np.sqrt(2) * V_A_rms * np.cos(V_A_angle)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
+
             if VarPowerFlowRefferenceType.v_B in mdl.external_mapping:
-                v_B = pf_results.voltage_B[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, float(np.abs(v_B)))
+                V_B_rms, V_B_angle = np.abs(pf_results.voltage_B[bus_index]), np.angle(pf_results.voltage_B[bus_index])
+                v_B = np.sqrt(2) * V_B_rms * np.cos(V_B_angle)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
+
             if VarPowerFlowRefferenceType.v_C in mdl.external_mapping:
-                v_C = pf_results.voltage_C[bus_index]
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, float(np.abs(v_C)))
+                V_C_rms, V_C_angle = np.abs(pf_results.voltage_C[bus_index]), np.angle(pf_results.voltage_C[bus_index])
+                v_C = np.sqrt(2) * V_C_rms * np.cos(V_C_angle)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
 
         except Exception:
             pass
@@ -293,15 +290,6 @@ class EmtProblemDae(BaseProblem):
         """
         Attempts to initialize branch variables based on PowerFlow results.
         """
-        # try:
-        #     sf = pf_results.Sf[branch_index] / sbase
-        #     st = pf_results.St[branch_index] / sbase
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, float(np.real(sf)))
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, float(np.imag(sf)))
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, float(np.real(st)))
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, float(np.imag(st)))
-        # except Exception:
-        #     pass
 
         try:
             Sf = 0.0
@@ -349,38 +337,59 @@ class EmtProblemDae(BaseProblem):
         """
         Attempts to initialize injection variables based on PowerFlow results.
         """
-        # try:
-        #     sbus = pf_results.Sbus[bus_index] / sbase
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(sbus)))
-        #     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(sbus)))
-        # except Exception:
-        #     pass
-
         try:
             Sbus = 0.0
             if VarPowerFlowRefferenceType.P_N in mdl.external_mapping:
                 Sbus_N = pf_results.Sbus_N[bus_index] / sbase
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_N, float(np.real(Sbus_N)))
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_N, float(np.imag(Sbus_N)))
+                V_N = pf_results.voltage_N[bus_index]
+                I_N = np.conj(Sbus_N / V_N)
+                I_N_rms, I_N_angle = np.abs(I_N), np.angle(I_N)
+                i_N = np.sqrt(2) * I_N_rms * np.cos(I_N_angle)
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_N, float(np.real(Sbus_N))) # TODO: not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_N, float(np.imag(Sbus_N))) # not sure if needed
                 Sbus += Sbus_N
+
             if VarPowerFlowRefferenceType.P_A in mdl.external_mapping:
                 Sbus_A = pf_results.Sbus_A[bus_index] / sbase
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_A, float(np.real(Sbus_A)))
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_A, float(np.imag(Sbus_A)))
+                V_A = pf_results.voltage_A[bus_index]
+                I_A = np.conj(Sbus_A / V_A)
+                I_A_rms, I_A_angle = np.abs(I_A), np.angle(I_A)
+                i_A = np.sqrt(2) * I_A_rms * np.cos(I_A_angle)
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_A, float(np.real(Sbus_A))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_A, float(np.imag(Sbus_A))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_A, i_A)
                 Sbus += Sbus_A
+
             if VarPowerFlowRefferenceType.P_B in mdl.external_mapping:
                 Sbus_B = pf_results.Sbus_B[bus_index] / sbase
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_B, float(np.real(Sbus_B)))
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_B, float(np.imag(Sbus_B)))
+                V_B = pf_results.voltage_B[bus_index]
+                I_B = np.conj(Sbus_B / V_B)
+                I_B_rms, I_B_angle = np.abs(I_B), np.angle(I_B)
+                i_B = np.sqrt(2) * I_B_rms * np.cos(I_B_angle)
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_B, float(np.real(Sbus_B))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_B, float(np.imag(Sbus_B))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_B, i_B)
                 Sbus += Sbus_B
+
             if VarPowerFlowRefferenceType.P_C in mdl.external_mapping:
                 Sbus_C = pf_results.Sbus_C[bus_index] / sbase
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_C, float(np.real(Sbus_C)))
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_C, float(np.imag(Sbus_C)))
+                V_C = pf_results.voltage_C[bus_index]
+                I_C = np.conj(Sbus_C / V_C)
+                I_C_rms, I_C_angle = np.abs(I_C), np.angle(I_C)
+                i_C = np.sqrt(2) * I_C_rms * np.cos(I_C_angle)
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P_C, float(np.real(Sbus_C))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q_C, float(np.imag(Sbus_C))) # not sure if needed
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.i_C, i_C)
                 Sbus += Sbus_C
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.P, float(np.real(Sbus)))
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q, float(np.imag(Sbus)))
+
+
         except Exception:
             pass
 

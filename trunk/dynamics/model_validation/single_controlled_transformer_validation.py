@@ -1,0 +1,300 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+import math
+import cProfile as profile
+import numpy as np
+from matplotlib import pyplot as plt
+
+import sys
+import os
+
+# Ensure the library can be found
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
+
+from VeraGridEngine import VarPowerFlowRefferenceType, SimulationTypes
+from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
+from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV, VSCShuntBuild, VSCShuntBuild2, PVCellBuild, PVControlBuild2
+from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapModuleControl, TapPhaseControl
+from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.enumerations import WindingType
+import VeraGridEngine.api as gce
+
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
+from VeraGridEngine.basic_structures import Logger
+
+def block_dimensions(block:Block):
+    res_vars = 0
+    res_eqs = 0
+    for b in block.get_all_blocks():
+        res_vars += len(b.algebraic_vars) 
+        res_eqs += len(b.algebraic_eqs)
+    print(f"Block has {res_vars} vars and res_eqs {res_eqs}")
+    return 
+
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
+        if name == var.name:
+            return var
+
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
+
+# Grid instantiation
+grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+
+# Define buses
+bus1 = gce.Bus(name='B1', Vnom=135, is_slack=True)
+bus2 = gce.Bus(name='B2', Vnom=135)
+bus3 = gce.Bus(name='B3', Vnom=135)
+
+# Define AC lines
+line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+                 rate=900.0)
+line13 = gce.Line(name="line 1-3", bus_from=bus1, bus_to=bus3, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+                 rate=900.0)
+
+# Define transformer type
+trafo_type = gce.TransformerType(name='TransformerType',
+                                 hv_nominal_voltage=135,
+                                 lv_nominal_voltage=135,
+                                 nominal_power=150,
+                                 copper_losses=0.5,
+                                 iron_losses=0.01,
+                                 no_load_current=0.01,
+                                 short_circuit_voltage=12.0)
+grid.add_transformer_type(trafo_type)
+
+# Define Transformers
+# Transformer 1 (Controllable): Bus 2 -> Bus 3
+trafo_1 = gce.Transformer2W(name='Trafo 2-3',
+                            bus_from=bus2,
+                            bus_to=bus3,
+                            template=trafo_type,
+                            conn=gce.WindingsConnection.GG,
+                            tap_phase_control_mode=TapPhaseControl.Pf,
+                            Pset=5.0,  # Regulate through flow to 5 MW
+                            tap_phase_min=-np.pi/6,
+                            tap_phase_max=np.pi/6)
+trafo_1.regulation_bus = bus3
+
+# Define generators
+gen1 = gce.Generator(name='Gen1', Snom=100.0, r1=1e-4, x1=0.1)
+
+# Define loads
+# Total load 10 MW. Trafo 1 should take 5 MW if it can regulate it.
+load1 = gce.Load(name='Load1', P=10.0, Q=2.0)
+
+###############
+# Add to the grid
+grid.add_bus(bus1)
+grid.add_bus(bus2) 
+grid.add_bus(bus3)
+
+bus1.initialize_rms()
+bus2.initialize_rms()
+bus3.initialize_rms()
+
+grid.add_line(line12)
+grid.add_line(line13)
+grid.add_generator(bus=bus1, api_obj=gen1)
+grid.add_load(bus=bus3, api_obj=load1)
+grid.add_transformer2w(trafo_1)
+
+grid.apply_all_branch_types()
+
+#########
+# Generalized Power Flow
+#########
+logger = Logger()
+nc = gce.compile_numerical_circuit_at(grid, 
+                                      t_idx=None, 
+                                      control_taps_modules=True, 
+                                      control_taps_phase=True, 
+                                      logger=logger)
+
+# Debug numerical circuit
+print("Pset from NC:", nc.active_branch_data.Pset)
+print("Control modes (Phase):", nc.active_branch_data.tap_phase_control_mode)
+print("Branch names in NC:", nc.passive_branch_data.names)
+
+options = PowerFlowOptions(gce.SolverType.NR, 
+                           verbose=2, 
+                           control_taps_modules=True, 
+                           control_taps_phase=True)
+
+# Initial guesses
+V0 = nc.bus_data.Vbus
+S0 = nc.get_power_injections_pu()
+I0 = nc.get_current_injections_pu()
+Y0 = nc.get_admittance_injections_pu()
+Qmin, Qmax = nc.get_reactive_power_limits()
+
+# Create Generalized Power Flow formulation
+pf_form = PfGeneralizedFormulation(V0=V0, S0=S0, I0=I0, Y0=Y0, 
+                                   Qmin=Qmin, Qmax=Qmax, 
+                                   nc=nc, 
+                                   options=options, 
+                                   logger=logger)
+
+print("\nSolving using Generalized Power Flow Formulation...")
+numeric_results = newton_raphson_fx(problem=pf_form,
+                                    tol=options.tolerance,
+                                    max_iter=options.max_iter,
+                                    trust=options.trust_radius,
+                                    verbose=options.verbose,
+                                    logger=logger)
+
+if not numeric_results.converged:
+    print("Power Flow FAILED to converge.")
+    sys.exit(1)
+
+# Convert to PowerFlowResults for RMS compatibility
+res = gce.PowerFlowResults(
+    n=grid.get_bus_number(),
+    m=grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
+    n_hvdc=grid.get_hvdc_number(),
+    n_vsc=grid.get_vsc_number(),
+    n_gen=grid.get_generation_like_number(),
+    n_batt=grid.get_batteries_number(),
+    n_sh=grid.get_shunt_like_device_number(),
+    bus_names=grid.get_bus_names(),
+    branch_names=grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
+    hvdc_names=grid.get_hvdc_names(),
+    vsc_names=grid.get_vsc_names(),
+    gen_names=grid.get_generation_like_names(),
+    batt_names=grid.get_battery_names(),
+    sh_names=grid.get_shunt_like_devices_names(),
+    bus_types=np.ones(grid.get_bus_number())
+)
+
+res.apply_from_island(numeric_results, 
+                      b_idx=np.arange(grid.get_bus_number()), 
+                      br_idx=np.arange(grid.get_branch_number()),
+                      hvdc_idx=np.arange(grid.get_hvdc_number()),
+                      vsc_idx=np.arange(grid.get_vsc_number()))
+
+print('Voltage magnitudes (p.u.): ', abs(res.voltage))
+print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
+
+# Update transformer taps from PF results
+# Find indices in the numerical circuit
+trafo_idx_1 = list(res.branch_names).index(trafo_1.name)
+
+# Update the transformer attributes
+trafo_1.tap_module = float(numeric_results.tap_module[trafo_idx_1])
+trafo_1.tap_phase = float(numeric_results.tap_angle[trafo_idx_1])
+
+print(f"Trafo flows (PF): Pf={res.Sf[trafo_idx_1].real:.6f}, Pt={res.St[trafo_idx_1].real:.6f}")
+print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx_1].imag:.6f}, Qt={res.St[trafo_idx_1].imag:.6f}")
+print(f"Trafo 1 Tap Module: {trafo_1.tap_module:.6f}, Phase: {np.degrees(trafo_1.tap_phase):.6f} deg")
+
+#Initialise the RMS
+line12_mdl = block_deep_copy(get_line_rms_template().block)
+line13_mdl = block_deep_copy(get_line_rms_template().block)
+trafo_1.initialize_rms()
+
+load_type = 'zip'
+if load_type == 'zip':
+    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.1, Ql0 =-0.02).block) # Match load 10MW (0.1 pu)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template().block)
+
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+line13_mdl.connect([line13_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+line13_mdl.connect([line13_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+line13_mdl.connect([line13_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+line13_mdl.connect([line13_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
+
+
+line12.rms_model.model   = line12_mdl
+line13.rms_model.model   = line13_mdl
+gen1.rms_model.model     = genrow_mdl1
+load1.rms_model.model    = load_mdl
+
+Pl0 = find_name_in_block('P0', load_mdl)
+event = RmsEvent(device=load1, parameter=Pl0, time=.2, value=0.1) # Step load from 0.1 to 0.2 pu (20MW)
+grid.add_rms_event(event)
+
+sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+
+slv = BlockSolver(ss, sim_time)
+params_mapping = {}
+params0 = slv.build_init_params_vector(params_mapping)
+x0 = slv.build_init_vars_vector_from_uid(init_guess)
+dx0 = np.zeros(len(slv._diff_vars))
+Vm = find_name_in_block("Vm", slv.block_system)
+
+xlim = 0.3
+t, y, _ = slv.simulate(
+    t0=0,
+    t_end=xlim,
+    h=1e-3,
+    x0=x0,
+    dx0=dx0,
+    params0=params0,
+    method=DynamicIntegrationMethod.BackEuler,
+    newton_tol=1e-8,
+    newton_max_iter=1000,
+    followed_vars=None,
+    initialized=False,
+    verbose=False,
+)
+
+Pg = genrow_mdl1.out_vars[0]
+Qg = genrow_mdl1.out_vars[1]
+delta = find_name_in_block("delta", genrow_mdl1)
+
+plt.figure(figsize=(10, 6))
+plt.subplot(2, 1, 1)
+plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+plt.grid(True)
+
+plt.subplot(2, 1, 2)
+Pf1 = find_name_in_block('Pf', trafo_1.rms_model.model)
+Qf1 = find_name_in_block('Qf', trafo_1.rms_model.model)
+
+plt.plot(t, y[:, slv.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
+plt.plot(t, y[:, slv.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+plt.grid(True)
+plt.tight_layout()
+plt.show()

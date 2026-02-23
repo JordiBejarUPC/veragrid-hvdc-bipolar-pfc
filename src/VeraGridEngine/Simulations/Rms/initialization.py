@@ -175,8 +175,8 @@ def init_explicit(mdl: Block,
                             init_val = 0
                             tol = 1e-8
                             error = 1
-                            alpha = 0.5
-                            x0 = 0.9
+                            alpha = 1.3
+                            x0 = 1.2
                             x[uid2idx_vars[var.uid]] = x0
                             while error > tol:
                                 try:
