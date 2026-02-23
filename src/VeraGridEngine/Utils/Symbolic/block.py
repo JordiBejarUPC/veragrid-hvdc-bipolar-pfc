@@ -94,7 +94,7 @@ class Block:
 
         self.alter_params: List[Var] = list() if alter_params is None else alter_params
 
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = (dict()
+        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = (dict()
                                                                         if external_mapping is None
                                                                         else external_mapping)
 

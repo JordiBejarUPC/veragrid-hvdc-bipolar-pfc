@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from numba.core.types import Boolean
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -9,31 +10,43 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 
-class BusEmtTemplate(EmtModelTemplate):
+# depending on the number of phases of the bus a different model must be created.
+class BusEmtTemplateABC(EmtModelTemplate):
 
-    def __init__(self, vf: VarFactory, name: str = "rms_bus_template"):
+    def __init__(self,
+                 vf: VarFactory,
+                 phases: list[bool],
+                 name: str = "emt_bus_template"):
         """
         Created the RMS Template of a Bus
         :param vf: VarFactory
-        :param name: Name of the RMS Model
+        :param phases: list[bool] with true if the phase exist and false if it doesn't in the order [N,A,B,C]
+        :param name: Name of the EMT Model
         """
+
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-        self.v_A = vf.add_var("v_A")
-        self.v_B = vf.add_var("v_B")
-        self.v_C = vf.add_var("v_C")
+        self.v_N = vf.add_var("v_N") if phases[0] else None
+        self.v_A = vf.add_var("v_A") if phases[1] else None
+        self.v_B = vf.add_var("v_B") if phases[2] else None
+        self.v_C = vf.add_var("v_C") if phases[3] else None
         self.P = vf.add_var("P")
         self.Q = vf.add_var("Q")
 
-        self.block = Block(
-            alter_params=[self.v_A, self.v_B, self.v_C],
-            algebraic_vars=[self.v_A, self.v_B, self.v_C], #?
-            out_vars=[self.v_A, self.v_B, self.v_C]
+        v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
+        if not v_list:
+            raise ValueError("Bus has no enabled phases")
+
+        self._block = Block(
+            alter_params=v_list, # ?
+            algebraic_vars=v_list,
+            out_vars=v_list
         )
 
         self._block.external_mapping = {
+            VarPowerFlowRefferenceType.v_N: self.v_N,
             VarPowerFlowRefferenceType.v_A: self.v_A,
             VarPowerFlowRefferenceType.v_B: self.v_B,
             VarPowerFlowRefferenceType.v_C: self.v_C,
@@ -41,7 +54,13 @@ class BusEmtTemplate(EmtModelTemplate):
             VarPowerFlowRefferenceType.Q: self.Q
         }
 
-
+    @property
+    def block(self) -> Block:
+        """
+        block
+        :return: Block
+        """
+        return self._block
 
 def initialize_bus_emt(bus: Bus, vf: VarFactory):
     """
@@ -50,5 +69,61 @@ def initialize_bus_emt(bus: Bus, vf: VarFactory):
     :param vf:
     :return:
     """
-    bus.rms_model.model = BusEmtTemplate(vf=vf).block
+    ph_N = bus.ph_n
+    ph_A = bus.ph_a
+    ph_B = bus.ph_b
+    ph_C = bus.ph_c
+    ph = [ph_N, ph_A, ph_B, ph_C]
+
+    # choose template depending on the number of phases
+    bus.rms_model.model = BusEmtTemplateABC(vf=vf, phases = ph).block
+
+# Buss class for an ABC bus without N.
+# class BusEmtTemplate(EmtModelTemplate):
+#
+#     def __init__(self,
+#                  vf: VarFactory,
+#                  name: str = "emt_bus_template"):
+#         """
+#         Created the RMS Template of a Bus
+#         :param vf: VarFactory
+#         :param name: Name of the EMT Model
+#         """
+#
+#         super().__init__(name=name)
+#
+#         self.tpe: DeviceType = DeviceType.BusDevice
+#
+#         self.v_A = vf.add_var("v_A")
+#         self.v_B = vf.add_var("v_B")
+#         self.v_C = vf.add_var("v_C")
+#         self.P = vf.add_var("P")
+#         self.Q = vf.add_var("Q")
+#
+#         self._block = Block(
+#             alter_params=[self.v_A, self.v_B, self.v_C],
+#             algebraic_vars=[self.v_A, self.v_B, self.v_C], #?
+#             out_vars=[self.v_A, self.v_B, self.v_C]
+#         )
+#
+#         self._block.external_mapping = {
+#             VarPowerFlowRefferenceType.v_N: None,
+#             VarPowerFlowRefferenceType.v_A: self.v_A,
+#             VarPowerFlowRefferenceType.v_B: self.v_B,
+#             VarPowerFlowRefferenceType.v_C: self.v_C,
+#             VarPowerFlowRefferenceType.P: self.P,
+#             VarPowerFlowRefferenceType.Q: self.Q
+#         }
+#
+#     @property
+#     def block(self) -> Block:
+#         """
+#         block
+#         :return: Block
+#         """
+#         return self._block
+
+
+
+
 
