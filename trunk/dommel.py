@@ -27,7 +27,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtLineTypes, 
 from VeraGridEngine.Devices.Substation.bus import Bus
 
 from VeraGridEngine.basic_structures import Vec, IntVec, Mat, Vector, BoolVec, CxVec
-from VeraGridEngine.Simulations.EMT.emt_solver_properties import EmtSolverProperties
+from trunk.emt_solver_properties import EmtSolverProperties
 from VeraGridEngine.Simulations.EMT.Devices.emt_circuit import EmtCircuit
 
 from scipy.sparse.linalg import factorized
