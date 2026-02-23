@@ -55,10 +55,6 @@ class Bus(PhysicalDevice):
         'w',
         'longitude',
         'latitude',
-        'ph_a',
-        'ph_b',
-        'ph_c',
-        'ph_n',
         'is_grounded',
         'graphic_type',
         '_bus_bar',
@@ -229,10 +225,6 @@ class Bus(PhysicalDevice):
         self.longitude = float(longitude)
         self.latitude = float(latitude)
 
-        self.ph_a: bool = True
-        self.ph_b: bool = True
-        self.ph_c: bool = True
-        self.ph_n: bool = True
         self.is_grounded: bool = True
 
         self.color = color if color is not None else "#000000"
@@ -288,10 +280,6 @@ class Bus(PhysicalDevice):
         self.register(key='longitude', units='deg', tpe=float, definition='longitude of the bus.', profile_name='')
         self.register(key='latitude', units='deg', tpe=float, definition='latitude of the bus.', profile_name='')
 
-        self.register(key='ph_a', units='', tpe=bool, definition='Has phase A?')
-        self.register(key='ph_b', units='', tpe=bool, definition='Has phase B?')
-        self.register(key='ph_c', units='', tpe=bool, definition='Has phase C?')
-        self.register(key='ph_n', units='', tpe=bool, definition='Has phase N?')
         self.register(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.')
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
@@ -550,10 +538,6 @@ class Bus(PhysicalDevice):
             self._bus_bar = val
         else:
             raise ValueError("The value must be a BusBar")
-
-    def get_phases_array(self) -> BoolVec:
-
-        return np.array([self.ph_n, self.ph_a, self.ph_b, self.ph_c], dtype=bool)
 
     def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
         """
