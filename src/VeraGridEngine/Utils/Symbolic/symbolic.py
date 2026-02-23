@@ -473,96 +473,6 @@ class Var(Expr):
         return hash(repr(self))
 
 
-class LagVar(Expr):
-    __slots__ = ("name", "uid", "base_var", "lag")
-
-    def __init__(self, name: str, uid: int | None = None, base_var: Var | None = None, lag: int = 0):
-        """
-
-        :param name:
-        :param uid:
-        :param base_var:
-        """
-        super().__init__(uid=uid)
-        self.name: str = name
-        self.base_var = base_var
-        self.lag: int = lag
-
-        # Optionally, you could add checks here to ensure base_var is an instance of Var
-        if not isinstance(self.base_var, Var):
-            raise TypeError(f"base_var must be an argument")
-        if self.base_var.base_var is not None:
-            raise TypeError(f"Base variable must not be DiffVar")
-
-    def subs(self, mapping: Dict[Any, Expr]) -> Expr:
-        if self in mapping:
-            return mapping[self]
-        if self.name in mapping:
-            return mapping[self.name]
-        return self
-
-    def __eq__(self, other):
-        return isinstance(other, LagVar) and self.base_var.uid == other.base_var.uid and self.lag == other.lag
-
-    def __str__(self) -> str:
-        return self.name
-
-    def __repr__(self) -> str:
-        return self.name
-
-    def __hash__(self):
-        return hash((self.base_var, self.lag))
-
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Var], h: float):
-        """
-
-        :param x0:
-        :param dx0:
-        :param lag_x:
-        :param dt:
-        :param h:
-        :return:
-        """
-        # function that initializes the lag of the same order for the same original_var
-        diff_order = self.lag
-        if diff_order == 1:
-            return x0
-        elif diff_order == 2:
-            return x0 - dt * dx0[0]
-        else:
-            res = x0 - dt * dx0[0]
-
-        for i in range(1, diff_order + 1):
-            val = (diff_order + 1 - i) * (dt ** i) * ((-1) ** i) * dx0[i - 1]
-            res += val
-        return res.eval(dt=h)
-
-    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
-        """
-        differentiation
-        :param var:
-        :type var: VeraGridEngine.Utils.Symbolic.symbolic.Var
-        :param dt:
-        :type dt:
-        :return:
-        :rtype: Union[None, VeraGridEngine.Utils.Symbolic.symbolic.Const]
-        """
-        return Const(1 if self.uid == var.uid else 0)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-
-        :return:
-        :rtype:
-        """
-        d = super().to_dict()
-        d["type"] = "Var"
-        d["name"] = self.name
-        d["base_var"] = self.base_var.to_dict()
-        d["lag"] = self.lag
-        return d
-
-
 def factors(expr: Expr) -> List[Expr]:
     """
 
@@ -1501,7 +1411,7 @@ def _precedence(expr):
         return _OP_PRECEDENCE[expr.op]
     if isinstance(expr, UnOp):
         return 40
-    if isinstance(expr, (Const, Var, LagVar)):
+    if isinstance(expr, (Const, Var)):
         return 100
     if isinstance(expr, Func):
         return 50
@@ -1521,7 +1431,7 @@ def expression2numba(expr: Expr,
     if isinstance(expr, Const):
         s = repr(expr.value)
 
-    elif isinstance(expr, (Var, LagVar)):
+    elif isinstance(expr, Var):
         s = compiler_names_dict[expr.uid]
 
     elif isinstance(expr, UnOp):
@@ -1749,7 +1659,7 @@ def symbolic_to_string(expr: Expr) -> str:
 # -----------------------------------------------------------------------------
 
 __all__ = [
-    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison", "LagVar",
+    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison",
     "sin", "cos", "tan", "exp", "log", "sqrt",
     "asin", "acos", "atan", "sinh", "cosh",
     "diff", "eval_uid",
