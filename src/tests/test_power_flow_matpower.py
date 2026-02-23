@@ -89,6 +89,5 @@ def test_all_matpower_grids():
 
 
 if __name__ == "__main__":
-
     test_all_matpower_grids()
 
