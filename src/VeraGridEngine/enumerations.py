@@ -2544,14 +2544,14 @@ class VarPowerFlowRefferenceType(Enum):
     i_C = "i_C"  # Injection current at phase C in p.u.
     theta = "theta"  # Rotor angle in a synchronous generator in rad
 
-    # P_N = "P_N" # Bus active power in phase N in p.u.
-    # P_A = "P_A"  # Bus active power in phase A in p.u.
-    # P_B = "P_B"  # Bus active power in phase B in p.u.
-    # P_C = "P_C"  # Bus active power in phase C in p.u.
-    # Q_N = "Q_N"  # Bus reactive power in phase N in p.u.
-    # Q_A = "Q_A"  # Bus reactive power in phase A in p.u.
-    # Q_B = "Q_B"  # Bus reactive power in phase B in p.u.
-    # Q_C = "Q_C"  # Bus reactive power in phase C in p.u.
+    P_N = "P_N" # Bus active power in phase N in p.u.
+    P_A = "P_A"  # Bus active power in phase A in p.u.
+    P_B = "P_B"  # Bus active power in phase B in p.u.
+    P_C = "P_C"  # Bus active power in phase C in p.u.
+    Q_N = "Q_N"  # Bus reactive power in phase N in p.u.
+    Q_A = "Q_A"  # Bus reactive power in phase A in p.u.
+    Q_B = "Q_B"  # Bus reactive power in phase B in p.u.
+    Q_C = "Q_C"  # Bus reactive power in phase C in p.u.
 
     Sf_A = "Sf_A" # Branch active power from in phase A in p.u.
     Sf_B = "Sf_B"  # Branch active power from in phase B in p.u.
@@ -2591,6 +2591,14 @@ class ParamPowerFlowRefferenceType(Enum):
     bsh = "bsh"  # Branch shunt susceptance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
+
+    # 3phase load power
+    Pl0_A = "Pl0_A"  # Load active power phase A
+    Ql0_A = "Ql0_A"  # Load reactive power phase A
+    Pl0_B = "Pl0_B"  # Load active power phase B
+    Ql0_B = "Ql0_B"  # Load reactive power phase B
+    Pl0_C = "Pl0_C"  # Load active power phase C
+    Ql0_C = "Ql0_C"  # Load reactive power phase C
 
     # Machine / power flow parameters
     fn = "fn"
