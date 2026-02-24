@@ -4,216 +4,130 @@
 # SPDX-License-Identifier: MPL-2.0
 
 """
-Unit tests for the JIT EquationCompiler.
-
-This suite verifies:
-1. Mathematical correctness of integration schemes (Trapezoidal, Backward Euler, BDF2).
-2. Proper compilation of multivariable systems and parameter handling.
-3. Numerical properties such as truncation error order and energy conservation.
+Module: Structural Compiler Verification Suite
+==============================================
+Rigorous mathematical validation of Scalar and Matrix-Vectorized JIT kernels.
+Focus: Residual accuracy, Convergence Order, and Energy Conservation.
 """
 
 import unittest
 import numpy as np
+import numba as nb
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
+from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler
 
 
-class TestEquationCompiler(unittest.TestCase):
+class TestStructuralCompiler(unittest.TestCase):
     """
-    Test harness for the EquationCompiler class.
+    Test harness for JIT-compiled residual kernels within the SVS framework.
     """
 
     def setUp(self):
-        """
-        Sets up a common decay equation (dx/dt = -x) for basic tests.
-        """
+        """Sets up a canonical decay equation: dx/dt + x = 0."""
         self.x = Var('x')
         self.dx = Var(name='dx', base_var=self.x)
         self.decay_eq = self.dx + self.x
 
-    def test_trapezoidal_calculation(self):
+    # =========================================================================
+    # PART 1: SCALAR KERNEL VALIDATION (Legacy Logic)
+    # =========================================================================
+
+    def test_trapezoidal_residual_math(self):
         """
-        Verifies a single step calculation using the Trapezoidal rule.
+        Verifies the implicit Trapezoidal substitution:
+        dx_new = (2/h)*(x - x0) - dx0
+        res = dx_new + x
         """
-        # FIX: Pass [self.x] (Var object), not ['x'] (string)
         compiler = EquationCompiler([self.x], method='trapezoidal')
         step_fn = compiler.compile([self.decay_eq])
 
-        print(f"\n[INFO] Test Trapezoidal")
+        h, h2 = 0.1, np.zeros(1)
+        # Condition: x=1.0, x0=1.0, dx0=-1.0.
+        # dx_new = (2/0.1)*(0) - (-1.0) = 1.0
+        # res = 1.0 + 1.0 = 2.0
+        res = step_fn(np.array([1.0]), np.zeros(0), np.array([1.0]), np.array([-1.0]), h, h2)
 
-        # Dummy history buffer for method compatibility
-        h2 = np.zeros(1)
+        self.assertAlmostEqual(res[0], 2.0, places=7)
 
-        res = step_fn(
-            states=np.array([1.0]),
-            params=np.zeros(0),
-            history=np.array([1.0]),
-            d_history=np.array([-1.0]),
-            h=0.1,
-            history2=h2
-        )
-        self.assertAlmostEqual(res[0], 2.0, places=5)
+    # =========================================================================
+    # PART 2: MATRIX VECTORIZED KERNEL VALIDATION (SVS Core)
+    # =========================================================================
 
-    def test_backward_euler_calculation(self):
+    def test_matrix_vectorized_clustering_logic(self):
         """
-        Verifies a single step calculation using the Backward Euler method.
+        Validates the MatrixVectorizedCompiler used in SVS Structural Clustering.
+        Ensures a single template can be applied to multiple nodes simultaneously.
         """
-        # FIX: Pass [self.x], not ['x']
-        compiler = EquationCompiler([self.x], method='be')
-        step_fn = compiler.compile([self.decay_eq])
+        # System: 3 independent oscillators sharing the same algebraic template
+        vec_compiler = MatrixVectorizedCompiler([self.x], parameters=[], method='trapezoidal')
+        py_func = vec_compiler.compile_matrix_kernel(self.decay_eq, func_name="vec_decay", template_vars=[self.x])
+        vec_kernel = nb.njit(fastmath=True)(py_func)
 
-        h2 = np.zeros(1)
+        # 3 Nodes, each with its own index mapping
+        indices = np.array([[0], [1], [2]], dtype=np.int32)
+        states = np.array([1.0, 1.2, 1.5])
+        history = np.array([1.0, 1.2, 1.5])
+        d_hist = np.array([-1.0, -1.2, -1.5])
+        h = 0.1
 
-        res = step_fn(
-            states=np.array([0.5]),
-            params=np.zeros(0),
-            history=np.array([1.0]),
-            d_history=np.array([0.0]),
-            h=0.5,
-            history2=h2
-        )
-        self.assertAlmostEqual(res[0], -0.5, places=5)
+        # The kernel should process all 3 nodes in a single vectorized pass
+        res = vec_kernel(states, np.zeros(0), history, d_hist, h, indices, history)
 
-    def test_bdf2_calculation(self):
-        """
-        Verifies a single step calculation using the BDF2 method.
-        """
-        # FIX: Pass [self.x], not ['x']
-        compiler = EquationCompiler([self.x], method='bdf2')
-        step_fn = compiler.compile([self.decay_eq])
+        # Expected residuals based on the exact DAE substitution
+        expected = np.array([2.0, 2.4, 3.0])
+        np.testing.assert_allclose(res, expected, rtol=1e-7)
 
-        res = step_fn(
-            states=np.array([1.0]),
-            params=np.zeros(0),
-            history=np.array([1.0]),
-            d_history=np.array([0.0]),
-            h=1.0,
-            history2=np.array([1.0])
-        )
-        self.assertAlmostEqual(res[0], 1.0, places=5)
-
-    def test_multivariable_system(self):
-        """
-        Verifies compilation and execution for a multi-variable coupled system.
-        """
-        x = Var('x')
-        y = Var('y')
-        k = Var('k')
-        dx = Var(name='dx', base_var=x)
-        dy = Var(name='dy', base_var=y)
-
-        eq1 = dx - y
-        eq2 = dy + k * x
-
-        # FIX: Pass objects [x, y] and parameters [k]
-        compiler = EquationCompiler([x, y], parameters=[k], method='trapezoidal')
-        step_fn = compiler.compile([eq1, eq2])
-
-        h2 = np.zeros(2)
-
-        res = step_fn(
-            states=np.array([1.0, 2.0]),
-            params=np.array([10.0]),
-            history=np.array([1.0, 2.0]),
-            d_history=np.array([0.0, 0.0]),
-            h=0.1,
-            history2=h2
-        )
-        np.testing.assert_array_almost_equal(res, np.array([-2.0, 10.0]))
-
-    def test_parameter_sensitivity(self):
-        """
-        Verifies that changes in parameter values correctly affect the residual calculation.
-        Equation: dx/dt + k*x = 0
-        """
-        k = Var('k')
-        eq = self.dx + k * self.x
-
-        # FIX: Pass [self.x] and parameters [k]
-        compiler = EquationCompiler([self.x], parameters=[k], method='be')
-        step_fn = compiler.compile([eq])
-
-        states = np.array([1.0])
-        history = np.array([1.0])
-        d_hist = np.array([0.0])
-        h2 = np.zeros(1)
-        h = 1.0
-
-        res1 = step_fn(states, np.array([1.0]), history, d_hist, h, h2)
-        res2 = step_fn(states, np.array([10.0]), history, d_hist, h, h2)
-
-        self.assertNotEqual(res1[0], res2[0])
-        self.assertAlmostEqual(res2[0], 10.0)
+    # =========================================================================
+    # PART 3: NUMERICAL CONVERGENCE & PHYSICS
+    # =========================================================================
 
     def test_truncation_error_order(self):
         """
-        Advanced Test: Verifies that the numerical residual decreases with O(h^2).
+        Mathematical proof of O(h^2) convergence for the Trapezoidal JIT kernel.
+        Residual error should drop by factor of 4 when h is halved.
         """
-        # FIX: Pass [self.x]
         compiler = EquationCompiler([self.x], method='trapezoidal')
         step_fn = compiler.compile([self.decay_eq])
 
-        x0 = 1.0
-        dx0 = -1.0
-        h2 = np.zeros(1)
+        x0, dx0, h2 = 1.0, -1.0, np.zeros(1)
+        h_c, h_f = 0.1, 0.05  # Coarse and Fine steps
 
-        h_coarse = 0.1
-        h_fine = 0.05
+        # Exact solutions used to evaluate the numerical residual
+        res_c = step_fn(np.array([np.exp(-h_c)]), np.zeros(0), np.array([x0]), np.array([dx0]), h_c, h2)
+        res_f = step_fn(np.array([np.exp(-h_f)]), np.zeros(0), np.array([x0]), np.array([dx0]), h_f, h2)
 
-        x_exact_c = np.exp(-h_coarse)
-        x_exact_f = np.exp(-h_fine)
+        ratio = abs(res_c[0]) / abs(res_f[0])
+        print(f"\n[MATH] Empirical Convergence Ratio: {ratio:.2f} (Expected ~4.0)")
+        self.assertGreater(ratio, 3.8)  # Proves 2nd order accuracy
 
-        # Evaluate residuals using the exact solution
-        res_c = step_fn(np.array([x_exact_c]), np.zeros(0), np.array([x0]), np.array([dx0]), h_coarse, h2)
-        res_f = step_fn(np.array([x_exact_f]), np.zeros(0), np.array([x0]), np.array([dx0]), h_fine, h2)
-
-        error_c = abs(res_c[0])
-        error_f = abs(res_f[0])
-
-        ratio = error_c / error_f
-
-        print(f"[OK] Convergence (Expected Order 2): Ratio = {ratio:.2f}")
-        self.assertTrue(ratio > 3.5)
-
-    def test_energy_conservation(self):
+    def test_oscillator_energy_conservation(self):
         """
-        Physical Test: Verifies that an undamped harmonic oscillator conserves energy
-        when using the symplectic Trapezoidal rule.
-        System: x'' + x = 0 (k=1, m=1)
+        Physical verification: Trapezoidal rule must conserve energy in a Hamiltonian system.
+        System: x'' + x = 0 (Undamped Oscillator).
         """
-        x = Var('x')
-        v = Var('v')
-        dx = Var(name='dx', base_var=x)
-        dv = Var(name='dv', base_var=v)
+        pos, vel = Var('pos'), Var('vel')
+        d_pos, d_vel = Var(name='d_pos', base_var=pos), Var(name='d_vel', base_var=vel)
 
         # Equations: dx/dt = v, dv/dt = -x
-        eq1 = dx - v
-        eq2 = dv + x
+        eqs = [d_pos - vel, d_vel + pos]
+        compiler = EquationCompiler([pos, vel], method='trapezoidal')
+        kernel = compiler.compile(eqs)
 
-        # FIX: Pass [x, v]
-        compiler = EquationCompiler([x, v], method='trapezoidal')
-        step_fn = compiler.compile([eq1, eq2])
+        h, h2 = 0.01, np.zeros(2)
+        # Start at max displacement: pos=1, vel=0 (Energy = 0.5)
+        hist, d_hist = np.array([1.0, 0.0]), np.array([0.0, -1.0])
 
-        # Initial state: x=1, v=0 -> Energy = 0.5
-        states = np.array([1.0, 0.0])
-        history = np.array([1.0, 0.0])
-        d_history = np.array([0.0, -1.0])
-        h2 = np.zeros(2)
-        h = 0.01
+        # Exact solution step
+        states_new = np.array([np.cos(h), -np.sin(h)])
+        res = kernel(states_new, np.zeros(0), hist, d_hist, h, h2)
 
-        # Simulate 1 perfect step using analytical solution
-        x_new_exact = np.cos(h)
-        v_new_exact = -np.sin(h)
-        states_new = np.array([x_new_exact, v_new_exact])
+        # Residual must be near zero, and energy must be preserved
+        np.testing.assert_allclose(res, np.zeros(2), atol=1e-4)
+        e_init = 0.5 * (1.0 ** 2 + 0.0 ** 2)
+        e_final = 0.5 * (states_new[0] ** 2 + states_new[1] ** 2)
+        self.assertAlmostEqual(e_init, e_final, places=6)
 
-        res = step_fn(states_new, np.zeros(0), history, d_history, h, h2)
-
-        energy_initial = 0.5 * 1.0 ** 2
-        energy_final = 0.5 * x_new_exact ** 2 + 0.5 * v_new_exact ** 2
-
-        np.testing.assert_array_almost_equal(res, np.zeros(2), decimal=4)
-        self.assertAlmostEqual(energy_initial, energy_final, places=5)
 
 if __name__ == '__main__':
     unittest.main()

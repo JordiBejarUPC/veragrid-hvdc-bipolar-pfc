@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import os
-import datetime
 import numpy as np
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
@@ -16,7 +14,6 @@ from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
 import VeraGrid.Gui.Visualization.visualization as viz
-from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
@@ -31,11 +28,10 @@ import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
-from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
-from VeraGridEngine.basic_structures import CxVec
+from VeraGridEngine.basic_structures import CxVec, IntVec, Vec
 from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, SolverType, MIPSolvers, TimeGrouping,
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
@@ -647,8 +643,6 @@ class SimulationsMain(TimeEventsMain):
             if isinstance(self.open_file_thread_object.file_name, str):
                 self.ui.file_information_label.setText(self.open_file_thread_object.file_name)
 
-        self.reset_console()
-
         self.ui.units_label.setText("")
 
     @staticmethod
@@ -753,7 +747,7 @@ class SimulationsMain(TimeEventsMain):
         d = dict()
         lst = [SimulationTypes.DesignView.value]
         for driver in available_results:
-            name = driver.tpe.value
+            name: str = str(driver.tpe.value)
             lst.append(name)
             d[name] = driver.results.get_name_tree()
             self.available_results_dict[name] = driver.results.get_name_to_results_type_dict()
@@ -891,10 +885,8 @@ class SimulationsMain(TimeEventsMain):
         :return: sim.SmallSignalOptions
         """
         ops = sim.SmallSignalStabilityOptions(
-            time_step=self.ui.h_spinBox.value(),
+            k=None,
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
-            tolerance=self.ui.tolerance_rms_spinBox.value(),
-            integration_method=self.ui.rms_int_method_comboBox.currentText()
         )
 
         return ops
@@ -1714,14 +1706,14 @@ class SimulationsMain(TimeEventsMain):
                 if not info.valid:
                     return
 
-                idx_from = info.idx_bus_from
-                idx_to = info.idx_bus_to
-                idx_br = info.idx_branches
-                sense_br = info.sense_branches
+                idx_from: IntVec = info.idx_bus_from
+                idx_to: IntVec = info.idx_bus_to
+                idx_br: IntVec = info.idx_branches
+                sense_br: Vec = info.sense_branches
 
                 # HVDC
-                idx_hvdc_br = info.idx_hvdc
-                sense_hvdc_br = info.sense_hvdc
+                idx_hvdc_br: IntVec = info.idx_hvdc
+                sense_hvdc_br: Vec = info.sense_hvdc
 
                 if self.ui.usePfValuesForAtcCheckBox.isChecked():
                     _, pf_results = self.session.power_flow
@@ -2312,7 +2304,7 @@ class SimulationsMain(TimeEventsMain):
         if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
 
             # available transfer capacity inter areas
-            inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
+            inter_aggregation_info: dev.InterAggregationInfo | None = self.get_compatible_from_to_buses_and_inter_branches()
 
             if len(inter_aggregation_info.lst_from) == 0:
                 self.show_error_toast('The area "from" has no buses!', 5000)
@@ -3409,7 +3401,9 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
 
-                    drv = sim.SmallSignalStabilityDriver(grid=self.circuit, options=options, pf_results=pf_results)
+                    drv = sim.SmallSignalStabilityDriver(grid=self.circuit,
+                                                         ss_options=options,
+                                                         pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_small_signal_stability,

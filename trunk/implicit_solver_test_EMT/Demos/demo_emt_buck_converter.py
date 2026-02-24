@@ -4,16 +4,12 @@
 # SPDX-License-Identifier: MPL-2.0
 
 """
-EMT simulation of a DC-DC Buck Converter using BlockSolver.
+EMT simulation of a DC-DC Buck Converter using the NEW ARCHITECTURE.
 
 This demo compares:
-  - Symbolic Jacobian (legacy)
-  - Automatic Jacobian (Sparse AD + Graph Coloring)
-
-Both simulations use:
-  - identical model
-  - identical timestep
-  - identical PWM control
+  - SD: Symbolic Jacobian Engine
+  - AD: Sparse Automatic Differentiation Engine
+  - StructuralVectorizedSolver: Auto-Vectorized AD Engine
 """
 
 import time
@@ -22,14 +18,13 @@ import matplotlib.pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 
-from VeraGridEngine.enumerations import (
-    DynamicIntegrationMethod,
-    SimulationBackend,
-    JacobianBackend,
-)
+from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+
+from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
+from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 
 # -----------------------------------------------------------------------------
 # Model definition
@@ -66,11 +61,9 @@ def create_buck_converter_system():
 # Simulation runner
 # -----------------------------------------------------------------------------
 
-def run_case(jacobian_backend: JacobianBackend, vectorized: bool = False):
-
-    mode_label = "VECTORIZED (Auto-Clustering)" if vectorized else jacobian_backend.name
+def run_case(backend_str: str):
     print("\n" + "=" * 70)
-    print(f"Running Buck Converter | Mode: {mode_label}")
+    print(f"Running Buck Converter | Backend: {backend_str}")
     print("=" * 70)
 
     # --- Electrical / control parameters ---
@@ -83,51 +76,44 @@ def run_case(jacobian_backend: JacobianBackend, vectorized: bool = False):
     DT = 1e-6
     T_TOTAL = 0.020
 
-    # --- Build model ---
     block, vin_var = create_buck_converter_system()
+    block.unify_blocks()
     glob_time = Var("t_glob")
 
-    solver = BlockSolver(
-        block_system=block,
-        glob_time=glob_time,
-        use_jit=True,
-        backend=SimulationBackend.SymbolicImplicit,
-        jacobian_backend=jacobian_backend,
-    )
-    solver.newton_trace_collector = NewtonTraceCollector()
+    problem = BaseProblem(sys_block=block, glob_time=glob_time)
+    problem.set_newton_trace_collector(NewtonTraceCollector())
 
-    # --- PWM controller ---
-    def pwm_controller(t, x, params):
-        t_mod = t % T_SW
+    if backend_str == "SD":
+        solver = JitSymbolicSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    elif backend_str == "AD":
+        solver = JitAdSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    elif backend_str == "StructuralVectorizedSolver":
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+    else:
+        raise ValueError(f"Backend desconocido: {backend_str}")
+
+    def pwm_controller(t_curr, x_prev, full_params):
+        t_mod = t_curr % T_SW
         val = V_IN if t_mod < (DUTY * T_SW) else 0.0
 
-        offset = len(solver._event_parameters)
-        idx = offset + solver.uid2idx_params[vin_var.uid]
-        params[idx] = val
+        offset = problem.get_variable_parameter_number()
+        idx = problem.uid2idx_params[vin_var.uid]
+        full_params[offset + idx] = val
 
-    # --- Initial state ---
-    x0 = np.zeros(solver._n_vars)
-
-    # --- Run simulation ---
     t_start = time.time()
-    t_arr, y_arr = solver.simulate_unified(
-        t0=0.0,
-        t_end=T_TOTAL,
-        h=DT,
-        x0=x0,
-        dx0=None,
-        params0=None,
-        method=DynamicIntegrationMethod.Trapezoid,
-        boundary_update_fn=pwm_controller,
-        verbose=False,
-        dense_threshold=100,
-        vectorized=vectorized
-    )
+
+    if backend_str == "SD":
+        t_arr, y_arr = solver.simulate(boundary_update_fn=pwm_controller)
+    else:
+        x0 = problem.get_x0()
+        dx0 = np.zeros(problem.get_all_vars_number())
+        params0 = np.zeros(problem.get_variable_parameter_number())
+        t_arr, y_arr = solver.simulate(x0=x0, dx0=dx0, params0=params0, boundary_update_fn=pwm_controller)
+
     elapsed = time.time() - t_start
 
-    # --- Extract variables ---
-    idx_iL = solver.uid2idx_vars[block.state_vars[0].uid]
-    idx_vC = solver.uid2idx_vars[block.state_vars[1].uid]
+    idx_iL = problem.get_var_idx(block.state_vars[0])
+    idx_vC = problem.get_var_idx(block.state_vars[1])
 
     sol_i = y_arr[:, idx_iL]
     sol_v = y_arr[:, idx_vC]
@@ -135,79 +121,56 @@ def run_case(jacobian_backend: JacobianBackend, vectorized: bool = False):
     print(f"Elapsed time : {elapsed:.4f} s")
     print(f"Final V_out  : {sol_v[-1]:.6f} V")
     print(f"Final I_L    : {sol_i[-1]:.6f} A")
-    print(f"Newton iters : {len(solver.newton_trace_collector.records)}")
+
+    collector = problem.get_newton_trace_collector()
+    if collector:
+        print(f"Newton iters : {len(collector.records)}")
 
     return t_arr, sol_v, sol_i, elapsed
-
 
 # -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
 
 def main():
-    # -------------------------------------------------------------------------
-    # 1. Execution Phase
-    # -------------------------------------------------------------------------
+    t_sym, v_sym, i_sym, time_sym = run_case("SD")
+    t_ad, v_ad, i_ad, time_ad = run_case("AD")
+    t_vec, v_vec, i_vec, time_vec = run_case("StructuralVectorizedSolver")
 
-    # Caso 1: Reference (Symbolic)
-    t_sym, v_sym, i_sym, time_sym = run_case(JacobianBackend.Symbolic, vectorized=False)
-
-    # Caso 2: Automatic Differentiation (AD)
-    t_ad, v_ad, i_ad, time_ad = run_case(JacobianBackend.Automatic, vectorized=False)
-
-    # Caso 3: Auto-Vectorized (PhD Engine)
-    t_vec, v_vec, i_vec, time_vec = run_case(JacobianBackend.Automatic, vectorized=True)
-
-    # -------------------------------------------------------------------------
-    # 2. Comparison & Validation Phase
-    # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
-    print("COMPARISON SUMMARY")
+    print("COMPARISON SUMMARY (NEW SOLVERS)")
     print("-" * 70)
-    print(f"Symbolic time   : {time_sym:.4f} s")
-    print(f"AD time         : {time_ad:.4f} s")
-    print(f"Vectorized time : {time_vec:.4f} s")
+    print(f"SD (Symbolic) time : {time_sym:.4f} s")
+    print(f"AD time            : {time_ad:.4f} s")
+    print(f"StructuralVectorizedSolver time        : {time_vec:.4f} s")
 
-    # Calculation of errors relative to Symbolic (Reference)
     err_ad_v = np.max(np.abs(v_sym - v_ad))
     err_vec_v = np.max(np.abs(v_sym - v_vec))
 
     print("-" * 30)
-    print(f"Max Error AD vs Sym  : {err_ad_v:.3e}")
-    print(f"Max Error Vec vs Sym : {err_vec_v:.3e}")
+    print(f"Max Error AD vs SD      : {err_ad_v:.3e}")
+    print(f"Max Error StructuralVectorizedSolver vs SD  : {err_vec_v:.3e}")
 
-    # Assertions (Crash if physics are wrong)
     assert np.allclose(v_sym, v_ad, atol=1e-5), "AD Solver Failed Accuracy Check!"
-    assert np.allclose(v_sym, v_vec, atol=1e-5), "Vectorized Solver Failed Accuracy Check!"
+    assert np.allclose(v_sym, v_vec, atol=1e-5), "StructuralVectorizedSolver Solver Failed Accuracy Check!"
 
-    print("\n>>> SUCCESS: All engines produced identical physical results.")
-
-    # -------------------------------------------------------------------------
-    # 3. Plotting Phase
-    # -------------------------------------------------------------------------
+    print("\n>>> SUCCESS: All new engines produced identical physical results.")
 
     plt.figure(figsize=(10, 8))
 
-    # Plot 1: Voltage
     plt.subplot(2, 1, 1)
-    # Symbolic: Línea gruesa transparente (Fondo)
-    plt.plot(t_sym * 1000, v_sym, 'k-', linewidth=4, alpha=0.3, label='Reference (Symbolic)')
-    # AD: Línea azul discontinua
-    plt.plot(t_ad * 1000, v_ad, 'b--', label='Automatic (AD)')
-    # Vectorized: Línea roja punteada (Debe coincidir perfectamente)
-    plt.plot(t_vec * 1000, v_vec, 'r:', linewidth=2, label='Vectorized (Auto-Cluster)')
-
+    plt.plot(t_sym * 1000, v_sym, 'k-', linewidth=4, alpha=0.3, label='SD (Reference)')
+    plt.plot(t_ad * 1000, v_ad, 'b--', label='AD')
+    plt.plot(t_vec * 1000, v_vec, 'r:', linewidth=2, label='StructuralVectorizedSolver')
     plt.ylabel('Voltage [V]')
-    plt.title('Buck Converter: Solver Consistency Check')
+    plt.title('Buck Converter: New Architecture Consistency Check')
     plt.legend()
     plt.grid(True)
 
-    # Plot 2: Current
     plt.subplot(2, 1, 2)
-    plt.plot(t_sym * 1000, i_sym, 'k-', linewidth=4, alpha=0.3, label='Reference')
-    plt.plot(t_ad * 1000, i_ad, 'b--', label='Automatic')
-    plt.plot(t_vec * 1000, i_vec, 'r:', linewidth=2, label='Vectorized')
-
+    plt.plot(t_sym * 1000, i_sym, 'k-', linewidth=4, alpha=0.3, label='SD')
+    plt.plot(t_ad * 1000, i_ad, 'b--', label='AD')
+    plt.plot(t_vec * 1000, i_vec, 'r:', linewidth=2, label='StructuralVectorizedSolver')
     plt.ylabel('Current [A]')
     plt.xlabel('Time [ms]')
     plt.legend()
