@@ -15,6 +15,7 @@ import scipy.sparse as sp
 from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
+from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_results import SmallSignalStabilityResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
@@ -316,31 +317,30 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
     def __init__(self,
                  grid: MultiCircuit,
-                 problem: RmsProblemDae,
                  rms_options: Union[RmsOptions, None] = None,
-                 ss_options: Union[SmallSignalStabilityOptions, None] = None,
+                 sss_options: Union[SmallSignalStabilityOptions, None] = None,
+                 pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
         """
-        DynamicDriver class constructor
+        DynamicDriver class constructor for Small Signal stability analysis
         :param grid: MultiCircuit instance
-        :param options: SmallSignalOptions instance
+        :param rms_options: RmsOptions instance
+        :param sss_options: SmallSignalOptions instance
         :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        # self.grid = grid
+        self.problem = RmsProblemDae(grid = grid,
+                                     options= rms_options,
+                                     pf_results = pf_results)
 
-        # self.pf_results: Union[PowerFlowResults, None] = pf_results
+        self.sss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if sss_options is None else sss_options
+        self.assessment_time = self.sss_options.ss_assessment_time
 
-        self.problem = problem
-
-        self.ss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if ss_options is None else ss_options
-        self.assessment_time = self.ss_options.ss_assessment_time
-
-        self.k = self.ss_options.k if self.ss_options.k is not None else self.problem.get_states_number()
+        self.k = self.sss_options.k if self.sss_options.k is not None else self.problem.get_states_number()
 
 
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
@@ -418,7 +418,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              state_matrix) = run_dense_small_signal_stability(problem=self.problem,
                                                               x=x,
                                                               dx=dx,
-                                                              verbose= self.ss_options.verbose)
+                                                              verbose= self.sss_options.verbose)
 
         else:
             (eigenvalues,
@@ -428,7 +428,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              state_matrix, reduced_state_matrix) = run_sparse_small_signal_stability(problem=self.problem,
                                                                                      x=x, dx=dx,
                                                                                      k = self.k,
-                                                                                     verbose= self.ss_options.verbose)
+                                                                                     verbose= self.sss_options.verbose)
 
 
         state_vars = self.problem.get_state_vars
