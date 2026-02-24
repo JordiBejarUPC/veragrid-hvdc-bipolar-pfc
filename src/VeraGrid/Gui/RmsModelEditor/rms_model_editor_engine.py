@@ -1286,7 +1286,7 @@ class TemplateEditor(QtWidgets.QWidget):
         self.selected_template = copy.deepcopy(self.templates_catalogue[template_name])
         if self.api_object is not None:
             if self.selected_template.tpe == DeviceType.GeneratorDevice:
-                Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+                Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
                 # substitute variables in block equations
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1294,7 +1294,7 @@ class TemplateEditor(QtWidgets.QWidget):
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if self.selected_template.tpe == DeviceType.LoadDevice:
-                Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+                Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
                 # substitute variables in block equations
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1303,8 +1303,8 @@ class TemplateEditor(QtWidgets.QWidget):
 
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
-                Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
-                Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+                Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars(self.var_factory)
+                Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars(self.var_factory)
 
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
@@ -1540,7 +1540,7 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn From"
             bus_from_con_item = BlockItem(name=name)
 
-            Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
+            Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars(self.var_factory)
 
             bus_from_con_blk = Block(
                 algebraic_vars=[Vmf, Vaf],
@@ -1576,7 +1576,7 @@ class BlockBoxesEditor(QSplitter):
 
             bus_to_con_item = BlockItem(name=name)
 
-            Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
+            Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars(self.var_factory)
 
             bus_to_con_blk = Block(
                 algebraic_vars=[Vmt, Vat],
@@ -1613,7 +1613,7 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn Bus"
 
             bus_con_item = BlockItem(name=name)
-            Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
+            Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
 
             bus_con_blk = Block(
                 out_vars=[Vm, Va],
@@ -2253,14 +2253,14 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         ]))
 
         # --- templates editor layout ---
-        self.template_editor = TemplateEditor(
+        self.template_editor = TemplateEditor(self.var_factory,
             self.templates_list, self.templates_catalogue,
             self.api_object
         )
         # self.ui.templatesLayout.addWidget(self.template_editor)
 
         # --- block boxes editor layout ---
-        self.blockboxes_editor = BlockBoxesEditor(
+        self.blockboxes_editor = BlockBoxesEditor(self.var_factory,
             api_object_name=self.api_object_name,
             block=self.model_host.model,  # .copy(),
             diagram=self.model_host.diagram,  # .copy(),

@@ -2,12 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Substation.bus import Bus
+
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.Substation.bus import Bus
 
 
 class BusRmsTemplate(RmsModelTemplate):

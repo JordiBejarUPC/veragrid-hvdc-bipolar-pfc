@@ -450,8 +450,17 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             else:
                 raise ValueError("must be a block")
 
-        # elif prop.tpe == SubObjectType.RmsEventType:
-        #     data[name] = obj.to_dict()
+        elif prop.tpe == SubObjectType.VarType:
+            if obj is not None:
+                data[name] = obj.uid
+            else:
+                raise ValueError("var must not be None")
+
+        elif prop.tpe == SubObjectType.ConstType:
+            if obj is not None:
+                data[name] = obj.uid
+            else:
+                raise ValueError("const must not be None")
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)
@@ -1186,6 +1195,18 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     # set the value of the property
                                     blk = block_parser.block_dict.get(property_value, None)
                                     elm.set_snapshot_value(gc_prop.name, blk)
+
+                                elif gc_prop.tpe == SubObjectType.VarType:
+
+                                    # set the value of the property
+                                    vl = block_parser.var_factory.get_var(property_value)
+                                    elm.set_snapshot_value(gc_prop.name, vl)
+
+                                elif gc_prop.tpe == SubObjectType.ConstType:
+
+                                    # set the value of the property
+                                    vl = block_parser.var_factory.get_const(property_value)
+                                    elm.set_snapshot_value(gc_prop.name, vl)
 
                                 elif gc_prop.tpe == SubObjectType.Associations:
 

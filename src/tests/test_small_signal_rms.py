@@ -126,7 +126,7 @@ def stability_kundur_no_shunt():
                         r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     # load
-    load1 = gce.Load(name="load1",  P=967.0, Q=100.0)
+    load1 = gce.Load(name="load1", P=967.0, Q=100.0)
 
     load2 = gce.Load(name="load2", P=1767.0, Q=100.0)
 
@@ -578,29 +578,24 @@ def stability_kundur_no_shunt():
     ###########################################################################################################################
 
     rms_options = RmsOptions(time_step=0.001,
-                         simulation_time=10,
-                         tolerance=1e-6,
-                         integration_method=DynamicIntegrationMethod.BackEuler,
-                         initialization_method=RmsInitializationMethod.Explicit,
-                         use_init_values=False,
-                         max_iter=1000,
-                         verbose=0)
+                             simulation_time=10,
+                             tolerance=1e-6,
+                             integration_method=DynamicIntegrationMethod.BackEuler,
+                             initialization_method=RmsInitializationMethod.Explicit,
+                             use_init_values=False,
+                             max_iter=1000,
+                             verbose=0)
 
-    ss_options = SmallSignalStabilityOptions(ss_assessment_time = 0)
+    ss_options = SmallSignalStabilityOptions(ss_assessment_time=0)
 
     t_start_problem = time.perf_counter()
-
-    problem = RmsProblemDae(grid=grid,
-                            options=rms_options,
-                            pf_results=res)
-
     t_end_problem = time.perf_counter()
 
     t_start_sss = time.perf_counter()
     small_signal_driver = SmallSignalStabilityDriver(grid=grid,
-                                                     problem= problem,
-                                                     rms_options = rms_options,
-                                                     ss_options = ss_options)
+                                                     rms_options=rms_options,
+                                                     sss_options=ss_options,
+                                                     pf_results=power_flow.results)
 
     small_signal_driver.run()
     t_end_sss = time.perf_counter()
