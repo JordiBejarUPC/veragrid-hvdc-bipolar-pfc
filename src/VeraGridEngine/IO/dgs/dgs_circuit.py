@@ -238,7 +238,7 @@ class DgsCircuit:
             sw.typ_id = ""
             sw.iUse = 0
             sw.for_name = ""
-            sw.aUsage = "cbk"  # matches typical PF exports 
+            sw.aUsage = "cbk"  # matches typical PF exports
             self.staswitchs.append(sw)
 
     def parse_dgs(self, path: str):
