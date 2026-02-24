@@ -2,7 +2,7 @@ import os
 import random
 import matplotlib.pyplot as plt
 from VeraGridEngine import *
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_open import FileOpen
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import trunk.investments.InvestmentsEvaluation as invsim

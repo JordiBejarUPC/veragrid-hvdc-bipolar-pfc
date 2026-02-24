@@ -7,14 +7,14 @@ folder = "data"
 
 for name in [
     "ACTIVSg2000.RAW",
-    # "AU14GenModel.RAW",
-    # "ieee9.raw",
-    # "IEEE14bus.raw",
-    # "IEEE30bus.raw",
-    # "NETS-NYPS68Bus.raw",
-    # "IEEE118Busv2.raw",
-    # "wecc179.raw",
-    # "case300.raw",
+    "AU14GenModel.RAW",
+    "ieee9.raw",
+    "IEEE14bus.raw",
+    "IEEE30bus.raw",
+    "NETS-NYPS68Bus.raw",
+    "IEEE118Busv2.raw",
+    "wecc179.raw",
+    "case300.raw",
 ]:
     # ------------------------------------------------------------------------------------------------------------------
     # Load PSSe

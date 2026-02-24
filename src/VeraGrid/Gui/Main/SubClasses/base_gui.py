@@ -14,9 +14,6 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-
-
 
 # GUI imports
 from PySide6 import QtGui, QtWidgets, QtCore
@@ -40,7 +37,8 @@ from VeraGrid.Gui.AboutDialogue.about_dialogue import AboutDialogueGuiGUI
 from VeraGrid.Gui.Analysis.AnalysisDialogue import GridAnalysisGUI
 from VeraGrid.Gui.ContingencyPlanner.contingency_planner_dialogue import ContingencyPlannerGUI
 from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
-from VeraGrid.Gui.general_dialogues import CheckListDialogue, StartEndSelectionDialogue
+from VeraGrid.Gui.general_dialogues import CheckListDialogue, StartEndSelectionDialogue, FileTypeSelector, \
+    CgmesOptionsSelector
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.LoadCatalogue.catalogue_dialogue import CatalogueGUI
@@ -60,6 +58,7 @@ from VeraGrid.Gui.Diagrams.generic_graphics import IS_DARK
 from VeraGrid.Gui.python_console import PythonConsole
 from VeraGrid.Gui.python_script_editor import PythonCodeEditor
 from VeraGrid.Gui.toast_widget import ToastManager
+from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
 
 
 
@@ -204,6 +203,9 @@ class BaseMainGui(QMainWindow):
         self.start_end_dialogue_window: Union[StartEndSelectionDialogue, None] = None
         self.grid_reduction_dialogue: GridReduceDialogue | None = None
         self.select_bus_dlg: DiagramBusSelectorDialogue | None = None
+        self.file_selector: FileTypeSelector | None = None
+        self.cgmes_selector: CgmesOptionsSelector | None = None
+        self.psse_import_dialogue: PsseImportDialogue | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]

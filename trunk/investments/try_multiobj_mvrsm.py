@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_open import FileOpen
 import VeraGridEngine.Simulations as sim
 import trunk.investments.InvestmentsEvaluation as invsim
 from VeraGridEngine.enumerations import InvestmentEvaluationMethod, ResultTypes

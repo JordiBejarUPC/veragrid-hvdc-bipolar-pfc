@@ -8,7 +8,8 @@ import os
 import pytest
 import numpy as np
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
-from VeraGridEngine.IO.file_handler import FileSavingOptions, FileOpenOptions, FileOpen, FileSave
+from VeraGridEngine.IO.file_open import FileOpenOptions, FileOpen
+from VeraGridEngine.IO.file_save import FileSavingOptions, FileSave, FileType
 from VeraGridEngine.Simulations import PowerFlowOptions
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.enumerations import CGMESVersions, SolverType, SimulationTypes
@@ -22,7 +23,7 @@ def create_file_save_options(boundary_zip_path: str) -> FileSavingOptions:
     :param boundary_zip_path:
     :return:
     """
-    options = FileSavingOptions()
+    options = FileSavingOptions(file_type=FileType.CGMES)
     options.one_file_per_profile = False
     options.cgmes_profiles = [CgmesProfileType.EQ,
                               CgmesProfileType.OP,
@@ -41,9 +42,9 @@ def create_file_open_options() -> FileOpenOptions:
     """
     options = FileOpenOptions(
         cgmes_map_areas_like_raw=True,
-        try_to_map_dc_to_hvdc_line=True,
+        cgmes_try_to_map_dc_to_hvdc_line=True,
         # crash_on_errors=True,
-        adjust_taps_to_discrete_positions=True,
+        psse_adjust_taps_to_discrete_positions=True,
     )
 
     return options

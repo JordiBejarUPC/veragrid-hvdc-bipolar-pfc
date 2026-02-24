@@ -92,6 +92,7 @@ res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=Solv
 # ----------------------------------------------------------------------------------------------------------------------
 # Show the results
 # ----------------------------------------------------------------------------------------------------------------------
+gce.save_file(grid=grid, filename='Dy_Power_NeutralStar_3ph.veragrid')
 pd.set_option("display.float_format", "{:.5f}".format)
 
 print()

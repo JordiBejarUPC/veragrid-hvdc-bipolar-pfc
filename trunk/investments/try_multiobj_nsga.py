@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_open import FileOpen
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import InvestmentEvaluationMethod, ResultTypes
 import time
