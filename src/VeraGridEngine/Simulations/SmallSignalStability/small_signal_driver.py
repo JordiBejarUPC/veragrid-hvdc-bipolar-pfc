@@ -324,7 +324,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
-        :param options: SmallSignalOptions instance
+        :param ss_options: SmallSignalOptions instance
         :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
