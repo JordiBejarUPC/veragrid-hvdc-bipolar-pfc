@@ -808,9 +808,11 @@ def get_icon_list_model(lst: List[Tuple[str, str]], checks=False,
                 item.setIcon(icon)
                 list_model.appendRow(item)
         else:
-            for val, icon in lst:
+            for val, icon_path in lst:
                 # for the list model
                 item = QtGui.QStandardItem(str(val))
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(icon_path))
                 item.setIcon(icon)
                 item.setEditable(False)
                 item.setCheckable(True)
@@ -821,7 +823,7 @@ def get_icon_list_model(lst: List[Tuple[str, str]], checks=False,
     return list_model
 
 
-def get_checked_indices(mdl: QtGui.QStandardItemModel()) -> IntVec:
+def get_checked_indices(mdl: QtGui.QStandardItemModel) -> IntVec:
     """
     Get a list of the selected indices in a QStandardItemModel
     :param mdl:
@@ -836,7 +838,7 @@ def get_checked_indices(mdl: QtGui.QStandardItemModel()) -> IntVec:
     return np.array(idx)
 
 
-def get_checked_values(mdl: QtGui.QStandardItemModel()) -> List[str]:
+def get_checked_values(mdl: QtGui.QStandardItemModel) -> List[str]:
     """
     Get a list of the selected values in a QStandardItemModel
     :param mdl:
@@ -1052,7 +1054,10 @@ def get_cim_tree_model(cim_model: CgmesCircuit):
 
         for device in device_list:
             # add device with all it's properties
-            device_child = add_cim_object_node(class_tag=None, device=device, editable=editable, already_visited=list())
+            device_child = add_cim_object_node(class_tag=None,
+                                               device=device,
+                                               editable=editable,
+                                               already_visited=list())
 
             device_child.setEditable(editable)
 

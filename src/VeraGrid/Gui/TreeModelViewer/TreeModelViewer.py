@@ -123,118 +123,6 @@ class TreeModelViewerGUI(QMainWindow):
                     return True
         return val
 
-    # def dragEnterEvent(self, event):
-    #     """
-    #
-    #     :param event:
-    #     :return:
-    #     """
-    #     if event.mimeData().hasUrls:
-    #         event.accept()
-    #     else:
-    #         event.ignore()
-    #
-    # def dragMoveEvent(self, event):
-    #     """
-    #
-    #     :param event:
-    #     :return:
-    #     """
-    #     if event.mimeData().hasUrls:
-    #         event.accept()
-    #     else:
-    #         event.ignore()
-    #
-    # def dropEvent(self, event):
-    #     """
-    #     Drop file on the GUI, the default behaviour is to load the file
-    #     :param event: event containing all the information
-    #     """
-    #     if event.mimeData().hasUrls:
-    #         events = event.mimeData().urls()
-    #         if len(events) > 0:
-    #
-    #             file_names = list()
-    #
-    #             for event in events:
-    #                 file_name = event.toLocalFile()
-    #                 name, file_extension = os.path.splitext(file_name)
-    #                 if file_extension.lower() in self.accepted_extensions:
-    #                     file_names.append(file_name)
-    #                 else:
-    #                     error_msg('The file type ' + file_extension.lower() + ' is not accepted :(')
-    #
-    #             self.open_file_now(filenames=file_names)
-    #
-    # def open_file(self):
-    #     """
-    #     Open file from a Qt thread to remain responsive
-    #     """
-    #
-    #     files_types = "Formats (*.raw *.RAW *.rawx *.json *.ejson2 *.ejson3 *.xml *.zip )"
-    #     # files_types = ''
-    #     # call dialog to select the file
-    #
-    #     options = QFileDialog.Options()
-    #
-    #     filenames, type_selected = QtWidgets.QFileDialog.getOpenFileNames(parent=self,
-    #                                                                       caption='Open file',
-    #                                                                       dir=self.project_directory,
-    #                                                                       filter=files_types,
-    #                                                                       options=options)
-    #
-    #     if len(filenames) > 0:
-    #         self.open_file_now(filenames, None)
-    #
-    # def open_file_now(self, filenames: List[str], callback=None):
-    #     """
-    #
-    #     """
-    #     if len(filenames) > 0:
-    #
-    #         # store the working directory
-    #         self.project_directory = os.path.dirname(filenames[0])
-    #
-    #         # lock the ui
-    #         self.LOCK()
-    #
-    #         # create thread
-    #         self.open_file_thread_object = filedrv.FileOpenThread(
-    #             file_name=filenames if len(filenames) > 1 else filenames[0])
-    #
-    #         # make connections
-    #         self.open_file_thread_object.progress_signal.connect(self.ui.progressBar.setValue)
-    #         self.open_file_thread_object.progress_text.connect(self.ui.progressLabel.setText)
-    #         self.open_file_thread_object.done_signal.connect(self.UNLOCK)
-    #         if callback is None:
-    #             self.open_file_thread_object.done_signal.connect(self.post_open_file)
-    #         else:
-    #             self.open_file_thread_object.done_signal.connect(callback)
-    #
-    #         # thread start
-    #         self.open_file_thread_object.start()
-    #
-    # def post_open_file(self):
-    #
-    #     nlog = len(self.open_file_thread_object.logger)
-    #
-    #     if nlog > 0:
-    #         logger_model = get_logger_tree_model(self.open_file_thread_object.logger)
-    #         self.ui.loggerTreeView.setModel(logger_model)
-    #
-    #         # warning_msg("There were " + str(nlog) + ' errors or warnings')  # TODO: uncomment
-    #
-    #     self.current_model = get_cim_tree_model(self.open_file_thread_object.model)
-    #
-    #     self.proxyModel.setSourceModel(self.current_model)
-    #     self.ui.mainTreeView.setModel(self.proxyModel)
-    #
-    #     if nlog > 0:
-    #         warning_msg("There were " + str(nlog) + ' errors or warnings')  # TODO: uncomment
-    #
-    #     self.UNLOCK()
-    #     gc.collect()
-
     def set_circuit(self, mdl):
 
         if mdl is not None:
@@ -243,8 +131,6 @@ class TreeModelViewerGUI(QMainWindow):
             self.proxyModel.setSourceModel(self.current_model)
             self.ui.mainTreeView.setModel(self.proxyModel)
 
-    def clear_now(self):
-        print()
 
 
 def runTreeModelViewerGUI(use_native_dialogues=False):
