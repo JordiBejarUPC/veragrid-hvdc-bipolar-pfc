@@ -49,20 +49,15 @@ def current_limit_logic(Iqcmd, vdlq, vdlp, is_blocked):
 
 def reec_d(u,
            Vpf,
-           p,
-           Paux,
-           PFAref,
-           Qext,
-           Pref_out,
+           Qpf,
+           Ppf,
            ):
 
-    Vt = u              # Input 0
-    PFAref = PFAref     # Input 6
-    Pe = p              # Input 7
-    Qext = Qext         # Input 8
-    Paux = Paux         # Input 11
-    Speed = 1.0         # Input 12
-    Pref_WGO = Pref_out # Input 14
+    Vt = u  # Input 0
+    Qext = Qpf  # Input 8
+    Paux = 0.0  # Input 11
+    Speed = 1.0  # Input 12
+    Pref_WGO = Ppf  # Input 14
 
     # Current Blocking
     vblkl = 0.1 # Voltage below which the converter is blocked in [pu]
@@ -89,14 +84,7 @@ def reec_d(u,
     Iqinj = min(max(Iqv, Iql1), Iqh1)
 
     # Q-V Limitation
-    o1 = np.tan(PFAref)
-    o2 = Pe
-    Qcalc = o1 * o2
-    PfFlag = 0.0  # Power factor flag: 1 = pf control, 0 = Q control
-    if PfFlag > 0.0:
-        yi = Qcalc
-    else:
-        yi = Qext
+    yi = Qext
     qvmin = -1.0  # Minimum reactive power limit in [pu]
     qvmax = 1.0  # Maximum reactive power limit in [pu]
     o3 = min(max(yi, qvmin), qvmax)
@@ -157,21 +145,19 @@ def genstat(ur, ui, iq_ref, id_ref, Sn):
 
     return Pref, Qref
 
-def wecc_wt_type_4b(V_measured, P_measured, S_base_vg, S_rated_vsc, Vpf):
+def wecc_wt_type_4b(V_measured, Vpf, St_vsc_pf, S_base_vg, S_rated_vsc):
 
     Vt = abs(V_measured) # Absolute value of the converter's voltage [pu]
     Vt_r = np.real(V_measured) # Real component of the converter's voltage [pu]
     Vt_i = np.imag(V_measured) # Imaginary component of the converter's voltage [pu]
 
-    P = (-P_measured) * S_base_vg / S_rated_vsc # Converter's active power [pu]
+    Ppf = -1 * np.real(St_vsc_pf) / S_rated_vsc
+    Qpf = -1 * np.imag(St_vsc_pf) / S_rated_vsc
 
     Iqcmd, Ipcmd, is_blocked = reec_d(u=Vt,
-                                      p=P,
                                       Vpf=Vpf,
-                                      Paux=0.0,
-                                      PFAref=0.0,
-                                      Qext=0.0,
-                                      Pref_out=1.0)
+                                      Qpf=Qpf,
+                                      Ppf=Ppf)
 
     iq_ref, id_ref = regc_c(Iqcmd=Iqcmd, # Current reference from REEC_D [pu]
                             Ipcmd=Ipcmd, # Current reference from REEC_D [pu]
@@ -185,16 +171,4 @@ def wecc_wt_type_4b(V_measured, P_measured, S_base_vg, S_rated_vsc, Vpf):
                          Sn=S_rated_vsc # Converter's nominal power [MVA]
                          )
 
-    # print("\nPref =", Pref, 'MW')
-    # print("\nQref =", Qref, 'MVAr\n')
-
     return -Pref/S_base_vg, -Qref/S_base_vg
-
-
-# Pref, Qref = wecc_wt_type_4b(V_measured=0.792514 - 0.2221284j,
-#                              P_measured=0.9053605,
-#                              S_base_vg=100,
-#                              S_rated_vsc=9,
-#                              Vpf=0.9079519)
-#
-# print('Pref =', Pref, 'p.u. and Qref =', Qref, 'p.u.')

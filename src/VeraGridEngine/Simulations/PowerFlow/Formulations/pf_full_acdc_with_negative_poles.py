@@ -566,7 +566,7 @@ def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-8) -> CSC:
 
 class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
-    def __init__(self, V0: CxVec, S0: CxVec, I0: CxVec, Y0: CxVec,
+    def __init__(self, V0: CxVec, S0: CxVec, I0: CxVec, Y0: CxVec, St_vsc_pf: CxVec,
                  Qmin: Vec, Qmax: Vec,
                  nc: NumericalCircuit,
                  options: PowerFlowOptions,
@@ -592,6 +592,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.I0: CxVec = I0
         # We move Y0 to Ybus diagonal to improve convergence, so self.Y0 set to zeros
         self.Y0: CxVec = np.zeros_like(Y0)
+        self.St_vsc_pf: CxVec = St_vsc_pf
 
         self.Qmin = Qmin
         self.Qmax = Qmax
@@ -1805,10 +1806,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
             Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
                 V_measured=self.V[self.nc.vsc_data.T[vsc_i]],
-                P_measured=self.Pt_vsc[vsc_i],
+                Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
+                St_vsc_pf=self.St_vsc_pf[self.nc.vsc_data.original_idx[vsc_i]],
                 S_base_vg=self.nc.Sbase,
-                S_rated_vsc=self.nc.vsc_data.rates[vsc_i],
-                Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]])
+                S_rated_vsc=self.nc.vsc_data.rates[vsc_i]
             )
 
         # HVDC ---------------------------------------------------------------------------------------------------------

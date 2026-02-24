@@ -187,14 +187,15 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             if solver_type == SolverType.LM:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=-Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=-Y0,
+                                                  St_vsc_pf=S0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = levenberg_marquardt_fx(problem=problem,
                                                   tol=options.tolerance,
@@ -205,14 +206,15 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             elif solver_type == SolverType.NR:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=-Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=-Y0,
+                                                  St_vsc_pf=S0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = newton_raphson_fx(problem=problem,
                                              tol=options.tolerance,
@@ -224,14 +226,15 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             elif solver_type == SolverType.PowellDogLeg:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=-Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=-Y0,
+                                                  St_vsc_pf=S0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = powell_fx(problem=problem,
                                      tol=options.tolerance,

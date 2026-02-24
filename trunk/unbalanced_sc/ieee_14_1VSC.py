@@ -1,5 +1,5 @@
 import VeraGridEngine.api as vge
-from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
+from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions, save_file
 from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 import numpy as np
@@ -7,6 +7,17 @@ import numpy as np
 logger = vge.Logger()
 grid = vge.open_file('ieee_14_2VSC.veragrid')
 
+# for i in range(len(grid.vsc_devices)):
+#     grid.vsc_devices[i].control1_val = 10.0
+#     grid.vsc_devices[i].control2_val = 4.556134
+#     grid.vsc_devices[i].rate = 11.0
+
+grid.vsc_devices[0].control1_val = -9
+grid.vsc_devices[0].control2_val = -3
+grid.vsc_devices[0].rate = 10.0
+
+# vge.save_file(grid, 'ieee_14_VSC_with_Q.veragrid')
+#
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
 # ----------------------------------------------------------------------------------------------------------------------
