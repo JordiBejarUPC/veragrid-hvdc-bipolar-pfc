@@ -50,6 +50,7 @@ class TreeModelViewerGUI(QMainWindow):
         self.ui.filterButton.clicked.connect(self.filter_main_tree)
 
         self.ui.mainTreeView.clicked.connect(self.update_main_tree_on_click)
+        self.ui.mainTreeView.expanded.connect(self.on_tree_expanded)
 
         self.ui.filterComboBox.currentTextChanged.connect(self.on_filter_combobox_changed)
 
@@ -82,6 +83,15 @@ class TreeModelViewerGUI(QMainWindow):
         #     parent.appendRow(children)
         # self.ui.mainTreeView.expand(index)
         pass
+
+    def on_tree_expanded(self, index):
+        if self.current_model is None:
+            return
+        src_index = self.proxyModel.mapToSource(index)
+        item = self.current_model.itemFromIndex(src_index)
+        if item is None:
+            return
+        populate_cim_item_children(item, editable=False)
 
     def on_filter_combobox_changed(self):
 
