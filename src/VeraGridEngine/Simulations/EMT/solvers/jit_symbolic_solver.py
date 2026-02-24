@@ -10,7 +10,7 @@ import scipy.sparse as sp
 import time
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, LagVar, Const, Expr)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
@@ -126,9 +126,6 @@ class JitSymbolicSolver:
                     found.add(node.uid)
                 else:
                     found.add(node.uid)
-
-            elif isinstance(node, LagVar):
-                pass
 
             if hasattr(node, 'args'):
                 stack.extend(node.args)

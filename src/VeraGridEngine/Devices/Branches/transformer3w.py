@@ -396,16 +396,22 @@ class Transformer3W(PhysicalDevice):
 
         self.winding1.R = r1
         self.winding1.X = x1
+        self.winding1.G = 0.0
+        self.winding1.B = 0.0
         self.winding1.rate = self.rate1
         self.winding1.Sn = self.rate1
 
         self.winding2.R = r2
         self.winding2.X = x2
+        self.winding2.G = 0.0
+        self.winding2.B = 0.0
         self.winding2.rate = self.rate2
         self.winding2.Sn = self.rate2
 
         self.winding3.R = r3
         self.winding3.X = x3
+        self.winding3.G = 0.0
+        self.winding3.B = 0.0
         self.winding3.rate = self.rate3
         self.winding3.Sn = self.rate3
 

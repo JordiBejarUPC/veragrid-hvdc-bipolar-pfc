@@ -27,7 +27,7 @@ class BusRmsTemplate(RmsModelTemplate):
         self.P = vf.add_var("P")
         self.Q = vf.add_var("Q")
 
-        self.block = Block(
+        self._block = Block(
             algebraic_vars=[self.Vm, self.Va],
             out_vars=[self.Vm, self.Va]
         )
