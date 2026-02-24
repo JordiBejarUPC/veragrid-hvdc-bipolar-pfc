@@ -36,7 +36,8 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
-                                         ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod, RmsInitializationMethod)
+                                         ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
+                                         RmsInitializationMethod)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -228,6 +229,22 @@ class SimulationsMain(TimeEventsMain):
              InvestmentsEvaluationObjectives.SimpleDispatch]
         )
         self.ui.investment_evaluation_objfunc_ComboBox.setModel(investment_evaluation_objfunc_mdl)
+
+        # rms simulation
+        self.rms_integration_method_dict, rms_integration_method_mdl = gf.enums_to_model(
+            [DynamicIntegrationMethod.BackEuler,
+             DynamicIntegrationMethod.Trapezoid,
+             DynamicIntegrationMethod.BDF2,
+             DynamicIntegrationMethod.BackEuler,
+             DynamicIntegrationMethod.Euler]
+        )
+        self.ui.rms_int_method_comboBox.setModel(rms_integration_method_mdl)
+
+        self.rms_initialization_method_dict, rms_initialization_method_mdl = gf.enums_to_model(
+            [RmsInitializationMethod.Explicit,
+             RmsInitializationMethod.PseudoTransient]
+        )
+        self.ui.rms_init_method_comboBox.setModel(rms_initialization_method_mdl)
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -872,8 +889,8 @@ class SimulationsMain(TimeEventsMain):
             time_step=self.ui.h_spinBox.value(),
             simulation_time=self.ui.sim_time_spinBox.value(),
             tolerance=self.ui.tolerance_rms_spinBox.value(),
-            integration_method=DynamicIntegrationMethod(self.ui.rms_int_method_comboBox.currentText()),
-            initialization_method=RmsInitializationMethod(self.ui.rms_init_method_comboBox.currentText()),
+            integration_method=self.rms_integration_method_dict[self.ui.rms_int_method_comboBox.currentText()],
+            initialization_method=self.rms_initialization_method_dict[self.ui.rms_init_method_comboBox.currentText()],
             use_init_values=self.ui.rms_use_init_values_checkBox.isChecked()
         )
 
@@ -3309,7 +3326,6 @@ class SimulationsMain(TimeEventsMain):
             else:
                 self.show_warning_toast("System bad initialized :/")
 
-
             if results.converged:
                 self.show_info_toast("Simulation converged :)")
             else:
@@ -3398,11 +3414,13 @@ class SimulationsMain(TimeEventsMain):
 
                     # get the small signal stability analysis simulation options from the GUI
                     options = self.get_selected_small_signal_stability_options()
+                    rms_options = self.get_selected_rms_simulation_options()
 
                     self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
 
                     drv = sim.SmallSignalStabilityDriver(grid=self.circuit,
-                                                         ss_options=options,
+                                                         rms_options=rms_options,
+                                                         sss_options=options,
                                                          pf_results=pf_results)
 
                     self.session.run(drv,
