@@ -2,24 +2,27 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import numpy as np
 
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import compute_ybus
 
 # depending on the number of phases of the bus a different model must be created.
 class BusEmtTemplateABC(EmtModelTemplate):
 
     def __init__(self,
                  vf: VarFactory,
-                 phases: list[bool],
+                 mask: list[bool],
                  name: str = "emt_bus_template"):
         """
         Created the RMS Template of a Bus
         :param vf: VarFactory
-        :param phases: list[bool] with true if the phase exist and false if it doesn't in the order [N,A,B,C]
+        :param mask: list[bool] with true if the phase exist and false if it doesn't in the order [N,A,B,C]
         :param name: Name of the EMT Model
         """
 
@@ -27,10 +30,10 @@ class BusEmtTemplateABC(EmtModelTemplate):
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-        self.v_N = vf.add_var("v_N") if phases[0] else None
-        self.v_A = vf.add_var("v_A") if phases[1] else None
-        self.v_B = vf.add_var("v_B") if phases[2] else None
-        self.v_C = vf.add_var("v_C") if phases[3] else None
+        self.v_N = vf.add_var("v_N") if mask[0] else None
+        self.v_A = vf.add_var("v_A") if mask[1] else None
+        self.v_B = vf.add_var("v_B") if mask[2] else None
+        self.v_C = vf.add_var("v_C") if mask[3] else None
         self.P = vf.add_var("P")
         self.Q = vf.add_var("Q")
 
@@ -61,21 +64,27 @@ class BusEmtTemplateABC(EmtModelTemplate):
         """
         return self._block
 
-def initialize_bus_emt(bus: Bus, vf: VarFactory):
+def initialize_bus_emt(grid: MultiCircuit,
+                       bus: Bus,
+                       vf: VarFactory):
     """
-
-    :param bus:
-    :param vf:
+    Initialize 3ph bus block
+    A bus will have the phases of the branches connected to it
+    :param grid: Multicircuit
+    :param bus: Bus
+    :param vf: VarFactory
     :return:
     """
-    ph_N = bus.ph_n
-    ph_A = bus.ph_a
-    ph_B = bus.ph_b
-    ph_C = bus.ph_c
-    ph = [ph_N, ph_A, ph_B, ph_C]
+    mask = [False,False,False,False] # [N, A, B, C]
+    for branch in grid.get_branches_iter(add_vsc=True, add_switch= True, add_hvdc=True):
+        if bus == branch.bus_from or bus == branch.bus_to:
+            mask[0] |= bool(branch.ys.phN)
+            mask[1] |= bool(branch.ys.phA)
+            mask[2] |= bool(branch.ys.phB)
+            mask[3] |= bool(branch.ys.phC)
 
     # choose template depending on the number of phases
-    bus.rms_model.model = BusEmtTemplateABC(vf=vf, phases = ph).block
+    bus.rms_model.model = BusEmtTemplateABC(vf=vf, mask = mask).block
 
 
 

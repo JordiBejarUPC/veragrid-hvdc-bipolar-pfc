@@ -296,7 +296,7 @@ class Block:
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
 
-        returns the value of the external mapping corresponding to d VarPowerFlowRefferenceType
+        returns the value of the external mapping corresponding to the VarPowerFlowRefferenceType
 
         :param d:
         :return:
