@@ -8,11 +8,11 @@ from scipy.sparse import csc_matrix
 from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import EmtTransformer
-from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine
-from VeraGridEngine.Simulations.EMT.Devices.emt_load import EmtLoad
-from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator
-from trunk.emt_solver_properties import EmtSolverProperties
+from trunk.dynamics_emt.emt_models_and_circuits.emt_transformer import EmtTransformer
+from trunk.dynamics_emt.emt_models_and_circuits.emt_line import EmtLine
+from trunk.dynamics_emt.emt_models_and_circuits.emt_load import EmtLoad
+from trunk.dynamics_emt.emt_models_and_circuits.emt_generator import EmtGenerator
+from trunk.dynamics_emt.emt_models_and_circuits.emt_solver_properties import EmtSolverProperties
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 

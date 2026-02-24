@@ -1,9 +1,6 @@
-import numpy as np
-import pandas as pd
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
-from VeraGridEngine.Simulations.EMT.Devices.emt_compiler import compile_emt
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.basic_structures import Logger
 
@@ -16,12 +13,8 @@ def run_time_simulation(grid: MultiCircuit,
     Performs the EMTP loop using the MNA.
     :return:
     """
-    emt_circuit = compile_emt(
-        grid=grid,
-        emt_options=emt_options,
-        res_pf=res_pf,
-        logger=logger
-    )
+    # TODO: into the loop add " self.report_text('Time series at ' + str(self.grid.time_profile[t]) + '...')
+    #                     self.report_progress2(it, len(time_indices)) "
 
     pass
 
