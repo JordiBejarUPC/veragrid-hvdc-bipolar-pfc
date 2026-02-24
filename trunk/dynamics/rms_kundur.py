@@ -573,6 +573,7 @@ def rms_kundur():
     power_flow = PowerFlowDriver(grid, pf_options)
     power_flow.run()
     res = power_flow.results
+    print(f"Converged: {res.converged}")
 
     pr.enable()
 
