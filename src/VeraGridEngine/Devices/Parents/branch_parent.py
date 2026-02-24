@@ -243,12 +243,31 @@ class BranchParent(PhysicalDevice):
         """
         return self._rms_model
 
+    @rms_model.setter
+    def rms_model(self, val: DynamicModelHost):
+        if self.auto_update_enabled:
+            raise ValueError("RMS model is read only at run time")
+        else:
+            if isinstance(val, DynamicModelHost):
+                self._rms_model = val
+            else:
+                raise ValueError(f"RMS model cannot accept {val}")
     @property
     def emt_model(self) -> DynamicModelHost:
         """
         Get the EMT model
         """
         return self._emt_model
+
+    @emt_model.setter
+    def emt_model(self, val: DynamicModelHost):
+        if self.auto_update_enabled:
+            raise ValueError("EMT model is read only at run time")
+        else:
+            if isinstance(val, DynamicModelHost):
+                self._emt_model = val
+            else:
+                raise ValueError(f"RMS model cannot accept {val}")
 
     @property
     def bus_from(self) -> Bus:

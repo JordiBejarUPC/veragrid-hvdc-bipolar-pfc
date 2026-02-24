@@ -319,6 +319,16 @@ class InjectionParent(PhysicalDevice):
         """
         return self._rms_model
 
+    @rms_model.setter
+    def rms_model(self, value: DynamicModelHost):
+        if self.auto_update_enabled:
+            raise ValueError("EMT model is read only at run time")
+        else:
+            if isinstance(value, DynamicModelHost):
+                self._rms_model = value
+            else:
+                raise ValueError(f"RMS model cannot accept {value}")
+
     @property
     def emt_model(self) -> DynamicModelHost:
         """
@@ -326,6 +336,16 @@ class InjectionParent(PhysicalDevice):
         :return:
         """
         return self._emt_model
+
+    @emt_model.setter
+    def emt_model(self, value: DynamicModelHost):
+        if self.auto_update_enabled:
+            raise ValueError("EMT model is read only at run time")
+        else:
+            if isinstance(value, DynamicModelHost):
+                self._emt_model = value
+            else:
+                raise ValueError(f"RMS model cannot accept {value}")
 
     def get_S_with_sign(self) -> complex:
         """
