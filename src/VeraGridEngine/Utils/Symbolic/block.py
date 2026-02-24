@@ -215,6 +215,7 @@ class Block:
             mdl_placeholder.state_vars.extend(b.state_vars)
             mdl_placeholder.state_eqs.extend(b.state_eqs)
             mdl_placeholder.diff_vars.extend(b.diff_vars)
+            mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
@@ -232,6 +233,7 @@ class Block:
         self.event_dict = mdl_placeholder.event_dict
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
+        self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
         self.children = list()
 

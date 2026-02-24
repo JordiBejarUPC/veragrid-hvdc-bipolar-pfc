@@ -702,6 +702,14 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         :return:
         """
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+
+    def update_variable_params_ts(self, x:Vec, t: float):
+        """
+        Update the variable parameters
+        :param t:
+        :return:
+        """
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
         for i, var in enumerate(self._reformulated_vars):
             lagged_var = self._reformulated_lagvars[i]
             lag_idx = self._uid2idx_event_params[lagged_var.uid]

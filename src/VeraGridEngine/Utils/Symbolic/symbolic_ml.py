@@ -251,7 +251,7 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
                 d_u_cos + (dx)*u_sin,
                 d_u_sin - (dx)*u_cos,
             ],
-            diff_vars=[d_u_sin, d_u_cos, dx]
+            diff_vars=[d_u_sin, d_u_cos, dx],
         )
         norm_block = Block(
             algebraic_eqs=[
@@ -263,6 +263,17 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
                 u_sin_n*norm - u_sin,
             ],
             algebraic_vars=[norm, norm_aux, u_cos_n, u_sin_n, u_sin_aux, u_cos_aux],
+            init_eqs={
+                x:u,
+                u_cos: sym.cos(x),
+                u_cos_aux: sym.cos(x),
+                u_cos_n: sym.cos(x),
+                u_sin: sym.sin(x),
+                u_sin_aux: sym.sin(x),
+                u_sin_n: sym.sin(x),
+                norm: Const(1),
+                norm_aux: Const(1),
+            }
         )
         u_cos = u_cos_n
         u_sin = u_sin_n

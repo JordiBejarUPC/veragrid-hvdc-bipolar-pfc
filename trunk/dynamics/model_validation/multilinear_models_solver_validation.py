@@ -24,6 +24,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsProblemTensygrid
 from VeraGridEngine.Simulations.Rms.numerical.mid_implicit_fx import MidpointImplicitIntegration
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
@@ -121,6 +122,7 @@ load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])
+big_gen1.reformulated_vars = genqec1_mdl.reformulated_vars
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
 
@@ -180,7 +182,7 @@ options = RmsOptions(time_step=0.001,
                      max_iter=1000,
                      verbose=0)
 
-problem = RmsProblemDae(grid=grid,
+problem = RmsProblemTensygrid(grid=grid,
                         options=options,
                         pf_results=res)
 

@@ -131,7 +131,7 @@ class MidpointImplicitIntegration:
             n_iter = 0
             current_time = self.t[step_idx]
             dx_last = dx 
-            self.problem.update_variable_params(t=current_time)
+            self.problem.update_variable_params_ts(x_new,t=current_time)
 
             xn = self.y[step_idx, :]
             tol = 1e-7
