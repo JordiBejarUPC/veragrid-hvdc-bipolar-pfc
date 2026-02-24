@@ -212,36 +212,6 @@ def stability_kundur_no_shunt():
     # Build Rms models
     ######################################################################################################
 
-    # Build dynamic_model_host
-
-    gen1_dynhost = DynamicModelHost()
-    gen2_dynhost = DynamicModelHost()
-    gen3_dynhost = DynamicModelHost()
-    gen4_dynhost = DynamicModelHost()
-
-    line0_dynhost = DynamicModelHost()
-    line1_dynhost = DynamicModelHost()
-    line2_dynhost = DynamicModelHost()
-    line3_dynhost = DynamicModelHost()
-    line4_dynhost = DynamicModelHost()
-    line5_dynhost = DynamicModelHost()
-    line6_dynhost = DynamicModelHost()
-    line7_dynhost = DynamicModelHost()
-    line8_dynhost = DynamicModelHost()
-    line9_dynhost = DynamicModelHost()
-    line10_dynhost = DynamicModelHost()
-    line11_dynhost = DynamicModelHost()
-    line12_dynhost = DynamicModelHost()
-    line13_dynhost = DynamicModelHost()
-
-    trafo1_dynhost = DynamicModelHost()
-    trafo2_dynhost = DynamicModelHost()
-    trafo3_dynhost = DynamicModelHost()
-    trafo4_dynhost = DynamicModelHost()
-
-    load1_dynhost = DynamicModelHost()
-    load2_dynhost = DynamicModelHost()
-
     # Build rms models from template
     # generators
     genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
@@ -424,62 +394,35 @@ def stability_kundur_no_shunt():
 
     # add models to dyn_host
 
-    gen1_dynhost.model = big_gen1
-    gen2_dynhost.model = big_gen2
-    gen3_dynhost.model = big_gen3
-    gen4_dynhost.model = big_gen4
+    gen1.rms_model.model = big_gen1
+    gen2.rms_model.model = big_gen2
+    gen3.rms_model.model = big_gen3
+    gen4.rms_model.model = big_gen4
 
-    line0_dynhost.model = line0_mdl
-    line1_dynhost.model = line1_mdl
-    line2_dynhost.model = line2_mdl
-    line3_dynhost.model = line3_mdl
-    line4_dynhost.model = line4_mdl
-    line5_dynhost.model = line5_mdl
-    line6_dynhost.model = line6_mdl
-    line7_dynhost.model = line7_mdl
-    line8_dynhost.model = line8_mdl
-    line9_dynhost.model = line9_mdl
-    line10_dynhost.model = line10_mdl
-    line11_dynhost.model = line11_mdl
-    line12_dynhost.model = line12_mdl
-    line13_dynhost.model = line13_mdl
+    line0.rms_model.model = line0_mdl
+    line1.rms_model.model = line1_mdl
+    line2.rms_model.model = line2_mdl
+    line3.rms_model.model = line3_mdl
+    line4.rms_model.model = line4_mdl
+    line5.rms_model.model = line5_mdl
+    line6.rms_model.model = line6_mdl
+    line7.rms_model.model = line7_mdl
+    line8.rms_model.model = line8_mdl
+    line9.rms_model.model = line9_mdl
+    line10.rms_model.model = line10_mdl
+    line11.rms_model.model = line11_mdl
+    line12.rms_model.model = line12_mdl
+    line13.rms_model.model = line13_mdl
 
-    trafo1_dynhost.model = trafo1_mdl
-    trafo2_dynhost.model = trafo2_mdl
-    trafo3_dynhost.model = trafo3_mdl
-    trafo4_dynhost.model = trafo4_mdl
+    trafo_G1.rms_model.model = trafo1_mdl
+    trafo_G2.rms_model.model = trafo2_mdl
+    trafo_G3.rms_model.model = trafo3_mdl
+    trafo_G4.rms_model.model = trafo4_mdl
 
-    load1_dynhost.model = load1_mdl
-    load2_dynhost.model = load2_mdl
+    load1.rms_model.model = load1_mdl
+    load2.rms_model.model = load2_mdl
 
     # attach rms models to Veragrid objects
-    gen1.rms_model = gen1_dynhost
-    gen2.rms_model = gen2_dynhost
-    gen3.rms_model = gen3_dynhost
-    gen4.rms_model = gen4_dynhost
-
-    line0.rms_model = line0_dynhost
-    line1.rms_model = line1_dynhost
-    line2.rms_model = line2_dynhost
-    line3.rms_model = line3_dynhost
-    line4.rms_model = line4_dynhost
-    line5.rms_model = line5_dynhost
-    line6.rms_model = line6_dynhost
-    line7.rms_model = line7_dynhost
-    line8.rms_model = line8_dynhost
-    line9.rms_model = line9_dynhost
-    line10.rms_model = line10_dynhost
-    line11.rms_model = line11_dynhost
-    line12.rms_model = line12_dynhost
-    line13.rms_model = line13_dynhost
-
-    trafo_G1.rms_model = trafo1_dynhost
-    trafo_G2.rms_model = trafo2_dynhost
-    trafo_G3.rms_model = trafo3_dynhost
-    trafo_G4.rms_model = trafo4_dynhost
-
-    load1.rms_model = load1_dynhost
-    load2.rms_model = load2_dynhost
 
     # gen1.rms_model.model = big_gen1
     # gen2.rms_model.model = big_gen2
