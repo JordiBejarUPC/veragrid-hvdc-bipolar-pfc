@@ -14,8 +14,8 @@ from VeraGrid.Gui.gui_functions import get_list_model, get_logger_tree_model
 
 from PySide6 import QtGui, QtCore
 from VeraGrid.Gui.messages import *
-from VeraGrid.Gui.RosetaExplorer.MainWindow import Ui_mainWindow, QMainWindow
-from VeraGrid.Gui.RosetaExplorer.roseta_objects_model import RosetaObjectsModel, ObjectsModelOld
+from VeraGrid.Gui.RosetaExplorer.roseta_explorer import Ui_RosetaExplorer, QMainWindow
+from VeraGrid.Gui.RosetaExplorer.roseta_objects_model import RosetaObjectsModel
 from VeraGrid.Gui.TreeModelViewer.TreeModelViewer import TreeModelViewerGUI
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.object_model import ObjectsModel
@@ -54,7 +54,7 @@ class RosetaExplorerGUI(QMainWindow):
 
         # create main window
         QMainWindow.__init__(self, parent)
-        self.ui = Ui_mainWindow()
+        self.ui = Ui_RosetaExplorer()
         self.ui.setupUi(self)
         self.title = 'Roseta Explorer'
         self.setWindowTitle(self.title)
@@ -63,8 +63,6 @@ class RosetaExplorerGUI(QMainWindow):
         # 1:4
         self.ui.main_splitter.setStretchFactor(0, 1)
         self.ui.main_splitter.setStretchFactor(1, 8)
-        self.ui.lookup_db_splitter.setStretchFactor(0, 1)
-        self.ui.lookup_db_splitter.setStretchFactor(1, 6)
 
         self.open_file_thread_object = None
 
@@ -116,8 +114,6 @@ class RosetaExplorerGUI(QMainWindow):
 
         self.ui.filterComboBox.currentTextChanged.connect(self.on_filter_combobox_changed)
 
-        self.ui.availableDBsComboBox.currentTextChanged.connect(self.available_db_combo_box_changed)
-
         # lineedit enter
 
         self.ui.filterLineEdit.returnPressed.connect(self.filter_properties_table)
@@ -125,8 +121,6 @@ class RosetaExplorerGUI(QMainWindow):
         # list clicks
 
         self.ui.clasesListView.clicked.connect(self.on_class_click)
-
-        self.ui.dbTablesListView.clicked.connect(self.on_look_up_db_class_click)
 
         # context menu
         self.ui.propertiesTableView.customContextMenuRequested.connect(self.show_objects_context_menu)
@@ -185,9 +179,6 @@ class RosetaExplorerGUI(QMainWindow):
             else:
                 idx = 0
 
-            self.ui.availableDBsComboBox.setModel(get_list_model(self.db_handler.psse_lookup_db.list_of_db_files))
-            self.ui.availableDBsComboBox.setCurrentIndex(idx)
-
         elif isinstance(self.circuit, CgmesCircuit):
 
             # we do this first so that the model changing does not trigger the on_combo_box_text_change function
@@ -197,8 +188,6 @@ class RosetaExplorerGUI(QMainWindow):
             else:
                 idx = 0
 
-            self.ui.availableDBsComboBox.setModel(get_list_model(self.db_handler.cgmes_lookup_db.list_of_db_files))
-            self.ui.availableDBsComboBox.setCurrentIndex(idx)
 
         else:
             pass
@@ -303,7 +292,6 @@ class RosetaExplorerGUI(QMainWindow):
 
             self.set_model_label()
             self.update_combo_boxes()
-            self.available_db_combo_box_changed()
 
             if self.console:
                 for key, val in {'app': self,
@@ -438,59 +426,6 @@ class RosetaExplorerGUI(QMainWindow):
             window.set_logger(logger)
 
         window.show()
-
-    def available_db_combo_box_changed(self):
-        """
-        Read PSSe lookup DB
-        """
-        name = self.ui.availableDBsComboBox.currentText()
-
-        if isinstance(self.circuit, PsseCircuit):
-            self.db_handler.psse_lookup_db.read_db_file(name)
-            self.ui.dbTablesListView.setModel(get_list_model(self.db_handler.psse_lookup_db.get_structures_names()))
-            self.on_look_up_db_class_click()
-
-        elif isinstance(self.circuit, CgmesCircuit):
-            self.db_handler.cgmes_lookup_db.read_db_file(name)
-            self.ui.dbTablesListView.setModel(get_list_model(self.db_handler.cgmes_lookup_db.get_structures_names()))
-            self.on_look_up_db_class_click()
-
-    def on_look_up_db_class_click(self):
-        """
-
-        :return:
-        """
-
-        if len(self.ui.dbTablesListView.selectedIndexes()) > 0:
-            elm_type = self.ui.dbTablesListView.selectedIndexes()[0].data(role=QtCore.Qt.ItemDataRole.DisplayRole)
-
-            if isinstance(self.circuit, PsseCircuit):
-                db = self.db_handler.psse_lookup_db
-                df = getattr(db, elm_type)
-                mdl = PandasModel(data=df)
-
-            elif isinstance(self.circuit, CgmesCircuit):
-                objects = self.db_handler.cgmes_lookup_db.circuit.elements_by_type.get(elm_type, [])
-                if len(objects) > 0:
-                    editable_headers = {p.property_name: p for p in objects[0].get_properties()}
-                    headers = [p.property_name for p in objects[0].get_properties()]
-
-                else:
-                    editable_headers = dict()
-                    headers = list()
-
-                mdl = ObjectsModelOld(objects=objects,
-                                      editable_headers=editable_headers,
-                                      parent=self.ui.propertiesTableView,
-                                      editable=True,
-                                      dictionary_of_lists={})
-            else:
-                return
-
-            # set the model
-            self.ui.dbTableView.setModel(mdl)
-        else:
-            self.ui.dbTableView.setModel(None)
 
     def show_objects_context_menu(self, pos: QtCore.QPoint):
         """
