@@ -363,22 +363,22 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
             self._uid2idx_params[ep.uid] = j
 
-        k = 0
+        i = 0
         for ep in self._variable_parameters:
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-            self._uid2idx_event_params[ep.uid] = k
-            k += 1
+            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{i}]"
+            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{i}"
+            self._uid2idx_event_params[ep.uid] = i
+            i += 1
         
-        for k in self._reformulated_vars:
-            fixed_var = Var('ref_var' + str(k))
+        for var in self._reformulated_vars:
+            fixed_var = Var('ref_var' + str(i))
             self._reformulated_lagvars.append(fixed_var)
             self._event_parameters_eqs.append(Const(1))
             self._variable_parameters.append(fixed_var)
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-            self._uid2idx_event_params[ep.uid] = k
-            k += 1
+            self._compiler_names_dict[fixed_var.uid] = f"{self.VARIABLE_PARAMS_NAME}[{i}]"
+            self._alias_names_dict[fixed_var.uid] = f"{self.VARIABLE_PARAMS_NAME}_{i}"
+            self._uid2idx_event_params[fixed_var.uid] = i
+            i += 1
 
         for k, ep in enumerate(self._diff_vars):
             self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
@@ -406,14 +406,20 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         #We populate the reformulated vars
         for it, eq in enumerate(self._algebraic_eqs):
             for j, var in enumerate(self._reformulated_vars):
-                var_lagged= self._reformulated_lagvars[j]
-                eq = eq.subs({var: 0.5*(var + var_lagged)})
-                eq = eq.simplify()
+                is_diff = any(v.base_var is not None for v in eq.get_vars())
+                if var in eq.get_vars() and is_diff:
+                    var_lagged= self._reformulated_lagvars[j]
+                    eq = eq.subs({var: 0.5*(var + var_lagged)})
+                    eq = eq.simplify()
+                    self._algebraic_eqs[it] = eq 
         for it, eq in enumerate(self._state_eqs):
             for j, var in enumerate(self._reformulated_vars):
-                var_lagged= self._reformulated_lagvars[j]
-                eq = eq.subs({var: 0.5*(var + var_lagged)})
-                eq = eq.simplify()
+                is_diff = any(v.base_var is not None for v in eq.get_vars())
+                if var in eq.get_vars() and is_diff:
+                    var_lagged= self._reformulated_lagvars[j]
+                    eq = eq.subs({var: 0.5*(var + var_lagged)})
+                    eq = eq.simplify()
+                    self._state_eqs[it] = eq 
 
         # --------------------------------------------------------------------------------------------------------------
         # Compile RHS and Jacobian using JIT Compiler adaptation

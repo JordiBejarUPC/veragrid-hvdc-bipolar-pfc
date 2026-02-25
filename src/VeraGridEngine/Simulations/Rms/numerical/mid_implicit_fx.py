@@ -15,7 +15,7 @@ from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
 
-class MidpointImplicitIntegration:
+class BackEulerImplicitTensygrid:
     def __init__(self,
                  problem: RmsProblemDae,
                  t0: float,
