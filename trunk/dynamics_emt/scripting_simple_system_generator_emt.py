@@ -11,21 +11,12 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
-from VeraGridEngine import VarPowerFlowRefferenceType, power_flow, DynamicIntegrationMethod
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 
@@ -34,17 +25,17 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDa
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
-from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import initialize_bus_emt
 
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
-from VeraGridEngine.Simulations.EMT.solvers.solver_AD_VEC import AdVecSolver
+from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -72,8 +63,7 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 
-for bus in grid.buses:
-    initialize_bus_emt(grid, bus, vf=grid.var_factory)
+
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
@@ -81,6 +71,24 @@ grid.add_bus(bus1)
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
+line0.emt_model_type = gce.EmtLineTypes.PI
+
+# physical configuration (Overhead line tower)
+tower = gce.OverheadLineType(name="Tower", Vnom=10)
+wire = gce.Wire(name="Panther 30/7 ACSR",
+                diameter=21.0,
+                diameter_internal=9.0,
+                is_tube=True,
+                r=0.1363,
+                max_current=1)
+tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
+tower.add_wire_relationship(wire=wire, xpos=0, ypos=27.5, phase=2)
+tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
+tower.compute()
+
+# Aplicar física a la línea
+line0.apply_template(tower, grid.Sbase, grid.fBase)
+
 
 # load
 P= 9.999999
@@ -100,6 +108,8 @@ gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
 ######################################################################################################
 # Build EMT models
 ######################################################################################################
+for bus in grid.buses:
+    initialize_bus_emt(grid, bus, vf=grid.var_factory)
 
 # Build dynamic_model_host
 
@@ -111,27 +121,32 @@ gen_dynhost = DynamicModelHost()
 gen_mdl = get_generator_emt_template(grid.var_factory).block
 
 # line
-line_mdl = get_line_rms_template(grid.var_factory).block # TODO
+line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_load_rms_template(grid.var_factory).block # TODO
+load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
 
 # connection with buses
+print("in vars gen0 = ",gen_mdl.in_vars)
+print("out vars bus0 = ",bus0.emt_model.model.out_vars)
+gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
+gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # v_B
+gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]])
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]])
 
+line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # if_A
+line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # if_B
+line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # if_C
 
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]])
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]])
-
-line_mdl.connect([line_mdl.in_vars[2]], [bus1.emt_model.model.out_vars[0]])
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[1]])
+line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # it_A
+line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # it_B
+line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # it_C
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.model.out_vars[1]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.model.out_vars[0]]) # v_A
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.model.out_vars[1]]) # v_B
+load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.model.out_vars[2]]) # v_C
 
 # external mapping
 big_gen1 = Block(children=[gen_mdl])
@@ -150,15 +165,15 @@ load.emt_model= load_dynhost
 gen0.emt_model= gen_dynhost
 
 # apply event
-Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
-grid.add_rms_event(event)
+# Pl0 = find_name_in_block('Pl0', load_mdl)
+# event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
+# grid.add_rms_event(event)
 
 grid.add_line(line0)
 grid.add_load(bus=bus1, api_obj=load)
 grid.add_generator(bus=bus0, api_obj=gen0)
 
-gce.save_file(grid=grid, filename="grid_save_event.veragrid")
+# gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
 pf_options = PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -210,83 +225,65 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
-params_mapping = dict()
-
-
 options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, #5e-6*10, # s
                      tolerance = 1e-6,
-                     integration_method = "implicit_euler")
+                     solver = EmtSolverTypes.StructuralAD,
+                     integration_method = DynamicIntegrationMethod.Trapezoid)
 
-# options = RmsOptions(time_step=0.001,
-#                  simulation_time=1,
-#                  tolerance=1e-6,
-#                  integration_method=DynamicIntegrationMethod.BackEuler,
-#                  initialization_method=RmsInitializationMethod.Explicit,
-#                  use_init_values=False,
-#                  max_iter=1000,
-#                  verbose=0)
 
 problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
-# solver = BackEulerImplicitIntegration(
-#     problem=problem,
-#     t0=0,
-#     t_end=options.simulation_time,
-#     h=options.time_step,
-#     max_iter=options.max_iter
-# )
 
-solver = AdVecSolver(problem = problem,
-                     t0 = 0.0,
-                     t_end = options.simulation_time,
-                     h = options.time_step,
-                     method_str="trapezoidal",
-                     verbose = False)
+
+solver = StructuralVectorizedSolver(problem = problem,
+                                    t0 = 0.0,
+                                    t_end = options.simulation_time,
+                                    h = options.time_step,
+                                    method_str=options.integration_method,
+                                    verbose = True)
 
 t, y = solver.simulate()
 
-# t, y, well_initialized, converged = solver.simulate()
+# profiler.disable()
+# profiler.dump_stats("profiling_stats.prof")
 
-profiler.disable()
-profiler.dump_stats("profiling_stats.prof")
-
-xlim = options.simulation_time
-
-omega = find_name_in_block("omega", gen_mdl)
-Pg = gen_mdl.out_vars[0]
-Qg = gen_mdl.out_vars[1]
-Ir = find_name_in_block("Ir", gen_mdl)
-Efd = find_name_in_block("Efd", gen_mdl)
-Te = find_name_in_block("Te", gen_mdl)
-Vm = find_name_in_block("Vm", gen_mdl)
-
-u_gov1 = find_name_in_block("u_gov1", gen_mdl)
-y_subexciter = find_name_in_block("y_subexciter1", gen_mdl)
-y_exciter1 = find_name_in_block("y_exciter1", gen_mdl)
-y_exciter4 = find_name_in_block("y_exciter4", gen_mdl)
-Efe = find_name_in_block("Efe", gen_mdl)
-delta = find_name_in_block("delta", gen_mdl)
-
-
-# Generator state variables
-plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
-plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
-plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
-# plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
-
-plt.legend(loc='upper right', ncol=2)
-plt.xlabel("Time (s)")
-plt.ylabel("Values (pu)")
-plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# xlim = options.simulation_time
+#
+# omega = find_name_in_block("omega", gen_mdl)
+# Pg = gen_mdl.out_vars[0]
+# Qg = gen_mdl.out_vars[1]
+# Ir = find_name_in_block("Ir", gen_mdl)
+# Efd = find_name_in_block("Efd", gen_mdl)
+# Te = find_name_in_block("Te", gen_mdl)
+# Vm = find_name_in_block("Vm", gen_mdl)
+#
+# u_gov1 = find_name_in_block("u_gov1", gen_mdl)
+# y_subexciter = find_name_in_block("y_subexciter1", gen_mdl)
+# y_exciter1 = find_name_in_block("y_exciter1", gen_mdl)
+# y_exciter4 = find_name_in_block("y_exciter4", gen_mdl)
+# Efe = find_name_in_block("Efe", gen_mdl)
+# delta = find_name_in_block("delta", gen_mdl)
+#
+#
+# # Generator state variables
+# plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
+# # plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
+# # plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
+#
+# plt.legend(loc='upper right', ncol=2)
+# plt.xlabel("Time (s)")
+# plt.ylabel("Values (pu)")
+# plt.xlim([0, xlim])
+# # plt.ylim([0.85, 1.15])
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
 
 
 

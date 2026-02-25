@@ -10,6 +10,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Branches.line import Line
 
 class BergeronLineEmtTemplate(EmtModelTemplate):
     """
@@ -20,7 +21,7 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
     """
 
     def __init__(self,
-                 line,
+                 line: Line,
                  vf: VarFactory,
                  name: str = ""):
 

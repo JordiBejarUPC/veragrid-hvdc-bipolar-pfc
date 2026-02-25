@@ -83,6 +83,7 @@ def initialize_bus_emt(grid: MultiCircuit,
             mask[2] |= bool(branch.ys.phB)
             mask[3] |= bool(branch.ys.phC)
 
+    print("bus mask=", mask)
     # choose template depending on the number of phases
     bus.rms_model.model = BusEmtTemplateABC(vf=vf, mask = mask).block
 

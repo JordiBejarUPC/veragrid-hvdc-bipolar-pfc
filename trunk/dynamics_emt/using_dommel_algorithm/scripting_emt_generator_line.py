@@ -53,16 +53,8 @@ grid.Sbase = Sbase  # *1e6 # MVA
 
 # --- Buses ---
 bus1 = Bus(name="Bus1", Vnom=Vbase, is_slack=True)
-bus1.ph_n = False
-bus1.ph_a = True
-bus1.ph_b = True
-bus1.ph_c = True
 
 bus2 = Bus(name="Bus2", Vnom=Vbase)
-bus2.ph_n = False
-bus2.ph_a = True
-bus2.ph_b = True
-bus2.ph_c = True
 
 # Asignar templates simbólicos a los buses
 bus1_template = get_bus_emt_template(grid.var_factory)
