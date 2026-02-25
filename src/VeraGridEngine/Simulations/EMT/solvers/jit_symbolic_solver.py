@@ -9,6 +9,7 @@ import numba as nb
 import scipy.sparse as sp
 import time
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
@@ -25,7 +26,7 @@ class JitSymbolicSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method_str: str = "trapezoidal",
+                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -33,7 +34,7 @@ class JitSymbolicSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method_str: Integration method ('trapezoidal', 'bdf2', 'back_euler').
+        :param method_str: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
@@ -61,7 +62,7 @@ class JitSymbolicSolver:
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
     # ==============================================================================
 
-    def _build_jit_kernel(self, method_str: str):
+    def _build_jit_kernel(self, method_str: DynamicIntegrationMethod):
         """
         Compiles the numerical residual function using JIT.
         It uses a batching strategy (splitting equations into chunks) to prevent
@@ -211,7 +212,7 @@ class JitSymbolicSolver:
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
         kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
 
-        alpha_mult = 2.0 if method_str == 'trapezoidal' else (1.5 if method_str == 'bdf2' else 1.0)
+        alpha_mult = 2.0 if method_str == DynamicIntegrationMethod.Trapezoid else (1.5 if method_str == DynamicIntegrationMethod.BDF2 else 1.0)
 
         np_rows = np.array(rows, dtype=np.int32) if use_sparse else None
         np_cols = np.array(cols, dtype=np.int32) if use_sparse else None
@@ -310,15 +311,15 @@ class JitSymbolicSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method_str == 'trapezoidal':
+            if method_str == DynamicIntegrationMethod.Trapezoid:
                 alpha = 2.0 / self.h
                 dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
-            elif method_str == 'bdf2':
+            elif method_str == DynamicIntegrationMethod.BDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
 
-            if method_str != 'bdf2': x_prev2 = x_prev.copy()
+            if method_str != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT Finished: {time.time() - t_start:.4f}s")

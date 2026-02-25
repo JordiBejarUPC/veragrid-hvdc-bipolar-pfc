@@ -3,9 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
 
 
 class EmtOptions(OptionsTemplate):
@@ -17,7 +16,8 @@ class EmtOptions(OptionsTemplate):
                  time_step: float = 0.0001,
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
-                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,
+                 solver: EmtSolverTypes = EmtSolverTypes.StructuralAD,
+                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
                  verbose: int = 0):
         """
         EmtOptions
@@ -32,12 +32,14 @@ class EmtOptions(OptionsTemplate):
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance
+        self.solver: EmtSolverTypes = solver
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.verbose = verbose
 
         self.register(key="time_step", tpe=float)
         self.register(key="simulation_time", tpe=float)
         self.register(key="tolerance", tpe=float)
+        self.register(key="solver", tpe=EmtSolverTypes)
         self.register(key="integration_method", tpe=DynamicIntegrationMethod)
         self.register(key="verbose", tpe=int)
 

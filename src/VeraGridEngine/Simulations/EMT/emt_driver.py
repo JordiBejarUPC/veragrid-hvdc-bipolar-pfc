@@ -5,6 +5,8 @@
 
 import numpy as np
 import pandas as pd
+
+from VeraGridEngine import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -41,8 +43,9 @@ class EmtSimulationDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        # self.integration_methods_dict = {DynamicIntegrationMethod.BackEuler: BackEulerImplicitIntegration}
-        self.integration_methods_dict = {} # TODO
+        self.solvers_dict = {EmtSolverTypes.Symbolic: JitSymbolicSolver,
+                             EmtSolverTypes.Automatic: JitAdSolver,
+                             EmtSolverTypes.StructuralAD: StructuralVectorizedSolver}
 
         self.grid = grid
 
@@ -92,15 +95,15 @@ class EmtSimulationDriver(DriverTemplate):
                                 options=self.options,
                                 pf_results=self.pf_results)
 
-        solver = self.integration_methods_dict[self.options.integration_method](
+        solver = self.solvers_dict[self.options.solver](
             problem=problem,
-            t0=0,
+            t0=0.0,
             t_end=self.options.simulation_time,
             h=self.options.time_step,
-            # max_iter=self.options.max_iter
+            method_str = self.options.integration_method
         )
 
-        t, y, well_initialized, converged = solver.simulate()
+        t, y = solver.simulate(boundary_update_fn = problem.emt_boundary_update)
 
         # profiler.disable()
         #

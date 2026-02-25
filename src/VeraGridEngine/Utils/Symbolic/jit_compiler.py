@@ -43,6 +43,7 @@ import scipy.sparse as sp
 
 #RMS
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars,expression2numba
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 #Totally integrated
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const
 
@@ -484,13 +485,16 @@ class EquationCompiler:
     """Main interface for compiling symbolic equations into executable functions."""
 
     METHODS = {
-        'trapezoidal': TrapezoidalMethod(),
-        'be': BackwardEulerMethod(),
-        'bdf2': BDF2Method(),
-        'continuous': ContinuousMethod()
+        DynamicIntegrationMethod.Trapezoid: TrapezoidalMethod(),
+        DynamicIntegrationMethod.BackEuler: BackwardEulerMethod(),
+        DynamicIntegrationMethod.BDF2: BDF2Method(),
+        DynamicIntegrationMethod.Continuous: ContinuousMethod()
     }
 
-    def __init__(self, variables: List[Var], parameters: List[Var] = None, method: str = 'trapezoidal'):
+    def __init__(self,
+                 variables: List[Var],
+                 parameters: List[Var] = None,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid):
         self.variables_objs = variables
         self.parameters_objs = parameters or []
 

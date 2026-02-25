@@ -2394,6 +2394,7 @@ class DynamicIntegrationMethod(Enum):
     Trapezoid = "trapezoidal"
     BackEuler = "BackEuler"
     BDF2 = "bdf2"
+    Continuous = "continuous"
 
     # Explicit time-stepping (ODE form)
     RungeKutta4 = "rk4"
@@ -2416,12 +2417,13 @@ class DynamicIntegrationMethod(Enum):
     def list(cls):
         return list(map(lambda c: c.value, cls))
 
-class JacobianBackend(Enum):
+class EmtSolverTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
     """
     Symbolic = "symbolic"   # Symbolic differentiation (SD)
     Automatic = "automatic" # Sparse forward-mode AD + graph coloring
+    StructuralAD = "structuralAD" # Sparse structural automatic differentiation
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2766,12 +2768,6 @@ class TimeSeriesSearchPoint(Enum):
         except KeyError:
             return s
 
-class SimulationBackend(Enum):
-    """
-    Solver Type for dynamic simulation
-    """
-    SymbolicImplicit = "symbolic"
-    LegacyExternal = "legacy"
 
 class EmtLineTypes(Enum):
     """

@@ -20,6 +20,7 @@ from scipy.sparse.linalg import splu
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
 
 
@@ -230,8 +231,13 @@ class SparseADJacobian:
 
 class StructuralVectorizedSolver:
     def __init__(
-            self, problem: EmtProblemTemplate, t0: float, t_end: float, h: float,
-            method_str: str = "trapezoidal", dense_threshold: int = 100,
+            self,
+            problem: EmtProblemTemplate,
+            t0: float,
+            t_end: float,
+            h: float,
+            method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+            dense_threshold: int = 100,
             verbose: bool = False, auto_vectorization: bool = True,
     ):
         self.problem = problem
@@ -293,7 +299,7 @@ class StructuralVectorizedSolver:
         canonical_str = _visit_recursive(expr)
         return canonical_str, found_vars_ordered
 
-    def _auto_detect_vectorization(self, method_str: str = None):
+    def _auto_detect_vectorization(self, method_str: DynamicIntegrationMethod = None):
         """
         Infers the algebraic structure of the DAE system (Clustering) and compiles
         the vectorized matrix kernels.
@@ -395,7 +401,16 @@ class StructuralVectorizedSolver:
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method_str,
                                          boundary_update_fn, self.verbose, self.dense_threshold)
 
-    def _simulate_vectorized(self, t0, t_end, h, x0, dx0, params0, method_str, boundary_update_fn, verbose,
+    def _simulate_vectorized(self,
+                             t0,
+                             t_end,
+                             h,
+                             x0,
+                             dx0,
+                             params0,
+                             method_str,
+                             boundary_update_fn,
+                             verbose,
                              dense_threshold):
         if not self.vectorized_ready:
             self._auto_detect_vectorization(method_str)
@@ -456,17 +471,17 @@ class StructuralVectorizedSolver:
 
             y[i + 1] = x_iter
 
-            if method_str == 'trapezoidal':
+            if method_str == DynamicIntegrationMethod.Trapezoid:
                 dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
                     :self._n_state]
-            elif method_str == 'bdf2':
+            elif method_str == DynamicIntegrationMethod.BDF2:
                 x_prev2[:] = x_prev
                 dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
                     :self._n_state]) / h
             else:
                 dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
 
-            if method_str != 'bdf2': x_prev2[:] = x_prev
+            if method_str != DynamicIntegrationMethod.BDF2: x_prev2[:] = x_prev
             x_prev[:] = x_iter
 
         self._last_sim_loop_time = time.time() - t_start_loop

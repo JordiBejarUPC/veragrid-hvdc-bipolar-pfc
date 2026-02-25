@@ -7,7 +7,7 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from VeraGridEngine import RmsInitializationMethod
+from VeraGridEngine import RmsInitializationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
@@ -65,7 +65,8 @@ GCPROP_TYPES = Union[
     Type[DynamicIntegrationMethod],
     Type[RmsInitializationMethod],
     Type[OpfDispatchMode],
-    Type[EmtLineTypes]
+    Type[EmtLineTypes],
+    Type[EmtSolverTypes],
 ]
 
 

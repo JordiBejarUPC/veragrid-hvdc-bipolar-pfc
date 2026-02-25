@@ -10,6 +10,7 @@ import time
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
@@ -363,7 +364,7 @@ class JitAdSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method_str: str = "trapezoidal",
+                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -371,7 +372,7 @@ class JitAdSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method_str: Integration method ('trapezoidal', 'bdf2', 'back_euler').
+        :param method_str: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
@@ -444,7 +445,12 @@ class JitAdSolver:
                                    method_str=self.method_str, use_cse=True)
             self.jit_jacobian_ad[self.method_str] = jac
 
-    def simulate(self, x0=None, dx0=None, params0=None, boundary_update_fn=None) -> Tuple[Vec, Mat]:
+
+    def simulate(self,
+                 x0: Vec = None,
+                 dx0: Vec = None,
+                 params0: Vec = None,
+                 boundary_update_fn =None) -> Tuple[Vec, Mat]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
         """
@@ -524,14 +530,14 @@ class JitAdSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method_str == 'trapezoidal':
+            if method_str == DynamicIntegrationMethod.Trapezoid:
                 dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
-            elif method_str == 'bdf2':
+            elif method_str == DynamicIntegrationMethod.BDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = ((x_iter[:n_states] - x_prev[:n_states]) / self.h)
 
-            if method_str != 'bdf2': x_prev2 = x_prev.copy()
+            if method_str != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")
