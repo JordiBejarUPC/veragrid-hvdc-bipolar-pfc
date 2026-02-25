@@ -5,6 +5,7 @@
 import numpy as np
 
 from typing import Dict
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -49,6 +50,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
                  name: str = ""):
         super().__init__(name=name or f"emt_pi_{line.name}")
         self.tpe = DeviceType.LineDevice
+        self.name = name
 
         c0 = vf.add_const(0.0)
 
@@ -255,3 +257,15 @@ class PiLineEmtTemplate(EmtModelTemplate):
             mapping[It_keys[ph]] = It_act[k]
 
         self._block.external_mapping = mapping
+
+def get_pi_line_emt_template(grid: MultiCircuit,
+                             line: Line,
+                             name: str = "") -> EmtModelTemplate:
+
+    templ = PiLineEmtTemplate(vf = grid.var_factory,
+                              line= line,
+                              sbase = grid.Sbase,
+                              fbase = grid.fBase,
+                              name = name)
+
+    return templ
