@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Tuple,  Optional
+from typing import Tuple, Optional, List
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
@@ -15,8 +15,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 
 
 def tf_to_block(var_factory: VarFactory,
-                num: Vec,
-                den: Vec,
+                num: List[Var | float],
+                den: List[Var | float],
                 x: Var | Expr,
                 y: Var = None,
                 name: Optional[str] = '') -> Tuple[Block, Var]:
@@ -33,8 +33,8 @@ def tf_to_block(var_factory: VarFactory,
     if y is None:
         y = var_factory.add_var('y_' + name)
 
-    aux_eqs = []
-    aux_vars = []
+    aux_eqs: List[Expr] = []
+    aux_vars: List[Expr] = []
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
@@ -75,8 +75,8 @@ def tf_to_block(var_factory: VarFactory,
 
 def tf_to_diffblock_with_output(
         var_factory: VarFactory,
-        num: Vec,
-        den: Vec,
+        num: List[Var | float],
+        den: List[Var | float],
         x: Var | Expr,
         y: Var = None,
         name: Optional[str] = ''):
@@ -94,8 +94,8 @@ def tf_to_diffblock_with_output(
     if y is None:
         y = var_factory.add_var('y_' + name)
 
-    aux_eqs = []
-    aux_vars = []
+    aux_eqs: List[Var | Expr] = []
+    aux_vars: List[Var | Expr] = []
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
@@ -136,8 +136,8 @@ def tf_to_diffblock_with_output(
 
 def tf_to_diffblock_with_states(
         var_factory: VarFactory,
-        num: Vec,
-        den: Vec,
+        num: List[Var | float],
+        den: List[Var | float],
         x: Var | Expr,
         y: Var = None, name: Optional[str] = ''):
     """
@@ -206,8 +206,9 @@ def tf_to_diffblock_with_states(
 
 def tf_to_block_with_states(
         var_factory: VarFactory,
-        num: Vec,
-        den: Vec, x):
+        num: List[Var | float],
+        den: List[Var | float],
+        x: Var | float):
     """
     num: numerator coefficients [b0,...,bm]
     den: denominator coefficients [a0,...,an], with an != 0
@@ -219,8 +220,8 @@ def tf_to_block_with_states(
     if num[-1] == 0 or den[-1] == 0:
         raise ValueError("Leading coefficient of cannot be zero.")
 
-    aux_eqs = []
-    aux_vars = []
+    aux_eqs: List[Expr] = []
+    aux_vars: List[Var] = []
     # check if xis a expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u')
@@ -233,7 +234,7 @@ def tf_to_block_with_states(
     num = [c / den[-1] for c in num]
 
     order = len(den)  # system order
-    x_states = [x]  # x0
+    x_states: List[Var] = [x]  # x0
     x_states.extend([var_factory.add_var(f"x{i}") for i in range(1, order + 1)])  # x1,...,xn
 
     # Differential equations (canonical form)
@@ -243,7 +244,7 @@ def tf_to_block_with_states(
         state_eqs.append(x_states[i])
         state_vars.append(x_states[i + 1])
 
-    y_states = [var_factory.add_var(f"y{i}") for i in range(len(num) + 1)]  # x1,...,xn
+    y_states: List[Var] = [var_factory.add_var(f"y{i}") for i in range(len(num) + 1)]  # x1,...,xn
     for i in range(len(num)):
         state_eqs.append(y_states[i])
         state_vars.append(y_states[i + 1])
@@ -268,8 +269,8 @@ def tf_to_block_with_states(
 
 def tf_to_diffblock_with_antiwindup(
         var_factory: VarFactory,
-        num: Vec,
-        den: Vec,
+        num: List[Var | float],
+        den: List[Var | float],
         x: Var,
         y: Var = None,
         name: Optional[str] = '',
@@ -381,9 +382,9 @@ def tf_to_diffblock_with_antiwindup(
 
 def tf_to_diffblock_with_antiwindup_by_feedback(
         var_factory: VarFactory,
-        num: Vec,
-        den: Vec,
-        x,
+        num: List[Var | float],
+        den: List[Var | float],
+        x: Var,
         y: Var = None,
         name: Optional[str] = '',
         sat_min: Expr = Const(-1e6),
