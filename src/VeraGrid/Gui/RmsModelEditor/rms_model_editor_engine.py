@@ -273,13 +273,14 @@ class ConnectionItem(QGraphicsPathItem):
 
 
 class BlockItem(QGraphicsRectItem):
-    def __init__(self, name: str):
+    def __init__(self, var_factory: VarFactory, name: str):
         """
         Class to represent devices in the editor
         :param name:
         """
         super().__init__(0, 0, 100, 60)
 
+        self.var_factory = var_factory
         self.name = name
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -336,6 +337,7 @@ class BlockItem(QGraphicsRectItem):
             return
 
         dialog = ParameterEditorDialog(
+            var_factory=self.var_factory,
             event_dict=self.subsys.event_dict,
             parameters_dict=self.subsys.parameters,
             parent=None
@@ -1554,7 +1556,7 @@ class BlockBoxesEditor(QSplitter):
             # add con bus from
             x0, y0 = 0, 0
             name = "Conn From"
-            bus_from_con_item = BlockItem(name=name)
+            bus_from_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
             if self.api_object.bus_from.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
@@ -1593,7 +1595,7 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn To"
             x0, y0 = 0, 100
 
-            bus_to_con_item = BlockItem(name=name)
+            bus_to_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
             if self.api_object.bus_to.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus_to, self.var_factory)
@@ -1634,7 +1636,7 @@ class BlockBoxesEditor(QSplitter):
             x0, y0 = 0, 0
             name = "Conn Bus"
 
-            bus_con_item = BlockItem(name=name)
+            bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
             if self.api_object.bus.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
 
@@ -1681,7 +1683,7 @@ class BlockBoxesEditor(QSplitter):
             # add mapping bus from
             x0, y0 = 200, 200
             name = "mapping From"
-            bus_from_mapping_item = BlockItem(name=name)
+            bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
             Pf = self.var_factory.add_var('Pf_placeholder')
             Qf = self.var_factory.add_var('Qf_placeholder')
@@ -1714,7 +1716,7 @@ class BlockBoxesEditor(QSplitter):
             name = "mapping To"
             x0, y0 = 0, 200
 
-            bus_to_mapping_item = BlockItem(name=name)
+            bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
             Pt = self.var_factory.add_var('Pt_placeholder')
             Qt = self.var_factory.add_var('Qt_placeholder')
@@ -1748,7 +1750,7 @@ class BlockBoxesEditor(QSplitter):
             x0, y0 = 0, 0
             name = "mapping Bus"
 
-            bus_mapping_item = BlockItem(name=name)
+            bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
             P = self.var_factory.add_var('P_placeholder')
             Q = self.var_factory.add_var('Q_placeholder')
 
@@ -1991,7 +1993,7 @@ class BlockBoxesEditor(QSplitter):
             self.block_counters[tpe] = count
 
             name = f"{tpe.name}_{count}"
-            item = BlockItem(name=name)
+            item = BlockItem(var_factory=self.var_factory, name=name)
 
             block = create_block_of_type(self.var_factory, block_type=tpe, item_name=name, api_object=self.api_object, )
             item.set_subsystem(block)
@@ -2055,7 +2057,7 @@ class BlockBoxesEditor(QSplitter):
                 uid_to_blockitem[uid] = item
 
             elif block_type == BlockType.BUS_CONNECTION:
-                bus_con_item = BlockItem(name=node.name)
+                bus_con_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 bus_con_blk = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2072,7 +2074,7 @@ class BlockBoxesEditor(QSplitter):
                 uid_to_blockitem[uid] = bus_con_item
 
             elif block_type == BlockType.EXTERNAL_MAPPING:
-                bus_mapping_item = BlockItem(name=node.name)
+                bus_mapping_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 bus_mapping_blk = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2090,7 +2092,7 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                block_item = BlockItem(name=node.name)
+                block_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 block = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2421,7 +2423,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                     for var in variables:
                         values_dict.update({var: self.var_factory.add_const(0)})
 
-                init_guess_editor = InitialValuesDialog(values_dict)
+                init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
                 result = init_guess_editor.exec()
                 if result == QDialog.DialogCode.Accepted:
                     init_values_dict = init_guess_editor.get_values_dict()
@@ -2443,7 +2445,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
             # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
 
-            init_guess_editor = InitialValuesDialog(values_dict)
+            init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
             result = init_guess_editor.exec()
             if result == QDialog.DialogCode.Accepted:
                 init_values_dict = init_guess_editor.get_values_dict()
