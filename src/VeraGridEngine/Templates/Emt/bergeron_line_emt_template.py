@@ -23,17 +23,32 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
                  vf: VarFactory,
                  line,
                  h: float,
-                 sbase: float, #
-                 fbase: float, #
+                 sbase: float,
+                 fbase: float,
                  name: str = ""):
-        super().__init__(name=name or f"emt_bergeron_line_template")
+        super().__init__(name=name or "emt_bergeron_line_template")
 
         self.tpe = DeviceType.LineDevice
-
+        self.line = line
         self.h = float(h)
+        self.num_phases = 4  # [N, A, B, C]
 
         # -----------------------------
-        # 1) Gc and H construction
+        # 0) Phase mask FROM THE LINE ITSELF
+        # -----------------------------
+        self.ph_mask = np.array([
+            bool(line.ys.phN),
+            bool(line.ys.phA),
+            bool(line.ys.phB),
+            bool(line.ys.phC),
+        ], dtype=bool)  # [N,A,B,C]
+
+        self.phase_idx = np.where(self.ph_mask)[0]
+        if self.phase_idx.size == 0:
+            raise ValueError(f"Bergeron line '{line.name}' has no enabled phases in line.ys")
+
+        # -----------------------------
+        # 1) Gc and H construction (compute in active subspace, then embed into 4x4)
         # -----------------------------
         w = 2 * np.pi * fbase
 
@@ -42,39 +57,41 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
         Zbase = (Vbase * Vbase) / S
         Ybase = 1.0 / Zbase
 
-        # per meter impedances to p.u.
+        # per-meter series/shunt matrices -> pu per meter
         Z_phys_m = line.template.z_nabc / 1e3
         Y_phys_m = line.template.y_nabc / 1e3
         Z_pu_m = Z_phys_m / Zbase
         Y_pu_m = Y_phys_m / Ybase
 
-        # integrated parameters per length(simple aproximation)
-        R = np.real(Z_pu_m) * line.length
-        L = np.imag(Z_pu_m) * line.length
-        C = np.imag(Y_pu_m) * line.length
+        # integrated over length (simple approximation like you had)
+        R_full = np.real(Z_pu_m) * line.length
+        L_full = np.imag(Z_pu_m) * line.length
+        C_full = np.imag(Y_pu_m) * line.length
+
+        # ---- reduce to active phases ONLY (critical) ----
+        idx = self.phase_idx
+        R = R_full[np.ix_(idx, idx)]
+        L = L_full[np.ix_(idx, idx)]
+        C = C_full[np.ix_(idx, idx)]
 
         # Zc ~ sqrt(L * inv(C))
+        # guard against singular C
         try:
             Zc = spla.sqrtm(L @ np.linalg.inv(C))
         except Exception:
-            Zc = np.eye(4) * np.sqrt(L[0, 0] / (C[0, 0] + 1e-20))
+            n = len(idx)
+            # fallback diagonal approx
+            Zc = np.eye(n) * np.sqrt(L[0, 0] / (C[0, 0] + 1e-20))
 
         Z_eq = np.real(Zc) + R / 4.0
-        Gc_calc = np.linalg.inv(Z_eq)
-        H_calc = (np.real(Zc) - R / 4.0) @ Gc_calc
+        Gc_red = np.linalg.inv(Z_eq)
+        H_red = (np.real(Zc) - R / 4.0) @ Gc_red
 
-        # -----------------------------
-        # 2) phase mask (intersection from/to)
-        # -----------------------------
-        ph_f = np.array(line.bus_from.get_phases_array(), dtype=bool)  # [N,A,B,C]
-        ph_t = np.array(line.bus_to.get_phases_array(), dtype=bool)
-        ph = ph_f & ph_t
-        self.phase_idx = np.where(ph)[0]
-
+        # ---- embed back into 4x4 [N,A,B,C] ----
         self.Gc = np.zeros((4, 4), dtype=float)
         self.H = np.zeros((4, 4), dtype=float)
-        self.Gc[np.ix_(self.phase_idx, self.phase_idx)] = Gc_calc[np.ix_(self.phase_idx, self.phase_idx)]
-        self.H[np.ix_(self.phase_idx, self.phase_idx)] = H_calc[np.ix_(self.phase_idx, self.phase_idx)]
+        self.Gc[np.ix_(idx, idx)] = Gc_red
+        self.H[np.ix_(idx, idx)] = H_red
 
         tau = line.get_tau(w=w)
         self.n_delay = max(1, int(round(tau / self.h)))
@@ -90,22 +107,24 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         # 4) History vars (EVENT PARAMS)
         # -----------------------------
-        self.Ih_f = [vf.add_var(f"Ih_f_{line.name}_{i}") for i in range(4)]
-        self.Ih_t = [vf.add_var(f"Ih_t_{line.name}_{i}") for i in range(4)]
+        # IMPORTANT: these must be "event params", not DAE unknowns.
+        # If vf.add_var registers variables as unknowns, DO NOT use it here.
+        # Use Var(...) directly for event parameters.
+        self.Ih_f = [Var(f"Ih_f_{line.name}_{i}") for i in range(4)]
+        self.Ih_t = [Var(f"Ih_t_{line.name}_{i}") for i in range(4)]
 
-        event_dict = {p: Const(0.0) for p in (self.Ih_f + self.Ih_t)} # history initialized at 0.0
-
+        event_dict = {p: Const(0.0) for p in (self.Ih_f + self.Ih_t)}
 
         self._block = Block(
             name=f"Bergeron_{line.name}",
             event_dict=event_dict,
         )
 
-        # vars set when assembler send the bus vars NOT SURE ABOUT THIS
+        # set later by assembler
         self.v_f_vars = None
         self.v_t_vars = None
 
-        # indices para callback:
+        # indices for callback
         self.idx_vf = None
         self.idx_vt = None
         self.idx_p_hf = None
@@ -150,7 +169,7 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
     # -------------------------------------------------------
     def update_history(self, step_counter: int, x_prev: np.ndarray, full_params: np.ndarray):
         k_curr = step_counter % (self.n_delay + 1)
-        k_tau  = (step_counter - self.n_delay) % (self.n_delay + 1)
+        k_tau = (step_counter - self.n_delay) % (self.n_delay + 1)
 
         v_f_now = np.array([x_prev[i] if i >= 0 else 0.0 for i in self.idx_vf], dtype=float)
         v_t_now = np.array([x_prev[i] if i >= 0 else 0.0 for i in self.idx_vt], dtype=float)
@@ -158,10 +177,17 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
         self.buf_vf[k_curr, :] = v_f_now
         self.buf_vt[k_curr, :] = v_t_now
 
+        # Read current Ih values from params
         Ih_f_now = np.array([full_params[i] for i in self.idx_p_hf], dtype=float)
         Ih_t_now = np.array([full_params[i] for i in self.idx_p_ht], dtype=float)
 
-        # corrientes “ahora” consistentes con el Norton local del paso anterior
+        # FORCE Ih = 0 in inactive phases (avoid ghost injections)
+        # self.ph_mask is [N,A,B,C] bool
+        inactive = ~self.ph_mask
+        Ih_f_now[inactive] = 0.0
+        Ih_t_now[inactive] = 0.0
+
+        # currents “now” consistent with local Norton using Ih from previous step
         self.buf_if[k_curr, :] = self.Gc @ v_f_now + Ih_f_now
         self.buf_it[k_curr, :] = self.Gc @ v_t_now + Ih_t_now
 
@@ -170,7 +196,7 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
         i_f_tau = self.buf_if[k_tau, :]
         i_t_tau = self.buf_it[k_tau, :]
 
-        # Fórmula de la guía (lossy Bergeron en forma de H)
+        # Lossy Bergeron (H-form)
         X_f = -self.Gc @ v_t_tau - i_t_tau
         Y_f = -self.Gc @ v_f_tau - i_f_tau
         X_t = -self.Gc @ v_f_tau - i_f_tau
@@ -179,6 +205,10 @@ class BergeronLineEmtTemplate(EmtModelTemplate):
         I = np.eye(4)
         I_hist_f = 0.5 * ((I + self.H) @ X_f + (I - self.H) @ Y_f)
         I_hist_t = 0.5 * ((I + self.H) @ X_t + (I - self.H) @ Y_t)
+
+        # FORCE computed history to 0 for inactive phases too
+        I_hist_f[inactive] = 0.0
+        I_hist_t[inactive] = 0.0
 
         for i in range(4):
             full_params[self.idx_p_hf[i]] = I_hist_f[i]
