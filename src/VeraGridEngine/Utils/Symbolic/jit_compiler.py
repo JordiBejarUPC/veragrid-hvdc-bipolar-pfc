@@ -746,7 +746,7 @@ class RMSCompiler(EquationCompiler):
             compiler_names_dict (Dict[int, str]): Dictionary mapping variable UIDs to
                                                   their executable string representations.
         """
-        super().__init__(variables, c_params, method='continuous')
+        super().__init__(variables, c_params, method=DynamicIntegrationMethod.BackEuler)
         self.dt_var = dt_var
         self.compiler_names_dict = compiler_names_dict
 
