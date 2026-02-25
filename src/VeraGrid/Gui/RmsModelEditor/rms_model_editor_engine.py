@@ -76,37 +76,37 @@ def create_block_of_type(var_factory: VarFactory,
     """
     # CONST (single output)
     if block_type == BlockType.CONST:
-        blk = constant(item_name)
+        blk = constant(var_factory, item_name)
         return blk
 
     # GAIN (single input -> single output)
     if block_type == BlockType.GAIN:
-        blk = gain(item_name)
+        blk = gain(var_factory, item_name)
         return blk
 
     # SUM / ADDER (2 inputs)
     if block_type == BlockType.SUM:
-        blk = adder(item_name)
+        blk = adder(var_factory, item_name)
         return blk
 
     # SUBSTRACT (2 inputs)
     if block_type == BlockType.SUBSTR:
-        blk = substract(item_name)
+        blk = substract(var_factory, item_name)
         return blk
 
     # PRODUCT (2 inputs)
     if block_type == BlockType.PRODUCT:
-        blk = product(item_name)
+        blk = product(var_factory, item_name)
         return blk
 
     # DIVIDE (2 inputs)
     if block_type == BlockType.DIVIDE:
-        blk = divide(item_name)
+        blk = divide(var_factory, item_name)
         return blk
 
     # ABSOLUT (single input -> single output)
     if block_type == BlockType.ABS:
-        blk = absolut(item_name)
+        blk = absolut(var_factory, item_name)
         return blk
 
     # GENRAW (simple model)
@@ -141,19 +141,21 @@ def create_block_of_type(var_factory: VarFactory,
         return None
 
 
-def create_generic_block(state_inputs: int,
+def create_generic_block(var_factory: VarFactory,
+                         state_inputs: int,
                          state_outputs: Sequence[str],
                          algebraic_inputs: int,
                          algebraic_outputs: Sequence[str]):
     """
 
+    :param var_factory:
     :param state_inputs:
     :param state_outputs:
     :param algebraic_inputs:
     :param algebraic_outputs:
     :return:
     """
-    blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
+    blk = generic(var_factory, state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
     blk.name = "generic"
     return blk
 
@@ -1955,7 +1957,7 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host: DynamicModelHost = DynamicModelHost()
 
-                model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
+                model_host.model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
                 self.main_block.add(model_host.model)
                 item = ModelHostItem(
                     var_factory=self.var_factory,
@@ -1991,7 +1993,7 @@ class BlockBoxesEditor(QSplitter):
             name = f"{tpe.name}_{count}"
             item = BlockItem(name=name)
 
-            block = create_block_of_type(block_type=tpe, item_name=name, api_object=self.api_object, )
+            block = create_block_of_type(self.var_factory, block_type=tpe, item_name=name, api_object=self.api_object, )
             item.set_subsystem(block)
             item.build_item()
 
