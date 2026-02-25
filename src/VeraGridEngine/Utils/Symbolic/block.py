@@ -280,18 +280,16 @@ class Block:
         :return:
         """
         if not self.children:
-            empty = self.check_empty()
-            if empty:
-                return empty
+            return self.check_empty()
+
         else:
-            empty = self.check_empty()
-            if not empty:
-                return empty
+            if not self.check_empty():
+                return False
+            else:
+                for child in self.children:
+                    child.empty()
 
-            for child in self.children:
-                child.empty()
-
-        return False
+        return True
 
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
@@ -468,6 +466,8 @@ class Block:
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
+
+
 
 class BlockType(Enum):
     "this class contains the existing types of blocks"
