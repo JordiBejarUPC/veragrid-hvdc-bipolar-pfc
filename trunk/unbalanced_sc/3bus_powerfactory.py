@@ -90,23 +90,14 @@ grid.add_generator(bus_slack, generator_ac)
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
 # ----------------------------------------------------------------------------------------------------------------------
-pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
+pf_options = PowerFlowOptions(solver_type=SolverType.NR,
                                 retry_with_other_methods=False,
-                                limit_i_vsc=False,
-                                verbose=1)
-res_pf = vge.power_flow(grid=grid, options=pf_options_1)
+                                limit_i_vsc=False)
+res_pf = vge.power_flow(grid=grid, options=pf_options)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation
 # ----------------------------------------------------------------------------------------------------------------------
-print()
-pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
-                                retry_with_other_methods=False,
-                                limit_i_vsc=False,
-                                verbose=1,
-                                max_iter=150,
-                                tolerance=1e-6)
-
 grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
         device=grid.buses[2],
@@ -116,7 +107,7 @@ grid.add_short_circuit_event(
 
 sc_driver = vge.ShortCircuitDriver(grid=grid,
                                    options=ShortCircuitOptions(),
-                                   pf_options=pf_options_2,
+                                   pf_options=pf_options,
                                    pf_results=res_pf,
                                    pf_results3ph=None)
 sc_driver.run()
@@ -133,3 +124,6 @@ Ubase_pf = 20e3
 Ibase_pf = Sbase_pf / (np.sqrt(3) * Ubase_pf)
 print('\n VSC Current =', np.round(np.abs(res_sc.vsc_It[0]) * Ibase / Ibase_pf, 4))
 print('\n VSC Power =', np.round(res_sc.vsc_St[0], 4))
+
+print()
+print(abs(res_sc.voltage1[:, 0]))
