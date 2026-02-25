@@ -538,13 +538,3 @@ class Bus(PhysicalDevice):
             self._bus_bar = val
         else:
             raise ValueError("The value must be a BusBar")
-
-    def get_rms_algebraic_vars(self) -> Tuple[Var, Var]:
-        """
-        Initializes rms model if not initialized
-        :return: Vm, Va rms vars
-        """
-        # if self.rms_model.model.empty():
-        #     self.initialize_rms()
-        assert len(self.rms_model.model.algebraic_vars) == 2
-        return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]

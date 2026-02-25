@@ -4,12 +4,15 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+from typing import Tuple
+
 from typing import TYPE_CHECKING
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Substation.bus import Bus
@@ -53,3 +56,11 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     :return:
     """
     bus.rms_model.model = BusRmsTemplate(vf=vf).block
+
+def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
+    """
+    Initializes rms model if not initialized
+    :return: Vm, Va rms vars
+    """
+
+    return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
