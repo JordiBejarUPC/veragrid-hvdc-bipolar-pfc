@@ -27,24 +27,55 @@ class EmtFloquetOperator(spla.LinearOperator):
     during Krylov subspace iterations (Arnoldi).
     """
 
-    def __init__(self, problem, trajectory, h, n_states):
-        """
-        :param problem: The EmtProblemDae instance.
-        :param trajectory: A list of (x, y) tuples representing the pre-captured limit cycle.
-        :param h: The integration time step used in the simulation.
-        :param n_states: Number of differential state variables (x).
-        """
+    def __init__(self, problem, trajectory, h, n_states, method_str='back_euler',
+                 jac_evaluator=None, static_params=None, n_event_params=0,t_trajectory=None):
         self.problem = problem
         self.trajectory = trajectory
         self.h = h
         self.n_states = n_states
-        self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
+        self.method_str = method_str
+
+        if hasattr(problem, 'get_all_vars_number'):
+            self.n_total = problem.get_all_vars_number()
+        else:
+            self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
 
         self.shape = (n_states, n_states)
         self.dtype = np.dtype(np.float64)
 
         self.lu_solvers = []
-        self._precompute_lu_factorizations()
+
+        # Pre-computing Router
+        if jac_evaluator is not None and t_trajectory is not None:
+            self._precompute_from_jit(jac_evaluator, static_params, n_event_params,t_trajectory)
+        else:
+            self._precompute_lu_factorizations()
+
+    def _precompute_from_jit(self, jac_evaluator, static_params, n_ev_params, t_trajectory):
+        full_params = np.empty(n_ev_params + len(static_params), dtype=np.float64)
+        if len(static_params) > 0:
+            full_params[n_ev_params:] = static_params
+
+        ev_params = np.zeros(n_ev_params, dtype=np.float64)
+        dx_dummy = np.zeros(self.n_total, dtype=np.float64)
+
+        for i in range(1, len(self.trajectory)):
+            step_k = self.trajectory[i]
+            step_prev = self.trajectory[i - 1]
+            step_prev2 = self.trajectory[i - 2] if i > 1 else step_prev
+
+            x_k = step_k[0] if isinstance(step_k, tuple) else step_k
+            x_prev = step_prev[0] if isinstance(step_prev, tuple) else step_prev
+            x_prev2 = step_prev2[0] if isinstance(step_prev2, tuple) else step_prev2
+            t_curr = t_trajectory[i] if t_trajectory is not None else (i * self.h)
+
+            if n_ev_params > 0:
+                ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                full_params[:n_ev_params] = ev_params
+
+            J_sparse = jac_evaluator(states=x_k, params=full_params, history=x_prev,
+                                     d_history=dx_dummy, h=self.h, history2=x_prev2)
+            self.lu_solvers.append(spla.splu(J_sparse))
 
     def _precompute_lu_factorizations(self):
         """
@@ -67,21 +98,34 @@ class EmtFloquetOperator(spla.LinearOperator):
             self.lu_solvers.append(spla.splu(J_aug))
 
     def _matvec(self, v0):
-        """
-        Forward integration using pre-computed LU solvers.
-        """
-        v_curr = v0.copy()
-        rhs = np.zeros(self.n_total)
+        v_curr = np.zeros(self.n_total, dtype=np.float64)
+        v_curr[:self.n_states] = v0
 
-        # Step-by-step integration through the periodic limit cycle using cache
+        v_prev = v_curr.copy()
+        v_prev2 = v_curr.copy()
+        dv_prev = np.zeros_like(v_curr)
+        rhs = np.zeros_like(v_curr)
+
         for lu in self.lu_solvers:
-            rhs[:self.n_states] = v_curr
+            if self.method_str in ['back_euler', 'be']:
+                rhs[:self.n_states] = v_prev[:self.n_states] / self.h
+            elif self.method_str == 'bdf2':
+                rhs[:self.n_states] = (2.0 * v_prev[:self.n_states] - 0.5 * v_prev2[:self.n_states]) / self.h
+            elif self.method_str == 'trapezoidal':
+                rhs[:self.n_states] = (2.0 / self.h) * v_prev[:self.n_states] + dv_prev[:self.n_states]
+            else:
+                rhs[:self.n_states] = v_prev[:self.n_states] / self.h
 
-            # Fast back-substitution solving J_aug * sol = rhs
-            sol = lu.solve(rhs)
-            v_curr = sol[:self.n_states]
+            v_curr = lu.solve(rhs)
 
-        return v_curr
+            if self.method_str == 'trapezoidal':
+                dv_prev[:self.n_states] = (2.0 / self.h) * (v_curr[:self.n_states] - v_prev[:self.n_states]) - dv_prev[
+                    :self.n_states]
+
+            v_prev2 = v_prev.copy()
+            v_prev = v_curr.copy()
+
+        return v_curr[:self.n_states]
 
     def _rmatvec(self, w0):
         """
@@ -101,7 +145,7 @@ class EmtFloquetOperator(spla.LinearOperator):
 
         return w_curr
 
-#New Implementation System for Floquet_stochastic.
+#New Implementation System for Blocks calc.
 class BlockEmtFloquetOperator(spla.LinearOperator):
     """
     Advanced HPC Block Monodromy Operator for EMT Small-Signal Stability.
@@ -125,22 +169,55 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
         lu_solvers (list): Cached SuperLU factorizations for the entire trajectory.
     """
 
-    def __init__(self, problem, trajectory, h, n_states):
+    def __init__(self, problem, trajectory, h, n_states, method_str='back_euler',
+                 jac_evaluator=None, static_params=None, n_event_params=0, t_trajectory=None):
         self.problem = problem
         self.trajectory = trajectory
         self.h = h
         self.n_states = n_states
+        self.method_str = method_str
 
-        # Total size of the DAE system (Differential + Algebraic)
-        self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
+        if hasattr(problem, 'get_all_vars_number'):
+            self.n_total = problem.get_all_vars_number()
+        else:
+            self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
 
-        # The operator strictly maps the differential states (x) back to themselves
         self.shape = (n_states, n_states)
         self.dtype = np.dtype(np.float64)
 
-        # Cache for the exact LU factorizations
         self.lu_solvers = []
-        self._precompute_lu_factorizations()
+
+        if jac_evaluator is not None:
+            self._precompute_from_jit(jac_evaluator, static_params, n_event_params, t_trajectory)
+        else:
+            self._precompute_lu_factorizations()
+
+    def _precompute_from_jit(self, jac_evaluator, static_params, n_ev_params, t_trajectory=None):
+        full_params = np.empty(n_ev_params + len(static_params), dtype=np.float64)
+        if len(static_params) > 0:
+            full_params[n_ev_params:] = static_params
+
+        ev_params = np.zeros(n_ev_params, dtype=np.float64)
+        dx_dummy = np.zeros(self.n_total, dtype=np.float64)
+
+        for i in range(1, len(self.trajectory)):
+            step_k = self.trajectory[i]
+            step_prev = self.trajectory[i - 1]
+            step_prev2 = self.trajectory[i - 2] if i > 1 else step_prev
+
+            x_k = step_k[0] if isinstance(step_k, tuple) else step_k
+            x_prev = step_prev[0] if isinstance(step_prev, tuple) else step_prev
+            x_prev2 = step_prev2[0] if isinstance(step_prev2, tuple) else step_prev2
+            t_curr = t_trajectory[i] if t_trajectory is not None else (i * self.h)
+
+            if n_ev_params > 0:
+                ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                full_params[:n_ev_params] = ev_params
+
+            J_sparse = jac_evaluator(states=x_k, params=full_params, history=x_prev,
+                                     d_history=dx_dummy, h=self.h, history2=x_prev2)
+
+            self.lu_solvers.append(spla.splu(J_sparse))
 
     def _precompute_lu_factorizations(self):
         """
@@ -164,34 +241,36 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
             self.lu_solvers.append(spla.splu(J_aug))
 
     def _matmat(self, X):
-        """
-        The HPC Core: Forward integration for MULTIPLE tangent vectors simultaneously.
-
-        Args:
-            X (np.ndarray): A dense block matrix of shape (n_states, p), where 'p'
-                            is the number of simultaneous perturbation vectors.
-
-        Returns:
-            np.ndarray: The mapped block matrix after one full period integration.
-        """
         p_cols = X.shape[1]
-        X_curr = X.copy()
+        X_curr = np.zeros((self.n_total, p_cols), dtype=X.dtype)
+        X_curr[:self.n_states, :] = X
 
-        # Pre-allocate a contiguous matrix for the right-hand sides to avoid memory reallocation
-        rhs_block = np.zeros((self.n_total, p_cols), dtype=X.dtype)
+        X_prev = X_curr.copy()
+        X_prev2 = X_curr.copy()
+        dX_prev = np.zeros_like(X_curr)
+        rhs_block = np.zeros_like(X_curr)
 
-        # Step-by-step block integration through the periodic limit cycle
         for lu in self.lu_solvers:
-            # Load the current block of differential states into the RHS
-            rhs_block[:self.n_states, :] = X_curr
+            if self.method_str in ['back_euler', 'be']:
+                rhs_block[:self.n_states, :] = X_prev[:self.n_states, :] / self.h
+            elif self.method_str == 'bdf2':
+                rhs_block[:self.n_states, :] = (2.0 * X_prev[:self.n_states, :] - 0.5 * X_prev2[
+                    :self.n_states, :]) / self.h
+            elif self.method_str == 'trapezoidal':
+                rhs_block[:self.n_states, :] = (2.0 / self.h) * X_prev[:self.n_states, :] + dX_prev[:self.n_states, :]
+            else:
+                rhs_block[:self.n_states, :] = X_prev[:self.n_states, :] / self.h
 
-            # Fast block back-substitution (BLAS Level 3: A * X_next = B)
-            sol_block = lu.solve(rhs_block)
+            X_curr = lu.solve(rhs_block)
 
-            # Extract the updated differential states for the next time step
-            X_curr = sol_block[:self.n_states, :]
+            if self.method_str == 'trapezoidal':
+                dX_prev[:self.n_states, :] = (2.0 / self.h) * (X_curr[:self.n_states, :] - X_prev[:self.n_states, :]) - \
+                                             dX_prev[:self.n_states, :]
 
-        return X_curr
+            X_prev2 = X_prev.copy()
+            X_prev = X_curr.copy()
+
+        return X_curr[:self.n_states, :]
 
     def _matvec(self, v0):
         """

@@ -134,3 +134,41 @@ class EmtFloquetResults(ResultsTemplate):
         """Standard stability report for periodic systems."""
         rho = np.max(np.abs(self.multipliers))
         return f"Spectral Radius rho={rho:.4f}. {'STABLE' if rho <= 1.0001 else 'UNSTABLE'}."
+
+    def validate_spectral_gaps(self, h_step):
+        """
+        Evaluates the metric compactness of ALL calculated modes.
+        Uses the discretization step (h) as the numerical noise floor (tolerance).
+
+        :param h_step: Problem integration step (e.g., 1e-4)
+        :return: (is_isolated_array, spectral_gaps_array)
+        """
+        if self.multipliers is None or len(self.multipliers) == 0:
+            return np.array([]), np.array([])
+
+        n_modes = len(self.multipliers)
+        is_isolated = np.zeros(n_modes, dtype=bool)
+        spectral_gaps = np.full(n_modes, np.inf)
+
+        for i in range(n_modes):
+            mu_target = self.multipliers[i]
+            distances = np.abs(self.multipliers - mu_target)
+
+            valid_distances = []
+            for j in range(n_modes):
+                if i == j:
+                    continue
+                # We ignore the exact conjugate complex (it is the same physical mode).
+                if np.allclose(self.multipliers[j], np.conj(mu_target), atol=1e-10):
+                    continue
+                valid_distances.append(distances[j])
+
+            if valid_distances:
+                gap = np.min(valid_distances)
+                spectral_gaps[i] = gap
+                # COMPACTNESS CRITERION: The separation must exceed the discretization error h.
+                is_isolated[i] = gap > h_step
+            else:
+                is_isolated[i] = True
+
+        return is_isolated, spectral_gaps

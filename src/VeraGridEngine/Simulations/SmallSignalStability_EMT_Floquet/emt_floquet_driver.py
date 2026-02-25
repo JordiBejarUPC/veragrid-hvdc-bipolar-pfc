@@ -42,10 +42,14 @@ class EmtFloquetDriver(DriverTemplate):
         n_states = self.problem.get_states_number()
 
         # 1. Capture limit cycle trajectory
-        trajectory = self._capture_limit_cycle(h)
+        y_traj, t_traj, jac_eval, stat_params, n_ev_params, method_str = self._capture_limit_cycle_and_evaluator(h)
 
         # 2. Operator initialized with HPC LU Caching
-        monodromy_op = EmtFloquetOperator(self.problem, trajectory, h, n_states)
+        monodromy_op = EmtFloquetOperator(  # O BlockEmtFloquetOperator
+            problem=self.problem, trajectory=y_traj, h=h, n_states=n_states,
+            method_str=method_str, jac_evaluator=jac_eval, static_params=stat_params,
+            n_event_params=n_ev_params, t_trajectory=t_traj
+        )
 
         # 3. Eigenvalue Extraction
         # HPC UPGRADE: Increased dense fallback threshold to 20 for stable mock testing
@@ -98,132 +102,53 @@ class EmtFloquetDriver(DriverTemplate):
 
         self.toc()
 
-    def _capture_limit_cycle(self, h: float) -> List[Tuple[np.ndarray, np.ndarray]]:
-        trajectory = []
-        num_steps = int(self.options.target_period / h)
-        x = self.problem.get_x0()
-
-        for _ in range(num_steps):
-            if hasattr(self.problem, 'step'):
-                x_next, y_next = self.problem.step(x)
-            else:
-                x_next = x.copy()
-                y_next = np.zeros(self.problem.get_algebraic_var_number())
-
-            trajectory.append((x_next.copy(), y_next.copy()))
-            x = x_next
-
-        return trajectory
-
-
-class RandnlaFloquetDriver(DriverTemplate):
-    """
-    Next-Generation Driver for EMT Small-Signal Stability using Randomized
-    Numerical Linear Algebra (RandNLA).
-
-    This driver bypasses standard Arnoldi iteration (which is memory-bound)
-    and instead uses Block Subspace Iteration with QR orthogonalization.
-    By processing a block of vectors simultaneously, it heavily leverages
-    CPU cache optimizations (BLAS Level 3), making it exceptionally fast
-    for large-scale DAE systems.
-    """
-
-    def __init__(self, grid, problem, emt_options: EmtOptions, options: EmtFloquetOptions):
-        DriverTemplate.__init__(self, grid=grid)
-        self.problem = problem
-        self.emt_options = emt_options
-        self.options = options
-        self.results = None
-
-    def run(self):
-        self.tic()
-
-        h = self.emt_options.time_step
-        n_states = self.problem.get_states_number()
-
-        # 1. Capture the steady-state limit cycle trajectory
-        trajectory = self._capture_limit_cycle(h)
-
-        # 2. Initialize the advanced Block Operator (HPC Muscle)
-        # Note: Requires BlockEmtFloquetOperator to be defined/imported
-        monodromy_op = BlockEmtFloquetOperator(self.problem, trajectory, h, n_states)
-
-        # 3. RANDOMIZED SUBSPACE ITERATION (RSI) ALGORITHM
-        k_target = self.options.k
-
-        # Oversampling parameter: We extract slightly more modes than requested
-        # to guarantee high accuracy for the dominant modes (Standard RandNLA practice)
-        p = min(k_target * 3 + 10, n_states)
-        power_iterations = 15  # Number of times to apply the operator to filter out noise
-
-        if self.options.verbose:
-            print(f"Executing RandNLA Block Solver (Target: {k_target} modes, Block Size: {p})...")
-
-        # Step A: Generate random Gaussian block matrix (Initial Subspace)
-        Omega = np.random.randn(n_states, p)
-
-        # Step B: Power Iterations with Block Orthogonalization (QR)
-        Q = Omega
-        for _ in range(power_iterations):
-            # This triggers the BLAS Level 3 _matmat operation we just built
-            Y = monodromy_op.matmat(Q)
-
-            # QR decomposition stabilizes the basis, preventing vectors from collapsing
-            Q, _ = np.linalg.qr(Y)
-
-            # Step C: Rayleigh-Ritz Projection
-        # Compress the massive operator into the small p x p subspace: B = Q^T * A * Q
-        AQ = monodromy_op.matmat(Q)
-        B = Q.T @ AQ
-
-        # Step D: Solve the small, dense, projected eigenvalue problem
-        mu_sub, V_sub = la.eig(B)
-
-        # Step E: Recover the full high-dimensional right eigenvectors
-        v = Q @ V_sub
-
-        # 4. Filter and Sort Results
-        # Standard behavior: sort by magnitude to find the most unstable multipliers
-        sort_indices = np.argsort(-np.abs(mu_sub))[:k_target]
-        mu = mu_sub[sort_indices]
-        v = v[:, sort_indices]
-
-        # 5. HPC Krylov Left-Eigenvector Projection (Lifting)
-        # Bypasses the need for backward integration
-        w = np.linalg.pinv(v).conj().T
-
-        # 6. Store Results
-        self.results = EmtFloquetResults(
-            multipliers=mu,
-            right_vecs=v,
-            left_vecs=w,
-            period=self.options.target_period,
-            stat_vars=self.problem.get_state_vars()
-        )
-
-        self.toc()
-        if self.options.verbose:
-            print(f"RandNLA Analysis completed. {self.results.report_stability()}")
-
-    def _capture_limit_cycle(self, h: float) -> List[Tuple[np.ndarray, np.ndarray]]:
+    def _capture_limit_cycle_and_evaluator(self, h: float):
         """
-        Captures the periodic abc trajectory over one fundamental period T.
+        Intelligently captures the limit cycle. If running in production with VeraGrid's
+        EmtProblemDae, it borrows the JIT Jacobian evaluator from the StructuralVectorizedSolver
+        to avoid double-discretization overhead. Falls back to legacy step() for mocks.
         """
-        trajectory = []
-        num_steps = int(self.options.target_period / h)
-        x = self.problem.get_x0()
+        # Extract integration method string (handling Enums if present)
+        method_str = getattr(self.emt_options, 'integration_method', 'back_euler')
+        if hasattr(method_str, 'value'):
+            method_str = method_str.value
 
-        for _ in range(num_steps):
-            if hasattr(self.problem, 'step'):
-                x_next, y_next = self.problem.step(x)
-            else:
-                x_next = x.copy()
-                y_next = np.zeros(self.problem.get_algebraic_var_number())
+        # Production Check: Real EmtProblemDae has these symbolic getters
+        if hasattr(self.problem, 'get_parameters_values') and hasattr(self.problem, 'def_event_params_fn'):
+            if getattr(self.options, 'verbose', 0):
+                print("-> Production mode: Borrowing JIT kernels from EMT Solver (Zero Double-Discretization)...")
+            from VeraGridEngine.Simulations.EMT.numerical.StructuralVectorizedSolver import StructuralVectorizedSolver
 
-            trajectory.append((x_next.copy(), y_next.copy()))
-            x = x_next
+            solver = StructuralVectorizedSolver(
+                problem=self.problem, t0=0.0, t_end=self.options.ss_assessment_time,
+                h=h, method_str=method_str, verbose=bool(getattr(self.options, 'verbose', 0))
+            )
+            t_full, y_full = solver.simulate()
 
-        return trajectory
+            steps_per_period = int(self.options.target_period / h)
+            y_limit = y_full[-steps_per_period:]
+            t_limit = t_full[-steps_per_period:]
+
+            static_params = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
+            n_event_params = self.problem.get_variable_parameter_number()
+
+            return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
+        else:
+            if getattr(self.options, 'verbose', 0):
+                print("-> Mock mode: Using legacy trajectory capture...")
+            trajectory = []
+            num_steps = int(self.options.target_period / h)
+            x = self.problem.get_x0()
+            for _ in range(num_steps):
+                if hasattr(self.problem, 'step'):
+                    x_next, y_next = self.problem.step(x)
+                else:
+                    x_next, y_next = x.copy(), np.zeros(self.problem.get_algebraic_var_number())
+                trajectory.append((x_next.copy(), y_next.copy()))
+                x = x_next
+
+            return trajectory, None, None, None, 0, method_str
+
 
 class RobustBlockArnoldiEngine:
     """
@@ -386,20 +311,52 @@ class HybridBlockArnoldiDriver(DriverTemplate):
         self.options = options
         self.results = None
 
-    def _capture_limit_cycle(self, h: float) -> List[Tuple[np.ndarray, np.ndarray]]:
-        trajectory = []
-        num_steps = int(self.options.target_period / h)
-        x = self.problem.get_x0()
+    def _capture_limit_cycle_and_evaluator(self, h: float):
+        """
+        Intelligently captures the limit cycle. If running in production with VeraGrid's
+        EmtProblemDae, it borrows the JIT Jacobian evaluator from the StructuralVectorizedSolver
+        to avoid double-discretization overhead. Falls back to legacy step() for mocks.
+        """
+        # Extract integration method string (handling Enums if present)
+        method_str = getattr(self.emt_options, 'integration_method', 'back_euler')
+        if hasattr(method_str, 'value'):
+            method_str = method_str.value
 
-        for _ in range(num_steps):
-            if hasattr(self.problem, 'step'):
-                x_next, y_next = self.problem.step(x)
-            else:
-                x_next = x.copy()
-                y_next = np.zeros(self.problem.get_algebraic_var_number())
-            trajectory.append((x_next.copy(), y_next.copy()))
-            x = x_next
-        return trajectory
+        # Production Check: Real EmtProblemDae has these symbolic getters
+        if hasattr(self.problem, 'get_parameters_values') and hasattr(self.problem, 'def_event_params_fn'):
+            if getattr(self.options, 'verbose', 0):
+                print("-> Production mode: Borrowing JIT kernels from EMT Solver (Zero Double-Discretization)...")
+            from VeraGridEngine.Simulations.EMT.numerical.StructuralVectorizedSolver import StructuralVectorizedSolver
+
+            solver = StructuralVectorizedSolver(
+                problem=self.problem, t0=0.0, t_end=self.options.ss_assessment_time,
+                h=h, method_str=method_str, verbose=bool(getattr(self.options, 'verbose', 0))
+            )
+            t_full, y_full = solver.simulate()
+
+            steps_per_period = int(self.options.target_period / h)
+            y_limit = y_full[-steps_per_period:]
+            t_limit = t_full[-steps_per_period:]
+
+            static_params = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
+            n_event_params = self.problem.get_variable_parameter_number()
+
+            return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
+        else:
+            if getattr(self.options, 'verbose', 0):
+                print("-> Mock mode: Using legacy trajectory capture...")
+            trajectory = []
+            num_steps = int(self.options.target_period / h)
+            x = self.problem.get_x0()
+            for _ in range(num_steps):
+                if hasattr(self.problem, 'step'):
+                    x_next, y_next = self.problem.step(x)
+                else:
+                    x_next, y_next = x.copy(), np.zeros(self.problem.get_algebraic_var_number())
+                trajectory.append((x_next.copy(), y_next.copy()))
+                x = x_next
+
+            return trajectory, None, None, None, 0, method_str
 
     def _make_monodromy_operator(self, h: float, n_states: int):
         prefer_ak = bool(getattr(self.options, 'prefer_ak_operator', True))
@@ -424,8 +381,20 @@ class HybridBlockArnoldiDriver(DriverTemplate):
                         print('Using explicit EMT A_k stack operator (Numba path if available).')
                     return AkStackBlockEmtFloquetOperator(Ak_stack, use_numba=use_numba)
 
-        trajectory = self._capture_limit_cycle(h)
-        return BlockEmtFloquetOperator(self.problem, trajectory, h, n_states)
+        # If no explicit A_k stack is found, route through the JIT LU Pipeline
+        y_traj, t_traj, jac_eval, stat_params, n_ev_params, method_str = self._capture_limit_cycle_and_evaluator(h)
+
+        return BlockEmtFloquetOperator(
+            problem=self.problem,
+            trajectory=y_traj,
+            h=h,
+            n_states=n_states,
+            method_str=method_str,
+            jac_evaluator=jac_eval,
+            static_params=stat_params,
+            n_event_params=n_ev_params,
+            t_trajectory=t_traj
+        )
 
     @staticmethod
     def _apply_operator_complex(op_matmat, Xc: np.ndarray) -> np.ndarray:
