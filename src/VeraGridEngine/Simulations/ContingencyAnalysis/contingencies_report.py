@@ -367,7 +367,7 @@ class ContingencyResultsReport:
 
         df["Time idx"] = df["Time idx"].astype(int)
 
-        if "Probability cluster" in df:
+        if "Probability cluster" in df.columns:
             df["Probability cluster"] = df["Probability cluster"].astype(float)
         else:
             df["Probability cluster"] = np.ones(df.shape[0])
