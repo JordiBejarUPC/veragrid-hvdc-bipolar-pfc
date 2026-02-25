@@ -8,19 +8,20 @@ import time
 import numpy as np
 import pandas as pd
 
+from VeraGridEngine import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
-    SymbolicDerivative
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector,   SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 
@@ -143,9 +144,6 @@ class RmsProblemDae(RmsProblemTemplate):
         # Dictionary of state and algebraic vars
         self.sys_vars: Dict[int, Var] = dict()
 
-        # already computed grid power flow
-        bus_dict = dict()
-
         # initialize balance equation arrays
         n = len(self.grid.buses)
         P: ObjVec = np.zeros(n, dtype=object)
@@ -162,13 +160,14 @@ class RmsProblemDae(RmsProblemTemplate):
         ######################################## Initialize devices ########################################
 
         # initialize buses
+        bus_dict: Dict[Bus, int] = dict()
         for bus_num, elm in enumerate(self.grid.buses):
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
 
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -183,107 +182,191 @@ class RmsProblemDae(RmsProblemTemplate):
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
             # Todo: missing default initialization for the model
             # flatten model
-            elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            if elm.rms_model.model.empty():
+                self.logger.add_error("No RMS model",
+                                      device_class=elm.device_type.value,
+                                      device=elm.name)
+            else:
+                elm.rms_model.model.unify_blocks()
+                mdl = elm.rms_model.model
 
-            self.add_variables_to_compilation_dicts(elm, mdl)
+                mdl.parameters[mdl.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                mdl.parameters[mdl.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                mdl.parameters[mdl.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
-            # add init values from powerflow to initial guess
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
+                self.add_variables_to_compilation_dicts(elm, mdl)
 
-            # add model to system block
-            self.sys_block.add(mdl)
+                # add init values from powerflow to initial guess
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
 
-            # add variable to conservation equations of the bus to which the element is connected
-            f = bus_dict[elm.bus_from]
-            t = bus_dict[elm.bus_to]
+                # add model to system block
+                self.sys_block.add(mdl)
 
-            setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
-            setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-            setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
-            setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+                # add variable to conservation equations of the bus to which the element is connected
+                f = bus_dict[elm.bus_from]
+                t = bus_dict[elm.bus_to]
+
+                setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
+                setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
+                setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
+                setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
         # initialize injections
 
-        bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
+        # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
 
-        for bus, region in bus_regions_dict.items():
-            bus_index = bus_dict[bus]
-            for dev_type, dev_list in region.items():
-                for elm in dev_list:
-                    # flatten model
-                    elm.rms_model.model.unify_blocks()
-                    mdl = block_deep_copy(elm.rms_model.model)
+        for elm in grid.get_injection_devices_iter():
 
-                    self.add_variables_to_compilation_dicts(elm, mdl)
+            if elm.rms_model.model.empty():
+                self.logger.add_error("No RMS model",
+                                      device_class=elm.device_type.value,
+                                      device=elm.name)
+            else:
+                bus_index = bus_dict[elm.bus]
 
-                    # fill general init guess for known variables values
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.P,
-                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q,
-                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                # flatten model
+                elm.rms_model.model.unify_blocks()
+                mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
-                    # add variable to conservation equations of the bus to which the element is connected
-                    k = bus_dict[elm.bus]
-                    setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
-                    setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
+                self.add_variables_to_compilation_dicts(elm, mdl)
 
-                    # find init values for the variables of this model
-                    if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        init_explicit(mdl=mdl,
-                                      sys_vars=self.sys_vars,
-                                      variable_parameters=self._variable_parameters,
-                                      event_parameters_eqs=self._event_parameters_eqs,
-                                      constant_parameters=self._constant_parameters,
-                                      init_guess=self.init_guess,
-                                      uid2idx_vars=self.uid2idx_vars,
-                                      uid2idx_params=self._uid2idx_params,
-                                      uid2idx_event_params=self._uid2idx_event_params,
-                                      compiler_names_dict=self._compiler_names_dict,
-                                      alias_names_dict=self._alias_names_dict,
-                                      VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                                      TIME_NAME=self.TIME_NAME,
-                                      VARS_NAME=self.VARS_NAME,
-                                      DIFF_NAME=self.DIFF_NAME,
-                                      CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                                      )
-                    elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                        self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
-                    else:
-                        raise ValueError("Not implemented initialization method")
+                # fill general init guess for known variables values
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.P,
+                                    np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q,
+                                    np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
-                    # add events
-                    if mdl.event_dict is not None:
-                        collect_events = {
-                            key: {"times": [], "values": []}
-                            for key in mdl.event_dict.keys()
-                        }
-                        # find out if there are events affecting the device parameters
-                        rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
-                        if len(rms_evts) != 0:
-                            for rms_evt in rms_evts:
-                                collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-                                collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-                                # TODO: implement the function in block: apply_event
-                            for param, events_info in collect_events.items():
-                                default_value = elm.rms_model.model.event_dict[param]
-                                # mdl.event_dict_def[param] = default_value
-                                mdl.event_dict[param] = piecewise(
-                                    time_var=self._glob_time,
-                                    t_events=np.array(events_info["times"]),
-                                    new_values=np.array(events_info["values"]),
-                                    default_value=default_value
-                                )
+                # add variable to conservation equations of the bus to which the element is connected
+                k = bus_dict[elm.bus]
+                setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
+                setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
+                # find init values for the variables of this model
+                if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                    init_explicit(mdl=mdl,
+                                  sys_vars=self.sys_vars,
+                                  variable_parameters=self._variable_parameters,
+                                  event_parameters_eqs=self._event_parameters_eqs,
+                                  constant_parameters=self._constant_parameters,
+                                  init_guess=self.init_guess,
+                                  uid2idx_vars=self.uid2idx_vars,
+                                  uid2idx_params=self._uid2idx_params,
+                                  uid2idx_event_params=self._uid2idx_event_params,
+                                  compiler_names_dict=self._compiler_names_dict,
+                                  alias_names_dict=self._alias_names_dict,
+                                  VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                                  TIME_NAME=self.TIME_NAME,
+                                  VARS_NAME=self.VARS_NAME,
+                                  DIFF_NAME=self.DIFF_NAME,
+                                  CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                                  )
+                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                    self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
+                else:
+                    raise ValueError("Not implemented initialization method")
 
-                    self.sys_block.add(mdl)
+                # add events
+                if mdl.event_dict is not None:
+                    collect_events = {
+                        key: {"times": [], "values": []}
+                        for key in mdl.event_dict.keys()
+                    }
+                    # find out if there are events affecting the device parameters
+                    rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
+                    if len(rms_evts) != 0:
+                        for rms_evt in rms_evts:
+                            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+                            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+                            # TODO: implement the function in block: apply_event
+                        for param, events_info in collect_events.items():
+                            default_value = elm.rms_model.model.event_dict[param]
+                            # mdl.event_dict_def[param] = default_value
+                            mdl.event_dict[param] = piecewise(
+                                time_var=self._glob_time,
+                                t_events=np.array(events_info["times"]),
+                                new_values=np.array(events_info["values"]),
+                                default_value=default_value
+                            )
+
+                self.sys_block.add(mdl)
+
+        # for bus, region in bus_regions_dict.items():
+        #     bus_index = bus_dict[bus]
+        #     for dev_type, dev_list in region.items():
+        #         for elm in dev_list:
+        #             # flatten model
+        #             elm.rms_model.model.unify_blocks()
+        #             mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+        #
+        #             self.add_variables_to_compilation_dicts(elm, mdl)
+        #
+        #             # fill general init guess for known variables values
+        #             self.set_init_guess(mdl, VarPowerFlowRefferenceType.P,
+        #                                 np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+        #             self.set_init_guess(mdl, VarPowerFlowRefferenceType.Q,
+        #                                 np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+        #
+        #             # add variable to conservation equations of the bus to which the element is connected
+        #             k = bus_dict[elm.bus]
+        #             setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
+        #             setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
+        #
+        #             # find init values for the variables of this model
+        #             if self.options.initialization_method == RmsInitializationMethod.Explicit:
+        #                 init_explicit(mdl=mdl,
+        #                               sys_vars=self.sys_vars,
+        #                               variable_parameters=self._variable_parameters,
+        #                               event_parameters_eqs=self._event_parameters_eqs,
+        #                               constant_parameters=self._constant_parameters,
+        #                               init_guess=self.init_guess,
+        #                               uid2idx_vars=self.uid2idx_vars,
+        #                               uid2idx_params=self._uid2idx_params,
+        #                               uid2idx_event_params=self._uid2idx_event_params,
+        #                               compiler_names_dict=self._compiler_names_dict,
+        #                               alias_names_dict=self._alias_names_dict,
+        #                               VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+        #                               TIME_NAME=self.TIME_NAME,
+        #                               VARS_NAME=self.VARS_NAME,
+        #                               DIFF_NAME=self.DIFF_NAME,
+        #                               CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+        #                               )
+        #             elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+        #                 self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
+        #             else:
+        #                 raise ValueError("Not implemented initialization method")
+        #
+        #             # add events
+        #             if mdl.event_dict is not None:
+        #                 collect_events = {
+        #                     key: {"times": [], "values": []}
+        #                     for key in mdl.event_dict.keys()
+        #                 }
+        #                 # find out if there are events affecting the device parameters
+        #                 rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
+        #                 if len(rms_evts) != 0:
+        #                     for rms_evt in rms_evts:
+        #                         collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+        #                         collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+        #                         # TODO: implement the function in block: apply_event
+        #                     for param, events_info in collect_events.items():
+        #                         default_value = elm.rms_model.model.event_dict[param]
+        #                         # mdl.event_dict_def[param] = default_value
+        #                         mdl.event_dict[param] = piecewise(
+        #                             time_var=self._glob_time,
+        #                             t_events=np.array(events_info["times"]),
+        #                             new_values=np.array(events_info["values"]),
+        #                             default_value=default_value
+        #                         )
+        #
+        #
+        #             self.sys_block.add(mdl)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

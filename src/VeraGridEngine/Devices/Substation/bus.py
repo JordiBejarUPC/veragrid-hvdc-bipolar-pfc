@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Tuple, Union
+from typing import Tuple, Union, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -16,9 +16,10 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
-from VeraGridEngine.basic_structures import BoolVec
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Utils.Symbolic.block import Var
 
 
 class Bus(PhysicalDevice):
@@ -55,10 +56,6 @@ class Bus(PhysicalDevice):
         'w',
         'longitude',
         'latitude',
-        'ph_a',
-        'ph_b',
-        'ph_c',
-        'ph_n',
         'is_grounded',
         'graphic_type',
         '_bus_bar',
@@ -229,10 +226,6 @@ class Bus(PhysicalDevice):
         self.longitude = float(longitude)
         self.latitude = float(latitude)
 
-        self.ph_a: bool = True
-        self.ph_b: bool = True
-        self.ph_c: bool = True
-        self.ph_n: bool = True
         self.is_grounded: bool = True
 
         self.color = color if color is not None else "#000000"
@@ -288,10 +281,6 @@ class Bus(PhysicalDevice):
         self.register(key='longitude', units='deg', tpe=float, definition='longitude of the bus.', profile_name='')
         self.register(key='latitude', units='deg', tpe=float, definition='latitude of the bus.', profile_name='')
 
-        self.register(key='ph_a', units='', tpe=bool, definition='Has phase A?')
-        self.register(key='ph_b', units='', tpe=bool, definition='Has phase B?')
-        self.register(key='ph_c', units='', tpe=bool, definition='Has phase C?')
-        self.register(key='ph_n', units='', tpe=bool, definition='Has phase N?')
         self.register(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.')
         self.register(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
                       definition='RMS dynamic model', display=False)
@@ -299,7 +288,6 @@ class Bus(PhysicalDevice):
                       definition='EMT dynamic model', display=False)
         self.register(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
                       is_color=True)
-
 
     @property
     def rms_model(self) -> DynamicModelHost:
@@ -550,19 +538,3 @@ class Bus(PhysicalDevice):
             self._bus_bar = val
         else:
             raise ValueError("The value must be a BusBar")
-
-    def get_phases_array(self) -> BoolVec:
-
-        return np.array([self.ph_n, self.ph_a, self.ph_b, self.ph_c], dtype=bool)
-
-    def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
-        """
-        Initializes rms model if not initialized
-        :return: Vm, Va rms vars
-        """
-        # if self.rms_model.model.empty():
-        #     self.initialize_rms()
-        assert len(self.rms_model.model.algebraic_vars) == 2
-        return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
-
-

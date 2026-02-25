@@ -7686,12 +7686,12 @@ class Assets:
         for elm in objects_to_remove:
             self.delete_element(obj=elm)
 
-    def add_rms_model_catalogue(self) -> None:
+    def add_rms_model_catalogue(self):
         """
         Here the list of all rms templates must be returned in a list
         :return:
         """
-        return [
+        self.rms_models = [
             tem.get_genqec(vfactory=self._var_factory),
             tem.get_governor(vfactory=self._var_factory),
             tem.get_stabilizer(vfactory=self._var_factory),

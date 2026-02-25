@@ -133,6 +133,8 @@ grid.add_line(line0)
 grid.add_load(bus=bus1, api_obj=load)
 grid.add_generator(bus=bus0, api_obj=gen0)
 
+gce.save_file(grid=grid, filename='gen_load_save_event.veragrid')
+
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
     retry_with_other_methods=False,

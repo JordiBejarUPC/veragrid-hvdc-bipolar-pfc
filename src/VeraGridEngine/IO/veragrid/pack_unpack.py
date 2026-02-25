@@ -450,8 +450,17 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             else:
                 raise ValueError("must be a block")
 
-        # elif prop.tpe == SubObjectType.RmsEventType:
-        #     data[name] = obj.to_dict()
+        elif prop.tpe == SubObjectType.VarType:
+            if obj is not None:
+                data[name] = obj.uid
+            else:
+                raise ValueError("var must not be None")
+
+        elif prop.tpe == SubObjectType.ConstType:
+            if obj is not None:
+                data[name] = obj.uid
+            else:
+                raise ValueError("const must not be None")
 
         elif prop.tpe == SubObjectType.Array:
             data[name] = list(obj)
@@ -486,7 +495,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
 
     data: Dict[str, Union[Dict[str, str], List[Dict[str, str]]]] = dict()
 
-    block_saver = BlockSaver()
+    block_saver = BlockSaver(circuit.var_factory)
 
     # declare objects to iterate  name: [sample object, list of objects, headers]
     object_types = get_objects_dictionary()
@@ -1187,6 +1196,18 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     blk = block_parser.block_dict.get(property_value, None)
                                     elm.set_snapshot_value(gc_prop.name, blk)
 
+                                elif gc_prop.tpe == SubObjectType.VarType:
+
+                                    # set the value of the property
+                                    vl = block_parser.var_factory.get_var(property_value)
+                                    elm.set_snapshot_value(gc_prop.name, vl)
+
+                                elif gc_prop.tpe == SubObjectType.ConstType:
+
+                                    # set the value of the property
+                                    vl = block_parser.var_factory.get_const(property_value)
+                                    elm.set_snapshot_value(gc_prop.name, vl)
+
                                 elif gc_prop.tpe == SubObjectType.Associations:
 
                                     # get the list of associations
@@ -1478,7 +1499,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # New way of parsing information from .model files (Json files)
     # These files are just .json stored in the model_data inside the zip file
 
-    block_parser = BlockParser()
+    block_parser = BlockParser(circuit.var_factory)
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:

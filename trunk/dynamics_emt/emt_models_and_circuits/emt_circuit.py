@@ -5,14 +5,14 @@
 from typing import List, Dict
 import numpy as np
 from scipy.sparse import csc_matrix
-from VeraGridEngine.basic_structures import Vector, Vec, BoolVec, IntVec
+from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import EmtTransformer, initialize_emt_transformer
-from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine, initialize_emt_line
-from VeraGridEngine.Simulations.EMT.Devices.emt_load import EmtLoad, initialize_emt_load
-from VeraGridEngine.Simulations.EMT.Devices.emt_generator import EmtGenerator, initialize_emt_generator
-from VeraGridEngine.Simulations.EMT.emt_solver_properties import EmtSolverProperties
+from trunk.dynamics_emt.emt_models_and_circuits.emt_transformer import EmtTransformer
+from trunk.dynamics_emt.emt_models_and_circuits.emt_line import EmtLine
+from trunk.dynamics_emt.emt_models_and_circuits.emt_load import EmtLoad
+from trunk.dynamics_emt.emt_models_and_circuits.emt_generator import EmtGenerator
+from trunk.dynamics_emt.emt_models_and_circuits.emt_solver_properties import EmtSolverProperties
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 

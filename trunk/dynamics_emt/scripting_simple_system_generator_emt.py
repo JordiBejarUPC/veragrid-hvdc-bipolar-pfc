@@ -73,7 +73,7 @@ bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 
 for bus in grid.buses:
-    initialize_bus_emt(bus, vf=grid.var_factory)
+    initialize_bus_emt(grid, bus, vf=grid.var_factory)
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)

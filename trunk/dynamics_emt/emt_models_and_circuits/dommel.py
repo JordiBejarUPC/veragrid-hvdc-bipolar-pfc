@@ -4,31 +4,20 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-import pandas as pd
-from typing import Dict, List
-import scipy.sparse as sp
+from typing import Dict
 
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
-from VeraGridEngine.Simulations.driver_template import DriverTemplate
-from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
-from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
-from VeraGridEngine.enumerations import EngineType, SimulationTypes
-from VeraGridEngine.Simulations.EMT.Devices.emt_compiler import compile_emt
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
 from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const
+from VeraGridEngine.Utils.Symbolic.block import Const
 
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
-from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtLineTypes, DeviceType
-from VeraGridEngine.Devices.Substation.bus import Bus
 
-from VeraGridEngine.basic_structures import Vec, IntVec, Mat, Vector, BoolVec, CxVec
-from VeraGridEngine.Simulations.EMT.emt_solver_properties import EmtSolverProperties
-from VeraGridEngine.Simulations.EMT.Devices.emt_circuit import EmtCircuit
+from VeraGridEngine.basic_structures import Vec, IntVec, Vector, BoolVec
+from trunk.dynamics_emt.emt_models_and_circuits.emt_solver_properties import EmtSolverProperties
+from trunk.dynamics_emt.emt_models_and_circuits.emt_circuit import EmtCircuit
 
 from scipy.sparse.linalg import factorized
 

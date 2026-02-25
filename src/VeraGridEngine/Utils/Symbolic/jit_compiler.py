@@ -44,7 +44,7 @@ import scipy.sparse as sp
 #RMS
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars,expression2numba
 #Totally integrated
-from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const, LagVar
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const
 
 
 # ==============================================================================
@@ -213,8 +213,6 @@ class SubexpressionAnalyzer:
             res = f"{node.op}{operand}"
         elif isinstance(node, Func):
             res = f"{node.op}({self._expr_to_canonical_string(node.arg)})"
-        elif isinstance(node, LagVar):
-            res = f"L{node.lag}{node.base_var.name}"
         else:
             res = str(node)
 
@@ -240,7 +238,7 @@ class SymbolicToPythonVisitor:
 
     def visit(self, node: Expr, precedence: int = 0) -> str:
         if self.analyzer and self.cse_map and not self.in_cse_def:
-            if not isinstance(node, (Var, Const, LagVar)):
+            if not isinstance(node, (Var, Const)):
                 h = self.analyzer._hash_expr(node)
                 if h in self.cse_map:
                     return self.cse_map[h]
@@ -310,12 +308,6 @@ class SymbolicToPythonVisitor:
 
         return f"np.{op}({arg})"
 
-    def visit_LagVar(self, node: LagVar, _) -> str:
-        base_uid = node.base_var.uid
-        if node.lag == 1 and base_uid in self.var_map:
-            return f"history[{self.var_map[base_uid]}]"
-        raise NotImplementedError("Complex LagVar not supported.")
-
 # =============================================================================================
 # 4. Solution for large-scale algebraic frameworks, based on differential automatic composition
 # =============================================================================================
@@ -337,7 +329,7 @@ class ADVisitor(SymbolicToPythonVisitor):
     def visit(self, node: Expr, precedence: int = 0):
         # 1. CSE Check
         if self.analyzer and self.cse_map and not self.in_cse_def:
-            if not isinstance(node, (Var, Const, LagVar)):
+            if not isinstance(node, (Var, Const)):
                 h = self.analyzer._hash_expr(node)
                 if h in self.cse_map: return self.cse_map[h], f"{self.cse_map[h]}_d"
 
@@ -383,11 +375,6 @@ class ADVisitor(SymbolicToPythonVisitor):
             return self.visit_DiffVar(node, 100)
 
         raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped.")
-
-    def visit_LagVar(self, node: LagVar, _):
-        base_uid = node.base_var.uid
-        if node.lag == 1 and base_uid in self.var_map: return f"history[{self.var_map[base_uid]}]", "0.0"
-        raise NotImplementedError("Complex LagVar not supported.")
 
     def visit_DiffVar(self, node: Var, prec: int):
         base_uid = node.base_var.uid

@@ -103,7 +103,7 @@ def run_demo():
     # Parameters: k = 1.0 (spring), c = 0.1 (light damping)
     p_vals = np.array([1.0, 0.1])
 
-    # Initialise state history
+    # Initialize state history
     current_x = x0.copy()
     history = x0.copy()
 

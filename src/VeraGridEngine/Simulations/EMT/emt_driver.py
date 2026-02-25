@@ -59,9 +59,14 @@ class EmtSimulationDriver(DriverTemplate):
         :return:
         """
         # Run the dynamic simulation
+        self.report_progress(0.0)
         run_time_simulation(
             grid=self.grid,
             emt_options=self.options,
             res_pf=self.pf_results,
             logger=self.logger
         )
+
+        # TODO: add time simulation from problem-solver
+        # TODO: in the simulation: add " self.report_text('Time series at ' + str(self.grid.time_profile[t]) + '...')
+        #             self.report_progress2(it, len(time_indices)) "

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 from typing import Dict, Any, List
+
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -53,93 +55,6 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                             "uid": expr.uid})
 
     return lst
-
-
-def parse_const_dict(data_list: List[Dict[str, Any]]) -> Dict[int, Const]:
-    """
-    
-    :param data_list: 
-    :return: 
-    """
-    obj_dict: Dict[int, Const] = dict()
-    for data in data_list:
-
-        t = data["type"]
-        if t == "Const":
-            if data.get("kind") == "complex":
-                arr = data["value"]
-                obj = Const(value=complex(arr[0], arr[1]),
-                            uid=data["uid"])
-            else:
-                obj = Const(value=data["value"],
-                            uid=data["uid"])
-
-        else:
-            raise ValueError(f"Unhandled symbolic primitive {t}")
-
-        # at this point we can store the object
-        obj_dict[obj.uid] = obj
-
-    return obj_dict
-
-
-def parse_vars_dict(data_list: List[Dict[str, Any]]) -> Dict[int, Var]:
-    """
-
-    :param data_list: 
-    :return: 
-    """
-    obj_dict: Dict[int, Var] = dict()
-    for data in data_list:
-        assert data["type"] == "Var"
-
-        obj = Var(name=data["name"], uid=data["uid"])
-
-        # at this point we can store the object
-        obj_dict[obj.uid] = obj
-
-    return obj_dict
-
-
-def parse_diff_var_dict(
-        data_list: List[Dict[str, Any]],
-        var_dict: Dict[int, Var],
-        diff_var_dict: Dict[int, Var]) -> Dict[int, Var | Const | Var]:
-    """
-
-    :param data_list: 
-    :param var_dict: dictionary of vars
-    :param diff_var_dict: dictionary of diffVars
-    :return: 
-    """
-    obj_dict: Dict[int, Var | Const | Var] = dict()
-    for data in data_list:
-        assert data["type"] == "DiffVar"
-
-        """
-        lst.append({
-                "type": "DiffVar",
-                "name": expr.name,
-                "uid": expr.uid,
-                "base_var": _expr_to_dict(expr=expr.base_var, obj_dict=obj_dict),
-            })
-        """
-        if data["base_var"] in var_dict.keys():
-            base_var = var_dict[data["base_var"]]
-        elif data["base_var"] in diff_var_dict.keys():
-            base_var = diff_var_dict[data["base_var"]]
-        else:
-            base_var = obj_dict[data["base_var"]]
-
-        obj = Var(name=data["name"],
-                      uid=data["uid"],
-                      base_var=base_var)
-
-        # at this point we can store the object
-        obj_dict[obj.uid] = obj
-
-    return obj_dict
-
 
 def expr_to_dict(expr: Expr,
                  const_dict: Dict[int, Const],
@@ -345,10 +260,8 @@ def parse_expr_list(lst: List[Dict[str, Any]],
 
 class BlockSaver:
 
-    def __init__(self):
-        self.var_dict: Dict[int, Var] = dict()
-        self.const_dict: Dict[int, Const] = dict()
-        self.diff_var_dict: Dict[int, Var] = dict()
+    def __init__(self, var_factory: VarFactory):
+        self.var_factory = var_factory
         self.main_block_uids: List[int] = list()
         self.blocks: Dict[int, Dict[str, Any]] = dict()
 
@@ -357,21 +270,21 @@ class BlockSaver:
 
         :return:
         """
-        return symbolic_objects_to_dict(self.const_dict)
+        return symbolic_objects_to_dict(self.var_factory.get_const_dict())
 
     def get_vars_to_save(self) -> List[Dict[str, Any]]:
         """
 
         :return:
         """
-        return symbolic_objects_to_dict(self.var_dict)
+        return symbolic_objects_to_dict(self.var_factory.get_vars_dict())
 
     def get_diff_vars_to_save(self) -> List[Dict[str, Any]]:
         """
 
         :return:
         """
-        return symbolic_objects_to_dict(self.diff_var_dict)
+        return symbolic_objects_to_dict(self.var_factory.get_diff_var_dict())
 
     def get_blocks(self) -> Dict[int, Dict[str, Any]]:
         return self.blocks
@@ -386,42 +299,41 @@ class BlockSaver:
         """
         state_expressions = expr_list_to_list(
             lst=blk.state_eqs,
-            const_dict=self.const_dict,
-            var_dict=self.var_dict,
-            diff_var_dict=self.diff_var_dict
+            const_dict=self.var_factory.get_const_dict(),
+            var_dict=self.var_factory.get_vars_dict(),
+            diff_var_dict=self.var_factory.get_diff_var_dict()
         )
 
         algebraic_expressions = expr_list_to_list(
             lst=blk.algebraic_eqs,
-            const_dict=self.const_dict,
-            var_dict=self.var_dict,
-            diff_var_dict=self.diff_var_dict
+            const_dict=self.var_factory.get_const_dict(),
+            var_dict=self.var_factory.get_vars_dict(),
+            diff_var_dict=self.var_factory.get_diff_var_dict()
         )
 
         differential_eqs_expressions = expr_list_to_list(
             lst=blk.differential_eqs,
-            const_dict=self.const_dict,
-            var_dict=self.var_dict,
-            diff_var_dict=self.diff_var_dict
+            const_dict=self.var_factory.get_const_dict(),
+            var_dict=self.var_factory.get_vars_dict(),
+            diff_var_dict=self.var_factory.get_diff_var_dict()
         )
 
         init_eq_list = list()
         for var, expr in blk.init_eqs.items():
 
-            # TODO: this signals a code small somewhere else
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
 
             if found_var is None:
-                self.var_dict[var.uid] = var
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             init_eq_list.append(
                 {
                     "var": var.uid,
                     "expr": expr_to_dict(
                         expr=expr,
-                        const_dict=self.const_dict,
-                        var_dict=self.var_dict,
-                        diff_var_dict=self.diff_var_dict
+                        const_dict=self.var_factory.get_const_dict(),
+                        var_dict=self.var_factory.get_vars_dict(),
+                        diff_var_dict=self.var_factory.get_diff_var_dict()
                     )
                 }
             )
@@ -429,19 +341,19 @@ class BlockSaver:
         events_list = list()
         for var, expr in blk.event_dict.items():
 
-            # TODO: this signals a code small somewhere else
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
+
             if found_var is None:
-                self.var_dict[var.uid] = var
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             events_list.append(
                 {
                     "var": var.uid,
                     "expr": expr_to_dict(
                         expr=expr,
-                        const_dict=self.const_dict,
-                        var_dict=self.var_dict,
-                        diff_var_dict=self.diff_var_dict
+                        const_dict=self.var_factory.get_const_dict(),
+                        var_dict=self.var_factory.get_vars_dict(),
+                        diff_var_dict=self.var_factory.get_diff_var_dict()
                     )
                 }
             )
@@ -449,49 +361,51 @@ class BlockSaver:
         in_vars: List[int] = list()
         for var in blk.in_vars:
 
-            # TODO: this signals a code small somewhere else
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
+
             if found_var is None:
-                self.var_dict[var.uid] = var
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             in_vars.append(var.uid)
 
         out_vars: List[int] = list()
         for var in blk.out_vars:
 
-            # TODO: this signals a code small somewhere else
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
+
             if found_var is None:
-                self.var_dict[var.uid] = var
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             out_vars.append(var.uid)
 
         init_values: List[Dict[str, float | int]] = list()
         for var, value in blk.init_values.items():
 
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
+
             if found_var is None:
-                raise ValueError(f"Initial value not previously defined {var.name}")
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             init_values.append({"var": var.uid, "value": value.value})
 
         parameters: List[Dict[str, float | int]] = list()
         for var, value in blk.parameters.items():
 
-            found_var = self.var_dict.get(var.uid, None)
+            found_var = self.var_factory.get_var(var.uid)
+
             if found_var is None:
-                raise ValueError(f"Parameter not previously defined {var.name}")
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
             parameters.append({"var": var.uid, "value": value.value})
 
         # diff_vars: List[DiffVar] = list()
         for diff_var in blk.diff_vars:
-            if diff_var.uid not in self.diff_var_dict:
-                self.diff_var_dict[diff_var.uid] = diff_var
+            if diff_var.uid not in self.var_factory.get_diff_var_dict():
+                raise ValueError(f"variable {diff_var.name} not added to vars factory")
 
         for dyn_var_type, var in blk.external_mapping.items():
-            if var.uid not in self.var_dict:
-                self.var_dict[var.uid] = var
+            if var.uid not in self.var_factory.get_vars_dict():
+                raise ValueError(f"variable {var.name} not added to vars factory")
 
         # save children
         for child in blk.children:
@@ -544,10 +458,8 @@ class BlockSaver:
 
 class BlockParser:
 
-    def __init__(self):
-        self.var_dict: Dict[int, Var] = dict()
-        self.const_dict: Dict[int, Const] = dict()
-        self.diff_var_dict: Dict[int, Var] = dict()
+    def __init__(self, var_factory: VarFactory):
+        self.var_factory = var_factory
         self.block_dict: Dict[int, Block] = dict()
 
     def parse_consts(self, data: List[Dict[str, Any]]):
@@ -556,7 +468,7 @@ class BlockParser:
         :param data:
         :return:
         """
-        self.const_dict = parse_const_dict(data_list=data)
+        self.var_factory.parse_const_dict(data_list=data)
 
     def parse_vars(self, data: List[Dict[str, Any]]):
         """
@@ -564,7 +476,7 @@ class BlockParser:
         :param data:
         :return:
         """
-        self.var_dict = parse_vars_dict(data_list=data)
+        self.var_factory.parse_var_dict(data_list=data)
 
     def parse_diff_vars(self, data: List[Dict[str, Any]]):
         """
@@ -572,8 +484,7 @@ class BlockParser:
         :param data:
         :return:
         """
-        self.diff_var_dict = parse_diff_var_dict(data_list=data, var_dict=self.var_dict,
-                                                 diff_var_dict=self.diff_var_dict)
+        self.var_factory.parse_diff_var_dict(data_list=data)
 
     def parse_block(self,
                     blocks_data: Dict[int, Dict[str, Any]],
@@ -590,70 +501,70 @@ class BlockParser:
 
         data=blocks_data[main_block_uid]
 
-        state_vars = [self.var_dict[v] for v in data["state_vars"]]
+        state_vars = [self.var_factory.get_var(v_uid) for v_uid in data["state_vars"]]
 
         state_eqs = parse_expr_list(lst=data["state_eqs"],
-                                    const_dict=self.const_dict,
-                                    var_dict=self.var_dict,
-                                    diff_var_dict=self.diff_var_dict)
+                                    const_dict=self.var_factory.get_const_dict(),
+                                    var_dict=self.var_factory.get_vars_dict(),
+                                    diff_var_dict=self.var_factory.get_diff_var_dict())
 
-        algebraic_vars = [self.var_dict[v] for v in data["algebraic_vars"]]
+        algebraic_vars =[self.var_factory.get_var(v_uid) for v_uid in data["algebraic_vars"]]
 
         algebraic_eqs = parse_expr_list(lst=data["algebraic_eqs"],
-                                        const_dict=self.const_dict,
-                                        var_dict=self.var_dict,
-                                        diff_var_dict=self.diff_var_dict)
+                                        const_dict=self.var_factory.get_const_dict(),
+                                        var_dict=self.var_factory.get_vars_dict(),
+                                        diff_var_dict=self.var_factory.get_diff_var_dict())
         if data["diff_vars"]:
-            diff_vars = [self.diff_var_dict[v] for v in data["diff_vars"]]
+            diff_vars = [self.var_factory.get_diff_var(v_uid) for v_uid in data["diff_vars"]]
         else:
             diff_vars = []
 
         differential_eqs = parse_expr_list(lst=data["differential_eqs"],
-                                           const_dict=self.const_dict,
-                                           var_dict=self.var_dict,
-                                           diff_var_dict=self.diff_var_dict)
+                                           const_dict=self.var_factory.get_const_dict(),
+                                           var_dict=self.var_factory.get_vars_dict(),
+                                           diff_var_dict=self.var_factory.get_diff_var_dict())
 
-        in_vars = [self.var_dict[v] for v in data["in_vars"]]
+        in_vars = [self.var_factory.get_var(v_uid) for v_uid in data["in_vars"]]
 
-        out_vars = [self.var_dict[v] for v in data["out_vars"]]
+        out_vars = [self.var_factory.get_var(v_uid) for v_uid in data["out_vars"]]
 
         children = [self.parse_block(blocks_data, child_uid) for child_uid in data["children"]]
 
         init_eqs: Dict[Var, Expr] = dict()
         for entry in data["init_eqs"]:
-            var = self.var_dict[entry["var"]]
+            var = self.var_factory.get_var(entry["var"])
             init_eqs[var] = parse_expr(data=entry["expr"],
-                                       const_dict=self.const_dict,
-                                       var_dict=self.var_dict,
-                                       diff_var_dict=self.diff_var_dict)
+                                       const_dict=self.var_factory.get_const_dict(),
+                                       var_dict=self.var_factory.get_vars_dict(),
+                                       diff_var_dict=self.var_factory.get_diff_var_dict())
 
         event_dict: Dict[Var, Expr] = dict()
         for entry in data["event_dict"]:
-            var = self.var_dict[entry["var"]]
+            var = self.var_factory.get_var(entry["var"])
             event_dict[var] = parse_expr(data=entry["expr"],
-                                         const_dict=self.const_dict,
-                                         var_dict=self.var_dict,
-                                         diff_var_dict=self.diff_var_dict)
+                                         const_dict=self.var_factory.get_const_dict(),
+                                         var_dict=self.var_factory.get_vars_dict(),
+                                         diff_var_dict=self.var_factory.get_diff_var_dict())
 
         parameters: Dict[Var, Const] = dict()
         for entry in data["parameters"]:
-            var = self.var_dict[entry["var"]]
+            var = self.var_factory.get_var(entry["var"])
             parameters[var] = Const(entry["value"])
 
         init_values: Dict[Var, Const] = dict()
         for entry in data["init_values"]:
-            var = self.var_dict[entry["var"]]
+            var = self.var_factory.get_var(entry["var"])
             init_values[var] = Const(entry["value"])
 
         external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["external_mapping"].items():
             key = VarPowerFlowRefferenceType(key_str)
-            external_mapping[key] = self.var_dict[var_uid]
+            external_mapping[key] = self.var_factory.get_var(var_uid)
 
         api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["api_obj_mapping"].items():
             key = ParamPowerFlowRefferenceType(key_str)
-            api_obj_mapping[key] = self.var_dict[var_uid]
+            api_obj_mapping[key] = self.var_factory.get_var(var_uid)
 
         reformulated_vars = [self.var_dict[v] for v in data["reformulated_vars"]]
 
@@ -684,20 +595,21 @@ class BlockParser:
         return block
 
 
-def block_deep_copy(block: Block):
+def block_deep_copy(block: Block, var_factory: VarFactory):
     """
     Create depp copy of a block
     :param block:
+    :param var_factory:
     :return:
     """
-    saver = BlockSaver()
+    saver = BlockSaver(var_factory)
     d = saver.save_block(block, main=False)
     const_save = saver.get_const_to_save()
     vars_save = saver.get_vars_to_save()
     diff_vars_save = saver.get_diff_vars_to_save()
     blocks = saver.get_blocks()
 
-    parser = BlockParser()
+    parser = BlockParser(VarFactory())
     parser.parse_consts(data=const_save)
     parser.parse_vars(data=vars_save)
     parser.parse_diff_vars(data=diff_vars_save)
@@ -706,23 +618,24 @@ def block_deep_copy(block: Block):
     return block2
 
 
-def compare_blocks(block1: Block, block2: Block, testing=False):
+def compare_blocks(block1: Block, block2: Block, var_factory1: VarFactory ,var_factory2: VarFactory, testing=False):
     """
     Create depp copy of a block
     :param block1:
     :param block2:
+    :param var_factory:
     :param testing:
     :return:
     """
 
-    saver1 = BlockSaver()
+    saver1 = BlockSaver(var_factory1)
     d1 = saver1.save_block(block1, main=False)
     const_save1 = saver1.get_const_to_save()
     vars_save1 = saver1.get_vars_to_save()
     diff_vars_save1 = saver1.get_diff_vars_to_save()
     blocks1 = saver1.get_blocks()
 
-    saver2 = BlockSaver()
+    saver2 = BlockSaver(var_factory2)
     d2 = saver2.save_block(block2, main=False)
     const_save2 = saver2.get_const_to_save()
     vars_save2 = saver2.get_vars_to_save()

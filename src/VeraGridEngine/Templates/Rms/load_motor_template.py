@@ -3,8 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
-import numpy as np
 import math
 
 from VeraGridEngine.enumerations import DeviceType
@@ -172,8 +170,8 @@ def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         Ed_2prime: u*(Vd + (Rs*Id - Lpp*Iq)),
         Eq_2prime: u*(Vq + (Rs*Iq + Lpp*Id)),
         Te: u*(Eq_2prime*Iq + Ed_2prime*Id),
-        Cl0: u*((Eq_2prime*Iq + Ed_2prime*Id)),
-        omega: u*(omega_init),
+        Cl0: u*(Eq_2prime * Iq + Ed_2prime * Id),
+        omega: u * omega_init,
         Ed_prime:  u*Ed_prime_calc,
         Eq_prime:  u*Eq_prime_calc,
         omega0:omega,

@@ -15,17 +15,6 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import ConverterControlType
 
-def find_name_in_block(name:str, block:Block):
-    for var in block.algebraic_vars + block.state_vars + block.parameters:
-        if name == var.name:
-            return var
-        
-    for block_child in block.children:
-        result = find_name_in_block(name, block_child)
-        if result is not None:   # found in a child
-            return result
-    
-    return None
 
 def inverse_park_transform_block(vfactory: VarFactory, v_dq: list[Var], theta: Var, aux_vars = None, multilinear: bool = False, name:str =''):
     """

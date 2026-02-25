@@ -2,12 +2,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
+from typing import Tuple
+
+from typing import TYPE_CHECKING
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Substation.bus import Bus
+
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.Substation.bus import Bus
 
 
 class BusRmsTemplate(RmsModelTemplate):
@@ -26,7 +34,7 @@ class BusRmsTemplate(RmsModelTemplate):
             P = vf.add_var("P")
             Q = vf.add_var("Q")
 
-            self.block = Block(
+            self._block = Block(
                 algebraic_vars=[Vdc],
                 out_vars = [Vdc])
 
@@ -42,17 +50,17 @@ class BusRmsTemplate(RmsModelTemplate):
             self.P = vf.add_var("P")
             self.Q = vf.add_var("Q")
 
-            self.block = Block(
-                algebraic_vars=[self.Vm, self.Va],
-                out_vars=[self.Vm, self.Va]
-            )
+        self._block = Block(
+            algebraic_vars=[self.Vm, self.Va],
+            out_vars=[self.Vm, self.Va]
+        )
 
-            self._block.external_mapping = {
-                VarPowerFlowRefferenceType.Vm: self.Vm,
-                VarPowerFlowRefferenceType.Va: self.Va,
-                VarPowerFlowRefferenceType.P: self.P,
-                VarPowerFlowRefferenceType.Q: self.Q
-            }
+        self._block.external_mapping = {
+            VarPowerFlowRefferenceType.Vm: self.Vm,
+            VarPowerFlowRefferenceType.Va: self.Va,
+            VarPowerFlowRefferenceType.P: self.P,
+            VarPowerFlowRefferenceType.Q: self.Q
+        }
 
 
 def initialize_bus_rms(bus: Bus, vf: VarFactory):
@@ -63,3 +71,12 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     :return:
     """
     bus.rms_model.model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
+
+def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
+    """
+    Initializes rms model if not initialized
+    :return: Vm, Va rms vars
+    """
+
+    return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
+

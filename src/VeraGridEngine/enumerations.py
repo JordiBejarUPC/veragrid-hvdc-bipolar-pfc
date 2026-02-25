@@ -1195,7 +1195,8 @@ class SubObjectType(Enum):
     AdmittanceMatrix = "Admittance Matrix"
     DynamicModelHostType = "DynamicModuleHost"
     DaeBlockType = "DaeBlock"
-    RmsEventType = "RmsEvent"
+    VarType = "VarType"
+    ConstType = "ConstType"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2090,6 +2091,7 @@ class SimulationTypes(Enum):
     MonteCarlo_run = 'Monte Carlo'
     PowerFlowTimeSeries_run = 'Power flow time series'
     ClusteringAnalysis_run = 'Clustering Analysis'
+    CleanRoom_run = 'Clean room'
     ContinuationPowerFlow_run = 'Voltage collapse'
     LatinHypercube_run = 'Latin Hypercube'
     StochasticPowerFlow = 'Stochastic Power Flow'
@@ -2592,6 +2594,14 @@ class ParamPowerFlowRefferenceType(Enum):
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
 
+    # 3phase load power
+    Pl0_A = "Pl0_A"  # Load active power phase A
+    Ql0_A = "Ql0_A"  # Load reactive power phase A
+    Pl0_B = "Pl0_B"  # Load active power phase B
+    Ql0_B = "Ql0_B"  # Load reactive power phase B
+    Pl0_C = "Pl0_C"  # Load active power phase C
+    Ql0_C = "Ql0_C"  # Load reactive power phase C
+
     # Machine / power flow parameters
     fn = "fn"
     ws = "ws"
@@ -2776,5 +2786,45 @@ class EmtLineTypes(Enum):
         """
         try:
             return EmtLineTypes[s]
+        except KeyError:
+            return s
+
+
+class BlockType(Enum):
+    """
+    this class contains the existing types of blocks
+    """
+    CONST = "CONST"
+    GAIN = "GAIN"
+    SUM = "SUM"
+    SUBSTR = "SUBSTR"
+    PRODUCT = "PRODUCT"
+    DIVIDE = "Divide"
+    ABS = "Abs"
+    GENRAW = "GENRAW"
+    GENQEC = "GENQEC"
+    GOV = "Gov"
+    STAB = "Stab"
+    EXCITER = "Exciter"
+    LINE = "Line"
+    LOAD = "Load"
+    GENERIC = "Generic"
+    BUS_CONNECTION = "Bus Connection"
+    EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return BlockType[s]
         except KeyError:
             return s

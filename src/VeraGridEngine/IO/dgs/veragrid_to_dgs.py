@@ -107,7 +107,6 @@ def convert_shunt(shunt: dev.Shunt, new_id: str, ushnm_kv: float, t: int | None 
     e.fres = 50.0
 
     # Active losses are not represented in this common PF DGS shunt model.
-    # If you ever want to represent G, you'd need a different PF object/model.
     e.greaf0 = 0.0
 
     e.outserv = 0 if shunt.get_active_at(t) else 1
@@ -229,20 +228,15 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     e.pgini = gen.get_P_at(t)
 
     # DGS/PowerFactory convention: qgini is reactive power injection.
-    # VeraGrid's get_Q_at() uses the opposite sign in our roundtrip (observed on IEEE14 slack).
     q = -gen.get_Q_at(t)
 
     # If Q is not stored in VeraGrid (often 0.0), approximate it from P and power factor.
-    # This is mainly to avoid exporting qgini=0 for all controlled generators.
     if abs(q) < 1e-12:
         p = float(e.pgini)
         pf = abs(gen.get_Pf_at(t))
         if 0.0 < pf < 1.0 and abs(p) > 0.0:
             import math
             q_abs = abs(p) * math.tan(math.acos(pf))
-
-            # Heuristic consistent with IEEE14 example:
-            # slack often absorbs reactive power in PF exports (negative qgini).
             q = -q_abs if gen.bus.is_slack else q_abs
 
     e.qgini = q
@@ -281,8 +275,6 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.xline = seq.X
     typlne.bline = seq.B
 
-    # Important: the importer decides "use_conductance" using (cline != 0.0).
-    # If we export tiny defaults (e.g. 1e-20), the importer will ignore bline and compute B from Cnf.
     if seq.use_conductance:
         typlne.cline = seq.Cnf
     else:
@@ -393,7 +385,6 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
 
 
     # Choose a step that produces a non-zero integer position for the actual tap.
-    # Good generic heuristic: smallest non-zero deviation among tap/min/max.
     devs = [d for d in (tap_dev, min_dev, max_dev) if d > 1e-9]
     if len(devs) == 0:
         # practically neutral
@@ -655,10 +646,11 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         dgs_grid.typtr2s.append(typtr2)
         base_tr2typtr2_dict[trt] = typtr2
 
-    # tap-aware transformer type cache:
-    # Two transformers must not share TypTr2 if their tap definition (step/range/side) differs,
-    # because TypTr2 contains dutap/ntpmn/ntpmx/nntap0/tap_side/itapch.
-    tr2typtr2_by_tap: Dict[Tuple[dev.TransformerType, float, float, float], TypTr2] = dict()
+    # Export-aware transformer type cache:
+    tr2typtr2_cache: Dict[
+        Tuple[dev.TransformerType, float, float, float, float, float, float, float],
+        TypTr2
+    ] = dict()
 
     # lines
     for line in grid.lines:
@@ -714,51 +706,39 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     # 2W transformers
     for tr in grid.transformers2w:
 
-        # Tap signature (rounded) so that transformers with different tap definitions
-        # do NOT share the same TypTr2.
-        tap_key = (
-            tr.template,
-            round(float(tr.tap_module_min), 6),
-            round(float(tr.tap_module_max), 6),
-            round(float(tr.tap_module), 6),
-        )
+        # Get actual connected buses first (we will force TypTr2 nominal voltages from them)
+        hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
 
-        tpe = tr2typtr2_by_tap.get(tap_key, None)
-        tpe_is_new = False
+        # Create ONE TypTr2 per ElmTr2. Reusing/caching transformer types can merge
+        tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
+        dgs_grid.typtr2s.append(tpe)
+        tpe_is_new = True
 
-        if tpe is None:
-            # Build a new type for this tap definition (don't reuse base template type blindly)
-            tpe = convert_transformer_type(tr=tr.get_transformer_type(), new_id=dgs_grid.new_id())
-            dgs_grid.typtr2s.append(tpe)
-            tr2typtr2_by_tap[tap_key] = tpe
-            tpe_is_new = True
-            if float(tpe.frnom) == 0.0:
-                tpe.frnom = float(net.frnom)
+        if float(tpe.frnom) == 0.0:
+            tpe.frnom = float(net.frnom)
+
+        # Force nominal voltages from the actual connected buses (not from template)
+        # to avoid template contamination and shared-type issues.
+        tpe.utrn_h = float(hv_bus.Vnom)
+        tpe.utrn_l = float(lv_bus.Vnom)
 
         # The importer rebuilds transformer R/X from TypTr2.uktr (%) + TypTr2.pcutr (kW).
-        # If uktr/pcutr are 0 in the exported type, roundtrip produces R=X=0.
-        if tpe_is_new or float(tpe.uktr) == 0.0 or float(tpe.pcutr) == 0.0:
+        rate = float(grid.Sbase)
 
-            rate = float(tr.rate)
-            if rate <= 0.0:
-                rate = float(tr.Sn)
-            if rate <= 0.0:
-                rate = float(tpe.strn)
+        Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
+            R=float(tr.R),
+            X=float(tr.X),
+            G=float(tr.G),
+            B=float(tr.B),
+            rate=rate,
+            Sbase=float(grid.Sbase),
+        )
 
-            Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(
-                R=float(tr.R),
-                X=float(tr.X),
-                G=float(tr.G),
-                B=float(tr.B),
-                rate=rate,
-                Sbase=float(grid.Sbase),
-            )
-
-            tpe.pfe = float(Pfe)
-            tpe.pcutr = float(Pcu)
-            tpe.uktr = float(Vsc)
-            tpe.curmg = float(I0)
-            tpe.strn = float(Sn)
+        tpe.pfe = float(Pfe)
+        tpe.pcutr = float(Pcu)
+        tpe.uktr = float(Vsc)
+        tpe.curmg = float(I0)
+        tpe.strn = float(Sn)
 
         e = ElmTr2()
         e.ID = dgs_grid.new_id()
@@ -777,38 +757,17 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
         e.usp_up = 1.01
         e.t2ldc = 0
 
-        # Tap export...
-        if tpe_is_new:
-            _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
-        else:
-            if tpe.dutap > 0.0:
-                step = tpe.dutap / 100.0
-                e.nntap = int(round((float(tr.tap_module) - 1.0) / step))
-            else:
-                e.nntap = 0
-
-        hv_bus, lv_bus = tr.get_buses_sorted_by_voltage()
+        # Export tap fields from VeraGrid -> TypTr2/ElmTr2
+        _set_tr2_tap_fields_from_vgrid(tr=tr, tpe=tpe, e=e)
 
         dgs_grid.elmtr2s.append(e)
+
+        # Preserve branch orientation as stored in VeraGrid (bus_from -> bus_to)
         dgs_grid.add_element_cubicles(
             element_id=e.ID,
-            # The order must be HV, LV
-            dgs_buses=[bus2term_dict[hv_bus],
-                       bus2term_dict[lv_bus]]
+            dgs_buses=[bus2term_dict[tr.bus_from],
+                       bus2term_dict[tr.bus_to]]
         )
 
-    # diagrams
-    # for dia in grid.diagrams:
-    #     if dia.diagram_type == DiagramType.Schematic:
-    #         intgrfnet = IntGrfnet()
-    #         intgrfnet.loc_name = dia.name
-    #         intgrfnet.pDataFolder = net.ID
-    #         dgs_grid.intgrfnets.append(intgrfnet)
-    #
-    #         for dtype, point_group in dia.data.items():
-    #             for idtag, point in point_group.locations.items():
-    #                 point.x
-    #                 point.y
-    #                 point.api_object.
 
     return dgs_grid
