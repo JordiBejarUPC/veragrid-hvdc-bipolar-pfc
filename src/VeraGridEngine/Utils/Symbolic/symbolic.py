@@ -82,6 +82,8 @@ class Comparison:
         elif self.op == CmpOp.EQ:
             eps = Const(1e-6)
             return heaviside(self.lhs - self.rhs + eps)*heaviside(self.rhs - self.lhs + eps)
+        else:
+            raise ValueError(f"operator not supported {self.op}")
 
 
 class Expr:
@@ -268,13 +270,18 @@ class Const(Expr):
         if self.name in mapping:
             return mapping[self.name]
         if self.value is None:
-            has_none = False
+            # has_none = False
+            # for key in mapping.keys():
+            #     if isinstance(key, Const) and key.value is None:
+            #         has_none = True
+            #         none_key = key
+            # if has_none:
+            #     return mapping[none_key]
+
             for key in mapping.keys():
                 if isinstance(key, Const) and key.value is None:
-                    has_none = True
-                    none_key = key
-            if has_none:
-                return mapping[none_key]
+                    return mapping[key]
+
         return self
 
     def __str__(self) -> str:
@@ -373,7 +380,7 @@ class Var(Expr):
 
         # Comparación simbólica con cualquier Expr o número
         if isinstance(other, Expr) or isinstance(other, (int, float)):
-            return Comparison(self, "==", other)
+            return Comparison(self, CmpOp.EQ, other)
 
         return NotImplemented
 
@@ -1705,6 +1712,7 @@ __all__ = [
     'heaviside_num',
     'get_expression_vars',
     '_dict_to_expr',
+    '_expr_to_dict',
     'abs',
     '_to_expr',
     'get_namespace'

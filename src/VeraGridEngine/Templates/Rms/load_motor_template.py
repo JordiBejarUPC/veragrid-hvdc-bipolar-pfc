@@ -3,14 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
-import numpy as np
 import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
@@ -170,8 +167,8 @@ def MotorLoadBuild(name: str = "") -> RmsModelTemplate:
         Ed_2prime: u*(Vd + (Rs*Id - Lpp*Iq)),
         Eq_2prime: u*(Vq + (Rs*Iq + Lpp*Id)),
         Te: u*(Eq_2prime*Iq + Ed_2prime*Id),
-        Cl0: u*((Eq_2prime*Iq + Ed_2prime*Id)),
-        omega: u*(omega_init),
+        Cl0: u*(Eq_2prime * Iq + Ed_2prime * Id),
+        omega: u * omega_init,
         Ed_prime:  u*Ed_prime_calc,
         Eq_prime:  u*Eq_prime_calc,
         omega0:omega,

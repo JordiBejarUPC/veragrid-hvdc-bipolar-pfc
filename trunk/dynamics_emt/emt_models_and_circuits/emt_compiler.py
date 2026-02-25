@@ -19,11 +19,11 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.Devices.emt_transformer import initialize_emt_transformer
-from VeraGridEngine.Simulations.EMT.Devices.emt_line import EmtLine, initialize_emt_line
-from VeraGridEngine.Simulations.EMT.Devices.emt_load import initialize_emt_load
-from VeraGridEngine.Simulations.EMT.Devices.emt_generator import initialize_emt_generator
-from VeraGridEngine.Simulations.EMT.Devices.emt_circuit import EmtCircuit
+from trunk.dynamics_emt.emt_models_and_circuits.emt_transformer import initialize_emt_transformer
+from trunk.dynamics_emt.emt_models_and_circuits.emt_line import EmtLine, initialize_emt_line
+from trunk.dynamics_emt.emt_models_and_circuits.emt_load import initialize_emt_load
+from trunk.dynamics_emt.emt_models_and_circuits.emt_generator import initialize_emt_generator
+from trunk.dynamics_emt.emt_models_and_circuits.emt_circuit import EmtCircuit
 
 
 def adapt_h(freq: float,

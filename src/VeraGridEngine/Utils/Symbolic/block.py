@@ -6,12 +6,8 @@
 from __future__ import annotations
 
 import uuid
-import numpy as np
-from typing import Tuple, Sequence, List, Dict, Optional
-
-from enum import Enum, auto
-from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, abs,heaviside, _expr_to_dict, _dict_to_expr
+from typing import List, Dict
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -468,25 +464,25 @@ class Block:
             self.update_model(var_to_subs, incoming_var)
 
 
+# def find_name_in_block(name: str, block: Block):
+#     """
+#     Recursive search of a var name in the block
+#     :param name:
+#     :param block:
+#     :return:
+#     """
+#     for lst in [block.algebraic_vars, block.state_vars, block.parameters]:
+#         for var in lst:
+#             if name == var.name:
+#                 return var
+#
+#     for block_child in block.children:
+#         result = find_name_in_block(name, block_child)
+#         if result is not None:  # found in a child
+#             return result
+#
+#     return None
 
-class BlockType(Enum):
-    "this class contains the existing types of blocks"
-    CONST = auto()
-    GAIN = auto()
-    SUM = auto()
-    SUBSTR = auto()
-    PRODUCT = auto()
-    DIVIDE = auto()
-    ABS = auto()
-    GENRAW = auto()
-    GENQEC = auto()
-    GOV = auto()
-    STAB = auto()
-    EXCITER = auto()
-    LINE = auto()
-    LOAD = auto()
-    GENERIC = auto()
-    BUS_CONNECTION = auto()
-    EXTERNAL_MAPPING = auto()
+
 
 

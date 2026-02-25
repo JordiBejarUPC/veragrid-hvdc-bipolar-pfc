@@ -9,22 +9,12 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, DiffVar, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType)
+from VeraGridEngine.Templates.templates_common_functions import (tf_to_diffblock)
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import ConverterControlType
 
-def find_name_in_block(name:str, block:Block):
-    for var in block.algebraic_vars + block.state_vars + block.parameters:
-        if name == var.name:
-            return var
-        
-    for block_child in block.children:
-        result = find_name_in_block(name, block_child)
-        if result is not None:   # found in a child
-            return result
-    
-    return None
+
 
 def inverse_park_transform_block(v_dq: list[Var], theta: Var, aux_vars = None, multilinear: bool = False, name:str =''):
     """
@@ -373,8 +363,8 @@ def build_gfl_converter_model(inputs,
     )
 
     # EMT block (differential equations for currents)
-    dt_id = DiffVar('dt_id', base_var= i_d)
-    dt_iq = DiffVar('dt_iq', base_var= i_q)
+    dt_id = Var('dt_id', base_var= i_d)
+    dt_iq = Var('dt_iq', base_var= i_q)
     EMT_block=Block(
         algebraic_eqs = [
             v_d_c - v_d_g - (R*i_d + L*dt_id - omega*L*i_q),
