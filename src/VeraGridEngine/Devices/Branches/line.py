@@ -10,7 +10,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType,
-                                         ParamPowerFlowRefferenceType)
+                                         ParamPowerFlowRefferenceType, EmtLineTypes)
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -78,7 +78,7 @@ class Line(BranchParent):
         'Pt',
         'Qf',
         'Qt',
-        # 'emt_model_type'
+        'emt_model_type'
     )
 
     def __init__(self,
@@ -215,7 +215,7 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-        # self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
+        self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
 
         self.register(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.')
         self.register(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.')
@@ -268,8 +268,8 @@ class Line(BranchParent):
                       definition='Possible sequence line types (>1 to denote association), - to denote no association',
                       display=False)
 
-        # self.register(key='emt_model_type', units='', tpe=EmtLineTypes,
-        #               definition='Line EMT model')
+        self.register(key='emt_model_type', units='', tpe=EmtLineTypes,
+                      definition='Line EMT model')
 
     @property
     def R(self):

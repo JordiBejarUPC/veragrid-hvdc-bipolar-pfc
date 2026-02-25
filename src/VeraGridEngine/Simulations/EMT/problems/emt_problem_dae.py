@@ -18,7 +18,7 @@ from typing import Dict, List, Any
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
@@ -100,6 +100,9 @@ class EmtProblemDae(BaseProblem):
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
 
+        self.history_models = []  # list of models with history components
+        self.step_counter = 0
+
         t_build = _tic()
 
         self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
@@ -113,7 +116,7 @@ class EmtProblemDae(BaseProblem):
 
         t_done = _toc(t_build)
 
-        if getattr(options, "verbose", 0) > 0:
+        if options.verbose > 0:
             print(
                 f"EMT electrical problem parsed in {t_done:.4f}s | "
                 f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
@@ -128,47 +131,166 @@ class EmtProblemDae(BaseProblem):
             glob_time: Var
     ):
         """
-        Traverses the electrical grid to collect models, inject nodal balances,
-        and assemble the root system block.
+        EMT (abc) assembly: nodal KCL per phase.
+        - Unknowns: bus phase voltages (v_N,v_A,v_B,v_C as available)
+        - Algebraic equations: KCL per bus-phase: sum(i_phase) = 0
         """
+
         bus_dict: Dict[Any, int] = dict()
-
         n_bus = len(grid.buses)
-        P: ObjVec = np.zeros(n_bus, dtype=object)
-        Q: ObjVec = np.zeros(n_bus, dtype=object)
-        P_used: BoolVec = np.zeros(n_bus, dtype=bool)
-        Q_used: BoolVec = np.zeros(n_bus, dtype=bool)
 
-        for bus_idx, elm in enumerate(grid.buses):
-            bus_dict[elm] = bus_idx
-            mdl = elm.emt_model.model
+        # --- helpers ---
+        ph_v_keys = [
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
+        ]
+        inj_i_keys = [
+            VarPowerFlowRefferenceType.i_N,
+            VarPowerFlowRefferenceType.i_A,
+            VarPowerFlowRefferenceType.i_B,
+            VarPowerFlowRefferenceType.i_C,
+        ]
+
+        # These MUST exist in VarPowerFlowRefferenceType for non-Bergeron branches:
+        # current leaving FROM bus into the branch:
+        br_if_keys = [
+            VarPowerFlowRefferenceType.if_N,
+            VarPowerFlowRefferenceType.if_A,
+            VarPowerFlowRefferenceType.if_B,
+            VarPowerFlowRefferenceType.if_C,
+        ]
+        # current leaving TO bus into the branch:
+        br_it_keys = [
+            VarPowerFlowRefferenceType.it_N,
+            VarPowerFlowRefferenceType.it_A,
+            VarPowerFlowRefferenceType.it_B,
+            VarPowerFlowRefferenceType.it_C,
+        ]
+
+        def _apply_piecewise_events_if_any(dev, mdl: Block):
+            """Apply scheduled events to ANY device that defines event_dict."""
+            emt_events = getattr(grid, "emt_events", None)
+            if emt_events is None:
+                emt_events = getattr(grid, "rms_events", [])
+
+            if mdl.event_dict is None or len(mdl.event_dict) == 0:
+                return
+
+            collect_events = {key: {"times": [], "values": []} for key in mdl.event_dict.keys()}
+            dev_events = [evt for evt in emt_events if evt.device_idtag == dev.idtag]
+
+            for evt in dev_events:
+                if evt.parameter in collect_events:
+                    collect_events[evt.parameter]["times"].append(evt.time)
+                    collect_events[evt.parameter]["values"].append(evt.value)
+
+            for param, info in collect_events.items():
+                if len(info["times"]) == 0:
+                    continue
+                default_value = mdl.event_dict[param]
+                mdl.event_dict[param] = piecewise(
+                    time_var=glob_time,
+                    t_events=np.array(info["times"], dtype=np.float64),
+                    new_values=np.array(info["values"], dtype=np.float64),
+                    default_value=default_value,
+                )
+
+        def _get_bus_v_list(bus_block: Block):
+            """Return [vN,vA,vB,vC] as Vars if present else Const(0)."""
+            out = []
+            for k in ph_v_keys:
+                vk = bus_block.E(k)
+                out.append(vk if vk is not None else grid.var_factory.add_const(0.0))
+            return out
+
+        # KCL accumulator per bus-phase (symbolic)
+        I_kcl = {i: [grid.var_factory.add_const(0.0) for _ in range(4)] for i in range(n_bus)}
+
+        # Bases (for Bergeron constructor)
+        h = getattr(self.options, "time_step", 1e-4)
+        Sbase = getattr(grid, "Sbase", 1.0)
+        fbase = getattr(grid, "fBase", 50.0)
+
+        # -------------------------
+        # 1) BUSES
+        # -------------------------
+        for bus_idx, bus in enumerate(grid.buses):
+            bus_dict[bus] = bus_idx
+            mdl = bus.emt_model.model
             mdl.unify_blocks()
 
-            self._add_model_to_system_mappings(elm, mdl)
+            _apply_piecewise_events_if_any(bus, mdl)
+
+            self._add_model_to_system_mappings(bus, mdl)
             sys_block.add(mdl)
 
             if pf_results is not None:
                 self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
 
-        for branch_idx, elm in enumerate(
-                grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)
-        ):
-            mdl = elm.emt_model.model
+        # -------------------------
+        # 2) BRANCHES
+        # -------------------------
+        for branch_idx, br in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
+            f = bus_dict[br.bus_from]
+            t = bus_dict[br.bus_to]
+
+            # --- Bergeron special-case: current injections + history params ---
+            is_bergeron = (
+                    getattr(br, "emt_model_type", None) is not None
+                    and getattr(br.emt_model_type, "value", None) == "Bergeron"
+            )
+
+            if is_bergeron:
+
+                line_tpl = br.emt_model.model
+
+                # add its block (event params Ih_*)
+                mdl = line_tpl.block
+                mdl.unify_blocks()
+
+                _apply_piecewise_events_if_any(br, mdl)
+
+                self._add_model_to_system_mappings(br, mdl)
+                sys_block.add(mdl)
+
+                # store for boundary update
+                self.history_models.append(line_tpl)
+
+                # build voltage lists from bus blocks
+                v_f_vars = _get_bus_v_list(br.bus_from.emt_model.model)
+                v_t_vars = _get_bus_v_list(br.bus_to.emt_model.model)
+
+                # symbolic Norton injections
+                i_f_exprs, i_t_exprs = line_tpl.get_nodal_injections(v_f_vars, v_t_vars)
+
+                for ph in range(4):
+                    I_kcl[f][ph] = I_kcl[f][ph] + i_f_exprs[ph]
+                    I_kcl[t][ph] = I_kcl[t][ph] + i_t_exprs[ph]
+
+                continue
+
+            # --- All other branches must contribute terminal currents (If_*, It_*) ---
+            mdl = br.emt_model.model
             mdl.unify_blocks()
 
-            self._add_model_to_system_mappings(elm, mdl)
+            _apply_piecewise_events_if_any(br, mdl)
+
+            self._add_model_to_system_mappings(br, mdl)
             sys_block.add(mdl)
 
-            f = bus_dict[elm.bus_from]
-            t = bus_dict[elm.bus_to]
-            try:
-                set_p(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
-                set_p(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-                set_q(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
-                set_q(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
-            except Exception:
-                pass
+            # Add terminal currents into KCL
+            for ph in range(4):
+                If_expr = mdl.E(br_if_keys[ph])
+                It_expr = mdl.E(br_it_keys[ph])
 
+                if If_expr is not None:
+                    I_kcl[f][ph] = I_kcl[f][ph] + If_expr
+                if It_expr is not None:
+                    I_kcl[t][ph] = I_kcl[t][ph] + It_expr
+
+            # PF init for branch internal variables (optional, keep if meaningful)
             if pf_results is not None:
                 self._try_set_branch_pf_init(
                     mdl=mdl,
@@ -177,65 +299,72 @@ class EmtProblemDae(BaseProblem):
                     sbase=getattr(grid, "Sbase", 1.0),
                 )
 
-        emt_events = getattr(grid, "emt_events", None)
-        if emt_events is None:
-            emt_events = getattr(grid, "rms_events", [])
-
-        for elm in grid.get_injection_devices_iter():
-            mdl = elm.emt_model.model
+        # -------------------------
+        # 3) INJECTIONS
+        # -------------------------
+        for inj in grid.get_injection_devices_iter():
+            mdl = inj.emt_model.model
             mdl.unify_blocks()
 
-            if mdl.event_dict is not None:
-                collect_events = {
-                    key: {"times": [], "values": []}
-                    for key in mdl.event_dict.keys()
-                }
+            _apply_piecewise_events_if_any(inj, mdl)
 
-                dev_events = [evt for evt in emt_events if evt.device_idtag == elm.idtag]
-                for evt in dev_events:
-                    if evt.parameter in collect_events:
-                        collect_events[evt.parameter]["times"].append(evt.time)
-                        collect_events[evt.parameter]["values"].append(evt.value)
-
-                for param, info in collect_events.items():
-                    if len(info["times"]) == 0:
-                        continue
-                    default_value = mdl.event_dict[param]
-                    mdl.event_dict[param] = piecewise(
-                        time_var=glob_time,
-                        t_events=np.array(info["times"], dtype=np.float64),
-                        new_values=np.array(info["values"], dtype=np.float64),
-                        default_value=default_value,
-                    )
-
-            self._add_model_to_system_mappings(elm, mdl)
+            self._add_model_to_system_mappings(inj, mdl)
             sys_block.add(mdl)
 
-            bus_idx = bus_dict[elm.bus]
-            try:
-                set_p(P, P_used, bus_idx, mdl.E(VarPowerFlowRefferenceType.P))
-                set_q(Q, Q_used, bus_idx, mdl.E(VarPowerFlowRefferenceType.Q))
-            except Exception:
-                pass
+            b = bus_dict[inj.bus]
 
+            # Add injection currents into KCL
+            for ph in range(4):
+                i_expr = mdl.E(inj_i_keys[ph])
+                if i_expr is not None:
+                    I_kcl[b][ph] = I_kcl[b][ph] + i_expr
+
+            # PF init for injection internal vars (keep)
             if pf_results is not None:
                 self._try_set_inj_pf_init(
                     mdl=mdl,
-                    bus_index=bus_idx,
+                    bus_index=b,
                     pf_results=pf_results,
                     sbase=getattr(grid, "Sbase", 1.0),
                 )
 
-        for i, bus in enumerate(grid.buses):
+        # -------------------------
+        # 4) FINAL: stamp KCL equations into each bus model (per existing phase)
+        # -------------------------
+        for bus_idx, bus in enumerate(grid.buses):
             mdl = bus.emt_model.model
-            if len(mdl.algebraic_eqs) == 0:
-                if (not P_used[i]) and (not Q_used[i]):
-                    self.logger.add_error("Isolated bus", value=i)
-                else:
-                    if P_used[i]:
-                        mdl.algebraic_eqs.append(P[i])
-                    if Q_used[i]:
-                        mdl.algebraic_eqs.append(Q[i])
+
+            # Ensure we don't accidentally keep RMS equations in EMT
+            # (you may prefer to enforce mdl.algebraic_eqs == 0 here)
+            if len(mdl.algebraic_eqs) != 0:
+                # If bus templates already add equations (e.g., slack constraints), keep them,
+                # but still append KCL for phases that exist unless the bus already has KCL.
+                pass
+
+            has_any_phase = False
+            has_any_kcl_term = False
+
+            for ph_i, v_key in enumerate(ph_v_keys):
+                if mdl.E(v_key) is None:
+                    continue
+                has_any_phase = True
+
+                # stamp KCL residual for this phase
+                mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_i])
+
+                # detect if KCL is non-trivial (optional diagnostics)
+                has_any_kcl_term = True
+
+            if not has_any_phase:
+                self.logger.add_error("Bus has no phases (no voltage vars)", value=bus_idx)
+            else:
+                # If everything is zero and no devices contributed, it's isolated.
+                # (You can refine detection by tracking connectivity.)
+                if all(isinstance(I_kcl[bus_idx][ph], Const) and getattr(I_kcl[bus_idx][ph], "value", None) == 0.0
+                       for ph in range(4)):
+                    self.logger.add_error("Isolated bus (no KCL contributions)", value=bus_idx)
+
+
 
     def _add_model_to_system_mappings(self, elm: ALL_DEV_TYPES, mdl: Block):
         """
@@ -325,9 +454,9 @@ class EmtProblemDae(BaseProblem):
                 St += St_C
 
             Pf = np.real(Sf)
-            Qf = np.real(Sf)
+            Qf = np.imag(Sf)
             Pt = np.real(St)
-            Qt = np.real(St)
+            Qt = np.imag(St)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Pf)
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, Qf)

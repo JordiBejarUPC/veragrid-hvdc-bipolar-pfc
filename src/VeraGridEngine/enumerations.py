@@ -2562,6 +2562,15 @@ class VarPowerFlowRefferenceType(Enum):
     St_B = "St_B"  # Branch active power from in phase B in p.u.
     St_C = "St_C"  # Branch active power from in phase C in p.u.
 
+    if_N = "if_N"  # Branch current from in phase N in p.u.
+    if_A = "if_A"  # Branch current from in phase A in p.u.
+    if_B = "if_B"  # Branch current from in phase B in p.u.
+    if_C = "if_C"  # Branch current from in phase C in p.u.
+    it_N = "it_N"  # Branch current to in phase N in p.u.
+    it_A = "it_A"  # Branch current to in phase A in p.u.
+    it_B = "it_B"  # Branch current to in phase B in p.u.
+    it_C = "it_C"  # Branch current to in phase C in p.u.
+
 
     def __str__(self):
         return self.value
