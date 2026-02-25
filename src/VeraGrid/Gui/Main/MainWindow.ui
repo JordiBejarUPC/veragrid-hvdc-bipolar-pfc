@@ -10053,6 +10053,7 @@ QProgressBar::chunk{
     <addaction name="actionClustering"/>
     <addaction name="actionUse_clustering"/>
     <addaction name="actionFind_node_groups"/>
+    <addaction name="actionClean_Room"/>
     <addaction name="actionPower_flow_Stochastic"/>
     <addaction name="actionInvestments_evaluation"/>
     <addaction name="actionReliability"/>
@@ -11829,6 +11830,21 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Catalogue</string>
+   </property>
+  </action>
+  <action name="actionClean_Room">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/clean_room.png</normaloff>:/Icons/icons/clean_room.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clean Room</string>
+   </property>
+   <property name="toolTip">
+    <string>Cleam room utility to produce an machine learning statistical representation of the static time series</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
