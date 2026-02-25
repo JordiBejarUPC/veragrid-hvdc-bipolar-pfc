@@ -71,10 +71,9 @@ class EmtSimulationDriver(DriverTemplate):
         """
         # Run the dynamic simulation
         self.report_progress(0.0)
-        self.run_time_simulation(logger=self.logger)
+        self.run_time_simulation()
 
-    def run_time_simulation(self,
-                            logger: Logger) -> EmtResults:
+    def run_time_simulation(self):
         """
         Performs the EMTP loop using the chosen method.
         :return:
