@@ -2797,3 +2797,43 @@ class EmtLineTypes(Enum):
             return EmtLineTypes[s]
         except KeyError:
             return s
+
+
+class BlockType(Enum):
+    """
+    this class contains the existing types of blocks
+    """
+    CONST = "CONST"
+    GAIN = "GAIN"
+    SUM = "SUM"
+    SUBSTR = "SUBSTR"
+    PRODUCT = "PRODUCT"
+    DIVIDE = "Divide"
+    ABS = "Abs"
+    GENRAW = "GENRAW"
+    GENQEC = "GENQEC"
+    GOV = "Gov"
+    STAB = "Stab"
+    EXCITER = "Exciter"
+    LINE = "Line"
+    LOAD = "Load"
+    GENERIC = "Generic"
+    BUS_CONNECTION = "Bus Connection"
+    EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return BlockType[s]
+        except KeyError:
+            return s

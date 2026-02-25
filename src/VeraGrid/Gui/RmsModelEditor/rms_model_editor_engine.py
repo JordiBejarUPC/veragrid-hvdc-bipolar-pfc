@@ -27,7 +27,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Utils.Symbolic.block import (Block, BlockType)
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.predefined_blocks import (
     constant,
     gain,
@@ -38,12 +38,13 @@ from VeraGridEngine.Templates.predefined_blocks import (
     absolut,
     generic
 )
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, BlockType
 
 
 def _new_uid() -> int:
@@ -75,37 +76,37 @@ def create_block_of_type(var_factory: VarFactory,
     """
     # CONST (single output)
     if block_type == BlockType.CONST:
-        blk = constant(item_name)
+        blk = constant(var_factory, item_name)
         return blk
 
     # GAIN (single input -> single output)
     if block_type == BlockType.GAIN:
-        blk = gain(item_name)
+        blk = gain(var_factory, item_name)
         return blk
 
     # SUM / ADDER (2 inputs)
     if block_type == BlockType.SUM:
-        blk = adder(item_name)
+        blk = adder(var_factory, item_name)
         return blk
 
     # SUBSTRACT (2 inputs)
     if block_type == BlockType.SUBSTR:
-        blk = substract(item_name)
+        blk = substract(var_factory, item_name)
         return blk
 
     # PRODUCT (2 inputs)
     if block_type == BlockType.PRODUCT:
-        blk = product(item_name)
+        blk = product(var_factory, item_name)
         return blk
 
     # DIVIDE (2 inputs)
     if block_type == BlockType.DIVIDE:
-        blk = divide(item_name)
+        blk = divide(var_factory, item_name)
         return blk
 
     # ABSOLUT (single input -> single output)
     if block_type == BlockType.ABS:
-        blk = absolut(item_name)
+        blk = absolut(var_factory, item_name)
         return blk
 
     # GENRAW (simple model)
@@ -140,19 +141,21 @@ def create_block_of_type(var_factory: VarFactory,
         return None
 
 
-def create_generic_block(state_inputs: int,
+def create_generic_block(var_factory: VarFactory,
+                         state_inputs: int,
                          state_outputs: Sequence[str],
                          algebraic_inputs: int,
                          algebraic_outputs: Sequence[str]):
     """
 
+    :param var_factory:
     :param state_inputs:
     :param state_outputs:
     :param algebraic_inputs:
     :param algebraic_outputs:
     :return:
     """
-    blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
+    blk = generic(var_factory, state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
     blk.name = "generic"
     return blk
 
@@ -270,13 +273,14 @@ class ConnectionItem(QGraphicsPathItem):
 
 
 class BlockItem(QGraphicsRectItem):
-    def __init__(self, name: str):
+    def __init__(self, var_factory: VarFactory, name: str):
         """
         Class to represent devices in the editor
         :param name:
         """
         super().__init__(0, 0, 100, 60)
 
+        self.var_factory = var_factory
         self.name = name
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -333,6 +337,7 @@ class BlockItem(QGraphicsRectItem):
             return
 
         dialog = ParameterEditorDialog(
+            var_factory=self.var_factory,
             event_dict=self.subsys.event_dict,
             parameters_dict=self.subsys.parameters,
             parent=None
@@ -1286,7 +1291,10 @@ class TemplateEditor(QtWidgets.QWidget):
         self.selected_template = copy.deepcopy(self.templates_catalogue[template_name])
         if self.api_object is not None:
             if self.selected_template.tpe == DeviceType.GeneratorDevice:
-                Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
+                if self.api_object.bus.rms_model.model.empty():
+                    initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
                 # substitute variables in block equations
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1294,7 +1302,10 @@ class TemplateEditor(QtWidgets.QWidget):
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if self.selected_template.tpe == DeviceType.LoadDevice:
-                Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
+                if self.api_object.bus.rms_model.model.empty():
+                    initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
                 # substitute variables in block equations
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1303,8 +1314,15 @@ class TemplateEditor(QtWidgets.QWidget):
 
             if self.selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
-                Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars(self.var_factory)
-                Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars(self.var_factory)
+                if self.api_object.bus_from.rms_model.model.empty():
+                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
+
+                if self.api_object.bus_to.rms_model.model.empty():
+                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
 
                 self.selected_template.block.update_model(
                     self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
@@ -1538,9 +1556,12 @@ class BlockBoxesEditor(QSplitter):
             # add con bus from
             x0, y0 = 0, 0
             name = "Conn From"
-            bus_from_con_item = BlockItem(name=name)
+            bus_from_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars(self.var_factory)
+            if self.api_object.bus_from.rms_model.model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
 
             bus_from_con_blk = Block(
                 algebraic_vars=[Vmf, Vaf],
@@ -1574,9 +1595,12 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn To"
             x0, y0 = 0, 100
 
-            bus_to_con_item = BlockItem(name=name)
+            bus_to_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars(self.var_factory)
+            if self.api_object.bus_to.rms_model.model.empty():
+                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
 
             bus_to_con_blk = Block(
                 algebraic_vars=[Vmt, Vat],
@@ -1612,8 +1636,11 @@ class BlockBoxesEditor(QSplitter):
             x0, y0 = 0, 0
             name = "Conn Bus"
 
-            bus_con_item = BlockItem(name=name)
-            Vm, Va = self.api_object.bus.get_rms_algebraic_vars(self.var_factory)
+            bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
+            if self.api_object.bus.rms_model.model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
 
             bus_con_blk = Block(
                 out_vars=[Vm, Va],
@@ -1656,7 +1683,7 @@ class BlockBoxesEditor(QSplitter):
             # add mapping bus from
             x0, y0 = 200, 200
             name = "mapping From"
-            bus_from_mapping_item = BlockItem(name=name)
+            bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
             Pf = self.var_factory.add_var('Pf_placeholder')
             Qf = self.var_factory.add_var('Qf_placeholder')
@@ -1689,7 +1716,7 @@ class BlockBoxesEditor(QSplitter):
             name = "mapping To"
             x0, y0 = 0, 200
 
-            bus_to_mapping_item = BlockItem(name=name)
+            bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
             Pt = self.var_factory.add_var('Pt_placeholder')
             Qt = self.var_factory.add_var('Qt_placeholder')
@@ -1723,7 +1750,7 @@ class BlockBoxesEditor(QSplitter):
             x0, y0 = 0, 0
             name = "mapping Bus"
 
-            bus_mapping_item = BlockItem(name=name)
+            bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
             P = self.var_factory.add_var('P_placeholder')
             Q = self.var_factory.add_var('Q_placeholder')
 
@@ -1932,7 +1959,7 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host: DynamicModelHost = DynamicModelHost()
 
-                model_host.model = create_generic_block(state_ins, state_outs, algeb_ins, algeb_outs)
+                model_host.model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
                 self.main_block.add(model_host.model)
                 item = ModelHostItem(
                     var_factory=self.var_factory,
@@ -1966,9 +1993,9 @@ class BlockBoxesEditor(QSplitter):
             self.block_counters[tpe] = count
 
             name = f"{tpe.name}_{count}"
-            item = BlockItem(name=name)
+            item = BlockItem(var_factory=self.var_factory, name=name)
 
-            block = create_block_of_type(block_type=tpe, item_name=name, api_object=self.api_object, )
+            block = create_block_of_type(self.var_factory, block_type=tpe, item_name=name, api_object=self.api_object, )
             item.set_subsystem(block)
             item.build_item()
 
@@ -2030,7 +2057,7 @@ class BlockBoxesEditor(QSplitter):
                 uid_to_blockitem[uid] = item
 
             elif block_type == BlockType.BUS_CONNECTION:
-                bus_con_item = BlockItem(name=node.name)
+                bus_con_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 bus_con_blk = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2047,7 +2074,7 @@ class BlockBoxesEditor(QSplitter):
                 uid_to_blockitem[uid] = bus_con_item
 
             elif block_type == BlockType.EXTERNAL_MAPPING:
-                bus_mapping_item = BlockItem(name=node.name)
+                bus_mapping_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 bus_mapping_blk = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2065,7 +2092,7 @@ class BlockBoxesEditor(QSplitter):
 
             else:
 
-                block_item = BlockItem(name=node.name)
+                block_item = BlockItem(var_factory=self.var_factory, name=node.name)
                 block = Block()
                 for model in self.main_block.get_all_blocks():
                     if model.uid == node.device_uid:
@@ -2396,7 +2423,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                     for var in variables:
                         values_dict.update({var: self.var_factory.add_const(0)})
 
-                init_guess_editor = InitialValuesDialog(values_dict)
+                init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
                 result = init_guess_editor.exec()
                 if result == QDialog.DialogCode.Accepted:
                     init_values_dict = init_guess_editor.get_values_dict()
@@ -2418,7 +2445,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
             # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
 
-            init_guess_editor = InitialValuesDialog(values_dict)
+            init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
             result = init_guess_editor.exec()
             if result == QDialog.DialogCode.Accepted:
                 init_values_dict = init_guess_editor.get_values_dict()
