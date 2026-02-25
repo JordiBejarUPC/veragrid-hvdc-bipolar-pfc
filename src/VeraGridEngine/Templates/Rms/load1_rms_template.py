@@ -33,6 +33,9 @@ def get_load1_rms_template(var_factory: VarFactory, name="Load rms template") ->
     templ.block.event_dict[Pl0] = var_factory.add_const(-9.670000000007317)
     templ.block.event_dict[Ql0] = var_factory.add_const(-0.9999999999967969)
 
+    # templ.block.event_dict[Pl0] = var_factory.add_const(0.0)
+    # templ.block.event_dict[Ql0] = var_factory.add_const(0.0)
+
     templ.block.algebraic_vars = [Pl, Ql]
 
     templ.block.algebraic_eqs = [

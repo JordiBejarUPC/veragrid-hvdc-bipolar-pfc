@@ -15,6 +15,7 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
@@ -116,6 +117,8 @@ line1_mdl = get_line_rms_template(grid.var_factory).block
 # load
 load0_mdl = get_load_rms_template(grid.var_factory).block
 load1_mdl = get_load_rms_template(grid.var_factory).block
+# load1_mdl = get_load1_rms_template(grid.var_factory).block
+
 
 # connection with buses
 
