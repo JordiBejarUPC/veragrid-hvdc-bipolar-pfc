@@ -80,3 +80,6 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
 
     return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
 
+def check_empty_bus(bus_rms_model: Block):
+    return len(bus_rms_model.algebraic_vars) == 0
+

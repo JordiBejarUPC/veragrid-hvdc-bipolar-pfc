@@ -276,16 +276,18 @@ class Block:
         :return:
         """
         if not self.children:
-            return self.check_empty()
-
+            empty = self.check_empty()
+            if empty:
+                return empty
         else:
-            if not self.check_empty():
-                return False
-            else:
-                for child in self.children:
-                    child.empty()
+            empty = self.check_empty()
+            if not empty:
+                return empty
 
-        return True
+            for child in self.children:
+                child.empty()
+
+        return False
 
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
