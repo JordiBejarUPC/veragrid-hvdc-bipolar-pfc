@@ -183,6 +183,7 @@ class BranchParent(PhysicalDevice):
         self.group: Union[BranchGroup, None] = None
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
+        self._emt_model: DynamicModelHost = DynamicModelHost()
 
         self.register('bus_from', units="", tpe=DeviceType.BusDevice,
                       definition='Name of the bus at the "from" side', editable=False)
@@ -243,9 +244,11 @@ class BranchParent(PhysicalDevice):
         return self._rms_model
 
     @rms_model.setter
-    def rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._rms_model = value
+    def rms_model(self, val: DynamicModelHost):
+        if isinstance(val, DynamicModelHost):
+            self._rms_model = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
 
     @property
     def emt_model(self) -> DynamicModelHost:
@@ -255,9 +258,11 @@ class BranchParent(PhysicalDevice):
         return self._emt_model
 
     @emt_model.setter
-    def emt_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._emt_model = value
+    def emt_model(self, val: DynamicModelHost):
+        if isinstance(val, DynamicModelHost):
+            self._emt_model = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
 
     @property
     def bus_from(self) -> Bus:

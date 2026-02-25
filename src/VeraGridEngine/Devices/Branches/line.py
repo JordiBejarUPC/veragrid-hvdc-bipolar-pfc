@@ -5,15 +5,11 @@
 
 import numpy as np
 import pandas as pd
-from typing import Union, List, Dict
-
 from typing import Union, List
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType, EmtLineTypes,
+from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType,
                                          ParamPowerFlowRefferenceType)
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
@@ -23,9 +19,8 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Utils.Symbolic.block import Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Const
 
 
 def accept_line_connection(V1: float, V2: float, branch_connection_voltage_tolerance=0.1) -> float:
@@ -719,7 +714,7 @@ class Line(BranchParent):
                             x=self.X,
                             b=self.B
                             )
-        elm.rms_model = self.rms_model
+        elm.rms_model.model = self.rms_model.model
 
         if index is not None:
             elm.ensure_profiles_exist(index=index)

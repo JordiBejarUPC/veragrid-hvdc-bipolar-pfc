@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Tuple, Union
+from typing import Tuple, Union, TYPE_CHECKING
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -16,9 +16,10 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
-from VeraGridEngine.basic_structures import BoolVec
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Utils.Symbolic.block import Var
 
 
 class Bus(PhysicalDevice):
@@ -288,7 +289,6 @@ class Bus(PhysicalDevice):
         self.register(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
                       is_color=True)
 
-
     @property
     def rms_model(self) -> DynamicModelHost:
         """
@@ -539,7 +539,7 @@ class Bus(PhysicalDevice):
         else:
             raise ValueError("The value must be a BusBar")
 
-    def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
+    def get_rms_algebraic_vars(self) -> Tuple[Var, Var]:
         """
         Initializes rms model if not initialized
         :return: Vm, Va rms vars
@@ -548,5 +548,3 @@ class Bus(PhysicalDevice):
         #     self.initialize_rms()
         assert len(self.rms_model.model.algebraic_vars) == 2
         return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
-
-

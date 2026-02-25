@@ -238,13 +238,13 @@ class SimulationsMain(TimeEventsMain):
              DynamicIntegrationMethod.BackEuler,
              DynamicIntegrationMethod.Euler]
         )
-        self.ui.rms_int_method_comboBox.setModel(rms_integration_method_mdl)
+        self.ui.rms_integration_method_comboBox.setModel(rms_integration_method_mdl)
 
         self.rms_initialization_method_dict, rms_initialization_method_mdl = gf.enums_to_model(
             [RmsInitializationMethod.Explicit,
              RmsInitializationMethod.PseudoTransient]
         )
-        self.ui.rms_init_method_comboBox.setModel(rms_initialization_method_mdl)
+        self.ui.rms_initialization_method_comboBox.setModel(rms_initialization_method_mdl)
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -889,8 +889,8 @@ class SimulationsMain(TimeEventsMain):
             time_step=self.ui.h_spinBox.value(),
             simulation_time=self.ui.sim_time_spinBox.value(),
             tolerance=self.ui.tolerance_rms_spinBox.value(),
-            integration_method=self.rms_integration_method_dict[self.ui.rms_int_method_comboBox.currentText()],
-            initialization_method=self.rms_initialization_method_dict[self.ui.rms_init_method_comboBox.currentText()],
+            integration_method=self.rms_integration_method_dict[self.ui.rms_integration_method_comboBox.currentText()],
+            initialization_method=self.rms_initialization_method_dict[self.ui.rms_initialization_method_comboBox.currentText()],
             use_init_values=self.ui.rms_use_init_values_checkBox.isChecked()
         )
 

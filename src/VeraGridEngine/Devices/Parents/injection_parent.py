@@ -323,6 +323,8 @@ class InjectionParent(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
+        else:
+            raise ValueError(f"RMS model cannot accept {value}")
 
     @property
     def emt_model(self) -> DynamicModelHost:
@@ -336,6 +338,8 @@ class InjectionParent(PhysicalDevice):
     def emt_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._emt_model = value
+        else:
+            raise ValueError(f"RMS model cannot accept {value}")
 
     def get_S_with_sign(self) -> complex:
         """

@@ -66,7 +66,7 @@ class RmsEvent(PointerDeviceParent):
         self.time: float = time
         self.value: float = value
 
-        self.register(key='parameter', units='', tpe=str,
+        self.register(key='parameter', units='', tpe=SubObjectType.VarType,
                       definition='parameter that the event changes')
         self.register(key='time', units='', tpe=float,
                       definition='Time when the event occurs')
