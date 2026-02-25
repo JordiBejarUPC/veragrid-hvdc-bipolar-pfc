@@ -7,7 +7,8 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
@@ -30,78 +31,77 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
     Returns:
         RmsModelTemplate: Configured RMS model template for induction motor simulation
 """
-def MotorLoadBuild(name: str = "") -> RmsModelTemplate:
+def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    res_block = Block()
     pi = math.pi
     #Inputs:
-    inputs = [Var('Vm'), Var('Va')]
+    inputs = [vfactory.add_var('Vm'), vfactory.add_var('Va')]
     Vm = inputs[0]
     Va = inputs[1]
     #Variables:
-    omega = Var('omega')
-    Id = Var('Id')
-    Iq = Var('Iq')
-    P = Var('Pl')
-    Q = Var('Ql')
-    Vq = Var('Vq')
-    Vd = Var('Vd')
-    Ed_prime  = Var('Ed_prime')
-    Eq_prime  = Var('Eq_prime')
-    Ed_2prime = Var('Ed_2prime')
-    Eq_2prime = Var('Eq_2prime')
+    omega = vfactory.add_var('omega')
+    Id = vfactory.add_var('Id')
+    Iq = vfactory.add_var('Iq')
+    P = vfactory.add_var('Pl')
+    Q = vfactory.add_var('Ql')
+    Vq = vfactory.add_var('Vq')
+    Vd = vfactory.add_var('Vd')
+    Ed_prime  = vfactory.add_var('Ed_prime')
+    Eq_prime  = vfactory.add_var('Eq_prime')
+    Ed_2prime = vfactory.add_var('Ed_2prime')
+    Eq_2prime = vfactory.add_var('Eq_2prime')
 
     #Parameters:
-    u = Var('u')
-    Ls  = Var('Ls')
-    Lp  = Var('Lp')
-    Rs  = Var('Ra')
-    Tp0 = Var('Tp0')
-    H   = Var('H')
-    D   = Var('D')
-    n   = Var('n')
-    VT  = Var('VT')
-    TV  = Var('TV')
-    Lpp = Var('Lpp')
-    Cl0 = Var('Cl0')
-    Tpp0 = Var('Tpp0')
-    omega_s = Var('omega_s')
-    omega0 = Var('omega_0')
-    SLIP0 = Var('SLIP0')
+    u = vfactory.add_var('u')
+    Ls  = vfactory.add_var('Ls')
+    Lp  = vfactory.add_var('Lp')
+    Rs  = vfactory.add_var('Ra')
+    Tp0 = vfactory.add_var('Tp0')
+    H   = vfactory.add_var('H')
+    D   = vfactory.add_var('D')
+    n   = vfactory.add_var('n')
+    VT  = vfactory.add_var('VT')
+    TV  = vfactory.add_var('TV')
+    Lpp = vfactory.add_var('Lpp')
+    Cl0 = vfactory.add_var('Cl0')
+    Tpp0 = vfactory.add_var('Tpp0')
+    omega_s = vfactory.add_var('omega_s')
+    omega0 = vfactory.add_var('omega_0')
+    SLIP0 = vfactory.add_var('SLIP0')
     
     #Shunt Parameters
-    b = Var('b')
-    g = Var('g')
+    b = vfactory.add_var('b')
+    g = vfactory.add_var('g')
 
     events_dict = {
     # Electrical (induction motor typical ranges)
-    Rs:   Const(0.015),   # Stator resistance (pu) ~ 0.01–0.03
-    Ls:   Const(0.15),    # Stator leakage inductance (pu) ~ 0.10–0.25
-    Lp:   Const(3.00),    # Magnetising (mutual) inductance (pu) ~ 2–5
+    Rs:   vfactory.add_const(0.015),   # Stator resistance (pu) ~ 0.01–0.03
+    Ls:   vfactory.add_const(0.15),    # Stator leakage inductance (pu) ~ 0.10–0.25
+    Lp:   vfactory.add_const(3.00),    # Magnetising (mutual) inductance (pu) ~ 2–5
 
     # Transient / rotor dynamics (approx. rotor open-circuit constants)
-    Tp0:  Const(0.60),    # "Transient" time constant (s) ~ 0.2–1.0
-    Lpp:  Const(0.12),    # Subtransient/leakage-like inductance (pu), < Ls
-    Tpp0: Const(0.05),    # Fast electrical time constant (s) ~ 0.02–0.10
+    Tp0:  vfactory.add_const(0.60),    # "Transient" time constant (s) ~ 0.2–1.0
+    Lpp:  vfactory.add_const(0.12),    # Subtransient/leakage-like inductance (pu), < Ls
+    Tpp0: vfactory.add_const(0.05),    # Fast electrical time constant (s) ~ 0.02–0.10
 
     # Mechanical
-    H:    Const(0.8),    # Inertia constant (s) ~ 0.2–1.5
-    D:    Const(0.0),     # Damping (often 0 unless explicitly modelled)
-    n:    Const(1.0),     # Exponent of the torque speed dependency (unitless)
-    Cl0:  Const(None),     # Initial load torque	(pu)
-    SLIP0:  Const(0.0),     # Initial load torque	(pu)
+    H:    vfactory.add_const(0.8),    # Inertia constant (s) ~ 0.2–1.5
+    D:    vfactory.add_const(0.0),     # Damping (often 0 unless explicitly modelled)
+    n:    vfactory.add_const(1.0),     # Exponent of the torque speed dependency (unitless)
+    Cl0:  vfactory.add_const(None),     # Initial load torque	(pu)
+    SLIP0:  vfactory.add_const(0.0),     # Initial load torque	(pu)
 
     # Voltage measurement / filtering
-    VT:   Const(1.0),     # Nominal terminal voltage (pu)
-    TV:   Const(0.02),    # Voltage transducer / RMS estimator time (s)
-    u:  Const(0.0),
+    VT:   vfactory.add_const(1.0),     # Nominal terminal voltage (pu)
+    TV:   vfactory.add_const(0.02),    # Voltage transducer / RMS estimator time (s)
+    u:  vfactory.add_const(0.0),
     #frequency
-    omega_s: Const(1.0),          #nominal frequency in pu
-    omega0:  Const(None),          #initial frequency in pu
+    omega_s: vfactory.add_const(1.0),          #nominal frequency in pu
+    omega0:  vfactory.add_const(None),          #initial frequency in pu
 
-    g: Const(0.0),
-    b: Const(0.0),
+    g: vfactory.add_const(0.0),
+    b: vfactory.add_const(0.0),
     }
 
     
@@ -119,7 +119,7 @@ def MotorLoadBuild(name: str = "") -> RmsModelTemplate:
         state_vars = [Ed_prime, Eq_prime, Ed_2prime, Eq_2prime],
     )
 
-    Te = Var('Te')
+    Te = vfactory.add_var('Te')
     block2 = Block(
         state_eqs = [
             u*((Eq_2prime*Iq + Ed_2prime*Id) - Cl0*sym.abs(omega/omega0)**n)/2*H,
@@ -153,12 +153,15 @@ def MotorLoadBuild(name: str = "") -> RmsModelTemplate:
     Vi = sym.imag(Vm * sym.exp(1j * Va))
     Vr = sym.real(Vm * sym.exp(1j * Va))
 
+    SLIP = 1-omega
+    dt_Ed = Eq_prime*omega_s*SLIP  - ( Iq*(Ls-Lp) + Ed_prime )/Tp0
+    dt_Eq = -Ed_prime*omega_s*SLIP  - ( -Id*(Ls-Lp)   + Eq_prime )/Tp0
     a = Tp0*omega_s*SLIP
     L = (Ls - Lp)
     Ed_prime_calc = L*(-Iq + a*Id)/(1 + a**2)
     Eq_prime_calc = L*( Id + a*Iq)/(1 + a**2)
-    A =  ( Iq*(Ls-Lp) + Ed_prime_calc )/Tp0
-    omega_init = -A/(omega_s*Eq_prime_calc) + Const(1.0)
+    A_val =  ( Iq*(Ls-Lp) + Ed_prime_calc )/Tp0
+    omega_init = -A_val/(omega_s*Eq_prime_calc) + vfactory.add_const(1.0)
     res_block.init_eqs ={
         Vd: -Vm*sym.sin(Va),
         Vq: Vm*sym.cos(Va),

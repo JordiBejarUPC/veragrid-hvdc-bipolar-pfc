@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class BusRmsTemplate(RmsModelTemplate):
 
-    def __init__(self, vf: VarFactory, name: str = "rms_bus_template"):
+    def __init__(self, vf: VarFactory, is_dc:bool=False, name: str = "rms_bus_template"):
         """
         Created the RMS Template of a Bus
         :param vf: VarFactory
@@ -29,11 +29,26 @@ class BusRmsTemplate(RmsModelTemplate):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.BusDevice
+        if is_dc:
+            Vdc = vf.add_var("Vdc")
+            P = vf.add_var("P")
+            Q = vf.add_var("Q")
 
-        self.Vm = vf.add_var("Vm")
-        self.Va = vf.add_var("Va")
-        self.P = vf.add_var("P")
-        self.Q = vf.add_var("Q")
+            self._block = Block(
+                algebraic_vars=[Vdc],
+                out_vars = [Vdc])
+
+            self._block.external_mapping = {
+                VarPowerFlowRefferenceType.Vdc: Vdc,
+                VarPowerFlowRefferenceType.P: P,
+                VarPowerFlowRefferenceType.Q: Q
+            }
+
+        else:
+            self.Vm = vf.add_var("Vm")
+            self.Va = vf.add_var("Va")
+            self.P = vf.add_var("P")
+            self.Q = vf.add_var("Q")
 
         self._block = Block(
             algebraic_vars=[self.Vm, self.Va],
@@ -55,7 +70,7 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     :param vf:
     :return:
     """
-    bus.rms_model.model = BusRmsTemplate(vf=vf).block
+    bus.rms_model.model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
 
 def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
     """
@@ -64,3 +79,7 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
     """
 
     return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
+
+def check_empty_bus(bus_rms_model: Block):
+    return len(bus_rms_model.algebraic_vars) == 0
+

@@ -1,4 +1,5 @@
 __pycache__
+__pycache_jit__
 .pytest_cache
 *.swp
 /doc/build

@@ -17,7 +17,7 @@ def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> R
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    inputs: List[vfactory.add_var] = [vfactory.add_var("Vm_" + name),
+    inputs: List[Var] = [vfactory.add_var("Vm_" + name),
                          vfactory.add_var("Va_" + name)
                          ]
 

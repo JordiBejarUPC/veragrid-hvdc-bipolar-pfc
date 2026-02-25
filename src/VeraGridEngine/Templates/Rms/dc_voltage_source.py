@@ -9,11 +9,11 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, DiffVar, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
-def DCVoltageSource(Vdc, name: str = "") -> RmsModelTemplate:
+def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
     """
     Builds an RMS model template for a DC voltage source with capacitive filtering.
     
@@ -41,20 +41,20 @@ def DCVoltageSource(Vdc, name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     #Vars:
-    Idc = Var('Idc')
-    Pdc = Var('Pdc')
-    Vpv = Var('Vpv')
-    dVdcdt = DiffVar('dVdcdt', base_var = Vdc)
+    Idc = vfactory.add_var('Idc')
+    Pdc = vfactory.add_var('Pdc')
+    Vpv = vfactory.add_var('Vpv')
+    dVdcdt = vfactory.add_diff_var('dVdcdt', base_var = Vdc)
 
     #Parameters
-    C = Var('C')
-    Rpv = Var('Rpv')
-    Vpv0 = Var('Vpv0')
+    C = vfactory.add_var('C')
+    Rpv = vfactory.add_var('Rpv')
+    Vpv0 = vfactory.add_var('Vpv0')
 
     event_dict = {
-        C:Const(0.01),
-        Rpv: Const(0.001),
-        Vpv0:Const(None),
+        C:vfactory.add_const(0.01),
+        Rpv: vfactory.add_const(0.001),
+        Vpv0:vfactory.add_const(None),
     }
     dc_block = Block(
         algebraic_eqs=[

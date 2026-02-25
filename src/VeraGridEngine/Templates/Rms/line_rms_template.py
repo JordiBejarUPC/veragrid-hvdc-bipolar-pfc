@@ -9,7 +9,7 @@ import numpy as np
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, cos, sin
 
 
 def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> RmsModelTemplate:
@@ -21,7 +21,7 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    inputs: List[vfactory.add_var] = [vfactory.add_var("Vmf_" + name),
+    inputs: List[Var] = [vfactory.add_var("Vmf_" + name),
                          vfactory.add_var("Vaf_" + name),
                          vfactory.add_var("Vmt_" + name),
                          vfactory.add_var("Vat_" + name)]

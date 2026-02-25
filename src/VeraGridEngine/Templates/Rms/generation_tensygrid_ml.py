@@ -9,8 +9,9 @@ import math
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, Const, VarPowerFlowRefferenceType, tf_to_diffblock,
-                                                 tf_to_diffblock_with_output, tf_to_diffblock_with_antiwindup)
+from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from VeraGridEngine.Templates.templates_common_functions import tf_to_block, tf_to_diffblock_with_output
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
 
@@ -27,7 +28,7 @@ def find_name_in_block(name: str, block: Block):
     return None
 
 
-def GenqecBuild(name: str = "") -> RmsModelTemplate:
+def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -43,77 +44,77 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
 
     algebraic_eqs = []
     algebraic_vars = []
-    inputs: List[Var] = [Var("Vm_" + name),
-                         Var("Va_" + name),
-                         Var("Tm_" + name),
-                         Var("Vf_" + name)]
+    inputs: List[Var] = [vfactory.add_var("Vm_" + name),
+                         vfactory.add_var("Va_" + name),
+                         vfactory.add_var("Tm_" + name),
+                         vfactory.add_var("Vf_" + name)]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
     # State variables
-    delta = Var("delta" + name)  # rotor angle
-    omega = Var("omega" + name)  # rotor electrical speed
-    Eq1 = Var("Eq1" + name)  # internal emf behind Xd'
-    Ed1 = Var("Ed1" + name)
-    Eq_prime = Var("Eq_prime" + name)  # transient voltage q-axis
-    Ed_prime = Var("Ed_prime" + name)  # transient voltage d-axis
-    Psid_prime = Var("Psid_prime" + name)  # transient voltage d-axis
-    Psiq_prime = Var("Psiq_prime" + name)  # transient voltage d-axis
+    delta = vfactory.add_var("delta" + name)  # rotor angle
+    omega = vfactory.add_var("omega" + name)  # rotor electrical speed
+    Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
+    Ed1 = vfactory.add_var("Ed1" + name)
+    Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
+    Ed_prime = vfactory.add_var("Ed_prime" + name)  # transient voltage d-axis
+    Psid_prime = vfactory.add_var("Psid_prime" + name)  # transient voltage d-axis
+    Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = Var('Pg' + name)
-    Qg = Var('Qg' + name)
-    Id = Var("Id" + name)
-    Iq = Var("Iq" + name)
-    Vd = Var("Vd" + name)
-    Vq = Var("Vq" + name)
-    Psid = Var("Psid" + name)
-    Psiq = Var("Psiq" + name)
-    Te = Var("Te" + name)
-    IRPu = Var("IRPu" + name)
+    Pg = vfactory.add_var('Pg' + name)
+    Qg = vfactory.add_var('Qg' + name)
+    Id = vfactory.add_var("Id" + name)
+    Iq = vfactory.add_var("Iq" + name)
+    Vd = vfactory.add_var("Vd" + name)
+    Vq = vfactory.add_var("Vq" + name)
+    Psid = vfactory.add_var("Psid" + name)
+    Psiq = vfactory.add_var("Psiq" + name)
+    Te = vfactory.add_var("Te" + name)
+    IRPu = vfactory.add_var("IRPu" + name)
 
     #Auxiliary Variables
-    V_dag_aux = Var('V_dag_aux')
-    V_qag_aux = Var('V_qag_aux')
-    Psi_sqrt1 = Var('Psi_sqrt1')
-    Psi_sqrt2 = Var('Psi_sqrt2')
+    V_dag_aux = vfactory.add_var('V_dag_aux')
+    V_qag_aux = vfactory.add_var('V_qag_aux')
+    Psi_sqrt1 = vfactory.add_var('Psi_sqrt1')
+    Psi_sqrt2 = vfactory.add_var('Psi_sqrt2')
 
     # Saturated resistances
-    Xd_2prime_sat = Var('Xd_2prime_sat' + name)
-    Xq_2prime_sat = Var('Xq_2prime_sat' + name)
-    Sa = Var('Sa' + name)
-    Sat = Var('Sat' + name)
-    V_qag = Var('V_qag' + name)
-    V_dag = Var('V_dag' + name)
-    Psi_ag = Var('Psi_ag' + name)
+    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
+    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat' + name)
+    Sa = vfactory.add_var('Sa' + name)
+    Sat = vfactory.add_var('Sat' + name)
+    V_qag = vfactory.add_var('V_qag' + name)
+    V_dag = vfactory.add_var('V_dag' + name)
+    Psi_ag = vfactory.add_var('Psi_ag' + name)
 
     # ______________________________________________________________________________________
     #                                    parameters
     # ______________________________________________________________________________________
-    fn = Var('fn')  # system frequency [Hz]
-    ws = Var('ws')  # synchronous speed [rad/s]
-    M = Var('M')  # inertia constant
-    H = Var('H')  # inertia constant
-    D = Var('D')  # damping (optional)
-    Rs = Var('Rs')  # stator resistance
-    Ra = Var('Ra')  # armature resistance (if distinct)
+    fn = vfactory.add_var('fn')  # system frequency [Hz]
+    ws = vfactory.add_var('ws')  # synchronous speed [rad/s]
+    M = vfactory.add_var('M')  # inertia constant
+    H = vfactory.add_var('H')  # inertia constant
+    D = vfactory.add_var('D')  # damping (optional)
+    Rs = vfactory.add_var('Rs')  # stator resistance
+    Ra = vfactory.add_var('Ra')  # armature resistance (if distinct)
 
     # Reactances
-    Xd = Var('Xd')
-    Xq = Var('Xq')
-    Xd_prime = Var('Xd_prime')
-    Xq_prime = Var('Xq_prime')
-    Xd_2prime = Var('Xd_2prime')
-    Xq_2prime = Var('Xq_2prime')
-    Xl = Var('Xl')
+    Xd = vfactory.add_var('Xd')
+    Xq = vfactory.add_var('Xq')
+    Xd_prime = vfactory.add_var('Xd_prime')
+    Xq_prime = vfactory.add_var('Xq_prime')
+    Xd_2prime = vfactory.add_var('Xd_2prime')
+    Xq_2prime = vfactory.add_var('Xq_2prime')
+    Xl = vfactory.add_var('Xl')
 
     # Time constants
-    Td0_prime = Var('Td0_prime')
-    Tq0_prime = Var('Tq0_prime')
-    Td0_2prime = Var('Td0_2prime')
-    Tq0_2prime = Var('Tq0_2prime')
+    Td0_prime = vfactory.add_var('Td0_prime')
+    Tq0_prime = vfactory.add_var('Tq0_prime')
+    Td0_2prime = vfactory.add_var('Td0_2prime')
+    Tq0_2prime = vfactory.add_var('Tq0_2prime')
 
     # Auxiliary expressions
     Viag_expr = inputs[0] * sym.sin(inputs[1]) + sym.imag(
@@ -123,41 +124,41 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra - sym.imag(
         sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * (Xl)
 
-    A = Var('A')
-    B = Var("B")
-    Xd_prime_minus_Xl = Var('Xd_prime_minus_Xl')
-    Xq_prime_minus_Xl = Var('Xq_prime_minus_Xl')
-    Xdaux  = Var('Xdaux')
-    Xdaux2 = Var('Xdaux2')
-    Xdaux3 = Var('Xdaux3')
+    A = vfactory.add_var('A')
+    B = vfactory.add_var("B")
+    Xd_prime_minus_Xl = vfactory.add_var('Xd_prime_minus_Xl')
+    Xq_prime_minus_Xl = vfactory.add_var('Xq_prime_minus_Xl')
+    Xdaux  = vfactory.add_var('Xdaux')
+    Xdaux2 = vfactory.add_var('Xdaux2')
+    Xdaux3 = vfactory.add_var('Xdaux3')
 
-    Xqaux  = Var('Xqaux')
-    Xqaux2 = Var('Xqaux2')
-    Xqaux3 = Var('Xqaux3')
+    Xqaux  = vfactory.add_var('Xqaux')
+    Xqaux2 = vfactory.add_var('Xqaux2')
+    Xqaux3 = vfactory.add_var('Xqaux3')
 
     event_dict = {
-        fn: Const(50.0),
-        ws: Const(2*pi*50),
-        M: Const(3.5),
-        H: Const(1)/M,
-        D: Const(10.0),
-        Rs: Const(0.003),
-        Ra: Const(0.003),
+        fn: vfactory.add_const(50.0),
+        ws: vfactory.add_const(2*pi*50),
+        M: vfactory.add_const(3.5),
+        H: vfactory.add_const(1)/M,
+        D: vfactory.add_const(10.0),
+        Rs: vfactory.add_const(0.003),
+        Ra: vfactory.add_const(0.003),
 
         # Reactances
-        Xd: Const(1.8),
-        Xq: Const(1.7),
-        Xd_prime: Const(0.3),
-        Xq_prime: Const(0.55),
-        Xd_2prime: Const(0.25),
-        Xq_2prime: Const(0.35),
-        Xl: Const(0.15),
+        Xd: vfactory.add_const(1.8),
+        Xq: vfactory.add_const(1.7),
+        Xd_prime: vfactory.add_const(0.3),
+        Xq_prime: vfactory.add_const(0.55),
+        Xd_2prime: vfactory.add_const(0.25),
+        Xq_2prime: vfactory.add_const(0.35),
+        Xl: vfactory.add_const(0.15),
 
         # Time constants
-        Td0_prime: Const(8.0),
-        Tq0_prime: Const(0.4),
-        Td0_2prime: Const(0.03),
-        Tq0_2prime: Const(0.05),
+        Td0_prime: vfactory.add_const(8.0),
+        Tq0_prime: vfactory.add_const(0.4),
+        Td0_2prime: vfactory.add_const(0.03),
+        Tq0_2prime: vfactory.add_const(0.05),
 
         Xd_prime_minus_Xl: Xd_prime-Xl,
         Xq_prime_minus_Xl: Xq_prime-Xl,
@@ -167,8 +168,8 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
         Xqaux  : ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
         Xqaux2 : (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
         Xqaux3 : ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
-        A: Const(5.0),
-        B: Const(1.0)
+        A: vfactory.add_const(5.0),
+        B: vfactory.add_const(1.0)
     }
     #Xdaux = ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2).simplify()
     #Xdaux2 = ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)).simplify()
@@ -180,20 +181,20 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
 
     Eq_2prime_expr = Psid_prime * Xdaux2 + Eq_prime * Xdaux3
     Ed_2prime_expr = Psiq_prime * Xqaux2 + Ed_prime * Xqaux3
-    Iq_sat = Var('Iq_sat')
-    Id_sat = Var('Iq_sat')
+    Iq_sat = vfactory.add_var('Iq_sat')
+    Id_sat = vfactory.add_var('Id_sat')
 
 
     #we call trig_transform to get cos(Vm-delta) and siN(Vm-delta)
-    ml_trig_block, u_cos, u_sin = sym_ml.trig_transform(inputs[1]-delta)
+    ml_trig_block, u_cos, u_sin = sym_ml.trig_transform(vfactory, inputs[1]-delta)
 
     #We call ml_postive_part to ge (Psi_ag-B)^+ := max(Psi_ag-B, 0)
-    ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(Psi_ag-B)
+    ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(vfactory, Psi_ag-B)
 
     templ.block = Block(
         state_eqs=[
-            (omega - Const(1)) * ws,  # dδ/dt
-            (inputs[2] - Te - D * (omega - Const(1))) * (H),  # dω/dt
+            (omega - vfactory.add_const(1)) * ws,  # dδ/dt
+            (inputs[2] - Te - D * (omega - vfactory.add_const(1))) * (H),  # dω/dt
             (inputs[3]  - Sat * Eq1) / Td0_prime,  # dEq'/dt
             -Sat * Ed1 / Tq0_prime,  # dEd'/dt
             (-Psiq_prime + Iq_sat * Xq_prime_minus_Xl + Ed_prime),  # dPsiq'/dt
@@ -217,7 +218,7 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                     Id_sat + (Eq_prime - Psid_prime - Id_sat * (Xd_prime_minus_Xl) ) * Xdaux)),
 
             # saturated resistance
-            Sat - (Const(1) + Sa),
+            Sat - (vfactory.add_const(1) + Sa),
             Id - Id_sat*Sat,
             Iq - Iq_sat*Sat,
             Sat * Xd_2prime_sat - (Xd_2prime + Xl * Sa),
@@ -247,19 +248,19 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
                         ],
         init_eqs={
             # Air Gap Voltages and delta
-            omega: Const(1),
+            omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + Const(1e-11))) ** 2,
-            Sat: Const(1) + Sa,
+            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-11))) ** 2,
+            Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra + sym.real(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
+                 ((Xq - Xl) / (vfactory.add_const(1) + Sa) + Xl)) /
                 (inputs[0] * sym.cos(inputs[1]) + sym.real(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) * Ra - sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(inputs[0] * sym.exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl))),
+                 ((Xq - Xl) / (vfactory.add_const(1) + Sa) + Xl))),
 
             # Saturated Resistances
             Xd_2prime_sat: (Xd_2prime - Xl + Xl * Sat) / Sat,
@@ -313,41 +314,41 @@ def GenqecBuild(name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def GovernorBuild(name: str = "") -> RmsModelTemplate:
+def GovernorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
         # Time constants
-        "T1": Const(1.0),  # governor time constant (s)
-        "T2": Const(1.0),  # reheater time constant (s)
-        "T3": Const(10.0),  # crossover time constant (s)
-        "T4": Const(0.2),  # lead/lag constant (s)
-        "T5": Const(0.5),  # lead/lag constant (s)
-        "T6": Const(0.1),  # lead/lag constant (s)
-        "T7": Const(0.05),  # lead/lag constant (s)
+        "T1": vfactory.add_const(1.0),  # governor time constant (s)
+        "T2": vfactory.add_const(1.0),  # reheater time constant (s)
+        "T3": vfactory.add_const(10.0),  # crossover time constant (s)
+        "T4": vfactory.add_const(0.2),  # lead/lag constant (s)
+        "T5": vfactory.add_const(0.5),  # lead/lag constant (s)
+        "T6": vfactory.add_const(0.1),  # lead/lag constant (s)
+        "T7": vfactory.add_const(0.05),  # lead/lag constant (s)
 
         # Steam fractions (distribution factors)
-        "K1": Const(0.5),
-        "K2": Const(0.5),
-        "K3": Const(0.0),
-        "K4": Const(0.0),
-        "K5": Const(0.0),
-        "K6": Const(0.0),
-        "K7": Const(0.0),
-        "K8": Const(0.0),
+        "K1": vfactory.add_const(0.5),
+        "K2": vfactory.add_const(0.5),
+        "K3": vfactory.add_const(0.0),
+        "K4": vfactory.add_const(0.0),
+        "K5": vfactory.add_const(0.0),
+        "K6": vfactory.add_const(0.0),
+        "K7": vfactory.add_const(0.0),
+        "K8": vfactory.add_const(0.0),
     }
 
-    inputs = [Var("omega_"), Var('Te_')]
+    inputs = [vfactory.add_var("omega_"), vfactory.add_var('Te_')]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
-    Tm = Var("Tm")  # Mechanical power input (pu
-    et = Var("et")
+    Tm = vfactory.add_var("Tm")  # Mechanical power input (pu
+    et = vfactory.add_var("et")
 
     # reference
-    Pm_ref = Var('Pm_ref')
+    Pm_ref = vfactory.add_var('Pm_ref')
     algebraic_eqs = []
     algebraic_vars = []
 
@@ -356,35 +357,35 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     # ______________________________________________________________________________________
 
     # Gains and limits
-    K = Var("K")  # governor gain (inverse droop)
-    Pmax = Var("Pmax")  # max mechanical power (pu)
-    Pmin = Var("Pmin")  # min mechanical power (pu)
-    Uc = Var("Uc")  # max valve closing rate (pu/s)
-    Uo = Var("Uo")  # max valve opening rate (pu/s)
-    T_aux = Var("T_aux")
+    K = vfactory.add_var("K")  # governor gain (inverse droop)
+    Pmax = vfactory.add_var("Pmax")  # max mechanical power (pu)
+    Pmin = vfactory.add_var("Pmin")  # min mechanical power (pu)
+    Uc = vfactory.add_var("Uc")  # max valve closing rate (pu/s)
+    Uo = vfactory.add_var("Uo")  # max valve opening rate (pu/s)
+    T_aux = vfactory.add_var("T_aux")
 
     # Control
-    Kp = Var("Kp")
-    Ki = Var("Ki")
-    omega_ref = Var('omega_ref')
-    p0 = Var('p0')
-    P0 = Var('P0')
+    Kp = vfactory.add_var("Kp")
+    Ki = vfactory.add_var("Ki")
+    omega_ref = vfactory.add_var('omega_ref')
+    p0 = vfactory.add_var('p0')
+    P0 = vfactory.add_var('P0')
 
     events_dict = {
         # control parameters
-        Pm_ref: Const(None),
-        Kp: Const(-0.01),
-        Ki: Const(-0.01),
-        p0: Const(1.0),
-        P0: Const(0.01),
-        omega_ref: Const(1),
+        Pm_ref: vfactory.add_const(None),
+        Kp: vfactory.add_const(-0.01),
+        Ki: vfactory.add_const(-0.01),
+        p0: vfactory.add_const(1.0),
+        P0: vfactory.add_const(0.01),
+        omega_ref: vfactory.add_const(1),
         # Governor parameters
-        K: Const(10.0),  # governor gain (inverse droop)
-        Pmax: Const(12.0),  # max mechanical power (pu)
-        Pmin: Const(-1.0),  # min mechanical power (pu)
-        Uc: Const(-0.5),  # max valve closing rate (pu/s)
-        Uo: Const(0.5),  # max valve opening rate (pu/s)
-        T_aux: Const(0.0),
+        K: vfactory.add_const(10.0),  # governor gain (inverse droop)
+        Pmax: vfactory.add_const(12.0),  # max mechanical power (pu)
+        Pmin: vfactory.add_const(-1.0),  # min mechanical power (pu)
+        Uc: vfactory.add_const(-0.5),  # max valve closing rate (pu/s)
+        Uo: vfactory.add_const(0.5),  # max valve opening rate (pu/s)
+        T_aux: vfactory.add_const(0.0),
 
     }
     controller_block = Block(
@@ -401,6 +402,7 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     u1 = inputs[0] - omega_ref
     lead_lag_block, y1, x1 = tf_to_diffblock_with_output(
+        vfactory,
         num=np.array([1, parameters["T2"].value]),
         den=np.array([1, parameters["T1"].value]),
         x=u1,
@@ -409,44 +411,49 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
     # ==============================
     # First Feed back Loop
-    y2_3 = Var('y2_3_gov')
+    y2_3 = vfactory.add_var('y2_3_gov')
     algebraic_vars.append(y2_3)
     x2 = Pm_ref - K * y1 - y2_3
 
     y2 = x2 * (1 / parameters["T3"].value)
-    ml_block1, y2_1 = sym_ml.ml_hard_sat(y2, Uc, Uo)
+    ml_block1, y2_1 = sym_ml.ml_hard_sat(vfactory, y2, Uc, Uo)
     
     #y2_1 = sym.hard_sat(y2, Uc, Uo)
     tf1, y2_2, u_gov1 = tf_to_diffblock_with_output(
+        vfactory,
         num=np.array([1]),
         den=np.array([0, 1]),
         x=y2_1,
         name='gov1',
     )
-    ml_block2, y2_bis =  sym_ml.ml_hard_sat(y2_2, Pmin, Pmax)
+    ml_block2, y2_bis =  sym_ml.ml_hard_sat(vfactory, y2_2, Pmin, Pmax)
     algebraic_eqs.append(y2_3 - y2_bis)
 
     # ==============================
     # We compute different outputs for every tf
-    tf2, y3_1 = tf_to_diffblock(
+    tf2, y3_1 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T4"].value]),
         x=y2_3,
         name='gov2',
     )
-    tf3, y3_2 = tf_to_diffblock(
+    tf3, y3_2 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T5"].value]),
         x=y3_1,
         name='gov3',
     )
-    tf4, y3_3 = tf_to_diffblock(
+    tf4, y3_3 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T6"].value]),
         x=y3_2,
         name='gov4',
     )
-    tf5, y3_4 = tf_to_diffblock(
+    tf5, y3_4 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["T7"].value]),
         x=y3_3,
@@ -469,9 +476,9 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
 
         init_eqs={
             Pm_ref: inputs[1],
-            y1: Const(0.0),
+            y1: vfactory.add_const(0.0),
             x1: inputs[0] - omega_ref,
-            u_gov1: Const(0),
+            u_gov1: vfactory.add_const(0),
             y2_2: Pm_ref,
             y2_3: Pm_ref,
             y3_1: Pm_ref,
@@ -485,81 +492,86 @@ def GovernorBuild(name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def StabilizerBuild(name: str = "") -> RmsModelTemplate:
+def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ = RmsModelTemplate()
 
     parameters = {
         # Stabilizer parameters
-        "A1": Const(1.0),  # notch filter coefficient 1
-        "A2": Const(1.0),  # notch filter coefficient 2
-        "t1": Const(0.1),  # lead time constant
-        "t2": Const(0.02),  # lag time constant
-        "t3": Const(0.02),  # lag time constant
-        "t4": Const(0.1),  # second lag time constant
-        "t5": Const(10.0),  # washout time constant
-        "t6": Const(0.02),  # transducer time constant
+        "A1": vfactory.add_const(1.0),  # notch filter coefficient 1
+        "A2": vfactory.add_const(1.0),  # notch filter coefficient 2
+        "t1": vfactory.add_const(0.1),  # lead time constant
+        "t2": vfactory.add_const(0.02),  # lag time constant
+        "t3": vfactory.add_const(0.02),  # lag time constant
+        "t4": vfactory.add_const(0.1),  # second lag time constant
+        "t5": vfactory.add_const(10.0),  # washout time constant
+        "t6": vfactory.add_const(0.02),  # transducer time constant
     }
 
     # input variables
     # omega: omega from generator
 
-    inputs = [Var("omega_")]
+    inputs = [vfactory.add_var("omega_")]
 
     # PSS parameters with typical values
 
-    Ks = Var("Ks")  # stabilizer gain
-    VPssMaxPu = Var("VPssMaxPu")  # max stabilizer output
-    VPssMinPu = Var("VPssMinPu")  # min stabilizer output
-    SNom = Var("SNom")  # nominal apparent power
+    Ks = vfactory.add_var("Ks")  # stabilizer gain
+    VPssMaxPu = vfactory.add_var("VPssMaxPu")  # max stabilizer output
+    VPssMinPu = vfactory.add_var("VPssMinPu")  # min stabilizer output
+    SNom = vfactory.add_var("SNom")  # nominal apparent power
 
     events_dict = {
         # Stabilizer parameters
-        Ks: Const(20.0),  # stabilizer gain
-        VPssMaxPu: Const(1.0),  # max stabilizer output
-        VPssMinPu: Const(-1.0),  # min stabilizer output
-        SNom: Const(1.0),  # nominal apparent power
+        Ks: vfactory.add_const(20.0),  # stabilizer gain
+        VPssMaxPu: vfactory.add_const(1.0),  # max stabilizer output
+        VPssMinPu: vfactory.add_const(-1.0),  # min stabilizer output
+        SNom: vfactory.add_const(1.0),  # nominal apparent power
     }
 
     # variables
-    Vpss = Var('V_pss')
+    Vpss = vfactory.add_var('V_pss')
 
     vars_block = Block(
         algebraic_vars=[],
     )
 
-    tf, y = tf_to_diffblock(
+    tf, y = tf_to_block(
+        vfactory,
         num=np.array([1.0]),
         den=np.array([1, parameters["t6"].value]),
         x=inputs[0],
         name='stabilizer1',
     )
 
-    tf2, y2 = tf_to_diffblock(
+    tf2, y2 = tf_to_block(
+        vfactory,
         num=np.array([0, Ks * parameters["t5"].value]),
         den=np.array([1, parameters["t5"].value]),
         x=y,
         name='stabilizer2',
     )
-    tf3, y3 = tf_to_diffblock(
+    tf3, y3 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
         x=y2,
         name='stabilizer3',
     )
-    tf4, y4 = tf_to_diffblock(
+    tf4, y4 = tf_to_block(
+        vfactory,
         num=np.array([1, parameters["t1"].value]),
         den=np.array([1, parameters["t2"].value]),
         x=y3,
         name='stabilizer4',
     )
-    tf5, y5 = tf_to_diffblock(
+    tf5, y5 = tf_to_block(
+        vfactory,
         num=np.array([1, parameters["t3"].value]),
         den=np.array([1, parameters["t4"].value]),
         x=y4,
         name='stabilizer5',
     )
 
-    ml_block, Vpss_sat = sym_ml.ml_hard_sat(y5, VPssMinPu, VPssMaxPu)
+    ml_block, Vpss_sat = sym_ml.ml_hard_sat(vfactory, y5, VPssMinPu, VPssMaxPu)
     algebraic_eqs = list()
     algebraic_eqs.append(Vpss_sat - Vpss)
 
@@ -573,12 +585,12 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
         name="stabilizer",
 
         init_eqs={
-            Vpss: Const(0.0),
-            y: Const(1.0),
-            y2: Const(0.0),
-            y3: Const(0.0),
-            y4: Const(0.0),
-            y5: Const(0.0),
+            Vpss: vfactory.add_const(0.0),
+            y: vfactory.add_const(1.0),
+            y2: vfactory.add_const(0.0),
+            y3: vfactory.add_const(0.0),
+            y4: vfactory.add_const(0.0),
+            y5: vfactory.add_const(0.0),
         }
     )
 
@@ -588,7 +600,7 @@ def StabilizerBuild(name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def ExciterBuild(name: str = "") -> RmsModelTemplate:
+def ExciterBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
 
     :param name: 
@@ -598,22 +610,22 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     parameters = {
         # Exciter (AVR) parameters
-        "Ka": Const(50.0),  # AVR gain
-        "Kf": Const(0.03),  # exciter rate feedback gain
+        "Ka": vfactory.add_const(50.0),  # AVR gain
+        "Kf": vfactory.add_const(0.03),  # exciter rate feedback gain
 
         # Time constants
-        "tA": Const(0.1),  # AVR time constant (s)
-        "tB": Const(10.0),  # lead-lag: lag time constant (s)
-        "tC": Const(1.0),  # lead-lag: lead time constant (s)
-        "tE": Const(0.5),  # exciter field time constant (s)
-        "tF": Const(1.0),  # rate feedback time constant (s)
-        "tR": Const(0.08),  # stator voltage filter time constant (s)
+        "tA": vfactory.add_const(0.1),  # AVR time constant (s)
+        "tB": vfactory.add_const(10.0),  # lead-lag: lag time constant (s)
+        "tC": vfactory.add_const(1.0),  # lead-lag: lead time constant (s)
+        "tE": vfactory.add_const(0.5),  # exciter field time constant (s)
+        "tF": vfactory.add_const(1.0),  # rate feedback time constant (s)
+        "tR": vfactory.add_const(0.08),  # stator voltage filter time constant (s)
 
         # Exciter submodel parameters
-        "Kc": Const(0.2),  # rectifier loading factor
-        "Kd": Const(0.1),  # demagnetizing factor
-        "Ke": Const(1.0),  # field resistance constant
-        "Kfd": Const(0.5),  # converting factor
+        "Kc": vfactory.add_const(0.2),  # rectifier loading factor
+        "Kd": vfactory.add_const(0.1),  # demagnetizing factor
+        "Ke": vfactory.add_const(1.0),  # field resistance constant
+        "Kfd": vfactory.add_const(0.5),  # converting factor
 
     }
 
@@ -622,7 +634,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    inputs = [Var("IRPu_"), Var("Vm_"), Var("Vpss_")]
+    inputs = [vfactory.add_var("IRPu_"), vfactory.add_var("Vm_"), vfactory.add_var("Vpss_")]
 
     algebraic_vars = []
 
@@ -630,68 +642,69 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     #                                    variables
     # ______________________________________________________________________________________
 
-    Vf = Var("Vf")
-    Efe = Var('Efe')
-    UsRefPu = Var(name="UsRefPu")  # reference voltage (pu)
+    Vf = vfactory.add_var("Vf")
+    Efe = vfactory.add_var('Efe')
+    UsRefPu = vfactory.add_var("UsRefPu")  # reference voltage (pu)
 
     # Exciter internal variables
-    VeMaxPu = Var('VeMaxPu')
-    u_aux = Var('u_aux')
+    VeMaxPu = vfactory.add_var('VeMaxPu')
+    u_aux = vfactory.add_var('u_aux')
 
     # ______________________________________________________________________________________
     #                                    parameters
     # ______________________________________________________________________________________
 
     # ---- Exciter (AVR) parameters ----
-    AEz = Var("AEz")  # saturation gain
-    BEz = Var("BEz")  # saturation exponential coefficient
-    EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
-    EfeMinPu = Var("EfeMinPu")  # min exciter field voltage (pu)
+    AEz = vfactory.add_var("AEz")  # saturation gain
+    BEz = vfactory.add_var("BEz")  # saturation exponential coefficient
+    EfeMaxPu = vfactory.add_var("EfeMaxPu")  # max exciter field voltage (pu)
+    EfeMinPu = vfactory.add_var("EfeMinPu")  # min exciter field voltage (pu)
 
     # ---- Exciter (AVR) time constants and limits ----
 
-    TolLi = Var("TolLi")  # limiter crossing tolerance (fraction)
+    TolLi = vfactory.add_var("TolLi")  # limiter crossing tolerance (fraction)
 
-    VaMaxPu = Var("VaMaxPu")  # AVR output max (pu)
-    VaMinPu = Var("VaMinPu")  # AVR output min (pu)
-    VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
-    VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
+    VaMaxPu = vfactory.add_var("VaMaxPu")  # AVR output max (pu)
+    VaMinPu = vfactory.add_var("VaMinPu")  # AVR output min (pu)
+    VeMinPu = vfactory.add_var("VeMinPu")  # min exciter output voltage (pu)
+    VfeMaxPu = vfactory.add_var("VfeMaxPu")  # max exciter field current signal (pu)
 
     # exciter submodel parameters
-    AEx = Var("AEx")  # Gain of saturation function
-    BEx = Var("BEx")  # Exponential coefficient of saturation function
-    Se_threshold = Var("Se_threshold")  # Exponential coefficient of saturation function
-    ToLLi = Var("ToLLi")  # Tolerance on limit crossing
-    VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
-    VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
+    AEx = vfactory.add_var("AEx")  # Gain of saturation function
+    BEx = vfactory.add_var("BEx")  # Exponential coefficient of saturation function
+    Se_threshold = vfactory.add_var("Se_threshold")  # Exponential coefficient of saturation function
+    ToLLi = vfactory.add_var("ToLLi")  # Tolerance on limit crossing
+    VeMinPu_submodel = vfactory.add_var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
+    VfeMaxPu_submodel = vfactory.add_var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: Const(None),  # reference voltage (pu)
-        AEz: Const(0.02),  # saturation gain
-        BEz: Const(1.5),  # saturation exponential coefficient
-        Se_threshold: Const(1.0),  # saturation threshold
-        EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
-        EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
+        UsRefPu: vfactory.add_const(None),  # reference voltage (pu)
+        AEz: vfactory.add_const(0.02),  # saturation gain
+        BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
+        Se_threshold: vfactory.add_const(1.0),  # saturation threshold
+        EfeMaxPu: vfactory.add_const(15.0),  # max exciter field voltage (pu)
+        EfeMinPu: vfactory.add_const(-5.0),  # min exciter field voltage (pu)
 
         # Time constants
-        TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
+        TolLi: vfactory.add_const(0.05),  # limiter crossing tolerance (fraction)
 
         # Limits
-        VaMaxPu:  Const( 2.0),  # AVR output max (pu)
-        VaMinPu:  Const(-2.0),  # AVR output min (pu)
-        VeMinPu:  Const(-2.0),  # min exciter output voltage (pu)
-        VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
+        VaMaxPu: vfactory.add_const(2.0),  # AVR output max (pu)
+        VaMinPu: vfactory.add_const(-2.0),  # AVR output min (pu)
+        VeMinPu: vfactory.add_const(-2.0),  # min exciter output voltage (pu)
+        VfeMaxPu: vfactory.add_const(5.0),  # max exciter field current signal (pu)
 
         # Exciter submodel parameters
-        AEx: Const(0.02),  # saturation gain
-        BEx: Const(0.01),  # exponential coeff of saturation function
-        ToLLi: Const(0.05),  # tolerance on limit crossing
-        VeMinPu_submodel: Const(-5.1),  # minimum exciter output voltage
-        VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
+        AEx: vfactory.add_const(0.02),  # saturation gain
+        BEx: vfactory.add_const(0.01),  # exponential coeff of saturation function
+        ToLLi: vfactory.add_const(0.05),  # tolerance on limit crossing
+        VeMinPu_submodel: vfactory.add_const(-5.1),  # minimum exciter output voltage
+        VfeMaxPu_submodel: vfactory.add_const(5.0),  # max exciter field current signal
     }
     # ---Internal Blocks---
-    tf1, y1 = tf_to_diffblock(
+    tf1, y1 = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["tR"].value]),
         x=inputs[1],
@@ -700,7 +713,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     # error1 = UPssPu - y + UsRefPu
     error1 = (- y1 + UsRefPu) + inputs[2]
-    tf2, y2 = tf_to_diffblock(
+    tf2, y2 = tf_to_block(
+        vfactory,
         num=np.array([0, parameters["Kf"].value]),
         den=np.array([1, parameters["tF"].value]),
         x=Vf,
@@ -708,7 +722,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     )
     error2 = error1 - y2
 
-    tf3, y3 = tf_to_diffblock(
+    tf3, y3 = tf_to_block(
+        vfactory,
         num=np.array([1, parameters["tC"].value]),
         den=np.array([1, parameters["tB"].value]),
         x=error2,
@@ -718,7 +733,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     max_const = min(events_dict[VaMaxPu].value, events_dict[EfeMaxPu].value)
 
     #TODO: Try with AnitWindup
-    tf4, y4 = tf_to_diffblock(
+    tf4, y4 = tf_to_block(
+        vfactory,
         num=np.array([parameters["Ka"].value]),
         den=np.array([1, parameters["tA"].value]),
         x=y3,
@@ -726,7 +742,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
         #sat_max = max_const,
         name='exciter4',
     )
-    ml_block2, y6 = sym_ml.ml_hard_sat(y4, min_const, max_const)
+    ml_block2, y6 = sym_ml.ml_hard_sat(vfactory, y4, min_const, max_const)
 
     # exciter submodel
 
@@ -736,7 +752,8 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     x1 = VfeMaxPu - inputs[0] * parameters["Kd"].value
     error1 = Efe - (inputs[0] * parameters["Kd"].value + u_aux)
 
-    tf1_sub, Ve = tf_to_diffblock(
+    tf1_sub, Ve = tf_to_block(
+        vfactory,
         num=np.array([1]),
         den=np.array([0, parameters["tE"].value]),
         x=error1,
@@ -747,16 +764,16 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     Se_threshold = parameters['Ke'].value
 
-    ml_block_exp, V_exp = sym_ml.exponential_ml(BEx * (Ve - Se_threshold)) 
-    ml_block_hv , V_hv  = sym_ml.ml_heaviside(Ve - Se_threshold)
-    Sx = (V_exp - Const(1)) * V_hv
+    ml_block_exp, V_exp = sym_ml.exponential_ml(vfactory, BEx * (Ve - Se_threshold)) 
+    ml_block_hv , V_hv  = sym_ml.ml_heaviside(vfactory, Ve - Se_threshold)
+    Sx = (V_exp - vfactory.add_const(1)) * V_hv
     aux_expr = parameters['Ke'].value * Ve + AEx * Ve * Sx
     algebraic_eqs_submodel.append(u_aux - aux_expr)
     algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1 * Ve)
 
-    f_input = Var('f_input')
-    f_output = Var('f_output')
-    ml_block3, f_output_res = sym_ml.ml_f_exc(f_input)
+    f_input = vfactory.add_var('f_input')
+    f_output = vfactory.add_var('f_output')
+    ml_block3, f_output_res = sym_ml.ml_f_exc(vfactory, f_input)
     algebraic_vars_submodel.append(f_input)
     algebraic_vars_submodel.append(f_output)
     algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * parameters["Kc"].value)
@@ -781,7 +798,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
     y_subexciter1 = find_name_in_block('y_subexciter1', tf1_sub)
 
     Ve_sat = sym.hard_sat(y_subexciter1, VeMinPu, VeMaxPu)
-    Ve_expr = sym.hard_sat(y_subexciter1, VeMinPu, Const(1000))
+    Ve_expr = sym.hard_sat(y_subexciter1, VeMinPu, vfactory.add_const(1000))
     aux_expr = parameters['Ke'].value * Ve_expr + AEx * Ve_expr *Sx
     templ.block = Block(
         children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block, ml_block_exp, ml_block_hv, ml_block2, ml_block3],
@@ -794,17 +811,17 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
             #Ve: sym.hard_sat(y_subexciter1, VeMinPu, Const(1000)),
             #Sx: (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(Ve - Se_threshold),
             VeMaxPu: (VfeMaxPu - inputs[0] * parameters["Kd"].value) / (
-                    parameters["Ke"].value + AEx * (sym.exp(BEx * (Ve - Se_threshold)) - Const(1)) * sym.heaviside(
+                    parameters["Ke"].value + AEx * (sym.exp(BEx * (Ve - Se_threshold)) - vfactory.add_const(1)) * sym.heaviside(
                 Ve - Se_threshold)),
             u_aux: aux_expr,
             Efe: inputs[0] * parameters["Kd"].value + u_aux,
             UsRefPu: Efe / parameters['Ka'].value + inputs[1],
             y1: inputs[1],
-            y2: Const(0.0),
+            y2: vfactory.add_const(0.0),
             y3: -y1 + UsRefPu,
             u_exciter3: y3,
             y4: y3 * parameters["Ka"].value,
-            u_subexciter1: Const(0.0),
+            u_subexciter1: vfactory.add_const(0.0),
             f_input: parameters['Kc'].value * inputs[0] / y_subexciter1,
             f_output: sym.f_exc(f_input),
         },
@@ -812,7 +829,7 @@ def ExciterBuild(name: str = "") -> RmsModelTemplate:
 
     return templ
 
-def OELBuild(name: str = "") -> RmsModelTemplate:
+def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
     
     :param name: 
@@ -825,123 +842,124 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     algebraic_vars = []
     differential_vars = []
 
-    inputs = [Var("OEL_input")]
+    inputs = [vfactory.add_var("OEL_input")]
     Input_OEL = inputs[0]
     #OEL_input_options are Efd or I_f
 
     #parameters
     # time constants
-    T_en     = Var('T_en')
-    T_off    = Var('T_off')
-    T_roel   = Var('T_roel')
-    T_doel   = Var('T_doel')
-    T_b1oel  = Var('T_b1oel')
-    T_c1oel  = Var('T_c1oel')
-    T_b2oel  = Var('T_b2oel')
-    T_aoel   = Var('T_aoel')
-    T_fcl    = Var('T_fcl')
+    T_en     = vfactory.add_var('T_en')
+    T_off    = vfactory.add_var('T_off')
+    T_roel   = vfactory.add_var('T_roel')
+    T_doel   = vfactory.add_var('T_doel')
+    T_b1oel  = vfactory.add_var('T_b1oel')
+    T_c1oel  = vfactory.add_var('T_c1oel')
+    T_b2oel  = vfactory.add_var('T_b2oel')
+    T_aoel   = vfactory.add_var('T_aoel')
+    T_fcl    = vfactory.add_var('T_fcl')
 
-    T_min    = Var('T_min')
-    T_max    = Var('T_max')
+    T_min    = vfactory.add_var('T_min')
+    T_max    = vfactory.add_var('T_max')
 
     # voltage limits
-    V_oelmin = Var('V_oelmin')
-    V_oelmax = Var('V_oelmax')
-    V_invmin = Var('V_invmin')
-    V_invmax = Var('V_invmax')
+    V_oelmin = vfactory.add_var('V_oelmin')
+    V_oelmax = vfactory.add_var('V_oelmax')
+    V_invmin = vfactory.add_var('V_invmin')
+    V_invmax = vfactory.add_var('V_invmax')
 
     # gains
-    K_poel   = Var('K_poel')
-    K_ioel   = Var('K_ioel')
-    K_doel   = Var('K_doel')
-    K_ru     = Var('K_ru')
-    K_zru    = Var('K_zru')
-    K_rd     = Var('K_rd')
-    K_act    = Var('K_act')
-    K1       = Var('K1')
-    K2       = Var('K2')
-    Kfb      = Var('Kfb')
+    K_poel   = vfactory.add_var('K_poel')
+    K_ioel   = vfactory.add_var('K_ioel')
+    K_doel   = vfactory.add_var('K_doel')
+    K_ru     = vfactory.add_var('K_ru')
+    K_zru    = vfactory.add_var('K_zru')
+    K_rd     = vfactory.add_var('K_rd')
+    K_act    = vfactory.add_var('K_act')
+    K1       = vfactory.add_var('K1')
+    K2       = vfactory.add_var('K2')
+    Kfb      = vfactory.add_var('Kfb')
 
     # fixed ramps
-    Fixed_RU = Var('Fixed_RU')
-    Fixed_RD = Var('Fixed_RD')
+    Fixed_RU = vfactory.add_var('Fixed_RU')
+    Fixed_RD = vfactory.add_var('Fixed_RD')
 
     # current-related parameters
-    I_tfpu   = Var('I_tfpu')
-    I_THoff  = Var('I_THoff')
-    I_reset  = Var('I_reset')
-    I_inst   = Var('I_inst')
-    I_lim    = Var('I_lim')
+    I_tfpu   = vfactory.add_var('I_tfpu')
+    I_THoff  = vfactory.add_var('I_THoff')
+    I_reset  = vfactory.add_var('I_reset')
+    I_inst   = vfactory.add_var('I_inst')
+    I_lim    = vfactory.add_var('I_lim')
 
     # scaling and auxiliary
-    K_scale  = Var('K_scale')
-    C1       = Var('C1')
-    C2       = Var('C2')
+    K_scale  = vfactory.add_var('K_scale')
+    C1       = vfactory.add_var('C1')
+    C2       = vfactory.add_var('C2')
 
     # switches
-    SW1      = Var('SW1')
+    SW1      = vfactory.add_var('SW1')
 
     
-    Ierr = Var('Ierr')
-    V_oel = Var('V_oel')
-    Ipu = Var('Ipu')
+    Ierr = vfactory.add_var('Ierr')
+    V_oel = vfactory.add_var('V_oel')
+    Ipu = vfactory.add_var('Ipu')
     
     event_dict = {
     # time constants
-    T_en:    Const(1.0),
-    T_off:   Const(1.0),
-    T_roel:  Const(1.0),
-    T_doel:  Const(1.0),
-    T_b1oel: Const(1.0),
-    T_c1oel: Const(1.0),
-    T_b2oel: Const(1.0),
-    T_aoel:  Const(1.0),
-    T_fcl:   Const(1.0),
-    T_min:   Const(1.0),
-    T_max:   Const(1.0),
+    T_en:    vfactory.add_const(1.0),
+    T_off:   vfactory.add_const(1.0),
+    T_roel:  vfactory.add_const(1.0),
+    T_doel:  vfactory.add_const(1.0),
+    T_b1oel: vfactory.add_const(1.0),
+    T_c1oel: vfactory.add_const(1.0),
+    T_b2oel: vfactory.add_const(1.0),
+    T_aoel:  vfactory.add_const(1.0),
+    T_fcl:   vfactory.add_const(1.0),
+    T_min:   vfactory.add_const(1.0),
+    T_max:   vfactory.add_const(1.0),
 
     # voltage limits
-    V_oelmin: Const(-1.0),
-    V_oelmax: Const(1.0),
-    V_invmin: Const(-1.0),
-    V_invmax: Const(1.0),
+    V_oelmin: vfactory.add_const(-1.0),
+    V_oelmax: vfactory.add_const(1.0),
+    V_invmin: vfactory.add_const(-1.0),
+    V_invmax: vfactory.add_const(1.0),
 
     # gains
-    K_poel: Const(1.0),
-    K_ioel: Const(1.0),
-    K_doel: Const(1.0),
-    K_ru:   Const(1.0),
-    K_zru:  Const(1.0),
-    K_rd:   Const(1.0),
-    K_act:  Const(1.0),
-    K1:     Const(1.0),
-    K2:     Const(1.0),
-    Kfb:    Const(1.0),
+    K_poel: vfactory.add_const(1.0),
+    K_ioel: vfactory.add_const(1.0),
+    K_doel: vfactory.add_const(1.0),
+    K_ru:   vfactory.add_const(1.0),
+    K_zru:  vfactory.add_const(1.0),
+    K_rd:   vfactory.add_const(1.0),
+    K_act:  vfactory.add_const(1.0),
+    K1:     vfactory.add_const(1.0),
+    K2:     vfactory.add_const(1.0),
+    Kfb:    vfactory.add_const(1.0),
 
     # ramp limits
-    Fixed_RU: Const(1.0),
-    Fixed_RD: Const(1.0),
+    Fixed_RU: vfactory.add_const(1.0),
+    Fixed_RD: vfactory.add_const(1.0),
 
     # currents
-    I_tfpu:  Const(1.0),
-    I_THoff: Const(1.0),
-    I_reset: Const(1.0),
-    I_inst:  Const(1.0),
-    I_lim:   Const(0.0),
+    I_tfpu:  vfactory.add_const(1.0),
+    I_THoff: vfactory.add_const(1.0),
+    I_reset: vfactory.add_const(1.0),
+    I_inst:  vfactory.add_const(1.0),
+    I_lim:   vfactory.add_const(0.0),
 
     # scaling
-    K_scale: Const(4.6),  # Ifield rated / Ibase
-    C1:      Const(1.0),
-    C2:      Const(1.0),
+    K_scale: vfactory.add_const(4.6),  # Ifield rated / Ibase
+    C1:      vfactory.add_const(1.0),
+    C2:      vfactory.add_const(1.0),
 
     # switches
-    SW1: Const(1.0),
+    SW1: vfactory.add_const(1.0),
     }
 
     oel_block.event_params = event_dict
     #equations
-    block_Ipu, Ipu = tf_to_diffblock(
-        num = [K_scale],    
+    block_Ipu, Ipu = tf_to_block(
+        vfactory,
+        num = [K_scale],
         den = [1, T_roel],
         x= Input_OEL,
         name= 'exciter_limiter_Ipu',
@@ -952,12 +970,13 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
 
     #OEL TIMER LOGIC
     I_errinv2 = sym.hard_sat(I_errinv2_aux, V_invmin, V_invmax)
-    W = I_errinv2 + sym.heaviside(I_tfpu - Ipu)*Fixed_RU + (Const(1)-sym.heaviside(I_tfpu - Ipu))*Fixed_RD
+    W = I_errinv2 + sym.heaviside(I_tfpu - Ipu)*Fixed_RU + (vfactory.add_const(1)-sym.heaviside(I_tfpu - Ipu))*Fixed_RD
 
     
 
-    T = Var('T')
-    block4, T = tf_to_diffblock(
+    T = vfactory.add_var('T')
+    block4, T = tf_to_block(
+        vfactory,
         num = [1],
         den = [0, 1],
         x= W - Kfb*sym.hard_sat(T, T_min, T_max),
@@ -969,11 +988,12 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     Terr = T_fcl - W - Kfb*sym.hard_sat(T, T_min, T_max)
     
     #OEL RAMP LOGIC
-    C = (Const(1) -SW1)*(K_ru) + I_errinv1*(SW1)
-    D = (Const(1) -SW1)*(K_rd) + I_errinv1*(SW1)
+    C = (vfactory.add_const(1) -SW1)*(K_ru) + I_errinv1*(SW1)
+    D = (vfactory.add_const(1) -SW1)*(K_rd) + I_errinv1*(SW1)
     Z = C*sym.heaviside(Terr - K_zru*T_fcl) + D*(sym.heaviside(-Terr))
 
-    block5, I_a = tf_to_diffblock(
+    block5, I_a = tf_to_block(
+        vfactory,
         num = [1],
         den = [0, 1],
         x= Z,
@@ -984,7 +1004,8 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     I_ref = sym.hard_sat(I_a, I_lim, I_inst)
 
 
-    block7, y_1 = tf_to_diffblock(
+    block7, y_1 = tf_to_block(
+        vfactory,
         num = [1],
         den = [1, T_aoel],
         x= I_ref,
@@ -993,20 +1014,20 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     oel_block.add(block7)
 
     I_act = K_act*Ipu 
-    x = Var('x')
-    dx = Var('x', base_var=x)
-    algebraic_eqs.append(dx-(sym.heaviside(T_en-x)*sym.heaviside(I_act - I_ref) - (Const(1) - sym.heaviside(I_act - I_ref))*sym.heaviside(x)*Const(1000))) 
+    x = vfactory.add_var('x')
+    dx = vfactory.add_diff_var('x', base_var=x)
+    algebraic_eqs.append(dx-(sym.heaviside(T_en-x)*sym.heaviside(I_act - I_ref) - (vfactory.add_const(1) - sym.heaviside(I_act - I_ref))*sym.heaviside(x)*vfactory.add_const(1000))) 
     b1 = (x - T_en >= 0).to_expression()
     b2 = (Terr <= 0).to_expression() #(Terr <= 0) when comparisons are supported
     b3 = (T_en == 0).to_expression()
 
-    y = Var('y')
-    dy = Var('y', base_var=y)
-    algebraic_eqs.append(dy-(sym.heaviside(T_off-y)*sym.heaviside(I_ref - I_act - I_THoff) - (Const(1) - sym.heaviside(I_ref - I_act - I_THoff))*heaviside(y)*Const(1000))) 
+    y = vfactory.add_var('y')
+    dy = vfactory.add_diff_var('y', base_var=y)
+    algebraic_eqs.append(dy-(sym.heaviside(T_off-y)*sym.heaviside(I_ref - I_act - I_THoff) - (vfactory.add_const(1) - sym.heaviside(I_ref - I_act - I_THoff))*heaviside(y)*vfactory.add_const(1000))) 
     c1 = (I_ref == I_inst).to_expression()
-    c2 = sym.heaviside(y - T_off + Const(1e-3))
+    c2 = sym.heaviside(y - T_off + vfactory.add_const(1e-3))
 
-    I_bias = Var('I_bias')
+    I_bias = vfactory.add_var('I_bias')
     algebraic_eqs.append(I_bias - (1 -(1-b1)*(1-b2)*(1-b3))*(c1*c2))
     algebraic_vars.append(x)
     algebraic_vars.append(y)
@@ -1018,7 +1039,8 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     Ierr = y_1 - K_act*Ipu + I_bias
 
 
-    block8, V_oel = tf_to_diffblock(
+    block8, V_oel = tf_to_block(
+        vfactory,
         num = [K_doel*K_poel],
         den = [0, 1, T_doel],
         x= K_poel*Ierr,
@@ -1027,7 +1049,7 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     oel_block.add(block8)
 
     
-    V_oel_sat = Var('V_oel_sat')
+    V_oel_sat = vfactory.add_var('V_oel_sat')
     algebraic_vars.append(V_oel_sat)
     algebraic_eqs.append(sym.hard_sat(V_oel, V_oelmin, V_oelmax) - V_oel_sat)
 
@@ -1044,7 +1066,7 @@ def OELBuild(name: str = "") -> RmsModelTemplate:
     templ.block = oel_block
     return oel_block, V_oel_sat
 
-def get_complete_generator_template(name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1054,10 +1076,10 @@ def get_complete_generator_template(name="complete generator rms template") -> R
     templ.name = name
 
     # generate models
-    genqec_mdl = GenqecBuild().block
-    exciter_mdl = ExciterBuild().block
-    governor_mdl = GovernorBuild().block
-    stabilizer_mdl = StabilizerBuild().block
+    genqec_mdl = GenqecBuild(vfactory).block
+    exciter_mdl = ExciterBuild(vfactory).block
+    governor_mdl = GovernorBuild(vfactory).block
+    stabilizer_mdl = StabilizerBuild(vfactory).block
 
     # connect models
     genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
