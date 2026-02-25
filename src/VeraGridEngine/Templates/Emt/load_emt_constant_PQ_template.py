@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import List
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -16,9 +15,6 @@ def get_load_3ph_emt_template(vfactory: VarFactory, name = "Load rms template") 
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
-
-    inputs: List[vfactory.add_var] = [vfactory.add_var("Vm_" + name),
-                         vfactory.add_var("Va_" + name)]
 
     Pl0_A = vfactory.add_var("Pl0_A")
     Ql0_A = vfactory.add_var("Ql0_A")
@@ -79,7 +75,5 @@ def get_load_3ph_emt_template(vfactory: VarFactory, name = "Load rms template") 
         ParamPowerFlowRefferenceType.Pl0_C: Pl0_C,
         ParamPowerFlowRefferenceType.Ql0_C: Ql0_C,
     }
-
-    templ.block.in_vars = inputs
 
     return templ
