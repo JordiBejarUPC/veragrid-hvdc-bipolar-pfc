@@ -23,6 +23,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
 # Assuming BaseProblem is accessible in your generic problems folder
@@ -244,10 +245,8 @@ class EmtProblemDae(BaseProblem):
 
             if is_bergeron:
 
-                line_tpl = br.emt_model.model
-
                 # add its block (event params Ih_*)
-                mdl = line_tpl.block
+                mdl = br.emt_model.model
                 mdl.unify_blocks()
 
                 _apply_piecewise_events_if_any(br, mdl)
@@ -255,20 +254,20 @@ class EmtProblemDae(BaseProblem):
                 self._add_model_to_system_mappings(br, mdl)
                 sys_block.add(mdl)
 
-                # store for boundary update
-                self.history_models.append(line_tpl)
-
-                # build voltage lists from bus blocks
+                # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
                 v_f_vars = _get_bus_v_list(br.bus_from.emt_model.model)
                 v_t_vars = _get_bus_v_list(br.bus_to.emt_model.model)
 
-                # symbolic Norton injections
-                i_f_exprs, i_t_exprs = line_tpl.get_nodal_injections(v_f_vars, v_t_vars)
+                # Create runtime companion that owns buffers + update_history
+                rt = BergeronHistoryRuntime(line=br, line_block=mdl, h=h, sbase=Sbase, fbase=fbase)
+                rt.bind_terminals(v_f_vars, v_t_vars)
 
+                i_f_exprs, i_t_exprs = rt.get_nodal_injections()
                 for ph in range(4):
                     I_kcl[f][ph] = I_kcl[f][ph] + i_f_exprs[ph]
                     I_kcl[t][ph] = I_kcl[t][ph] + i_t_exprs[ph]
 
+                self.history_models.append(rt)
                 continue
 
             # --- All other branches must contribute terminal currents (If_*, It_*) ---
@@ -669,3 +668,14 @@ class EmtProblemDae(BaseProblem):
         Returns the dictionary mapping global variable names to UIDs.
         """
         return self._vars_glob_name2uid
+
+    def emt_boundary_update(self,
+                            t_curr: float,
+                            x_prev: np.ndarray,
+                            full_params: np.ndarray):
+        """
+        Updates boundary functions for devices with history.
+        """
+        for rt in self.history_models:
+            rt.update_history(self.step_counter, x_prev, full_params)
+        self.step_counter += 1
