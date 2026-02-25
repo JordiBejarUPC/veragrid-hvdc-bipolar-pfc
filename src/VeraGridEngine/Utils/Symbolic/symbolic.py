@@ -81,7 +81,7 @@ class Comparison:
             return heaviside(self.lhs - self.rhs)
         elif self.op == CmpOp.EQ:
             eps = Const(1e-6)
-            return heaviside(self.lhs - self.rhs + eps)*heaviside(self.rhs - self.lhs + eps)
+            return heaviside(self.lhs - self.rhs + eps) * heaviside(self.rhs - self.lhs + eps)
         else:
             raise ValueError(f"operator not supported {self.op}")
 
@@ -99,7 +99,6 @@ class Expr:
         :param uid: (optional UID)
         """
         self.uid: int = _new_uid() if uid is None else uid  # real dataclass field lives in subclasses
-
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """
@@ -310,19 +309,20 @@ class Const(Expr):
         d["kind"] = "float"
         return d
 
+
 class VarType(Enum):
     Parameter = "parameter"
     State = "state"
     Algebraic = "algebraic"
     Differential = "differential"
 
+
 class Var(Expr):
     """
     Any variable
     """
 
-
-    __slots__ = ("name", "uid", "diff_var", "base_var")
+    __slots__ = ("name", "uid", "diff_var", "base_var", "_origin_var")
 
     def __init__(self, name: str, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
 
@@ -336,31 +336,41 @@ class Var(Expr):
         self.name: str = name
         self.diff_var = diff_var
         self.base_var: Var = base_var  # assign reference to base var
+        self._origin_var: Var | None = None
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
-
 
     def __deepcopy__(self, memo):
         return Var(self.name, self.uid, self.diff_var)
 
-    def eval(self, **bindings: NUMBER) -> NUMBER:
+    def eval(self, **bindings: float) -> float:
+        """
+        Evaluate this variable
+        :param bindings: dictionary like mapping Var: float
+        :return:
+        """
         try:
             return bindings[self.name]
         except KeyError as exc:
             raise ValueError(f"No value for variable '{self.name}'.") from exc
 
-    def eval_uid(self, uid_bindings: Dict[int, NUMBER]) -> NUMBER:
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> float:
+        """
+        Evaluate using the uid
+        :param uid_bindings:
+        :return:
+        """
         try:
             return uid_bindings[self.uid]
         except KeyError as exc:
             raise ValueError(f"No value for uid '{self.uid}'.") from exc
 
-    #
-    # def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
-    #     return Const(1 if self.uid == var.uid else 0)
-
-
-    def subs(self, mapping: Dict[Any, Expr]) -> Expr:
+    def subs(self, mapping: Dict[Var | str, Expr]) -> Expr:
+        """
+        Substitute this variable
+        :param mapping:
+        :return:
+        """
         if self in mapping:
             return mapping[self]
         if self.name in mapping:
@@ -374,24 +384,23 @@ class Var(Expr):
         return self.name
 
     def __eq__(self, other):
-        # Comparación entre Var: booleano por uid
+        # Var comparison using the uid
         if isinstance(other, Var):
             return self.uid == other.uid
 
-        # Comparación simbólica con cualquier Expr o número
+        # Symbolic comparison between any expression Expr or float or int
         if isinstance(other, Expr) or isinstance(other, (int, float)):
             return Comparison(self, CmpOp.EQ, other)
 
         return NotImplemented
 
-    # @staticmethod
-    # def parse(data: Dict[str, Any]) -> "Var":
-    #     obj = Var(data["name"])
-    #     obj.uid = data["uid"]
-    #     return obj
-
     @staticmethod
     def parse(data: Dict[str, Any]) -> "Var":
+        """
+        Parse the data
+        :param data:
+        :return:
+        """
         # reconstruct base_var
         base_data = data["base_var"]
         base_var = _dict_to_expr(base_data)
@@ -401,7 +410,6 @@ class Var(Expr):
         obj = Var(name=data["name"], base_var=base_var)
         obj.uid = data["uid"]
         return obj
-
 
     @property
     def diff_order(self) -> int:
@@ -414,10 +422,14 @@ class Var(Expr):
 
     @property
     def origin_var(self) -> Var:
-        origin = self.base_var
-        while origin.base_var is not None:
-            origin = origin.base_var
-        return origin
+
+        if self._origin_var is None:
+            # lazy evaluation, since this is tied to the base var, we do it only once
+            self._origin_var = self.base_var
+            while self._origin_var.base_var is not None:
+                self._origin_var = self._origin_var.base_var
+
+        return self._origin_var
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
@@ -453,18 +465,15 @@ class Var(Expr):
             return dh_dt
         return Const(1 if self.uid == var.uid else 0)
 
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
+    def populate_initial_lag(self,  dx0: np.ndarray, dt: Optional[Const]):
         """
 
-        :param x0:
         :param dx0:
-        :param lag_x:
         :param dt:
         :return:
         """
         # function that initializes the lag of the same order for the same original_var
         diff_order = self.diff_order
-        central_difference = True
         res = Expr()
         for i in range(diff_order):
             res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
@@ -503,12 +512,11 @@ class Var(Expr):
         result = finite_diff_sum / (dt ** lag_total)
         return result.simplify(), lag_total
 
-
     def __hash__(self) -> int:
         return hash(repr(self))
 
 
-def factors(expr: Expr) -> List[Expr]:
+def get_expr_factors(expr: Expr) -> List[Expr]:
     """
 
     :param expr:
@@ -517,15 +525,15 @@ def factors(expr: Expr) -> List[Expr]:
     :rtype: Union[List[VeraGridEngine.Utils.Symbolic.symbolic.BinOp], List[VeraGridEngine.Utils.Symbolic.symbolic.UnOp], List[VeraGridEngine.Utils.Symbolic.symbolic.Const], List[VeraGridEngine.Utils.Symbolic.symbolic.Var], List[VeraGridEngine.Utils.Symbolic.symbolic.Func]]
     """
     if isinstance(expr, BinOp) and expr.op == '*':
-        return factors(expr.left.simplify()) + factors(expr.right.simplify())
+        return get_expr_factors(expr.left.simplify()) + get_expr_factors(expr.right.simplify())
     # Limited expansion of integer powers
     elif isinstance(expr, BinOp) and expr.op == '**':
-        base, exp = expr.left.simplify(), expr.right.simplify()
+        base, exp_ = expr.left.simplify(), expr.right.simplify()
 
-        if isinstance(exp, Const):
-            n = exp.value
+        if isinstance(exp_, Const):
+            n = exp_.value
             if isinstance(n, int) and n >= 1:
-                return factors(base) * n
+                return get_expr_factors(base) * n
 
         # otherwise: keep power atomic
         return [expr]
@@ -536,9 +544,8 @@ def build_mul(factors: List[Expr]) -> Expr:
     """
 
     :param factors:
-    :type factors: Union[List[VeraGridEngine.Utils.Symbolic.symbolic.BinOp], List[VeraGridEngine.Utils.Symbolic.symbolic.UnOp], List[VeraGridEngine.Utils.Symbolic.symbolic.Const], List[VeraGridEngine.Utils.Symbolic.symbolic.Var], List]
-    :return:
-    :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.BinOp, VeraGridEngine.Utils.Symbolic.symbolic.UnOp, VeraGridEngine.Utils.Symbolic.symbolic.Const, VeraGridEngine.Utils.Symbolic.symbolic.Var]
+    :type factors: List[Expr]
+    :return:Expr
     """
     if not factors:
         return Const(1)
@@ -695,8 +702,8 @@ class BinOp(Expr):
             elif l.uid == r.uid:
                 return Const(1)
             else:
-                num_factors = factors(l)
-                den_factors = factors(r)
+                num_factors = get_expr_factors(l)
+                den_factors = get_expr_factors(r)
 
                 new_num = []
                 new_den = den_factors.copy()
@@ -857,13 +864,14 @@ class UnOp(Expr):
 def heaviside_num(x):
     return 0.0 if x <= 0 else 1.0
 
+
 def get_namespace() -> Dict[str, Any]:
     namespace = {
-                "math": math,
-                "np": np,
-                "nb": nb,
-                "_heaviside": heaviside_num,
-            }
+        "math": math,
+        "np": np,
+        "nb": nb,
+        "_heaviside": heaviside_num,
+    }
     return namespace
 
 
@@ -958,8 +966,10 @@ class Func(Expr):
 def abs(x: Expr):  # TODO: Rename to not shadow
     return Func(_to_expr(x), "abs")
 
+
 def abs_diff(u: Expr, du: Expr) -> Expr:
     return heaviside(u) * du
+
 
 def real(x: Expr):
     return Func(_to_expr(x), "real")
@@ -1071,6 +1081,8 @@ def cosh_diff(u: Expr, du: Expr) -> Expr:
 
 def heaviside(x: Expr):
     return Func(_to_expr(x), "heaviside")
+
+
 #
 # def heaviside(x: Expr):
 #     return  _heaviside(x)
@@ -1667,6 +1679,7 @@ _FUNC_MAP = {
     "_dict_to_expression": _dict_to_expr
 }
 
+
 def symbolic_to_string(expr: Expr) -> str:
     """
     Convert a symbolic expression into a string (parsable by parse_expr).
@@ -1716,4 +1729,4 @@ __all__ = [
     'abs',
     '_to_expr',
     'get_namespace'
-    ]
+]
