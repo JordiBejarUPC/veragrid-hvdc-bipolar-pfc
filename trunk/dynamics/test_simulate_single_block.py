@@ -22,8 +22,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 # Tolerance for assertions
-ABS_TOL = 0.05  # Absolute tolerance
-REL_TOL = 0.10  # Relative tolerance (increased for second-order systems)
+ABS_TOL = 0.01  # Absolute tolerance
+REL_TOL = 0.01  # Relative tolerance (increased for second-order systems)
 
 
 def test_first_order_step():

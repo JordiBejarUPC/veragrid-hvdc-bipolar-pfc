@@ -326,6 +326,61 @@ def trig_transform(vf: VarFactory, u:Expr, type = 'usual'):
         block.add(aux_block)
     return block, u_cos, u_sin
 
+def trig_transform_diff(vf: VarFactory, delta1:Expr, delta2:Expr):
+    aux_block = None
+    
+    if not isinstance(delta1, Var):
+        x1 = vf.add_var('x1')
+        aux_block1 = Block(
+            algebraic_eqs=[x1 - delta1],
+            algebraic_vars=[x1],
+            init_eqs={x1: delta1}
+        )
+    else:
+        x1 = delta1
+        aux_block1 = None
+    
+    if not isinstance(delta2, Var):
+        x2 = vf.add_var('x2')
+        aux_block2 = Block(
+            algebraic_eqs=[x2 - delta2],
+            algebraic_vars=[x2],
+            init_eqs={x2: delta2}
+        )
+    else:
+        x2 = delta2
+        aux_block2 = None
+    
+    diff = x1 - x2
+    
+    u_cos = vf.add_var('u_cos')
+    u_sin = vf.add_var('u_sin')
+    d_u_cos = vf.add_diff_var('d_u_cos', base_var=u_cos)
+    d_u_sin = vf.add_diff_var('d_u_sin', base_var=u_sin)
+    d_delta1 = vf.add_diff_var('d_delta1', base_var=x1)
+    d_delta2 = vf.add_diff_var('d_delta2', base_var=x2)
+    
+    block = Block(
+        algebraic_vars=[u_cos, u_sin],
+        algebraic_eqs=[
+            d_u_cos + (d_delta1 - d_delta2) * u_sin,
+            d_u_sin - (d_delta1 - d_delta2) * u_cos,
+        ],
+        diff_vars=[d_u_sin, d_u_cos, d_delta1, d_delta2],
+        reformulated_vars=[u_sin, u_cos],
+        init_eqs={
+            u_cos: sym.cos(diff),
+            u_sin: sym.sin(diff),
+        }
+    )
+    
+    if aux_block1 is not None:
+        block.add(aux_block1)
+    if aux_block2 is not None:
+        block.add(aux_block2)
+    
+    return block, u_cos, u_sin
+
 def ml_f_exc(vf: VarFactory, In:Expr):
     ml_block1, hv1 = ml_heaviside(vf, Const(0.433) - In)
     ml_block2, hv2 = ml_heaviside(vf, Const(0.75) - In)

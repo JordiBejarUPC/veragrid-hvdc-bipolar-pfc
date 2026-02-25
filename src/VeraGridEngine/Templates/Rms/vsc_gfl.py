@@ -224,35 +224,35 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     omega = outputs[3]
 
     # Parameters
-    Kp_icl = Var('Kp_icl')     # proportional gain for inner current loop
-    Ki_icl = Var('Ki_icl')     # integral gain for inner current loop
-    Kp_pol = Var('Kp_pol')     # proportional gain for outer power loop
-    Ki_pol = Var('Ki_pol')     # integral gain for outer power loop
-    Kp_vdc = Var('Kp_vdc')     # proportional gain for DC voltage control
-    Ki_vdc = Var('Ki_vdc')     # integral gain for DC voltage control
-    Kp_vac = Var('Kp_vac')     # proportional gain for AC voltage control
-    Ki_vac = Var('Ki_vac')     # integral gain for AC voltage control
-    R = Var('R') 
-    L = Var('L') 
+    Kp_icl = vfactory.add_var('Kp_icl')     # proportional gain for inner current loop
+    Ki_icl = vfactory.add_var('Ki_icl')     # integral gain for inner current loop
+    Kp_pol = vfactory.add_var('Kp_pol')     # proportional gain for outer power loop
+    Ki_pol = vfactory.add_var('Ki_pol')     # integral gain for outer power loop
+    Kp_vdc = vfactory.add_var('Kp_vdc')     # proportional gain for DC voltage control
+    Ki_vdc = vfactory.add_var('Ki_vdc')     # integral gain for DC voltage control
+    Kp_vac = vfactory.add_var('Kp_vac')     # proportional gain for AC voltage control
+    Ki_vac = vfactory.add_var('Ki_vac')     # integral gain for AC voltage control
+    R = vfactory.add_var('R') 
+    L = vfactory.add_var('L') 
 
     # VARS
-    i_d = Var('i_d')
-    i_q = Var('i_q')
-    i_d_ref = Var('i_d_ref')
-    i_q_ref = Var('i_q_ref')
+    i_d = vfactory.add_var('i_d')
+    i_q = vfactory.add_var('i_q')
+    i_d_ref = vfactory.add_var('i_d_ref')
+    i_q_ref = vfactory.add_var('i_q_ref')
     
     # POWER LOOP 
-    P = Var('P')
-    Q = Var('Q') 
-    P_ref = Var('P_ref') 
-    Q_ref = Var('Q_ref') 
+    P = vfactory.add_var('P')
+    Q = vfactory.add_var('Q') 
+    P_ref = vfactory.add_var('P_ref') 
+    Q_ref = vfactory.add_var('Q_ref') 
     
     # Voltage references for control modes
-    Vdc_ref = Var('Vdc_ref')
-    Vm_ac_ref = Var('Vm_ac_ref')
+    Vdc_ref = vfactory.add_var('Vdc_ref')
+    Vm_ac_ref = vfactory.add_var('Vm_ac_ref')
     
-    v_d_c = Var('v_d_c')
-    v_q_c = Var('v_q_c')
+    v_d_c = vfactory.add_var('v_d_c')
+    v_q_c = vfactory.add_var('v_q_c')
 
     event_dict = {
         Kp_icl: vfactory.add_const(0.05),
@@ -469,23 +469,23 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
     # Inputs: Vm, Va, Vdc (Pt_vsc and Qt_vsc come from power flow initialization)
-    inputs = [Var("Vm_"), Var("Va_"), Var("Vdc_")]
+    inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_")]
     Vm = inputs[0]
     Va = inputs[1]
     v_dc = inputs[2]
 
     # Vars:
-    Pt_vsc = Var('Pt_vsc')
-    Qt_vsc = Var('Qt_vsc')
-    Pf_vsc = Var('Pf_vsc')
+    Pt_vsc = vfactory.add_var('Pt_vsc')
+    Qt_vsc = vfactory.add_var('Qt_vsc')
+    Pf_vsc = vfactory.add_var('Pf_vsc')
 
     # Parameters:
-    bt = Var('bt')
-    gt = Var('gt')
-    Qf = Var('Qf')
-    a0 = Var('a0')
-    a1 = Var('a1')
-    a2 = Var('a2')
+    bt = vfactory.add_var('bt')
+    gt = vfactory.add_var('gt')
+    Qf = vfactory.add_var('Qf')
+    a0 = vfactory.add_var('a0')
+    a1 = vfactory.add_var('a1')
+    a2 = vfactory.add_var('a2')
     
     # Build the converter model with specified control modes
     gfl_block, i_d, i_q, P, Q = build_gfl_converter_model(
@@ -536,6 +536,5 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     vsc_block.add(gfl_block)
     vsc_block.name = 'gfl_block'
 
-    new_block = vsc_block
     templ.block = vsc_block
     return templ

@@ -568,8 +568,8 @@ def simulate_single_block(
     Simulate a single block with given input values.
     
     This function runs a dynamic simulation for a single block using
-    Backward Euler integration. It's designed for debugging and testing
-    individual blocks without requiring a full grid setup.
+    Backward Euler integration with SymbolicVector, SymbolicJacobian, and
+    SymbolicDerivative for proper numerical integration.
     
     Parameters:
     -----------
@@ -594,10 +594,40 @@ def simulate_single_block(
     - variable_names: List of variable names corresponding to solution columns
     """
     import scipy.sparse as sp
-    from scipy.sparse.linalg import spsolve
-    from VeraGridEngine.Utils.Symbolic.symbolic import Var, expression2numba, get_expression_vars
+    from scipy.sparse.linalg import spsolve, lsqr
+    from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, get_namespace
+    from VeraGridEngine.Utils.Symbolic.block_solver import SymbolicVector, SymbolicJacobian, SymbolicDerivative
     
-    # Collect all variables from the block
+    # Determine input variables first
+    if input_var_names is not None:
+        input_vars = []
+        for name in input_var_names:
+            # Find the variable in block
+            for var in block.algebraic_vars + block.state_vars + list(block.diff_vars):
+                if var.name == name:
+                    input_vars.append(var)
+                    break
+    elif block.in_vars:
+        input_vars = list(block.in_vars)
+    else:
+        input_vars = []
+    
+    # Build mapping from diff vars to their base vars first
+    diff_to_base = {}
+    for var in block.diff_vars:
+        if hasattr(var, 'base_var') and var.base_var is not None:
+            diff_to_base[var] = var.base_var
+    
+    # Sort diff_vars by derivative order
+    def get_derivative_order(var, order=0):
+        if var not in diff_to_base:
+            return order
+        return get_derivative_order(diff_to_base[var], order + 1)
+    
+    sorted_diff_vars = sorted(diff_to_base.keys(), key=lambda v: get_derivative_order(v))
+    
+    # Collect all variables from the block (excluding ALL diff vars)
+    # Diff vars are computed separately via SymbolicDerivative
     all_vars = []
     var_name_to_idx = {}
     
@@ -611,23 +641,9 @@ def simulate_single_block(
         var_name_to_idx[var.name] = len(all_vars)
         all_vars.append(var)
     
-    # Add diff vars (derivative variables)
-    diff_var_idx = []
-    for var in block.diff_vars:
+    # Add input variables (if not already in all_vars)
+    for var in input_vars:
         if var.name not in var_name_to_idx:
-            var_name_to_idx[var.name] = len(all_vars)
-            all_vars.append(var)
-        diff_var_idx.append(var_name_to_idx[var.name])
-    
-    # Collect all variables that appear in equations (including derivatives)
-    all_eqs = block.algebraic_eqs + block.state_eqs
-    vars_in_eqs = set()
-    for eq in all_eqs:
-        vars_in_eqs.update(get_expression_vars(eq))
-    
-    # Add any missing variables from equations
-    for var in vars_in_eqs:
-        if var.uid not in [v.uid for v in all_vars]:
             var_name_to_idx[var.name] = len(all_vars)
             all_vars.append(var)
     
@@ -635,16 +651,6 @@ def simulate_single_block(
     n_algebraic = len(block.algebraic_vars)
     n_states = len(block.state_vars)
     n_diff = len(block.diff_vars)
-    
-    # Determine input variables
-    if input_var_names is not None:
-        input_vars = [all_vars[var_name_to_idx[name]] for name in input_var_names 
-                     if name in var_name_to_idx]
-    elif block.in_vars:
-        input_vars = block.in_vars
-    else:
-        # No inputs specified - input_values will not be applied automatically
-        input_vars = []
     
     # Determine output variables
     if output_var_names is not None:
@@ -658,72 +664,109 @@ def simulate_single_block(
     # Create mapping from var uid to index
     uid2idx = {var.uid: i for i, var in enumerate(all_vars)}
     
-    # Create symbolic names for compilation
-    var_sym = {uid: f"vars[{i}]" for uid, i in uid2idx.items()}
+    # Identify solver variables (exclude inputs and diff vars' base variables)
+    diff_to_base = {}
+    for var in block.diff_vars:
+        if hasattr(var, 'base_var') and var.base_var is not None:
+            diff_to_base[var] = var.base_var
     
-    # Compile equations
-    def compile_equations(eqs, var_sym):
-        """Compile equations to a callable function"""
-        import uuid
-        
-        fname = f"rhs_{uuid.uuid4().hex[:8]}"
-        src = f"def {fname}(vars):\n"
-        src += f"    out = np.zeros({len(eqs)})\n"
-        for i, eq in enumerate(eqs):
-            src += f"    out[{i}] = {expression2numba(eq, var_sym)}\n"
-        src += f"    return out"
-        
-        namespace = {"np": np, "math": __import__("math")}
-        exec(src, namespace)
-        return namespace[fname]
+    # All equations: algebraic + state
+    all_eqs = block.algebraic_eqs + block.state_eqs
     
-    # Compile RHS function
-    rhs_func = compile_equations(all_eqs, var_sym)
+    # Sort diff_vars by derivative order
+    def get_derivative_order(var, order=0):
+        if var not in diff_to_base:
+            return order
+        return get_derivative_order(diff_to_base[var], order + 1)
     
-    # Compile Jacobian
-    def compile_jacobian(eqs, vars_list, uid2idx, var_sym):
-        """Compile Jacobian to a callable function"""
-        import uuid
-        
-        triplets = []
-        for row, eq in enumerate(eqs):
-            for col, var in enumerate(vars_list):
-                deriv = eq.diff(var).simplify()
-                is_zero = False
-                if hasattr(deriv, 'value'):
-                    is_zero = deriv.value == 0
-                elif hasattr(deriv, 'is_number') and deriv.is_number:
-                    is_zero = float(deriv) == 0.0
-                
-                if not is_zero:
-                    triplets.append((row, col, deriv))
-        
-        if not triplets:
-            return None, None
-        
-        rows, cols, equations = zip(*triplets)
-        
-        fname = f"jac_{uuid.uuid4().hex[:8]}"
-        src = f"def {fname}(vars, out):\n"
-        for i, eq in enumerate(equations):
-            src += f"    out[{i}] = {expression2numba(eq, var_sym)}\n"
-        
-        namespace = {"np": np, "math": __import__("math")}
-        exec(src, namespace)
-        
-        # Create sparse structure
-        nnz = len(triplets)
-        J = sp.lil_matrix((len(eqs), len(vars_list)))
-        J.data = np.zeros(nnz)
-        
-        return namespace[fname], J, rows, cols
+    sorted_diff_vars = sorted(diff_to_base.keys(), key=lambda v: get_derivative_order(v))
     
-    jac_result = compile_jacobian(all_eqs, all_vars, uid2idx, var_sym)
+    # Build compiler names dictionaries for SymbolicVector and SymbolicJacobian
+    compiler_names_dict: Dict[int, str] = {}
+    alias_names_dict: Dict[int, str] = {}
     
-    if jac_result[0] is not None:
-        jac_func, J_struct, jac_rows, jac_cols = jac_result
-    else:
-        jac_func, J_struct = None, None
+    # vars array: algebraic + state variables + input variables (appended at end)
+    for i, var in enumerate(all_vars):
+        compiler_names_dict[var.uid] = f"vars[{i}]"
+        alias_names_dict[var.uid] = f"vars_{i}"
+    
+    # Add input variables to vars array (if not already present)
+    input_var_idx_start = len(all_vars)
+    for i, var in enumerate(input_vars):
+        if var.uid not in compiler_names_dict:
+            idx = input_var_idx_start + i
+            compiler_names_dict[var.uid] = f"vars[{idx}]"
+            alias_names_dict[var.uid] = f"vars_input_{i}"
+    
+    # diff array: derivative variables
+    for i, var in enumerate(sorted_diff_vars):
+        compiler_names_dict[var.uid] = f"diff[{i}]"
+        alias_names_dict[var.uid] = f"diff_{i}"
+    
+    # event_params array: time, dt, delta (dt at index 1, i.e., -2 from end)
+    # Create a dummy dt variable for Jacobian computation
+    dt_var = Var(name='dt')
+    compiler_names_dict[dt_var.uid] = "event_params[1]"
+    alias_names_dict[dt_var.uid] = "dt"
+    
+    # Add any constants that appear in equations to compiler dicts
+    from VeraGridEngine.Utils.Symbolic.symbolic import Const
+    vars_in_eqs = set()
+    for eq in all_eqs:
+        vars_in_eqs.update(eq.get_vars())
+    
+    for var in vars_in_eqs:
+        if var.uid not in compiler_names_dict:
+            if isinstance(var, Const):
+                # Constants are compiled directly as their values
+                pass
+            else:
+                # Other variables get a default mapping
+                compiler_names_dict[var.uid] = f"vars[{len(all_vars)}]"
+                alias_names_dict[var.uid] = f"vars_extra_{len(all_vars)}"
+    
+    # Add input variables to compiler dicts (treated as constants)
+    input_var_set = set(v.uid for v in input_vars)
+    
+    # Identify solver variables (non-input, non-diff vars)
+    # Diff vars are computed from their base vars via discretization, not solved directly
+    solver_vars = [var for var in all_vars 
+                   if var.uid not in input_var_set and var not in diff_to_base.keys()]
+    solver_var_indices = [uid2idx[v.uid] for v in solver_vars]
+    n_solver = len(solver_vars)
+    
+    # Create index mapping for solver vars
+    uid2idx_solver = {var.uid: i for i, var in enumerate(solver_vars)}
+    
+    # Compile RHS function using SymbolicVector
+    # Substitute input variables with constants (will be updated each step)
+    _rhs_func = SymbolicVector(
+        eqs=all_eqs,
+        compiler_names_dict=compiler_names_dict,
+        alias_names_dict=alias_names_dict,
+        use_jit=True
+    )
+    
+    # Compile Jacobian using SymbolicJacobian
+    _jac_func = SymbolicJacobian(
+        eqs=all_eqs,
+        variables=solver_vars,
+        diff_variables=block.diff_vars,
+        compiler_names_dict=compiler_names_dict,
+        alias_names_dict=alias_names_dict,
+        uid2idx_vars=uid2idx_solver,
+        dt=dt_var,
+        use_jit=True
+    )
+    
+    # Compile derivative computation using SymbolicDerivative
+    _deriv_func = SymbolicDerivative(
+        vars=all_vars,
+        uid2idx_vars=uid2idx,
+        diff_vars=sorted_diff_vars,
+        compiler_names_dict=compiler_names_dict,
+        use_jit=True
+    )
     
     # Initialize solution
     x = np.zeros(n_vars)
@@ -744,7 +787,6 @@ def simulate_single_block(
     
     # Apply initial input values
     if is_callable_input:
-        # Get input at t0
         input_vals_t0 = input_values(t0)
     else:
         input_vals_t0 = input_values
@@ -753,7 +795,11 @@ def simulate_single_block(
         if var.uid in uid2idx:
             x[uid2idx[var.uid]] = val
     
-    # Time stepping
+    # Initialize derivative values (all zeros)
+    dx = np.zeros(n_diff)
+    dx_last = np.zeros(n_diff)
+    
+    # Time stepping arrays
     n_steps = int(np.ceil((t_end - t0) / time_step))
     t = np.zeros(n_steps + 1)
     y = np.zeros((n_steps + 1, n_vars))
@@ -761,27 +807,15 @@ def simulate_single_block(
     t[0] = t0
     y[0, :] = x
     
-    # Build mapping from diff var to base var and sort by derivative order
-    diff_to_base = {}
-    for var in block.diff_vars:
-        if hasattr(var, 'base_var') and var.base_var is not None:
-            diff_to_base[var] = var.base_var
+    # Event params: [time, dt, ...] - dt at index -2
+    n_event_params = 3  # time, dt, delta
+    event_params = np.ones(n_event_params)
+    event_params[-2] = time_step  # dt
     
-    # Sort diff_vars by derivative order (lowest first) to ensure correct computation
-    def get_derivative_order(var, order=0):
-        if var not in diff_to_base:
-            return order
-        return get_derivative_order(diff_to_base[var], order + 1)
+    # Empty params array (no parameters for now)
+    params = np.array([])
     
-    sorted_diff_vars = sorted(diff_to_base.keys(), key=lambda v: get_derivative_order(v))
-    
-    # Identify variables to solve for (exclude inputs and diff_vars)
-    input_var_set = set(v.uid for v in input_vars)
-    solver_vars = [var for var in all_vars 
-                   if var.uid not in input_var_set and var not in diff_to_base]
-    solver_var_indices = [uid2idx[v.uid] for v in solver_vars]
-    
-    # Simulation loop with symbolic discretization
+    # Simulation loop
     for step in range(n_steps):
         t_step = t[step]
         x_n = y[step, :].copy()
@@ -789,135 +823,70 @@ def simulate_single_block(
         
         # Get input values at current time
         if is_callable_input:
-            input_vals_step = input_values(t_step + time_step)  # Input at new time
+            input_vals_step = input_values(t_step + time_step)
         else:
             input_vals_step = input_values
         
-        # Create discretized equations by substituting diff_vars and inputs
-        # Backward Euler: diff_var = (base_var - base_var_n) / h
-        discretized_eqs = []
-        for eq in all_eqs:
-            new_eq = eq
-            
-            # Substitute input variables with their values
-            for i, (var, val) in enumerate(zip(input_vars, input_vals_step)):
-                if var.uid in uid2idx:
-                    new_eq = new_eq.subs({var: Const(val)}).simplify()
-            
-            # Substitute diff_vars with Backward Euler discretization
-            # Process in sorted order (lowest derivative first) for correct substitution
-            for diff_var in sorted_diff_vars:
-                base_var = diff_to_base[diff_var]
-                base_idx = uid2idx[base_var.uid]
-                replacement = (base_var - Const(x_n[base_idx])) / Const(time_step)
-                new_eq = new_eq.subs({diff_var: replacement}).simplify()
-            
-            discretized_eqs.append(new_eq)
-        
-        # Compile discretized equations for this time step
-        fname = f"rhs_step_{step}"
-        src = f"def {fname}(vars):\n"
-        src += f"    out = np.zeros({len(discretized_eqs)})\n"
-        for i, eq in enumerate(discretized_eqs):
-            src += f"    out[{i}] = {expression2numba(eq, var_sym)}\n"
-        src += f"    return out"
-        
-        namespace = {"np": np, "math": __import__("math")}
-        exec(src, namespace)
-        disc_rhs_func = namespace[fname]
-        
-        # Compile Jacobian for discretized equations
-        triplets = []
-        for row, eq in enumerate(discretized_eqs):
-            for col, var in enumerate(all_vars):
-                deriv = eq.diff(var).simplify()
-                is_zero = False
-                if hasattr(deriv, 'value'):
-                    is_zero = deriv.value == 0
-                elif hasattr(deriv, 'is_number') and deriv.is_number:
-                    is_zero = float(deriv) == 0.0
-                
-                if not is_zero:
-                    triplets.append((row, col, deriv))
-        
-        if triplets:
-            rows, cols, equations = zip(*triplets)
-            
-            fname_jac = f"jac_step_{step}"
-            src_jac = f"def {fname_jac}(vars, out):\n"
-            for i, eq in enumerate(equations):
-                src_jac += f"    out[{i}] = {expression2numba(eq, var_sym)}\n"
-            
-            exec(src_jac, namespace)
-            disc_jac_func = namespace[fname_jac]
-            
-            # Create dense Jacobian structure  
-            jac_nrows = len(discretized_eqs)
-            jac_ncols = len(all_vars)
-        else:
-            disc_jac_func = None
+        # Apply input values to x_new
+        for i, (var, val) in enumerate(zip(input_vars, input_vals_step)):
+            if var.uid in uid2idx:
+                x_new[uid2idx[var.uid]] = val
         
         # Newton iteration
         converged = False
         residual_norm = float('inf')
         
         for iteration in range(max_iter):
-            # Compute residual
-            residual = disc_rhs_func(x_new)
+            # Compute derivatives using SymbolicDerivative
+            dx = _deriv_func(x_new, x_n, dx_last, time_step)
+            
+            # Compute residual using SymbolicVector
+            residual = _rhs_func(x_new, dx, event_params, params)
+            
             residual_norm = np.linalg.norm(residual, np.inf)
             
             if residual_norm < tol:
                 converged = True
                 break
             
-            # Compute Jacobian and solve
-            if disc_jac_func is not None:
-                # Evaluate Jacobian densely
-                J_data = np.zeros(len(triplets))
-                disc_jac_func(x_new, J_data)
-                
-                # Build reduced Jacobian for solver variables only
-                n_solver = len(solver_vars)
-                J_reduced = np.zeros((len(discretized_eqs), n_solver))
-                for i, (row, col) in enumerate(zip(rows, cols)):
-                    if col in solver_var_indices:
-                        solver_col = solver_var_indices.index(col)
-                        J_reduced[row, solver_col] = J_data[i]
-                
-                # Solve linear system for solver variables only
-                try:
-                    delta_reduced = np.linalg.lstsq(J_reduced, -residual, rcond=None)[0]
-                    # Update only solver variables
-                    for i, idx in enumerate(solver_var_indices):
-                        x_new[idx] += delta_reduced[i]
-                except Exception:
-                    # Fallback: fixed-point iteration on solver variables only
-                    for idx in solver_var_indices:
-                        x_new[idx] = x_n[idx] - 0.1 * residual[0] if len(residual) > 0 else x_n[idx]
-            else:
-                # No Jacobian, use fixed-point on solver variables only
-                for idx in solver_var_indices:
-                    x_new[idx] = x_n[idx] - 0.1 * residual[0] if len(residual) > 0 else x_n[idx]
+            # Compute Jacobian using SymbolicJacobian
+            J_full = _jac_func(x_new, dx, event_params, params, time_step)
+            
+            # Extract Jacobian for solver variables only
+            J_solver = J_full[:, solver_var_indices]
+            
+            # Solve linear system
+            try:
+                delta = spsolve(J_solver, -residual)
+                if delta is None or not np.all(np.isfinite(delta)):
+                    raise ValueError("spsolve returned non-finite values")
+            except Exception:
+                # Fallback to least squares
+                delta, *_ = lsqr(J_solver, -residual)[:1]
+                if not np.all(np.isfinite(delta)):
+                    # Last resort: fixed-point iteration
+                    delta = -0.1 * residual[:n_solver] if len(residual) >= n_solver else np.zeros(n_solver)
+            
+            # Update solver variables
+            for i, idx in enumerate(solver_var_indices):
+                x_new[idx] += delta[i]
+            
+            # Re-apply input values to ensure they stay fixed
+            for i, (var, val) in enumerate(zip(input_vars, input_vals_step)):
+                if var.uid in uid2idx:
+                    x_new[uid2idx[var.uid]] = val
+            
+            # Recompute derivatives with updated x_new for consistency
+            dx = _deriv_func(x_new, x_n, dx_last, time_step)
         
-        # Reset input values to ensure they stay constant
-        for i, (var, val) in enumerate(zip(input_vars, input_vals_step)):
-            if var.uid in uid2idx:
-                x_new[uid2idx[var.uid]] = val
+        # Store solution
+        y[step + 1, :] = x_new
+        t[step + 1] = t[step] + time_step
         
-        # Compute diff_vars (derivatives) from base_vars in sorted order
-        for diff_var in sorted_diff_vars:
-            base_var = diff_to_base[diff_var]
-            diff_idx = uid2idx[diff_var.uid]
-            base_idx = uid2idx[base_var.uid]
-            x_new[diff_idx] = (x_new[base_idx] - x_n[base_idx]) / time_step
+        # Update dx_last for next step
+        dx_last = dx.copy()
         
-        if converged:
-            y[step + 1, :] = x_new
-            t[step + 1] = t[step] + time_step
-        else:
-            if verbose:
-                print(f"Warning: Did not converge at step {step}, residual={residual_norm:.2e}")
-            y[step + 1, :] = x_new
-            t[step + 1] = t[step] + time_step
+        if not converged and verbose:
+            print(f"Warning: Did not converge at step {step}, residual={residual_norm:.2e}")
     
     return t, y, [var.name for var in all_vars]
