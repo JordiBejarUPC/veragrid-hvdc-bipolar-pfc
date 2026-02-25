@@ -64,10 +64,12 @@ class PiLineEmtTemplate(EmtModelTemplate):
             bool(line.ys.phC),
         ], dtype=bool)
 
+
         ph_labels = ["N", "A", "B", "C"]
         idx = np.where(ph_mask)[0]              # indices in [0..3]
         active_ph = [ph_labels[i] for i in idx] # names in canonical order
         m = len(active_ph)
+
 
         if m == 0:
             raise ValueError(f"PI line '{line.name}' has no enabled phases in line.ys")
@@ -117,11 +119,34 @@ class PiLineEmtTemplate(EmtModelTemplate):
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
 
+        idx_global = idx
+
+        n_mat = R_full.shape[0]  # same as Z_pu.shape[0]
+
+        if n_mat == 3:
+            # Matrices are ABC only
+            if 0 in idx_global:
+                raise ValueError(
+                    f"Line '{line.name}' has N phase enabled but template matrices are 3x3 (ABC)."
+                )
+            idx_mat = idx_global - 1  # A->0, B->1, C->2
+        elif n_mat == 4:
+            # Matrices are NABC
+            idx_mat = idx_global
+        else:
+            raise ValueError(
+                f"Unsupported template matrix size {n_mat} for line '{line.name}' (expected 3 or 4)."
+            )
+
+        m = len(idx_mat)
+        active_ph = [ph_labels[i] for i in idx_global]  # still N/A/B/C labels for mapping external vars
+
         # reduce to active subspace using idx
-        R = R_full[np.ix_(idx, idx)]
-        L = L_full[np.ix_(idx, idx)]
-        G_end = G_end_full[np.ix_(idx, idx)]
-        C_end = C_end_full[np.ix_(idx, idx)]
+        # Now slice using idx_mat, not idx_global
+        R = R_full[np.ix_(idx_mat, idx_mat)]
+        L = L_full[np.ix_(idx_mat, idx_mat)]
+        G_end = G_end_full[np.ix_(idx_mat, idx_mat)]
+        C_end = C_end_full[np.ix_(idx_mat, idx_mat)]
 
         # -----------------------------
         # 3) Create model vars (ACTIVE dimension only)
