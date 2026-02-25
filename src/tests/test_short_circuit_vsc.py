@@ -6,7 +6,6 @@ import numpy as np
 
 def test_short_circuit_vsc_3buses():
 
-    logger = vge.Logger()
     grid = vge.MultiCircuit()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -118,6 +117,51 @@ def test_short_circuit_vsc_3buses():
         [-307.76777399+3.73544573j]
     ])
 
-    assert np.allclose(abs(res_sc.voltage1), Usc_reference, atol=1e-6)
+    assert np.allclose(abs(res_sc.voltage1[:, 0]), Usc_reference, atol=1e-6)
     assert np.allclose(res_sc.vsc_St, St_vsc_reference, atol=1e-6)
     assert np.allclose(res_sc.Sf1, St_line_reference, atol=1e-6)
+
+
+def test_short_circuit_vsc_14buses():
+
+    grid = vge.open_file('data/grids/test_ieee_14_VSC.veragrid')
+
+    # ----------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Power Flow under healthy conditions
+    # ----------------------------------------------------------------------------------------------------------------------
+    pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
+                                    retry_with_other_methods=False,
+                                    limit_i_vsc=False)
+    res_pf = vge.power_flow(grid=grid, options=pf_options_1)
+
+    print(res_pf.get_voltage_df())
+
+    # ----------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Short-Circuit with converter's current limitation
+    # ----------------------------------------------------------------------------------------------------------------------
+    pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
+                                    retry_with_other_methods=False,
+                                    limit_i_vsc=False)
+
+    grid.add_short_circuit_event(
+        vge.ShortCircuitEvent(
+            device=grid.buses[9],
+            method=MethodShortCircuit.sequences_vsc,
+        )
+    )
+
+    sc_driver = vge.ShortCircuitDriver(grid=grid,
+                                       options=ShortCircuitOptions(),
+                                       pf_options=pf_options_2,
+                                       pf_results=res_pf,
+                                       pf_results3ph=None)
+    sc_driver.run()
+    res_sc = sc_driver.results
+
+    Usc_reference = np.array(
+        [0.99999646, 0.91623742, 0.8343526, 0.84994944, 0.86575979, 0.80622333, 0.80935283, 0.78726428, 0.77192103,
+         0.74351305, 0.80790032, 0.79696124, 0.7823984, 0.94797783, 0.86826011, 0.84541255, 0.84725015, 0.81377177,
+         0.84692126, 0.83635092, 0.82205093, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+
+    assert np.allclose(abs(res_sc.voltage1[:, 0]), Usc_reference, atol=1e-6)

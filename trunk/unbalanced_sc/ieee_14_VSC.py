@@ -1,23 +1,11 @@
 import VeraGridEngine.api as vge
-from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions, save_file
-from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
+from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
+from VeraGridEngine.enumerations import MethodShortCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
-import numpy as np
 
 logger = vge.Logger()
-grid = vge.open_file('ieee_14_2VSC.veragrid')
+grid = vge.open_file('test_ieee_14_VSC.veragrid')
 
-# for i in range(len(grid.vsc_devices)):
-#     grid.vsc_devices[i].control1_val = 10.0
-#     grid.vsc_devices[i].control2_val = 4.556134
-#     grid.vsc_devices[i].rate = 11.0
-
-grid.vsc_devices[0].control1_val = -9
-grid.vsc_devices[0].control2_val = -3
-grid.vsc_devices[0].rate = 10.0
-
-# vge.save_file(grid, 'ieee_14_VSC_with_Q.veragrid')
-#
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
 # ----------------------------------------------------------------------------------------------------------------------
@@ -56,7 +44,4 @@ sc_driver.run()
 res_sc = sc_driver.results
 
 print('\n --- Short-circuit Results --- ')
-# print('\n Faulted Voltage =', np.round(np.abs(res_sc.voltage1[9]), 4))
-# print()
 print(res_sc.get_voltage_df())
-# print('\n VSC Power =', np.round(res_sc.vsc_St[0], 4))
