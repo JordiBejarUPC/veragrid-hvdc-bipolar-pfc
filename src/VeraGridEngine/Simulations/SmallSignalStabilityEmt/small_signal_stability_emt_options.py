@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
 
 
-class EmtFloquetOptions(OptionsTemplate):
+class SmallSignalStabilityEmtOptions(OptionsTemplate):
     """
     EmtFloquetOptions
 
@@ -72,7 +73,8 @@ class EmtFloquetOptions(OptionsTemplate):
                  use_numba_kernels: bool = True,
                  min_block_size: int = None,
                  max_block_size: int = None,
-                 max_krylov_dim_cap: int = None):
+                 max_krylov_dim_cap: int = None,
+                 build_type: SmallSignalEmtBuildTypes = SmallSignalEmtBuildTypes.Arnoldi):
         OptionsTemplate.__init__(self, name='EmtFloquetOptions')
 
         self.k: int = k
@@ -95,6 +97,7 @@ class EmtFloquetOptions(OptionsTemplate):
         self.min_block_size = min_block_size
         self.max_block_size = max_block_size
         self.max_krylov_dim_cap = max_krylov_dim_cap
+        self.build_type: SmallSignalEmtBuildTypes = build_type
 
         self.register(key="k", tpe=int)
         self.register(key="target_period", tpe=float)
@@ -117,3 +120,4 @@ class EmtFloquetOptions(OptionsTemplate):
         self.register(key="min_block_size", tpe=int)
         self.register(key="max_block_size", tpe=int)
         self.register(key="max_krylov_dim_cap", tpe=int)
+        self.register(key="build_type", tpe=SmallSignalEmtBuildTypes)

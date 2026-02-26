@@ -152,11 +152,7 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     :return: PTDF matrix. It is a full matrix of dimensions Branches x buses
     """
 
-    n = Bf.shape[1]
-    # nb = n
-    # nbi = n
-    # noref = no_slack  # np.arange(1, nb)
-    # noslack = no_slack
+    n = Bf.shape[1]  # number of buses
 
     if distribute_slack:
         dP: Mat = np.ones((n, n)) * (-1 / (n - 1))
@@ -175,7 +171,7 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     else:
         dTheta[no_slack, :] = dtheta_ref
 
-    # compute corresponding change in branch Sf
+    # compute the corresponding change in branch Sf
     # Bf is a sparse matrix
     H = Bf @ dTheta
 

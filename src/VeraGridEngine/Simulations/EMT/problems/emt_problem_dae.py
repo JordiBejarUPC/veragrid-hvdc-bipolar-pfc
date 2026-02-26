@@ -8,6 +8,7 @@ Module providing the EmtProblemDae class, which acts as the electrical
 parser for the generic BaseProblem layer. It translates electrical components
 (buses, branches, injections) into the unified DAE mathematical structure.
 """
+
 from __future__ import annotations
 
 import time
@@ -17,27 +18,58 @@ from typing import Dict, List, Any, Set
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit
 
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+
 
 
 def _tic() -> float:
+    """
+    Returns the current performance counter time.
+    """
     return time.perf_counter()
 
 
 def _toc(t0: float) -> float:
+    """
+    Returns the elapsed time since t0.
+    """
     return time.perf_counter() - t0
 
 
-class EmtProblemDae(BaseProblem):
+def set_p(p: ObjVec, p_used: BoolVec, k: int, val: object):
+    """
+    Accumulates real power equations for a specific node.
+    """
+    if not p_used[k]:
+        p[k] = val
+        p_used[k] = True
+    else:
+        p[k] += val
+
+
+def set_q(q: ObjVec, q_used: BoolVec, k: int, val: object):
+    """
+    Accumulates reactive power equations for a specific node.
+    """
+    if not q_used[k]:
+        q[k] = val
+        q_used[k] = True
+    else:
+        q[k] += val
+
+
+class EmtProblemDae(EmtProblemTemplate):
     """
     Electrical parser layer for the EMT DAE Problem.
 
@@ -50,12 +82,21 @@ class EmtProblemDae(BaseProblem):
       - Initializes PF-based guesses AND evaluates mdl.init_eqs explicitly (Explicit init).
     """
 
-    def __init__(
-            self,
-            grid: MultiCircuit,
-            options: EmtOptions,
-            pf_results: PowerFlowResults3Ph | None,
-    ):
+    def __init__(self,
+                 grid: MultiCircuit,
+                 options: EmtOptions,
+                 pf_results: PowerFlowResults3Ph | None):
+        """
+        Initializes the EMT Problem by parsing the grid and passing the
+        resulting mathematical block to the BaseProblem constructor.
+        :param grid:
+        :param options:
+        :param pf_results:
+        """
+        super().__init__(
+            sys_block=Block(children=[], in_vars=[]),
+            glob_time=Var(self.TIME_NAME)
+        )
         self.logger = Logger()
         self.grid = grid
         self.options = options
@@ -78,12 +119,10 @@ class EmtProblemDae(BaseProblem):
 
         t_build = _tic()
 
-        self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
+        self._build_structure_and_collect(self.sys_block, grid, pf_results, self.glob_time)
 
-        sys_block.unify_blocks()
-        self._deduplicate_block_entities(sys_block)
-
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        self.sys_block.unify_blocks()
+        self._deduplicate_block_entities(self.sys_block)
 
         # 1) PF-based init guesses (and any set_init_guess done during parsing)
         self.init_guess.update(self._temp_init_guess)
@@ -194,12 +233,15 @@ class EmtProblemDae(BaseProblem):
             VarPowerFlowRefferenceType.i_C,
         ]
 
+        # These MUST exist in VarPowerFlowRefferenceType for non-Bergeron branches:
+        # current leaving FROM bus into the branch:
         br_if_keys = [
             VarPowerFlowRefferenceType.if_N,
             VarPowerFlowRefferenceType.if_A,
             VarPowerFlowRefferenceType.if_B,
             VarPowerFlowRefferenceType.if_C,
         ]
+        # current leaving TO bus into the branch:
         br_it_keys = [
             VarPowerFlowRefferenceType.it_N,
             VarPowerFlowRefferenceType.it_A,
@@ -278,12 +320,15 @@ class EmtProblemDae(BaseProblem):
             f = bus_dict[br.bus_from]
             t = bus_dict[br.bus_to]
 
+            # --- Bergeron special-case: current injections + history params ---
             is_bergeron = (
                     getattr(br, "emt_model_type", None) is not None
                     and getattr(br.emt_model_type, "value", None) == "Bergeron"
             )
 
             if is_bergeron:
+
+                # add its block (event params Ih_*)
                 mdl = br.emt_model.model
                 mdl.unify_blocks()
 
@@ -385,6 +430,7 @@ class EmtProblemDae(BaseProblem):
             mdl = bus.emt_model.model
 
             # EMT: bus equations must be KCL per existing phase.
+            # To avoid mixing/duplicating equations, replace any existing bus algebraic eqs.
             mdl.algebraic_eqs = []
 
             has_any_phase = False

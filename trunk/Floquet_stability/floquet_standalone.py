@@ -16,8 +16,8 @@ import time
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
-from VeraGridEngine.Simulations.SmallSignalStability_EMT_Floquet.emt_floquet_driver import EmtFloquetDriver
-from VeraGridEngine.Simulations.SmallSignalStability_EMT_Floquet.emt_floquet_options import EmtFloquetOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_driver import EmtFloquetDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_options import EmtFloquetOptions
 
 
 class _MockVar:

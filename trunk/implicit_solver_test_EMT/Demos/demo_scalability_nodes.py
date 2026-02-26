@@ -120,7 +120,7 @@ def run_backend(
     params0 = np.zeros(problem.get_variable_parameter_number())
 
     if vectorized:
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=t_end, h=h, method_str="trapezoidal", verbose=verbose)
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=t_end, h=h, integration_method="trapezoidal", verbose=verbose)
         solver._auto_detect_vectorization(method_str="trapezoidal")
     else:
         solver = JitAdSolver(problem, t0=0.0, t_end=t_end, h=h, method_str="trapezoidal", verbose=verbose)
