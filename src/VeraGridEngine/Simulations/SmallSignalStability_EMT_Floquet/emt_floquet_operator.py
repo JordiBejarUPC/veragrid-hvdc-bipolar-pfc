@@ -6,17 +6,7 @@
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
-
-try:
-    from emt_floquet_numba_kernels import NUMBA_AVAILABLE, apply_ak_stack_block_numba
-except Exception:
-    try:
-        from VeraGridEngine.Simulations.SmallSignalStability_EMT_Floquet.emt_floquet_numba_kernels import (
-            NUMBA_AVAILABLE, apply_ak_stack_block_numba,
-        )
-    except Exception:
-        NUMBA_AVAILABLE = False
-        apply_ak_stack_block_numba = None
+from .emt_floquet_numba_kernels import NUMBA_AVAILABLE, apply_ak_stack_block_numba
 
 
 class EmtFloquetOperator(spla.LinearOperator):
@@ -35,10 +25,7 @@ class EmtFloquetOperator(spla.LinearOperator):
         self.n_states = n_states
         self.method_str = method_str
 
-        if hasattr(problem, 'get_all_vars_number'):
-            self.n_total = problem.get_all_vars_number()
-        else:
-            self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
+        self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
 
         self.shape = (n_states, n_states)
         self.dtype = np.dtype(np.float64)
@@ -177,10 +164,7 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
         self.n_states = n_states
         self.method_str = method_str
 
-        if hasattr(problem, 'get_all_vars_number'):
-            self.n_total = problem.get_all_vars_number()
-        else:
-            self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
+        self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
 
         self.shape = (n_states, n_states)
         self.dtype = np.dtype(np.float64)
@@ -287,7 +271,7 @@ class AkStackBlockEmtFloquetOperator(spla.LinearOperator):
     Monodromy operator from an explicit stack of state-transition matrices A_k.
 
     This is the preferred path for EMT/Floquet benchmarking when the EMT engine can
-    expose the per-step linearised state map
+    expose the per-step linearized state map
 
         x_{k+1} = A_k x_k
 

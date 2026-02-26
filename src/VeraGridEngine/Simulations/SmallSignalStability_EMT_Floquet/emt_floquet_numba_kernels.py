@@ -18,46 +18,12 @@ Notes
 from __future__ import annotations
 
 from typing import Tuple
-import typing as _typing
 import numpy as np
 
 NUMBA_AVAILABLE = False
 NUMBA_IMPORT_ERROR = None
 
-
-def _patch_coverage_for_numba() -> None:
-    """Best-effort compatibility shim for coverage>=7.5 + numba import."""
-    try:
-        import coverage  # type: ignore
-    except Exception:
-        return
-
-    ct = getattr(coverage, "types", None)
-    if ct is None:
-        return
-
-    if (not hasattr(ct, "Tracer")) and hasattr(ct, "TracerCore"):
-        # Numba <=0.63 expects coverage.types.Tracer (older coverage API).
-        setattr(ct, "Tracer", getattr(ct, "TracerCore"))
-
-    # Newer coverage releases removed a couple of aliases used by Numba type hints.
-    for name in ("TShouldTraceFn", "TShouldStartContextFn"):
-        if not hasattr(ct, name):
-            setattr(ct, name, _typing.Any)
-
-
-try:
-    _patch_coverage_for_numba()
-    from numba import njit, prange  # type: ignore
-    NUMBA_AVAILABLE = True
-except Exception as _exc:  # pragma: no cover - optional path
-    NUMBA_IMPORT_ERROR = _exc
-    njit = None  # type: ignore
-    prange = range  # type: ignore
-
-
 if NUMBA_AVAILABLE:
-
     @njit(cache=True, fastmath=True)
     def _fro_norm_numba(X: np.ndarray) -> float:
         s = 0.0
