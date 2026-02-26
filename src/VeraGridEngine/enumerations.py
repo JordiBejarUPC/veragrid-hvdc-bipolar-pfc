@@ -2431,6 +2431,59 @@ class EmtSolverTypes(Enum):
     def __repr__(self):
         return str(self)
 
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtSolverTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+class SmallSignalEmtBuildTypes(Enum):
+    """
+    Jacobian construction backends for implicit solvers.
+    """
+    Arnoldi = "Arnoldi"
+    HybridArnoldi = "Hybrid Arnoldi"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SmallSignalEmtBuildTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"

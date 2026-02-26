@@ -23,7 +23,7 @@ from VeraGridEngine.Simulations.NodalCapacity import *
 from VeraGridEngine.Simulations.Reliability import *
 from VeraGridEngine.Simulations.AI import *
 from VeraGridEngine.Simulations.Rms import *
-from VeraGridEngine.Simulations.SmallSignalStability import *
+from VeraGridEngine.Simulations.SmallSignalStabilityRms import *
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
 

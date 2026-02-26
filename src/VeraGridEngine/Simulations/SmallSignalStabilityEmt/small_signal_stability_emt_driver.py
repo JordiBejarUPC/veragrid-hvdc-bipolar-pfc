@@ -3,137 +3,68 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
 import numpy as np
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
-from enum import Enum
 
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 
-from .emt_floquet_operator import EmtFloquetOperator, BlockEmtFloquetOperator, AkStackBlockEmtFloquetOperator
-from .emt_floquet_options import EmtFloquetOptions
-from .emt_floquet_results import EmtFloquetResults
-from .emt_floquet_numba_kernels import NUMBA_AVAILABLE, bmgs_twice_numba
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_operator import (EmtFloquetOperator,
+                                                                                     BlockEmtFloquetOperator,
+                                                                                     AkStackBlockEmtFloquetOperator)
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import \
+    SmallSignalStabilityEmtOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_results import \
+    SmallSignalStabilityEmtResults
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_numba_kernels import NUMBA_AVAILABLE, \
+    bmgs_twice_numba
+from VeraGridEngine.basic_structures import Vec, CxVec, Mat
+from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
 
-class BaseFloquetDriver(DriverTemplate):
+
+def build_restart_seed(U_sel: CxVec, p_target: int, seed: int = 42) -> Vec:
     """
-    Base class for EMT Floquet stability analysis.
-    Contains the common logic for problem initialization and limit cycle capture.
-    """
-    def __init__(self, grid, problem, emt_options: EmtOptions, options: EmtFloquetOptions):
-        DriverTemplate.__init__(self, grid=grid)
-        self.problem = problem
-        self.emt_options = emt_options
-        self.options = options
-        self.results = None
-
-    def _capture_limit_cycle_and_evaluator(self, h: float):
-        """
-        Captures the limit cycle by simulating the system up to ss_assessment_time.
-        Extracts the JIT Jacobian evaluator directly from the StructuralVectorizedSolver.
-        """
-        method_str = self.emt_options.integration_method
-        if isinstance(method_str, Enum):
-            method_str = method_str.value
-
-        if self.options.verbose:
-            print("-> Capturing limit cycle via StructuralVectorizedSolver...")
-
-        # Direct contract access. If 'problem' is invalid, it will fail natively here.
-        params_values = self.problem.get_parameters_values()
-        n_event_params = self.problem.get_variable_parameter_number()
-
-        solver = StructuralVectorizedSolver(
-            problem=self.problem,
-            t0=0.0,
-            t_end=self.options.ss_assessment_time,
-            h=h,
-            method_str=method_str,
-            verbose=self.options.verbose
-        )
-        t_full, y_full = solver.simulate()
-
-        steps_per_period = int(self.options.target_period / h)
-        y_limit = y_full[-steps_per_period:]
-        t_limit = t_full[-steps_per_period:]
-
-        static_params = np.array([c.value for c in params_values], dtype=np.float64)
-
-        return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
-
-class EmtFloquetDriver(BaseFloquetDriver):
-    """
-    Main Driver for EMT Small-Signal Stability via Floquet Theory.
-    Optimized with LU Caching, Krylov Projection, and Spectral Shift-Invert.
+    Build a real orthonormal restart block from complex Ritz/refined vectors.
+    :param U_sel:
+    :param p_target:
+    :param seed:
+    :return:
     """
 
-    def run(self):
-        self.tic()
+    n = U_sel.shape[0]
+    cols = []
+    for j in range(U_sel.shape[1]):
+        ur = np.real(U_sel[:, j])
+        if np.linalg.norm(ur) > 1e-14:
+            cols.append(ur)
+        if len(cols) >= p_target:
+            break
+        ui = np.imag(U_sel[:, j])
+        if np.linalg.norm(ui) > 1e-14:
+            cols.append(ui)
+        if len(cols) >= p_target:
+            break
 
-        h = self.emt_options.time_step
-        n_states = self.problem.get_states_number()
+    rng = np.random.default_rng(seed)
+    while len(cols) < p_target:
+        cols.append(rng.standard_normal(n))
 
-        # 1. Capture limit cycle trajectory
-        y_traj, t_traj, jac_eval, stat_params, n_ev_params, method_str = self._capture_limit_cycle_and_evaluator(h)
+    S = np.column_stack(cols[:p_target])
+    Q, _ = np.linalg.qr(S)
+    return Q[:, :p_target]
 
-        # 2. Operator initialized with HPC LU Caching
-        monodromy_op = EmtFloquetOperator(  # O BlockEmtFloquetOperator
-            problem=self.problem, trajectory=y_traj, h=h, n_states=n_states,
-            method_str=method_str, jac_evaluator=jac_eval, static_params=stat_params,
-            n_event_params=n_ev_params, t_trajectory=t_traj
-        )
 
-        # 3. Eigenvalue Extraction
-        # Arnoldi struggles when all eigenvalues have identical magnitudes.
-        if n_states <= max(self.options.k + 1, 20):
-            if self.options.verbose:
-                print(f"System size (N={n_states}). Using dense fallback for full spectrum.")
+def get_floquet_Ak_stack(problem: EmtProblemTemplate,
+                         target_period: float,
+                         h: float) -> Mat:
+    # TODO: implement
+    pass
 
-            I_dense = np.eye(n_states)
-            C_M = np.zeros((n_states, n_states))
-            for i in range(n_states):
-                C_M[:, i] = monodromy_op.matvec(I_dense[:, i])
-
-            mu, v = la.eig(C_M)
-        else:
-            # High-Performance Sparse Arnoldi
-            search_k = min(self.options.k * 2, n_states - 2)
-            mu, v = spla.eigs(monodromy_op, k=search_k, which='LM', tol=1e-8)
-
-        # 4. SPECTRAL SHIFT FILTERING (Resonance Hunt)
-        if self.options.target_frequency_hz is not None:
-            f_target = self.options.target_frequency_hz
-            T = self.options.target_period
-            # Target multiplier on the unit circle
-            sigma = np.exp(1j * 2 * np.pi * f_target * T)
-
-            # Distance to both positive and negative frequencies to keep conjugate pairs together
-            distances = np.minimum(np.abs(mu - sigma), np.abs(mu - np.conj(sigma)))
-
-            # Sort by distance and truncate to the requested k modes
-            sort_indices = np.argsort(distances)[:self.options.k]
-            mu = mu[sort_indices]
-            v = v[:, sort_indices]
-        else:
-            sort_indices = np.argsort(-np.abs(mu))[:self.options.k]
-            mu = mu[sort_indices]
-            v = v[:, sort_indices]
-
-        # 5. Krylov Left-Eigenvector Projection (Lifting)
-        w = np.linalg.pinv(v).conj().T
-
-        # 6. Results Mapping
-        self.results = EmtFloquetResults(
-            multipliers=mu,
-            right_vecs=v,
-            left_vecs=w,
-            period=self.options.target_period,
-            stat_vars=self.problem.get_state_vars()
-        )
-
-        self.toc()
 
 class RobustBlockArnoldiEngine:
     """
@@ -145,6 +76,14 @@ class RobustBlockArnoldiEngine:
     """
 
     def __init__(self, operator_matmat, n_states, p_init, max_iters, tol_deflation=1e-12):
+        """
+
+        :param operator_matmat:
+        :param n_states:
+        :param p_init:
+        :param max_iters:
+        :param tol_deflation:
+        """
         self.operator = operator_matmat
         self.n = n_states
         self.p_init = p_init
@@ -277,38 +216,176 @@ class RobustBlockArnoldiEngine:
         return V_final, H_final
 
 
-class HybridBlockArnoldiDriver(BaseFloquetDriver):
-    """
-    Restarted Hybrid Block-Arnoldi driver with optional A_k operator and adaptive restart.
+class BestPack:
 
-    Key features
-    ------------
-    1. Explicit restarted Block-Arnoldi (BIRAM-like loop).
-    2. Optional refined Ritz vectors for robust restart seeding.
-    3. Residual-based stagnation detection and elastic block/depth adaptation.
-    4. Compatibility with both LU-cached DAE operator and explicit EMT A_k stacks.
+    def __init__(self):
+        self.mu_sel: CxVec | None = None
+        self.U_sel: CxVec | None = None
+        self.rel: Vec | None = None
+        self.max_rr: float = 0
+
+
+class SmallSignalStabilityEmtDriver(DriverTemplate):
     """
+    Base class for EMT Floquet stability analysis.
+    Contains the common logic for problem initialization and limit cycle capture.
+    """
+
+    def __init__(self,
+                 grid: MultiCircuit,
+                 problem: EmtProblemTemplate,
+                 emt_options: EmtOptions,
+                 options: SmallSignalStabilityEmtOptions):
+        """
+
+        :param grid:
+        :param problem:
+        :param emt_options:
+        :param options:
+        """
+
+        DriverTemplate.__init__(self, grid=grid)
+        self.problem: EmtProblemTemplate = problem
+        self.emt_options: EmtOptions = emt_options
+        self.options: SmallSignalStabilityEmtOptions = options
+        self.results: SmallSignalStabilityEmtResults | None = None
+
+    def _capture_limit_cycle_and_evaluator(self,
+                                           h: float,
+                                           verbose: int = 0):
+        """
+        Captures the limit cycle by simulating the system up to ss_assessment_time.
+        Extracts the JIT Jacobian evaluator directly from the StructuralVectorizedSolver.
+        :param h:
+        :param verbose:
+        :return:
+        """
+
+        if verbose > 0:
+            print("-> Capturing limit cycle via StructuralVectorizedSolver...")
+
+        # Direct contract access. If 'problem' is invalid, it will fail natively here.
+        params_values = self.problem.get_parameters_values()
+        n_event_params = self.problem.get_variable_parameter_number()
+
+        solver = StructuralVectorizedSolver(
+            problem=self.problem,
+            t0=0.0,
+            t_end=self.options.ss_assessment_time,
+            h=h,
+            integration_method=self.emt_options.integration_method,
+            verbose=self.options.verbose > 0
+        )
+        t_full, y_full = solver.simulate()
+
+        steps_per_period = int(self.options.target_period / h)
+        y_limit = y_full[-steps_per_period:]
+        t_limit = t_full[-steps_per_period:]
+
+        static_params = np.array([c.value for c in params_values], dtype=np.float64)
+
+        return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params
+
+    def run_arnoldi(self):
+        """
+
+        :return:
+        """
+        self.tic()
+
+        h = self.emt_options.time_step
+        n_states = self.problem.get_states_number()
+
+        # 1. Capture limit cycle trajectory
+        y_traj, t_traj, jac_eval, stat_params, n_ev_params = self._capture_limit_cycle_and_evaluator(h)
+
+        # 2. Operator initialized with HPC LU Caching
+        monodromy_op = EmtFloquetOperator(  # O BlockEmtFloquetOperator
+            problem=self.problem,
+            trajectory=y_traj,
+            h=h,
+            n_states=n_states,
+            method_str=self.emt_options.integration_method,
+            jac_evaluator=jac_eval,
+            static_params=stat_params,
+            n_event_params=n_ev_params,
+            t_trajectory=t_traj
+        )
+
+        # 3. Eigenvalue Extraction
+        # Arnoldi struggles when all eigenvalues have identical magnitudes.
+        if n_states <= max(self.options.k + 1, 20):
+            if self.options.verbose:
+                print(f"System size (N={n_states}). Using dense fallback for full spectrum.")
+
+            I_dense = np.eye(n_states)
+            C_M = np.zeros((n_states, n_states))
+            for i in range(n_states):
+                C_M[:, i] = monodromy_op.matvec(I_dense[:, i])
+
+            mu, v = la.eig(C_M)
+        else:
+            # High-Performance Sparse Arnoldi
+            search_k = min(self.options.k * 2, n_states - 2)
+            mu, v = spla.eigs(monodromy_op, k=search_k, which='LM', tol=1e-8)
+
+        # 4. SPECTRAL SHIFT FILTERING (Resonance Hunt)
+        if self.options.target_frequency_hz is not None:
+            f_target = self.options.target_frequency_hz
+            T = self.options.target_period
+            # Target multiplier on the unit circle
+            sigma = np.exp(1j * 2 * np.pi * f_target * T)
+
+            # Distance to both positive and negative frequencies to keep conjugate pairs together
+            distances = np.minimum(np.abs(mu - sigma), np.abs(mu - np.conj(sigma)))
+
+            # Sort by distance and truncate to the requested k modes
+            sort_indices = np.argsort(distances)[:self.options.k]
+            mu = mu[sort_indices]
+            v = v[:, sort_indices]
+        else:
+            sort_indices = np.argsort(-np.abs(mu))[:self.options.k]
+            mu = mu[sort_indices]
+            v = v[:, sort_indices]
+
+        # 5. Krylov Left-Eigenvector Projection (Lifting)
+        w = np.linalg.pinv(v).conj().T
+
+        # 6. Results Mapping
+        self.results = SmallSignalStabilityEmtResults(
+            multipliers=mu,
+            right_vecs=v,
+            left_vecs=w,
+            period=self.options.target_period,
+            stat_vars=self.problem.get_state_vars()
+        )
+
+        self.toc()
 
     def _make_monodromy_operator(self, h: float, n_states: int):
+        """
+
+        :param h:
+        :param n_states:
+        :return:
+        """
         if self.options.prefer_ak_operator:
-            try:
-                Ak_stack = self.problem.get_floquet_Ak_stack(self.options.target_period, h)
+            #
+            Ak_stack = get_floquet_Ak_stack(self.problem, self.options.target_period, h)
 
-                if Ak_stack is not None:
-                    if self.options.verbose:
-                        print('Using explicit EMT A_k stack operator (Numba path if available).')
-                    return AkStackBlockEmtFloquetOperator(Ak_stack, use_numba=self.options.use_numba_kernels)
-            except AttributeError:
-                pass
+            if Ak_stack is not None:
+                if self.options.verbose:
+                    print('Using explicit EMT A_k stack operator (Numba path if available).')
+                return AkStackBlockEmtFloquetOperator(Ak_stack, use_numba=self.options.use_numba_kernels)
 
-        y_traj, t_traj, jac_eval, stat_params, n_ev_params, method_str = self._capture_limit_cycle_and_evaluator(h)
+        y_traj, t_traj, jac_eval, stat_params, n_ev_params = self._capture_limit_cycle_and_evaluator(h)
 
         return BlockEmtFloquetOperator(
             problem=self.problem,
             trajectory=y_traj,
             h=h,
             n_states=n_states,
-            method_str=method_str,
+            method_str=self.emt_options.integration_method,
             jac_evaluator=jac_eval,
             static_params=stat_params,
             n_event_params=n_ev_params,
@@ -316,15 +393,36 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         )
 
     @staticmethod
-    def _apply_operator_complex(op_matmat, Xc: np.ndarray) -> np.ndarray:
+    def _apply_operator_complex(monodromy_op: BlockEmtFloquetOperator, Xc: Vec) -> Vec:
+        """
+
+        :param op_matmat:
+        :param Xc:
+        :return:
+        """
         Xr = np.ascontiguousarray(np.real(Xc), dtype=np.float64)
         Xi = np.ascontiguousarray(np.imag(Xc), dtype=np.float64)
-        Yr = op_matmat(Xr)
-        Yi = op_matmat(Xi)
+        Yr = monodromy_op.matmat(Xr)
+        Yi = monodromy_op.matmat(Xi)
         return Yr + 1j * Yi
 
-    def _compute_selected_pairs(self, monodromy_op, V_sub, H_sub, k_target: int, p_seed: int, use_refined: bool):
-        """Return selected multipliers, vectors in full space, and relative residuals."""
+    def _compute_selected_pairs(self,
+                                monodromy_op: BlockEmtFloquetOperator,
+                                V_sub,
+                                H_sub,
+                                k_target: int,
+                                p_seed: int,
+                                use_refined: bool) -> Tuple[CxVec, CxVec, Vec]:
+        """
+        Return selected multipliers, vectors in full space, and relative residuals.
+        :param monodromy_op:
+        :param V_sub:
+        :param H_sub:
+        :param k_target:
+        :param p_seed:
+        :param use_refined:
+        :return:
+        """
         mu_sub, Y_sub = la.eig(H_sub)
         sort_idx = np.argsort(-np.abs(mu_sub))
         keep = min(len(sort_idx), max(k_target + 2, p_seed))
@@ -334,7 +432,7 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
 
         if use_refined:
             # Refined Ritz vectors: z = arg min ||(AV - μV) z|| in the current subspace
-            AV = self._apply_operator_complex(monodromy_op.matmat, V_sub.astype(np.complex128))
+            AV = self._apply_operator_complex(monodromy_op, V_sub.astype(np.complex128))
             Vc = V_sub.astype(np.complex128)
             U_sel = np.zeros((V_sub.shape[0], keep), dtype=np.complex128)
             for j, mu in enumerate(mu_sel):
@@ -354,7 +452,7 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         else:
             U_sel = (V_sub @ Y_sel).astype(np.complex128)
 
-        AU_sel = self._apply_operator_complex(monodromy_op.matmat, U_sel)
+        AU_sel = self._apply_operator_complex(monodromy_op, U_sel)
         R = AU_sel - U_sel * mu_sel.reshape(1, -1)
         rnorm = np.linalg.norm(R, axis=0)
         unorm = np.linalg.norm(U_sel, axis=0)
@@ -362,32 +460,11 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
 
         return mu_sel, U_sel, rel
 
-    @staticmethod
-    def _build_restart_seed(U_sel: np.ndarray, p_target: int, seed: int = 42) -> np.ndarray:
-        """Build a real orthonormal restart block from complex Ritz/refined vectors."""
-        n = U_sel.shape[0]
-        cols = []
-        for j in range(U_sel.shape[1]):
-            ur = np.real(U_sel[:, j])
-            if np.linalg.norm(ur) > 1e-14:
-                cols.append(ur)
-            if len(cols) >= p_target:
-                break
-            ui = np.imag(U_sel[:, j])
-            if np.linalg.norm(ui) > 1e-14:
-                cols.append(ui)
-            if len(cols) >= p_target:
-                break
+    def run_arnoldi_hybrid(self):
+        """
 
-        rng = np.random.default_rng(seed)
-        while len(cols) < p_target:
-            cols.append(rng.standard_normal(n))
-
-        S = np.column_stack(cols[:p_target])
-        Q, _ = np.linalg.qr(S)
-        return Q[:, :p_target]
-
-    def run(self):
+        :return:
+        """
         self.tic()
 
         h = self.emt_options.time_step
@@ -418,6 +495,9 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         m_iters = max(2, max_dim_local // p_seed)
 
         if self.options.verbose:
+            # self.report_text()
+            # self.report_progress()
+            # self.report_progress2()
             print(
                 f'Executing Hybrid Block-Arnoldi (Block Size: {p_seed}, Iters: {m_iters}, Restarts: {max_restarts})...')
             if NUMBA_AVAILABLE and bmgs_twice_numba is not None:
@@ -426,7 +506,7 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         rng = np.random.default_rng(42)
         V_seed, _ = np.linalg.qr(rng.standard_normal((n_states, p_seed)))
 
-        best_pack = None
+        best_pack = BestPack()
         residual_history = []
 
         for ir in range(max_restarts + 1):
@@ -460,13 +540,11 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
             if self.options.verbose:
                 print(f'   [BIRAM] top-{len(topk)} max rel-res = {max_rr:.3e}')
 
-            if (best_pack is None) or (max_rr < best_pack['max_rr']):
-                best_pack = {
-                    'mu_sel': mu_sel.copy(),
-                    'U_sel': U_sel.copy(),
-                    'rel': rel.copy(),
-                    'max_rr': max_rr,
-                }
+            if max_rr < best_pack.max_rr:
+                best_pack.mu_sel = mu_sel.copy()
+                best_pack.U_sel = U_sel.copy()
+                best_pack.rel = rel.copy()
+                best_pack.max_rr = max_rr
 
             if max_rr <= restart_tol:
                 if self.options.verbose:
@@ -477,7 +555,7 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
                 break
 
             # Prepare restart seed from refined/Ritz vectors
-            V_seed = self._build_restart_seed(U_sel, p_target=p_seed, seed=42 + ir)
+            V_seed = build_restart_seed(U_sel, p_target=p_seed, seed=42 + ir)
 
             # Elastic adaptation under residual stagnation
             if adaptive_restart and len(residual_history) >= stagnation_patience + 1:
@@ -489,7 +567,7 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
                         p_new = max(p_min, p_seed - 2)
                         if p_new != p_seed:
                             p_seed = p_new
-                            V_seed = self._build_restart_seed(U_sel, p_target=p_seed, seed=99 + ir)
+                            V_seed = build_restart_seed(U_sel, p_target=p_seed, seed=99 + ir)
                             changed = True
                             if self.options.verbose:
                                 print(f'   [BIRAM] Residual stagnation detected -> shrink block to p={p_seed}.')
@@ -510,16 +588,16 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         if best_pack is None:
             raise RuntimeError('HybridBlockArnoldiDriver failed to produce Ritz pairs.')
 
-        mu_sel = best_pack['mu_sel']
-        U_sel = best_pack['U_sel']
+        mu_sel = best_pack.mu_sel
+        U_sel = best_pack.U_sel
         sort_idx = np.argsort(-np.abs(mu_sel))[:k_target]
-        mu = mu_sel[sort_idx]
-        v = U_sel[:, sort_idx]
+        mu: CxVec = mu_sel[sort_idx]
+        v: CxVec = U_sel[:, sort_idx]
 
         # Pseudo-inverse dual space lifting (Cleaned)
         w = np.linalg.pinv(v).conj().T
 
-        self.results = EmtFloquetResults(
+        self.results = SmallSignalStabilityEmtResults(
             multipliers=mu,
             right_vecs=v,
             left_vecs=w,
@@ -528,3 +606,15 @@ class HybridBlockArnoldiDriver(BaseFloquetDriver):
         )
 
         self.toc()
+
+    def run(self):
+        """
+
+        :return:
+        """
+        if self.options.build_type == SmallSignalEmtBuildTypes.Arnoldi:
+            self.run_arnoldi()
+        elif self.options.build_type == SmallSignalEmtBuildTypes.HybridArnoldi:
+            self.run_arnoldi_hybrid()
+        else:
+            raise RuntimeError(f'Unknown build type: {self.options.build_type}')

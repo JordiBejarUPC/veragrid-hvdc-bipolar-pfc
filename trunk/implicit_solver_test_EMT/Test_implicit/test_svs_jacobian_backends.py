@@ -46,7 +46,7 @@ def test_svs_clustering_and_jacobian():
     problem = BaseProblem(block, t_sys)
 
     solver = StructuralVectorizedSolver(
-        problem, t0=0.0, t_end=1e-3, h=1e-6, method_str="trapezoidal"
+        problem, t0=0.0, t_end=1e-3, h=1e-6, integration_method="trapezoidal"
     )
 
     x = problem.get_x0()
@@ -75,7 +75,7 @@ def test_svs_simulation_consistency():
     p0 = np.zeros(problem.get_variable_parameter_number())
 
     solver = StructuralVectorizedSolver(
-        problem, t0=0.0, t_end=50e-6, h=1e-6, method_str="trapezoidal"
+        problem, t0=0.0, t_end=50e-6, h=1e-6, integration_method="trapezoidal"
     )
 
     t_arr, y_arr = solver.simulate(x0=x0, params0=p0)
