@@ -3759,9 +3759,11 @@ class SchematicWidget(BaseDiagramWidget):
 
                     if br_active[i]:
 
-                        l_color_val = lnormA[i]
+                        l_color_val = max(lnormA[i], lnormB[i], lnormC[i])
                         tooltip = str(i) + ': ' + branch.name
                         tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormA[i] * 100) + ' [%]'
+                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormB[i] * 100) + ' [%]'
+                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormC[i] * 100) + ' [%]'
 
                         tooltip += '\nPower A (from):\t' + "{:10.4f}".format(SfA[i]) + ' [MVA]'
                         tooltip += '\nPower B (from):\t' + "{:10.4f}".format(SfB[i]) + ' [MVA]'
@@ -3813,8 +3815,8 @@ class SchematicWidget(BaseDiagramWidget):
 
                         if hasattr(graphic_object, 'set_arrows_with_power'):
                             graphic_object.set_arrows_with_power(
-                                Sf=np.max([SfA[i], SfB[i], SfC[i]]),
-                                St=np.max([StA[i], StB[i], StC[i]])
+                                Sf=SfA[i] + SfB[i] + SfC[i],
+                                St=StA[i] + StB[i] + StC[i]
                             )
                     else:
                         w = graphic_object.pen_width
