@@ -41,6 +41,8 @@ class BusEmtTemplateABC(EmtModelTemplate):
         if not v_list:
             raise ValueError("Bus has no enabled phases")
 
+        print("out vars at bus=", v_list)
+
         self._block = Block(
             alter_params=v_list, # ?
             algebraic_vars=v_list,
@@ -64,9 +66,9 @@ class BusEmtTemplateABC(EmtModelTemplate):
         """
         return self._block
 
-def initialize_bus_emt(grid: MultiCircuit,
-                       bus: Bus,
-                       vf: VarFactory):
+def get_bus_emt_template(grid: MultiCircuit,
+                         bus: Bus,
+                         vf: VarFactory):
     """
     Initialize 3ph bus block
     A bus will have the phases of the branches connected to it
@@ -85,7 +87,7 @@ def initialize_bus_emt(grid: MultiCircuit,
 
     print("bus mask=", mask)
     # choose template depending on the number of phases
-    bus.rms_model.model = BusEmtTemplateABC(vf=vf, mask = mask).block
+    bus.emt_model.model = BusEmtTemplateABC(vf=vf, mask = mask).block
 
 
 

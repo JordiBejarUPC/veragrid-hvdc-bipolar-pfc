@@ -28,11 +28,12 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import initialize_bus_emt
+from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
+
 
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes
@@ -63,10 +64,10 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
 
-
-
 grid.add_bus(bus0)
 grid.add_bus(bus1)
+
+
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -105,11 +106,16 @@ gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
                      Ki=10.0,
                      )
 
+grid.add_line(line0)
+grid.add_load(bus=bus1, api_obj=load)
+grid.add_generator(bus=bus0, api_obj=gen0)
+
+for bus in grid.buses:
+    get_bus_emt_template(grid, bus, vf=grid.var_factory)
+
 ######################################################################################################
 # Build EMT models
 ######################################################################################################
-for bus in grid.buses:
-    initialize_bus_emt(grid, bus, vf=grid.var_factory)
 
 # Build dynamic_model_host
 
@@ -169,9 +175,6 @@ gen0.emt_model= gen_dynhost
 # event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
 # grid.add_rms_event(event)
 
-grid.add_line(line0)
-grid.add_load(bus=bus1, api_obj=load)
-grid.add_generator(bus=bus0, api_obj=gen0)
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
@@ -228,7 +231,7 @@ print(res.get_branch_df())
 options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, #5e-6*10, # s
                      tolerance = 1e-6,
-                     solver = EmtSolverTypes.StructuralAD,
+                     solver = EmtSolverTypes.Symbolic,
                      integration_method = DynamicIntegrationMethod.Trapezoid)
 
 
@@ -238,12 +241,12 @@ problem = EmtProblemDae(grid=grid,
 
 
 
-solver = StructuralVectorizedSolver(problem = problem,
-                                    t0 = 0.0,
-                                    t_end = options.simulation_time,
-                                    h = options.time_step,
-                                    method_str=options.integration_method,
-                                    verbose = True)
+solver = JitSymbolicSolver(problem = problem,
+                           t0 = 0.0,
+                           t_end = options.simulation_time,
+                           h = options.time_step,
+                           method_str=options.integration_method,
+                           verbose = True)
 
 t, y = solver.simulate()
 
