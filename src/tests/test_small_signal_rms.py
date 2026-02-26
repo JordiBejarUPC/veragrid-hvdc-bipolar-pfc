@@ -389,7 +389,7 @@ def stability_kundur_no_shunt():
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl4.out_vars[0]})
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl4.out_vars[1]})
 
-    # add models to dyn_host
+    # add models to opi objects
 
     gen1.rms_model.model = big_gen1
     gen2.rms_model.model = big_gen2
@@ -419,35 +419,6 @@ def stability_kundur_no_shunt():
     load1.rms_model.model = load1_mdl
     load2.rms_model.model = load2_mdl
 
-    # attach rms models to Veragrid objects
-
-    # gen1.rms_model.model = big_gen1
-    # gen2.rms_model.model = big_gen2
-    # gen3.rms_model.model = big_gen3
-    # gen4.rms_model.model = big_gen4
-    #
-    # line0.rms_model.model = line0_mdl
-    # line1.rms_model.model = line1_mdl
-    # line2.rms_model.model = line2_mdl
-    # line3.rms_model.model = line3_mdl
-    # line4.rms_model.model = line4_mdl
-    # line5.rms_model.model = line5_mdl
-    # line6.rms_model.model = line6_mdl
-    # line7.rms_model.model = line7_mdl
-    # line8.rms_model.model = line8_mdl
-    # line9.rms_model.model = line9_mdl
-    # line10.rms_model.model = line10_mdl
-    # line11.rms_model.model = line11_mdl
-    # line12.rms_model.model = line12_mdl
-    # line13.rms_model.model = line13_mdl
-    #
-    # trafo_G1.rms_model.model = trafo1_mdl
-    # trafo_G2.rms_model.model = trafo2_mdl
-    # trafo_G3.rms_model.model = trafo3_mdl
-    # trafo_G4.rms_model.model = trafo4_mdl
-    #
-    # load1.rms_model.model = load1_mdl
-    # load2.rms_model.model = load2_mdl
 
     grid.add_line(line0)
     grid.add_line(line1)
