@@ -15,10 +15,10 @@ from VeraGridEngine.basic_structures import Vec
 
 class EmtProblemTemplate(ABC):
     """
-        Intermediate layer that manages DAE plumbing including indexing, variable mapping,
-        and event updating, regardless of whether the system comes from an electrical
-        circuit or a generic mathematical model.
-        """
+    Intermediate layer that manages DAE plumbing including indexing, variable mapping,
+    and event updating, regardless of whether the system comes from an electrical
+    circuit or a generic mathematical model.
+    """
 
     VARS_NAME = "vars"
     VARIABLE_PARAMS_NAME = "vprms"

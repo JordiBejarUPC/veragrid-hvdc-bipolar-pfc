@@ -46,28 +46,6 @@ def _toc(t0: float) -> float:
     return time.perf_counter() - t0
 
 
-def set_p(p: ObjVec, p_used: BoolVec, k: int, val: object):
-    """
-    Accumulates real power equations for a specific node.
-    """
-    if not p_used[k]:
-        p[k] = val
-        p_used[k] = True
-    else:
-        p[k] += val
-
-
-def set_q(q: ObjVec, q_used: BoolVec, k: int, val: object):
-    """
-    Accumulates reactive power equations for a specific node.
-    """
-    if not q_used[k]:
-        q[k] = val
-        q_used[k] = True
-    else:
-        q[k] += val
-
-
 class EmtProblemDae(EmtProblemTemplate):
     """
     Electrical parser layer for the EMT DAE Problem.
@@ -102,11 +80,11 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
 
-        # para init_explicit
+        # for init_explicit
         self._models_with_init_eqs: List[Block] = []
         self._models_with_init_eqs_seen: Set[int] = set()
 
-        # Construir el block raíz REAL (no vacío)
+
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
 
@@ -197,7 +175,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 if getattr(self.options, "verbose", 0) > 0:
                     print(f"[EMT][init_explicit] failed for block '{getattr(mdl, 'name', 'unknown')}'. Error: {e}")
 
-        # CRITICAL: rebuild event param fn + initial event param vectors because BaseProblem copied eq list
+
         self._build_runtime_param_vectors()
 
     # ---------------------------------------------------------------------
@@ -307,7 +285,7 @@ class EmtProblemDae(EmtProblemTemplate):
             self._add_model_to_system_mappings(bus, mdl)
             sys_block.add(mdl)
 
-            # NEW: register init_eqs blocks
+            # register init_eqs blocks
             self._register_init_model(mdl)
 
             if pf_results is not None:
@@ -337,7 +315,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._add_model_to_system_mappings(br, mdl)
                 sys_block.add(mdl)
 
-                # NEW: register init_eqs blocks (if any)
+                # register init_eqs blocks (if any)
                 self._register_init_model(mdl)
 
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
@@ -365,7 +343,7 @@ class EmtProblemDae(EmtProblemTemplate):
             self._add_model_to_system_mappings(br, mdl)
             sys_block.add(mdl)
 
-            # NEW: register init_eqs blocks
+            # register init_eqs blocks
             self._register_init_model(mdl)
 
             # Add terminal currents into KCL
@@ -401,15 +379,11 @@ class EmtProblemDae(EmtProblemTemplate):
             self._add_model_to_system_mappings(inj, mdl)
             sys_block.add(mdl)
 
-            # NEW: register init_eqs blocks
+            # register init_eqs blocks
             self._register_init_model(mdl)
 
             b = bus_dict[inj.bus]
 
-            # KCL convention:
-            #   - branch currents (if/it) are treated as LEAVING the bus
-            #   - injection currents i_* are treated as ENTERING the bus (device -> node)
-            # Therefore: add branches, SUBTRACT injections.
             for ph in range(4):
                 i_expr = mdl.E(inj_i_keys[ph])
                 if i_expr is not None:
@@ -430,7 +404,6 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl = bus.emt_model.model
 
             # EMT: bus equations must be KCL per existing phase.
-            # To avoid mixing/duplicating equations, replace any existing bus algebraic eqs.
             mdl.algebraic_eqs = []
 
             has_any_phase = False
