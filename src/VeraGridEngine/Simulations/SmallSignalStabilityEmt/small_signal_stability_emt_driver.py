@@ -75,16 +75,16 @@ class RobustBlockArnoldiEngine:
     3. Rank-Revealing SVD for Block Deflation.
     """
 
-    def __init__(self, operator_matmat, n_states, p_init, max_iters, tol_deflation=1e-12):
+    def __init__(self, monodromy_op: BlockEmtFloquetOperator, n_states, p_init, max_iters, tol_deflation=1e-12):
         """
 
-        :param operator_matmat:
+        :param monodromy_op:
         :param n_states:
         :param p_init:
         :param max_iters:
         :param tol_deflation:
         """
-        self.operator = operator_matmat
+        self.monodromy_op = monodromy_op
         self.n = n_states
         self.p_init = p_init
         self.max_iters = max_iters
@@ -185,7 +185,7 @@ class RobustBlockArnoldiEngine:
             V_j = self.V[:, start_j:end_j]
 
             # 2. Apply Operator (BLAS Level 3 Muscle)
-            W = self.operator(V_j)
+            W = self.monodromy_op.matmat(V_j)
 
             # 3. Robust Orthogonalization
             W, H_col = self._orthogonalize_block(W, current_iter=j)
@@ -514,7 +514,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
                 print(f'   [BIRAM] Restart cycle {ir + 1}/{max_restarts + 1}')
 
             engine = RobustBlockArnoldiEngine(
-                operator_matmat=monodromy_op.matmat,
+                monodromy_op=monodromy_op,
                 n_states=n_states,
                 p_init=p_seed,
                 max_iters=m_iters,
