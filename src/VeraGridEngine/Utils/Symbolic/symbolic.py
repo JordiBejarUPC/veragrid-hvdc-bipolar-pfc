@@ -16,6 +16,8 @@ from types import MappingProxyType
 
 from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+
 NUMBER = Union[int, float, complex]
 
 
@@ -331,9 +333,9 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "uid", "diff_var", "base_var", "_origin_var")
 
-    def __init__(self, name: str, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
+    def __init__(self, name: str, reference: VarPowerFlowRefferenceType | None = None, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
 
         """
 
@@ -343,9 +345,12 @@ class Var(Expr):
         """
         super().__init__(uid=uid)
         self.name: str = name
+        self._ref: VarPowerFlowRefferenceType | None = reference
         self.diff_var = diff_var
         self.base_var: Var = base_var  # assign reference to base var
         self._origin_var: Var | None = None
+
+
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
 
@@ -439,6 +444,10 @@ class Var(Expr):
                 self._origin_var = self._origin_var.base_var
 
         return self._origin_var
+
+    @property
+    def ref(self) -> VarPowerFlowRefferenceType:
+        return self._ref
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """

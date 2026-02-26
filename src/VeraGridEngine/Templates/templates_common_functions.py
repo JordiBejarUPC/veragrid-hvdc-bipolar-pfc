@@ -893,3 +893,35 @@ def simulate_single_block(
             print(f"Warning: Did not converge at step {step}, residual={residual_norm:.2e}")
     
     return t, y, [var.name for var in all_vars]
+
+def connect_rms_models(mdl1: Block, mdl2: Block):
+    """
+    This function substitutes input variables for output variables to connect two rms models
+    :param mdl1:
+    :param mdl2:
+    :return:
+    """
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == inpt.ref
+    ]
+
+    for outp, inpt in pairs:
+        mdl1.connect([inpt], [outp])
+
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl2.out_vars
+        for inpt in mdl1.in_vars
+        if outp.ref == inpt.ref
+    ]
+
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+

@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 from typing import Union, List, Dict, Any
+
+from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
@@ -19,6 +21,7 @@ class VarFactory(EditableDevice):
         '_var_dict',
         '_const_dict',
         '_diff_var_dict'
+
     )
 
     def __init__(self,
@@ -47,14 +50,16 @@ class VarFactory(EditableDevice):
 
     def add_var(self,
                 name: str,
+                ref: VarPowerFlowRefferenceType | None = None,
                 uid: int | None = None) -> Var:
         """
         Adds a ver to the class
         :param name:
+        :param ref:
         :param uid:
         :return:
         """
-        v = Var(name=name, uid=uid, diff_var=None, base_var=None)
+        v = Var(name=name, reference=ref, uid=uid, diff_var=None, base_var=None)
         self._var_dict[v.uid] = v
         return v
 

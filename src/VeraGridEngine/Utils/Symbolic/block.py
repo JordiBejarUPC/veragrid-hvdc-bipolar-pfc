@@ -460,9 +460,7 @@ class Block:
         Function to connect two blocks by variables sharing
         """
 
-        # all_diff_vars = []
-        # for b in self.get_all_blocks():
-        #     all_diff_vars.extend(b.diff_vars)
+
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)

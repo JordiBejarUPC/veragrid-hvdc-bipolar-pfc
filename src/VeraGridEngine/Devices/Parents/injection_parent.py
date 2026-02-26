@@ -9,12 +9,15 @@ import numpy as np
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Templates.Rms.bus_rms_template import check_empty_bus_rms, initialize_bus_rms
 from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType, ShuntConnectionType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Templates.templates_common_functions import connect_rms_models
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Associations.technology import Technology
@@ -419,3 +422,17 @@ class InjectionParent(PhysicalDevice):
             if val.value > mx:
                 col = val.api_object.color
         self.color = col
+
+    def set_rms_model(self, mdl:Block):
+        """
+        Set the RMS model
+        :return:
+        :rtype:
+        """
+        # connect bus variables
+        if not self.bus.rms_model.model.empty():
+            connect_rms_models(self.bus.rms_model.model, mdl)
+            self.rms_model.model = mdl
+        else:
+            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {self.bus.name} RMS model")
+
