@@ -3,20 +3,24 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
 import numpy as np
 import math
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import (Block, Var, VarPowerFlowRefferenceType)
+from VeraGridEngine.Utils.Symbolic.block import (Block, Var)
 from VeraGridEngine.Templates.templates_common_functions import tf_to_block
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import ConverterControlType
 
 
-def inverse_park_transform_block(vfactory: VarFactory, v_dq: list[Var], theta: Var, aux_vars = None, multilinear: bool = False, name:str =''):
+def inverse_park_transform_block(vfactory: VarFactory,
+                                 v_dq: list[Var],
+                                 theta: Var,
+                                 aux_vars = None,
+                                 multilinear: bool = False,
+                                 name:str =''):
     """
     Create a symbolic inverse Park transform (dq → abc) block for voltages.
 
