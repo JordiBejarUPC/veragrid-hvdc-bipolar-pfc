@@ -13,7 +13,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceTyp
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import compute_ybus
 
 # depending on the number of phases of the bus a different model must be created.
-class BusEmtTemplateABC(EmtModelTemplate):
+class BusEmtTemplateNABC(EmtModelTemplate):
 
     def __init__(self,
                  vf: VarFactory,
@@ -87,7 +87,7 @@ def get_bus_emt_template(grid: MultiCircuit,
 
     print("bus mask=", mask)
     # choose template depending on the number of phases
-    bus.emt_model.model = BusEmtTemplateABC(vf=vf, mask = mask).block
+    bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask).block
 
 
 

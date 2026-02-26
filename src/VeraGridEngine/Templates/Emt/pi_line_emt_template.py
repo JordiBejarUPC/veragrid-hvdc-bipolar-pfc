@@ -157,9 +157,9 @@ class PiLineEmtTemplate(EmtModelTemplate):
         q_t   = [vf.add_var(f"q_t_{line.name}_{k}")   for k in range(m)]
 
         # Diff vars (aligned with state_vars)
-        di_ser = [vf.add_var(f"di_ser_{line.name}_{k}") for k in range(m)]
-        dq_f   = [vf.add_var(f"dq_f_{line.name}_{k}")   for k in range(m)]
-        dq_t   = [vf.add_var(f"dq_t_{line.name}_{k}")   for k in range(m)]
+        di_ser = [vf.add_diff_var(name = f"di_ser_{line.name}_{k}", base_var = i_ser[k]) for k in range(m)]
+        dq_f   = [vf.add_diff_var(name = f"dq_f_{line.name}_{k}", base_var = q_f[k])   for k in range(m)]
+        dq_t   = [vf.add_diff_var(name = f"dq_t_{line.name}_{k}", base_var = q_t[k])   for k in range(m)]
 
         # Algebraic vars
         i_cap_f = [vf.add_var(f"i_cap_f_{line.name}_{k}") for k in range(m)]

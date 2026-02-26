@@ -241,7 +241,7 @@ problem = EmtProblemDae(grid=grid,
 
 
 
-solver = JitSymbolicSolver(problem = problem,
+solver = JitAdSolver(problem = problem,
                            t0 = 0.0,
                            t_end = options.simulation_time,
                            h = options.time_step,

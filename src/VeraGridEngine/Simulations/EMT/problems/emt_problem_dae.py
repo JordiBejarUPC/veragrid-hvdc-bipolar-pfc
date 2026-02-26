@@ -198,16 +198,16 @@ class EmtProblemDae(BaseProblem):
                     default_value=default_value,
                 )
 
+        c0 = grid.var_factory.add_const(0.0)
+
         def _get_bus_v_list(bus_block: Block):
-            """Return [vN,vA,vB,vC] as Vars if present else Const(0)."""
             out = []
             for k in ph_v_keys:
                 vk = bus_block.E(k)
-                out.append(vk if vk is not None else grid.var_factory.add_const(0.0))
+                out.append(vk if vk is not None else c0)
             return out
 
-        # KCL accumulator per bus-phase (symbolic)
-        I_kcl = {i: [grid.var_factory.add_const(0.0) for _ in range(4)] for i in range(n_bus)}
+        I_kcl = {i: [c0, c0, c0, c0] for i in range(n_bus)}
 
         # Bases (for Bergeron constructor)
         h = getattr(self.options, "time_step", 1e-4)
@@ -312,13 +312,15 @@ class EmtProblemDae(BaseProblem):
 
             b = bus_dict[inj.bus]
 
-            # Add injection currents into KCL
+            # KCL convention:
+            #   - branch currents (if/it) are treated as LEAVING the bus
+            #   - injection currents i_* are treated as ENTERING the bus (device -> node)
+            # Therefore: add branches, SUBTRACT injections.
             for ph in range(4):
                 i_expr = mdl.E(inj_i_keys[ph])
                 if i_expr is not None:
-                    I_kcl[b][ph] = I_kcl[b][ph] + i_expr
+                    I_kcl[b][ph] = I_kcl[b][ph] - i_expr
 
-            # PF init for injection internal vars (keep)
             if pf_results is not None:
                 self._try_set_inj_pf_init(
                     mdl=mdl,
@@ -333,35 +335,19 @@ class EmtProblemDae(BaseProblem):
         for bus_idx, bus in enumerate(grid.buses):
             mdl = bus.emt_model.model
 
-            # Ensure we don't accidentally keep RMS equations in EMT
-            # (you may prefer to enforce mdl.algebraic_eqs == 0 here)
-            if len(mdl.algebraic_eqs) != 0:
-                # If bus templates already add equations (e.g., slack constraints), keep them,
-                # but still append KCL for phases that exist unless the bus already has KCL.
-                pass
+            # EMT: bus equations must be KCL per existing phase.
+            # To avoid mixing/duplicating equations, replace any existing bus algebraic eqs.
+            mdl.algebraic_eqs = []
 
             has_any_phase = False
-            has_any_kcl_term = False
-
             for ph_i, v_key in enumerate(ph_v_keys):
                 if mdl.E(v_key) is None:
                     continue
                 has_any_phase = True
-
-                # stamp KCL residual for this phase
                 mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_i])
-
-                # detect if KCL is non-trivial (optional diagnostics)
-                has_any_kcl_term = True
 
             if not has_any_phase:
                 self.logger.add_error("Bus has no phases (no voltage vars)", value=bus_idx)
-            else:
-                # If everything is zero and no devices contributed, it's isolated.
-                # (You can refine detection by tracking connectivity.)
-                if all(isinstance(I_kcl[bus_idx][ph], Const) and getattr(I_kcl[bus_idx][ph], "value", None) == 0.0
-                       for ph in range(4)):
-                    self.logger.add_error("Isolated bus (no KCL contributions)", value=bus_idx)
 
 
 
