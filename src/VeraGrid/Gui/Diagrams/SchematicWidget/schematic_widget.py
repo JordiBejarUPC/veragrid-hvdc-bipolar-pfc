@@ -3671,8 +3671,6 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_object.set_values_3ph(i=i,
                                                       VmA=VmA[i], VmB=VmB[i], VmC=VmC[i],
                                                       VaA=VaA[i], VaB=VaB[i], VaC=VaC[i],
-                                                      PA=SbusA[i].real, PB=SbusB[i].real, PC=SbusC[i].real,
-                                                      QA=SbusA[i].imag, QB=SbusB[i].imag, QC=SbusC[i].imag,
                                                       tpe=bus_types[int(types[i])])
 
                         v_to_colour = vnorm[i]
