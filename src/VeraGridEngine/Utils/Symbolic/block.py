@@ -468,7 +468,7 @@ class Block:
             self.update_model(var_to_subs, incoming_var)
 
 
-def find_name_in_block(name: str, block: Block) -> Var:
+def find_name_in_block(name: str, block: Block) -> Var | None:
     for lst in [block.algebraic_vars, block.state_vars]:
         for var in lst:
             if name == var.name:
