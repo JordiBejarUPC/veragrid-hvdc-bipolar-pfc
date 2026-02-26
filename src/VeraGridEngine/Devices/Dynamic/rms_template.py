@@ -31,7 +31,7 @@ class RmsModelTemplate(PointerDeviceParent):
                          comment="",
                          device_type=DeviceType.RmsModelTemplateDevice)
 
-        self._tpe: DeviceType = DeviceType.NoDevice
+        self.tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
 
         self.register('block', units="p.u.", tpe=SubObjectType.DaeBlockType,

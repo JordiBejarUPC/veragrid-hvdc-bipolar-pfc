@@ -19,12 +19,12 @@ from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf
 
 
 
-def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def get_genqec(vfactory: VarFactory, name: str = "genqec") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
     pi = math.pi
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
 
     # Inputs
@@ -318,8 +318,8 @@ def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_governor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTemplate:
+    templ = RmsModelTemplate(name=name)
 
     parameters = {
         # Time constants
@@ -510,8 +510,8 @@ def get_governor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_stabilizer(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+def get_stabilizer(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTemplate:
+    templ = RmsModelTemplate(name=name)
 
     parameters = {
         # Stabilizer parameters
@@ -618,14 +618,14 @@ def get_stabilizer(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate:
     """
 
     :param vfactory:
     :param name:
     :return:
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
 
     parameters = {
         # Exciter (AVR) parameters
@@ -850,13 +850,13 @@ def get_exciter(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
     """
     
     :param name: 
     :return: 
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
 
     oel_block = Block(name='exciter_limiter_block')
     algebraic_eqs = []
@@ -1090,7 +1090,7 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     
     :return: 
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
