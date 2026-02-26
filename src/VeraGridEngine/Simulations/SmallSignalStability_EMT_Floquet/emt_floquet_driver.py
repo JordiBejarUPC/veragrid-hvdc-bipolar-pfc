@@ -6,34 +6,68 @@
 import numpy as np
 import scipy.sparse.linalg as spla
 import scipy.linalg as la
-from typing import List, Tuple
+from enum import Enum
 
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
+from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+
 from .emt_floquet_operator import EmtFloquetOperator, BlockEmtFloquetOperator, AkStackBlockEmtFloquetOperator
 from .emt_floquet_options import EmtFloquetOptions
 from .emt_floquet_results import EmtFloquetResults
-try:
-    from .emt_floquet_numba_kernels import NUMBA_AVAILABLE, bmgs_twice_numba
-except Exception:
-    try:
-        from emt_floquet_numba_kernels import NUMBA_AVAILABLE, bmgs_twice_numba
-    except Exception:
-        NUMBA_AVAILABLE = False
-        bmgs_twice_numba = None
+from .emt_floquet_numba_kernels import NUMBA_AVAILABLE, bmgs_twice_numba
 
-class EmtFloquetDriver(DriverTemplate):
+class BaseFloquetDriver(DriverTemplate):
     """
-    Main Driver for EMT Small-Signal Stability via Floquet Theory.
-    Optimized with LU Caching, Krylov Projection, and Spectral Shift-Invert.
+    Base class for EMT Floquet stability analysis.
+    Contains the common logic for problem initialization and limit cycle capture.
     """
-
     def __init__(self, grid, problem, emt_options: EmtOptions, options: EmtFloquetOptions):
         DriverTemplate.__init__(self, grid=grid)
         self.problem = problem
         self.emt_options = emt_options
         self.options = options
         self.results = None
+
+    def _capture_limit_cycle_and_evaluator(self, h: float):
+        """
+        Captures the limit cycle by simulating the system up to ss_assessment_time.
+        Extracts the JIT Jacobian evaluator directly from the StructuralVectorizedSolver.
+        """
+        method_str = self.emt_options.integration_method
+        if isinstance(method_str, Enum):
+            method_str = method_str.value
+
+        if self.options.verbose:
+            print("-> Capturing limit cycle via StructuralVectorizedSolver...")
+
+        # Direct contract access. If 'problem' is invalid, it will fail natively here.
+        params_values = self.problem.get_parameters_values()
+        n_event_params = self.problem.get_variable_parameter_number()
+
+        solver = StructuralVectorizedSolver(
+            problem=self.problem,
+            t0=0.0,
+            t_end=self.options.ss_assessment_time,
+            h=h,
+            method_str=method_str,
+            verbose=self.options.verbose
+        )
+        t_full, y_full = solver.simulate()
+
+        steps_per_period = int(self.options.target_period / h)
+        y_limit = y_full[-steps_per_period:]
+        t_limit = t_full[-steps_per_period:]
+
+        static_params = np.array([c.value for c in params_values], dtype=np.float64)
+
+        return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
+
+class EmtFloquetDriver(BaseFloquetDriver):
+    """
+    Main Driver for EMT Small-Signal Stability via Floquet Theory.
+    Optimized with LU Caching, Krylov Projection, and Spectral Shift-Invert.
+    """
 
     def run(self):
         self.tic()
@@ -52,7 +86,6 @@ class EmtFloquetDriver(DriverTemplate):
         )
 
         # 3. Eigenvalue Extraction
-        # HPC UPGRADE: Increased dense fallback threshold to 20 for stable mock testing
         # Arnoldi struggles when all eigenvalues have identical magnitudes.
         if n_states <= max(self.options.k + 1, 20):
             if self.options.verbose:
@@ -101,54 +134,6 @@ class EmtFloquetDriver(DriverTemplate):
         )
 
         self.toc()
-
-    def _capture_limit_cycle_and_evaluator(self, h: float):
-        """
-        Intelligently captures the limit cycle. If running in production with VeraGrid's
-        EmtProblemDae, it borrows the JIT Jacobian evaluator from the StructuralVectorizedSolver
-        to avoid double-discretization overhead. Falls back to legacy step() for mocks.
-        """
-        # Extract integration method string (handling Enums if present)
-        method_str = getattr(self.emt_options, 'integration_method', 'back_euler')
-        if hasattr(method_str, 'value'):
-            method_str = method_str.value
-
-        # Production Check: Real EmtProblemDae has these symbolic getters
-        if hasattr(self.problem, 'get_parameters_values') and hasattr(self.problem, 'def_event_params_fn'):
-            if getattr(self.options, 'verbose', 0):
-                print("-> Production mode: Borrowing JIT kernels from EMT Solver (Zero Double-Discretization)...")
-            from VeraGridEngine.Simulations.EMT.numerical.StructuralVectorizedSolver import StructuralVectorizedSolver
-
-            solver = StructuralVectorizedSolver(
-                problem=self.problem, t0=0.0, t_end=self.options.ss_assessment_time,
-                h=h, method_str=method_str, verbose=bool(getattr(self.options, 'verbose', 0))
-            )
-            t_full, y_full = solver.simulate()
-
-            steps_per_period = int(self.options.target_period / h)
-            y_limit = y_full[-steps_per_period:]
-            t_limit = t_full[-steps_per_period:]
-
-            static_params = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
-            n_event_params = self.problem.get_variable_parameter_number()
-
-            return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
-        else:
-            if getattr(self.options, 'verbose', 0):
-                print("-> Mock mode: Using legacy trajectory capture...")
-            trajectory = []
-            num_steps = int(self.options.target_period / h)
-            x = self.problem.get_x0()
-            for _ in range(num_steps):
-                if hasattr(self.problem, 'step'):
-                    x_next, y_next = self.problem.step(x)
-                else:
-                    x_next, y_next = x.copy(), np.zeros(self.problem.get_algebraic_var_number())
-                trajectory.append((x_next.copy(), y_next.copy()))
-                x = x_next
-
-            return trajectory, None, None, None, 0, method_str
-
 
 class RobustBlockArnoldiEngine:
     """
@@ -199,7 +184,7 @@ class RobustBlockArnoldiEngine:
             W_ortho, H_col = bmgs_twice_numba(V_prev, starts, ends, Wc)
             return W_ortho, H_col
 
-        # Fallback: NumPy BMGS + Kahan second pass
+        # NumPy BMGS + Kahan second pass
         H_col = np.zeros((end_j, self.p_active), dtype=np.float64)
         norm_W_initial = la.norm(W, ord='fro')
 
@@ -292,7 +277,7 @@ class RobustBlockArnoldiEngine:
         return V_final, H_final
 
 
-class HybridBlockArnoldiDriver(DriverTemplate):
+class HybridBlockArnoldiDriver(BaseFloquetDriver):
     """
     Restarted Hybrid Block-Arnoldi driver with optional A_k operator and adaptive restart.
 
@@ -304,84 +289,18 @@ class HybridBlockArnoldiDriver(DriverTemplate):
     4. Compatibility with both LU-cached DAE operator and explicit EMT A_k stacks.
     """
 
-    def __init__(self, grid, problem, emt_options: EmtOptions, options: EmtFloquetOptions):
-        DriverTemplate.__init__(self, grid=grid)
-        self.problem = problem
-        self.emt_options = emt_options
-        self.options = options
-        self.results = None
-
-    def _capture_limit_cycle_and_evaluator(self, h: float):
-        """
-        Intelligently captures the limit cycle. If running in production with VeraGrid's
-        EmtProblemDae, it borrows the JIT Jacobian evaluator from the StructuralVectorizedSolver
-        to avoid double-discretization overhead. Falls back to legacy step() for mocks.
-        """
-        # Extract integration method string (handling Enums if present)
-        method_str = getattr(self.emt_options, 'integration_method', 'back_euler')
-        if hasattr(method_str, 'value'):
-            method_str = method_str.value
-
-        # Production Check: Real EmtProblemDae has these symbolic getters
-        if hasattr(self.problem, 'get_parameters_values') and hasattr(self.problem, 'def_event_params_fn'):
-            if getattr(self.options, 'verbose', 0):
-                print("-> Production mode: Borrowing JIT kernels from EMT Solver (Zero Double-Discretization)...")
-            from VeraGridEngine.Simulations.EMT.numerical.StructuralVectorizedSolver import StructuralVectorizedSolver
-
-            solver = StructuralVectorizedSolver(
-                problem=self.problem, t0=0.0, t_end=self.options.ss_assessment_time,
-                h=h, method_str=method_str, verbose=bool(getattr(self.options, 'verbose', 0))
-            )
-            t_full, y_full = solver.simulate()
-
-            steps_per_period = int(self.options.target_period / h)
-            y_limit = y_full[-steps_per_period:]
-            t_limit = t_full[-steps_per_period:]
-
-            static_params = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
-            n_event_params = self.problem.get_variable_parameter_number()
-
-            return y_limit, t_limit, solver.vec_jacobian, static_params, n_event_params, method_str
-        else:
-            if getattr(self.options, 'verbose', 0):
-                print("-> Mock mode: Using legacy trajectory capture...")
-            trajectory = []
-            num_steps = int(self.options.target_period / h)
-            x = self.problem.get_x0()
-            for _ in range(num_steps):
-                if hasattr(self.problem, 'step'):
-                    x_next, y_next = self.problem.step(x)
-                else:
-                    x_next, y_next = x.copy(), np.zeros(self.problem.get_algebraic_var_number())
-                trajectory.append((x_next.copy(), y_next.copy()))
-                x = x_next
-
-            return trajectory, None, None, None, 0, method_str
-
     def _make_monodromy_operator(self, h: float, n_states: int):
-        prefer_ak = bool(getattr(self.options, 'prefer_ak_operator', True))
-        use_numba = bool(getattr(self.options, 'use_numba_kernels', True))
+        if self.options.prefer_ak_operator:
+            try:
+                Ak_stack = self.problem.get_floquet_Ak_stack(self.options.target_period, h)
 
-        if prefer_ak:
-            ak_getter = None
-            for name in ('get_floquet_Ak_stack', 'get_floquet_ak_stack', 'get_Ak_stack', 'get_ak_stack'):
-                if hasattr(self.problem, name):
-                    ak_getter = getattr(self.problem, name)
-                    break
-            if ak_getter is not None:
-                try:
-                    Ak_stack = ak_getter(self.options.target_period, h)
-                except TypeError:
-                    try:
-                        Ak_stack = ak_getter(h)
-                    except TypeError:
-                        Ak_stack = ak_getter()
                 if Ak_stack is not None:
-                    if getattr(self.options, 'verbose', 0):
+                    if self.options.verbose:
                         print('Using explicit EMT A_k stack operator (Numba path if available).')
-                    return AkStackBlockEmtFloquetOperator(Ak_stack, use_numba=use_numba)
+                    return AkStackBlockEmtFloquetOperator(Ak_stack, use_numba=self.options.use_numba_kernels)
+            except AttributeError:
+                pass
 
-        # If no explicit A_k stack is found, route through the JIT LU Pipeline
         y_traj, t_traj, jac_eval, stat_params, n_ev_params, method_str = self._capture_limit_cycle_and_evaluator(h)
 
         return BlockEmtFloquetOperator(
@@ -477,31 +396,30 @@ class HybridBlockArnoldiDriver(DriverTemplate):
         # Operator (A_k stack if the EMT backend exposes it, else LU-cached DAE operator)
         monodromy_op = self._make_monodromy_operator(h, n_states)
 
-        # Hyperparameters (elastic / adaptive)
-        k_target = int(self.options.k)
-        base_max_dim = int(getattr(self.options, 'max_krylov_dim', 60))
-        max_restarts = int(getattr(self.options, 'max_restarts', 4))
-        restart_tol = float(getattr(self.options, 'restart_tol', 1e-6))
-        use_refined = bool(getattr(self.options, 'use_refined_ritz', True))
-        adaptive_restart = bool(getattr(self.options, 'adaptive_restart', True))
-        stagnation_ratio = float(getattr(self.options, 'stagnation_improve_ratio', 0.90))
-        stagnation_patience = int(getattr(self.options, 'stagnation_patience', 2))
+        # Hyperparameters (Clean Code: Native types passed directly from Options)
+        k_target = self.options.k
+        base_max_dim = self.options.max_krylov_dim
+        max_restarts = self.options.max_restarts
+        restart_tol = self.options.restart_tol
+        use_refined = self.options.use_refined_ritz
+        adaptive_restart = self.options.adaptive_restart
+        stagnation_ratio = self.options.stagnation_improve_ratio
+        stagnation_patience = self.options.stagnation_patience
+        deflation_tol = self.options.deflation_tol
 
-        _p_min = getattr(self.options, 'min_block_size', None)
-        p_min = int(_p_min) if _p_min is not None else max(2, k_target)
-
-        _p_max = getattr(self.options, 'max_block_size', None)
-        p_max = int(_p_max) if _p_max is not None else min(n_states, k_target + 8)
-
-        _cap = getattr(self.options, 'max_krylov_dim_cap', None)
-        max_dim_cap = int(_cap) if _cap is not None else max(base_max_dim, int(1.8 * base_max_dim))
+        # Handling optional boundaries cleanly
+        p_min = self.options.min_block_size if self.options.min_block_size is not None else max(2, k_target)
+        p_max = self.options.max_block_size if self.options.max_block_size is not None else min(n_states, k_target + 8)
+        max_dim_cap = self.options.max_krylov_dim_cap if self.options.max_krylov_dim_cap is not None else max(
+            base_max_dim, int(1.8 * base_max_dim))
 
         p_seed = min(max(k_target + 2, p_min), p_max, n_states)
         max_dim_local = max(base_max_dim, p_seed + 1)
         m_iters = max(2, max_dim_local // p_seed)
 
-        if getattr(self.options, 'verbose', 0):
-            print(f'Executing Hybrid Block-Arnoldi (Block Size: {p_seed}, Iters: {m_iters}, Restarts: {max_restarts})...')
+        if self.options.verbose:
+            print(
+                f'Executing Hybrid Block-Arnoldi (Block Size: {p_seed}, Iters: {m_iters}, Restarts: {max_restarts})...')
             if NUMBA_AVAILABLE and bmgs_twice_numba is not None:
                 print('   [BIRAM] Numba BMGS kernel: ON')
 
@@ -512,7 +430,7 @@ class HybridBlockArnoldiDriver(DriverTemplate):
         residual_history = []
 
         for ir in range(max_restarts + 1):
-            if getattr(self.options, 'verbose', 0):
+            if self.options.verbose:
                 print(f'   [BIRAM] Restart cycle {ir + 1}/{max_restarts + 1}')
 
             engine = RobustBlockArnoldiEngine(
@@ -520,7 +438,7 @@ class HybridBlockArnoldiDriver(DriverTemplate):
                 n_states=n_states,
                 p_init=p_seed,
                 max_iters=m_iters,
-                tol_deflation=float(getattr(self.options, 'deflation_tol', 1e-12)),
+                tol_deflation=deflation_tol,
             )
 
             V_sub, H_sub = engine.build_krylov_space(V_seed)
@@ -538,7 +456,8 @@ class HybridBlockArnoldiDriver(DriverTemplate):
             topk = sort_now[:min(k_target, len(sort_now))]
             max_rr = float(np.max(rel[topk])) if len(topk) > 0 else np.inf
             residual_history.append(max_rr)
-            if getattr(self.options, 'verbose', 0):
+
+            if self.options.verbose:
                 print(f'   [BIRAM] top-{len(topk)} max rel-res = {max_rr:.3e}')
 
             if (best_pack is None) or (max_rr < best_pack['max_rr']):
@@ -550,7 +469,7 @@ class HybridBlockArnoldiDriver(DriverTemplate):
                 }
 
             if max_rr <= restart_tol:
-                if getattr(self.options, 'verbose', 0):
+                if self.options.verbose:
                     print('   [BIRAM] Converged by residual tolerance.')
                 break
 
@@ -566,14 +485,13 @@ class HybridBlockArnoldiDriver(DriverTemplate):
                 prev_best = min(residual_history[-(stagnation_patience + 1):-1])
                 if recent > stagnation_ratio * prev_best:
                     changed = False
-                    # Prefer reducing block size to increase Krylov depth at fixed memory
                     if p_seed > p_min:
                         p_new = max(p_min, p_seed - 2)
                         if p_new != p_seed:
                             p_seed = p_new
                             V_seed = self._build_restart_seed(U_sel, p_target=p_seed, seed=99 + ir)
                             changed = True
-                            if getattr(self.options, 'verbose', 0):
+                            if self.options.verbose:
                                 print(f'   [BIRAM] Residual stagnation detected -> shrink block to p={p_seed}.')
                     else:
                         # Increase subspace depth budget if block is already minimal
@@ -581,8 +499,9 @@ class HybridBlockArnoldiDriver(DriverTemplate):
                         if max_dim_new > max_dim_local:
                             max_dim_local = max_dim_new
                             changed = True
-                            if getattr(self.options, 'verbose', 0):
-                                print(f'   [BIRAM] Residual stagnation detected -> expand max Krylov dim to {max_dim_local}.')
+                            if self.options.verbose:
+                                print(
+                                    f'   [BIRAM] Residual stagnation detected -> expand max Krylov dim to {max_dim_local}.')
 
                     if changed:
                         m_iters = max(2, max_dim_local // p_seed)
@@ -596,6 +515,8 @@ class HybridBlockArnoldiDriver(DriverTemplate):
         sort_idx = np.argsort(-np.abs(mu_sel))[:k_target]
         mu = mu_sel[sort_idx]
         v = U_sel[:, sort_idx]
+
+        # Pseudo-inverse dual space lifting (Cleaned)
         w = np.linalg.pinv(v).conj().T
 
         self.results = EmtFloquetResults(

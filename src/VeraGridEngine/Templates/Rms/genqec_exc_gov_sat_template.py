@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType, )
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
-                                                                 tf_to_diffblock_with_antiwindup)
+                                                                 tf_to_diffblock_with_antiwindup, tf_to_block_with_states)
 
 
 def find_name_in_block(name: str, block: Block):
@@ -577,7 +577,7 @@ def get_stabilizer(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y,
         name='stabilizer2',
     )
-    tf3, y3 = tf_to_block(
+    tf3, y3 = tf_to_block_with_states(
         var_factory=vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["A1"].value, parameters["A2"].value]),

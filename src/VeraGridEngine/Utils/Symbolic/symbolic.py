@@ -457,10 +457,13 @@ class Var(Expr):
             if var.uid == self.uid:
                 return Const(1)
             elif var.uid == self.base_var.uid:
+                # Differentiating by immediate base: return 1/dt
                 return Const(1) / dt
             elif var.uid == self.origin_var.uid:
-                # recursive chain rule
-                return (Const(1) / dt) * self.base_var.diff(var, dt=dt)
+                # Differentiating by origin (root) variable: apply chain rule
+                # This happens for nested diff vars like d2x when diff'ing by x
+                result = (Const(1) / dt) * self.base_var.diff(var, dt=dt)
+                return result
             else:
                 return Const(0)
 

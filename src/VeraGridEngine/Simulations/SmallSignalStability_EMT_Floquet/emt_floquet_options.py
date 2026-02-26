@@ -113,5 +113,7 @@ class EmtFloquetOptions(OptionsTemplate):
 
         self.register(key="prefer_ak_operator", tpe=bool)
         self.register(key="use_numba_kernels", tpe=bool)
-        # Optional tuning knobs are intentionally left unregistered to preserve backwards compatibility
-        # with older serialisers that may not support None-valued fields.
+
+        self.register(key="min_block_size", tpe=int)
+        self.register(key="max_block_size", tpe=int)
+        self.register(key="max_krylov_dim_cap", tpe=int)
