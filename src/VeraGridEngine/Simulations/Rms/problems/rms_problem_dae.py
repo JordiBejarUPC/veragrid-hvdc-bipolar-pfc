@@ -268,28 +268,28 @@ class RmsProblemDae(RmsProblemTemplate):
                 else:
                     raise ValueError("Not implemented initialization method")
 
-                # add events
-                if mdl.event_dict is not None:
-                    collect_events = {
-                        key: {"times": [], "values": []}
-                        for key in mdl.event_dict.keys()
-                    }
-                    # find out if there are events affecting the device parameters
-                    rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
-                    if len(rms_evts) != 0:
-                        for rms_evt in rms_evts:
-                            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-                            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-                            # TODO: implement the function in block: apply_event
-                        for param, events_info in collect_events.items():
-                            default_value = elm.rms_model.model.event_dict[param]
-                            # mdl.event_dict_def[param] = default_value
-                            mdl.event_dict[param] = piecewise(
-                                time_var=self._glob_time,
-                                t_events=np.array(events_info["times"]),
-                                new_values=np.array(events_info["values"]),
-                                default_value=default_value
-                            )
+                # # add events
+                # if mdl.event_dict is not None:
+                #     collect_events = {
+                #         key: {"times": [], "values": []}
+                #         for key in mdl.event_dict.keys()
+                #     }
+                #     # find out if there are events affecting the device parameters
+                #     rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
+                #     if len(rms_evts) != 0:
+                #         for rms_evt in rms_evts:
+                #             collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+                #             collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+                #             # TODO: implement the function in block: apply_event
+                #         for param, events_info in collect_events.items():
+                #             default_value = elm.rms_model.model.event_dict[param]
+                #             # mdl.event_dict_def[param] = default_value
+                #             mdl.event_dict[param] = piecewise(
+                #                 time_var=self._glob_time,
+                #                 t_events=np.array(events_info["times"]),
+                #                 new_values=np.array(events_info["values"]),
+                #                 default_value=default_value
+                #             )
 
                 self.sys_block.add(mdl)
 

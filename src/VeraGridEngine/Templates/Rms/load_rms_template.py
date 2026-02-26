@@ -6,6 +6,7 @@ from typing import List
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, cos, sin
 
 
 def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> RmsModelTemplate:
