@@ -2086,6 +2086,7 @@ class SimulationTypes(Enum):
     MonteCarlo_run = 'Monte Carlo'
     PowerFlowTimeSeries_run = 'Power flow time series'
     ClusteringAnalysis_run = 'Clustering Analysis'
+    CleanRoom_run = 'Clean room'
     ContinuationPowerFlow_run = 'Voltage collapse'
     LatinHypercube_run = 'Latin Hypercube'
     StochasticPowerFlow = 'Stochastic Power Flow'
