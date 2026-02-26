@@ -22,7 +22,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_small_signal_stability
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import Generator_emt_type_EmtTemplate

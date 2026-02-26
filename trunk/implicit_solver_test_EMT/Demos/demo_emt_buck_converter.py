@@ -88,7 +88,7 @@ def run_case(backend_str: str):
     elif backend_str == "AD":
         solver = JitAdSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
     elif backend_str == "StructuralVectorizedSolver":
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, integration_method="trapezoidal", verbose=False)
     else:
         raise ValueError(f"Backend desconocido: {backend_str}")
 

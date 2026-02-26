@@ -6,7 +6,8 @@
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
-from .emt_floquet_numba_kernels import NUMBA_AVAILABLE, apply_ak_stack_block_numba
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_numba_kernels import NUMBA_AVAILABLE, apply_ak_stack_block_numba
+from VeraGridEngine.basic_structures import Mat
 
 
 class EmtFloquetOperator(spla.LinearOperator):
@@ -158,6 +159,7 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
 
     def __init__(self, problem, trajectory, h, n_states, method_str='back_euler',
                  jac_evaluator=None, static_params=None, n_event_params=0, t_trajectory=None):
+        super().__init__()
         self.problem = problem
         self.trajectory = trajectory
         self.h = h
@@ -166,7 +168,7 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
 
         self.n_total = self.problem.get_states_number() + self.problem.get_algebraic_var_number()
 
-        self.shape = (n_states, n_states)
+        self.shape = (n_states, n_states)  # TODO: cannot be this way
         self.dtype = np.dtype(np.float64)
 
         self.lu_solvers = []
@@ -177,6 +179,14 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
             self._precompute_lu_factorizations()
 
     def _precompute_from_jit(self, jac_evaluator, static_params, n_ev_params, t_trajectory=None):
+        """
+
+        :param jac_evaluator:
+        :param static_params:
+        :param n_ev_params:
+        :param t_trajectory:
+        :return:
+        """
         full_params = np.empty(n_ev_params + len(static_params), dtype=np.float64)
         if len(static_params) > 0:
             full_params[n_ev_params:] = static_params
@@ -225,6 +235,11 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
             self.lu_solvers.append(spla.splu(J_aug))
 
     def _matmat(self, X):
+        """
+
+        :param X:
+        :return:
+        """
         p_cols = X.shape[1]
         X_curr = np.zeros((self.n_total, p_cols), dtype=X.dtype)
         X_curr[:self.n_states, :] = X
@@ -283,7 +298,12 @@ class AkStackBlockEmtFloquetOperator(spla.LinearOperator):
     path is JIT-compiled to reduce Python overhead in repeated Arnoldi calls.
     """
 
-    def __init__(self, Ak_stack: np.ndarray, use_numba: bool = True):
+    def __init__(self, Ak_stack: Mat, use_numba: bool = True):
+        """
+
+        :param Ak_stack:
+        :param use_numba:
+        """
         Ak = np.asarray(Ak_stack, dtype=np.float64, order='C')
         if Ak.ndim != 3 or Ak.shape[1] != Ak.shape[2]:
             raise ValueError(

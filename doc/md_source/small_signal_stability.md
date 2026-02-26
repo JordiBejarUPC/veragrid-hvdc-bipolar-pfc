@@ -47,7 +47,7 @@ from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability,
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_small_signal_stability,
 
 plot_stability
 import VeraGridEngine.api as gce
@@ -440,7 +440,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability,
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import run_small_signal_stability,
 
 plot_stability
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions

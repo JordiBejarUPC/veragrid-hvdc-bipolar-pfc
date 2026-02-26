@@ -17,8 +17,8 @@ from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_te
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions

@@ -9,12 +9,12 @@ from typing import List
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec, Mat
+from VeraGridEngine.basic_structures import Vec, Mat, CxVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
-class EmtFloquetResults(ResultsTemplate):
+class SmallSignalStabilityEmtResults(ResultsTemplate):
     """
     EmtFloquetResults
     :param multipliers: Floquet multipliers (eigenvalues of Monodromy Matrix)
@@ -25,8 +25,8 @@ class EmtFloquetResults(ResultsTemplate):
     """
 
     def __init__(self,
-                 multipliers: Vec,
-                 right_vecs: Mat,
+                 multipliers: CxVec,
+                 right_vecs: CxVec,
                  left_vecs: Mat,
                  period: float,
                  stat_vars: List[Var]):
@@ -34,14 +34,14 @@ class EmtFloquetResults(ResultsTemplate):
         # Correcting the constructor call to match VeraGrid's parent class requirements
         ResultsTemplate.__init__(
             self,
-            name='EMT Floquet Stability',
+            name='Small Signal Stability Emt Results',
             available_results=[
                 ResultTypes.Modes,
                 ResultTypes.ParticipationFactors,
                 ResultTypes.SDomainPlot,
                 ResultTypes.SDomainPlotHz
             ],
-            time_array=np.array([]),
+            time_array=None,
             clustering_results=None,
             study_results_type=StudyResultsType.SmallSignalStability
         )

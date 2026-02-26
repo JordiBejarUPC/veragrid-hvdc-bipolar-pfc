@@ -18,16 +18,16 @@ from typing import Dict, List, Any
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
+from VeraGridEngine.basic_structures import ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 
 # Assuming BaseProblem is accessible in your generic problems folder
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
 
 def _tic() -> float:
@@ -66,7 +66,7 @@ def set_q(q: ObjVec, q_used: BoolVec, k: int, val: object):
         q[k] += val
 
 
-class EmtProblemDae(BaseProblem):
+class EmtProblemDae(EmtProblemTemplate):
     """
     Electrical parser layer for the EMT DAE Problem.
 
@@ -78,16 +78,21 @@ class EmtProblemDae(BaseProblem):
       - Delegates all mathematical and indexing plumbing to BaseProblem.
     """
 
-    def __init__(
-            self,
-            grid: MultiCircuit,
-            options: EmtOptions,
-            pf_results: PowerFlowResults3Ph | None,
-    ):
+    def __init__(self,
+                 grid: MultiCircuit,
+                 options: EmtOptions,
+                 pf_results: PowerFlowResults3Ph | None):
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
+        :param grid:
+        :param options:
+        :param pf_results:
         """
+        super().__init__(
+            sys_block=Block(children=[], in_vars=[]),
+            glob_time=Var(self.TIME_NAME)
+        )
         self.logger = Logger()
         self.grid = grid
         self.options = options
@@ -98,20 +103,15 @@ class EmtProblemDae(BaseProblem):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
 
-        sys_block = Block(children=[], in_vars=[])
-        glob_time = Var(self.TIME_NAME)
-
         self.history_models = []  # list of models with history components
         self.step_counter = 0
 
         t_build = _tic()
 
-        self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
+        self._build_structure_and_collect(self.sys_block, grid, pf_results, self.glob_time)
 
-        sys_block.unify_blocks()
-        self._deduplicate_block_entities(sys_block)
-
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        self.sys_block.unify_blocks()
+        self._deduplicate_block_entities(self.sys_block)
 
         self.init_guess.update(self._temp_init_guess)
 
@@ -348,8 +348,6 @@ class EmtProblemDae(BaseProblem):
 
             if not has_any_phase:
                 self.logger.add_error("Bus has no phases (no voltage vars)", value=bus_idx)
-
-
 
     def _add_model_to_system_mappings(self, elm: ALL_DEV_TYPES, mdl: Block):
         """

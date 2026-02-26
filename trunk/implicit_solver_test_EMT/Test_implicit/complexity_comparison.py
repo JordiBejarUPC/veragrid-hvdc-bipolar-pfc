@@ -62,7 +62,7 @@ def benchmark_new_architecture(n_oscillators, n_steps, backend="SD"):
         solver = JitAdSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method_str='trapezoidal')
         solver._build_jit_ad()
     elif backend == "StructuralVectorizedSolver":
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method_str='trapezoidal')
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h * n_steps, h=h, integration_method='trapezoidal')
         solver._auto_detect_vectorization()
 
     # Mandatory JIT Warmup (must be counted in Setup Tax)

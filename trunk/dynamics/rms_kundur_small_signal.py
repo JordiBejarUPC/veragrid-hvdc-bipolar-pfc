@@ -25,8 +25,8 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
 
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
 
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions

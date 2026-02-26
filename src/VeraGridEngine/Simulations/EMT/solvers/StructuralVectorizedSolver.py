@@ -236,15 +236,16 @@ class StructuralVectorizedSolver:
             t0: float,
             t_end: float,
             h: float,
-            method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+            integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
             dense_threshold: int = 100,
-            verbose: bool = False, auto_vectorization: bool = True,
+            verbose: bool = False,
+            auto_vectorization: bool = True,
     ):
         self.problem = problem
         self.t0 = t0
         self.t_end = t_end
         self.h = h
-        self.method_str = method_str
+        self.method_str = integration_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
 
@@ -268,7 +269,7 @@ class StructuralVectorizedSolver:
         self.vectorized_ready = False
 
         if auto_vectorization:
-            self._auto_detect_vectorization(method_str)
+            self._auto_detect_vectorization(integration_method)
 
     def _canonicalize_expression(self, expr: Expr) -> Tuple[str, List[Var]]:
         unique_slots = {}
