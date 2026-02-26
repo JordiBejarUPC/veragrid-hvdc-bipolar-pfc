@@ -134,7 +134,7 @@ def tf_to_diffblock_with_output(
     return block, y, x
 
 
-def tf_to_diffblock_with_states(
+def tf_to_block_with_states(
         var_factory: VarFactory,
         num: List[Var | float],
         den: List[Var | float],
@@ -204,11 +204,13 @@ def tf_to_diffblock_with_states(
     return block, y_states[0]
 
 
-def tf_to_block_with_states(
+def tf_to_block2(
         var_factory: VarFactory,
         num: List[Var | float],
         den: List[Var | float],
-        x: Var | float):
+        x: Var | float,
+        y: Var = None,
+        name:str = ''):
     """
     num: numerator coefficients [b0,...,bm]
     den: denominator coefficients [a0,...,an], with an != 0

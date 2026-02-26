@@ -290,12 +290,22 @@ class SymbolicToPythonVisitor:
         raise ValueError(f"Variable '{node.name}' (UID: {node.uid}) Not mapped in compiler.")
 
     def visit_DiffVar(self, node: Var, prec: int) -> str:
-        base_uid = node.base_var.uid
-        if base_uid not in self.var_map:
-            raise ValueError(f"Base var '{node.base_var.name}' (UID: {base_uid})"
-                             f" for DiffVar does not exist in states.")
-
-        term = self.method.discretize(self.var_map[base_uid])
+        # If base_var is also a DiffVar, recursively discretize it
+        if node.base_var.base_var is not None:
+            # Recursively get discretized base (e.g., dx from x)
+            base_discretized = self.visit_DiffVar(node.base_var, prec)
+            # Apply discretization to the discretized base using d_history
+            # For Backward Euler: d2x = (dx - dx_history) / h
+            # Use base_var's origin since base_var is itself a DiffVar
+            base_idx = self.var_map[node.base_var.origin_var.uid]
+            term = f"(({base_discretized} - d_history[{base_idx}]) / h)"
+        else:
+            # Base is a regular state variable
+            base_uid = node.base_var.uid
+            if base_uid not in self.var_map:
+                raise ValueError(f"Base var '{node.base_var.name}' (UID: {base_uid})"
+                                 f" for DiffVar does not exist in states.")
+            term = self.method.discretize(self.var_map[base_uid])
         return f"({term})" if prec > 10 else term
 
     def visit_Func(self, node: Func, _) -> str:
@@ -378,24 +388,47 @@ class ADVisitor(SymbolicToPythonVisitor):
         raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped.")
 
     def visit_DiffVar(self, node: Var, prec: int):
-        base_uid = node.base_var.uid
-        i = self.var_map[base_uid]
-        if self.active_indices is not None:
-            seed = "1.0" if i in self.active_indices else "0.0"
+        # If base_var is also a DiffVar, recursively discretize it
+        if getattr(node.base_var, 'base_var', None) is not None:
+            # Recursively get discretized base (value, dot)
+            base_val, base_dot = self.visit_DiffVar(node.base_var, prec)
+            # Use base_var's origin since base_var is itself a DiffVar
+            base_idx = self.var_map[node.base_var.origin_var.uid]
+            
+            if isinstance(self.method, BackwardEulerMethod):
+                # d2x = (dx - dx_history) / h
+                val = f"(({base_val} - d_history[{base_idx}]) / h)"
+                dot = "0.0" if base_dot == "0.0" else (f"({base_dot}/h)")
+            elif isinstance(self.method, TrapezoidalMethod):
+                # d2x = (2/h)*(dx - dx_history) - d2x_history
+                val = f"((2.0/h)*({base_val} - d_history[{base_idx}]) - d2_history[{base_idx}])"
+                dot = "0.0" if base_dot == "0.0" else (f"(2.0*{base_dot}/h)")
+            elif isinstance(self.method, BDF2Method):
+                # Not implemented for nested diff vars with BDF2
+                raise NotImplementedError("Nested DiffVar not supported with BDF2")
+            else:
+                raise NotImplementedError
         else:
-            seed = f"{self.seeds_var}[{i}]"
+            # Base is a regular state variable
+            base_uid = node.base_var.uid
+            i = self.var_map[base_uid]
+            if self.active_indices is not None:
+                seed = "1.0" if i in self.active_indices else "0.0"
+            else:
+                seed = f"{self.seeds_var}[{i}]"
 
-        if isinstance(self.method, BackwardEulerMethod):
-            val = f"((states[{i}] - history[{i}]) / h)"
-            dot = "0.0" if seed == "0.0" else ("(1.0/h)" if seed == "1.0" else f"({seed}/h)")
-        elif isinstance(self.method, TrapezoidalMethod):
-            val = f"((2.0/h)*(states[{i}] - history[{i}]) - d_history[{i}])"
-            dot = "0.0" if seed == "0.0" else ("(2.0/h)" if seed == "1.0" else f"(2.0*{seed}/h)")
-        elif isinstance(self.method, BDF2Method):
-            val = f"((1.5*states[{i}] - 2.0*history[{i}] + 0.5*history2[{i}]) / h)"
-            dot = "0.0" if seed == "0.0" else ("(1.5/h)" if seed == "1.0" else f"(1.5*{seed}/h)")
-        else:
-            raise NotImplementedError
+            if isinstance(self.method, BackwardEulerMethod):
+                val = f"((states[{i}] - history[{i}]) / h)"
+                dot = "0.0" if seed == "0.0" else ("(1.0/h)" if seed == "1.0" else f"({seed}/h)")
+            elif isinstance(self.method, TrapezoidalMethod):
+                val = f"((2.0/h)*(states[{i}] - history[{i}]) - d_history[{i}])"
+                dot = "0.0" if seed == "0.0" else ("(2.0/h)" if seed == "1.0" else f"(2.0*{seed}/h)")
+            elif isinstance(self.method, BDF2Method):
+                val = f"((1.5*states[{i}] - 2.0*history[{i}] + 0.5*history2[{i}]) / h)"
+                dot = "0.0" if seed == "0.0" else ("(1.5/h)" if seed == "1.0" else f"(1.5*{seed}/h)")
+            else:
+                raise NotImplementedError
+        
         return (f"({val})", f"({dot})") if prec > 10 else (val, dot)
 
     def visit_BinOp(self, node: BinOp, prec: int):
@@ -666,20 +699,37 @@ class MatrixVectorizedVisitor(SymbolicToPythonVisitor):
         raise ValueError(f"Var '{node.name}' (UID: {node.uid}) Not mapped in matrix visitor.")
 
     def visit_DiffVar(self, node: Var, prec: int) -> str:
-        # Vectorized discretization over index matrices
-        base_name = node.base_var.name
-        col_idx = self.col_map[base_name]
-        idx_access = f"indices[:, {col_idx}]"
-
-        # set direct discretization strings for arrays to ensure performance
-        if isinstance(self.method, TrapezoidalMethod):
-            term = f"((2.0/h) * (states[{idx_access}] - history[{idx_access}]) - d_history[{idx_access}])"
-        elif isinstance(self.method, BackwardEulerMethod):
-            term = f"((states[{idx_access}] - history[{idx_access}]) / h)"
-        elif isinstance(self.method, BDF2Method):
-            term = f"((1.5*states[{idx_access}] - 2.0*history[{idx_access}] + 0.5*history2[{idx_access}]) / h)"
+        # If base_var is also a DiffVar, recursively discretize it
+        if getattr(node.base_var, 'base_var', None) is not None:
+            # Use base_var's origin for history lookup since base_var is a DiffVar
+            base_origin_name = node.base_var.origin_var.name
+            col_idx = self.col_map[base_origin_name]
+            idx_access = f"indices[:, {col_idx}]"
+            
+            # Recursively get discretized base
+            base_discretized = self.visit_DiffVar(node.base_var, prec)
+            # Apply discretization using d_history
+            if isinstance(self.method, BackwardEulerMethod):
+                term = f"(({base_discretized} - d_history[{idx_access}]) / h)"
+            elif isinstance(self.method, TrapezoidalMethod):
+                term = f"((2.0/h)*({base_discretized} - d_history[{idx_access}]) - d2_history[{idx_access}])"
+            else:
+                raise NotImplementedError(f"Nested DiffVar not supported with {type(self.method)}")
         else:
-            raise NotImplementedError(f"Method {type(self.method)} not supported in matrix vectorization.")
+            # Base is a regular state variable - use standard discretization
+            # Get origin variable name for column mapping
+            origin_name = node.origin_var.name
+            col_idx = self.col_map[origin_name]
+            idx_access = f"indices[:, {col_idx}]"
+            
+            if isinstance(self.method, TrapezoidalMethod):
+                term = f"((2.0/h) * (states[{idx_access}] - history[{idx_access}]) - d_history[{idx_access}])"
+            elif isinstance(self.method, BackwardEulerMethod):
+                term = f"((states[{idx_access}] - history[{idx_access}]) / h)"
+            elif isinstance(self.method, BDF2Method):
+                term = f"((1.5*states[{idx_access}] - 2.0*history[{idx_access}] + 0.5*history2[{idx_access}]) / h)"
+            else:
+                raise NotImplementedError(f"Method {type(self.method)} not supported in matrix vectorization.")
 
         return f"({term})" if prec > 10 else term
 

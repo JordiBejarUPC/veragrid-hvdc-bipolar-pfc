@@ -10,7 +10,7 @@ import math
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
-from VeraGridEngine.Templates.templates_common_functions import tf_to_block, tf_to_diffblock_with_output
+from VeraGridEngine.Templates.templates_common_functions import tf_to_block, tf_to_diffblock_with_output, tf_to_block_with_states
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
@@ -549,7 +549,7 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         x=y,
         name='stabilizer2',
     )
-    tf3, y3 = tf_to_block(
+    tf3, y3 = tf_to_block_with_states(
         vfactory,
         num=np.array([1]),
         den=np.array([1, parameters["A1"].value, parameters["A2"].value]),
