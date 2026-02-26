@@ -3566,8 +3566,6 @@ class SchematicWidget(BaseDiagramWidget):
                            lossesB: CxVec,
                            lossesC: CxVec,
                            br_active: IntVec,
-                           ma: Vec,
-                           tau: Vec,
                            hvdc_PfA: Vec,
                            hvdc_PfB: Vec,
                            hvdc_PfC: Vec,
@@ -3593,7 +3591,10 @@ class SchematicWidget(BaseDiagramWidget):
                            max_branch_width=5,
                            min_bus_width=20,
                            max_bus_width=20,
-                           cmap: palettes.Colormaps = None):
+                           cmap: palettes.Colormaps = None,
+                           ma: Vec | None = None,
+                           tau: Vec | None = None,
+                           ):
         """
         Color objects based on the results passed
         :param Sbus: Buses power (MVA)
@@ -3762,8 +3763,10 @@ class SchematicWidget(BaseDiagramWidget):
                         tooltip += '\nLoss C:\t\t' + "{:10.4f}".format(lossesC[i]) + ' [MVA]'
 
                         if branch.device_type == DeviceType.Transformer2WDevice:
-                            tooltip += '\ntap module:\t' + "{:10.4f}".format(ma[i])
-                            tooltip += '\ntap angle:\t' + "{:10.4f}".format(tau[i]) + ' rad'
+                            if ma is not None:
+                                tooltip += '\ntap module:\t' + "{:10.4f}".format(ma[i])
+                            if tau is not None:
+                                tooltip += '\ntap angle:\t' + "{:10.4f}".format(tau[i]) + ' rad'
 
                         if use_flow_based_width:
                             w = int((np.floor(min_branch_width + Sfnorm[i] * (max_branch_width - min_branch_width))))
