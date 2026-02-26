@@ -133,8 +133,6 @@ class BackEulerImplicitIntegration:
             current_time = self.t[step_idx]
             dx_last = dx 
             self.problem.update_variable_params(t=current_time)
-            if step_idx > 98:
-                print("")
 
             xn = self.y[step_idx, :]
             tol = 1e-7
