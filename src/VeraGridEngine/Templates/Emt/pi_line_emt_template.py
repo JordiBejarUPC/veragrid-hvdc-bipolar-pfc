@@ -11,7 +11,7 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Utils.Symbolic.block import Var
+from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
 class PiLineEmtTemplate(EmtModelTemplate):
     """
@@ -282,6 +282,38 @@ class PiLineEmtTemplate(EmtModelTemplate):
             mapping[It_keys[ph]] = It_act[k]
 
         self._block.external_mapping = mapping
+
+        # -----------------------------
+        # 8) init equations (consistent initial conditions)
+        # -----------------------------
+        init_eqs: Dict[Var, Expr] = {}
+
+        # q_f = C_end * vf
+        for a in range(m):
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * vf_act[b]
+            init_eqs[q_f[a]] = rhs
+
+        # q_t = C_end * vt
+        for a in range(m):
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * vt_act[b]
+            init_eqs[q_t[a]] = rhs
+
+        # Optional: seed the remaining internal vars to 0.0 (safe seed)
+        # (If/It are set from power flow solution)
+        for a in range(m):
+            init_eqs[i_ser[a]] = c0
+            init_eqs[i_cap_f[a]] = c0
+            init_eqs[i_cap_t[a]] = c0
+
+        self._block.init_eqs = init_eqs
 
 def get_pi_line_emt_template(grid: MultiCircuit,
                              line: Line,

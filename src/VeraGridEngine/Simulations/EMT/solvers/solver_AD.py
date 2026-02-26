@@ -496,6 +496,7 @@ class JitAdSolver:
         if self.verbose: print(f"-> Starting JIT (AD) Simulation ({method_str}, {self.steps} steps)...")
 
         for i in range(self.steps):
+            if self.verbose: print(f"Simulating at step {i}")
             t_curr = t[i + 1]
 
             # Parameter update via Problem

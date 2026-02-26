@@ -442,6 +442,7 @@ class StructuralVectorizedSolver:
         if verbose: print(f"-> Starting VECTORIZED Simulation (Bucle de integración)...")
 
         for i in range(steps):
+            if verbose: print(f"Simulating at step {i}")
             t_curr = t[i + 1]
 
             # Update params in-place

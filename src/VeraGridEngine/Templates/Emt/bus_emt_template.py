@@ -41,8 +41,6 @@ class BusEmtTemplateNABC(EmtModelTemplate):
         if not v_list:
             raise ValueError("Bus has no enabled phases")
 
-        print("out vars at bus=", v_list)
-
         self._block = Block(
             alter_params=v_list, # ?
             algebraic_vars=v_list,
@@ -85,7 +83,6 @@ def get_bus_emt_template(grid: MultiCircuit,
             mask[2] |= bool(branch.ys.phB)
             mask[3] |= bool(branch.ys.phC)
 
-    print("bus mask=", mask)
     # choose template depending on the number of phases
     bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask).block
 

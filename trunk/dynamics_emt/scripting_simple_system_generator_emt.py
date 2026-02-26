@@ -2,17 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile
 import pstats
 import numpy as np
-from matplotlib import pyplot as plt
 
 import sys
 import os
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -34,8 +31,7 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbol
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 
-
-
+from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
@@ -66,8 +62,6 @@ bus1 = gce.Bus(name="Bus1", Vnom=10)
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
-
-
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -133,20 +127,18 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
 
 # connection with buses
-print("in vars gen0 = ",gen_mdl.in_vars)
-print("out vars bus0 = ",bus0.emt_model.model.out_vars)
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
 gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # v_B
 gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 
 
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # if_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # if_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # if_C
+line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
+line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
+line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
 
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # it_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # it_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # it_C
+line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
+line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
+line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
@@ -238,17 +230,50 @@ options = EmtOptions(time_step = 5e-6,
 problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+problem.set_newton_trace_collector(NewtonTraceCollector())
 
 
 
-solver = JitAdSolver(problem = problem,
+solver = JitSymbolicSolver(problem = problem,
                            t0 = 0.0,
                            t_end = options.simulation_time,
                            h = options.time_step,
                            method_str=options.integration_method,
                            verbose = True)
 
+x0 = problem.get_x0()
+print("len(x0) =", len(x0))
+print("nans =", np.isnan(x0).sum())
+print("infs =", np.isinf(x0).sum())
+print("nonzeros =", np.count_nonzero(x0))
+print("len(init_guess) =", len(problem.init_guess))
+
+# solver = JitAdSolver(problem = problem,
+#                      t0 = 0.0,
+#                      t_end = options.simulation_time,
+#                      h = options.time_step,
+#                      method_str=options.integration_method,
+#                      verbose = True)
+#
+# solver = StructuralVectorizedSolver(problem = problem,
+#                                     t0 = 0.0,
+#                                     t_end = options.simulation_time,
+#                                     h = options.time_step,
+#                                     method_str=options.integration_method,
+#                                     verbose = True)
+
 t, y = solver.simulate()
+
+collector = problem.get_newton_trace_collector()
+if collector:
+    print(f"Newton iters : {len(collector.records)}")
+
+#  Convert collected diagnostics to DataFrame
+df = collector.to_dataframe()  # o pd.DataFrame(collector.records)
+
+# Save full diagnostics
+df.to_csv("newton_diagnostics_demo.csv", index=False)
+print("Diagnostics written to newton_diagnostics_demo.csv")
 
 # profiler.disable()
 # profiler.dump_stats("profiling_stats.prof")

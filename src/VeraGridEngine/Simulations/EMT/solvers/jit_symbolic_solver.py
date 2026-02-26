@@ -281,6 +281,7 @@ class JitSymbolicSolver:
         if self.verbose: print(f"-> Starting JIT Simulation ({method_str}, {self.steps} steps)...")
 
         for i in range(self.steps):
+            if self.verbose: print(f"Simulating at step {i}")
             t_curr = self.t0 + (i + 1) * self.h
             self.t[i + 1] = t_curr
 
