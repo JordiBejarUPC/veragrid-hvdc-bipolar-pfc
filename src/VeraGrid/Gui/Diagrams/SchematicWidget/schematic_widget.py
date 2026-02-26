@@ -3639,6 +3639,7 @@ class SchematicWidget(BaseDiagramWidget):
         VaB = np.angle(voltagesB, deg=True)
         VaC = np.angle(voltagesC, deg=True)
         vnorm = (VmA - vmin) / vrng
+
         nbus = self.circuit.get_bus_number()
         nbr = self.circuit.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
 
@@ -3673,7 +3674,21 @@ class SchematicWidget(BaseDiagramWidget):
                                                       VaA=VaA[i], VaB=VaB[i], VaC=VaC[i],
                                                       tpe=bus_types[int(types[i])])
 
-                        v_to_colour = vnorm[i]
+                        vals = [VmA[i], VmB[i], VmC[i]]
+                        vals_nz = [v for v in vals if v != 0.0] # ignore exact zeros
+
+                        if vals_nz:  # at least one phase is not zero
+                            worst_Umax = max(vals_nz)
+                            worst_Umin = min(vals_nz)
+                            if abs(worst_Umax - 1.0) > abs(1.0 - worst_Umin):
+                                worst_U = worst_Umax
+                            else:
+                                worst_U = worst_Umin
+                        else:
+                            # the three-phases are zero
+                            worst_U = 0.0
+
+                        v_to_colour = (worst_U - vmin) / vrng
 
                         a = 255
                         if cmap == palettes.Colormaps.Green2Red:
