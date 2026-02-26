@@ -21,7 +21,6 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.basic_structures import ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
@@ -93,10 +92,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param options:
         :param pf_results:
         """
-        super().__init__(
-            sys_block=Block(children=[], in_vars=[]),
-            glob_time=Var(self.TIME_NAME)
-        )
         self.logger = Logger()
         self.grid = grid
         self.options = options
@@ -107,27 +102,32 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
 
-        # NEW: models that contain init_eqs, to run explicit initialization after BaseProblem init
+        # para init_explicit
         self._models_with_init_eqs: List[Block] = []
         self._models_with_init_eqs_seen: Set[int] = set()
 
+        # Construir el block raíz REAL (no vacío)
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
 
-        self.history_models = []  # list of models with history components
+        self.history_models = []
         self.step_counter = 0
 
         t_build = _tic()
 
-        self._build_structure_and_collect(self.sys_block, grid, pf_results, self.glob_time)
+        # build on local sys_block
+        self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
 
-        self.sys_block.unify_blocks()
-        self._deduplicate_block_entities(self.sys_block)
+        sys_block.unify_blocks()
+        self._deduplicate_block_entities(sys_block)
 
-        # 1) PF-based init guesses (and any set_init_guess done during parsing)
+        # initialize template with the complete block
+        super().__init__(sys_block=sys_block, glob_time=glob_time)
+
+        # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
 
-        # 2) NEW: explicit init for mdl.init_eqs (branches + injections + any block that defines init_eqs)
+        # 2) explicit init guesses initialization
         self._run_explicit_initialization()
 
         t_done = _toc(t_build)

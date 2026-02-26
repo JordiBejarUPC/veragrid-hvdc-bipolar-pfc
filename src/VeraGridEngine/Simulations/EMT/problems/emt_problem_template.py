@@ -298,13 +298,12 @@ class EmtProblemTemplate(ABC):
         return self._uid2idx_vars[v.uid]
 
     def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float):
-        """
-        Sets the initial guess for a variable based on a powerflow reference.
-        """
         if not hasattr(mdl, "external_mapping") or mdl.external_mapping is None:
             return
         if reference_powerflow in mdl.external_mapping:
             var = mdl.external_mapping[reference_powerflow]
+            if var is None:
+                return
             self.init_guess[var.uid] = float(val)
 
     @property
