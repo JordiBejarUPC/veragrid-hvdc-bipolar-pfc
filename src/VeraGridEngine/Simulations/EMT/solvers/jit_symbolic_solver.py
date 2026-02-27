@@ -299,6 +299,19 @@ class JitSymbolicSolver:
                 for kn in kernel_list:
                     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
 
+                if i == 0 and k == 0:  # Paso 0, Primera iteración de Newton
+                    print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+                    all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    abs_res = np.abs(res)
+                    top_indices = np.argsort(abs_res)[-20:][::-1]
+
+                    print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
+                    print("-" * 75)
+                    for idx in top_indices:
+                        name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
+                        print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
+                    print("=" * 75 + "\n")
+
                 if np.linalg.norm(res, np.inf) < 1e-6: break
 
                 J_final = current_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
