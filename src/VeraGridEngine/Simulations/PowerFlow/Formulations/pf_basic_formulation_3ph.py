@@ -561,9 +561,12 @@ def compute_power_loads(bus_idx: IntVec,
 
         elif star and a_connected and b_connected and c_connected:
 
-            I[a2] -= np.conj(Sstar[ab] / (V[a2]))
-            I[b2] -= np.conj(Sstar[bc] / (V[b2]))
-            I[c2] -= np.conj(Sstar[ca] / (V[c2]))
+            if a2 >= 0:
+                I[a2] -= np.conj(Sstar[ab] / (V[a2]))
+            if b2 >= 0:
+                I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+            if c2 >= 0:
+                I[c2] -= np.conj(Sstar[ca] / (V[c2]))
 
         elif star and a_connected:
             I[a2] -= np.conj(Sstar[ab] / (V[a2]))
