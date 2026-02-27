@@ -232,11 +232,11 @@ class SimulationsMain(TimeEventsMain):
 
         # rms simulation
         self.rms_integration_method_dict, rms_integration_method_mdl = gf.enums_to_model(
-            [DynamicIntegrationMethod.BackEuler,
-             DynamicIntegrationMethod.Trapezoid,
-             DynamicIntegrationMethod.BDF2,
-             DynamicIntegrationMethod.BackEuler,
-             DynamicIntegrationMethod.Euler]
+            [DynamicIntegrationMethod.DaeBackEuler,
+             DynamicIntegrationMethod.DaeTrapezoidal,
+             DynamicIntegrationMethod.DaeBDF2,
+             DynamicIntegrationMethod.DaeBackEuler,
+             DynamicIntegrationMethod.OdeEuler]
         )
         self.ui.rms_integration_method_comboBox.setModel(rms_integration_method_mdl)
 

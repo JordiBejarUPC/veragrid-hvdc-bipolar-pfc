@@ -176,7 +176,7 @@ print(f"res:{res}")
 emt_opt = EmtOptions(time_step=5e-06,  # 3.957727297715481e-06,
                      simulation_time=0.005,  # s
                      tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.BackEuler)
+                     integration_method=DynamicIntegrationMethod.DaeBackEuler)
 
 print(f"initial timestep:{emt_opt.time_step}s")
 drv = EmtSimulationDriver(grid, emt_opt, res)

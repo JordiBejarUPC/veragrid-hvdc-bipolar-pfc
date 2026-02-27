@@ -71,7 +71,7 @@ def test_diff_block_in_harmonic_oscillator():
         x0=x0,
         dx0=dx0,
         params0=params0,
-        method=DynamicIntegrationMethod.BackEuler,
+        method=DynamicIntegrationMethod.DaeBackEuler,
         verbose=False
     )
 
@@ -131,7 +131,7 @@ def test_diff_block_second_order_oscillator():
         x0=x0,
         dx0=dx0,
         params0=params0,
-        method=DynamicIntegrationMethod.BackEuler,
+        method=DynamicIntegrationMethod.DaeBackEuler,
         verbose=False
     )
 

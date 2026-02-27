@@ -42,7 +42,7 @@ class RmsSimulationDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        self.integration_methods_dict = {DynamicIntegrationMethod.BackEuler: BackEulerImplicitIntegration}
+        self.integration_methods_dict = {DynamicIntegrationMethod.DaeBackEuler: BackEulerImplicitIntegration}
 
         self.grid = grid
 
