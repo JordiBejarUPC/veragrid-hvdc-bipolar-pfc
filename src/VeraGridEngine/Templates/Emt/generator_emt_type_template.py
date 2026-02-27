@@ -95,7 +95,7 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
             v_q - Ra * i_q + omega * psi_d,
             v_0 - R0 * i_0,
             v_f - Rf * i_f,
-            omega_base * omega,
+            omega_base * (omega - omega_ref),
             (Tm - Te - D * (omega - omega_ref)) / (2 * H),
             omega_base * (omega_ref - omega),  # d_et
         ],
@@ -170,8 +170,10 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
                        # v_f0: vf.add_const(-0.018508071106644895)}
                        v_f0: vf.add_const(-0.017823457188517983)} #TODO: find vf0 from exciter/governor
 
+    a = np.exp(1j * 2 * np.pi / 3)
     templ.block.init_eqs = {
         omega: vf.add_const(1.0),
+        # theta: ((1 / 3) * (inputs[0] + a * inputs[1] + (a * a) * inputs[2])) + (Ra + 1j * (Lmq + La)) * (1 / 3) * (i_A + a * i_B + (a * a) * i_C),
         Pm: Pe,
         et: vf.add_const(0.0),
 
@@ -183,7 +185,8 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
         i_q: 2 / 3 * (sym.sin(theta) * i_A + sym.sin(theta - 2 * np.pi / 3) * i_B + sym.sin(theta + 2 * np.pi / 3) * i_C),
         i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
 
-        psi_d: (i_q * Ra - v_q) / omega,
+        psi_d: (i_q * Ra + v_q) / omega,
+        # (v_q + Ra * i_q) / 1.0
         i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
         v_f: i_f * Rf,
 

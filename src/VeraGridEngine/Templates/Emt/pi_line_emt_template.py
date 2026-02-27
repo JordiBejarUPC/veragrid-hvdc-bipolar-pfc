@@ -99,9 +99,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Z_phys_m = line.template.z_nabc / 1e3
         Y_phys_m = line.template.y_nabc / 1e3
 
-        print(f"Z_phys_m {line.name}= {Z_phys_m}")
-        print(f"Y_phys_m {line.name}= {Y_phys_m}")
-
         # lumped over length
         Z_phys = Z_phys_m * line.length
         Y_phys = Y_phys_m * line.length
@@ -121,8 +118,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # split shunt into two ends
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
-
-        print(f"C_full {line.name}={C_full}")
 
         idx_global = idx
 
@@ -190,26 +185,39 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         state_eqs = []
 
-        # (1) L di_ser + R i_ser - (vf - vt) = 0
+        import numpy as np
+
+
+        #  L * di_ser + R * i_ser - (vf - vt) = 0
+        # di_ser = L^-1 * [(vf - vt) - R * i_ser]
+        L_inv = np.linalg.inv(L)
+
+        # (1) Equations for the series branch currents (i_ser)
         for a in range(m):
-            expr = c0
+            expr_rhs = c0
             for b in range(m):
-                Lab = float(L[a, b])
-                Rab = float(R[a, b])
-                if Lab != 0.0:
-                    expr = expr + Lab * di_ser[b]
-                if Rab != 0.0:
-                    expr = expr + Rab * i_ser[b]
-            expr = expr - (vf_act[a] - vt_act[a])
-            state_eqs.append(expr)
+                Linv_ab = float(L_inv[a, b])
+                if Linv_ab != 0.0:
+                    v_diff_R_i_b = (vf_act[b] - vt_act[b])
+                    for k in range(m):
+                        R_bk = float(R[b, k])
+                        if R_bk != 0.0:
+                            v_diff_R_i_b = v_diff_R_i_b - R_bk * i_ser[k]
 
-        # (2) dq_f - i_cap_f = 0
-        for a in range(m):
-            state_eqs.append(dq_f[a] - i_cap_f[a])
+                    expr_rhs = expr_rhs + Linv_ab * v_diff_R_i_b
+            state_eqs.append(expr_rhs)
 
-        # (3) dq_t - i_cap_t = 0
+        # (2) Equations for the charge of the 'from' side capacitor (q_f)
+        # The derivative dq_f is simply the current flowing into the capacitor
         for a in range(m):
-            state_eqs.append(dq_t[a] - i_cap_t[a])
+            # dq_f = i_cap_f[a]
+            state_eqs.append(i_cap_f[a])
+
+        # (3) Equations for the charge of the 'to' side capacitor (q_t)
+        # The derivative dq_t is simply the current flowing into the capacitor
+        for a in range(m):
+            # dq_t = i_cap_t[a]
+            state_eqs.append(i_cap_t[a])
 
         self._block.state_eqs = state_eqs
 
@@ -343,14 +351,40 @@ class PiLineEmtTemplate(EmtModelTemplate):
 
         self._block.init_eqs = init_eqs
 
-        # Optional: seed the remaining internal vars to 0.0 (safe seed)
-        # (If/It are set from power flow solution)
-        for a in range(m):
-            init_eqs[i_ser[a]] = c0
-            init_eqs[i_cap_f[a]] = c0
-            init_eqs[i_cap_t[a]] = c0
 
-        self._block.init_eqs = init_eqs
+        # -----------------------------
+        # 9) Derivative initialization (diff_init_eqs)
+        # -----------------------------
+        diff_init_eqs: Dict[Var, Expr] = {}
+
+        for a in range(m):
+            # (A) Initialization for di_ser:
+            # We mirror the state_eq: di_ser = L_inv * (vf - vt - R * i_ser)
+            di_rhs = c0
+            for b in range(m):
+                Linv_ab = float(L_inv[a, b])
+                if Linv_ab != 0.0:
+                    # Calculate (vf - vt - R * i_ser) for phase 'b'
+                    v_diff_R_i_b = (vf_act[b] - vt_act[b])
+                    for k in range(m):
+                        R_bk = float(R[b, k])
+                        if R_bk != 0.0:
+                            v_diff_R_i_b = v_diff_R_i_b - R_bk * i_ser[k]
+
+                    di_rhs = di_rhs + Linv_ab * v_diff_R_i_b
+
+            diff_init_eqs[di_ser[a]] = di_rhs
+
+            # (B) Initialization for dq_f:
+            # According to eq (2): dq_f = i_cap_f
+            diff_init_eqs[dq_f[a]] = i_cap_f[a]
+
+            # (C) Initialization for dq_t:
+            # According to eq (3): dq_t = i_cap_t
+            diff_init_eqs[dq_t[a]] = i_cap_t[a]
+
+        # Assign to the block
+        self._block.diff_init_eqs = diff_init_eqs
 
 def get_pi_line_emt_template(grid: MultiCircuit,
                              line: Line,
