@@ -16,10 +16,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
-from VeraGridEngine.Utils.Symbolic.block import Block, integrator
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
+
+def integrator(initial_val, name: str):
+    """
+    Creates a state variable and a container block with a placeholder equation.
+    Enables the syntax: x, blk = integrator(None, "x")
+    """
+    var = Var(name)
+    # Initialize state_eqs with a Const(0.0) so that index [0] is available for later coupling
+    blk = Block(name=f"int_{name}", state_vars=[var], state_eqs=[Const(0.0)])
+    return var, blk
 
 def build_oscillator_system(omega=1.0):
     """
@@ -64,7 +77,7 @@ def run_test():
     glob_time = Var("t_glob")
 
     # 2. Setup Problem
-    problem = BaseProblem(sys_block, glob_time)
+    problem = GenericEmtProblem(sys_block, glob_time)
 
     idx_x = problem.get_var_idx(var_x)
     idx_v = problem.get_var_idx(var_v)
@@ -81,7 +94,8 @@ def run_test():
     print("\n[1] Running Implicit Solver (Method: Trapezoidal)...")
     solver_trap = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
-        method_str='trapezoidal', verbose=True
+        method=DynamicIntegrationMethod.Trapezoid,
+        verbose=True
     )
     t_trap, y_trap_full = solver_trap.simulate()
 
@@ -89,7 +103,8 @@ def run_test():
     print("\n[2] Running Implicit Solver (Method: BDF2)...")
     solver_bdf = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
-        method_str='bdf2', verbose=True
+        method=DynamicIntegrationMethod.BDF2,
+        verbose=True
     )
     t_bdf, y_bdf_full = solver_bdf.simulate()
 

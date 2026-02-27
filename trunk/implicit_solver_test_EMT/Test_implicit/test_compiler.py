@@ -16,6 +16,7 @@ import numba as nb
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
 class TestStructuralCompiler(unittest.TestCase):
@@ -39,7 +40,7 @@ class TestStructuralCompiler(unittest.TestCase):
         dx_new = (2/h)*(x - x0) - dx0
         res = dx_new + x
         """
-        compiler = EquationCompiler([self.x], method='trapezoidal')
+        compiler = EquationCompiler([self.x], method=DynamicIntegrationMethod.Trapezoid)
         step_fn = compiler.compile([self.decay_eq])
 
         h, h2 = 0.1, np.zeros(1)
@@ -60,7 +61,7 @@ class TestStructuralCompiler(unittest.TestCase):
         Ensures a single template can be applied to multiple nodes simultaneously.
         """
         # System: 3 independent oscillators sharing the same algebraic template
-        vec_compiler = MatrixVectorizedCompiler([self.x], parameters=[], method='trapezoidal')
+        vec_compiler = MatrixVectorizedCompiler([self.x], parameters=[], method=DynamicIntegrationMethod.Trapezoid)
         py_func = vec_compiler.compile_matrix_kernel(self.decay_eq, func_name="vec_decay", template_vars=[self.x])
         vec_kernel = nb.njit(fastmath=True)(py_func)
 
@@ -87,7 +88,7 @@ class TestStructuralCompiler(unittest.TestCase):
         Mathematical proof of O(h^2) convergence for the Trapezoidal JIT kernel.
         Residual error should drop by factor of 4 when h is halved.
         """
-        compiler = EquationCompiler([self.x], method='trapezoidal')
+        compiler = EquationCompiler([self.x], method=DynamicIntegrationMethod.Trapezoid)
         step_fn = compiler.compile([self.decay_eq])
 
         x0, dx0, h2 = 1.0, -1.0, np.zeros(1)
@@ -111,7 +112,7 @@ class TestStructuralCompiler(unittest.TestCase):
 
         # Equations: dx/dt = v, dv/dt = -x
         eqs = [d_pos - vel, d_vel + pos]
-        compiler = EquationCompiler([pos, vel], method='trapezoidal')
+        compiler = EquationCompiler([pos, vel], method=DynamicIntegrationMethod.Trapezoid)
         kernel = compiler.compile(eqs)
 
         h, h2 = 0.01, np.zeros(2)

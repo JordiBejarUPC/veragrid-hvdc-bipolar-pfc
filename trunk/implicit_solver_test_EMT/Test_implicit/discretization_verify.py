@@ -16,12 +16,14 @@ import numpy as np
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
-
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 class TestUnifiedSolverMathematics(unittest.TestCase):
 
@@ -29,11 +31,11 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
         self.time = Var("t")
         self._solvers_to_test = [JitAdSolver, StructuralVectorizedSolver]
 
-    def make_solver(self, solver_class, block, t_end, h, method_str):
+    def make_solver(self, solver_class, block, t_end, h, method: DynamicIntegrationMethod):
         """Helper to construct a BaseProblem and initialize the chosen solver."""
         block.unify_blocks()
-        problem = BaseProblem(block, self.time)
-        solver = solver_class(problem, t0=0.0, t_end=t_end, h=h, method_str=method_str)
+        problem = GenericEmtProblem(block, self.time)
+        solver = solver_class(problem, t0=0.0, t_end=t_end, h=h, method=method)
         return solver, problem
 
     def create_decay_system(self, k_val=1.0):
@@ -53,7 +55,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, block, h, h, "be")
+                solver, prob = self.make_solver(solver_class, block, h, h, DynamicIntegrationMethod.BackEuler)
 
                 # Setup init vectors
                 x0 = prob.get_x0()
@@ -68,13 +70,13 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
                 x_expected = 1.0 / (1 + h)
                 self.assertAlmostEqual(x_numeric, x_expected, places=7)
 
-    def test_02_trapezoidal_math(self):
+    def test_02_Trapezoid_math(self):
         h = 0.1
         block, _, _ = self.create_decay_system(k_val=1.0)
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, block, h, h, "trapezoidal")
+                solver, prob = self.make_solver(solver_class, block, h, h, DynamicIntegrationMethod.Trapezoid)
 
                 x0 = prob.get_x0()
                 x0[0] = 1.0
@@ -94,7 +96,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, block, 1.0, 0.1, "be")
+                solver, prob = self.make_solver(solver_class, block, 1.0, 0.1, DynamicIntegrationMethod.BackEuler)
 
                 idx_k = getattr(solver, 'uid2idx_params', prob.uid2idx_vars).get(k.uid, 0)
 
@@ -124,13 +126,13 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver_c, prob_c = self.make_solver(solver_class, block, t_target, 0.1, "trapezoidal")
+                solver_c, prob_c = self.make_solver(solver_class, block, t_target, 0.1, DynamicIntegrationMethod.Trapezoid)
                 x0_c, dx0_c = prob_c.get_x0(), np.zeros_like(prob_c.get_x0())
                 x0_c[0], dx0_c[0] = 1.0, -1.0
                 _, y_c = solver_c.simulate(x0=x0_c, dx0=dx0_c, params0=np.zeros(prob_c.get_variable_parameter_number()))
                 err_c = abs(y_c[-1, 0] - exact_sol)
 
-                solver_f, prob_f = self.make_solver(solver_class, block, t_target, 0.05, "trapezoidal")
+                solver_f, prob_f = self.make_solver(solver_class, block, t_target, 0.05, DynamicIntegrationMethod.Trapezoid)
                 x0_f, dx0_f = prob_f.get_x0(), np.zeros_like(prob_f.get_x0())
                 x0_f[0], dx0_f[0] = 1.0, -1.0
                 _, y_f = solver_f.simulate(x0=x0_f, dx0=dx0_f, params0=np.zeros(prob_f.get_variable_parameter_number()))
@@ -145,7 +147,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, stiff_block, 1.0, 0.1, "be")
+                solver, prob = self.make_solver(solver_class, stiff_block, 1.0, 0.1, DynamicIntegrationMethod.BackEuler)
                 x0 = prob.get_x0()
                 x0[0] = 1.0
                 _, y = solver.simulate(x0=x0, dx0=np.zeros_like(x0),
@@ -159,7 +161,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, nl_block, 0.5, 0.01, "trapezoidal")
+                solver, prob = self.make_solver(solver_class, nl_block, 0.5, 0.01, DynamicIntegrationMethod.Trapezoid)
                 x0 = prob.get_x0()
                 x0[0] = 1.0
                 _, y = solver.simulate(x0=x0, dx0=np.ones_like(x0),
@@ -173,7 +175,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver_trap, prob_trap = self.make_solver(solver_class, osc_block, 20.0, 0.1, "trapezoidal")
+                solver_trap, prob_trap = self.make_solver(solver_class, osc_block, 20.0, 0.1, DynamicIntegrationMethod.Trapezoid)
                 x0, dx0 = prob_trap.get_x0(), np.zeros_like(prob_trap.get_x0())
                 x0[0], dx0[1] = 1.0, -1.0  # pos=1, d_vel=-1
                 _, y_trap = solver_trap.simulate(x0=x0, dx0=dx0,
@@ -181,7 +183,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
                 amp_trap = np.max(np.abs(y_trap[-20:, 0]))
                 self.assertGreater(amp_trap, 0.95)
 
-                solver_be, prob_be = self.make_solver(solver_class, osc_block, 20.0, 0.1, "be")
+                solver_be, prob_be = self.make_solver(solver_class, osc_block, 20.0, 0.1, DynamicIntegrationMethod.BackEuler)
                 x0, dx0 = prob_be.get_x0(), np.zeros_like(prob_be.get_x0())
                 x0[0], dx0[1] = 1.0, -1.0
                 _, y_be = solver_be.simulate(x0=x0, dx0=dx0, params0=np.zeros(prob_be.get_variable_parameter_number()))
@@ -197,7 +199,7 @@ class TestUnifiedSolverMathematics(unittest.TestCase):
 
         for solver_class in self._solvers_to_test:
             with self.subTest(solver=solver_class.__name__):
-                solver, prob = self.make_solver(solver_class, forcing_block, 2.0, 0.1, "trapezoidal")
+                solver, prob = self.make_solver(solver_class, forcing_block, 2.0, 0.1, DynamicIntegrationMethod.Trapezoid)
 
                 idx_t = getattr(solver, 'uid2idx_event_params', {}).get(t_driver.uid, 0)
 

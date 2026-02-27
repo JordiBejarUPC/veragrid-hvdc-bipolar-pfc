@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
 def solve_step_newton(step_fn, current_x, history, d_history, params, h,
@@ -82,7 +83,7 @@ def run_demo():
     compiler = EquationCompiler(
         [pos, vel],
         parameters=[k, c],
-        method='trapezoidal'
+        method=DynamicIntegrationMethod.Trapezoid
     )
     step_fn = compiler.compile([eq1, eq2])
     print("[OK] Equations successfully compiled.")

@@ -5,17 +5,23 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from typing import List
+from typing import List, Tuple
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec, Mat, CxVec
+from VeraGridEngine.basic_structures import Vec, Mat, CxVec, CxMat, BoolVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 class SmallSignalStabilityEmtResults(ResultsTemplate):
     """
+    Container and processor for EMT Floquet Small-Signal Stability results.
+
+    Handles the mapping of discrete Floquet multipliers (Z-domain) to continuous
+    eigenvalues (S-domain), computes bi-orthonormal participation factors,
+    and interfaces with the VeraGrid UI for plotting and reporting.
+
     EmtFloquetResults
     :param multipliers: Floquet multipliers (eigenvalues of Monodromy Matrix)
     :param right_vecs: Right eigenvectors (columns)
@@ -26,12 +32,20 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
 
     def __init__(self,
                  multipliers: CxVec,
-                 right_vecs: CxVec,
-                 left_vecs: Mat,
+                 right_vecs: CxMat,
+                 left_vecs: CxMat,
                  period: float,
                  stat_vars: List[Var]):
+        """
+        Initializes the container results.
 
-        # Correcting the constructor call to match VeraGrid's parent class requirements
+        :param multipliers: Floquet multipliers (eigenvalues of Monodromy Matrix).
+        :param right_vecs: Right eigenvectors (columns) of the Monodromy Matrix.
+        :param left_vecs: Left eigenvectors from the adjoint problem (columns).
+        :param period: Limit cycle period T in seconds.
+        :param stat_vars: List of symbolic state variables involved in the modes.
+        """
+
         ResultsTemplate.__init__(
             self,
             name='Small Signal Stability Emt Results',
@@ -67,14 +81,20 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
         stat_names = [f"{v}" for v in stat_vars]
         self.stat_vars_array = np.array(stat_names, dtype=np.str_)
 
-        self.register(name='multipliers', tpe=Vec)
-        self.register(name='eigenvalues', tpe=Vec)
+        self.register(name='multipliers', tpe=CxVec)
+        self.register(name='eigenvalues', tpe=CxVec)
         self.register(name='participation_factors', tpe=Mat)
 
     def _compute_pf(self) -> Mat:
         """
         Calculates bi-orthonormal Participation Factors.
+
+        Uses the left (adjoint) and right eigenvectors to compute the relative
+        participation of each state variable in each Floquet mode.
+
+        :return: A real-valued matrix of shape (n_states, n_modes).
         """
+
         n_states, n_modes = self.right_vecs.shape
         PF = np.zeros((n_states, n_modes), dtype=np.float64)
 
@@ -126,22 +146,33 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
                 plt.grid(True)
                 plt.title("Floquet Multipliers: Unit Circle Stability")
                 plt.show()
+
+            row_indices = np.arange(len(self.multipliers))
+
             return ResultsTable(data=np.c_[self.multipliers.real, self.multipliers.imag],
-                                columns=np.array(['Real', 'Imag']), title="Z-Domain Plot")
+                                columns=np.array(['Real', 'Imag']),
+                                title="Z-Domain Plot"
+                                ,index=row_indices
+                                ,cols_device_type=DeviceType.NoDevice
+                                ,idx_device_type=DeviceType.NoDevice )
         return super().mdl(result_type)
 
-    def report_stability(self):
-        """Standard stability report for periodic systems."""
+    def report_stability(self)-> str:
+        """
+        Generates a standard stability report string based on the spectral radius.
+
+        :return: Formatted stability assessment string.
+        """
         rho = np.max(np.abs(self.multipliers))
         return f"Spectral Radius rho={rho:.4f}. {'STABLE' if rho <= 1.0001 else 'UNSTABLE'}."
 
-    def validate_spectral_gaps(self, h_step):
+    def validate_spectral_gaps(self, h_step:float)->Tuple[BoolVec, Vec]:
         """
         Evaluates the metric compactness of ALL calculated modes.
         Uses the discretization step (h) as the numerical noise floor (tolerance).
 
         :param h_step: Problem integration step (e.g., 1e-4)
-        :return: (is_isolated_array, spectral_gaps_array)
+        :return: Tuple (is_isolated_array, spectral_gaps_array)
         """
         if self.multipliers is None or len(self.multipliers) == 0:
             return np.array([]), np.array([])
@@ -158,7 +189,6 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
             for j in range(n_modes):
                 if i == j:
                     continue
-                # We ignore the exact conjugate complex (it is the same physical mode).
                 if np.allclose(self.multipliers[j], np.conj(mu_target), atol=1e-10):
                     continue
                 valid_distances.append(distances[j])

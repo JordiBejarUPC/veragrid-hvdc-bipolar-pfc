@@ -9,12 +9,18 @@ import matplotlib.pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 # Unified Solver Suite
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+
+
+# --- CONCRETE CLASS FOR BENCHMARK ---
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 
 def estimate_big_o(ns, times):
@@ -35,59 +41,76 @@ def estimate_big_o(ns, times):
 
 def benchmark_new_architecture(n_oscillators, n_steps, backend="SD"):
     """Isolates Setup (Assembly) and Run (Physics) phases for complexity analysis."""
-    # Physics Model: Linear Coupled Chain
+
+    k_sym = Var("k")
+
+    # 1. Variables de Estado (Integrales puras, base_var=None)
     vars_pos = [Var(f"x_{i}") for i in range(n_oscillators)]
     vars_vel = [Var(f"v_{i}") for i in range(n_oscillators)]
-    k_sym = Var("k")
-    state_vars, state_eqs = [], []
+
+    # 2. Variables Diferenciales (Derivadas apuntando a su estado)
+    dvars_pos = [Var(f"dx_{i}", base_var=v) for i, v in enumerate(vars_pos)]
+    dvars_vel = [Var(f"dv_{i}", base_var=v) for i, v in enumerate(vars_vel)]
+
+    state_vars, state_eqs, diff_vars = [], [], []
     for i in range(n_oscillators):
         x_i, v_i = vars_pos[i], vars_vel[i]
+        dx_i, dv_i = dvars_pos[i], dvars_vel[i]
+
         x_L = vars_pos[i - 1] if i > 0 else Const(0.0)
         x_R = vars_pos[i + 1] if i < n_oscillators - 1 else Const(0.0)
+
+        # 3. El Sistema es f(x), el compilador armará el residual (dx - f(x))
         force = k_sym * (x_L - x_i) + k_sym * (x_R - x_i) - 0.5 * v_i
-        state_vars.extend([x_i, v_i]);
+
+        state_vars.extend([x_i, v_i])
         state_eqs.extend([v_i, force])
+        diff_vars.extend([dx_i, dv_i])
 
+        # Asignamos al bloque las 3 listas requeridas
     block = Block(name="Chain", state_vars=state_vars, state_eqs=state_eqs, parameters={k_sym: Const(10.0)})
+    block.diff_vars = diff_vars
     block.unify_blocks()
-    problem = BaseProblem(block, Var("t_glob"))
-    h = 0.01
 
-    # --- PHASE 1: ASSEMBLY/SETUP COMPLEXITY ---
+    problem = GenericEmtProblem(block, Var("t_glob"))
+    h = 0.01
+    target_method = DynamicIntegrationMethod.Trapezoid
+
+    # --- PHASE 1: ASSEMBLY/SETUP ---
     t_setup_start = time.perf_counter()
     if backend == "SD":
-        solver = JitSymbolicSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method_str='trapezoidal')
-        solver._build_jit_kernel('trapezoidal')
+        solver = JitSymbolicSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
+        solver.build_jit_kernel(target_method)
     elif backend == "AD":
-        solver = JitAdSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method_str='trapezoidal')
-        solver._build_jit_ad()
+        solver = JitAdSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
+        solver.build_jit_ad()
     elif backend == "StructuralVectorizedSolver":
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h * n_steps, h=h, integration_method='trapezoidal')
-        solver._auto_detect_vectorization()
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
+        solver.auto_detect_vectorization(method=target_method)
 
-    # Mandatory JIT Warmup (must be counted in Setup Tax)
     x0, dx0 = problem.get_x0(), np.zeros(len(state_vars))
     p0 = np.zeros(problem.get_variable_parameter_number())
     solver.t_end = h
+
     if backend == "SD":
         solver.simulate()
     else:
         solver.simulate(x0=x0, dx0=dx0, params0=p0)
+
     t_setup = time.perf_counter() - t_setup_start
 
-    # --- PHASE 2: INTEGRATION/SIMULATION COMPLEXITY ---
+    # --- PHASE 2: INTEGRATION/SIMULATION ---
     solver.t_end = h * n_steps
     t_run_start = time.perf_counter()
+
     if backend == "SD":
         solver.simulate()
     else:
         solver.simulate(x0=x0, dx0=dx0, params0=p0)
 
-    # Precision bypass: Extract internal loop time if available
     t_run = getattr(solver, 'last_sim_loop_time', time.perf_counter() - t_run_start)
 
     return {'run': t_run, 'setup': t_setup}
-
 
 def run_full_analysis():
     print("=" * 100)
@@ -108,7 +131,7 @@ def run_full_analysis():
             results[b]['setup'].append(res['setup'])
             print(f"{N * 2:<14} | {res['run']:.6f}         | {res['setup']:.4f}")
 
-    # Final Comparative Complexity Table
+    # Results Summary
     print("\n" + "=" * 100)
     print(f"{'COMPLEXITY CLASS SUMMARY':^100}")
     print("=" * 100)

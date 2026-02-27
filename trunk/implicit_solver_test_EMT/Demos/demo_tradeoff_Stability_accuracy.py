@@ -21,9 +21,12 @@ import time
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 def create_boost_system():
     i_L = Var("i_L")
@@ -65,9 +68,9 @@ def run_method_benchmark():
 
     # Using string identifiers for the new JIT architecture
     methods = [
-        ("be", "Backward Euler (L-Stable)"),
-        ("trapezoidal", "Trapezoidal (A-Stable)"),
-        ("bdf2", "BDF2 (L-Stable)")
+        (DynamicIntegrationMethod.BackEuler, "Backward Euler (L-Stable)"),
+        (DynamicIntegrationMethod.Trapezoid, "Trapezoidal (A-Stable)"),
+        (DynamicIntegrationMethod.BDF2, "BDF2 (L-Stable)")
     ]
 
     results = {}
@@ -78,7 +81,7 @@ def run_method_benchmark():
     glob_time = Var("t_glob")
 
     # 1. Create BaseProblem (Network Topology & Equations)
-    problem = BaseProblem(sys_block, glob_time)
+    problem = GenericEmtProblem(sys_block, glob_time)
 
     # Controller
     def pwm_ctrl(t, x, params):
@@ -87,13 +90,13 @@ def run_method_benchmark():
         idx = offset + problem.uid2idx_params[sw_var.uid]
         params[idx] = sw_val
 
-    for method_str, method_name in methods:
+    for method_enum, method_name in methods:
         print(f"\n> Testing: {method_name}...")
 
         # 2. Instantiate JIT Solver
         solver = JitSymbolicSolver(
             problem=problem, t0=0.0, t_end=T_END, h=DT,
-            method_str=method_str, verbose=False
+            method=method_enum, verbose=False
         )
 
         # 3. Simulate (JitSymbolicSolver extracts x0 internally)

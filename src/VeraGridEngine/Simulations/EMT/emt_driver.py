@@ -99,7 +99,7 @@ class EmtSimulationDriver(DriverTemplate):
             t0=0.0,
             t_end=self.options.simulation_time,
             h=self.options.time_step,
-            method_str = self.options.integration_method
+            method = self.options.integration_method
         )
 
         t, y = solver.simulate(boundary_update_fn = problem.emt_boundary_update)

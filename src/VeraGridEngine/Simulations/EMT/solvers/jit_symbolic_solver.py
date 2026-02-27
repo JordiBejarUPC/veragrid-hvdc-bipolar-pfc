@@ -26,7 +26,7 @@ class JitSymbolicSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -34,14 +34,15 @@ class JitSymbolicSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method_str: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
+        :param method: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
+        self.jit_compiler = None
         self.problem = problem
         self.t0 = t0
         self.h = h
-        self.method_str = method_str
+        self.method = method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
 
@@ -62,13 +63,13 @@ class JitSymbolicSolver:
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
     # ==============================================================================
 
-    def _build_jit_kernel(self, method_str: DynamicIntegrationMethod):
+    def build_jit_kernel(self, method: DynamicIntegrationMethod):
         """
         Compiles the numerical residual function using JIT.
         It uses a batching strategy (splitting equations into chunks) to prevent
         Numba/LLVM from hanging when compiling very large non-linear systems.
         """
-        print(f"--- [JIT] Compiling Implicit Kernel ({method_str}) ---")
+        print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
 
         if not hasattr(self, 'jit_kernels'):
             self.jit_kernels = {}
@@ -84,7 +85,7 @@ class JitSymbolicSolver:
 
         equations.extend(self.algebraic_eqs)
 
-        self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method_str)
+        self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method)
 
         # Batch compilation strategy
         BATCH_SIZE = 100
@@ -93,14 +94,14 @@ class JitSymbolicSolver:
 
         for i in range(0, n_eqs, BATCH_SIZE):
             chunk = equations[i: i + BATCH_SIZE]
-            f_name = f"jit_step_{method_str}_part_{i}"
+            f_name = f"jit_step_{method}_part_{i}"
 
             # Compile inplace: the function writes directly to the 'residuals' array
             py_func = self.jit_compiler.compile(chunk, func_name=f_name, use_cse=True, offset=i, inplace=True)
             jit_func = nb.njit(cache=True, fastmath=True)(py_func)
             batched_kernels.append(jit_func)
 
-        self.jit_kernels[method_str] = batched_kernels
+        self.jit_kernels[method] = batched_kernels
 
     # ==============================================================================
     #  HELPER: SYMBOLIC TOPOLOGY ANALYSIS
@@ -122,11 +123,10 @@ class JitSymbolicSolver:
             visited.add(id(node))
 
             if isinstance(node, Var):
-                if Var.base_var is not None:
-                    found.add(node.base_var.uid)
-                    found.add(node.uid)
-                else:
-                    found.add(node.uid)
+                found.add(node.uid)
+                base = getattr(node, 'base_var', None)
+                if base is not None:
+                    found.add(base.uid)
 
             if hasattr(node, 'args'):
                 stack.extend(node.args)
@@ -140,13 +140,13 @@ class JitSymbolicSolver:
 
         return found
 
-    def _build_jit_symbolic_hybrid(self, method_str: str, use_sparse: bool):
+    def _build_jit_symbolic_hybrid(self, method: DynamicIntegrationMethod, use_sparse: bool):
         """
         Compiles a Hybrid Symbolic Jacobian.
         It generates a Numba kernel that evaluates the Jacobian entries and
         returns either a Scipy CSC Matrix (Sparse mode) or a Numpy Array (Dense mode).
         """
-        cache_key = f"{method_str}_{use_sparse}"
+        cache_key = f"{method}_{use_sparse}"
         if hasattr(self, 'jit_jacobian_symbolic') and cache_key in self.jit_jacobian_symbolic:
             return
 
@@ -207,12 +207,12 @@ class JitSymbolicSolver:
                     jac_expression.append(final_expr.simplify())
 
         compile_params = all_params + [alpha_sym]
-        compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method_str)
-        func_name = f"jac_eval_{method_str}_{'sparse' if use_sparse else 'dense'}"
+        compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method)
+        func_name = f"jac_eval_{method}_{'sparse' if use_sparse else 'dense'}"
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
         kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
 
-        alpha_mult = 2.0 if method_str == DynamicIntegrationMethod.Trapezoid else (1.5 if method_str == DynamicIntegrationMethod.BDF2 else 1.0)
+        alpha_mult = 2.0 if method == DynamicIntegrationMethod.Trapezoid else (1.5 if method == DynamicIntegrationMethod.BDF2 else 1.0)
 
         np_rows = np.array(rows, dtype=np.int32) if use_sparse else None
         np_cols = np.array(cols, dtype=np.int32) if use_sparse else None
@@ -238,19 +238,19 @@ class JitSymbolicSolver:
         Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
         """
         t_start = time.time()
-        method_str = self.method_str
+        method = self.method
 
         if not hasattr(self, 'jit_kernels'): self.jit_kernels = {}
-        if method_str not in self.jit_kernels: self._build_jit_kernel(method_str)
+        if method not in self.jit_kernels: self.build_jit_kernel(method)
 
-        kernel_list = self.jit_kernels[method_str]
+        kernel_list = self.jit_kernels[method]
 
         n_eqs = self.problem.get_all_vars_number()
         n_states = self.problem.get_states_number()
 
         use_dense_solver = (n_eqs <= self.dense_threshold)
-        self._build_jit_symbolic_hybrid(method_str, use_sparse=not use_dense_solver)
-        jac_key = f"{method_str}_{not use_dense_solver}"
+        self._build_jit_symbolic_hybrid(method, use_sparse=not use_dense_solver)
+        jac_key = f"{method}_{not use_dense_solver}"
         current_jacobian = self.jit_jacobian_symbolic[jac_key]
 
         if self.verbose:
@@ -278,7 +278,7 @@ class JitSymbolicSolver:
         sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
                                                collector=trace_collector, config=diag_cfg, solver_name="sparse")
 
-        if self.verbose: print(f"-> Starting JIT Simulation ({method_str}, {self.steps} steps)...")
+        if self.verbose: print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
 
         for i in range(self.steps):
             t_curr = self.t0 + (i + 1) * self.h
@@ -292,7 +292,7 @@ class JitSymbolicSolver:
 
             for k in range(15):
                 ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
-                                         method=str(method_str))
+                                         method=str(method))
 
                 res = np.zeros(n_eqs, dtype=np.float64)
                 for kn in kernel_list:
@@ -311,15 +311,15 @@ class JitSymbolicSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method_str == DynamicIntegrationMethod.Trapezoid:
+            if method == DynamicIntegrationMethod.Trapezoid:
                 alpha = 2.0 / self.h
                 dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
-            elif method_str == DynamicIntegrationMethod.BDF2:
+            elif method == DynamicIntegrationMethod.BDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
 
-            if method_str != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
+            if method != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT Finished: {time.time() - t_start:.4f}s")

@@ -2,8 +2,12 @@ import numpy as np
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
+
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 # ==============================================================================
 # Helpers
@@ -43,10 +47,10 @@ def test_svs_clustering_and_jacobian():
     """
     block = build_buck()
     t_sys = Var("t_sys")
-    problem = BaseProblem(block, t_sys)
+    problem = GenericEmtProblem(block, t_sys)
 
     solver = StructuralVectorizedSolver(
-        problem, t0=0.0, t_end=1e-3, h=1e-6, integration_method="trapezoidal"
+        problem, t0=0.0, t_end=1e-3, h=1e-6, method=DynamicIntegrationMethod.Trapezoid
     )
 
     x = problem.get_x0()
@@ -70,12 +74,12 @@ def test_svs_simulation_consistency():
     """
     block = build_buck()
     t_sys = Var("t_sys")
-    problem = BaseProblem(block, t_sys)
+    problem = GenericEmtProblem(block, t_sys)
     x0 = problem.get_x0()
     p0 = np.zeros(problem.get_variable_parameter_number())
 
     solver = StructuralVectorizedSolver(
-        problem, t0=0.0, t_end=50e-6, h=1e-6, integration_method="trapezoidal"
+        problem, t0=0.0, t_end=50e-6, h=1e-6, method=DynamicIntegrationMethod.Trapezoid
     )
 
     t_arr, y_arr = solver.simulate(x0=x0, params0=p0)

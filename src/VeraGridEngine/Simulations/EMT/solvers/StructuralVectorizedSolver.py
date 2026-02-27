@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Callable, List, Any, Dict, Optional
+from typing import Tuple, Callable, List, Any, Dict
 import uuid
 import time
 import hashlib
@@ -32,7 +32,7 @@ def _safe_njit(py_func: Callable, *, fastmath: bool = True, cache: bool = True, 
     try:
         code_obj = getattr(py_func, "__code__", None)
         filename = code_obj.co_filename if code_obj else None
-    except Exception:
+    except AttributeError:
         filename = None
 
     use_cache = bool(cache) and (filename is not None) and (filename != "<string>")
@@ -44,10 +44,8 @@ def _safe_njit(py_func: Callable, *, fastmath: bool = True, cache: bool = True, 
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
-        jvp: np.ndarray, data: np.ndarray, color_ptr: np.ndarray,
-        color_cols: np.ndarray, col_ptr: np.ndarray,
-        row_idx: np.ndarray, data_idx: np.ndarray, color_id: int,
-) -> None:
+        jvp: np.ndarray, data: np.ndarray, color_ptr: np.ndarray,col_ptr: np.ndarray,
+        row_idx: np.ndarray, data_idx: np.ndarray, color_id: int) -> None:
     k0 = color_ptr[color_id]
     k1 = color_ptr[color_id + 1]
     for k in range(k0, k1):
@@ -64,13 +62,13 @@ def _scatter_color_jvp_to_csc_data(
 class SparseADJacobian:
     def __init__(
             self, equations: List[Any], variables: List[Any], parameters: List[Any],
-            method_str: str, use_cse: bool = True, dtype=np.float64, verbose: bool = False,
+            method: DynamicIntegrationMethod, use_cse: bool = True, dtype=np.float64, verbose: bool = False,
     ):
         self.verbose = verbose
         self.equations = equations
         self.variables = variables
         self.parameters = parameters
-        self.method_str = method_str
+        self.method = method
         self.dtype = dtype
 
         self.n_rows = len(equations)
@@ -124,7 +122,7 @@ class SparseADJacobian:
         k = 0
         for j in range(self.n_cols):
             for r in self.col_rows[j]:
-                indices[k] = r;
+                indices[k] = r
                 k += 1
 
         self.J = csc_matrix((data, indices, indptr), shape=(self.n_rows, self.n_cols))
@@ -157,15 +155,15 @@ class SparseADJacobian:
         for kk, j in enumerate(color_cols):
             base = indptr_arr[j]
             for local, r in enumerate(self.col_rows[j]):
-                row_idx[pos] = r;
-                data_idx[pos] = base + local;
+                row_idx[pos] = r
+                data_idx[pos] = base + local
                 pos += 1
 
         self.color_ptr, self.color_cols = color_ptr, np.asarray(color_cols, dtype=np.int32)
         self.col_ptr, self.row_idx, self.data_idx = col_ptr, row_idx, data_idx
 
         # Compile kernels
-        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method_str)
+        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
         self.ad_kernels = []
 
         for c in range(self.n_colors):
@@ -178,10 +176,10 @@ class SparseADJacobian:
         for c in range(self.n_colors): global_env[f"kernel_{c}"] = self.ad_kernels[c]
 
         src = [
-            "def master_jac(states, seeds, params, history, d_history, h, history2, data, color_ptr, color_cols, col_ptr, row_idx, data_idx):"]
+            "def master_jac(states, seeds, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"]
         for c in range(self.n_colors):
             src.append(f"    jvp_{c} = kernel_{c}(states, seeds, params, history, d_history, h, history2)")
-            src.append(f"    _scatter(jvp_{c}, data, color_ptr, color_cols, col_ptr, row_idx, data_idx, {c})")
+            src.append(f"    _scatter(jvp_{c}, data, color_ptr, col_ptr, row_idx, data_idx, {c})")
 
         exec("\n".join(src), global_env)
         self.master_jac = _safe_njit(global_env["master_jac"], fastmath=True, cache=False)
@@ -200,7 +198,7 @@ class SparseADJacobian:
             for a in range(m):
                 for b in range(a + 1, m):
                     if cols[b] != cols[a]:
-                        adj[cols[a]].add(cols[b]);
+                        adj[cols[a]].add(cols[b])
                         adj[cols[b]].add(cols[a])
 
         degrees = np.array([len(adj[j]) for j in range(n_cols)], dtype=np.int32)
@@ -221,13 +219,23 @@ class SparseADJacobian:
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
         self.master_jac(states, self._seeds, params, history, d_history, h, history2, self.J.data, self.color_ptr,
-                        self.color_cols, self.col_ptr, self.row_idx, self.data_idx)
+                        self.col_ptr, self.row_idx, self.data_idx)
         return self.J
 
 
 # ==============================================================================
 # StructuralVectorizedSolver
 # ==============================================================================
+class EquationGroup:
+    """
+    Data structure to hold clustered equations for auto-vectorization.
+    Replaces the generic dictionary for strict type hinting and safety.
+    """
+    def __init__(self):
+        self.idx_matrix: List[List[int]] = []
+        self.row_indices: List[int] = []
+        self.template_eq: Expr | None = None
+        self.template_vars: List[Var] | None = None
 
 class StructuralVectorizedSolver:
     def __init__(
@@ -236,7 +244,7 @@ class StructuralVectorizedSolver:
             t0: float,
             t_end: float,
             h: float,
-            integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+            method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
             dense_threshold: int = 100,
             verbose: bool = False,
             auto_vectorization: bool = True,
@@ -245,9 +253,14 @@ class StructuralVectorizedSolver:
         self.t0 = t0
         self.t_end = t_end
         self.h = h
-        self.method_str = integration_method
+        self.method = method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+
+        self.vec_jacobian = None
+        self.vec_flat_args = None
+        self.fused_residual = None
+        self.vec_kernels = None
 
         self._state_vars = self.problem.get_state_vars()
         self._algebraic_vars = self.problem.get_algebraic_vars()
@@ -265,13 +278,14 @@ class StructuralVectorizedSolver:
         self._parameters_values = self.problem.get_parameters_values()
         self._event_params_fn = self.problem.def_event_params_fn
 
-        self.jit_jacobians_ad: Dict[str, SparseADJacobian] = {}
+        self.jit_jacobians_ad: Dict[DynamicIntegrationMethod, SparseADJacobian] = {}
         self.vectorized_ready = False
 
         if auto_vectorization:
-            self._auto_detect_vectorization(integration_method)
+            self.auto_detect_vectorization(method)
 
-    def _canonicalize_expression(self, expr: Expr) -> Tuple[str, List[Var]]:
+    @staticmethod
+    def _canonicalize_expression(expr: Expr) -> Tuple[str, List[Var]]:
         unique_slots = {}
         found_vars_ordered = []
         seen_nodes = set()
@@ -300,23 +314,18 @@ class StructuralVectorizedSolver:
         canonical_str = _visit_recursive(expr)
         return canonical_str, found_vars_ordered
 
-    def _auto_detect_vectorization(self, method_str: DynamicIntegrationMethod = None):
+    def auto_detect_vectorization(self, method: DynamicIntegrationMethod = None):
         """
         Infers the algebraic structure of the DAE system (Clustering) and compiles
         the vectorized matrix kernels.
         """
-        if method_str is None:
-            method_str = self.method_str
+        if method is None:
+            method = self.method
 
         print(f"--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
         t0 = time.time()
 
-        groups = defaultdict(lambda: {
-            'idx_matrix': [],
-            'row_indices': [],
-            'template_eq': None,
-            'template_vars': None
-        })
+        groups: Dict[str, EquationGroup] = defaultdict(EquationGroup)
 
         full_eq_list = []
         for i, rhs_eq in enumerate(self._state_eqs):
@@ -331,38 +340,38 @@ class StructuralVectorizedSolver:
             eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
 
             group = groups[eq_hash]
-            if group['template_eq'] is None:
-                group['template_eq'] = residual_eq
-                group['template_vars'] = all_vars_found
+
+            if group.template_eq is None:
+                group.template_eq = residual_eq
+                group.template_vars = all_vars_found
 
             var_indices = []
             for v in all_vars_found:
                 target_var = getattr(v, "base_var", None) or v
-                # Usar .get() para evitar KeyErrors con parámetros constantes
                 var_indices.append(self.uid2idx_vars.get(target_var.uid, -1))
 
-            group['idx_matrix'].append(var_indices)
-            group['row_indices'].append(i)
+            group.idx_matrix.append(var_indices)
+            group.row_indices.append(i)
 
         print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
 
         self.vec_kernels = []
         all_params = self._event_parameters + self._parameters
 
-        vec_compiler = MatrixVectorizedCompiler(self.sorted_vars, all_params, method=method_str)
+        vec_compiler = MatrixVectorizedCompiler(self.sorted_vars, all_params, method=method)
 
-        for signature, data in groups.items():
+        for signature, group_data in groups.items():
             k_name = f"vec_kernel_{signature[:8]}"
             py_func = vec_compiler.compile_matrix_kernel(
-                data['template_eq'],
+                group_data.template_eq,
                 func_name=k_name,
-                template_vars=data['template_vars']
+                template_vars=group_data.template_vars
             )
 
             self.vec_kernels.append({
                 'func': nb.njit(cache=True, fastmath=True)(py_func),
-                'indices': np.array(data['idx_matrix'], dtype=np.int32),
-                'target': np.array(data['row_indices'], dtype=np.int32)
+                'indices': np.array(group_data.idx_matrix, dtype=np.int32),
+                'target': np.array(group_data.row_indices, dtype=np.int32)
             })
 
         # PHASE 4: DISPATCHER SETUP
@@ -373,16 +382,17 @@ class StructuralVectorizedSolver:
         self.vec_flat_args = tuple(self.vec_flat_args)
 
         # PHASE 5: JACOBIAN SETUP
-        if method_str not in self.jit_jacobians_ad:
-            self.jit_jacobians_ad[method_str] = SparseADJacobian(
-                full_eq_list, self.sorted_vars, all_params, method_str, verbose=self.verbose
+        if method not in self.jit_jacobians_ad:
+            self.jit_jacobians_ad[method] = SparseADJacobian(
+                full_eq_list, self.sorted_vars, all_params, method, verbose=self.verbose
             )
 
-        self.vec_jacobian = self.jit_jacobians_ad[method_str]
+        self.vec_jacobian = self.jit_jacobians_ad[method]
         self.vectorized_ready = True
         print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
-    def _compile_fused_residual(self, kernels_data):
+    @staticmethod
+    def _compile_fused_residual(kernels_data):
         namespace = {'np': np, 'nb': nb}
         lines = ["def fused_residual_kernel(states, params, history, d_history, h, args, out, history2=None):",
                  "    out[:] = 0.0"]
@@ -399,7 +409,7 @@ class StructuralVectorizedSolver:
         if x0 is None: x0 = self.problem.get_x0()
         if dx0 is None: dx0 = np.zeros(self._n_vars, dtype=np.float64)
         if params0 is None: params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
-        return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method_str,
+        return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
                                          boundary_update_fn, self.verbose, self.dense_threshold)
 
     def _simulate_vectorized(self,
@@ -409,12 +419,12 @@ class StructuralVectorizedSolver:
                              x0,
                              dx0,
                              params0,
-                             method_str,
+                             method,
                              boundary_update_fn,
                              verbose,
                              dense_threshold):
         if not self.vectorized_ready:
-            self._auto_detect_vectorization(method_str)
+            self.auto_detect_vectorization(method)
 
         steps = int(np.ceil((t_end - t0) / h))
         t = np.linspace(t0, t_end, steps + 1)
@@ -430,7 +440,7 @@ class StructuralVectorizedSolver:
         full_params = np.empty(len(self._event_parameters) + len(static_params), dtype=np.float64)
         full_params[len(ev_params):] = static_params
 
-        use_dense = (self._n_vars <= 200)
+        use_dense = (self._n_vars <= dense_threshold)
 
         if verbose: print(f"-> JIT Warmup...")
         self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
@@ -472,17 +482,17 @@ class StructuralVectorizedSolver:
 
             y[i + 1] = x_iter
 
-            if method_str == DynamicIntegrationMethod.Trapezoid:
+            if method == DynamicIntegrationMethod.Trapezoid:
                 dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
                     :self._n_state]
-            elif method_str == DynamicIntegrationMethod.BDF2:
+            elif method == DynamicIntegrationMethod.BDF2:
                 x_prev2[:] = x_prev
                 dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
                     :self._n_state]) / h
             else:
                 dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
 
-            if method_str != DynamicIntegrationMethod.BDF2: x_prev2[:] = x_prev
+            if method != DynamicIntegrationMethod.BDF2: x_prev2[:] = x_prev
             x_prev[:] = x_iter
 
         self._last_sim_loop_time = time.time() - t_start_loop

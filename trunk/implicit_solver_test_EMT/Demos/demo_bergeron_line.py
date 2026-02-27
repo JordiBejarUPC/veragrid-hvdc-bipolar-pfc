@@ -16,9 +16,12 @@ import matplotlib.pyplot as plt
 # VeraGridEngine Imports
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 # ==============================================================================
 # 1. GENERALIZED BERGERON MODEL (For emt_line.py)
@@ -76,7 +79,7 @@ class BergeronLineModel:
 
         return i_f_exprs, i_t_exprs
 
-    def setup_indices(self, problem: BaseProblem, vprms_offset: int = 0):
+    def setup_indices(self, problem: GenericEmtProblem, vprms_offset: int = 0):
         """Maps symbolic UIDs to numerical array indices for the solver."""
         self.idx_vf = [problem.uid2idx_vars[v.uid] for v in self.v_f_vars]
         self.idx_vt = [problem.uid2idx_vars[v.uid] for v in self.v_t_vars]
@@ -184,7 +187,7 @@ def run_test(case_name: str, R_load: float):
     sys_block.unify_blocks()
     glob_time = Var("t_glob")
 
-    problem = BaseProblem(sys_block=sys_block, glob_time=glob_time)
+    problem = GenericEmtProblem(sys_block=sys_block, glob_time=glob_time)
 
     # Setup index mapping (Offset is 0 for JitAdSolver event params)
     line.setup_indices(problem, vprms_offset=0)
@@ -202,7 +205,7 @@ def run_test(case_name: str, R_load: float):
         t0=0.0,
         t_end=0.03,  # Simulate 30 ms
         h=h,
-        method_str="trapezoidal",
+        method=DynamicIntegrationMethod.Trapezoid,
         verbose=False
     )
 

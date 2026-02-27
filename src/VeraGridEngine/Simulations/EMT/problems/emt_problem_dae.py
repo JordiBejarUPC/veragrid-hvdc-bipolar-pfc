@@ -5,8 +5,8 @@
 
 """
 Module providing the EmtProblemDae class, which acts as the electrical
-parser for the generic BaseProblem layer. It translates electrical components
-(buses, branches, injections) into the unified DAE mathematical structure.
+parser. It translates electrical components(buses, branches, injections)
+into the unified DAE mathematical structure.
 """
 
 from __future__ import annotations
@@ -15,6 +15,10 @@ import time
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any
+
+import scipy.sparse.linalg as spla
+import scipy.linalg as la
+import scipy.sparse as sp
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -663,3 +667,48 @@ class EmtProblemDae(EmtProblemTemplate):
         for rt in self.history_models:
             rt.update_history(self.step_counter, x_prev, full_params)
         self.step_counter += 1
+
+    def get_floquet_ak_stack(self, trajectory: np.ndarray, h: float, jac_evaluator=None, static_params=None) -> \
+    Optional[np.ndarray]:
+        """
+        HPC Implementation: Calculates the A_k stack using exact Kron Reduction
+        optimized with Scipy Sparse Solvers. Evaluates the non-linear Jacobian
+        at each step of the limit cycle trajectory.
+        """
+        if jac_evaluator is None:
+            self.logger.add_warning(
+                "No jac_evaluator provided to get_floquet_ak_stack. Falling back to LU-cached path.")
+            return None
+
+        n = self.get_states_number()
+        steps = len(trajectory) - 1
+
+        if steps <= 0:
+            return None
+
+        stack = np.zeros((steps, n, n), order='C')
+
+        for i in range(steps):
+            x_k = trajectory[i]
+
+            try:
+                J = jac_evaluator(x_k, static_params, x_k, None, h, None)
+            except Exception as e:
+                self.logger.add_warning(f"Failed to evaluate Jacobian for Ak stack: {e}")
+                return None
+
+            J11 = J[:n, :n]
+            J12 = J[:n, n:]
+            J21 = J[n:, :n]
+            J22 = J[n:, n:]
+
+            J22_inv_J21 = spla.spsolve(J22, J21)
+
+            J_red = (J11 - J12 @ J22_inv_J21)
+
+            if sp.issparse(J_red):
+                J_red = J_red.toarray()
+
+            stack[i] = la.inv(h * J_red)
+
+        return stack

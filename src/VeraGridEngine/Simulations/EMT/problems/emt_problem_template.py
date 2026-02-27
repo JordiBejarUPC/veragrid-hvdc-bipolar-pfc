@@ -5,7 +5,7 @@
 
 from abc import ABC
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List,Optional
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -306,6 +306,13 @@ class EmtProblemTemplate(ABC):
         if reference_powerflow in mdl.external_mapping:
             var = mdl.external_mapping[reference_powerflow]
             self.init_guess[var.uid] = float(val)
+
+    def get_floquet_ak_stack(self, trajectory: np.ndarray, h: float, jac_evaluator=None, static_params=None) -> \
+            Optional[np.ndarray]:
+        """
+        Calculates the stack of transition matrices A_k for Floquet analysis...
+        """
+        return None
 
     @property
     def uid2idx_vars(self):
