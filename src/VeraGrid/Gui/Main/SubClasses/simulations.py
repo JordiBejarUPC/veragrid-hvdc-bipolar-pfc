@@ -896,12 +896,12 @@ class SimulationsMain(TimeEventsMain):
 
         return ops
 
-    def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityOptions:
+    def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityRmsOptions:
         """
         Gather SmallSignal simulation run options
         :return: sim.SmallSignalOptions
         """
-        ops = sim.SmallSignalStabilityOptions(
+        ops = sim.SmallSignalStabilityRmsOptions(
             k=None,
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
         )

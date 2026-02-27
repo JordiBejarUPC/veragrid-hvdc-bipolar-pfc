@@ -50,7 +50,7 @@ from VeraGridEngine.Simulations.Reliability.reliability_driver import Reliabilit
 from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import (StateEstimationDriver,
                                                                                StateEstimationResults)
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import (SmallSignalStabilityRmsDriver,
-                                                                                    SmallSignalStabilityResults)
+                                                                                    SmallSignalStabilityRmsResults)
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver, RmsResults
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate, DriverToSave
@@ -626,7 +626,7 @@ class SimulationSession:
         return drv, None
 
     @property
-    def small_signal_stability_simulation(self) -> Tuple[SmallSignalStabilityRmsDriver, SmallSignalStabilityResults]:
+    def small_signal_stability_simulation(self) -> Tuple[SmallSignalStabilityRmsDriver, SmallSignalStabilityRmsResults]:
         """
 
         :return:

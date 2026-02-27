@@ -26,7 +26,7 @@ from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_templa
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
 
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
 
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -601,7 +601,7 @@ def rms_kundur_small_signal():
                             options=rms_options,
                             pf_results=res)
 
-    ss_options = SmallSignalStabilityOptions(ss_assessment_time=0)
+    ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
     problem = RmsProblemDae(grid=grid,
                             options=rms_options,

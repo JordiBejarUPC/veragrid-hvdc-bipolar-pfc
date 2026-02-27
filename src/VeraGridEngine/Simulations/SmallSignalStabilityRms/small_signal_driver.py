@@ -16,8 +16,8 @@ from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_results import SmallSignalStabilityResults
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_results import SmallSignalStabilityRmsResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.basic_structures import Vec
@@ -328,7 +328,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  rms_options: Union[RmsOptions, None] = None,
-                 sss_options: Union[SmallSignalStabilityOptions, None] = None,
+                 sss_options: Union[SmallSignalStabilityRmsOptions, None] = None,
                  pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
@@ -347,19 +347,19 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                      options=rms_options,
                                      pf_results=pf_results)
 
-        self.sss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if sss_options is None else sss_options
+        self.sss_options: SmallSignalStabilityRmsOptions = SmallSignalStabilityRmsOptions() if sss_options is None else sss_options
         self.assessment_time = self.sss_options.ss_assessment_time
 
         self.k = self.sss_options.k if self.sss_options.k is not None else self.problem.get_states_number()
 
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(eigenvalues=np.empty(0),
-                                                                                participation_factors=np.empty(0),
-                                                                                damping_ratios=np.empty(0),
-                                                                                conjugate_frequencies=np.empty(0),
-                                                                                state_matrix=np.empty(0),
-                                                                                stat_vars=[])
+        self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(eigenvalues=np.empty(0),
+                                                                                      participation_factors=np.empty(0),
+                                                                                      damping_ratios=np.empty(0),
+                                                                                      conjugate_frequencies=np.empty(0),
+                                                                                      state_matrix=np.empty(0),
+                                                                                      stat_vars=[])
 
         self.__cancel__ = False
 
@@ -438,7 +438,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                                                                      verbose=self.sss_options.verbose)
 
         state_vars = self.problem.get_state_vars
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
+        self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(
             eigenvalues=eigenvalues,
             participation_factors=participation_factors,
             damping_ratios=damping_ratios,
