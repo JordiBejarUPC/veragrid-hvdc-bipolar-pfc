@@ -5,60 +5,40 @@ import numpy as np
 logger = vge.Logger()
 grid = vge.MultiCircuit()
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # Buses
-# ----------------------------------------------------------------------------------------------------------------------
-bus_slack = vge.Bus(name='Slack ABC', xpos=0, ypos=0)
+# -----------------------------------------------------------------------------------------------------------------
+bus_slack = vge.Bus(name='Slack Bus ABC', xpos=0, ypos=0)
 bus_slack.is_slack = True
 grid.add_bus(obj=bus_slack)
 
-bus_3ph = vge.Bus(name='Three-phase ABC', xpos=500, ypos=0)
-grid.add_bus(obj=bus_3ph)
+bus_middle = vge.Bus(name='Middle Bus AB', xpos=1000, ypos=0)
+grid.add_bus(obj=bus_middle)
 
-bus_2ph = vge.Bus(name='Two-phase AB', xpos=1000, ypos=0)
-grid.add_bus(obj=bus_2ph)
+bus_load = vge.Bus(name='Load Bus AB', xpos=1000, ypos=0)
+grid.add_bus(obj=bus_load)
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # Generator
-# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 gen = vge.Generator()
 grid.add_generator(bus=bus_slack, api_obj=gen)
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Loads
+# Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_3ph = vge.Load(G1=1.0,
-                    B1=-0.5,
-                    G2=1.0,
-                    B2=-0.5,
-                    G3=1.0,
-                    B3=-0.5)
-load_3ph.conn = ShuntConnectionType.GroundedStar
-grid.add_load(bus=bus_3ph, api_obj=load_3ph)
+load = vge.Load(Ir1=1.0,
+                Ii1=-0.5,
+                Ir2=1.0,
+                Ii2=-0.5,
+                Ir3=1.0,
+                Ii3=-0.5)
+load.conn = ShuntConnectionType.GroundedStar
+grid.add_load(bus=bus_load, api_obj=load)
 
-# Impedance
-# load_2ph = vge.Load(G1=1.0,
-#                     B1=-0.5,
-#                     G2=1.0,
-#                     B2=-0.5,
-#                     G3=1.0,
-#                     B3=-0.5)
-# load_2ph.conn = ShuntConnectionType.GroundedStar
-# grid.add_load(bus=bus_2ph, api_obj=load_2ph)
-
-# Current
-load_2ph = vge.Load(Ir1=1.0,
-                    Ii1=-0.5,
-                    Ir2=1.0,
-                    Ii2=-0.5,
-                    Ir3=1.0,
-                    Ii3=-0.5)
-load_2ph.conn = ShuntConnectionType.GroundedStar
-grid.add_load(bus=bus_2ph, api_obj=load_2ph)
-
-# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 # Lines
-# ----------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------
 z_abc = np.array([
     [0.3 + 1j * 1.0, 0.1 + 1j * 0.4, 0.1 + 1j * 0.4],
     [0.1 + 1j * 0.4, 0.3 + 1j * 1.0, 0.1 + 1j * 0.4],
@@ -79,7 +59,7 @@ configuration_abc = vge.create_known_abc_overhead_template(name='Three-phase lin
 grid.add_overhead_line(configuration_abc)
 
 line_3ph = vge.Line(bus_from=bus_slack,
-                    bus_to=bus_3ph)
+                    bus_to=bus_middle)
 line_3ph.apply_template(configuration_abc, grid.Sbase, grid.fBase, logger)
 grid.add_line(obj=line_3ph)
 
@@ -94,22 +74,20 @@ y_ab = np.array([
 ], dtype=complex) / (10 ** 6)  # S/km
 
 configuration_ab = vge.create_known_abc_overhead_template(name='Two-phase line',
-                                                           z_nabc=z_ab,
-                                                           ysh_nabc=y_ab,
-                                                           phases=np.array([1, 2]),
-                                                           Vnom=10.0)
+                                                          z_nabc=z_ab,
+                                                          ysh_nabc=y_ab,
+                                                          phases=np.array([1, 2]),
+                                                          Vnom=10.0)
 grid.add_overhead_line(configuration_ab)
 
-line_2ph = vge.Line(bus_from=bus_3ph,
-                    bus_to=bus_2ph)
+line_2ph = vge.Line(bus_from=bus_middle,
+                    bus_to=bus_load)
 line_2ph.apply_template(configuration_ab, grid.Sbase, grid.fBase, logger)
 grid.add_line(obj=line_2ph)
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Run power flow
-# ----------------------------------------------------------------------------------------------------------------------
-# vge.save_file(grid, 'unconnected_phases.veragrid')
-
+# -----------------------------------------------------------------------------------------------------------------
+# Power Flow
+# -----------------------------------------------------------------------------------------------------------------
 res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
                                                                 retry_with_other_methods=False))
 
