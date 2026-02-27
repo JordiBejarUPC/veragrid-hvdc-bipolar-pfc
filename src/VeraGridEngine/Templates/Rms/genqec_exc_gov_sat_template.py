@@ -33,8 +33,8 @@ def get_genqec(vfactory: VarFactory, name: str = "genqec") -> RmsModelTemplate:
     # Tm: mechanical torque (from governor)
     # Vf: excitation voltage (from exciter)
 
-    inputs = [vfactory.add_var("Vm_" + name),
-              vfactory.add_var("Va_" + name),
+    inputs = [vfactory.add_var("Vm_" + name, VarPowerFlowRefferenceType.Vm),
+              vfactory.add_var("Va_" + name, VarPowerFlowRefferenceType.Va),
               vfactory.add_var("Tm_" + name),
               vfactory.add_var("Vf_" + name)]
 

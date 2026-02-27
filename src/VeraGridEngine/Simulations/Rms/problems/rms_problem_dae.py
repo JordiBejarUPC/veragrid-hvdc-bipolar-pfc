@@ -216,6 +216,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
 
+        total_init_explicit_time = 0.0
+
         for elm in grid.get_injection_devices_iter():
 
             if elm.rms_model.model.empty():
@@ -225,41 +227,43 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 bus_index = bus_dict[elm.bus]
 
-                # flatten model
                 elm.rms_model.model.unify_blocks()
-
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
-                # fill general init guess for known variables values
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
                                     np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
                                     np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
-                # add variable to conservation equations of the bus to which the element is connected
                 k = bus_dict[elm.bus]
                 setP(P, P_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.P))
                 setQ(Q, Q_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Q))
 
-                # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=elm.rms_model.model,
-                                  sys_vars=self.sys_vars,
-                                  variable_parameters=self._variable_parameters,
-                                  event_parameters_eqs=self._event_parameters_eqs,
-                                  constant_parameters=self._constant_parameters,
-                                  init_guess=self.init_guess,
-                                  uid2idx_vars=self.uid2idx_vars,
-                                  uid2idx_params=self._uid2idx_params,
-                                  uid2idx_event_params=self._uid2idx_event_params,
-                                  compiler_names_dict=self._compiler_names_dict,
-                                  alias_names_dict=self._alias_names_dict,
-                                  VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                                  TIME_NAME=self.TIME_NAME,
-                                  VARS_NAME=self.VARS_NAME,
-                                  DIFF_NAME=self.DIFF_NAME,
-                                  CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                                  )
+
+                    t0 = time.perf_counter()
+
+                    init_explicit(
+                        mdl=elm.rms_model.model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self.uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                    )
+
+                    total_init_explicit_time += time.perf_counter() - t0
+
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
                 else:
@@ -267,6 +271,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 self.sys_block.add(elm.rms_model.model)
 
+        print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):

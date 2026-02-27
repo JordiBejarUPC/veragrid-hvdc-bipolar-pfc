@@ -6,12 +6,14 @@
 from __future__ import annotations
 
 import numpy as np
+from typing import Tuple, Optional, List, Any
 from typing import Tuple, Optional, List, Callable, Dict
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, heaviside, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.enumerations import DeviceType
 
 
 def tf_to_block(var_factory: VarFactory,
@@ -893,3 +895,65 @@ def simulate_single_block(
             print(f"Warning: Did not converge at step {step}, residual={residual_norm:.2e}")
     
     return t, y, [var.name for var in all_vars]
+
+def connect_rms_models(mdl1: Block, mdl2: Block):
+    """
+    This function substitutes input variables for output variables to connect two rms models
+    :param mdl1:
+    :param mdl2:
+    :return:
+    """
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == inpt.ref
+    ]
+
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+    # connect inputs mdl2 with outputs mdl1
+    pairs = [
+        (outp, inpt)
+        for outp in mdl2.out_vars
+        for inpt in mdl1.in_vars
+        if outp.ref == inpt.ref
+    ]
+
+    for outp, inpt in pairs:
+        mdl1.connect([inpt], [outp])
+
+    print("")
+
+
+def set_rms_model(device: Any, model:Block):
+    """
+    Set the RMS model
+    :return:
+    :rtype:
+    """
+    # connect bus variables
+
+    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+        if not device.bus_from.rms_model.model.empty():
+            connect_rms_models(device.bus_from.rms_model.model, model)
+        else:
+            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_from.name} RMS model")
+
+        if not device.bus_to.rms_model.model.empty():
+            connect_rms_models(device.bus_to.rms_model.model, model)
+        else:
+            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_to.name} RMS model")
+
+    else:
+        if not device.bus.rms_model.model.empty():
+            connect_rms_models(device.bus.rms_model.model, model)
+
+        else:
+            raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
+
+    device.rms_model.model = model
+
+

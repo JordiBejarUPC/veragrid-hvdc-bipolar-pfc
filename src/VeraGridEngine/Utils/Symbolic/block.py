@@ -250,17 +250,37 @@ class Block:
         dict2 = block2.to_dict()
         return dict1 == dict2
 
-    def set_parameter(self, ref: ParamPowerFlowRefferenceType, cte: Const):
-        """
-        assign a parameter to the block parameters
 
-        :param ref: 
-        :param cte: 
-        :return: 
+    def set_parameter(self, var_name: str, new_value: float):
         """
-        var = self.api_obj_mapping.get(ref, None)
-        if var is not None:
-            self.parameters[var] = cte
+        updates parameter value given a name and a value
+
+        :param var_name:
+        :param new_value:
+        :return:
+        """
+        found = 0
+
+        for var, expr in self.event_dict.items():
+            if var.name == var_name:
+                if isinstance(expr, Const):
+                    expr.value = new_value
+                else:
+                    self.event_dict[var] = Const(new_value)
+                found += 1
+
+        # check parameters dict
+        for var, const in self.parameters.items():
+            if var.name == var_name:
+                if isinstance(const, Const):
+                    const.value = new_value
+                else:
+                    self.parameters[var] = Const(new_value)
+                found += 1
+        if found == 0:
+            raise ValueError(f"Parameter {var_name} not found in model")
+        elif found >1:
+            raise ValueError(f"Could not set value because several parameters with name {var_name} where found in the model")
 
     def check_empty(self) -> bool:
         """
@@ -460,9 +480,7 @@ class Block:
         Function to connect two blocks by variables sharing
         """
 
-        # all_diff_vars = []
-        # for b in self.get_all_blocks():
-        #     all_diff_vars.extend(b.diff_vars)
+
 
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)

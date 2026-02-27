@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Union
 from matplotlib import pyplot as plt
+
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Associations.association import Associations
@@ -16,7 +17,7 @@ from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.Devices.Parents.editable_device import get_at
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+# from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
 class Generator(GeneratorParent):
@@ -624,11 +625,11 @@ class Generator(GeneratorParent):
         self.Qmax += other.Qmax
         self.Qmin += other.Qmin
 
-    def initialize_rms(self, rms_event=False):
-        """
-        Initialize the RMS model
-        """
-
-        if self._rms_model.empty():
-            generator_template = get_complete_generator_template()
-            self.rms_model.model = generator_template.block
+    # def initialize_rms(self, var_factory: VarFactory):
+    #     """
+    #     Initialize the RMS model
+    #     """
+    #
+    #     if self._rms_model.empty():
+    #         generator_template = get_complete_generator_template(var_factory)
+    #         self.rms_model.model = generator_template.block
