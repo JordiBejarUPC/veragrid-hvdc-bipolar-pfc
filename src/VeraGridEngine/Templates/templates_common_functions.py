@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Callable, Dict
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec

@@ -15,7 +15,7 @@ from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceTyp
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
-class SmallSignalStabilityResults(ResultsTemplate):
+class SmallSignalStabilityRmsResults(ResultsTemplate):
 
     def __init__(self,
                  eigenvalues: Mat,
@@ -26,7 +26,7 @@ class SmallSignalStabilityResults(ResultsTemplate):
                  stat_vars: List[Var],
                  reduced_state_matrix: Mat| None = None):
         """
-        Small-signal Analsis results
+        Small-signal Analysis results
         :param eigenvalues:
         :param participation_factors:
         :param damping_ratios:

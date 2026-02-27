@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import List
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
 # --------------------------------------------------------------------------------------

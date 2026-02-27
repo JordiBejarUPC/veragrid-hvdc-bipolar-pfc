@@ -47,14 +47,14 @@ grid.add_load(bus=bus_3ph, api_obj=load_3ph)
 # grid.add_load(bus=bus_2ph, api_obj=load_2ph)
 
 # Current
-# load_2ph = vge.Load(Ir1=1.0,
-#                     Ii1=-0.5,
-#                     Ir2=1.0,
-#                     Ii2=-0.5,
-#                     Ir3=1.0,
-#                     Ii3=-0.5)
-# load_2ph.conn = ShuntConnectionType.GroundedStar
-# grid.add_load(bus=bus_2ph, api_obj=load_2ph)
+load_2ph = vge.Load(Ir1=1.0,
+                    Ii1=-0.5,
+                    Ir2=1.0,
+                    Ii2=-0.5,
+                    Ir3=1.0,
+                    Ii3=-0.5)
+load_2ph.conn = ShuntConnectionType.GroundedStar
+grid.add_load(bus=bus_2ph, api_obj=load_2ph)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Lines

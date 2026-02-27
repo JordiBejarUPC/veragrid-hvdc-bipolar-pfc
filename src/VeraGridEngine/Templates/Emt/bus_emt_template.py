@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import numpy as np
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
@@ -10,7 +9,6 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import compute_ybus
 
 # depending on the number of phases of the bus a different model must be created.
 class BusEmtTemplateNABC(EmtModelTemplate):

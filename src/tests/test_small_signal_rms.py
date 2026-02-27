@@ -17,8 +17,8 @@ from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_te
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -497,16 +497,16 @@ def stability_kundur_no_shunt():
                              max_iter=1000,
                              verbose=0)
 
-    ss_options = SmallSignalStabilityOptions(ss_assessment_time=0)
+    ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
     t_start_problem = time.perf_counter()
     t_end_problem = time.perf_counter()
 
     t_start_sss = time.perf_counter()
-    small_signal_driver = SmallSignalStabilityDriver(grid=grid,
-                                                     rms_options=rms_options,
-                                                     sss_options=ss_options,
-                                                     pf_results=power_flow.results)
+    small_signal_driver = SmallSignalStabilityRmsDriver(grid=grid,
+                                                        rms_options=rms_options,
+                                                        sss_options=ss_options,
+                                                        pf_results=power_flow.results)
 
     small_signal_driver.run()
     t_end_sss = time.perf_counter()

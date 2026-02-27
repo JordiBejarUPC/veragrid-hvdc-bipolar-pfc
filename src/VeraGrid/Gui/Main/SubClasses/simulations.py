@@ -896,12 +896,12 @@ class SimulationsMain(TimeEventsMain):
 
         return ops
 
-    def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityOptions:
+    def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityRmsOptions:
         """
         Gather SmallSignal simulation run options
         :return: sim.SmallSignalOptions
         """
-        ops = sim.SmallSignalStabilityOptions(
+        ops = sim.SmallSignalStabilityRmsOptions(
             k=None,
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
         )
@@ -3418,10 +3418,10 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
 
-                    drv = sim.SmallSignalStabilityDriver(grid=self.circuit,
-                                                         rms_options=rms_options,
-                                                         sss_options=options,
-                                                         pf_results=pf_results)
+                    drv = sim.SmallSignalStabilityRmsDriver(grid=self.circuit,
+                                                            rms_options=rms_options,
+                                                            sss_options=options,
+                                                            pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_small_signal_stability,
