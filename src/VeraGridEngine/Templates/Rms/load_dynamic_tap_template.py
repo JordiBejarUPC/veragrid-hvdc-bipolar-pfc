@@ -3,15 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
-import numpy as np
-import math
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
-import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.block import Block
+
 
 def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
@@ -42,12 +39,12 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
     templ.tpe = DeviceType.LoadDevice
     inputs = [vfactory.add_var("Vm_")]
 
-    #Vars:
+    # Vars:
     m = vfactory.add_var('m')
     P = vfactory.add_var('P')
     Q = vfactory.add_var('Q')
 
-    #Parameters:
+    # Parameters:
     P0 = vfactory.add_var('Pl0')
     Q0 = vfactory.add_var('Ql0')
     V0 = vfactory.add_var('V0')
@@ -57,7 +54,7 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
     alpha_q = vfactory.add_var('alpha_q')
     m_max = vfactory.add_var('m_max')
     m_min = vfactory.add_var('m_min')
-    
+
     # ZIP coefficients (classic formulation)
     event_dict = {
         P0: vfactory.add_const(Pl0),
@@ -65,14 +62,14 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
         V0: vfactory.add_const(None),
 
         # Exponential Parameters
-        alpha_p: vfactory.add_const(1.2),  
+        alpha_p: vfactory.add_const(1.2),
         alpha_q: vfactory.add_const(1.2),
 
-        #PI parameters
+        # PI parameters
         Kd: vfactory.add_const(0.1),
         Ki: vfactory.add_const(0.1),
-    }  
-    
+    }
+
     init_eqs = {
         V0: inputs[0],
         m: V0,
@@ -81,24 +78,24 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
     }
     templ.block = Block(
         state_eqs=[
-            -Kd*m + Ki(inputs[0]/m - vfactory.add_const(1) + Kd/Ki*V0)
+            -Kd * m + Ki(inputs[0] / m - vfactory.add_const(1) + Kd / Ki * V0)
         ],
-        state_vars= [m],
-        algebraic_eqs = [
-            P - P0*(inputs[0]/m)**alpha_p,
-            Q - Q0*(inputs[0]/m)**alpha_q,
+        state_vars=[m],
+        algebraic_eqs=[
+            P - P0 * (inputs[0] / m) ** alpha_p,
+            Q - Q0 * (inputs[0] / m) ** alpha_q,
         ],
-        algebraic_vars=[P,Q],
-        init_eqs = init_eqs,
-        event_dict = event_dict,
+        algebraic_vars=[P, Q],
+        init_eqs=init_eqs,
+        event_dict=event_dict,
     )
-    
+
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: P,
         VarPowerFlowRefferenceType.Q: Q,
         VarPowerFlowRefferenceType.Vm: inputs[0],
     }
-    
+
     templ.block.in_vars = inputs
-    
+
     return templ

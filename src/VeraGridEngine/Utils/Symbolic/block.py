@@ -466,24 +466,18 @@ class Block:
             self.update_model(var_to_subs, incoming_var)
 
 
-# def find_name_in_block(name: str, block: Block):
-#     """
-#     Recursive search of a var name in the block
-#     :param name:
-#     :param block:
-#     :return:
-#     """
-#     for lst in [block.algebraic_vars, block.state_vars, block.parameters]:
-#         for var in lst:
-#             if name == var.name:
-#                 return var
-#
-#     for block_child in block.children:
-#         result = find_name_in_block(name, block_child)
-#         if result is not None:  # found in a child
-#             return result
-#
-#     return None
+def find_name_in_block(name: str, block: Block) -> Var | None:
+    for lst in [block.algebraic_vars, block.state_vars]:
+        for var in lst:
+            if name == var.name:
+                return var
+
+    for block_child in block.children:
+        result = find_name_in_block(name, block_child)
+        if result is not None:  # found in a child
+            return result
+
+    return None
 
 
 

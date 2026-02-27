@@ -236,7 +236,7 @@ class StructuralVectorizedSolver:
             t0: float,
             t_end: float,
             h: float,
-            integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+            integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
             dense_threshold: int = 100,
             verbose: bool = False,
             auto_vectorization: bool = True,
@@ -443,6 +443,7 @@ class StructuralVectorizedSolver:
         if verbose: print(f"-> Starting VECTORIZED Simulation (Bucle de integración)...")
 
         for i in range(steps):
+            if verbose: print(f"Simulating at step {i}")
             t_curr = t[i + 1]
 
             # Update params in-place
@@ -472,17 +473,17 @@ class StructuralVectorizedSolver:
 
             y[i + 1] = x_iter
 
-            if method_str == DynamicIntegrationMethod.Trapezoid:
+            if method_str == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
                     :self._n_state]
-            elif method_str == DynamicIntegrationMethod.BDF2:
+            elif method_str == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2[:] = x_prev
                 dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
                     :self._n_state]) / h
             else:
                 dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
 
-            if method_str != DynamicIntegrationMethod.BDF2: x_prev2[:] = x_prev
+            if method_str != DynamicIntegrationMethod.DaeBDF2: x_prev2[:] = x_prev
             x_prev[:] = x_iter
 
         self._last_sim_loop_time = time.time() - t_start_loop

@@ -5,7 +5,6 @@
 import numpy as np
 import scipy.linalg as spla
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory

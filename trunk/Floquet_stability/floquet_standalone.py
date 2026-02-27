@@ -92,7 +92,7 @@ def run_target_validation(target_hz, name_tag):
     T_period = 1.0 / f_pump
 
     problem = EmtProblemDaeMockHunt(h=h, f_pump=f_pump)
-    emt_options = EmtOptions(time_step=h, simulation_time=0.5, integration_method=DynamicIntegrationMethod.BackEuler)
+    emt_options = EmtOptions(time_step=h, simulation_time=0.5, integration_method=DynamicIntegrationMethod.DaeBackEuler)
 
     # Shift-Invert Filter Active
     floquet_options = EmtFloquetOptions(k=2, target_period=T_period, target_frequency_hz=target_hz, verbose=0)

@@ -175,7 +175,7 @@ gen3.rms_model = gen3_dynhost
 options = RmsOptions(time_step=0.001,
                      simulation_time=0.5,
                      tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.BackEuler,
+                     integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
                      use_init_values=False,
                      max_iter=1000,

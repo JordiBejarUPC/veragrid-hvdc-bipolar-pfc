@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import numpy as np
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
@@ -10,7 +9,6 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import compute_ybus
 
 # depending on the number of phases of the bus a different model must be created.
 class BusEmtTemplateNABC(EmtModelTemplate):
@@ -40,8 +38,6 @@ class BusEmtTemplateNABC(EmtModelTemplate):
         v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
         if not v_list:
             raise ValueError("Bus has no enabled phases")
-
-        print("out vars at bus=", v_list)
 
         self._block = Block(
             alter_params=v_list, # ?
@@ -85,7 +81,6 @@ def get_bus_emt_template(grid: MultiCircuit,
             mask[2] |= bool(branch.ys.phB)
             mask[3] |= bool(branch.ys.phC)
 
-    print("bus mask=", mask)
     # choose template depending on the number of phases
     bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask).block
 

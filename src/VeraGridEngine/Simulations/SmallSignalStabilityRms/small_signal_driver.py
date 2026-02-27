@@ -13,23 +13,33 @@ import time
 import scipy.sparse as sp
 
 from typing import Union
+
+from scipy.sparse.linalg import LinearOperator
+
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_results import SmallSignalStabilityResults
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_results import SmallSignalStabilityRmsResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.basic_structures import Vec, Mat
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae, RmsProblemTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 
-# def compute_state_matrix(slv: BlockSolver, x: Vec, time: float, ):
-def compute_state_matrix(problem, x: Vec, dx: Vec, dense: bool = True):
+def compute_state_matrix(problem: RmsProblemTemplate,
+                         x: Vec,
+                         dx: Vec,
+                         dense: bool = True)-> tuple[Mat, Mat|None]:
     """
-    Small Signal Stability analysis core matrix computation.
+    Small Signal Stability analysis state matrix computation.
+    :param problem: RmsProblemTemplate
+    :param x: Vec. Variables value at assessment time
+    :param dx: Vec. Derivatives value at assessment time
+    :param dense: bool. Specify if the calculation must be done with dense matrices (find all modes) or sparse (find relevant modes)
+    :return
     """
     h = problem.get_dt_value()
 
@@ -44,7 +54,7 @@ def compute_state_matrix(problem, x: Vec, dx: Vec, dense: bool = True):
         gy_inv_gx = gy_lu.solve(gx.toarray())
         A = fx.toarray() - fy.toarray() @ gy_inv_gx
 
-        A_bal, scale_factors = la.matrix_balance(A, separate=False)
+        A_bal, scale_factors = la.matrix_balance(A=A, separate=False)
 
         return A_bal, A
     else:
@@ -57,16 +67,18 @@ def compute_state_matrix(problem, x: Vec, dx: Vec, dense: bool = True):
             return fx.T @ v - gx.T @ gy_lu.solve(fy.T @ v, trans='T')
 
         A_op = spla.LinearOperator((n_states, n_states), matvec=matvec, rmatvec=rmatvec)
-        return A_op, None
+        return A_op, None  # TODO: return the result instead of an operator
 
 
 @nb.njit(cache=True)
-def compute_participation_factors(v, w):
+def compute_participation_factors(v: Vec,
+                                  w: Vec) -> Mat:
     """
     Calculates normalized participation factors correctly for both dense and sparse.
     Compatible with strict Numba (without keep dims).
     :param v: right eigenvectors (columns)
     :param w: left eigenvectors (columns)
+    :return PF_norm: Return normalized participation factors
     """
     n_rows = v.shape[0]
     k = v.shape[1]
@@ -97,9 +109,11 @@ def compute_participation_factors(v, w):
 
     return PF_norm
 
+
 # @nb.njit(cache=True)
-def select_eigs_without_conjugates(eigenvalues):
+def select_eigs_without_conjugates(eigenvalues: Vec) -> Vec:
     """
+    Select oscillatory modes. Conjugate modes appear only once in the selection.
     :param eigenvalues: row np array with modes
     :return: row np array with only the positive complex conjugate modes
     """
@@ -112,13 +126,15 @@ def select_eigs_without_conjugates(eigenvalues):
         elif z.imag > tol:
             if z not in seen and np.conj(z) not in seen:
                 seen.add(z)
-                eig_no_conjugates =np.append(eig_no_conjugates,z)
+                eig_no_conjugates = np.append(eig_no_conjugates, z)
         elif z.imag < tol:
             continue
     return eig_no_conjugates
 
+
 @nb.njit(cache=True)
-def compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates):
+def compute_damping_ratios_and_frequencies(eigenvalues:Vec,
+                                           eig_no_conjugates: Vec) -> tuple[Vec,Vec]:
     """
     :param eigenvalues: row np array with modes
     :param eig_no_conjugates: row np array with only the positive complex conjugate modes
@@ -152,11 +168,13 @@ def compute_damping_ratios_and_frequencies(eigenvalues, eig_no_conjugates):
 
     return damping_ratios, conjugate_frequencies
 
-def plot_stability(eigenvalues, plot_units = "rad/s" ):
+
+def plot_stability(eigenvalues: Vec,
+                   plot_units: str = "rad/s"):
     """
-        :param eigenvalues: row np array with modes
-        :param plot_units: string with the imaginary units "rad/s" or "Hz"
-        :return: plot S-domain modes
+    :param eigenvalues: row np array with modes
+    :param plot_units: string with the imaginary units "rad/s" or "Hz"
+    :return: plot S-domain modes
     """
     x = eigenvalues.real
     y = eigenvalues.imag
@@ -197,7 +215,23 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_dense_small_signal_stability(problem, x: Vec, dx: Vec, verbose: int = 0):
+def run_dense_small_signal_stability(problem: RmsProblemTemplate,
+                                     x: Vec,
+                                     dx: Vec,
+                                     verbose: int = 0) -> tuple[Vec, Mat, Vec, Vec, Mat]:
+    """
+    Run small signal stability analysis using dense matrices calculations. The operation returns all the eigenvalues.
+    :param problem: RmsProblemTemplate
+    :param x: Vec. Variables value at assessment time
+    :param dx: Vec. Derivatives value at assessment time
+    :param verbose: verbosity
+    :return eigenvalues: Vec. Modes
+    :return participation_factors: Mat. Normalized participation factors
+    :return damping_ratios: Vec. Damping ratios of oscillatory modes.
+    :return conjugate_freq: Vec. Frequency of oscillatory modes.
+    :return A_orig: Mat. Original state matrix
+    """
+
     # We obtain the balanced matrix
     A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx, dense=True)
 
@@ -216,7 +250,25 @@ def run_dense_small_signal_stability(problem, x: Vec, dx: Vec, verbose: int = 0)
     return eigenvalues, participation_factors, damping_ratios, conjugate_freq, A_orig
 
 
-def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose: int = 0):
+def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
+                                      x: Vec,
+                                      dx: Vec,
+                                      k: int,
+                                      verbose: int = 0) -> tuple[Vec, Mat, Vec, Vec, None, None]:
+    """
+    Run small signal stability analysis using sparse matrices calculations. The operation returns k eigenvalues.
+    :param problem: RmsProblemTemplate
+    :param x: Vec. Variables value at assessment time
+    :param dx: Vec. Derivatives value at assessment time
+    :param k: int. Number of modes to be calculated. k max = N-2
+    :param verbose: verbosity
+    :return eigenvalues: Vec. Modes
+    :return participation_factors: Mat. Normalized participation factors
+    :return damping_ratios: Vec. Damping ratios of oscillatory modes.
+    :return conjugate_freq: Vec. Frequency of oscillatory modes.
+    :return A_orig: Mat. Original state matrix
+    """
+
     t0 = time.perf_counter()
     h = problem.get_dt_value()
 
@@ -228,15 +280,15 @@ def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose:
 
     n_states = fx.shape[0]
 
-    #1. BUILD THE ENHANCED JACOBIAN (Sparse)
+    # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
     J_top = sp.hstack([fx, fy])
     J_bot = sp.hstack([gx, gy])
     J_aug = sp.vstack([J_top, J_bot], format='csc')
 
-    #2. SUPER-LU FACTORIZATION OF THE ENTIRE SYSTEM
+    # 2. SUPER-LU FACTORIZATION OF THE ENTIRE SYSTEM
     J_aug_lu = spla.splu(J_aug)
 
-    #3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
+    # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
     def matvec_inv(b):
         rhs = np.zeros(J_aug.shape[0], dtype=np.float64)
         rhs[:n_states] = b
@@ -246,7 +298,7 @@ def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose:
     def rmatvec_inv(b):
         rhs = np.zeros(J_aug.shape[0], dtype=np.float64)
         rhs[:n_states] = b
-        sol = J_aug_lu.solve(rhs, trans='T')
+        sol = J_aug_lu.solve(rhs, trans='T')  # TODO: check code smell of unexpected arguments
         return sol[:n_states]
 
     Inv_A_op = spla.LinearOperator((n_states, n_states), matvec=matvec_inv, rmatvec=rmatvec_inv)
@@ -297,7 +349,7 @@ def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose:
 
     eigenvalues = eigenvalues_R
 
-    #6. PARTICIPATION
+    # 6. PARTICIPATION
     participation_factors = compute_participation_factors(v=v_valid, w=w_valid)
 
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
@@ -308,17 +360,19 @@ def run_sparse_small_signal_stability(problem, x: Vec, dx: Vec, k: int, verbose:
 
     return eigenvalues, participation_factors, damping_ratios, conjugate_freq, None, None
 
-class SmallSignalStabilityDriver(DriverTemplate):
+
+class SmallSignalStabilityRmsDriver(DriverTemplate):
     """
-    SmallSignal_Stability_Driver
+    Small Signal Stability RMS driver
     """
+
     name = 'Small Signal Stability Simulation'
     tpe = SimulationTypes.SmallSignal_run
 
     def __init__(self,
                  grid: MultiCircuit,
                  rms_options: Union[RmsOptions, None] = None,
-                 sss_options: Union[SmallSignalStabilityOptions, None] = None,
+                 sss_options: Union[SmallSignalStabilityRmsOptions, None] = None,
                  pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
@@ -333,24 +387,26 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        self.problem = RmsProblemDae(grid = grid,
-                                     options= rms_options,
-                                     pf_results = pf_results)
+        self.problem = RmsProblemDae(grid=grid,
+                                     options=rms_options,
+                                     pf_results=pf_results)
 
-        self.sss_options: SmallSignalStabilityOptions = SmallSignalStabilityOptions() if sss_options is None else sss_options
+        self.sss_options: SmallSignalStabilityRmsOptions = SmallSignalStabilityRmsOptions() if sss_options is None else sss_options
         self.assessment_time = self.sss_options.ss_assessment_time
 
         self.k = self.sss_options.k if self.sss_options.k is not None else self.problem.get_states_number()
 
-
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(eigenvalues=np.empty(0),
-                                                                                participation_factors=np.empty(0),
-                                                                                damping_ratios=np.empty(0),
-                                                                                conjugate_frequencies=np.empty(0),
-                                                                                state_matrix =np.empty(0),
-                                                                                stat_vars=[])
+        self.integration_methods_dict = {DynamicIntegrationMethod.BackEuler: BackEulerImplicitIntegration}
+
+        self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(eigenvalues=np.empty(0),
+                                                                                      participation_factors=np.empty(0),
+                                                                                      damping_ratios=np.empty(0),
+                                                                                      conjugate_frequencies=np.empty(0),
+                                                                                      state_matrix=np.empty(0),
+                                                                                      stat_vars=[])
+
 
         self.__cancel__ = False
 
@@ -367,48 +423,33 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
     def run_small_signal_stability(self):
         """
-        Performs the numerical integration using the chosen method.
+        Performs the numerical integration using the chosen method and the small signal stability assessment.
         :return:
         """
         self.tic()
 
-        # time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        # slv = BlockSolver(ss, time)
-
-
-        # x0 = slv.build_init_vars_vector_from_uid(init_guess)
         x = self.problem.get_x0()
         print(f"x = {x}")
         dx = np.zeros_like(x)
 
         if not self.assessment_time == 0:
-            # Get integration method
 
-            # TODO: assign a solver directly depending on the options.integration_method (without if)
-            if self.rms_options.integration_method == DynamicIntegrationMethod.Trapezoid:
-                NotImplementedError(f"Rms integration method {DynamicIntegrationMethod.Trapezoid} not implemented")
+            solver = self.integration_methods_dict[self.rms_options.integration_method](
+                problem=self.problem,
+                t0=0,
+                t_end=self.assessment_time,
+                h=self.rms_options.time_step,
+                max_iter=self.rms_options.max_iter
+            )
 
-            elif self.rms_options.integration_method == DynamicIntegrationMethod.BackEuler:
-                solver = BackEulerImplicitIntegration(
-                    problem=self.problem,
-                    t0=0,
-                    t_end=self.assessment_time,
-                    h=self.rms_options.time_step,
-                    max_iter=self.rms_options.max_iter
-                )
-
-                t, y, well_initialized, converged = solver.simulate()
-                i = int(self.assessment_time / self.rms_options.time_step)
-                x = y[i]
-
-            else:
-                raise ValueError(f"integrator not implemented :( {self.rms_options.integration_method}")
-
+            t, y, well_initialized, converged = solver.simulate()
+            i = int(self.assessment_time / self.rms_options.time_step)
+            x = y[i]
 
         n = self.problem.get_states_number()
         print(f"type n = {type(n)}")
         print(f"type self.k = {type(self.k)}")
-        if self.k >= n-1:
+        if self.k >= n - 1:
 
             reduced_state_matrix = None
             (eigenvalues,
@@ -418,7 +459,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              state_matrix) = run_dense_small_signal_stability(problem=self.problem,
                                                               x=x,
                                                               dx=dx,
-                                                              verbose= self.sss_options.verbose)
+                                                              verbose=self.sss_options.verbose)
 
         else:
             (eigenvalues,
@@ -427,19 +468,18 @@ class SmallSignalStabilityDriver(DriverTemplate):
              conjugate_frequencies,
              state_matrix, reduced_state_matrix) = run_sparse_small_signal_stability(problem=self.problem,
                                                                                      x=x, dx=dx,
-                                                                                     k = self.k,
-                                                                                     verbose= self.sss_options.verbose)
-
+                                                                                     k=self.k,
+                                                                                     verbose=self.sss_options.verbose)
 
         state_vars = self.problem.get_state_vars
-        self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
-            eigenvalues = eigenvalues,
-            participation_factors = participation_factors,
-            damping_ratios = damping_ratios,
-            conjugate_frequencies = conjugate_frequencies,
-            state_matrix = state_matrix,
-            reduced_state_matrix = reduced_state_matrix,
-            stat_vars = state_vars,
+        self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(
+            eigenvalues=eigenvalues,
+            participation_factors=participation_factors,
+            damping_ratios=damping_ratios,
+            conjugate_frequencies=conjugate_frequencies,
+            state_matrix=state_matrix,
+            reduced_state_matrix=reduced_state_matrix,
+            stat_vars=state_vars,
         )
 
         self.toc()
