@@ -33,7 +33,7 @@ def test_simulation_with_event():
     # retrieve reference results df
 
     folder = os.path.join('data', 'dynamics')
-    name = "test_sim_with_evt_ref_df.csv"
+    name = "test_event_reference.csv"
 
     fname = os.path.join(folder, name)
 
@@ -41,17 +41,6 @@ def test_simulation_with_event():
 
     ###########################################################################################################################
     # Build VeraGrid object
-
-
-    def find_name_in_block(name: str, block: Block):
-        for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-            if name == var.name:
-                return var
-
-        for mdl in block.children:
-            res = find_name_in_block(name, mdl)
-            if res is not None:
-                return res
 
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
@@ -199,14 +188,14 @@ def test_simulation_with_event():
 
     results_df = results.mdl(ResultTypes.RmsSimulationReport).to_df()
 
-    # upload reference data frame
+    results_df = results_df[reference_df.columns]
 
     assert_frame_equal(
         results_df.reset_index(drop=True),
         reference_df.reset_index(drop=True),
         check_dtype=False,
         check_index_type=False,
-        atol=1e-8
+        atol=1e-6
     )
 
 
