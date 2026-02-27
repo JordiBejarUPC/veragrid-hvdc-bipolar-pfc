@@ -422,24 +422,24 @@ class Line(BranchParent):
         """
         self.set_length(val)
 
-    @BranchParent.rms_model.setter
-    def rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            value.model.set_parameter(
-                ParamPowerFlowRefferenceType.g,
-                Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-            )
-
-            value.model.set_parameter(
-                ParamPowerFlowRefferenceType.b,
-                Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-            )
-
-            value.model.set_parameter(
-                ParamPowerFlowRefferenceType.bsh,
-                Const(self.B)
-            )
-            self._rms_model = value
+    # @BranchParent.rms_model.setter
+    # def rms_model(self, value: DynamicModelHost):
+    #     if isinstance(value, DynamicModelHost):
+    #         value.model.set_parameter(
+    #             ParamPowerFlowRefferenceType.g,
+    #             Const(float(self.R / (self.R ** 2 + self.X ** 2)))
+    #         )
+    #
+    #         value.model.set_parameter(
+    #             ParamPowerFlowRefferenceType.b,
+    #             Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
+    #         )
+    #
+    #         value.model.set_parameter(
+    #             ParamPowerFlowRefferenceType.bsh,
+    #             Const(self.B)
+    #         )
+    #         self._rms_model = value
 
     @BranchParent.emt_model.setter
     def emt_model(self, value: DynamicModelHost):

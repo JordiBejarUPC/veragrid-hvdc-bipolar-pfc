@@ -87,36 +87,17 @@ line_mdl = get_line_rms_template(grid.var_factory).block
 # load
 load_mdl = get_load_rms_template(grid.var_factory).block
 
+# set models parameters
+load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
+load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+
 # add model to api object
 
 set_rms_model(device=gen0, model=genqec_mdl)
-#
-# set_rms_model(device=line0, model=line_mdl)
+
+set_rms_model(device=line0, model=line_mdl)
 
 set_rms_model(device=load, model=load_mdl)
-
-# connection with buses
-#
-
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
-
-line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
-
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
-
-
-# external mapping
-
-
-gen0.rms_model.model.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-gen0.rms_model.model.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
-
-
-# attach rms models to Veragrid objects
-line0.rms_model.model = line_mdl
-# load.rms_model.model = load_mdl
 
 
 # apply event
@@ -125,10 +106,7 @@ event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
 grid.add_rms_event(event)
 
 
-
-
-
-gce.save_file(grid=grid, filename='gen_load_save_event.veragrid')
+# gce.save_file(grid=grid, filename='gen_load_save_event.veragrid')
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -185,40 +163,40 @@ t, y, well_initialized, converged = solver.simulate()
 
 profiler.disable()
 profiler.dump_stats("profiling_stats.prof")
-
-xlim = options.simulation_time
-
-omega = find_name_in_block("omega", genqec_mdl)
-Pg = genqec_mdl.out_vars[0]
-Qg = genqec_mdl.out_vars[1]
-Ir = find_name_in_block("Ir", genqec_mdl)
-Efd = find_name_in_block("Efd", genqec_mdl)
-Te = find_name_in_block("Te", genqec_mdl)
-Vm = find_name_in_block("Vm", genqec_mdl)
-
-u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
-y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
-y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
-y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
-Efe = find_name_in_block("Efe", genqec_mdl)
-delta = find_name_in_block("delta", genqec_mdl)
-
-# Generator state variables
-plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
-plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
-plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
-# plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
-
-plt.legend(loc='upper right', ncol=2)
-plt.xlabel("Time (s)")
-plt.ylabel("Values (pu)")
-plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+#
+# xlim = options.simulation_time
+#
+# omega = find_name_in_block("omega", genqec_mdl)
+# Pg = genqec_mdl.out_vars[0]
+# Qg = genqec_mdl.out_vars[1]
+# Ir = find_name_in_block("Ir", genqec_mdl)
+# Efd = find_name_in_block("Efd", genqec_mdl)
+# Te = find_name_in_block("Te", genqec_mdl)
+# Vm = find_name_in_block("Vm", genqec_mdl)
+#
+# u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
+# y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
+# y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
+# y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
+# Efe = find_name_in_block("Efe", genqec_mdl)
+# delta = find_name_in_block("delta", genqec_mdl)
+#
+# # Generator state variables
+# plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
+# # plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
+# # plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
+#
+# plt.legend(loc='upper right', ncol=2)
+# plt.xlabel("Time (s)")
+# plt.ylabel("Values (pu)")
+# plt.xlim([0, xlim])
+# # plt.ylim([0.85, 1.15])
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
 
 #
 # Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)

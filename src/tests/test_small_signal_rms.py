@@ -8,8 +8,8 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
-from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
+
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
 from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
 from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
@@ -239,8 +239,15 @@ def stability_kundur_no_shunt():
     trafo4_mdl = get_line_rms_template(grid.var_factory).block
 
     # loads
-    load1_mdl = get_load1_rms_template(grid.var_factory).block
-    load2_mdl = get_load2_rms_template(grid.var_factory).block
+    load1_mdl = get_load_rms_template(grid.var_factory).block
+    load2_mdl = get_load_rms_template(grid.var_factory).block
+
+    # set models parameters
+    load1_mdl.set_parameter_in_model(var_name="Pl0", new_value=-9.670000000007317)
+    load1_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.9999999999967969)
+
+    load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-17.6699999999199)
+    load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.999999999989467)
 
     # connection with buses
 
