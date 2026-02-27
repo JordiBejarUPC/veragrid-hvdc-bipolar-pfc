@@ -360,15 +360,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, name: str = "ZIP_Load_EMT_3ph"
         u_C: v_C,
         q_C: ((V0 ** 2 - v_C ** 2 + eps) ** c05),
 
-        # 6 Derivatives: MUST be non-zero in EMT to match harmonic motion
-        # TODO: derivatives must not be initialized from init_eqs
-        # d_u_A: -w * q_A,
-        # d_q_A: w * u_A,
-        # d_u_B: -w * q_B,
-        # d_q_B: w * u_B,
-        # d_u_C: -w * q_C,
-        # d_q_C: w * u_C,
-
         # 18 Algebraics: Complete chain for current injection
         VA2: (u_A ** 2 + q_A ** 2), VmA: ((VA2 + eps) ** c05), rA: (VmA / V0),
         P_A: (P0_A * (a1 * rA ** 2 + a2 * rA + a3)), Q_A: (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),

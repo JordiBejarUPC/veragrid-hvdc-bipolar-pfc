@@ -204,6 +204,12 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_eqs
 
+    def get_diff_vars(self):
+        """
+        Returns the list of state variables.
+        """
+        return self._diff_vars
+
     def get_variable_parameters(self):
         """
         Returns the list of variable parameters.

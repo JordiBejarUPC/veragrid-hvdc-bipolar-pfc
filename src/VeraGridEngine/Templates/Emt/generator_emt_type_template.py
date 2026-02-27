@@ -198,5 +198,9 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
         Tm: Te,
     }
 
+    templ.block.diff_init_eqs = {
+        d_theta: omega_base
+    }
+
     return templ
 

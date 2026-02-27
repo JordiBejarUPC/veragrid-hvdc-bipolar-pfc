@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import numpy as np
 
 from typing import Dict
+import numpy as np
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
@@ -95,7 +95,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Zbase = (Vbase * Vbase) / S
         Ybase = 1.0 / Zbase
 
-        # per-meter matrices (assumed in ohm/km and S/km -> /1e3 to per meter)
+        # per-meter matrices ( in ohm/km and S/km -> /1e3 to per meter)
         Z_phys_m = line.template.z_nabc / 1e3
         Y_phys_m = line.template.y_nabc / 1e3
 
@@ -114,6 +114,10 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Gsh_full = np.real(Y_pu)
         Bsh_full = np.imag(Y_pu)
         C_full = Bsh_full / (w0 + 1e-20)    # B = wC  => C = B/w
+
+        print(f"R line = {R_full}")
+        print(f"L line = {L_full}")
+        print(f"C line = {C_full}")
 
         # split shunt into two ends
         G_end_full = 0.5 * Gsh_full
@@ -185,7 +189,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         state_eqs = []
 
-        import numpy as np
 
 
         #  L * di_ser + R * i_ser - (vf - vt) = 0
@@ -341,12 +344,20 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # i_ser seed using R^{-1} (assuming di/dt=0 at t=0 as a seed)
         Rinv = np.linalg.inv(R)  # numeric m x m
         for a in range(m):
-            rhs = c0
-            for b in range(m):
-                Rab = float(Rinv[a, b])
-                if Rab != 0.0:
-                    rhs = rhs + Rab * (vf_act[b] - vt_act[b])
-            init_eqs[i_ser[a]] = rhs
+            Z_mag = np.sqrt(float(R[a, a]) ** 2 + (w0 * float(L[a, a])) ** 2)
+            # i = delta_V / Z
+            init_eqs[i_ser[a]] = (vf_act[a] - vt_act[a]) / Z_mag
+
+
+            # init_eqs[i_ser[a]] = c0
+
+
+            # rhs = c0
+            # for b in range(m):
+            #     Rab = float(Rinv[a, b])
+            #     if Rab != 0.0:
+            #         rhs = rhs + Rab * (vf_act[b] - vt_act[b])
+            # init_eqs[i_ser[a]] = rhs
 
 
         self._block.init_eqs = init_eqs
@@ -357,33 +368,29 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         diff_init_eqs: Dict[Var, Expr] = {}
 
+        Linv_numeric = np.linalg.inv(L)
+
         for a in range(m):
-            # (A) Initialization for di_ser:
-            # We mirror the state_eq: di_ser = L_inv * (vf - vt - R * i_ser)
-            di_rhs = c0
+            # (A) di_ser = L_inv * (Vf - Vt - R*i_ser)
+            di_expression = c0
+
             for b in range(m):
-                Linv_ab = float(L_inv[a, b])
-                if Linv_ab != 0.0:
-                    # Calculate (vf - vt - R * i_ser) for phase 'b'
-                    v_diff_R_i_b = (vf_act[b] - vt_act[b])
-                    for k in range(m):
-                        R_bk = float(R[b, k])
-                        if R_bk != 0.0:
-                            v_diff_R_i_b = v_diff_R_i_b - R_bk * i_ser[k]
 
-                    di_rhs = di_rhs + Linv_ab * v_diff_R_i_b
+                term_b = (vf_act[b] - vt_act[b])
+                for k in range(m):
+                    if R[b, k] != 0:
+                        term_b -= float(R[b, k]) * i_ser[k]
+                coeff = float(Linv_numeric[a, b])
+                if abs(coeff) > 1e-15:
+                    di_expression += coeff * term_b
 
-            diff_init_eqs[di_ser[a]] = di_rhs
+            diff_init_eqs[di_ser[a]] = di_expression
 
-            # (B) Initialization for dq_f:
-            # According to eq (2): dq_f = i_cap_f
+            # (B) dq_f = i_cap_f y dq_t = i_cap_t
             diff_init_eqs[dq_f[a]] = i_cap_f[a]
-
-            # (C) Initialization for dq_t:
-            # According to eq (3): dq_t = i_cap_t
             diff_init_eqs[dq_t[a]] = i_cap_t[a]
 
-        # Assign to the block
+
         self._block.diff_init_eqs = diff_init_eqs
 
 def get_pi_line_emt_template(grid: MultiCircuit,

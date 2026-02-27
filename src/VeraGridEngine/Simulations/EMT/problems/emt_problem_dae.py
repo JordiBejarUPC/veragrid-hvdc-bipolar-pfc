@@ -106,6 +106,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
+        self.diff_init_guess.update(self.diff_init_guess)
+
 
         t_done = _toc(t_build)
 
@@ -331,6 +333,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
             # register init_eqs blocks
             self._register_init_model(mdl)
+            self._register_diff_init_model(mdl)
 
             if pf_results is not None:
                 self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
@@ -361,6 +364,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 # register init_eqs blocks (if any)
                 self._register_init_model(mdl)
+                self._register_diff_init_model(mdl)
 
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
                 v_f_vars = _get_bus_v_list(br.bus_from.emt_model.model)
@@ -389,6 +393,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
             # register init_eqs blocks
             self._register_init_model(mdl)
+            self._register_diff_init_model(mdl)
 
             # Add terminal currents into KCL
             for ph in range(4):
@@ -425,6 +430,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
             # register init_eqs blocks
             self._register_init_model(mdl)
+            self._register_diff_init_model(mdl)
 
             b = bus_dict[inj.bus]
 
@@ -713,6 +719,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
+                # Prueba sumando o restando pi/2 si el modelo es Park estándar
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta) - np.pi / 2)
 
             set_if_exists(VarPowerFlowRefferenceType.P, float(np.real(Sbus_total)))
             set_if_exists(VarPowerFlowRefferenceType.Q, float(np.imag(Sbus_total)))
@@ -817,40 +825,51 @@ class EmtProblemDae(EmtProblemTemplate):
         tol_zero:
             threshold to flag values close to zero.
         """
-        # build x0 from current init_guess
+        # Build x0 and dx0 from current guesses
         x0 = self.get_x0()
-        uid2idx = self.uid2idx_vars
+        dx0 = self.get_dx0() # Assuming this method exists to retrieve the derivative vector
 
-        # all vars in the DAE
-        all_vars = list(self.get_state_vars()) + list(self.get_algebraic_vars())
+        uid2idx_vars = self.uid2idx_vars
+        uid2idx_diff = self.uid2idx_diff
+
+        # Define the sets we want to process: (Variables, Guess_Source, Index_Map, Vector, Label)
+        data_sets = [
+            (list(self.get_state_vars()) + list(self.get_algebraic_vars()), self.init_guess, uid2idx_vars, x0, "Var"),
+            (list(self.get_diff_vars()), self.diff_init_guess, uid2idx_diff, dx0, "DiffVar")
+        ]
 
         rows = []
-        for v in all_vars:
-            uid = v.uid
-            idx = uid2idx.get(uid, None)
-            val = float(x0[idx]) if idx is not None else 0.0
+        for vars_list, guess_dict, idx_map, vector, var_type in data_sets:
+            for v in vars_list:
+                uid = v.uid
+                idx = idx_map.get(uid, None)
+                val = float(vector[idx]) if idx is not None else 0.0
 
-            in_guess = uid in self.init_guess
-            if only_in_init_guess and (not in_guess):
-                continue
-            if (not include_all_vars) and (not in_guess):
-                continue
+                in_guess = uid in guess_dict
 
-            alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
-            rows.append({
-                "uid": uid,
-                "alias": alias,
-                "name": getattr(v, "name", None),
-                "value": val,
-                "in_init_guess": in_guess,
-                "is_zero": abs(val) <= tol_zero,
-            })
+                # Filters
+                if only_in_init_guess and (not in_guess):
+                    continue
+                if (not include_all_vars) and (not in_guess):
+                    continue
+
+                alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
+
+                rows.append({
+                    "uid": uid,
+                    "type": var_type, # NEW: Distinguishes between Var and DiffVar
+                    "alias": alias,
+                    "name": getattr(v, "name", None),
+                    "value": val,
+                    "in_init_guess": in_guess,
+                    "is_zero": abs(val) <= tol_zero,
+                })
 
         df = pd.DataFrame(rows)
 
-        # Nice ordering
+        # Nice ordering: Group by type, then initialization status
         if not df.empty:
-            df = df.sort_values(["in_init_guess", "is_zero", "name"], ascending=[False, True, True]).reset_index(
-                drop=True)
+            sort_cols = ["type", "in_init_guess", "is_zero", "name"]
+            df = df.sort_values(sort_cols, ascending=[False, False, True, True]).reset_index(drop=True)
 
         return df

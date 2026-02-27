@@ -258,7 +258,8 @@ class JitSymbolicSolver:
             print(f"   [Config] System N={n_eqs}. Using {mode_str} linear solver (Threshold={self.dense_threshold}).")
 
         x0 = self.problem.get_x0()
-        dx0 = np.zeros(n_eqs, dtype=np.float64)
+        # dx0 = np.zeros(n_eqs, dtype=np.float64)
+        dx0 = self.problem.get_dx0()
 
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
