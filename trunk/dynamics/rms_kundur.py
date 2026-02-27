@@ -281,6 +281,13 @@ def rms_kundur():
     load1_mdl = get_load1_rms_template(grid.var_factory).block
     load2_mdl = get_load2_rms_template(grid.var_factory).block
 
+    # set models parameters
+    load1_mdl.set_parameter(var_name="Pl0", new_value=-0.0999999)
+    load1_mdl.set_parameter(var_name="Ql0", new_value=-0.009999999862208533)
+
+    load2_mdl.set_parameter(var_name="Pl0", new_value=-0.0999999)
+    load2_mdl.set_parameter(var_name="Ql0", new_value=-0.009999999862208533)
+
     # connection with buses
 
     genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])

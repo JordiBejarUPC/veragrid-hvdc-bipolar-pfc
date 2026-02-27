@@ -42,6 +42,17 @@ def test_simulation_with_event():
     ###########################################################################################################################
     # Build VeraGrid object
 
+
+    def find_name_in_block(name: str, block: Block):
+        for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
+            if name == var.name:
+                return var
+
+        for mdl in block.children:
+            res = find_name_in_block(name, mdl)
+            if res is not None:
+                return res
+
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
     # Buses
