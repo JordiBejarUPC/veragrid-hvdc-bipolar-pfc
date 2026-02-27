@@ -7,9 +7,6 @@ import cProfile
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
@@ -17,6 +14,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -58,9 +56,11 @@ for bus in grid.buses:
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
                  rate=900.0)
+grid.add_line(line0)
 
 # load
 load = gce.Load(P=9.999999, Q=0.999999)
+grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
@@ -89,12 +89,14 @@ load_mdl = get_load_rms_template(grid.var_factory).block
 
 # add model to api object
 
-gen0.set_rms_model(genqec_mdl)
+set_rms_model(device=gen0, model=genqec_mdl)
+#
+# set_rms_model(device=line0, model=line_mdl)
+
+set_rms_model(device=load, model=load_mdl)
 
 # connection with buses
 #
-# genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-# genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
 
 line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
 line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
@@ -104,8 +106,6 @@ line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 # external mapping
 
@@ -116,7 +116,7 @@ gen0.rms_model.model.external_mapping.update({VarPowerFlowRefferenceType.Q: genq
 
 # attach rms models to Veragrid objects
 line0.rms_model.model = line_mdl
-load.rms_model.model = load_mdl
+# load.rms_model.model = load_mdl
 
 
 # apply event
@@ -124,8 +124,8 @@ Pl0 = find_name_in_block('Pl0', load_mdl)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
 grid.add_rms_event(event)
 
-grid.add_line(line0)
-grid.add_load(bus=bus1, api_obj=load)
+
+
 
 
 gce.save_file(grid=grid, filename='gen_load_save_event.veragrid')

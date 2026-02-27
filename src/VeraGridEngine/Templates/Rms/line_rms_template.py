@@ -21,10 +21,10 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    inputs: List[Var] = [vfactory.add_var("Vmf_" + name),
-                         vfactory.add_var("Vaf_" + name),
-                         vfactory.add_var("Vmt_" + name),
-                         vfactory.add_var("Vat_" + name)]
+    inputs: List[Var] = [vfactory.add_var("Vmf_" + name, VarPowerFlowRefferenceType.Vm),
+                         vfactory.add_var("Vaf_" + name, VarPowerFlowRefferenceType.Va),
+                         vfactory.add_var("Vmt_" + name, VarPowerFlowRefferenceType.Vm),
+                         vfactory.add_var("Vat_" + name, VarPowerFlowRefferenceType.Va),]
 
     Qf = vfactory.add_var("Qf")
     Qt = vfactory.add_var("Qt")

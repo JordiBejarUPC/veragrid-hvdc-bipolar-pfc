@@ -110,7 +110,7 @@ class Expr:
         """
         raise NotImplementedError
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:  # pragma: no cover – abstract
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER:  # pragma: no cover – abstract
         """
 
         :param uid_bindings:
@@ -268,7 +268,7 @@ class Const(Expr):
     def eval(self, **bindings: NUMBER) -> NUMBER | None:
         return self.value
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER | None:
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> float | None:
         return self.value
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
