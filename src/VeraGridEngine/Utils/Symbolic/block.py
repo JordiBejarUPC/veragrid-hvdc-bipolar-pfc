@@ -37,6 +37,7 @@ class Block:
                  alter_params: List[Var] | None = None,
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
+                 diff_init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
@@ -56,6 +57,7 @@ class Block:
         :param in_vars: List of variables from other blocks that we use here
         :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
+        :param diff_init_eqs: List of equations that help initializing the block derivatives of state variables
         :param event_dict: Dictionary of parameters that can change during the simulations
         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
         :param name: name of the block
@@ -78,6 +80,7 @@ class Block:
 
         # initialization
         self.init_eqs: Dict[Var, Expr] = dict() if init_eqs is None else init_eqs
+        self.diff_init_eqs: Dict[Var, Expr] = dict() if diff_init_eqs is None else diff_init_eqs
 
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
@@ -131,6 +134,14 @@ class Block:
                     "value": _expr_to_dict(v),
                 }
                 for k, v in self.init_eqs.items()
+            },
+
+            "diff_init_eqs": {
+                str(k.uid): {
+                    "key": _expr_to_dict(k),
+                    "value": _expr_to_dict(v),
+                }
+                for k, v in self.diff_init_eqs.items()
             },
 
             "event_dict": {
@@ -202,6 +213,11 @@ class Block:
         block.init_eqs = {
             _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
             for item in data["init_eqs"].values()
+        }
+
+        block.diff_init_eqs = {
+            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
+            for item in data["diff_init_eqs"].values()
         }
 
         block.event_dict = {
@@ -385,6 +401,9 @@ class Block:
 
             for var, init_eq in b.init_eqs.items():
                 mdl_placeholder.init_eqs[var] = init_eq
+
+            for diffvar, diff_init_eq in b.diff_init_eqs.items():
+                mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
         self.algebraic_vars = mdl_placeholder.algebraic_vars
         self.algebraic_eqs = mdl_placeholder.algebraic_eqs
         self.state_vars = mdl_placeholder.state_vars
@@ -393,6 +412,7 @@ class Block:
         self.event_dict = mdl_placeholder.event_dict
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
+        self.diff_init_eqs = mdl_placeholder.diff_init_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
         self.children = list()
@@ -431,6 +451,7 @@ class Block:
         :return:
         """
         init_eqs_new = dict()
+        diff_init_eqs_new = dict()
         event_dict_new = dict()
 
         for i, eq in enumerate(self.algebraic_eqs):
@@ -450,6 +471,15 @@ class Block:
                 init_eqs_new.update({var: new_expr})
 
         self.init_eqs = init_eqs_new
+
+        for var, expr in self.diff_init_eqs.items():
+            new_expr = expr.subs({old: new})
+            if var is old:
+                diff_init_eqs_new.update({new: new_expr})
+            else:
+                diff_init_eqs_new.update({var: new_expr})
+
+        self.diff_init_eqs = diff_init_eqs_new
 
         for var, expr in self.event_dict.items():
             new_expr = expr.subs({old: new})

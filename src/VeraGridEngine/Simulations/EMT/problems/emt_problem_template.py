@@ -51,6 +51,7 @@ class EmtProblemTemplate(ABC):
             self._event_parameters_eqs = list(self.sys_block.event_dict.values())
 
         self.init_guess: Dict[int, float] = dict()
+        self.diff_init_guess: Dict[int, float] = dict()
 
         self._finalize_order_and_maps()
         self._build_runtime_param_vectors()
@@ -261,6 +262,17 @@ class EmtProblemTemplate(ABC):
             if idx is not None:
                 x[idx] = float(val)
         return x
+
+    def get_dx0(self) -> Vec:
+        """
+        Builds and returns the initial condition vector based on the initialization guess.
+        """
+        dx = np.zeros(self._n_diff, dtype=np.float64)
+        for uid, val in self.diff_init_guess.items():
+            idx = self._uid2idx_vars.get(uid, None)
+            if idx is not None:
+                dx[idx] = float(val)
+        return dx
 
     def def_event_params_fn(self, ev_param: Vec, tm: float) -> Vec:
         """
