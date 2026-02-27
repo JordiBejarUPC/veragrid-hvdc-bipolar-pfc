@@ -7,7 +7,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 
 
-class SmallSignalStabilityOptions(OptionsTemplate):
+class SmallSignalStabilityRmsOptions(OptionsTemplate):
     """
     Rms simulation options
     """

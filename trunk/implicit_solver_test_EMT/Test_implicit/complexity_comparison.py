@@ -74,7 +74,7 @@ def benchmark_new_architecture(n_oscillators, n_steps, backend="SD"):
 
     problem = GenericEmtProblem(block, Var("t_glob"))
     h = 0.01
-    target_method = DynamicIntegrationMethod.Trapezoid
+    target_method = DynamicIntegrationMethod.DaeTrapezoidal
 
     # --- PHASE 1: ASSEMBLY/SETUP ---
     t_setup_start = time.perf_counter()

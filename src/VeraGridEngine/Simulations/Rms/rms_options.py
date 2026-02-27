@@ -16,7 +16,7 @@ class RmsOptions(OptionsTemplate):
                  time_step: float = 0.001,
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
-                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,
+                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeBackEuler,
                  initialization_method: RmsInitializationMethod = RmsInitializationMethod.Explicit,
                  use_init_values: bool = False,
                  max_iter: int = 1000,

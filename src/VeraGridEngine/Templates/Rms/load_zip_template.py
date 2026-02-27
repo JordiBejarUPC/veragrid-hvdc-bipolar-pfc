@@ -3,15 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
-import numpy as np
-import math
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
-import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.block import Block
+
 
 def ZIPLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
@@ -43,11 +40,11 @@ def ZIPLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsM
     templ.tpe = DeviceType.LoadDevice
     inputs = [vfactory.add_var("Vm_")]
 
-    #Vars:
+    # Vars:
     P = vfactory.add_var('P')
     Q = vfactory.add_var('Q')
 
-    #Parameters:
+    # Parameters:
     P0 = vfactory.add_var('P0')
     Q0 = vfactory.add_var('Q0')
     V0 = vfactory.add_var('V0')
@@ -57,7 +54,7 @@ def ZIPLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsM
     a4 = vfactory.add_var('a4')
     a5 = vfactory.add_var('a5')
     a6 = vfactory.add_var('a6')
-    
+
     # ZIP coefficients (classic formulation)
     event_dict = {
         P0: vfactory.add_const(Pl0),
@@ -93,29 +90,29 @@ def ZIPLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsM
             f"Invalid ZIP coefficients for reactive power: "
             f"a4 + a5 + a6 = {Q_sum}, expected 1.0"
         )
-    
+
     init_eqs = {
         V0: inputs[0],
         P: P0,
         Q: Q0,
     }
     templ.block = Block(
-        algebraic_eqs = [
-            P - P0*(a1*(inputs[0]/V0)**2 + a2*inputs[0]/V0 + a3),
-            Q - Q0*(a4*(inputs[0]/V0)**2 + a5*inputs[0]/V0 + a6),
+        algebraic_eqs=[
+            P - P0 * (a1 * (inputs[0] / V0) ** 2 + a2 * inputs[0] / V0 + a3),
+            Q - Q0 * (a4 * (inputs[0] / V0) ** 2 + a5 * inputs[0] / V0 + a6),
         ],
-        algebraic_vars=[P,Q],
-        init_eqs = init_eqs,
-        event_dict = event_dict,
+        algebraic_vars=[P, Q],
+        init_eqs=init_eqs,
+        event_dict=event_dict,
     )
-    
-    templ.block.name = 'ZIP Load' 
+
+    templ.block.name = 'ZIP Load'
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: P,
         VarPowerFlowRefferenceType.Q: Q,
         VarPowerFlowRefferenceType.Vm: inputs[0],
     }
-    
+
     templ.block.in_vars = inputs
-    
+
     return templ

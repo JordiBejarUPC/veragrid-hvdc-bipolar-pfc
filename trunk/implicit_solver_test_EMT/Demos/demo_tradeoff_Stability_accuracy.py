@@ -68,9 +68,9 @@ def run_method_benchmark():
 
     # Using string identifiers for the new JIT architecture
     methods = [
-        (DynamicIntegrationMethod.BackEuler, "Backward Euler (L-Stable)"),
-        (DynamicIntegrationMethod.Trapezoid, "Trapezoidal (A-Stable)"),
-        (DynamicIntegrationMethod.BDF2, "BDF2 (L-Stable)")
+        (DynamicIntegrationMethod.DaeBackEuler, "Backward Euler (L-Stable)"),
+        (DynamicIntegrationMethod.DaeTrapezoidal, "Trapezoidal (A-Stable)"),
+        (DynamicIntegrationMethod.DaeBDF2, "BDF2 (L-Stable)")
     ]
 
     results = {}

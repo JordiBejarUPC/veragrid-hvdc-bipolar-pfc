@@ -193,7 +193,7 @@ def main():
     emt_options = EmtOptions(
         time_step=problem.h,
         simulation_time=0.05,
-        integration_method=DynamicIntegrationMethod.BackEuler
+        integration_method=DynamicIntegrationMethod.DaeBackEuler
     )
 
     # --- 1. Standard Arnoldi Configuration ---

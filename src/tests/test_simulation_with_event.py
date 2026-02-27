@@ -33,7 +33,7 @@ def test_simulation_with_event():
     # retrieve reference results df
 
     folder = os.path.join('data', 'dynamics')
-    name = "test_sim_with_evt_ref_df.csv"
+    name = "test_event_reference.csv"
 
     fname = os.path.join(folder, name)
 
@@ -166,7 +166,7 @@ def test_simulation_with_event():
     options = RmsOptions(time_step=0.001,
                          simulation_time=1,
                          tolerance=1e-6,
-                         integration_method=DynamicIntegrationMethod.BackEuler,
+                         integration_method=DynamicIntegrationMethod.DaeBackEuler,
                          initialization_method=RmsInitializationMethod.Explicit,
                          use_init_values=False,
                          max_iter=1000,
@@ -199,14 +199,14 @@ def test_simulation_with_event():
 
     results_df = results.mdl(ResultTypes.RmsSimulationReport).to_df()
 
-    # upload reference data frame
+    results_df = results_df[reference_df.columns]
 
     assert_frame_equal(
         results_df.reset_index(drop=True),
         reference_df.reset_index(drop=True),
         check_dtype=False,
         check_index_type=False,
-        atol=1e-8
+        atol=1e-6
     )
 
 

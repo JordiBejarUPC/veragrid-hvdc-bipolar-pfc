@@ -105,7 +105,6 @@ class EmtSimulationDriver(DriverTemplate):
         t, y = solver.simulate(boundary_update_fn = problem.emt_boundary_update)
 
         # profiler.disable()
-        #
         # stats = pstats.Stats(profiler).sort_stats('cumtime')
         # stats.print_stats(10)
 

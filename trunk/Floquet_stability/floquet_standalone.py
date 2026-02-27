@@ -183,7 +183,7 @@ def run_target_validation(target_hz: float, name_tag: str):
     emt_options = EmtOptions(
         time_step=h,
         simulation_time=0.5,
-        integration_method=DynamicIntegrationMethod.BackEuler
+        integration_method=DynamicIntegrationMethod.DaeBackEuler
     )
 
     # Shift-Invert Filter Active configuration

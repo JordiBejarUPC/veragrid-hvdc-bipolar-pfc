@@ -2,17 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile
 import pstats
 import numpy as np
-from matplotlib import pyplot as plt
 
 import sys
 import os
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -34,9 +31,8 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbol
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 
-
-
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes
+from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -58,6 +54,8 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
+
+
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
 # Buses
@@ -67,11 +65,8 @@ bus1 = gce.Bus(name="Bus1", Vnom=10)
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 
-
-
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
+line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
 line0.emt_model_type = gce.EmtLineTypes.PI
 
 # physical configuration (Overhead line tower)
@@ -90,25 +85,19 @@ tower.compute()
 # Aplicar física a la línea
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
-
 # load
 P= 9.999999
 Q= 0.999999
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
+load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                     x1=0.86138701, r1=0.3, freq=50.0,
-                     M=10.0,
-                     D=1.0,
-                     omega_ref=1.0,
-                     Kp=1.0,
-                     Ki=10.0,
-                     )
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=900)
 
 grid.add_line(line0)
-grid.add_load(bus=bus1, api_obj=load)
 grid.add_generator(bus=bus0, api_obj=gen0)
+grid.add_load(bus=bus1, api_obj=load)
+
 
 for bus in grid.buses:
     get_bus_emt_template(grid, bus, vf=grid.var_factory)
@@ -133,20 +122,18 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
 
 # connection with buses
-print("in vars gen0 = ",gen_mdl.in_vars)
-print("out vars bus0 = ",bus0.emt_model.model.out_vars)
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
 gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # v_B
 gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 
 
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # if_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # if_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # if_C
+line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
+line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
+line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
 
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # it_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # it_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # it_C
+line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
+line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
+line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
@@ -200,6 +187,8 @@ pf_options = PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
+
+# res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
 power_flow = PowerFlowDriver3Ph(grid, pf_options)
 power_flow.run()
 res = power_flow.results
@@ -229,26 +218,64 @@ print(res.get_bus_df())
 print(res.get_branch_df())
 
 options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.01, #5e-6*10, # s
+                     simulation_time =  0.01,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
-                     integration_method = DynamicIntegrationMethod.Trapezoid)
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal)
 
 
 problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+problem.set_newton_trace_collector(NewtonTraceCollector())
+
+vars = problem.get_state_vars() + problem.get_algebraic_vars()
+print(vars)
+
+df = problem.get_init_guess_table()
+print(df)
 
 
-
-solver = JitAdSolver(problem = problem,
+solver = JitSymbolicSolver(problem = problem,
                            t0 = 0.0,
                            t_end = options.simulation_time,
                            h = options.time_step,
                            method_str=options.integration_method,
                            verbose = True)
 
+x0 = problem.get_x0()
+print("len(x0) =", len(x0))
+print("nans =", np.isnan(x0).sum())
+print("infs =", np.isinf(x0).sum())
+print("nonzeros =", np.count_nonzero(x0))
+print("len(init_guess) =", len(problem.init_guess))
+
+# solver = JitAdSolver(problem = problem,
+#                      t0 = 0.0,
+#                      t_end = options.simulation_time,
+#                      h = options.time_step,
+#                      method_str=options.integration_method,
+#                      verbose = True)
+#
+# solver = StructuralVectorizedSolver(problem = problem,
+#                                     t0 = 0.0,
+#                                     t_end = options.simulation_time,
+#                                     h = options.time_step,
+#                                     method_str=options.integration_method,
+#                                     verbose = True)
+
 t, y = solver.simulate()
+
+collector = problem.get_newton_trace_collector()
+if collector:
+    print(f"Newton iters : {len(collector.records)}")
+
+#  Convert collected diagnostics to DataFrame
+df = collector.to_dataframe()  # o pd.DataFrame(collector.records)
+
+# Save full diagnostics
+df.to_csv("newton_diagnostics_demo.csv", index=False)
+print("Diagnostics written to newton_diagnostics_demo.csv")
 
 # profiler.disable()
 # profiler.dump_stats("profiling_stats.prof")

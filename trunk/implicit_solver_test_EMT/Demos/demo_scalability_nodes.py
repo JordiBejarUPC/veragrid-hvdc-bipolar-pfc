@@ -122,7 +122,7 @@ def run_backend(
     dx0 = np.zeros_like(x0)
     params0 = np.zeros(problem.get_variable_parameter_number())
 
-    target_method = DynamicIntegrationMethod.Trapezoid
+    target_method = DynamicIntegrationMethod.DaeTrapezoidal
 
     if vectorized:
         solver = StructuralVectorizedSolver(

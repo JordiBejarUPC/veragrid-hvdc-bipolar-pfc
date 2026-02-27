@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import numpy as np
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
@@ -10,7 +9,6 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import compute_ybus
 
 # depending on the number of phases of the bus a different model must be created.
 class BusEmtTemplateNABC(EmtModelTemplate):
@@ -30,18 +28,16 @@ class BusEmtTemplateNABC(EmtModelTemplate):
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-        self.v_N = vf.add_var("v_N") if mask[0] else None
-        self.v_A = vf.add_var("v_A") if mask[1] else None
-        self.v_B = vf.add_var("v_B") if mask[2] else None
-        self.v_C = vf.add_var("v_C") if mask[3] else None
-        self.P = vf.add_var("P")
-        self.Q = vf.add_var("Q")
+        self.v_N = vf.add_var("v_N"+name) if mask[0] else None
+        self.v_A = vf.add_var("v_A"+name) if mask[1] else None
+        self.v_B = vf.add_var("v_B"+name) if mask[2] else None
+        self.v_C = vf.add_var("v_C"+name) if mask[3] else None
+        # self.P = vf.add_var("P"+name)
+        # self.Q = vf.add_var("Q"+name)
 
         v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
         if not v_list:
             raise ValueError("Bus has no enabled phases")
-
-        print("out vars at bus=", v_list)
 
         self._block = Block(
             alter_params=v_list, # ?
@@ -54,8 +50,8 @@ class BusEmtTemplateNABC(EmtModelTemplate):
             VarPowerFlowRefferenceType.v_A: self.v_A,
             VarPowerFlowRefferenceType.v_B: self.v_B,
             VarPowerFlowRefferenceType.v_C: self.v_C,
-            VarPowerFlowRefferenceType.P: self.P,
-            VarPowerFlowRefferenceType.Q: self.Q
+            VarPowerFlowRefferenceType.P: None,
+            VarPowerFlowRefferenceType.Q: None
         }
 
     @property
@@ -85,9 +81,8 @@ def get_bus_emt_template(grid: MultiCircuit,
             mask[2] |= bool(branch.ys.phB)
             mask[3] |= bool(branch.ys.phC)
 
-    print("bus mask=", mask)
     # choose template depending on the number of phases
-    bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask).block
+    bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask, name = f"{bus.name}_emt_template").block
 
 
 

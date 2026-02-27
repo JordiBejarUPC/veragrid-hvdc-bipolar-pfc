@@ -26,7 +26,7 @@ class JitSymbolicSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -34,7 +34,7 @@ class JitSymbolicSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
+        :param method: DynamicIntegrationMethod (DaeTrapezoidal, DaeBackEuler, DaeBDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
@@ -212,7 +212,7 @@ class JitSymbolicSolver:
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
         kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
 
-        alpha_mult = 2.0 if method == DynamicIntegrationMethod.Trapezoid else (1.5 if method == DynamicIntegrationMethod.BDF2 else 1.0)
+        alpha_mult = 2.0 if method == DynamicIntegrationMethod.DaeTrapezoidal else (1.5 if method == DynamicIntegrationMethod.DaeBDF2 else 1.0)
 
         np_rows = np.array(rows, dtype=np.int32) if use_sparse else None
         np_cols = np.array(cols, dtype=np.int32) if use_sparse else None
@@ -281,6 +281,7 @@ class JitSymbolicSolver:
         if self.verbose: print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
 
         for i in range(self.steps):
+            if self.verbose: print(f"Simulating at step {i}")
             t_curr = self.t0 + (i + 1) * self.h
             self.t[i + 1] = t_curr
 
@@ -311,15 +312,15 @@ class JitSymbolicSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method == DynamicIntegrationMethod.Trapezoid:
+            if method == DynamicIntegrationMethod.DaeTrapezoidal:
                 alpha = 2.0 / self.h
                 dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
-            elif method == DynamicIntegrationMethod.BDF2:
+            elif method == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
 
-            if method != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
+            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT Finished: {time.time() - t_start:.4f}s")

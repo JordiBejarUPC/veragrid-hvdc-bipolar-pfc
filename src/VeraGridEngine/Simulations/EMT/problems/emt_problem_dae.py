@@ -5,8 +5,8 @@
 
 """
 Module providing the EmtProblemDae class, which acts as the electrical
-parser. It translates electrical components(buses, branches, injections)
-into the unified DAE mathematical structure.
+parser for the generic BaseProblem layer. It translates electrical components
+(buses, branches, injections) into the unified DAE mathematical structure.
 """
 
 from __future__ import annotations
@@ -15,10 +15,6 @@ import time
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any
-
-import scipy.sparse.linalg as spla
-import scipy.linalg as la
-import scipy.sparse as sp
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -712,3 +708,59 @@ class EmtProblemDae(EmtProblemTemplate):
             stack[i] = la.inv(h * J_red)
 
         return stack
+
+    def get_init_guess_table(self,
+                             include_all_vars: bool = True,
+                             only_in_init_guess: bool = False,
+                             tol_zero: float = 1e-12) -> pd.DataFrame:
+        """
+        Return a table with uid, alias/name and initial value for each variable.
+
+        include_all_vars:
+            - True: include all state+algebraic vars, even if not in init_guess (value=0).
+            - False: include only uids present in init_guess (or only_in_init_guess=True).
+
+        only_in_init_guess:
+            - True: filter to only those explicitly initialized (uid in init_guess).
+            - False: keep everything (depending on include_all_vars).
+
+        tol_zero:
+            threshold to flag values close to zero.
+        """
+        # build x0 from current init_guess
+        x0 = self.get_x0()
+        uid2idx = self.uid2idx_vars
+
+        # all vars in the DAE
+        all_vars = list(self.get_state_vars()) + list(self.get_algebraic_vars())
+
+        rows = []
+        for v in all_vars:
+            uid = v.uid
+            idx = uid2idx.get(uid, None)
+            val = float(x0[idx]) if idx is not None else 0.0
+
+            in_guess = uid in self.init_guess
+            if only_in_init_guess and (not in_guess):
+                continue
+            if (not include_all_vars) and (not in_guess):
+                continue
+
+            alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
+            rows.append({
+                "uid": uid,
+                "alias": alias,
+                "name": getattr(v, "name", None),
+                "value": val,
+                "in_init_guess": in_guess,
+                "is_zero": abs(val) <= tol_zero,
+            })
+
+        df = pd.DataFrame(rows)
+
+        # Nice ordering
+        if not df.empty:
+            df = df.sort_values(["in_init_guess", "is_zero", "name"], ascending=[False, True, True]).reset_index(
+                drop=True)
+
+        return df

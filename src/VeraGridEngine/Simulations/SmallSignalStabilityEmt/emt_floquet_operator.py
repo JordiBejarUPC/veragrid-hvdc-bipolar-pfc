@@ -37,7 +37,7 @@ class EmtFloquetOperator(spla.LinearOperator):
     """
 
     def __init__(self, problem: Any, trajectory: Mat, h: float, n_states: int,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeBackEuler,
                  jac_evaluator: Optional[Any] = None, static_params:Optional[Vec] = None, n_event_params: int = 0,
                  t_trajectory: Optional[Vec] = None):
 
@@ -147,18 +147,18 @@ class EmtFloquetOperator(spla.LinearOperator):
         rhs = np.zeros_like(v_curr)
 
         for lu in self.lu_solvers:
-            if self.method == DynamicIntegrationMethod.BackEuler:
+            if self.method == DynamicIntegrationMethod.DaeBackEuler:
                 rhs[:self.n_states] = v_prev[:self.n_states] / self.h
-            elif self.method == DynamicIntegrationMethod.BDF2:
+            elif self.method == DynamicIntegrationMethod.DaeBDF2:
                 rhs[:self.n_states] = (2.0 * v_prev[:self.n_states] - 0.5 * v_prev2[:self.n_states]) / self.h
-            elif self.method == DynamicIntegrationMethod.Trapezoid:
+            elif self.method == DynamicIntegrationMethod.DaeTrapezoidal:
                 rhs[:self.n_states] = (2.0 / self.h) * v_prev[:self.n_states] + dv_prev[:self.n_states]
             else:
                 rhs[:self.n_states] = v_prev[:self.n_states] / self.h
 
             v_curr = lu.solve(rhs)
 
-            if self.method == DynamicIntegrationMethod.Trapezoid:
+            if self.method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dv_prev[:self.n_states] = (2.0 / self.h) * (v_curr[:self.n_states] - v_prev[:self.n_states]) - dv_prev[
                     :self.n_states]
 
@@ -212,7 +212,7 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
     """
 
     def __init__(self, problem: Any, trajectory: Mat, h: float, n_states: int,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeBackEuler,
                  jac_evaluator: Optional[Any]=None, static_params:Optional[Vec]=None, n_event_params:int =0,
                  t_trajectory:Optional[Vec]=None):
         """
@@ -328,19 +328,19 @@ class BlockEmtFloquetOperator(spla.LinearOperator):
         rhs_block = np.zeros_like(X_curr)
 
         for lu in self.lu_solvers:
-            if self.method == DynamicIntegrationMethod.BackEuler:
+            if self.method == DynamicIntegrationMethod.DaeBackEuler:
                 rhs_block[:self.n_states, :] = X_prev[:self.n_states, :] / self.h
-            elif self.method == DynamicIntegrationMethod.BDF2:
+            elif self.method == DynamicIntegrationMethod.DaeBDF2:
                 rhs_block[:self.n_states, :] = (2.0 * X_prev[:self.n_states, :] - 0.5 * X_prev2[
                     :self.n_states, :]) / self.h
-            elif self.method == DynamicIntegrationMethod.Trapezoid:
+            elif self.method == DynamicIntegrationMethod.DaeTrapezoidal:
                 rhs_block[:self.n_states, :] = (2.0 / self.h) * X_prev[:self.n_states, :] + dX_prev[:self.n_states, :]
             else:
                 rhs_block[:self.n_states, :] = X_prev[:self.n_states, :] / self.h
 
             X_curr = lu.solve(rhs_block)
 
-            if self.method == DynamicIntegrationMethod.Trapezoid:
+            if self.method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dX_prev[:self.n_states, :] = (2.0 / self.h) * (X_curr[:self.n_states, :] - X_prev[:self.n_states, :]) - \
                                              dX_prev[:self.n_states, :]
 

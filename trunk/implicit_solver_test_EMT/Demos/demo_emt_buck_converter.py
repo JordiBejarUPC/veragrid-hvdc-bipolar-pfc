@@ -87,7 +87,7 @@ def run_case(backend_str: str):
     problem = GenericEmtProblem(sys_block=block, glob_time=glob_time)
     problem.set_newton_trace_collector(NewtonTraceCollector())
 
-    integration_method = DynamicIntegrationMethod.Trapezoid
+    integration_method = DynamicIntegrationMethod.DaeTrapezoidal
 
     if backend_str == "SD":
         solver = JitSymbolicSolver(

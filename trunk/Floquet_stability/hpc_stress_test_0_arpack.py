@@ -152,7 +152,7 @@ def run_comparison(problem, scenario_name):
     print(f"{'=' * 80}")
 
     emt_options = EmtOptions(time_step=problem.h, simulation_time=0.05,
-                             integration_method=DynamicIntegrationMethod.BackEuler)
+                             integration_method=DynamicIntegrationMethod.DaeBackEuler)
 
     opts_std = SmallSignalStabilityEmtOptions(
         k=4, target_period=0.02, max_krylov_dim=40, verbose=0,

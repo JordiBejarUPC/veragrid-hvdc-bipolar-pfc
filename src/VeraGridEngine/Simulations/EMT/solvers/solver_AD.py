@@ -46,7 +46,6 @@ def _safe_njit(py_func: Callable, *, fastmath=True, cache=True, signature=None):
 def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
                                   data: np.ndarray,
                                   color_ptr: np.ndarray,
-                                  color_cols: np.ndarray,
                                   col_ptr: np.ndarray,
                                   row_idx: np.ndarray,
                                   data_idx: np.ndarray,
@@ -353,8 +352,8 @@ class SparseADJacobian:
             jvp = kernel(states, dummy_seeds, params, history, d_history, h, history2)
 
             _scatter_color_jvp_to_csc_data(jvp, data,
-                                           self.color_ptr, self.color_cols,
-                                           self.col_ptr, self.row_idx, self.data_idx,
+                                           self.color_ptr,self.col_ptr,
+                                           self.row_idx, self.data_idx,
                                            c)
         return self.J
 
@@ -364,7 +363,7 @@ class JitAdSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -372,7 +371,7 @@ class JitAdSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
+        :param method: DynamicIntegrationMethod (DaeTrapezoidal, DaeBackEuler, DaeBDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
@@ -496,6 +495,7 @@ class JitAdSolver:
         if self.verbose: print(f"-> Starting JIT (AD) Simulation ({method}, {self.steps} steps)...")
 
         for i in range(self.steps):
+            if self.verbose: print(f"Simulating at step {i}")
             t_curr = t[i + 1]
 
             # Parameter update via Problem
@@ -530,14 +530,14 @@ class JitAdSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method == DynamicIntegrationMethod.Trapezoid:
+            if method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
-            elif method == DynamicIntegrationMethod.BDF2:
+            elif method == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = ((x_iter[:n_states] - x_prev[:n_states]) / self.h)
 
-            if method != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
+            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")

@@ -133,7 +133,7 @@ class TestGeneratorModel(unittest.TestCase):
 
         # 4. Compile (Using Trapezoidal)
         compiler = EquationCompiler(variables=all_unknowns, parameters=params
-                                    , method=DynamicIntegrationMethod.Trapezoid)
+                                    , method=DynamicIntegrationMethod.DaeTrapezoidal)
         step_fn = compiler.compile(all_eqs, func_name='generator_step_fn')
         print("\n[OK] Function compiled successfully.")
 

@@ -16,9 +16,8 @@ def get_genrow_rms_template(vfactory: VarFactory, name="Genrow rms template") ->
     Get the RMS template model of the Genrow
     :return: RmsModelTemplate
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
-    templ.name = name
 
     inputs = [vfactory.add_var("Vm_" + name),
               vfactory.add_var("Va_" + name)]

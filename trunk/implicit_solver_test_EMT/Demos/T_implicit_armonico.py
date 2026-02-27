@@ -94,7 +94,7 @@ def run_test():
     print("\n[1] Running Implicit Solver (Method: Trapezoidal)...")
     solver_trap = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
-        method=DynamicIntegrationMethod.Trapezoid,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=True
     )
     t_trap, y_trap_full = solver_trap.simulate()
@@ -103,7 +103,7 @@ def run_test():
     print("\n[2] Running Implicit Solver (Method: BDF2)...")
     solver_bdf = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
-        method=DynamicIntegrationMethod.BDF2,
+        method=DynamicIntegrationMethod.DaeBDF2,
         verbose=True
     )
     t_bdf, y_bdf_full = solver_bdf.simulate()

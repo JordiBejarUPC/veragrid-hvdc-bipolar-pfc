@@ -205,7 +205,7 @@ def run_test(case_name: str, R_load: float):
         t0=0.0,
         t_end=0.03,  # Simulate 30 ms
         h=h,
-        method=DynamicIntegrationMethod.Trapezoid,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=False
     )
 

@@ -83,7 +83,7 @@ def run_demo():
     compiler = EquationCompiler(
         [pos, vel],
         parameters=[k, c],
-        method=DynamicIntegrationMethod.Trapezoid
+        method=DynamicIntegrationMethod.DaeTrapezoidal
     )
     step_fn = compiler.compile([eq1, eq2])
     print("[OK] Equations successfully compiled.")

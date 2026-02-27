@@ -314,7 +314,7 @@ t, y, dx, timing = slv.simulate(
     x0=x0,
     dx0 =dx0,
     newton_tol = 1e-12,
-    method=DynamicIntegrationMethod.BackEuler
+    method=DynamicIntegrationMethod.DaeBackEuler
 )
 
 print(f"Simulation finished.")
