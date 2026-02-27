@@ -3418,10 +3418,10 @@ class SimulationsMain(TimeEventsMain):
 
                     self.ui.progress_label.setText('Performing Small Signal Stability analysis...')
 
-                    drv = sim.SmallSignalStabilityDriver(grid=self.circuit,
-                                                         rms_options=rms_options,
-                                                         sss_options=options,
-                                                         pf_results=pf_results)
+                    drv = sim.SmallSignalStabilityRmsDriver(grid=self.circuit,
+                                                            rms_options=rms_options,
+                                                            sss_options=options,
+                                                            pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_small_signal_stability,

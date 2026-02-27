@@ -25,7 +25,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
 
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityOptions
 
 from VeraGridEngine.Utils.Symbolic import Block
@@ -607,10 +607,10 @@ def rms_kundur_small_signal():
                             options=rms_options,
                             pf_results=res)
 
-    small_signal_driver = SmallSignalStabilityDriver(grid=grid,
-                                                     problem=problem,
-                                                     rms_options=rms_options,
-                                                     ss_options=ss_options)
+    small_signal_driver = SmallSignalStabilityRmsDriver(grid=grid,
+                                                        problem=problem,
+                                                        rms_options=rms_options,
+                                                        ss_options=ss_options)
 
     small_signal_driver.run()
 
