@@ -25,7 +25,7 @@ from VeraGridEngine.basic_structures import ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Simulations.Rms.initialization import init_explicit
+from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
 
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -82,8 +82,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # for init_explicit
         self._models_with_init_eqs: List[Block] = []
-        self._models_with_init_eqs_seen: Set[int] = set()
-
+        self._models_with_diff_init_eqs: List[Block] = []
 
         sys_block = Block(children=[], in_vars=[])
         glob_time = Var(self.TIME_NAME)
@@ -126,13 +125,32 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         try:
             init_eqs = getattr(mdl, "init_eqs", None)
+            models_with_init_eqs_seen: Set[int] = set()
             if init_eqs is None or len(init_eqs) == 0:
                 return
             mid = id(mdl)
-            if mid in self._models_with_init_eqs_seen:
+            if mid in models_with_init_eqs_seen:
                 return
-            self._models_with_init_eqs_seen.add(mid)
+            models_with_init_eqs_seen.add(mid)
             self._models_with_init_eqs.append(mdl)
+        except Exception:
+            pass
+
+    def _register_diff_init_model(self, mdl: Block):
+        """
+        Register a block for explicit initialization of derivatives if it defines diff_init_eqs.
+        """
+        try:
+            diff_init_eqs = getattr(mdl, "diff_init_eqs", None)
+            models_with_diff_init_eqs_seen: Set[int] = set()
+            if diff_init_eqs is None or len(diff_init_eqs) == 0:
+                return
+            mid = id(mdl)
+            if mid in models_with_diff_init_eqs_seen:
+                return
+            models_with_diff_init_eqs_seen.add(mid)
+            self._models_with_diff_init_eqs.append(mdl)
+
         except Exception:
             pass
 
@@ -140,7 +158,6 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         Runs init_explicit for every block that defines init_eqs.
 
-        IMPORTANT:
         - init_explicit expects sys_vars: Dict[int, Var] (it only uses len(sys_vars) but we comply)
         - init_explicit may MODIFY self._event_parameters_eqs (fill Const(None) -> Const(val)).
           BaseProblem builds event fn from a COPY; therefore we MUST rebuild runtime vectors after.
@@ -150,17 +167,21 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # sys_vars dict (uid -> Var), size = n_vars
         sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
+        sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
 
         for mdl in self._models_with_init_eqs:
             try:
-                init_explicit(
+                init_explicit_emt(
                     mdl=mdl,
                     sys_vars=sys_vars,
+                    sys_diff_vars=sys_diff_vars,
                     variable_parameters=self._variable_parameters,
                     event_parameters_eqs=self._event_parameters_eqs,
                     constant_parameters=self._constant_parameters,
                     init_guess=self.init_guess,
+                    diff_init_guess = self.diff_init_guess,
                     uid2idx_vars=self.uid2idx_vars,
+                    uid2idx_diff = self.uid2idx_diff,
                     uid2idx_params=self.uid2idx_params,
                     uid2idx_event_params=self.uid2idx_event_params,
                     compiler_names_dict=self._compiler_names_dict,
@@ -175,6 +196,29 @@ class EmtProblemDae(EmtProblemTemplate):
                 if getattr(self.options, "verbose", 0) > 0:
                     print(f"[EMT][init_explicit] failed for block '{getattr(mdl, 'name', 'unknown')}'. Error: {e}")
 
+        # for mdl in self._models_with_diff_init_eqs:
+        #     try:
+        #         init_explicit(
+        #             mdl=mdl,
+        #             sys_vars=sys_vars,
+        #             variable_parameters=self._variable_parameters,
+        #             event_parameters_eqs=self._event_parameters_eqs,
+        #             constant_parameters=self._constant_parameters,
+        #             init_guess=self.init_guess,
+        #             uid2idx_vars=self.uid2idx_vars,
+        #             uid2idx_params=self.uid2idx_params,
+        #             uid2idx_event_params=self.uid2idx_event_params,
+        #             compiler_names_dict=self._compiler_names_dict,
+        #             alias_names_dict=self._alias_names_dict,
+        #             VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+        #             TIME_NAME=self.TIME_NAME,
+        #             VARS_NAME=self.VARS_NAME,
+        #             DIFF_NAME=self.DIFF_NAME,
+        #             CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+        #         )
+        #     except Exception as e:
+        #         if getattr(self.options, "verbose", 0) > 0:
+        #             print(f"[EMT][diff_init_explicit] failed for block '{getattr(mdl, 'name', 'unknown')}'. Error: {e}")
 
         self._build_runtime_param_vectors()
 
@@ -599,9 +643,6 @@ class EmtProblemDae(EmtProblemTemplate):
                 set_if_exists(if_key[ph], float(i_f0))
                 set_if_exists(it_key[ph], float(i_t0))
 
-                print(f"If_{ph} = {i_f0}")
-                print(f"It_{ph} = {i_t0}")
-
             set_if_exists(VarPowerFlowRefferenceType.Pf, float(np.real(Sf_sum)))
             set_if_exists(VarPowerFlowRefferenceType.Qf, float(np.imag(Sf_sum)))
             set_if_exists(VarPowerFlowRefferenceType.Pt, float(np.real(St_sum)))
@@ -670,7 +711,6 @@ class EmtProblemDae(EmtProblemTemplate):
                 V1 = (1 / 3) * (VA + a * VB + (a * a) * VC)
                 theta = np.angle(V1)
 
-                print(f"theta initialized at theta = {theta}")
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
 
