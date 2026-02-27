@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Optional
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
 
@@ -71,15 +72,15 @@ class SmallSignalStabilityEmtOptions(OptionsTemplate):
                  deflation_tol: float = 1e-12,
                  prefer_ak_operator: bool = True,
                  use_numba_kernels: bool = True,
-                 min_block_size: int = None,
-                 max_block_size: int = None,
-                 max_krylov_dim_cap: int = None,
+                 min_block_size: Optional[int] = None,
+                 max_block_size: Optional[int] = None,
+                 max_krylov_dim_cap: Optional[int] = None,
                  build_type: SmallSignalEmtBuildTypes = SmallSignalEmtBuildTypes.Arnoldi):
         OptionsTemplate.__init__(self, name='EmtFloquetOptions')
 
         self.k: int = k
         self.target_period: float = target_period
-        self.target_frequency_hz: float = target_frequency_hz
+        self.target_frequency_hz: Optional[float] = target_frequency_hz
         self.max_krylov_dim: int = max_krylov_dim
         self.ss_assessment_time: float = ss_assessment_time
         self.verbose: int = verbose
@@ -94,9 +95,9 @@ class SmallSignalStabilityEmtOptions(OptionsTemplate):
 
         self.prefer_ak_operator: bool = prefer_ak_operator
         self.use_numba_kernels: bool = use_numba_kernels
-        self.min_block_size = min_block_size
-        self.max_block_size = max_block_size
-        self.max_krylov_dim_cap = max_krylov_dim_cap
+        self.min_block_size: Optional[int] = min_block_size
+        self.max_block_size: Optional[int] = max_block_size
+        self.max_krylov_dim_cap: Optional[int] = max_krylov_dim_cap
         self.build_type: SmallSignalEmtBuildTypes = build_type
 
         self.register(key="k", tpe=int)

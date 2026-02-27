@@ -17,7 +17,7 @@ Metrics:
 - ms/step
 - Break-even runs (VEC vs AD)
 
-UPDATED ARCHITECTURE: Uses BaseProblem, JitAdSolver, and StructuralVectorizedSolver.
+UPDATED ARCHITECTURE: Uses GenericEmtProblem, JitAdSolver, and StructuralVectorizedSolver.
 """
 
 import time
@@ -25,10 +25,13 @@ import numpy as np
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 # -----------------------------------------------------------------------------
 # 1) Linear system factory (repeated structure)
@@ -78,7 +81,7 @@ def break_even_runs(vec_setup, vec_sim, ad_setup, ad_sim):
     return np.inf if r < 0 else r
 
 
-def setup_initial_condition(problem: BaseProblem, block: Block, n_nodes: int):
+def setup_initial_condition(problem: GenericEmtProblem, block: Block, n_nodes: int):
     """Injects a sinusoidal initial condition into the Problem."""
     x0 = problem.get_x0()
     for i in range(n_nodes):
@@ -112,19 +115,27 @@ def run_backend(
 
     t_setup_start = time.perf_counter()
 
-    problem = BaseProblem(sys_block=block, glob_time=t_sym)
+    problem = GenericEmtProblem(sys_block=block, glob_time=t_sym)
     setup_initial_condition(problem, block, n_nodes)
 
     x0 = problem.get_x0()
     dx0 = np.zeros_like(x0)
     params0 = np.zeros(problem.get_variable_parameter_number())
 
+    target_method = DynamicIntegrationMethod.DaeTrapezoidal
+
     if vectorized:
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=t_end, h=h, integration_method="trapezoidal", verbose=verbose)
-        solver._auto_detect_vectorization(method_str="trapezoidal")
+        solver = StructuralVectorizedSolver(
+            problem, t0=0.0, t_end=t_end, h=h,
+            method=target_method, verbose=verbose
+        )
+        solver.auto_detect_vectorization(method=target_method)
     else:
-        solver = JitAdSolver(problem, t0=0.0, t_end=t_end, h=h, method_str="trapezoidal", verbose=verbose)
-        solver._build_jit_ad()
+        solver = JitAdSolver(
+            problem, t0=0.0, t_end=t_end, h=h,
+            method=target_method, verbose=verbose
+        )
+        solver.build_jit_ad()
 
     solver.simulate(x0=x0, dx0=dx0, params0=params0)
 

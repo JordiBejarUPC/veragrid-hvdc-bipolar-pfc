@@ -31,7 +31,6 @@ from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
 
-
 def _tic() -> float:
     """
     Returns the current performance counter time.
@@ -496,7 +495,11 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         Attempts to initialize bus variables based on PowerFlow3ph results.
         Phasor results are transformed into instantaneous in the abc domain.
+
+        All buses have VarPowerFlowRefferenceType.v_N, v_A, v_B, v_C in their external mapping.
+        Voltages can be None if the bus hasn't that phase.
         """
+
         try:
             if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
                 V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
@@ -806,6 +809,51 @@ class EmtProblemDae(EmtProblemTemplate):
         for rt in self.history_models:
             rt.update_history(self.step_counter, x_prev, full_params)
         self.step_counter += 1
+
+    def get_floquet_ak_stack(self, trajectory: np.ndarray, h: float, jac_evaluator=None, static_params=None) -> \
+    Optional[np.ndarray]:
+        """
+        HPC Implementation: Calculates the A_k stack using exact Kron Reduction
+        optimized with Scipy Sparse Solvers. Evaluates the non-linear Jacobian
+        at each step of the limit cycle trajectory.
+        """
+        if jac_evaluator is None:
+            self.logger.add_warning(
+                "No jac_evaluator provided to get_floquet_ak_stack. Falling back to LU-cached path.")
+            return None
+
+        n = self.get_states_number()
+        steps = len(trajectory) - 1
+
+        if steps <= 0:
+            return None
+
+        stack = np.zeros((steps, n, n), order='C')
+
+        for i in range(steps):
+            x_k = trajectory[i]
+
+            try:
+                J = jac_evaluator(x_k, static_params, x_k, None, h, None)
+            except Exception as e:
+                self.logger.add_warning(f"Failed to evaluate Jacobian for Ak stack: {e}")
+                return None
+
+            J11 = J[:n, :n]
+            J12 = J[:n, n:]
+            J21 = J[n:, :n]
+            J22 = J[n:, n:]
+
+            J22_inv_J21 = spla.spsolve(J22, J21)
+
+            J_red = (J11 - J12 @ J22_inv_J21)
+
+            if sp.issparse(J_red):
+                J_red = J_red.toarray()
+
+            stack[i] = la.inv(h * J_red)
+
+        return stack
 
     def get_init_guess_table(self,
                              include_all_vars: bool = True,

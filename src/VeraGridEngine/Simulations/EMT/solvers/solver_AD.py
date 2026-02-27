@@ -46,7 +46,6 @@ def _safe_njit(py_func: Callable, *, fastmath=True, cache=True, signature=None):
 def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
                                   data: np.ndarray,
                                   color_ptr: np.ndarray,
-                                  color_cols: np.ndarray,
                                   col_ptr: np.ndarray,
                                   row_idx: np.ndarray,
                                   data_idx: np.ndarray,
@@ -136,7 +135,7 @@ class SparseADJacobian:
                  equations: List[Any],
                  variables: List[Any],
                  parameters: List[Any],
-                 method_str: str,
+                 method: DynamicIntegrationMethod,
                  use_cse: bool = True,
                  dtype=np.float64):
 
@@ -146,7 +145,7 @@ class SparseADJacobian:
         self.equations = equations
         self.variables = variables
         self.parameters = parameters
-        self.method_str = method_str
+        self.method = method
         self.use_cse = use_cse
         self.dtype = dtype
 
@@ -278,7 +277,7 @@ class SparseADJacobian:
         print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
 
         # 5) Compile Optimization: Colored Kernels
-        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method_str)
+        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
         self.ad_kernels = []
 
         print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
@@ -353,8 +352,8 @@ class SparseADJacobian:
             jvp = kernel(states, dummy_seeds, params, history, d_history, h, history2)
 
             _scatter_color_jvp_to_csc_data(jvp, data,
-                                           self.color_ptr, self.color_cols,
-                                           self.col_ptr, self.row_idx, self.data_idx,
+                                           self.color_ptr,self.col_ptr,
+                                           self.row_idx, self.data_idx,
                                            c)
         return self.J
 
@@ -364,7 +363,7 @@ class JitAdSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -372,14 +371,14 @@ class JitAdSolver:
         :param t0: Initial time.
         :param t_end: End time.
         :param h: Time step.
-        :param method_str: DynamicIntegrationMethod (Trapezoid, BackEuler, BDF2).
+        :param method: DynamicIntegrationMethod (DaeTrapezoidal, DaeBackEuler, DaeBDF2).
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
         """
         self.problem = problem
         self.t0 = t0
         self.h = h
-        self.method_str = method_str
+        self.method = method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
         self.t_end = t_end
@@ -398,16 +397,16 @@ class JitAdSolver:
         self.state_eqs = self.problem.get_state_eqs()
         self.algebraic_eqs = self.problem.get_algebraic_eqs()
 
-    def _build_jit_ad(self, only_jacobian: bool = False):
+    def build_jit_ad(self, only_jacobian: bool = False):
         """
         Compiles the residual kernel using batching and prepares the Sparse AD Jacobian.
         Arg: only_jacobian: If True, skips residual compilation (used by Vectorized Engine fallback).
         """
-        if self.method_str in self.jit_kernels_ad and not only_jacobian:
+        if self.method in self.jit_kernels_ad and not only_jacobian:
             return
 
         print(
-            f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method_str}) ---")
+            f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
 
         sorted_vars = self.state_vars + self.algebraic_vars
         all_params = self.problem.get_variable_parameters() + self.problem.get_constant_parameters()
@@ -420,8 +419,8 @@ class JitAdSolver:
         equations.extend(self.algebraic_eqs)
 
         # --- PART 1: RESIDUALS (Batched) ---
-        if not only_jacobian and self.method_str not in self.jit_kernels_ad:
-            compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=self.method_str)
+        if not only_jacobian and self.method not in self.jit_kernels_ad:
+            compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=self.method)
             BATCH_SIZE = 100
             n_eqs = len(equations)
             batched_kernels = []
@@ -431,19 +430,19 @@ class JitAdSolver:
 
             for i in range(0, n_eqs, BATCH_SIZE):
                 chunk = equations[i: i + BATCH_SIZE]
-                fname = f"jit_step_{self.method_str}_ad_part_{i}"
+                fname = f"jit_step_{self.method}_ad_part_{i}"
                 py_func = compiler.compile(chunk, func_name=fname, use_cse=True, offset=i, inplace=True)
                 jit_func = _safe_njit(py_func, cache=True, fastmath=True)
                 batched_kernels.append(jit_func)
 
             print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
-            self.jit_kernels_ad[self.method_str] = batched_kernels
+            self.jit_kernels_ad[self.method] = batched_kernels
 
         # --- PART 2: JACOBIAN (O(N) setup, needed for normal and Vectorized fallback) ---
-        if self.method_str not in self.jit_jacobian_ad:
+        if self.method not in self.jit_jacobian_ad:
             jac = SparseADJacobian(equations=equations, variables=sorted_vars, parameters=all_params,
-                                   method_str=self.method_str, use_cse=True)
-            self.jit_jacobian_ad[self.method_str] = jac
+                                   method=self.method, use_cse=True)
+            self.jit_jacobian_ad[self.method] = jac
 
 
     def simulate(self,
@@ -455,13 +454,13 @@ class JitAdSolver:
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
         """
         t_start = time.time()
-        method_str = self.method_str
+        method = self.method
 
-        if method_str not in self.jit_kernels_ad:
-            self._build_jit_ad()
+        if method not in self.jit_kernels_ad:
+            self.build_jit_ad()
 
-        kernel_list = self.jit_kernels_ad[method_str]
-        current_jacobian = self.jit_jacobian_ad[method_str]
+        kernel_list = self.jit_kernels_ad[method]
+        current_jacobian = self.jit_jacobian_ad[method]
 
         n_eqs = self.problem.get_all_vars_number()
         n_states = self.problem.get_states_number()
@@ -493,7 +492,7 @@ class JitAdSolver:
         sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
                                                collector=trace_collector, config=diag_cfg, solver_name="sparse")
 
-        if self.verbose: print(f"-> Starting JIT (AD) Simulation ({method_str}, {self.steps} steps)...")
+        if self.verbose: print(f"-> Starting JIT (AD) Simulation ({method}, {self.steps} steps)...")
 
         for i in range(self.steps):
             if self.verbose: print(f"Simulating at step {i}")
@@ -510,7 +509,7 @@ class JitAdSolver:
 
             for k in range(15):
                 ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit_ad",
-                                         method=str(method_str))
+                                         method=str(method))
 
                 # Execute batched residuals
                 res = np.zeros(n_eqs, dtype=np.float64)
@@ -531,14 +530,14 @@ class JitAdSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method_str == DynamicIntegrationMethod.DaeTrapezoidal:
+            if method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
-            elif method_str == DynamicIntegrationMethod.DaeBDF2:
+            elif method == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = ((x_iter[:n_states] - x_prev[:n_states]) / self.h)
 
-            if method_str != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
+            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")

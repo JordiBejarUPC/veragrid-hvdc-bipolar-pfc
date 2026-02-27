@@ -19,13 +19,12 @@ Validation: This test runs TWO scenarios to prove the validity of the Hybrid
 import time
 import numpy as np
 import scipy.sparse as sp
+import scipy.linalg as la
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
-from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_driver import EmtFloquetDriver, \
-    HybridBlockArnoldiDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_options import EmtFloquetOptions
-
+from VeraGridEngine.enumerations import DynamicIntegrationMethod,SmallSignalEmtBuildTypes
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_driver import SmallSignalStabilityEmtDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import SmallSignalStabilityEmtOptions
 
 class _MockVar:
     def __init__(self, uid, name):
@@ -101,19 +100,47 @@ class EmtProblemDaeMock:
                 x = np.full(self.n_states, np.sin(self.omega * t))
                 y = np.full(self.n_algebraic, np.cos(self.omega * t))
                 y_traj.append(np.concatenate([x, y]))
-            return y_traj, t_traj, self._jac_evaluator_mock, np.array([1.0]), 0, 'back_euler'
+
+            return np.array(y_traj), t_traj, self._jac_evaluator_mock, np.array([1.0]), 0
 
         driver._capture_limit_cycle_and_evaluator = _capture_mock
 
+    def get_floquet_ak_stack(self, trajectory: np.ndarray, h: float, jac_evaluator=None,
+                             static_params=None) -> np.ndarray:
+        """
+        HPC Mock Implementation using exact Kron Reduction.
+        (jac_evaluator and static_params are accepted to match the base interface
+        but ignored here since the mock has its own static evaluator).
+        """
+        n = self.get_states_number()
+        steps = len(trajectory) - 1
+
+        stack = np.zeros((steps, n, n), order='C')
+
+        # Usamos el evaluador estático del Mock
+        J = self._jac_evaluator_mock(None, None, np.zeros(self.n_states), None, h, None)
+
+        J11 = J[:n, :n]
+        J12 = J[:n, n:]
+        J21 = J[n:, :n]
+        J22 = J[n:, n:]
+
+        import scipy.sparse.linalg as spla
+        J22_inv_J21 = spla.spsolve(J22, J21)
+        J_red = (J11 - J12 @ J22_inv_J21).toarray()
+
+        A_k = la.inv(h * J_red)
+
+        for i in range(steps):
+            stack[i] = A_k
+
+        return stack
 
 class EmtProblemDaeMockIsolated(EmtProblemDaeMock):
     """Mock with an injected isolated dominant mode at a specific state."""
 
     def __init__(self, n_buses=60, h=1e-4, f_grid=50.0):
         super().__init__(n_buses, h, f_grid)
-        # INYECCIÓN DE LA ANOMALÍA:
-        # Hacemos que el Estado 42 sea el más lento de toda la red (L gigante, R mínima)
-        # Esto forzará que su autovalor se despegue del grupo y quede totalmente aislado.
         self.target_idx = 42
         self.R[self.target_idx] = 0.001
         self.L[self.target_idx] = 5.0
@@ -126,16 +153,25 @@ def run_comparison(problem, scenario_name):
 
     emt_options = EmtOptions(time_step=problem.h, simulation_time=0.05,
                              integration_method=DynamicIntegrationMethod.DaeBackEuler)
-    floquet_options = EmtFloquetOptions(k=4, target_period=0.02, max_krylov_dim=40, verbose=0, max_restarts=3,
-                                        use_refined_ritz=False)
 
-    d_std = EmtFloquetDriver(grid=None, problem=problem, emt_options=emt_options, options=floquet_options)
+    opts_std = SmallSignalStabilityEmtOptions(
+        k=4, target_period=0.02, max_krylov_dim=40, verbose=0,
+        build_type=SmallSignalEmtBuildTypes.Arnoldi
+    )
+    d_std = SmallSignalStabilityEmtDriver(grid=None, problem=problem, emt_options=emt_options, options=opts_std)
     problem._inject_evaluator_override(d_std)
     t0 = time.perf_counter()
     d_std.run()
     t_std = time.perf_counter() - t0
 
-    d_hyb = HybridBlockArnoldiDriver(grid=None, problem=problem, emt_options=emt_options, options=floquet_options)
+    opts_hyb = SmallSignalStabilityEmtOptions(
+        k=4, target_period=0.02, max_krylov_dim=40, verbose=0, max_restarts=3,
+        use_refined_ritz=False,
+        prefer_ak_operator=True,
+        use_numba_kernels=True,
+        build_type=SmallSignalEmtBuildTypes.HybridArnoldi
+    )
+    d_hyb = SmallSignalStabilityEmtDriver(grid=None, problem=problem, emt_options=emt_options, options=opts_hyb)
     problem._inject_evaluator_override(d_hyb)
     t0 = time.perf_counter()
     d_hyb.run()
@@ -163,8 +199,6 @@ def run_comparison(problem, scenario_name):
 
     print("\n--- SPECTRAL GAP VALIDATION (Tolerance h = 1e-4) ---")
 
-    # Asumimos que implementaste validate_spectral_gaps en tu clase de resultados
-    # Si no, esto lanzará un error. Asegúrate de haberlo pegado en emt_floquet_results.py
     is_isolated_std, gaps_std = d_std.results.validate_spectral_gaps(h_step=problem.h)
     is_isolated_hyb, gaps_hyb = d_hyb.results.validate_spectral_gaps(h_step=problem.h)
 
@@ -188,11 +222,11 @@ def run_comparison(problem, scenario_name):
 
 
 def main():
-    # Escenario A: Red uniforme (Clustered Spectrum)
+    # (Clustered Spectrum)
     prob_clustered = EmtProblemDaeMock(n_buses=60)
     run_comparison(prob_clustered, "SCENARIO A: CLUSTERED SPECTRUM (Uniform Line)")
 
-    # Escenario B: Red con anomalía en el índice 42 (Isolated Spectrum)
+    # (Isolated Spectrum)
     prob_isolated = EmtProblemDaeMockIsolated(n_buses=60)
     run_comparison(prob_isolated, "SCENARIO B: ISOLATED DOMINANT MODE (Anomaly at Idx 42)")
 

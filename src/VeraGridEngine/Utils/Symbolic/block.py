@@ -267,7 +267,7 @@ class Block:
         return dict1 == dict2
 
 
-    def set_parameter(self, var_name: str, new_value: float):
+    def set_parameter_in_model(self, var_name: str, new_value: float):
         """
         updates parameter value given a name and a value
 

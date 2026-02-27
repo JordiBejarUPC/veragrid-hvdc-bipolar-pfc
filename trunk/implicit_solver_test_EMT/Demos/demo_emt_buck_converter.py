@@ -20,11 +20,15 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 
-from VeraGridEngine.Simulations.EMT.problems.base_problem import BaseProblem
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
+
+class GenericEmtProblem(EmtProblemTemplate):
+    pass
 
 # -----------------------------------------------------------------------------
 # Model definition
@@ -80,15 +84,26 @@ def run_case(backend_str: str):
     block.unify_blocks()
     glob_time = Var("t_glob")
 
-    problem = BaseProblem(sys_block=block, glob_time=glob_time)
+    problem = GenericEmtProblem(sys_block=block, glob_time=glob_time)
     problem.set_newton_trace_collector(NewtonTraceCollector())
 
+    integration_method = DynamicIntegrationMethod.DaeTrapezoidal
+
     if backend_str == "SD":
-        solver = JitSymbolicSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+        solver = JitSymbolicSolver(
+            problem, t0=0.0, t_end=T_TOTAL, h=DT,
+            method=integration_method, verbose=False
+        )
     elif backend_str == "AD":
-        solver = JitAdSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, method_str="trapezoidal", verbose=False)
+        solver = JitAdSolver(
+            problem, t0=0.0, t_end=T_TOTAL, h=DT,
+            method=integration_method, verbose=False
+        )
     elif backend_str == "StructuralVectorizedSolver":
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=T_TOTAL, h=DT, integration_method="trapezoidal", verbose=False)
+        solver = StructuralVectorizedSolver(
+            problem, t0=0.0, t_end=T_TOTAL, h=DT,
+            method=integration_method, verbose=False
+        )
     else:
         raise ValueError(f"Backend desconocido: {backend_str}")
 

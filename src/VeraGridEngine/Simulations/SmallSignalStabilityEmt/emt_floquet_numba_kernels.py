@@ -11,21 +11,21 @@ Notes
 -----
 * The kernels operate on real-valued arrays (float64). Complex Ritz handling remains
   in Python/Numpy and is split into real/imag operator applications upstream.
-* In some environments Numba fails to import because of coverage package API changes.
-  A small compatibility shim is applied automatically before importing Numba.
 """
 
 from __future__ import annotations
 
 from typing import Tuple
 import numpy as np
+from VeraGridEngine.basic_structures import Mat, IntVec
 
 NUMBA_AVAILABLE = False
 NUMBA_IMPORT_ERROR = None
 
 if NUMBA_AVAILABLE:
     @njit(cache=True, fastmath=True)
-    def _fro_norm_numba(X: np.ndarray) -> float:
+    def _fro_norm_numba(X: Mat) -> float:
+        """Computes the Frobenius norm of a real matrix."""
         s = 0.0
         n, m = X.shape
         for i in range(n):
@@ -36,7 +36,7 @@ if NUMBA_AVAILABLE:
 
 
     @njit(cache=True, fastmath=True)
-    def _gemm_left_t_numba(Vi: np.ndarray, W: np.ndarray) -> np.ndarray:
+    def _gemm_left_t_numba(Vi: mat, W: Mat) -> Mat:
         """Compute H = Vi.T @ W (real) using cache-friendly loops."""
         n, r = Vi.shape
         _, p = W.shape
@@ -53,7 +53,7 @@ if NUMBA_AVAILABLE:
 
 
     @njit(cache=True, fastmath=True)
-    def _gemm_sub_numba(W: np.ndarray, Vi: np.ndarray, H: np.ndarray) -> None:
+    def _gemm_sub_numba(W: Mat, Vi: Mat, H: Mat) -> None:
         """In-place W -= Vi @ H using an outer-product micro-kernel."""
         n, r = Vi.shape
         _, p = H.shape
@@ -68,31 +68,32 @@ if NUMBA_AVAILABLE:
 
     @njit(cache=True, fastmath=True)
     def bmgs_twice_numba(
-        V_all: np.ndarray,
-        starts: np.ndarray,
-        ends: np.ndarray,
-        W_in: np.ndarray,
+        V_all: Mat,
+        starts: IntVec,
+        ends: IntVec,
+        W_in: Mat,
         reorth_factor: float = 0.717,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[Mat, Mat]:
         """
-        Block Modified Gram-Schmidt over previously computed blocks.
+            Block Modified Gram-Schmidt over previously computed blocks.
 
-        Parameters
-        ----------
-        V_all : (n, m_prev) float64
-            Concatenated basis blocks.
-        starts, ends : int64 arrays
-            Block boundaries for V_all.
-        W_in : (n, p) float64
-            Candidate block to orthogonalise.
+            Parameters
+            ----------
+            V_all : Mat (n, m_prev) float64
+                Concatenated basis blocks.
+            starts, ends : IntVec (arrays of int64)
+                Block boundaries for V_all.
+            W_in : Mat (n, p) float64
+                Candidate block to orthogonalise.
+            reorth_factor: float
+                Tolerance to trigger the second DGKS re-orthogonalization pass.
 
-        Returns
-        -------
-        W_out : (n, p)
-        H_col : (m_prev, p)
+            Returns
+            -------
+            W_out : Mat (n, p)
+            H_col : Mat (m_prev, p)
         """
         W = W_in.copy()
-        n = W.shape[0]
         p = W.shape[1]
         m_prev = ends[-1] if ends.size > 0 else 0
         H_col = np.zeros((m_prev, p), dtype=np.float64)
@@ -124,12 +125,21 @@ if NUMBA_AVAILABLE:
 
 
     @njit(cache=True, fastmath=True, parallel=True)
-    def apply_ak_stack_block_numba(Ak_stack: np.ndarray, X0: np.ndarray) -> np.ndarray:
+    def apply_ak_stack_block_numba(Ak_stack: Mat, X0: Mat) -> Mat:
         """
         Apply Φ = A_{M-1}...A_0 to a block X0 using a dense 3D A_k stack.
 
-        Ak_stack shape: (M, n, n)
-        X0 shape: (n, p)
+        Parameters
+        ----------
+        Ak_stack : Mat
+            3D float64 array of shape (M, n, n)
+        X0 : Mat
+            2D float64 block matrix of shape (n, p)
+
+        Returns
+        -------
+        Y : Mat
+            Propagated block of shape (n, p)
         """
         M = Ak_stack.shape[0]
         n = Ak_stack.shape[1]
@@ -160,18 +170,32 @@ if NUMBA_AVAILABLE:
 
     @njit(cache=True, fastmath=True)
     def solve_lu_dense_block_numba(
-        L: np.ndarray,
-        U: np.ndarray,
-        perm_r: np.ndarray,
-        perm_c: np.ndarray,
-        B: np.ndarray,
-    ) -> np.ndarray:
+        L: Mat,
+        U: Mat,
+        perm_r: IntVec,
+        perm_c: IntVec,
+        B: Mat,
+    ) -> Mat:
         """
         Solve A X = B using dense LU factors and SuperLU-style permutations.
 
         Assumes P_r A P_c = L U, where perm_r / perm_c encode the row/column
         permutations used by SuperLU. This kernel is intended for integration
         in a future LU-factor JIT path when the EMT backend exports raw factors.
+
+        Parameters
+        ----------
+        L, U : Mat
+            Lower and Upper triangular factors.
+        perm_r, perm_c : IntVec
+            Row and Column permutation indices.
+        B : Mat
+            Right-hand side block matrix.
+
+        Returns
+        -------
+        X : Mat
+            Solution matrix.
         """
         n = L.shape[0]
         p = B.shape[1]
