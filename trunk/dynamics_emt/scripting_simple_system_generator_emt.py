@@ -218,10 +218,10 @@ print(res.get_bus_df())
 print(res.get_branch_df())
 
 options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.01, #5e-6*10, # s
+                     simulation_time =  0.01,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
-                     integration_method = DynamicIntegrationMethod.Trapezoid)
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal)
 
 
 problem = EmtProblemDae(grid=grid,

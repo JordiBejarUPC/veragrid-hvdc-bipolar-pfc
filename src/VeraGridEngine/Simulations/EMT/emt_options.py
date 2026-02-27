@@ -17,7 +17,7 @@ class EmtOptions(OptionsTemplate):
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
                  solver: EmtSolverTypes = EmtSolverTypes.StructuralAD,
-                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  verbose: int = 0):
         """
         EmtOptions

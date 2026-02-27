@@ -364,7 +364,7 @@ class JitAdSolver:
                  t0: float,
                  t_end: float,
                  h: float,
-                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid,
+                 method_str: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  dense_threshold: int = 100,
                  verbose: bool = False):
         """
@@ -531,14 +531,14 @@ class JitAdSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method_str == DynamicIntegrationMethod.Trapezoid:
+            if method_str == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
-            elif method_str == DynamicIntegrationMethod.BDF2:
+            elif method_str == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
             else:
                 dx_prev[:n_states] = ((x_iter[:n_states] - x_prev[:n_states]) / self.h)
 
-            if method_str != DynamicIntegrationMethod.BDF2: x_prev2 = x_prev.copy()
+            if method_str != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
             x_prev = x_iter.copy()
 
         if self.verbose: print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")

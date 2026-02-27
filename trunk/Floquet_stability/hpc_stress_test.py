@@ -93,7 +93,7 @@ def main():
     print(f"\n{'=' * 80}\n TEST 01: CACHE ZONE | States = {problem.get_states_number()}\n{'=' * 80}")
 
     emt_options = EmtOptions(time_step=problem.h, simulation_time=0.05,
-                             integration_method=DynamicIntegrationMethod.BackEuler)
+                             integration_method=DynamicIntegrationMethod.DaeBackEuler)
     floquet_options = EmtFloquetOptions(k=6, target_period=0.02, max_krylov_dim=80, verbose=0, max_restarts=3)
 
     d_std, t_std = _run(EmtFloquetDriver, problem, emt_options, floquet_options)

@@ -518,16 +518,16 @@ class EquationCompiler:
     """Main interface for compiling symbolic equations into executable functions."""
 
     METHODS = {
-        DynamicIntegrationMethod.Trapezoid: TrapezoidalMethod(),
-        DynamicIntegrationMethod.BackEuler: BackwardEulerMethod(),
-        DynamicIntegrationMethod.BDF2: BDF2Method(),
-        DynamicIntegrationMethod.Continuous: ContinuousMethod()
+        DynamicIntegrationMethod.DaeTrapezoidal: TrapezoidalMethod(),
+        DynamicIntegrationMethod.DaeBackEuler: BackwardEulerMethod(),
+        DynamicIntegrationMethod.DaeBDF2: BDF2Method(),
+        DynamicIntegrationMethod.DaeContinuous: ContinuousMethod()
     }
 
     def __init__(self,
                  variables: List[Var],
                  parameters: List[Var] = None,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.Trapezoid):
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal):
         self.variables_objs = variables
         self.parameters_objs = parameters or []
 
@@ -796,7 +796,7 @@ class RMSCompiler(EquationCompiler):
             compiler_names_dict (Dict[int, str]): Dictionary mapping variable UIDs to
                                                   their executable string representations.
         """
-        super().__init__(variables, c_params, method=DynamicIntegrationMethod.BackEuler)
+        super().__init__(variables, c_params, method=DynamicIntegrationMethod.DaeBackEuler)
         self.dt_var = dt_var
         self.compiler_names_dict = compiler_names_dict
 
