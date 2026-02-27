@@ -2391,14 +2391,14 @@ class DynamicIntegrationMethod(Enum):
     Dynamic integration methods.
     """
     # Implicit time-stepping (DAE form)
-    DaeTrapezoidal = "DAE-Trapezoidal"
-    DaeBackEuler = "DAE-BackEuler"
-    DaeBDF2 = "DAE-bdf2"
-    DaeContinuous = "DAE-Continuous"
+    DaeTrapezoidal = "DAE_Trapezoidal"
+    DaeBackEuler = "DAE_BackEuler"
+    DaeBDF2 = "DAE_bdf2"
+    DaeContinuous = "DAE_Continuous"
 
     # Explicit time-stepping (ODE form)
-    OdeRungeKutta4 = "ODE-Runge-Kutta 4"
-    OdeEuler = "ODE-Euler"
+    OdeRungeKutta4 = "ODE_Runge_Kutta 4"
+    OdeEuler = "ODE_Euler"
 
     def __str__(self) -> str:
         return str(self.value)
