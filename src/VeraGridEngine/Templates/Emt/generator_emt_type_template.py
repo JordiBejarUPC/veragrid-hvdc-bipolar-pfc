@@ -12,7 +12,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 
 
-def get_generator_emt_template(vf: VarFactory, name: str="emt type generator template") -> EmtModelTemplate:
+def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_template") -> EmtModelTemplate:
     """
     Get the EMT template of a generator
     :return: EmtModelTemplate

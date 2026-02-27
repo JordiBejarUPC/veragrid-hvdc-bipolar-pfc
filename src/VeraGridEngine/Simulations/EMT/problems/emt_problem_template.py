@@ -63,6 +63,7 @@ class EmtProblemTemplate(ABC):
         """
         Builds canonical ordering, index maps, and internal counters.
         """
+
         self._diff_vars = sorted(self._diff_vars, key=lambda dv: dv.diff_order)
 
         self._n_state = len(self._state_vars)
@@ -321,4 +322,6 @@ class EmtProblemTemplate(ABC):
     @property
     def uid2idx_diff(self):
         return self._uid2idx_diff
+
+
 

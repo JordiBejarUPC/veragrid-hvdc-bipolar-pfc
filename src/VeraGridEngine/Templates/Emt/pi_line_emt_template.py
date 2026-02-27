@@ -99,6 +99,9 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Z_phys_m = line.template.z_nabc / 1e3
         Y_phys_m = line.template.y_nabc / 1e3
 
+        print(f"Z_phys_m {line.name}= {Z_phys_m}")
+        print(f"Y_phys_m {line.name}= {Y_phys_m}")
+
         # lumped over length
         Z_phys = Z_phys_m * line.length
         Y_phys = Y_phys_m * line.length
@@ -118,6 +121,8 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # split shunt into two ends
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
+
+        print(f"C_full {line.name}={C_full}")
 
         idx_global = idx
 
@@ -164,8 +169,8 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # Algebraic vars
         i_cap_f = [vf.add_var(f"i_cap_f_{line.name}_{k}") for k in range(m)]
         i_cap_t = [vf.add_var(f"i_cap_t_{line.name}_{k}") for k in range(m)]
-        If_act  = [vf.add_var(f"If_{line.name}_{k}")      for k in range(m)]
-        It_act  = [vf.add_var(f"It_{line.name}_{k}")      for k in range(m)]
+        if_act  = [vf.add_var(f"if_{line.name}_{k}")      for k in range(m)]
+        it_act  = [vf.add_var(f"it_{line.name}_{k}")      for k in range(m)]
 
         # -----------------------------
         # 4) Build block
@@ -178,7 +183,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # declare vars
         self._block.state_vars = i_ser + q_f + q_t
         self._block.diff_vars = di_ser + dq_f + dq_t
-        self._block.algebraic_vars = i_cap_f + i_cap_t + If_act + It_act
+        self._block.algebraic_vars = i_cap_f + i_cap_t + if_act + it_act
 
         # -----------------------------
         # 5) State equations
@@ -238,7 +243,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
                 Gab = float(G_end[a, b])
                 if Gab != 0.0:
                     gv = gv + Gab * vf_act[b]
-            alg_eqs.append(If_act[a] - (i_ser[a] + gv + i_cap_f[a]))
+            alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
 
         # (7) It - (-i_ser + G_end*vt + i_cap_t) = 0
         for a in range(m):
@@ -247,44 +252,58 @@ class PiLineEmtTemplate(EmtModelTemplate):
                 Gab = float(G_end[a, b])
                 if Gab != 0.0:
                     gv = gv + Gab * vt_act[b]
-            alg_eqs.append(It_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
+            alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
 
         self._block.algebraic_eqs = alg_eqs
 
         # outputs (optional)
-        self._block.out_vars = If_act + It_act
+        self._block.out_vars = if_act + it_act
 
         # -----------------------------
         # 7) external mapping for KCL stamping in EmtProblemDae
         # -----------------------------
-        If_keys = {
+        if_keys = {
             "N": VarPowerFlowRefferenceType.if_N,
             "A": VarPowerFlowRefferenceType.if_A,
             "B": VarPowerFlowRefferenceType.if_B,
             "C": VarPowerFlowRefferenceType.if_C,
         }
-        It_keys = {
+        it_keys = {
             "N": VarPowerFlowRefferenceType.it_N,
             "A": VarPowerFlowRefferenceType.it_A,
             "B": VarPowerFlowRefferenceType.it_B,
             "C": VarPowerFlowRefferenceType.it_C,
         }
+        Sf_keys = {
+            "A": VarPowerFlowRefferenceType.Sf_A,
+            "B": VarPowerFlowRefferenceType.Sf_B,
+            "C": VarPowerFlowRefferenceType.Sf_C,
+        }
+        St_keys = {
+            "A": VarPowerFlowRefferenceType.St_A,
+            "B": VarPowerFlowRefferenceType.St_B,
+            "C": VarPowerFlowRefferenceType.St_C,
+        }
 
         # Start with all phases present as None
         mapping: Dict[VarPowerFlowRefferenceType, Var|None] = {
-            If_keys["N"]: None, If_keys["A"]: None, If_keys["B"]: None, If_keys["C"]: None,
-            It_keys["N"]: None, It_keys["A"]: None, It_keys["B"]: None, It_keys["C"]: None,
+            if_keys["N"]: None, if_keys["A"]: None, if_keys["B"]: None, if_keys["C"]: None,
+            it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
+            Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
+            St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
         }
 
         # Fill only active phases
         for k, ph in enumerate(active_ph):
-            mapping[If_keys[ph]] = If_act[k]
-            mapping[It_keys[ph]] = It_act[k]
+            mapping[if_keys[ph]] = if_act[k]
+            mapping[it_keys[ph]] = it_act[k]
+            mapping[Sf_keys[ph]] = None
+            mapping[St_keys[ph]] = None
 
         self._block.external_mapping = mapping
 
         # -----------------------------
-        # 8) init equations (consistent initial conditions)
+        # 8) init equations (ALL internal vars)
         # -----------------------------
         init_eqs: Dict[Var, Expr] = {}
 
@@ -305,6 +324,24 @@ class PiLineEmtTemplate(EmtModelTemplate):
                 if Cab != 0.0:
                     rhs = rhs + Cab * vt_act[b]
             init_eqs[q_t[a]] = rhs
+
+        # i_cap seeds (no dv/dt available at init)
+        for a in range(m):
+            init_eqs[i_cap_f[a]] = c0
+            init_eqs[i_cap_t[a]] = c0
+
+        # i_ser seed using R^{-1} (assuming di/dt=0 at t=0 as a seed)
+        Rinv = np.linalg.inv(R)  # numeric m x m
+        for a in range(m):
+            rhs = c0
+            for b in range(m):
+                Rab = float(Rinv[a, b])
+                if Rab != 0.0:
+                    rhs = rhs + Rab * (vf_act[b] - vt_act[b])
+            init_eqs[i_ser[a]] = rhs
+
+
+        self._block.init_eqs = init_eqs
 
         # Optional: seed the remaining internal vars to 0.0 (safe seed)
         # (If/It are set from power flow solution)
