@@ -2610,12 +2610,12 @@ class VarPowerFlowRefferenceType(Enum):
     Q_B = "Q_B"  # Bus reactive power in phase B in p.u.
     Q_C = "Q_C"  # Bus reactive power in phase C in p.u.
 
-    Sf_A = "Sf_A" # Branch active power from in phase A in p.u.
-    Sf_B = "Sf_B"  # Branch active power from in phase B in p.u.
-    Sf_C = "Sf_C"  # Branch active power from in phase C in p.u.
-    St_A = "St_A"  # Branch active power from in phase A in p.u.
-    St_B = "St_B"  # Branch active power from in phase B in p.u.
-    St_C = "St_C"  # Branch active power from in phase C in p.u.
+    Sf_A = "Sf_A" # Branch power from in phase A in p.u.
+    Sf_B = "Sf_B"  # Branch power from in phase B in p.u.
+    Sf_C = "Sf_C"  # Branch power from in phase C in p.u.
+    St_A = "St_A"  # Branch power from in phase A in p.u.
+    St_B = "St_B"  # Branch power from in phase B in p.u.
+    St_C = "St_C"  # Branch power from in phase C in p.u.
 
     if_N = "if_N"  # Branch current from in phase N in p.u.
     if_A = "if_A"  # Branch current from in phase A in p.u.

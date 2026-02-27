@@ -490,7 +490,15 @@ class EmtProblemDae(EmtProblemTemplate):
 
         Special:
           - PF typically has no Sf_N/St_N. If the model has if_N/it_N, set them to 0.0.
+        :param mdl: Block
+        :param branch_index:  int
+        :param f_bus_idx: int
+        :param t_bus_idx: int
+        :param pf_results: PowerFlowResults3Ph
+        :param sbase: float
+        :return:
         """
+
         try:
             def set_if_exists(key, value):
                 if (key is not None) and (mdl.E(key) is not None):
@@ -511,13 +519,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 "C": VarPowerFlowRefferenceType.St_C,
             }
 
-            If_key = {
+            if_key = {
                 "N": VarPowerFlowRefferenceType.if_N,
                 "A": VarPowerFlowRefferenceType.if_A,
                 "B": VarPowerFlowRefferenceType.if_B,
                 "C": VarPowerFlowRefferenceType.if_C,
             }
-            It_key = {
+            it_key = {
                 "N": VarPowerFlowRefferenceType.it_N,
                 "A": VarPowerFlowRefferenceType.it_A,
                 "B": VarPowerFlowRefferenceType.it_B,
@@ -562,21 +570,18 @@ class EmtProblemDae(EmtProblemTemplate):
                     set_if_exists(kSt, St_ph)
                     St_sum += St_ph
 
-            set_if_exists(VarPowerFlowRefferenceType.Pf, float(np.real(Sf_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Qf, float(np.imag(Sf_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Pt, float(np.real(St_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Qt, float(np.imag(St_sum)))
+
 
             # 2) Terminal currents if_/it_
             for ph in phases:
-                uses_curr = (mdl.E(If_key[ph]) is not None) or (mdl.E(It_key[ph]) is not None)
+                uses_curr = (mdl.E(if_key[ph]) is not None) or (mdl.E(it_key[ph]) is not None)
                 if not uses_curr:
                     continue
 
                 # PF doesn't have Sf_N/St_N -> set N currents to 0 if needed
                 if (Sf_arr[ph] is None) or (St_arr[ph] is None) or (V_arr[ph] is None):
-                    set_if_exists(If_key[ph], 0.0)
-                    set_if_exists(It_key[ph], 0.0)
+                    set_if_exists(if_key[ph], 0.0)
+                    set_if_exists(it_key[ph], 0.0)
                     continue
 
                 Sf_ph = Sf_arr[ph][branch_index] / sbase
@@ -591,8 +596,16 @@ class EmtProblemDae(EmtProblemTemplate):
                 i_f0 = np.sqrt(2.0) * np.abs(I_f) * np.cos(np.angle(I_f))
                 i_t0 = np.sqrt(2.0) * np.abs(I_t) * np.cos(np.angle(I_t))
 
-                set_if_exists(If_key[ph], float(i_f0))
-                set_if_exists(It_key[ph], float(i_t0))
+                set_if_exists(if_key[ph], float(i_f0))
+                set_if_exists(it_key[ph], float(i_t0))
+
+                print(f"If_{ph} = {i_f0}")
+                print(f"It_{ph} = {i_t0}")
+
+            set_if_exists(VarPowerFlowRefferenceType.Pf, float(np.real(Sf_sum)))
+            set_if_exists(VarPowerFlowRefferenceType.Qf, float(np.imag(Sf_sum)))
+            set_if_exists(VarPowerFlowRefferenceType.Pt, float(np.real(St_sum)))
+            set_if_exists(VarPowerFlowRefferenceType.Qt, float(np.imag(St_sum)))
 
         except Exception:
             pass
@@ -656,6 +669,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 a = np.exp(1j * 2 * np.pi / 3)
                 V1 = (1 / 3) * (VA + a * VB + (a * a) * VC)
                 theta = np.angle(V1)
+
+                print(f"theta initialized at theta = {theta}")
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
 
@@ -743,3 +758,59 @@ class EmtProblemDae(EmtProblemTemplate):
         for rt in self.history_models:
             rt.update_history(self.step_counter, x_prev, full_params)
         self.step_counter += 1
+
+    def get_init_guess_table(self,
+                             include_all_vars: bool = True,
+                             only_in_init_guess: bool = False,
+                             tol_zero: float = 1e-12) -> pd.DataFrame:
+        """
+        Return a table with uid, alias/name and initial value for each variable.
+
+        include_all_vars:
+            - True: include all state+algebraic vars, even if not in init_guess (value=0).
+            - False: include only uids present in init_guess (or only_in_init_guess=True).
+
+        only_in_init_guess:
+            - True: filter to only those explicitly initialized (uid in init_guess).
+            - False: keep everything (depending on include_all_vars).
+
+        tol_zero:
+            threshold to flag values close to zero.
+        """
+        # build x0 from current init_guess
+        x0 = self.get_x0()
+        uid2idx = self.uid2idx_vars
+
+        # all vars in the DAE
+        all_vars = list(self.get_state_vars()) + list(self.get_algebraic_vars())
+
+        rows = []
+        for v in all_vars:
+            uid = v.uid
+            idx = uid2idx.get(uid, None)
+            val = float(x0[idx]) if idx is not None else 0.0
+
+            in_guess = uid in self.init_guess
+            if only_in_init_guess and (not in_guess):
+                continue
+            if (not include_all_vars) and (not in_guess):
+                continue
+
+            alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
+            rows.append({
+                "uid": uid,
+                "alias": alias,
+                "name": getattr(v, "name", None),
+                "value": val,
+                "in_init_guess": in_guess,
+                "is_zero": abs(val) <= tol_zero,
+            })
+
+        df = pd.DataFrame(rows)
+
+        # Nice ordering
+        if not df.empty:
+            df = df.sort_values(["in_init_guess", "is_zero", "name"], ascending=[False, True, True]).reset_index(
+                drop=True)
+
+        return df

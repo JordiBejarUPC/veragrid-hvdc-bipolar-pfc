@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -54,6 +54,8 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
+
+
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
 # Buses
@@ -64,8 +66,7 @@ grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
+line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
 line0.emt_model_type = gce.EmtLineTypes.PI
 
 # physical configuration (Overhead line tower)
@@ -84,25 +85,19 @@ tower.compute()
 # Aplicar física a la línea
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
-
 # load
 P= 9.999999
 Q= 0.999999
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
+load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                     x1=0.86138701, r1=0.3, freq=50.0,
-                     M=10.0,
-                     D=1.0,
-                     omega_ref=1.0,
-                     Kp=1.0,
-                     Ki=10.0,
-                     )
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=900)
 
 grid.add_line(line0)
-grid.add_load(bus=bus1, api_obj=load)
 grid.add_generator(bus=bus0, api_obj=gen0)
+grid.add_load(bus=bus1, api_obj=load)
+
 
 for bus in grid.buses:
     get_bus_emt_template(grid, bus, vf=grid.var_factory)
@@ -192,6 +187,8 @@ pf_options = PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
+
+# res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
 power_flow = PowerFlowDriver3Ph(grid, pf_options)
 power_flow.run()
 res = power_flow.results
@@ -232,6 +229,11 @@ problem = EmtProblemDae(grid=grid,
                         pf_results=res)
 problem.set_newton_trace_collector(NewtonTraceCollector())
 
+vars = problem.get_state_vars() + problem.get_algebraic_vars()
+print(vars)
+
+df = problem.get_init_guess_table()
+print(df)
 
 
 solver = JitSymbolicSolver(problem = problem,
