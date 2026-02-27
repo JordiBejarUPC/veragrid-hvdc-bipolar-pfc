@@ -115,6 +115,9 @@ def init_explicit(mdl: Block,
                 for var in vars_list
             }
             result = eq.eval_uid(uid_bindings)
+            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
+            # result = float(eq_fn(x, event_params_array, 0.0)[0])
             event_params_array[uid2idx_event_params[event_param.uid]] = result
 
     # compute and assign missing init_vars and None event parameters
@@ -162,6 +165,10 @@ def init_explicit(mdl: Block,
                                     uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
 
                             result = eq.eval_uid(uid_bindings)
+                            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
+                            #
+                            # result = float(eq_fn(x, event_params_array, 0.0)[0])
                             mdl.event_dict[var] = Const(result)
                             event_params_array[uid2idx_event_params[var.uid]] = result
                             index= variable_parameters.index(var)
@@ -184,6 +191,9 @@ def init_explicit(mdl: Block,
                                     uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
 
                             result = eq.eval_uid(uid_bindings)
+                            # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                            #                        DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
+                            # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                             init_guess[var.uid] = result
                             x[uid2idx_vars[var.uid]] = result
                         else:
