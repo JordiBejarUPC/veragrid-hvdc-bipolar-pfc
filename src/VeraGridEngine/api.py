@@ -143,7 +143,7 @@ def power_flow_ts(grid: MultiCircuit,
                   time_indices: Union[IntVec, None] = None,
                   clustering_results: Union[ClusteringResults, None] = None,
                   auto_expand: bool = True,
-                  engine=EngineType.VeraGrid) -> PowerFlowResults:
+                  engine=EngineType.VeraGrid) -> PowerFlowTimeSeriesResults:
     """
     Run power flow on the time series
     :param grid: MultiCircuit instance
