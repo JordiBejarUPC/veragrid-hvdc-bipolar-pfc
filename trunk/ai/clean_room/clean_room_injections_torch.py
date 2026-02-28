@@ -1832,7 +1832,7 @@ def demo():
     P_nan[mask_nan] = np.nan
 
     # Train/load
-    artifact_path = "./artifacts/hierarchical_country_load_simplex_anchor.pt"
+    artifact_path = "artifacts/hierarchical_country_load_simplex_anchor.pt"
 
     context_len = 48
     steps_agg = 2000
@@ -2012,7 +2012,7 @@ def demo2():
     # -------------------------------------------------------------------------
     # SPEC + ARTIFACT PATH
     # -------------------------------------------------------------------------
-    artifact_path = "./artifacts/hierarchical_country_load.zip"
+    artifact_path = "artifacts/hierarchical_country_load.zip"
     os.makedirs(os.path.dirname(artifact_path), exist_ok=True)
 
     spec = HierarchicalZipSpec(
