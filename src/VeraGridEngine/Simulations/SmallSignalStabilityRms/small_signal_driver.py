@@ -398,7 +398,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
 
         self.rms_options: RmsOptions = RmsOptions() if rms_options is None else rms_options
 
-        self.integration_methods_dict = {DynamicIntegrationMethod.BackEuler: BackEulerImplicitIntegration}
+        self.integration_methods_dict = {DynamicIntegrationMethod.DaeBackEuler: BackEulerImplicitIntegration}
 
         self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(eigenvalues=np.empty(0),
                                                                                       participation_factors=np.empty(0),
