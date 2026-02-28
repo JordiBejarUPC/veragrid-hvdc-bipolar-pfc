@@ -9,13 +9,17 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_
 
 from trunk.ai.ai_operator.actions import BranchSwitchAction
 from trunk.ai.ai_operator.actions import GeneratorRedispatchAction
+from trunk.ai.ai_operator.actions import NoOpAction
 from trunk.ai.ai_operator.actions import OperatorAction
 from trunk.ai.ai_operator.config import OperatorEnvConfig
 from trunk.ai.ai_operator.observations import ObservationData
 from trunk.ai.ai_operator.observations import build_observation
 from trunk.ai.ai_operator.observations import flatten_observation
 from trunk.ai.ai_operator.reward import RewardBreakdown
+from trunk.ai.ai_operator.reward import GridMetricSnapshot
+from trunk.ai.ai_operator.reward import compute_grid_metric_snapshot
 from trunk.ai.ai_operator.reward import compute_reward
+from trunk.ai.ai_operator.reward import compute_reward_for_action_list
 
 
 class StepInfo:
@@ -30,9 +34,11 @@ class StepInfo:
         Dense vector representation of the observation.
     :param action_applied:
         ``True`` when the control command was accepted by the environment.
+    :param grid_metrics:
+        Compact grid-state metrics for the post-action PF state.
     """
 
-    __slots__ = ("_pf_converged", "_reward_breakdown", "_flat_observation", "_action_applied")
+    __slots__ = ("_pf_converged", "_reward_breakdown", "_flat_observation", "_action_applied", "_grid_metrics")
 
     def __init__(
         self,
@@ -40,11 +46,13 @@ class StepInfo:
         reward_breakdown: RewardBreakdown,
         flat_observation: np.ndarray,
         action_applied: bool,
+        grid_metrics: GridMetricSnapshot,
     ) -> None:
         self._pf_converged: bool = pf_converged
         self._reward_breakdown: RewardBreakdown = reward_breakdown
         self._flat_observation: np.ndarray = flat_observation
         self._action_applied: bool = action_applied
+        self._grid_metrics: GridMetricSnapshot = grid_metrics
 
     def get_pf_converged(self) -> bool:
         """
@@ -86,6 +94,16 @@ class StepInfo:
 
         return self._action_applied
 
+    def get_grid_metrics(self) -> GridMetricSnapshot:
+        """
+        Get the post-action grid metrics.
+
+        :return:
+            Grid metric snapshot.
+        """
+
+        return self._grid_metrics
+
 
 class VeraGridOperatorEnv:
     """
@@ -107,11 +125,7 @@ class VeraGridOperatorEnv:
     )
 
     def __init__(self, grid: Any, config: OperatorEnvConfig | None = None) -> None:
-        config_obj: OperatorEnvConfig
-        if config is None:
-            config_obj = OperatorEnvConfig()
-        else:
-            config_obj = config
+        config_obj: OperatorEnvConfig = OperatorEnvConfig() if config is None else config
 
         self._grid: Any = grid
         self._config: OperatorEnvConfig = config_obj
@@ -226,11 +240,68 @@ class VeraGridOperatorEnv:
         terminated: bool = compute_terminated(nc, pf_results, pf_converged, self._config)
         truncated: bool = self._step_idx >= self._config.get_max_steps()
         flat_observation: np.ndarray = flatten_observation(observation)
+        grid_metrics: GridMetricSnapshot = compute_grid_metric_snapshot(
+            nc=nc,
+            pf_results=pf_results,
+            pf_converged=pf_converged,
+        )
         step_info: StepInfo = StepInfo(
             pf_converged=pf_converged,
             reward_breakdown=reward_breakdown,
             flat_observation=flat_observation,
             action_applied=action_applied,
+            grid_metrics=grid_metrics,
+        )
+
+        return observation, reward_value, terminated, truncated, step_info
+
+    def step_action_list(self, actions: list[OperatorAction]) -> tuple[ObservationData, float, bool, bool, StepInfo]:
+        """
+        Apply a list of actions and solve one power flow afterwards.
+
+        :param actions:
+            Action list applied before a single PF solve.
+        :return:
+            Observation, reward, terminated, truncated, and step metadata.
+        """
+
+        action_applied: bool = apply_action_list_to_grid(self._grid, actions, self._config)
+        nc: Any
+        pf_results: Any
+        nc, pf_results = run_power_flow(self._grid, self._pf_options)
+        self._latest_nc = nc
+        self._latest_pf_results = pf_results
+        self._step_idx += 1
+
+        pf_converged: bool = power_flow_converged(pf_results)
+        observation: ObservationData = build_observation(
+            nc=nc,
+            pf_results=pf_results,
+            step_idx=self._step_idx,
+            max_steps=self._config.get_max_steps(),
+        )
+        reward_breakdown: RewardBreakdown = compute_reward_for_action_list(
+            nc=nc,
+            pf_results=pf_results,
+            actions=actions,
+            weights=self._config.get_reward_weights(),
+            pf_converged=pf_converged,
+        )
+        reward_value: float = reward_breakdown.get_total_reward()
+        terminated: bool = compute_terminated(nc, pf_results, pf_converged, self._config)
+        truncated: bool = self._step_idx >= self._config.get_max_steps()
+        flat_observation: np.ndarray = flatten_observation(observation)
+        grid_metrics: GridMetricSnapshot = compute_grid_metric_snapshot(
+            nc=nc,
+            pf_results=pf_results,
+            pf_converged=pf_converged,
+        )
+        step_info: StepInfo = StepInfo(
+            pf_converged=pf_converged,
+            reward_breakdown=reward_breakdown,
+            flat_observation=flat_observation,
+            action_applied=action_applied,
+            grid_metrics=grid_metrics,
         )
 
         return observation, reward_value, terminated, truncated, step_info
@@ -337,7 +408,37 @@ def apply_action_to_grid(grid: Any, action: OperatorAction, config: OperatorEnvC
         if isinstance(action, GeneratorRedispatchAction):
             return apply_generator_redispatch_action(grid, action, config)
         else:
-            return False
+            if isinstance(action, NoOpAction):
+                return True
+            else:
+                return False
+
+
+def apply_action_list_to_grid(grid: Any, actions: list[OperatorAction], config: OperatorEnvConfig) -> bool:
+    """
+    Apply an action list to the mutable grid state.
+
+    :param grid:
+        VeraGrid grid object.
+    :param actions:
+        Action list.
+    :param config:
+        Environment configuration bundle.
+    :return:
+        ``True`` when all actions were applied successfully.
+    """
+
+    all_applied: bool = True
+    action_idx: int
+
+    for action_idx in range(len(actions)):
+        action_applied: bool = apply_action_to_grid(grid, actions[action_idx], config)
+        if action_applied:
+            all_applied = all_applied
+        else:
+            all_applied = False
+
+    return all_applied
 
 
 def apply_branch_switch_action(grid: Any, action: BranchSwitchAction) -> bool:

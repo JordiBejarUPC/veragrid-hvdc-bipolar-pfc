@@ -18,6 +18,8 @@ from trunk.ai.ai_operator.network import PolicyActionSample
 from trunk.ai.ai_operator.network import build_policy_network_from_observation
 from trunk.ai.ai_operator.network import sample_action_with_policy
 from trunk.ai.ai_operator.observations import ObservationData
+from trunk.ai.ai_operator.reward import GridMetricSnapshot
+from trunk.ai.ai_operator.reward import GridMetricSummary
 
 
 class TrainingConfig:
@@ -252,6 +254,16 @@ class EpisodeStep:
 
         return self._truncated
 
+    def get_step_info(self) -> StepInfo:
+        """
+        Get the environment step metadata.
+
+        :return:
+            Step metadata.
+        """
+
+        return self._step_info
+
 
 class EpisodeSummary:
     """
@@ -269,6 +281,8 @@ class EpisodeSummary:
         Value loss scalar.
     :param entropy:
         Mean entropy scalar.
+    :param grid_metric_summary:
+        Aggregated episode-level grid metrics.
     """
 
     __slots__ = (
@@ -278,6 +292,7 @@ class EpisodeSummary:
         "_actor_loss",
         "_value_loss",
         "_entropy",
+        "_grid_metric_summary",
     )
 
     def __init__(
@@ -288,6 +303,7 @@ class EpisodeSummary:
         actor_loss: float,
         value_loss: float,
         entropy: float,
+        grid_metric_summary: GridMetricSummary,
     ) -> None:
         self._episode_idx: int = episode_idx
         self._total_reward: float = total_reward
@@ -295,6 +311,7 @@ class EpisodeSummary:
         self._actor_loss: float = actor_loss
         self._value_loss: float = value_loss
         self._entropy: float = entropy
+        self._grid_metric_summary: GridMetricSummary = grid_metric_summary
 
     def get_episode_idx(self) -> int:
         """
@@ -355,6 +372,16 @@ class EpisodeSummary:
         """
 
         return self._entropy
+
+    def get_grid_metric_summary(self) -> GridMetricSummary:
+        """
+        Get the aggregated episode-level grid metrics.
+
+        :return:
+            Grid metric summary.
+        """
+
+        return self._grid_metric_summary
 
 
 def train_operator_policy(
@@ -446,7 +473,10 @@ def train_operator_policy(
             f"reward={summary.get_total_reward():.3f} "
             f"actor_loss={summary.get_actor_loss():.6f} "
             f"value_loss={summary.get_value_loss():.6f} "
-            f"entropy={summary.get_entropy():.6f}"
+            f"entropy={summary.get_entropy():.6f} "
+            f"secure_rate={summary.get_grid_metric_summary().get_secure_rate():.3f} "
+            f"pf_convergence_rate={summary.get_grid_metric_summary().get_pf_convergence_rate():.3f} "
+            f"max_loading={summary.get_grid_metric_summary().get_mean_maximum_branch_loading():.3f}"
         )
 
         if should_save_checkpoint(summary.get_episode_idx(), config_obj.get_checkpoint_interval()):
@@ -627,6 +657,7 @@ def build_episode_summary(
 
     total_reward: float = 0.0
     step_count: int = len(trajectory)
+    grid_metric_summary: GridMetricSummary = build_grid_metric_summary_from_episode_steps(trajectory)
     step_idx: int
 
     for step_idx in range(step_count):
@@ -639,7 +670,66 @@ def build_episode_summary(
         actor_loss=float(actor_loss.detach().cpu().item()),
         value_loss=float(value_loss.detach().cpu().item()),
         entropy=float(entropy_bonus.detach().cpu().item()),
+        grid_metric_summary=grid_metric_summary,
     )
+
+
+def build_grid_metric_summary_from_episode_steps(trajectory: list[EpisodeStep]) -> GridMetricSummary:
+    """
+    Aggregate episode-level grid metrics from a single-agent trajectory.
+
+    :param trajectory:
+        Episode trajectory.
+    :return:
+        Episode-level grid metric summary.
+    """
+
+    step_count: int = len(trajectory)
+
+    if step_count > 0:
+        convergence_sum: float = 0.0
+        secure_sum: float = 0.0
+        voltage_violation_sum: float = 0.0
+        overload_violation_sum: float = 0.0
+        generator_violation_sum: float = 0.0
+        minimum_voltage_sum: float = 0.0
+        maximum_voltage_sum: float = 0.0
+        maximum_branch_loading_sum: float = 0.0
+        step_idx: int
+
+        for step_idx in range(step_count):
+            grid_metrics: GridMetricSnapshot = trajectory[step_idx].get_step_info().get_grid_metrics()
+            convergence_sum += 1.0 if grid_metrics.get_pf_converged() else 0.0
+            secure_sum += 1.0 if grid_metrics.get_secure_state() else 0.0
+            voltage_violation_sum += grid_metrics.get_voltage_violation_sum()
+            overload_violation_sum += grid_metrics.get_overload_violation_sum()
+            generator_violation_sum += grid_metrics.get_generator_violation_sum()
+            minimum_voltage_sum += grid_metrics.get_minimum_voltage()
+            maximum_voltage_sum += grid_metrics.get_maximum_voltage()
+            maximum_branch_loading_sum += grid_metrics.get_maximum_branch_loading()
+
+        denominator: float = float(step_count)
+        return GridMetricSummary(
+            pf_convergence_rate=convergence_sum / denominator,
+            secure_rate=secure_sum / denominator,
+            mean_voltage_violation=voltage_violation_sum / denominator,
+            mean_overload_violation=overload_violation_sum / denominator,
+            mean_generator_violation=generator_violation_sum / denominator,
+            mean_minimum_voltage=minimum_voltage_sum / denominator,
+            mean_maximum_voltage=maximum_voltage_sum / denominator,
+            mean_maximum_branch_loading=maximum_branch_loading_sum / denominator,
+        )
+    else:
+        return GridMetricSummary(
+            pf_convergence_rate=0.0,
+            secure_rate=0.0,
+            mean_voltage_violation=0.0,
+            mean_overload_violation=0.0,
+            mean_generator_violation=0.0,
+            mean_minimum_voltage=0.0,
+            mean_maximum_voltage=0.0,
+            mean_maximum_branch_loading=0.0,
+        )
 
 
 def ensure_checkpoint_dir(checkpoint_dir: str) -> None:

@@ -14,12 +14,12 @@ from trunk.ai.ai_operator.live_plotting import LivePlotConfig
 from trunk.ai.ai_operator.multi_agent_environment import MultiAgentOperatorEnv
 from trunk.ai.ai_operator.multi_agent_training import MultiAgentTrainingConfig
 from trunk.ai.ai_operator.multi_agent_training import train_multi_agent_policy_system
-from trunk.ai.ai_operator.multi_agent_training_demo import run_multi_agent_training_demo
 from trunk.ai.ai_operator.network import OperatorPolicyNetwork
-from trunk.ai.ai_operator.scoped_multi_agent_demo import run_scoped_multi_agent_demo
 from trunk.ai.ai_operator.training import TrainingConfig
 from trunk.ai.ai_operator.training import train_operator_policy
-from trunk.ai.ai_operator.training_demo import run_training_demo
+from trunk.ai.ai_operator.unified_demo import DemoMode
+from trunk.ai.ai_operator.unified_demo import UnifiedDemoConfig
+from trunk.ai.ai_operator.unified_demo import run_unified_demo
 
 __all__ = [
     "ActionCategory",
@@ -37,11 +37,11 @@ __all__ = [
     "LivePlotConfig",
     "OperatorPolicyNetwork",
     "TrainingConfig",
+    "DemoMode",
+    "UnifiedDemoConfig",
     "build_partitioned_defender_attacker_config",
     "build_frank_and_jeffry_config",
     "train_multi_agent_policy_system",
     "train_operator_policy",
-    "run_multi_agent_training_demo",
-    "run_scoped_multi_agent_demo",
-    "run_training_demo",
+    "run_unified_demo",
 ]

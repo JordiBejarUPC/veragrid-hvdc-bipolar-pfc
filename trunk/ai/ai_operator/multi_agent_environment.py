@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from trunk.ai.ai_operator.actions import BranchSwitchAction
 from trunk.ai.ai_operator.actions import GeneratorRedispatchAction
+from trunk.ai.ai_operator.actions import NoOpAction
 from trunk.ai.ai_operator.actions import OperatorAction
 from trunk.ai.ai_operator.agents import AgentAlignment
 from trunk.ai.ai_operator.agents import AgentActionScope
@@ -22,15 +21,15 @@ class MultiAgentReset:
 
     :param observation:
         Initial observation.
-    :param active_agent:
-        Agent that must act first.
+    :param acting_agents:
+        Agents that act concurrently at each global turn.
     """
 
-    __slots__ = ("_observation", "_active_agent")
+    __slots__ = ("_observation", "_acting_agents")
 
-    def __init__(self, observation: ObservationData, active_agent: AgentSpec) -> None:
+    def __init__(self, observation: ObservationData, acting_agents: list[AgentSpec]) -> None:
         self._observation: ObservationData = observation
-        self._active_agent: AgentSpec = active_agent
+        self._acting_agents: list[AgentSpec] = acting_agents
 
     def get_observation(self) -> ObservationData:
         """
@@ -42,133 +41,54 @@ class MultiAgentReset:
 
         return self._observation
 
-    def get_active_agent(self) -> AgentSpec:
+    def get_acting_agents(self) -> list[AgentSpec]:
         """
-        Get the first active agent.
+        Get the concurrently acting agents.
 
         :return:
-            Active agent description.
+            Acting agent descriptions.
         """
 
-        return self._active_agent
+        return self._acting_agents
 
 
-class MultiAgentStepInfo:
+class AgentActionRecord:
     """
-    Multi-agent step metadata bundle.
+    Requested and scoped action record for one agent in a concurrent turn.
 
-    :param acting_agent:
-        Agent that just acted.
-    :param next_agent:
-        Agent that acts next.
-    :param base_reward:
-        Raw reward from the base environment.
-    :param aligned_reward:
-        Reward after agent alignment transformation.
-    :param base_step_info:
-        Original single-agent step info.
-    :param turn_idx:
-        Global multi-agent turn index.
+    :param agent_spec:
+        Acting agent specification.
     :param requested_action:
-        Action requested by the agent policy before scope projection.
-    :param applied_action:
-        Action applied after scope projection.
+        Action produced by the policy.
+    :param scoped_action:
+        Action after scope projection.
     """
 
-    __slots__ = (
-        "_acting_agent",
-        "_next_agent",
-        "_base_reward",
-        "_aligned_reward",
-        "_base_step_info",
-        "_turn_idx",
-        "_requested_action",
-        "_applied_action",
-    )
+    __slots__ = ("_agent_spec", "_requested_action", "_scoped_action")
 
     def __init__(
         self,
-        acting_agent: AgentSpec,
-        next_agent: AgentSpec,
-        base_reward: float,
-        aligned_reward: float,
-        base_step_info: StepInfo,
-        turn_idx: int,
+        agent_spec: AgentSpec,
         requested_action: OperatorAction,
-        applied_action: OperatorAction,
+        scoped_action: OperatorAction,
     ) -> None:
-        self._acting_agent: AgentSpec = acting_agent
-        self._next_agent: AgentSpec = next_agent
-        self._base_reward: float = base_reward
-        self._aligned_reward: float = aligned_reward
-        self._base_step_info: StepInfo = base_step_info
-        self._turn_idx: int = turn_idx
+        self._agent_spec: AgentSpec = agent_spec
         self._requested_action: OperatorAction = requested_action
-        self._applied_action: OperatorAction = applied_action
+        self._scoped_action: OperatorAction = scoped_action
 
-    def get_acting_agent(self) -> AgentSpec:
+    def get_agent_spec(self) -> AgentSpec:
         """
-        Get the acting agent.
+        Get the acting agent specification.
 
         :return:
-            Acting agent description.
+            Agent specification.
         """
 
-        return self._acting_agent
-
-    def get_next_agent(self) -> AgentSpec:
-        """
-        Get the next scheduled agent.
-
-        :return:
-            Next agent description.
-        """
-
-        return self._next_agent
-
-    def get_base_reward(self) -> float:
-        """
-        Get the raw environment reward.
-
-        :return:
-            Base reward value.
-        """
-
-        return self._base_reward
-
-    def get_aligned_reward(self) -> float:
-        """
-        Get the alignment-transformed reward.
-
-        :return:
-            Per-agent reward value.
-        """
-
-        return self._aligned_reward
-
-    def get_base_step_info(self) -> StepInfo:
-        """
-        Get the underlying single-agent step info.
-
-        :return:
-            Base step info object.
-        """
-
-        return self._base_step_info
-
-    def get_turn_idx(self) -> int:
-        """
-        Get the global turn index.
-
-        :return:
-            Turn index.
-        """
-
-        return self._turn_idx
+        return self._agent_spec
 
     def get_requested_action(self) -> OperatorAction:
         """
-        Get the action requested by the acting agent.
+        Get the requested action.
 
         :return:
             Requested action.
@@ -176,20 +96,161 @@ class MultiAgentStepInfo:
 
         return self._requested_action
 
-    def get_applied_action(self) -> OperatorAction:
+    def get_scoped_action(self) -> OperatorAction:
         """
-        Get the action applied after scope projection.
+        Get the scope-projected action.
 
         :return:
-            Applied action.
+            Scoped action.
         """
 
-        return self._applied_action
+        return self._scoped_action
+
+
+class AgentRewardRecord:
+    """
+    Per-agent reward record for a concurrent turn.
+
+    :param agent_spec:
+        Acting agent specification.
+    :param aligned_reward:
+        Agent-specific aligned reward.
+    """
+
+    __slots__ = ("_agent_spec", "_aligned_reward")
+
+    def __init__(self, agent_spec: AgentSpec, aligned_reward: float) -> None:
+        self._agent_spec: AgentSpec = agent_spec
+        self._aligned_reward: float = aligned_reward
+
+    def get_agent_spec(self) -> AgentSpec:
+        """
+        Get the acting agent specification.
+
+        :return:
+            Agent specification.
+        """
+
+        return self._agent_spec
+
+    def get_aligned_reward(self) -> float:
+        """
+        Get the aligned reward.
+
+        :return:
+            Agent-specific aligned reward.
+        """
+
+        return self._aligned_reward
+
+
+class MultiAgentStepInfo:
+    """
+    Concurrent multi-agent step metadata bundle.
+
+    :param action_records:
+        Per-agent requested and scoped actions.
+    :param merged_actions:
+        Final merged action batch applied to the base environment.
+    :param base_reward:
+        Raw reward from the base environment.
+    :param reward_records:
+        Per-agent aligned reward records.
+    :param base_step_info:
+        Original single-agent step info.
+    :param turn_idx:
+        Global concurrent turn index.
+    """
+
+    __slots__ = (
+        "_action_records",
+        "_merged_actions",
+        "_base_reward",
+        "_reward_records",
+        "_base_step_info",
+        "_turn_idx",
+    )
+
+    def __init__(
+        self,
+        action_records: list[AgentActionRecord],
+        merged_actions: list[OperatorAction],
+        base_reward: float,
+        reward_records: list[AgentRewardRecord],
+        base_step_info: StepInfo,
+        turn_idx: int,
+    ) -> None:
+        self._action_records: list[AgentActionRecord] = action_records
+        self._merged_actions: list[OperatorAction] = merged_actions
+        self._base_reward: float = base_reward
+        self._reward_records: list[AgentRewardRecord] = reward_records
+        self._base_step_info: StepInfo = base_step_info
+        self._turn_idx: int = turn_idx
+
+    def get_action_records(self) -> list[AgentActionRecord]:
+        """
+        Get the per-agent action records.
+
+        :return:
+            Action records.
+        """
+
+        return self._action_records
+
+    def get_merged_actions(self) -> list[OperatorAction]:
+        """
+        Get the merged action batch.
+
+        :return:
+            Merged action list.
+        """
+
+        return self._merged_actions
+
+    def get_base_reward(self) -> float:
+        """
+        Get the raw base environment reward.
+
+        :return:
+            Base reward.
+        """
+
+        return self._base_reward
+
+    def get_reward_records(self) -> list[AgentRewardRecord]:
+        """
+        Get the per-agent aligned reward records.
+
+        :return:
+            Per-agent reward records.
+        """
+
+        return self._reward_records
+
+    def get_base_step_info(self) -> StepInfo:
+        """
+        Get the underlying base environment step info.
+
+        :return:
+            Base step info.
+        """
+
+        return self._base_step_info
+
+    def get_turn_idx(self) -> int:
+        """
+        Get the concurrent turn index.
+
+        :return:
+            Turn index.
+        """
+
+        return self._turn_idx
 
 
 class MultiAgentOperatorEnv:
     """
-    Multi-agent wrapper around the base operator environment.
+    Concurrent multi-agent wrapper around the base operator environment.
 
     :param base_env:
         Base single-agent operator environment.
@@ -197,13 +258,12 @@ class MultiAgentOperatorEnv:
         Multi-agent scheduling configuration.
     """
 
-    __slots__ = ("_base_env", "_multi_agent_config", "_turn_idx", "_active_agent_idx")
+    __slots__ = ("_base_env", "_multi_agent_config", "_turn_idx")
 
     def __init__(self, base_env: VeraGridOperatorEnv, multi_agent_config: MultiAgentConfig) -> None:
         self._base_env: VeraGridOperatorEnv = base_env
         self._multi_agent_config: MultiAgentConfig = multi_agent_config
         self._turn_idx: int = 0
-        self._active_agent_idx: int = 0
 
     def get_base_env(self) -> VeraGridOperatorEnv:
         """
@@ -217,7 +277,7 @@ class MultiAgentOperatorEnv:
 
     def get_turn_idx(self) -> int:
         """
-        Get the current multi-agent turn index.
+        Get the current concurrent turn index.
 
         :return:
             Turn index.
@@ -225,16 +285,15 @@ class MultiAgentOperatorEnv:
 
         return self._turn_idx
 
-    def get_active_agent(self) -> AgentSpec:
+    def get_acting_agents(self) -> list[AgentSpec]:
         """
-        Get the currently scheduled agent.
+        Get the agents that act concurrently at each turn.
 
         :return:
-            Active agent description.
+            Acting agent list.
         """
 
-        agent_specs: list[AgentSpec] = self._multi_agent_config.get_agent_specs()
-        return agent_specs[self._active_agent_idx]
+        return self._multi_agent_config.get_agent_specs()
 
     def get_agent_specs(self) -> list[AgentSpec]:
         """
@@ -251,79 +310,68 @@ class MultiAgentOperatorEnv:
         Reset the multi-agent environment.
 
         :return:
-            Reset payload with first observation and first active agent.
+            Reset payload with observation and acting agents.
         """
 
-        # The wrapper reset delegates electrical state reset to the base environment
-        # and then resets the turn scheduler so the multi-agent protocol starts cleanly.
         self._turn_idx = 0
-        self._active_agent_idx = 0
         observation: ObservationData = self._base_env.reset()
-        active_agent: AgentSpec = self.get_active_agent()
-        return MultiAgentReset(observation=observation, active_agent=active_agent)
+        return MultiAgentReset(
+            observation=observation,
+            acting_agents=self.get_acting_agents(),
+        )
 
-    def step(self, action: OperatorAction) -> tuple[ObservationData, float, bool, bool, MultiAgentStepInfo]:
+    def step(self, actions: list[OperatorAction]) -> tuple[ObservationData, float, bool, bool, MultiAgentStepInfo]:
         """
-        Apply one action for the currently scheduled agent.
+        Apply one concurrent action per agent and solve one PF afterwards.
 
-        :param action:
-            Action chosen by the active agent.
+        :param actions:
+            Requested action list, one per agent.
         :return:
-            Observation, aligned reward, terminated, truncated, and multi-agent step info.
+            Observation, mean positive aligned reward, terminated, truncated, and step metadata.
         """
 
-        # The base environment advances the electrical simulation. The wrapper then
-        # transforms the raw reward according to agent alignment and rotates the turn.
-        acting_agent: AgentSpec = self.get_active_agent()
-        scoped_action: OperatorAction = project_action_to_agent_scope(action, acting_agent)
+        acting_agents: list[AgentSpec] = self.get_acting_agents()
+        action_records: list[AgentActionRecord] = build_action_records(acting_agents, actions)
+        merged_actions: list[OperatorAction] = merge_scoped_actions(action_records)
         observation: ObservationData
         base_reward: float
         terminated: bool
         truncated: bool
         base_step_info: StepInfo
-        observation, base_reward, terminated, truncated, base_step_info = self._base_env.step(scoped_action)
-        aligned_reward: float = align_reward_for_agent(acting_agent, base_reward)
+        observation, base_reward, terminated, truncated, base_step_info = self._base_env.step_action_list(
+            merged_actions
+        )
+        reward_records: list[AgentRewardRecord] = build_reward_records(acting_agents, base_reward)
         self._turn_idx += 1
-        self._advance_turn()
-        next_agent: AgentSpec = self.get_active_agent()
         step_info: MultiAgentStepInfo = MultiAgentStepInfo(
-            acting_agent=acting_agent,
-            next_agent=next_agent,
+            action_records=action_records,
+            merged_actions=merged_actions,
             base_reward=base_reward,
-            aligned_reward=aligned_reward,
+            reward_records=reward_records,
             base_step_info=base_step_info,
             turn_idx=self._turn_idx,
-            requested_action=action,
-            applied_action=scoped_action,
         )
-        return observation, aligned_reward, terminated, truncated, step_info
+        display_reward: float = compute_mean_positive_reward(reward_records)
+        return observation, display_reward, terminated, truncated, step_info
 
-    def sample_action(self, rng: np.random.Generator | None = None) -> OperatorAction:
+    def sample_action_batch(self, rng: np.random.Generator | None = None) -> list[OperatorAction]:
         """
-        Sample an action from the base environment helper.
+        Sample one action per agent.
 
         :param rng:
             Optional NumPy random generator.
         :return:
-            Sampled operator action.
+            Sampled action batch.
         """
 
-        return self._base_env.sample_action(rng=rng)
+        action_batch: list[OperatorAction] = list()
+        agent_specs: list[AgentSpec] = self.get_acting_agents()
+        agent_idx: int
 
-    def _advance_turn(self) -> None:
-        """
-        Advance the active agent index to the next scheduled agent.
+        for agent_idx in range(len(agent_specs)):
+            action_batch.append(self._base_env.sample_action(rng=rng))
 
-        :return:
-            ``None``.
-        """
-
-        agent_count: int = len(self._multi_agent_config.get_agent_specs())
-
-        if agent_count > 0:
-            self._active_agent_idx = (self._active_agent_idx + 1) % agent_count
-        else:
-            self._active_agent_idx = 0
+        return action_batch
 
 
 def align_reward_for_agent(agent_spec: AgentSpec, base_reward: float) -> float:
@@ -338,8 +386,6 @@ def align_reward_for_agent(agent_spec: AgentSpec, base_reward: float) -> float:
         Agent-specific aligned reward.
     """
 
-    # Positive agents maximize security, negative agents maximize disruption,
-    # and neutral agents observe the environment score without sign inversion.
     alignment: AgentAlignment = agent_spec.get_alignment()
 
     if alignment == AgentAlignment.POSITIVE:
@@ -349,6 +395,103 @@ def align_reward_for_agent(agent_spec: AgentSpec, base_reward: float) -> float:
             return -base_reward
         else:
             return base_reward
+
+
+def build_action_records(
+    acting_agents: list[AgentSpec],
+    actions: list[OperatorAction],
+) -> list[AgentActionRecord]:
+    """
+    Build per-agent action records for a concurrent turn.
+
+    :param acting_agents:
+        Acting agent list.
+    :param actions:
+        Requested action list.
+    :return:
+        Action records.
+    """
+
+    action_records: list[AgentActionRecord] = list()
+    agent_idx: int
+
+    for agent_idx in range(len(acting_agents)):
+        agent_spec: AgentSpec = acting_agents[agent_idx]
+        if agent_idx < len(actions):
+            requested_action: OperatorAction = actions[agent_idx]
+        else:
+            requested_action = BranchSwitchAction(branch_idx=0, closed=False)
+        scoped_action: OperatorAction = project_action_to_agent_scope(requested_action, agent_spec)
+        action_records.append(
+            AgentActionRecord(
+                agent_spec=agent_spec,
+                requested_action=requested_action,
+                scoped_action=scoped_action,
+            )
+        )
+
+    return action_records
+
+
+def build_reward_records(acting_agents: list[AgentSpec], base_reward: float) -> list[AgentRewardRecord]:
+    """
+    Build per-agent aligned reward records.
+
+    :param acting_agents:
+        Acting agent list.
+    :param base_reward:
+        Raw base reward.
+    :return:
+        Per-agent reward records.
+    """
+
+    reward_records: list[AgentRewardRecord] = list()
+    agent_idx: int
+
+    for agent_idx in range(len(acting_agents)):
+        agent_spec: AgentSpec = acting_agents[agent_idx]
+        reward_records.append(
+            AgentRewardRecord(
+                agent_spec=agent_spec,
+                aligned_reward=align_reward_for_agent(agent_spec, base_reward),
+            )
+        )
+
+    return reward_records
+
+
+def compute_mean_positive_reward(reward_records: list[AgentRewardRecord]) -> float:
+    """
+    Compute the mean positive-agent aligned reward.
+
+    :param reward_records:
+        Per-agent reward records.
+    :return:
+        Mean positive-agent reward, or mean all-agent reward if there are no positive agents.
+    """
+
+    positive_reward_sum: float = 0.0
+    positive_count: int = 0
+    total_reward_sum: float = 0.0
+    record_idx: int
+
+    for record_idx in range(len(reward_records)):
+        reward_record: AgentRewardRecord = reward_records[record_idx]
+        reward_value: float = reward_record.get_aligned_reward()
+        total_reward_sum += reward_value
+        if reward_record.get_agent_spec().get_alignment() == AgentAlignment.POSITIVE:
+            positive_reward_sum += reward_value
+            positive_count += 1
+        else:
+            record_idx = record_idx
+
+    if positive_count > 0:
+        return positive_reward_sum / positive_count
+    else:
+        if len(reward_records) > 0:
+            return total_reward_sum / len(reward_records)
+        else:
+            return 0.0
 
 
 def project_action_to_agent_scope(action: OperatorAction, agent_spec: AgentSpec) -> OperatorAction:
@@ -426,3 +569,136 @@ def project_generator_action_to_scope(
             return action
     else:
         return action
+
+
+def merge_scoped_actions(action_records: list[AgentActionRecord]) -> list[OperatorAction]:
+    """
+    Merge scoped concurrent actions by asset.
+
+    Boolean branch states are combined with OR.
+    Continuous generator redispatch values are added.
+
+    :param action_records:
+        Per-agent action records.
+    :return:
+        Merged action list.
+    """
+
+    branch_indices: list[int] = list()
+    branch_states: list[bool] = list()
+    generator_indices: list[int] = list()
+    generator_deltas: list[float] = list()
+    record_idx: int
+
+    for record_idx in range(len(action_records)):
+        scoped_action: OperatorAction = action_records[record_idx].get_scoped_action()
+        if isinstance(scoped_action, BranchSwitchAction):
+            merge_branch_action(branch_indices, branch_states, scoped_action)
+        else:
+            if isinstance(scoped_action, GeneratorRedispatchAction):
+                merge_generator_action(generator_indices, generator_deltas, scoped_action)
+            else:
+                if isinstance(scoped_action, NoOpAction):
+                    record_idx = record_idx
+                else:
+                    record_idx = record_idx
+
+    merged_actions: list[OperatorAction] = list()
+    branch_idx: int
+    for branch_idx in range(len(branch_indices)):
+        merged_actions.append(
+            BranchSwitchAction(
+                branch_idx=branch_indices[branch_idx],
+                closed=branch_states[branch_idx],
+            )
+        )
+
+    generator_idx: int
+    for generator_idx in range(len(generator_indices)):
+        merged_actions.append(
+            GeneratorRedispatchAction(
+                generator_idx=generator_indices[generator_idx],
+                delta_mw=generator_deltas[generator_idx],
+            )
+        )
+
+    return merged_actions
+
+
+def merge_branch_action(
+    branch_indices: list[int],
+    branch_states: list[bool],
+    action: BranchSwitchAction,
+) -> None:
+    """
+    Merge one branch action into the branch accumulator.
+
+    :param branch_indices:
+        Accumulated branch indices.
+    :param branch_states:
+        Accumulated branch target states.
+    :param action:
+        Branch action to merge.
+    :return:
+        ``None``.
+    """
+
+    target_idx: int = action.get_branch_idx()
+    existing_idx: int = find_index_in_int_list(branch_indices, target_idx)
+
+    if existing_idx >= 0:
+        branch_states[existing_idx] = branch_states[existing_idx] or action.get_closed()
+    else:
+        branch_indices.append(target_idx)
+        branch_states.append(action.get_closed())
+
+
+def merge_generator_action(
+    generator_indices: list[int],
+    generator_deltas: list[float],
+    action: GeneratorRedispatchAction,
+) -> None:
+    """
+    Merge one generator action into the generator accumulator.
+
+    :param generator_indices:
+        Accumulated generator indices.
+    :param generator_deltas:
+        Accumulated redispatch values.
+    :param action:
+        Generator action to merge.
+    :return:
+        ``None``.
+    """
+
+    target_idx: int = action.get_generator_idx()
+    existing_idx: int = find_index_in_int_list(generator_indices, target_idx)
+
+    if existing_idx >= 0:
+        generator_deltas[existing_idx] += action.get_delta_mw()
+    else:
+        generator_indices.append(target_idx)
+        generator_deltas.append(action.get_delta_mw())
+
+
+def find_index_in_int_list(values: list[int], target_value: int) -> int:
+    """
+    Find one integer inside a list.
+
+    :param values:
+        Integer list.
+    :param target_value:
+        Integer to find.
+    :return:
+        Index or ``-1`` when missing.
+    """
+
+    idx: int
+
+    for idx in range(len(values)):
+        if values[idx] == target_value:
+            return idx
+        else:
+            idx = idx
+
+    return -1

@@ -16,6 +16,38 @@ class ActionCategory(str, Enum):
 
     BRANCH_SWITCH = "branch_switch"
     GENERATOR_REDISPATCH = "generator_redispatch"
+    NO_OP = "no_op"
+
+
+class NoOpAction:
+    """
+    No-operation action description.
+
+    This action leaves the grid unchanged and is useful as a neutral concurrent
+    merge outcome when an aggression scheduler needs to damp one agent.
+    """
+
+    __slots__ = tuple()
+
+    def get_category(self) -> ActionCategory:
+        """
+        Get the action category.
+
+        :return:
+            The no-op action category.
+        """
+
+        return ActionCategory.NO_OP
+
+    def __repr__(self) -> str:
+        """
+        Build a readable action representation.
+
+        :return:
+            String representation for logs.
+        """
+
+        return "NoOpAction()"
 
 
 class BranchSwitchAction:
@@ -135,4 +167,4 @@ class GeneratorRedispatchAction:
         )
 
 
-OperatorAction = Union[BranchSwitchAction, GeneratorRedispatchAction]
+OperatorAction = Union[BranchSwitchAction, GeneratorRedispatchAction, NoOpAction]

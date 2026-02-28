@@ -62,27 +62,38 @@ The base single-agent system is modeled as an MDP:
 - termination
   optional stop when the PF diverges or when a critical violation is reached
 
-The multi-agent extension is a turn-based stochastic game built on top of the same physical simulator:
+The multi-agent extension is a concurrent stochastic game built on top of the same physical simulator:
 
 - one shared grid state
-- one scheduled acting agent per turn
+- one action chosen by each agent at the same global turn
+- one merged joint action
+- one power flow solve after the full joint action
 - per-agent reward alignment
 - separate or shared policies depending on policy grouping
 
-### Why turn-based multi-agent instead of simultaneous actions
+### Why concurrent multi-agent control
 
-The current design is turn-based because:
+The current design is concurrent because your intended semantics are:
 
-- it matches the current environment structure cleanly
-- it keeps the physical state transition easy to inspect
-- one action followed by one PF solve is simple and robust
-- it is the minimal adversarial extension that can support defenders and attackers
+- each agent acts every global turn
+- all actions are combined into one joint control batch
+- the electrical state changes only once per turn after the whole batch
 
-Simultaneous action games can be added later, but they require additional design choices:
+That is clearer than pretending agents act independently in time when the intended game is really simultaneous intervention.
 
-- how to merge concurrent commands
-- how to resolve conflicts on the same asset
-- whether the reward is based on intermediate or joint post-action states
+### Current merge rule for concurrent actions
+
+When several actions hit the same asset in the same turn:
+
+- continuous generator redispatch values are added
+- boolean branch-state commands are combined with logical OR on the target state
+
+That means every action is preserved in the merge:
+
+- generator deltas accumulate
+- any `True` branch-state command dominates over `False`
+
+This is the current joint-action semantics used by the environment.
 
 ### Positive and negative agents
 
@@ -231,24 +242,14 @@ Each step still means exactly one action.
 
 ### Demos
 
-[`demo.py`](/home/santi/Git/eRoots/VeraGrid/trunk/ai/ai_operator/demo.py)
+[`unified_demo.py`](/home/santi/Git/eRoots/VeraGrid/trunk/ai/ai_operator/unified_demo.py)
 
-- rollout only
-
-[`training_demo.py`](/home/santi/Git/eRoots/VeraGrid/trunk/ai/ai_operator/training_demo.py)
-
-- single-agent training demo
-- live plotting enabled by default
-
-[`multi_agent_training_demo.py`](/home/santi/Git/eRoots/VeraGrid/trunk/ai/ai_operator/multi_agent_training_demo.py)
-
-- multi-agent training demo
-- live plotting enabled by default
-
-[`scoped_multi_agent_demo.py`](/home/santi/Git/eRoots/VeraGrid/trunk/ai/ai_operator/scoped_multi_agent_demo.py)
-
-- N1 local defenders against N2 global attackers
-- prints requested and applied actions after scope projection
+- recommended main entry point for experimentation
+- one explicit `UnifiedDemoConfig`
+- can run single-agent training
+- can run default Frank-versus-Jeffry training
+- can run scoped N1-defenders-versus-N2-attackers training
+- can run scoped rollout-only inspection
 
 ## Environment mechanics
 
@@ -506,14 +507,16 @@ For Frank and Jeffry:
 For each episode:
 
 1. reset the shared electrical world
-2. schedule one acting agent
-3. select that agent's policy by `policy_group`
-4. sample one action
-5. apply the action
-6. compute aligned reward for the acting agent
-7. continue until stop
-8. split the full trajectory by policy group
-9. update each policy group from its own turns
+2. let every agent observe the same current state
+3. select each agent's policy by `policy_group`
+4. sample one action per agent
+5. project actions into their allowed scopes
+6. merge concurrent actions by asset
+7. apply the merged joint action
+8. solve one power flow
+9. compute aligned rewards for every agent
+10. split the trajectory by policy group
+11. update each policy group from its own agent samples
 
 ### Why policy groups
 
@@ -533,7 +536,6 @@ The current multi-agent trainer does not yet implement:
 - centralized critics
 - opponent-aware critics
 - opponent modeling
-- simultaneous actions
 - population-based training
 - batched parallel worlds
 
@@ -571,12 +573,13 @@ But it should eventually be replaced by a topology-aware partitioning based on b
 
 In the scoped multi-agent setup, an agent may request an action outside its territory.
 
-The wrapper then projects that action into the allowed scope.
+The wrapper then projects that action into the allowed scope before the concurrent merge.
 
 This is why the scoped demo prints both:
 
 - requested action
-- applied action
+- scoped action
+- merged action batch
 
 That projection rate is itself an important future metric because too many projected actions would mean:
 
@@ -647,28 +650,12 @@ This is enough to resume or inspect the learned policies later.
 
 ## Public entry points
 
-Rollout demo:
+Unified experiment demo:
 
 ```python
-from trunk.ai.ai_operator.demo import run_demo
-```
-
-Single-agent training demo:
-
-```python
-from trunk.ai.ai_operator.training_demo import run_training_demo
-```
-
-Multi-agent training demo:
-
-```python
-from trunk.ai.ai_operator.multi_agent_training_demo import run_multi_agent_training_demo
-```
-
-Scoped N1-versus-N2 demo:
-
-```python
-from trunk.ai.ai_operator.scoped_multi_agent_demo import run_scoped_multi_agent_demo
+from trunk.ai.ai_operator.unified_demo import DemoMode
+from trunk.ai.ai_operator.unified_demo import UnifiedDemoConfig
+from trunk.ai.ai_operator.unified_demo import run_unified_demo
 ```
 
 Single-agent training API:
@@ -691,15 +678,27 @@ from trunk.ai.ai_operator.live_plotting import LivePlotConfig
 
 ## Usage examples
 
-### Single-agent rollout
+### Recommended unified experiment entry point
 
 ```python
-from trunk.ai.ai_operator.demo import run_demo
+from trunk.ai.ai_operator.unified_demo import DemoMode
+from trunk.ai.ai_operator.unified_demo import UnifiedDemoConfig
+from trunk.ai.ai_operator.unified_demo import run_unified_demo
 
-history = run_demo(
-    grid_path="files/IEEE 9 Bus.veragrid",
-    steps=10,
-    seed=7,
+history = run_unified_demo(
+    UnifiedDemoConfig(
+        grid_path="files/IEEE 9 Bus.veragrid",
+        demo_mode=DemoMode.SCOPED_MULTI_AGENT_TRAINING,
+        episodes=200,
+        max_turns_per_episode=32,
+        n_defenders=3,
+        n_attackers=2,
+        enable_live_plotting=True,
+        attacker_aggression_enabled=True,
+        initial_attacker_aggression=1.0,
+        minimum_attacker_aggression=0.25,
+        maximum_attacker_aggression=3.0,
+    )
 )
 ```
 
@@ -751,17 +750,22 @@ group_trainers, history = train_multi_agent_policy_system(
 )
 ```
 
-### N1 local defenders against N2 global attackers
+### Scoped rollout-only inspection from the unified demo
 
 ```python
-from trunk.ai.ai_operator.scoped_multi_agent_demo import run_scoped_multi_agent_demo
+from trunk.ai.ai_operator.unified_demo import DemoMode
+from trunk.ai.ai_operator.unified_demo import UnifiedDemoConfig
+from trunk.ai.ai_operator.unified_demo import run_unified_demo
 
-history = run_scoped_multi_agent_demo(
-    grid_path="files/IEEE 9 Bus.veragrid",
-    n_defenders=3,
-    n_attackers=2,
-    turns=20,
-    seed=7,
+history = run_unified_demo(
+    UnifiedDemoConfig(
+        grid_path="files/IEEE 9 Bus.veragrid",
+        demo_mode=DemoMode.SCOPED_MULTI_AGENT_ROLLOUT,
+        rollout_turns=20,
+        n_defenders=3,
+        n_attackers=2,
+        seed=7,
+    )
 )
 ```
 
