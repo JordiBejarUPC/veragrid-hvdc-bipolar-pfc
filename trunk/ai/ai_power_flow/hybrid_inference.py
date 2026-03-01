@@ -21,6 +21,8 @@ from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import EvaluationMetr
 from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import GeneralPurposeTypedGNNSolver
 from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import GraphSpec
 from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import MultiGridDataset
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import PhysicsEvaluation
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import StatelessAcPowerFlowPhysics
 from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import voltage_magnitude_loss
 
 if TYPE_CHECKING:
@@ -129,6 +131,8 @@ def predict_voltage_window_with_gnn(
             qinj_tn=dataset.qinj[tw],
             branch_active_tm=dataset.branch_active[tw],
             vref_tn=dataset.vref[tw],
+            vr_init_tn=dataset.vr_init[tw],
+            vi_init_tn=dataset.vi_init[tw],
             time_features_tk=dataset.time_features[tw],
         )
 
@@ -243,10 +247,33 @@ def compute_voltage_metrics_from_prediction(
             vi_true=dataset.vi_true[tw],
         ).item()
     )
+    physics: StatelessAcPowerFlowPhysics = StatelessAcPowerFlowPhysics(dtype=dataset.vr_true.dtype).to(dataset.vr_true.device)
+    physics_pred: PhysicsEvaluation = physics(
+        graph=dataset.graph,
+        vr=vr_pred,
+        vi=vi_pred,
+        branch_active=dataset.branch_active[tw],
+        pinj_target=dataset.pinj[tw],
+        qinj_target=dataset.qinj[tw],
+    )
+    physics_true: PhysicsEvaluation = physics(
+        graph=dataset.graph,
+        vr=dataset.vr_true[tw],
+        vi=dataset.vi_true[tw],
+        branch_active=dataset.branch_active[tw],
+        pinj_target=dataset.pinj[tw],
+        qinj_target=dataset.qinj[tw],
+    )
     metrics: EvaluationMetrics = EvaluationMetrics(
         voltage_mse=voltage_mse,
         voltage_magnitude_mse=vm_mse,
-        pf_mismatch=-1.0,
+        pf_mismatch=float(physics_pred.loss_mismatch.item()) if physics_pred.loss_mismatch is not None else -1.0,
+        branch_active_flow_mse=float(
+            (((physics_pred.pf - physics_true.pf) ** 2) + ((physics_pred.pt - physics_true.pt) ** 2)).mean().item()
+        ),
+        branch_reactive_flow_mse=float(
+            (((physics_pred.qf - physics_true.qf) ** 2) + ((physics_pred.qt - physics_true.qt) ** 2)).mean().item()
+        ),
     )
     return metrics
 

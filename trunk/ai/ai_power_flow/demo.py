@@ -1,8 +1,6 @@
-"""Single demo entry point showing the supported AI power-flow use cases."""
+"""Plain demo functions for the AI power-flow package."""
 
 from __future__ import annotations
-
-from enum import Enum
 
 from trunk.ai.ai_power_flow.api import AiPowerFlowFileSplit
 from trunk.ai.ai_power_flow.api import AiPowerFlowMode
@@ -15,40 +13,39 @@ from trunk.ai.ai_power_flow.api import print_workflow_result
 from trunk.ai.ai_power_flow.api import run_workflow
 
 
-class AiPowerFlowDemoCase(Enum):
+def run_ieee39_time_series_train_test_demo() -> AiPowerFlowWorkflowResult:
     """
-    Supported demo scenarios.
+    Run the main bundled IEEE39 time-series train/test demo.
 
-    :cvar IEEE39_TIME_SERIES_DIRECT: bundled IEEE39 time-series train/test workflow
-    :cvar MATPOWER_DIRECT: multi-grid train/test workflow on bundled Matpower files
-    :cvar MATPOWER_EXPERIMENT: explicit train/validation/test workflow on bundled Matpower files
-    :cvar MATPOWER_HYBRID: GNN warm-start plus native refinement on bundled Matpower files
-    :cvar SAME_GRID_EXPERIMENT: train/validation/test workflow on one external time-series grid
-    :cvar SAME_GRID_HYBRID: GNN warm-start plus native refinement on one external time-series grid
+    This is the simplest realistic example in this folder and is the default
+    demo executed by :func:`main`.
+
+    What this demo does:
+
+    - opens the bundled ``files/IEEE39_1W.gridcal`` file
+    - uses that same time-series grid for training
+    - uses that same time-series grid again for testing
+    - keeps the workflow in direct train/test mode
+    - enables testing plots so the post-training RMS curves are visible
+
+    Why this demo exists:
+
+    - it uses a real bundled ``.gridcal`` file instead of synthetic snapshot repetition
+    - it is the shortest path from package entry point to an actual time-series run
+    - it is the most useful first debug target when working on the solver
+
+    :returns: workflow result for the bundled IEEE39 direct demo
     """
-
-    IEEE39_TIME_SERIES_DIRECT = "ieee39_time_series_direct"
-    MATPOWER_DIRECT = "matpower_direct"
-    MATPOWER_EXPERIMENT = "matpower_experiment"
-    MATPOWER_HYBRID = "matpower_hybrid"
-    SAME_GRID_EXPERIMENT = "same_grid_experiment"
-    SAME_GRID_HYBRID = "same_grid_hybrid"
-
-
-def build_bundled_ieee39_time_series_direct_request() -> AiPowerFlowWorkflowRequest:
-    """
-    Build the main bundled IEEE39 time-series train/test demo request.
-
-    :returns: workflow request
-    """
-    grid_file_name: str = "files/IEEE39_1W.gridcal"
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
-        train_file_names=[grid_file_name],
-        test_file_names=[grid_file_name],
+        train_file_names=["files/IEEE39_1W.gridcal"],
+        test_file_names=["files/IEEE39_1W.gridcal"],
     )
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         steps=400,
         default_hours_number=1,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -60,14 +57,28 @@ def build_bundled_ieee39_time_series_direct_request() -> AiPowerFlowWorkflowRequ
         training=training,
         plotting=plotting,
     )
-    return request
+    result: AiPowerFlowWorkflowResult = run_workflow(request=request)
+    print_workflow_result(result=result)
+    return result
 
 
-def build_matpower_direct_request() -> AiPowerFlowWorkflowRequest:
+def run_matpower_train_test_demo() -> AiPowerFlowWorkflowResult:
     """
-    Build the direct Matpower train/test demo request.
+    Run a bundled Matpower multi-grid direct train/test demo.
 
-    :returns: workflow request
+    What this demo does:
+
+    - trains one shared solver on several bundled Matpower cases
+    - evaluates that trained solver on a separate bundled Matpower test set
+    - disables plots to keep the run lightweight
+
+    Why this demo exists:
+
+    - it shows the intended multi-grid usage pattern
+    - it stresses graph transfer more than the single-grid IEEE39 example
+    - it is useful when testing whether architecture changes generalize across topologies
+
+    :returns: workflow result for the bundled Matpower direct demo
     """
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
         train_file_names=[
@@ -84,6 +95,9 @@ def build_matpower_direct_request() -> AiPowerFlowWorkflowRequest:
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         steps=1500,
         default_hours_number=24,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -95,14 +109,28 @@ def build_matpower_direct_request() -> AiPowerFlowWorkflowRequest:
         training=training,
         plotting=plotting,
     )
-    return request
+    result: AiPowerFlowWorkflowResult = run_workflow(request=request)
+    print_workflow_result(result=result)
+    return result
 
 
-def build_matpower_experiment_request() -> AiPowerFlowWorkflowRequest:
+def run_matpower_experiment_demo() -> AiPowerFlowWorkflowResult:
     """
-    Build the explicit Matpower train/validation/test demo request.
+    Run a bundled Matpower train/validation/test experiment demo.
 
-    :returns: workflow request
+    What this demo does:
+
+    - uses explicit training, validation, and testing file lists
+    - runs the package in ``EXPERIMENT`` mode instead of direct train/test mode
+    - prints split summaries for validation and testing
+
+    Why this demo exists:
+
+    - it shows how to structure a more honest experiment with explicit split semantics
+    - it is the right starting point when comparing hyper-parameters or architectures
+    - it avoids mixing model selection and final evaluation by construction
+
+    :returns: workflow result for the bundled Matpower experiment demo
     """
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
         train_file_names=[
@@ -110,9 +138,7 @@ def build_matpower_experiment_request() -> AiPowerFlowWorkflowRequest:
             "files/case14.matpower",
             "files/case89pegase.matpower",
         ],
-        validation_file_names=[
-            "files/case14_ps.matpower",
-        ],
+        validation_file_names=["files/case14_ps.matpower"],
         test_file_names=[
             "files/case24_ieee_rts.matpower",
             "files/case_ieee30.matpower",
@@ -121,6 +147,9 @@ def build_matpower_experiment_request() -> AiPowerFlowWorkflowRequest:
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         steps=1500,
         default_hours_number=24,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -132,14 +161,28 @@ def build_matpower_experiment_request() -> AiPowerFlowWorkflowRequest:
         training=training,
         plotting=plotting,
     )
-    return request
+    result: AiPowerFlowWorkflowResult = run_workflow(request=request)
+    print_workflow_result(result=result)
+    return result
 
 
-def build_matpower_hybrid_request() -> AiPowerFlowWorkflowRequest:
+def run_matpower_hybrid_demo() -> AiPowerFlowWorkflowResult:
     """
-    Build the hybrid Matpower demo request.
+    Run a bundled Matpower hybrid inference demo.
 
-    :returns: workflow request
+    What this demo does:
+
+    - trains on several bundled Matpower cases
+    - predicts one testing case with the learned solver
+    - refines that prediction with VeraGrid's native power-flow solver
+
+    Why this demo exists:
+
+    - it shows the warm-start-plus-native-refinement workflow
+    - it is useful when pure learned inference is not accurate enough
+    - it helps compare GNN-only versus GNN-plus-native refinement behavior
+
+    :returns: workflow result for the bundled Matpower hybrid demo
     """
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
         train_file_names=[
@@ -147,14 +190,15 @@ def build_matpower_hybrid_request() -> AiPowerFlowWorkflowRequest:
             "files/case14.matpower",
             "files/case89pegase.matpower",
         ],
-        test_file_names=[
-            "files/case14_ps.matpower",
-        ],
+        test_file_names=["files/case14_ps.matpower"],
     )
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         window=24,
         steps=1500,
         default_hours_number=24,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -172,14 +216,28 @@ def build_matpower_hybrid_request() -> AiPowerFlowWorkflowRequest:
         plotting=plotting,
         refinement=refinement,
     )
-    return request
+    result: AiPowerFlowWorkflowResult = run_workflow(request=request)
+    print_workflow_result(result=result)
+    return result
 
 
-def build_same_grid_experiment_request() -> AiPowerFlowWorkflowRequest:
+def run_external_same_grid_experiment_demo() -> AiPowerFlowWorkflowResult:
     """
-    Build the same-grid train/validation/test demo request.
+    Run an experiment demo on one external IEEE39 time-series file.
 
-    :returns: workflow request
+    What this demo does:
+
+    - uses the external grid in ``Grids_and_profiles/grids/IEEE39_1W.gridcal``
+    - places that same file into train, validation, and test splits
+    - enables testing plots
+
+    Why this demo exists:
+
+    - it preserves the older external-path workflow for comparison
+    - it is useful when checking behavior against a file outside the bundled demo assets
+    - it gives a split-structured version of the same-grid time-series workflow
+
+    :returns: workflow result for the external same-grid experiment demo
     """
     grid_file_name: str = "/home/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/IEEE39_1W.gridcal"
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
@@ -190,6 +248,9 @@ def build_same_grid_experiment_request() -> AiPowerFlowWorkflowRequest:
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         steps=400,
         default_hours_number=1,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -201,14 +262,28 @@ def build_same_grid_experiment_request() -> AiPowerFlowWorkflowRequest:
         training=training,
         plotting=plotting,
     )
-    return request
+    result: AiPowerFlowWorkflowResult = run_workflow(request=request)
+    print_workflow_result(result=result)
+    return result
 
 
-def build_same_grid_hybrid_request() -> AiPowerFlowWorkflowRequest:
+def run_external_same_grid_hybrid_demo() -> AiPowerFlowWorkflowResult:
     """
-    Build the same-grid hybrid demo request.
+    Run a hybrid demo on one external IEEE39 time-series file.
 
-    :returns: workflow request
+    What this demo does:
+
+    - trains on the external IEEE39 time-series file
+    - tests on that same file again
+    - applies native solver refinement after the learned prediction
+
+    Why this demo exists:
+
+    - it preserves the older same-grid hybrid example in plain function form
+    - it is useful for comparing the stronger learned solver against native refinement
+    - it keeps an explicit example that points at an external grid path
+
+    :returns: workflow result for the external same-grid hybrid demo
     """
     grid_file_name: str = "/home/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/IEEE39_1W.gridcal"
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
@@ -218,6 +293,9 @@ def build_same_grid_hybrid_request() -> AiPowerFlowWorkflowRequest:
     training: AiPowerFlowTrainingConfiguration = AiPowerFlowTrainingConfiguration(
         steps=400,
         default_hours_number=1,
+        use_cartesian_voltage_loss=True,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
     )
     plotting: AiPowerFlowPlotConfiguration = AiPowerFlowPlotConfiguration(
         plot_validation=False,
@@ -235,47 +313,6 @@ def build_same_grid_hybrid_request() -> AiPowerFlowWorkflowRequest:
         plotting=plotting,
         refinement=refinement,
     )
-    return request
-
-
-def build_demo_request(demo_case: AiPowerFlowDemoCase) -> AiPowerFlowWorkflowRequest:
-    """
-    Build the request associated with one demo scenario.
-
-    :param demo_case: selected demo scenario
-    :returns: workflow request
-    """
-    request: AiPowerFlowWorkflowRequest
-    if demo_case == AiPowerFlowDemoCase.IEEE39_TIME_SERIES_DIRECT:
-        request = build_bundled_ieee39_time_series_direct_request()
-    else:
-        if demo_case == AiPowerFlowDemoCase.MATPOWER_DIRECT:
-            request = build_matpower_direct_request()
-        else:
-            if demo_case == AiPowerFlowDemoCase.MATPOWER_EXPERIMENT:
-                request = build_matpower_experiment_request()
-            else:
-                if demo_case == AiPowerFlowDemoCase.MATPOWER_HYBRID:
-                    request = build_matpower_hybrid_request()
-                else:
-                    if demo_case == AiPowerFlowDemoCase.SAME_GRID_EXPERIMENT:
-                        request = build_same_grid_experiment_request()
-                    else:
-                        if demo_case == AiPowerFlowDemoCase.SAME_GRID_HYBRID:
-                            request = build_same_grid_hybrid_request()
-                        else:
-                            raise ValueError(f"Unsupported demo case: {demo_case}.")
-    return request
-
-
-def run_demo(demo_case: AiPowerFlowDemoCase) -> AiPowerFlowWorkflowResult:
-    """
-    Run one supported demo scenario.
-
-    :param demo_case: selected demo scenario
-    :returns: workflow result
-    """
-    request: AiPowerFlowWorkflowRequest = build_demo_request(demo_case=demo_case)
     result: AiPowerFlowWorkflowResult = run_workflow(request=request)
     print_workflow_result(result=result)
     return result
@@ -283,13 +320,14 @@ def run_demo(demo_case: AiPowerFlowDemoCase) -> AiPowerFlowWorkflowResult:
 
 def main() -> None:
     """
-    Run the selected demo scenario.
+    Run the default demo function for this module.
+
+    The default is the bundled IEEE39 time-series train/test demo because it is
+    the shortest realistic example and the best first target for debugging.
 
     :returns: ``None``
     """
-    # Make the bundled IEEE39 time-series train/test flow the main package demo.
-    selected_demo_case: AiPowerFlowDemoCase = AiPowerFlowDemoCase.IEEE39_TIME_SERIES_DIRECT
-    _ = run_demo(demo_case=selected_demo_case)
+    _ = run_ieee39_time_series_train_test_demo()
 
 
 if __name__ == "__main__":

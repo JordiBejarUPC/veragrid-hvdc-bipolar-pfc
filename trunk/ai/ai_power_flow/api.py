@@ -49,6 +49,8 @@ class AiPowerFlowTrainingConfiguration:
     :param lr: learning rate
     :param w_v: voltage supervised loss weight
     :param w_pf: power-flow mismatch loss weight
+    :param w_branch_p: branch active-flow loss weight
+    :param w_branch_q: branch reactive-flow loss weight
     :param verbose_every: log frequency
     :param default_hours_number: repeated time points for snapshot grids
     :param seed: random seed
@@ -67,6 +69,8 @@ class AiPowerFlowTrainingConfiguration:
         "_tgn_layers",
         "_use_cartesian_voltage_loss",
         "_verbose_every",
+        "_w_branch_p",
+        "_w_branch_q",
         "_w_pf",
         "_w_v",
         "_window",
@@ -84,6 +88,8 @@ class AiPowerFlowTrainingConfiguration:
         lr: float = 1e-3,
         w_v: float = 0.1,
         w_pf: float = 1.0,
+        w_branch_p: float = 1.0,
+        w_branch_q: float = 0.5,
         verbose_every: int = 50,
         default_hours_number: int = 1,
         seed: int = 0,
@@ -100,6 +106,8 @@ class AiPowerFlowTrainingConfiguration:
         self._lr = float(lr)
         self._w_v = float(w_v)
         self._w_pf = float(w_pf)
+        self._w_branch_p = float(w_branch_p)
+        self._w_branch_q = float(w_branch_q)
         self._verbose_every = int(verbose_every)
         self._default_hours_number = int(default_hours_number)
         self._seed = int(seed)
@@ -154,6 +162,16 @@ class AiPowerFlowTrainingConfiguration:
     def w_pf(self) -> float:
         """Return the power-flow mismatch loss weight."""
         return self._w_pf
+
+    @property
+    def w_branch_p(self) -> float:
+        """Return the branch active-flow loss weight."""
+        return self._w_branch_p
+
+    @property
+    def w_branch_q(self) -> float:
+        """Return the branch reactive-flow loss weight."""
+        return self._w_branch_q
 
     @property
     def verbose_every(self) -> int:
@@ -692,6 +710,8 @@ def run_workflow(request: AiPowerFlowWorkflowRequest) -> AiPowerFlowWorkflowResu
         lr=request.training.lr,
         w_v=request.training.w_v,
         w_pf=request.training.w_pf,
+        w_branch_p=request.training.w_branch_p,
+        w_branch_q=request.training.w_branch_q,
         verbose_every=request.training.verbose_every,
         seed=request.training.seed,
         use_cartesian_voltage_loss=request.training.use_cartesian_voltage_loss,
@@ -786,7 +806,9 @@ def print_split_summary(summary: SplitEvaluationSummary) -> None:
             f"  {dataset_summary.dataset_name}: "
             f"voltage_mse={dataset_summary.metrics.voltage_mse:.6e}  "
             f"vm_mse={dataset_summary.metrics.voltage_magnitude_mse:.6e}  "
-            f"pf_mismatch={dataset_summary.metrics.pf_mismatch:.6e}"
+            f"pf_mismatch={dataset_summary.metrics.pf_mismatch:.6e}  "
+            f"branch_p_mse={dataset_summary.metrics.branch_active_flow_mse:.6e}  "
+            f"branch_q_mse={dataset_summary.metrics.branch_reactive_flow_mse:.6e}"
         )
 
 
@@ -812,6 +834,12 @@ def print_workflow_result(result: AiPowerFlowWorkflowResult) -> None:
         print("\n[gnn_only]")
         print(f"  voltage_mse={result.hybrid_result.gnn_metrics.voltage_mse:.6e}")
         print(f"  vm_mse={result.hybrid_result.gnn_metrics.voltage_magnitude_mse:.6e}")
+        print(f"  pf_mismatch={result.hybrid_result.gnn_metrics.pf_mismatch:.6e}")
+        print(f"  branch_p_mse={result.hybrid_result.gnn_metrics.branch_active_flow_mse:.6e}")
+        print(f"  branch_q_mse={result.hybrid_result.gnn_metrics.branch_reactive_flow_mse:.6e}")
         print("\n[gnn_plus_native_refinement]")
         print(f"  voltage_mse={result.hybrid_result.refined_metrics.voltage_mse:.6e}")
         print(f"  vm_mse={result.hybrid_result.refined_metrics.voltage_magnitude_mse:.6e}")
+        print(f"  pf_mismatch={result.hybrid_result.refined_metrics.pf_mismatch:.6e}")
+        print(f"  branch_p_mse={result.hybrid_result.refined_metrics.branch_active_flow_mse:.6e}")
+        print(f"  branch_q_mse={result.hybrid_result.refined_metrics.branch_reactive_flow_mse:.6e}")

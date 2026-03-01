@@ -183,6 +183,8 @@ class MultiGridDataset:
     :param vr_true: real voltage target, shape ``(T, N)``
     :param vi_true: imaginary voltage target, shape ``(T, N)``
     :param vref: complex slack reference, shape ``(T, N)``
+    :param vr_init: real initial voltage guess, shape ``(T, N)``
+    :param vi_init: imaginary initial voltage guess, shape ``(T, N)``
     :param pinj: active power injection target, shape ``(T, N)``
     :param qinj: reactive power injection target, shape ``(T, N)``
     :param branch_active: branch active mask, shape ``(T, M)``
@@ -197,6 +199,8 @@ class MultiGridDataset:
     vr_true: torch.Tensor
     vi_true: torch.Tensor
     vref: torch.Tensor
+    vr_init: torch.Tensor
+    vi_init: torch.Tensor
     pinj: torch.Tensor
     qinj: torch.Tensor
     branch_active: torch.Tensor
@@ -241,6 +245,8 @@ class MultiGridDataset:
             vr_true=self.vr_true[tw],
             vi_true=self.vi_true[tw],
             vref=self.vref[tw],
+            vr_init=self.vr_init[tw],
+            vi_init=self.vi_init[tw],
             pinj=self.pinj[tw],
             qinj=self.qinj[tw],
             branch_active=self.branch_active[tw],
@@ -269,6 +275,8 @@ class MultiGridWindow:
     :param vr_true: real voltage target, shape ``(Tw, N)``
     :param vi_true: imaginary voltage target, shape ``(Tw, N)``
     :param vref: complex slack reference, shape ``(Tw, N)``
+    :param vr_init: real initial voltage guess, shape ``(Tw, N)``
+    :param vi_init: imaginary initial voltage guess, shape ``(Tw, N)``
     :param pinj: active injections, shape ``(Tw, N)``
     :param qinj: reactive injections, shape ``(Tw, N)``
     :param branch_active: branch active mask, shape ``(Tw, M)``
@@ -281,6 +289,8 @@ class MultiGridWindow:
     vr_true: torch.Tensor
     vi_true: torch.Tensor
     vref: torch.Tensor
+    vr_init: torch.Tensor
+    vi_init: torch.Tensor
     pinj: torch.Tensor
     qinj: torch.Tensor
     branch_active: torch.Tensor
@@ -336,11 +346,15 @@ class EvaluationMetrics:
     :param voltage_mse: Cartesian voltage mean-squared error
     :param voltage_magnitude_mse: voltage-magnitude mean-squared error
     :param pf_mismatch: power-flow mismatch mean-squared error
+    :param branch_active_flow_mse: branch active-flow mean-squared error
+    :param branch_reactive_flow_mse: branch reactive-flow mean-squared error
     """
 
     voltage_mse: float
     voltage_magnitude_mse: float
     pf_mismatch: float
+    branch_active_flow_mse: float
+    branch_reactive_flow_mse: float
 
 
 @dataclass(frozen=True)
@@ -469,13 +483,23 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         self.tgn_layers: int = int(tgn_layers)
         self.msg_steps: int = int(msg_steps)
         self.dtype: torch.dtype = dtype
-        self.bus_in_dim: int = 15
+        self.temporal_in_dim: int = 10
+        self.bus_in_dim: int = 17 + self.embed_dim
+        self.temporal_gru: nn.GRU = nn.GRU(
+            input_size=self.temporal_in_dim,
+            hidden_size=self.embed_dim,
+            num_layers=1,
+            batch_first=True,
+        )
         self.enc_bus: nn.Linear = nn.Linear(self.bus_in_dim, self.embed_dim)
         self.enc_branch: nn.Linear = nn.Linear(3, self.embed_dim)
         self.upd_branch: MLP = MLP(3 * self.embed_dim, self.msg_hidden, self.embed_dim)
         self.msg_br_to_bus: MLP = MLP(2 * self.embed_dim, self.msg_hidden, self.embed_dim)
         self.upd_bus: MLP = MLP(2 * self.embed_dim, self.msg_hidden, self.embed_dim)
-        self.dec_dv: nn.Linear = nn.Linear(self.embed_dim, 2)
+        self.norm_branch: nn.LayerNorm = nn.LayerNorm(self.embed_dim)
+        self.norm_bus: nn.LayerNorm = nn.LayerNorm(self.embed_dim)
+        self.dec_dvr: MLP = MLP(self.embed_dim, self.msg_hidden, 1)
+        self.dec_dvi: MLP = MLP(self.embed_dim, self.msg_hidden, 1)
         # Each unrolled layer behaves like one learned numerical iteration.
         # The learned step scale controls how aggressive each unrolled correction step is.
         self.step_scale: nn.Parameter = nn.Parameter(torch.tensor(0.05, dtype=torch.float32))
@@ -487,6 +511,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn: torch.Tensor,
             branch_active_tm: torch.Tensor,
             vref_tn: Optional[torch.Tensor] = None,
+            vr_init_tn: Optional[torch.Tensor] = None,
+            vi_init_tn: Optional[torch.Tensor] = None,
             time_features_tk: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -497,6 +523,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         :param qinj_tn: reactive power target, shape ``(T, N)``
         :param branch_active_tm: branch active mask, shape ``(T, M)``
         :param vref_tn: complex slack reference, shape ``(T, N)``, or ``None``
+        :param vr_init_tn: real initial voltage guess, shape ``(T, N)``, or ``None``
+        :param vi_init_tn: imaginary initial voltage guess, shape ``(T, N)``, or ``None``
         :param time_features_tk: temporal feature matrix, shape ``(T, 4)``, or ``None``
         :returns: ``(vr_pred, vi_pred)``, each shaped ``(T, N)``
         """
@@ -507,6 +535,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn=qinj_tn,
             branch_active_tm=branch_active_tm,
             vref_tn=vref_tn,
+            vr_init_tn=vr_init_tn,
+            vi_init_tn=vi_init_tn,
             time_features_tk=time_features_tk,
         )
         return result.vr_pred, result.vi_pred
@@ -518,6 +548,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn: torch.Tensor,
             branch_active_tm: torch.Tensor,
             vref_tn: Optional[torch.Tensor],
+            vr_init_tn: Optional[torch.Tensor],
+            vi_init_tn: Optional[torch.Tensor],
             time_features_tk: Optional[torch.Tensor],
     ) -> SolverWindowResult:
         """
@@ -528,6 +560,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         :param qinj_tn: reactive injections, shape ``(T, N)``
         :param branch_active_tm: branch active mask, shape ``(T, M)``
         :param vref_tn: complex slack reference, or ``None``
+        :param vr_init_tn: real initial voltage guess, or ``None``
+        :param vi_init_tn: imaginary initial voltage guess, or ``None``
         :param time_features_tk: temporal feature matrix, or ``None``
         :returns: predicted voltage window
         """
@@ -540,9 +574,56 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn=qinj_tn,
             branch_active_tm=branch_active_tm,
             vref_tn=vref_tn,
+            vr_init_tn=vr_init_tn,
+            vi_init_tn=vi_init_tn,
             time_features_tk=time_features_tk,
         )
         return result
+
+    def encode_temporal_context(
+            self,
+            pinj_tn: torch.Tensor,
+            qinj_tn: torch.Tensor,
+            vm_ref_tn: torch.Tensor,
+            va_ref_tn: torch.Tensor,
+            vr_init_tn: torch.Tensor,
+            vi_init_tn: torch.Tensor,
+            time_features_tk: torch.Tensor,
+    ) -> torch.Tensor:
+        """
+        Encode temporal operating context for every bus with a GRU.
+
+        :param pinj_tn: active injections, shape ``(T, N)``
+        :param qinj_tn: reactive injections, shape ``(T, N)``
+        :param vm_ref_tn: voltage-magnitude reference, shape ``(T, N)``
+        :param va_ref_tn: voltage-angle reference, shape ``(T, N)``
+        :param vr_init_tn: real initial voltage guess, shape ``(T, N)``
+        :param vi_init_tn: imaginary initial voltage guess, shape ``(T, N)``
+        :param time_features_tk: temporal feature matrix, shape ``(T, 4)``
+        :returns: temporal embedding tensor shaped ``(T, N, D)``
+        """
+        # The temporal encoder sees each bus trajectory through time before spatial message passing begins.
+        # This gives the model explicit memory of operating evolution instead of only one-step clock features.
+        t_steps: int = int(pinj_tn.shape[0])
+        n_bus: int = int(pinj_tn.shape[1])
+        broadcast_time: torch.Tensor = time_features_tk[:, None, :].expand(t_steps, n_bus, 4)
+        temporal_input: torch.Tensor = torch.cat(
+            [
+                pinj_tn[:, :, None].to(torch.float32),
+                qinj_tn[:, :, None].to(torch.float32),
+                vm_ref_tn[:, :, None],
+                va_ref_tn[:, :, None],
+                vr_init_tn[:, :, None],
+                vi_init_tn[:, :, None],
+                broadcast_time,
+            ],
+            dim=2,
+        )
+        temporal_input_btd: torch.Tensor = temporal_input.permute(1, 0, 2).contiguous()
+        temporal_output_btd: torch.Tensor
+        temporal_output_btd, _ = self.temporal_gru(temporal_input_btd)
+        temporal_output: torch.Tensor = temporal_output_btd.permute(1, 0, 2).contiguous()
+        return temporal_output
 
     def update_branch_embeddings(
             self,
@@ -572,7 +653,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         new_h: torch.Tensor = self.upd_branch(x)
         # Inactive branches must emit no learned state, so we zero them here.
         active_mask: torch.Tensor = branch_active_tm[:, :, None].to(device=device, dtype=torch.float32)
-        out: torch.Tensor = active_mask * new_h
+        residual_branch: torch.Tensor = active_mask * new_h
+        out: torch.Tensor = self.norm_branch(h_branch + residual_branch)
         return out
 
     def update_bus_embeddings(
@@ -609,7 +691,8 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         agg.index_add_(1, from_bus, msg_f)
         agg.index_add_(1, to_bus, msg_t)
         # The bus updater mixes the previous bus embedding with the aggregated branch evidence.
-        out: torch.Tensor = self.upd_bus(torch.cat([h_bus, agg], dim=2))
+        residual_bus: torch.Tensor = self.upd_bus(torch.cat([h_bus, agg], dim=2))
+        out: torch.Tensor = self.norm_bus(h_bus + residual_bus)
         return out
 
 
@@ -1112,6 +1195,8 @@ def run_general_purpose_solver(
         qinj_tn: torch.Tensor,
         branch_active_tm: torch.Tensor,
         vref_tn: Optional[torch.Tensor],
+        vr_init_tn: Optional[torch.Tensor],
+        vi_init_tn: Optional[torch.Tensor],
         time_features_tk: Optional[torch.Tensor],
 ) -> SolverWindowResult:
     """
@@ -1123,6 +1208,8 @@ def run_general_purpose_solver(
     :param qinj_tn: reactive injections, shape ``(T, N)``
     :param branch_active_tm: branch active mask, shape ``(T, M)``
     :param vref_tn: complex slack reference, shape ``(T, N)``, or ``None``
+    :param vr_init_tn: real initial voltage guess, shape ``(T, N)``, or ``None``
+    :param vi_init_tn: imaginary initial voltage guess, shape ``(T, N)``, or ``None``
     :param time_features_tk: temporal feature matrix, shape ``(T, 4)``, or ``None``
     :returns: solver voltage prediction
     """
@@ -1164,10 +1251,21 @@ def run_general_purpose_solver(
     # Bus-type masks implement the typed behavior of the solver.
     slack, pv, pq, non_slack = build_bus_type_masks(graph=graph, device=device)
 
-    # The solver starts from a simple initial condition and improves it iteratively.
-    # Start from a flat profile and then inject the known slack reference if it is available.
-    vr: torch.Tensor = torch.ones((t_steps, n_bus), device=device, dtype=torch.float32)
-    vi: torch.Tensor = torch.zeros((t_steps, n_bus), device=device, dtype=torch.float32)
+    # The solver starts from VeraGrid's compiled Vbus guess rather than a flat profile.
+    # Learning a correction around a physically meaningful initialization is easier than solving from scratch.
+    vr_init_local: torch.Tensor
+    vi_init_local: torch.Tensor
+    if vr_init_tn is None or vi_init_tn is None:
+        vr_init_local = torch.ones((t_steps, n_bus), device=device, dtype=torch.float32)
+        vi_init_local = torch.zeros((t_steps, n_bus), device=device, dtype=torch.float32)
+    else:
+        if vr_init_tn.shape != (t_steps, n_bus) or vi_init_tn.shape != (t_steps, n_bus):
+            raise ValueError("vr_init_tn and vi_init_tn must be shaped (T,N).")
+        else:
+            vr_init_local = vr_init_tn.to(device=device, dtype=torch.float32)
+            vi_init_local = vi_init_tn.to(device=device, dtype=torch.float32)
+    vr: torch.Tensor = vr_init_local.clone()
+    vi: torch.Tensor = vi_init_local.clone()
 
     vr_ref: Optional[torch.Tensor]
     vi_ref: Optional[torch.Tensor]
@@ -1184,6 +1282,15 @@ def run_general_purpose_solver(
         t_steps=t_steps,
         n_bus=n_bus,
         device=device,
+    )
+    temporal_hidden: torch.Tensor = solver.encode_temporal_context(
+        pinj_tn=pinj_tn,
+        qinj_tn=qinj_tn,
+        vm_ref_tn=vm_ref,
+        va_ref_tn=va_ref,
+        vr_init_tn=vr_init_local,
+        vi_init_tn=vi_init_local,
+        time_features_tk=temporal_bus_features[:, 0, :],
     )
     if vr_ref is None or vi_ref is None:
         pass
@@ -1235,8 +1342,11 @@ def run_general_purpose_solver(
                 qinj_tn.to(torch.float32)[:, :, None],
                 vm_ref[:, :, None],
                 va_ref[:, :, None],
+                vr_init_local[:, :, None],
+                vi_init_local[:, :, None],
                 temporal_bus_features,
                 type_oh,
+                temporal_hidden,
             ],
             dim=2,
         )
@@ -1264,9 +1374,8 @@ def run_general_purpose_solver(
         # Step 5:
         # decode the aggregated graph information into the next voltage correction.
         # Decode the learned bus embedding back into a voltage correction in Cartesian coordinates.
-        dv: torch.Tensor = solver.dec_dv(h_bus)
-        dvr: torch.Tensor = torch.tanh(dv[:, :, 0]) * non_slack[None, :]
-        dvi: torch.Tensor = torch.tanh(dv[:, :, 1]) * non_slack[None, :]
+        dvr: torch.Tensor = torch.tanh(solver.dec_dvr(h_bus).squeeze(2)) * non_slack[None, :]
+        dvi: torch.Tensor = torch.tanh(solver.dec_dvi(h_bus).squeeze(2)) * non_slack[None, :]
         vr = vr + solver.step_scale * dvr
         vi = vi + solver.step_scale * dvi
 
@@ -1514,6 +1623,8 @@ def build_multigrid_dataset_from_veragrid(
         vr_true=torch.tensor(vr_true_np, dtype=dtype, device=runtime_device),
         vi_true=torch.tensor(vi_true_np, dtype=dtype, device=runtime_device),
         vref=torch.tensor(vref_np, dtype=complex_dtype, device=runtime_device),
+        vr_init=torch.tensor(vr0_fixed_np, dtype=dtype, device=runtime_device),
+        vi_init=torch.tensor(vi0_fixed_np, dtype=dtype, device=runtime_device),
         pinj=torch.tensor(np.real(s_bus_valid), dtype=dtype, device=runtime_device),
         qinj=torch.tensor(np.imag(s_bus_valid), dtype=dtype, device=runtime_device),
         branch_active=torch.tensor(branch_active_valid, dtype=torch.float32, device=runtime_device),
@@ -1580,6 +1691,8 @@ def train_general_purpose_solver(
         lr: float,
         w_v: float,
         w_pf: float,
+        w_branch_p: float,
+        w_branch_q: float,
         verbose_every: int,
         seed: int = 0,
         use_cartesian_voltage_loss: bool = True,
@@ -1596,6 +1709,8 @@ def train_general_purpose_solver(
     :param lr: learning rate
     :param w_v: voltage supervised loss weight
     :param w_pf: power-flow mismatch loss weight
+    :param w_branch_p: branch active-flow loss weight
+    :param w_branch_q: branch reactive-flow loss weight
     :param verbose_every: log frequency
     :param seed: random seed
     :param use_cartesian_voltage_loss: whether to optimize Cartesian voltage loss instead of magnitude loss
@@ -1631,6 +1746,8 @@ def train_general_purpose_solver(
         total_loss: torch.Tensor = torch.tensor(0.0, device=get_module_device(solver))
         loss_v_sum: float = 0.0
         loss_pf_sum: float = 0.0
+        loss_branch_p_sum: float = 0.0
+        loss_branch_q_sum: float = 0.0
 
         # Each optimizer step is deliberately mixed across graphs so the shared weights are constantly
         # forced to solve different topologies instead of overfitting one network.
@@ -1651,6 +1768,8 @@ def train_general_purpose_solver(
                 qinj_tn=window_sample.qinj,
                 branch_active_tm=window_sample.branch_active,
                 vref_tn=window_sample.vref,
+                vr_init_tn=window_sample.vr_init,
+                vi_init_tn=window_sample.vi_init,
                 time_features_tk=window_sample.time_features,
             )
             # This term keeps the learned solver close to the solved voltages seen in the data.
@@ -1683,12 +1802,35 @@ def train_general_purpose_solver(
                 raise RuntimeError("Physics evaluation unexpectedly returned no mismatch loss.")
             else:
                 pass
+            target_evaluation: PhysicsEvaluation = physics(
+                graph=window_sample.graph,
+                vr=window_sample.vr_true,
+                vi=window_sample.vi_true,
+                branch_active=window_sample.branch_active,
+                pinj_target=window_sample.pinj,
+                qinj_target=window_sample.qinj,
+            )
             # This term keeps the learned solver physically grounded on the current graph.
             # The physics term says whether the predicted voltages satisfy the requested injections on that graph.
             loss_pf: torch.Tensor = evaluation.loss_mismatch
-            total_loss = total_loss + (float(w_v) * loss_v + float(w_pf) * loss_pf)
+            loss_branch_p: torch.Tensor = (
+                ((evaluation.pf - target_evaluation.pf) ** 2)
+                + ((evaluation.pt - target_evaluation.pt) ** 2)
+            ).mean()
+            loss_branch_q: torch.Tensor = (
+                ((evaluation.qf - target_evaluation.qf) ** 2)
+                + ((evaluation.qt - target_evaluation.qt) ** 2)
+            ).mean()
+            total_loss = total_loss + (
+                float(w_v) * loss_v
+                + float(w_pf) * loss_pf
+                + float(w_branch_p) * loss_branch_p
+                + float(w_branch_q) * loss_branch_q
+            )
             loss_v_sum += float(loss_v.detach().cpu().item())
             loss_pf_sum += float(loss_pf.detach().cpu().item())
+            loss_branch_p_sum += float(loss_branch_p.detach().cpu().item())
+            loss_branch_q_sum += float(loss_branch_q.detach().cpu().item())
 
         # Averaging keeps the effective optimization scale stable when the number of sampled graphs changes.
         # Average across sampled graph windows so the step size does not depend on graphs_per_step.
@@ -1702,6 +1844,8 @@ def train_general_purpose_solver(
                 f"[step {step_idx:6d}] "
                 f"loss_v={loss_v_sum / float(graphs_per_step):.6e}  "
                 f"loss_pf={loss_pf_sum / float(graphs_per_step):.6e}  "
+                f"loss_branch_p={loss_branch_p_sum / float(graphs_per_step):.6e}  "
+                f"loss_branch_q={loss_branch_q_sum / float(graphs_per_step):.6e}  "
                 f"graphs_per_step={graphs_per_step}"
             )
         else:
@@ -1754,6 +1898,8 @@ def evaluate_general_purpose_solver_on_dataset(
             qinj_tn=dataset.qinj[tw],
             branch_active_tm=dataset.branch_active[tw],
             vref_tn=dataset.vref[tw],
+            vr_init_tn=dataset.vr_init[tw],
+            vi_init_tn=dataset.vi_init[tw],
             time_features_tk=dataset.time_features[tw],
         )
         evaluation: PhysicsEvaluation = physics(
@@ -1768,6 +1914,14 @@ def evaluate_general_purpose_solver_on_dataset(
             raise RuntimeError("Physics evaluation unexpectedly returned no mismatch loss.")
         else:
             pass
+        physics_true: PhysicsEvaluation = physics(
+            graph=dataset.graph,
+            vr=dataset.vr_true[tw],
+            vi=dataset.vi_true[tw],
+            branch_active=dataset.branch_active[tw],
+            pinj_target=dataset.pinj[tw],
+            qinj_target=dataset.qinj[tw],
+        )
         voltage_mse: float = float(
             (((vr_pred - dataset.vr_true[tw]) ** 2) + ((vi_pred - dataset.vi_true[tw]) ** 2)).mean().item())
         voltage_magnitude_mse: float = float(
@@ -1779,11 +1933,25 @@ def evaluate_general_purpose_solver_on_dataset(
             ).item()
         )
         pf_mismatch: float = float(evaluation.loss_mismatch.item())
+        branch_active_flow_mse: float = float(
+            (
+                ((evaluation.pf - physics_true.pf) ** 2)
+                + ((evaluation.pt - physics_true.pt) ** 2)
+            ).mean().item()
+        )
+        branch_reactive_flow_mse: float = float(
+            (
+                ((evaluation.qf - physics_true.qf) ** 2)
+                + ((evaluation.qt - physics_true.qt) ** 2)
+            ).mean().item()
+        )
 
         metrics: EvaluationMetrics = EvaluationMetrics(
             voltage_mse=voltage_mse,
             voltage_magnitude_mse=voltage_magnitude_mse,
             pf_mismatch=pf_mismatch,
+            branch_active_flow_mse=branch_active_flow_mse,
+            branch_reactive_flow_mse=branch_reactive_flow_mse,
         )
 
     result: EvaluationResult = EvaluationResult(
@@ -2102,6 +2270,8 @@ def main_multigrid_example(
         lr=lr,
         w_v=w_v,
         w_pf=w_pf,
+        w_branch_p=1.0,
+        w_branch_q=0.5,
         verbose_every=verbose_every,
         seed=0,
         use_cartesian_voltage_loss=True,
@@ -2123,7 +2293,9 @@ def main_multigrid_example(
             f"  {dataset.name}: "
             f"voltage_mse={evaluation_result.metrics.voltage_mse:.6e}  "
             f"vm_mse={evaluation_result.metrics.voltage_magnitude_mse:.6e}  "
-            f"pf_mismatch={evaluation_result.metrics.pf_mismatch:.6e}"
+            f"pf_mismatch={evaluation_result.metrics.pf_mismatch:.6e}  "
+            f"branch_p_mse={evaluation_result.metrics.branch_active_flow_mse:.6e}  "
+            f"branch_q_mse={evaluation_result.metrics.branch_reactive_flow_mse:.6e}"
         )
         if plot_testing:
             plot_testing_performance(
