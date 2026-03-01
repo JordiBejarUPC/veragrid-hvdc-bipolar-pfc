@@ -187,6 +187,8 @@ class MultiGridDataset:
     :param qinj: reactive power injection target, shape ``(T, N)``
     :param branch_active: branch active mask, shape ``(T, M)``
     :param time_array: original time axis, shape ``(T,)``
+    :param unix_time: UNIX time in seconds, shape ``(T,)``
+    :param time_features: temporal feature matrix, shape ``(T, 4)``
     :param n_time: number of time steps ``T``
     """
 
@@ -199,6 +201,8 @@ class MultiGridDataset:
     qinj: torch.Tensor
     branch_active: torch.Tensor
     time_array: np.ndarray
+    unix_time: torch.Tensor
+    time_features: torch.Tensor
     n_time: int
 
     def sample_window(self, window: int, rng: np.random.Generator) -> MultiGridWindow:
@@ -240,6 +244,8 @@ class MultiGridDataset:
             pinj=self.pinj[tw],
             qinj=self.qinj[tw],
             branch_active=self.branch_active[tw],
+            unix_time=self.unix_time[tw],
+            time_features=self.time_features[tw],
         )
         return window_sample
 
@@ -266,6 +272,8 @@ class MultiGridWindow:
     :param pinj: active injections, shape ``(Tw, N)``
     :param qinj: reactive injections, shape ``(Tw, N)``
     :param branch_active: branch active mask, shape ``(Tw, M)``
+    :param unix_time: UNIX time in seconds, shape ``(Tw,)``
+    :param time_features: temporal feature matrix, shape ``(Tw, 4)``
     """
 
     dataset_name: str
@@ -276,6 +284,8 @@ class MultiGridWindow:
     pinj: torch.Tensor
     qinj: torch.Tensor
     branch_active: torch.Tensor
+    unix_time: torch.Tensor
+    time_features: torch.Tensor
 
 
 @dataclass(frozen=True)
@@ -459,7 +469,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         self.tgn_layers: int = int(tgn_layers)
         self.msg_steps: int = int(msg_steps)
         self.dtype: torch.dtype = dtype
-        self.bus_in_dim: int = 11
+        self.bus_in_dim: int = 15
         self.enc_bus: nn.Linear = nn.Linear(self.bus_in_dim, self.embed_dim)
         self.enc_branch: nn.Linear = nn.Linear(3, self.embed_dim)
         self.upd_branch: MLP = MLP(3 * self.embed_dim, self.msg_hidden, self.embed_dim)
@@ -477,6 +487,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn: torch.Tensor,
             branch_active_tm: torch.Tensor,
             vref_tn: Optional[torch.Tensor] = None,
+            time_features_tk: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Predict bus voltages for one graph window.
@@ -486,6 +497,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         :param qinj_tn: reactive power target, shape ``(T, N)``
         :param branch_active_tm: branch active mask, shape ``(T, M)``
         :param vref_tn: complex slack reference, shape ``(T, N)``, or ``None``
+        :param time_features_tk: temporal feature matrix, shape ``(T, 4)``, or ``None``
         :returns: ``(vr_pred, vi_pred)``, each shaped ``(T, N)``
         """
         # Forward delegates to the typed window runner so the main logic is centralized.
@@ -495,6 +507,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn=qinj_tn,
             branch_active_tm=branch_active_tm,
             vref_tn=vref_tn,
+            time_features_tk=time_features_tk,
         )
         return result.vr_pred, result.vi_pred
 
@@ -505,6 +518,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn: torch.Tensor,
             branch_active_tm: torch.Tensor,
             vref_tn: Optional[torch.Tensor],
+            time_features_tk: Optional[torch.Tensor],
     ) -> SolverWindowResult:
         """
         Run the shared solver on one graph window.
@@ -514,6 +528,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
         :param qinj_tn: reactive injections, shape ``(T, N)``
         :param branch_active_tm: branch active mask, shape ``(T, M)``
         :param vref_tn: complex slack reference, or ``None``
+        :param time_features_tk: temporal feature matrix, or ``None``
         :returns: predicted voltage window
         """
         # The class owns the learned parameters, but the explicit solver loop stays external so the
@@ -525,6 +540,7 @@ class GeneralPurposeTypedGNNSolver(nn.Module):
             qinj_tn=qinj_tn,
             branch_active_tm=branch_active_tm,
             vref_tn=vref_tn,
+            time_features_tk=time_features_tk,
         )
         return result
 
@@ -681,6 +697,60 @@ def voltage_magnitude_loss(
     vm_true: torch.Tensor = torch.sqrt(vr_true * vr_true + vi_true * vi_true + 1e-12)
     loss_value: torch.Tensor = torch.mean((vm_pred - vm_true) ** 2)
     return loss_value
+
+
+def voltage_cartesian_loss(
+        vr_pred: torch.Tensor,
+        vi_pred: torch.Tensor,
+        vr_true: torch.Tensor,
+        vi_true: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Compute Cartesian voltage mean-squared error.
+
+    :param vr_pred: predicted real voltage
+    :param vi_pred: predicted imaginary voltage
+    :param vr_true: target real voltage
+    :param vi_true: target imaginary voltage
+    :returns: scalar loss tensor
+    """
+    # Cartesian supervision directly matches the voltage error metric later reported in evaluation.
+    # This removes the mismatch where magnitude improves but phase-related RMS error remains large.
+    loss_value: torch.Tensor = torch.mean((vr_pred - vr_true) ** 2 + (vi_pred - vi_true) ** 2)
+    return loss_value
+
+
+def build_time_features_from_unix_time(unix_time_seconds: np.ndarray) -> np.ndarray:
+    """
+    Build temporal features from UNIX timestamps.
+
+    :param unix_time_seconds: UNIX timestamps in seconds, shape ``(T,)``
+    :returns: temporal feature matrix shaped ``(T, 4)``
+    """
+    # The GNN already models spatial correlation through message passing.
+    # UNIX time-derived features expose temporal correlation explicitly without changing graph topology handling.
+    unix_time_float: np.ndarray = np.asarray(unix_time_seconds, dtype=np.float64)
+    if int(unix_time_float.size) == 0:
+        raise ValueError("Temporal feature construction requires at least one UNIX timestamp.")
+    else:
+        pass
+
+    elapsed_hours: np.ndarray = (unix_time_float - unix_time_float[0]) / 3600.0
+    delta_hours: np.ndarray = np.r_[0.0, np.diff(unix_time_float) / 3600.0]
+    seconds_per_day: float = 86400.0
+    daily_angle: np.ndarray = 2.0 * np.pi * np.mod(unix_time_float, seconds_per_day) / seconds_per_day
+    scale_hours: float = float(max(1.0, np.max(np.abs(elapsed_hours))))
+    elapsed_hours_normalized: np.ndarray = elapsed_hours / scale_hours
+
+    features: np.ndarray = np.column_stack(
+        (
+            elapsed_hours_normalized.astype(np.float32),
+            delta_hours.astype(np.float32),
+            np.sin(daily_angle).astype(np.float32),
+            np.cos(daily_angle).astype(np.float32),
+        )
+    )
+    return features
 
 
 def map_veragrid_bus_types(bus_types: np.ndarray) -> np.ndarray:
@@ -1006,6 +1076,35 @@ def build_reference_features(
     return vr_ref, vi_ref, vm_ref, va_ref
 
 
+def build_temporal_bus_features(
+        time_features_tk: Optional[torch.Tensor],
+        t_steps: int,
+        n_bus: int,
+        device: torch.device,
+) -> torch.Tensor:
+    """
+    Build per-bus temporal feature tensors from window time features.
+
+    :param time_features_tk: temporal feature matrix, shape ``(T, 4)``, or ``None``
+    :param t_steps: number of time steps
+    :param n_bus: number of buses
+    :param device: runtime device
+    :returns: temporal feature tensor shaped ``(T, N, 4)``
+    """
+    # Time is global to the operating point, so the same temporal descriptor is broadcast to every bus.
+    # This lets the model couple graph structure with operating-time context during message passing.
+    base_features: torch.Tensor
+    if time_features_tk is None:
+        base_features = torch.zeros((t_steps, 4), device=device, dtype=torch.float32)
+    else:
+        if time_features_tk.shape != (t_steps, 4):
+            raise ValueError("time_features_tk must be shaped (T,4).")
+        else:
+            base_features = time_features_tk.to(device=device, dtype=torch.float32)
+    temporal_bus_features: torch.Tensor = base_features[:, None, :].expand(t_steps, n_bus, 4)
+    return temporal_bus_features
+
+
 def run_general_purpose_solver(
         solver: GeneralPurposeTypedGNNSolver,
         graph: GraphSpec,
@@ -1013,6 +1112,7 @@ def run_general_purpose_solver(
         qinj_tn: torch.Tensor,
         branch_active_tm: torch.Tensor,
         vref_tn: Optional[torch.Tensor],
+        time_features_tk: Optional[torch.Tensor],
 ) -> SolverWindowResult:
     """
     Run the shared-weight solver on one graph window.
@@ -1023,6 +1123,7 @@ def run_general_purpose_solver(
     :param qinj_tn: reactive injections, shape ``(T, N)``
     :param branch_active_tm: branch active mask, shape ``(T, M)``
     :param vref_tn: complex slack reference, shape ``(T, N)``, or ``None``
+    :param time_features_tk: temporal feature matrix, shape ``(T, 4)``, or ``None``
     :returns: solver voltage prediction
     """
     # Algorithmically, this is the learned iterative solver:
@@ -1078,6 +1179,12 @@ def run_general_purpose_solver(
         n_bus=n_bus,
         device=device,
     )
+    temporal_bus_features: torch.Tensor = build_temporal_bus_features(
+        time_features_tk=time_features_tk,
+        t_steps=t_steps,
+        n_bus=n_bus,
+        device=device,
+    )
     if vr_ref is None or vi_ref is None:
         pass
     else:
@@ -1128,6 +1235,7 @@ def run_general_purpose_solver(
                 qinj_tn.to(torch.float32)[:, :, None],
                 vm_ref[:, :, None],
                 va_ref[:, :, None],
+                temporal_bus_features,
                 type_oh,
             ],
             dim=2,
@@ -1329,6 +1437,11 @@ def build_multigrid_dataset_from_veragrid(
     s_bus: np.ndarray = np.asarray(results.S / grid.Sbase)
     branch_active_np: np.ndarray = extract_branch_active_matrix(grid=grid, n_time=n_time)
     v0_np: np.ndarray = extract_vbus_guess_matrix(grid=grid, n_time=n_time)
+    unix_time_np: np.ndarray = np.asarray(grid.get_unix_time(), dtype=np.int64)
+    if int(unix_time_np.shape[0]) != n_time:
+        raise ValueError("Grid UNIX time length does not match the solved time-series length.")
+    else:
+        pass
 
     # Algorithmically, bad rows are removed here so the trainer never has to reason about invalid states.
     # Filter out any rows that are non-finite or not converged before training touches them.
@@ -1353,6 +1466,8 @@ def build_multigrid_dataset_from_veragrid(
     branch_active_valid: np.ndarray = branch_active_np[valid_mask]
     v0_valid: np.ndarray = v0_np[valid_mask]
     time_array_valid: np.ndarray = np.asarray(results.time_array)[valid_mask]
+    unix_time_valid: np.ndarray = unix_time_np[valid_mask]
+    time_features_np: np.ndarray = build_time_features_from_unix_time(unix_time_seconds=unix_time_valid)
 
     # All rows must share one comparable reference frame, otherwise the network sees equivalent physical
     # states under different global angles as different targets.
@@ -1403,6 +1518,8 @@ def build_multigrid_dataset_from_veragrid(
         qinj=torch.tensor(np.imag(s_bus_valid), dtype=dtype, device=runtime_device),
         branch_active=torch.tensor(branch_active_valid, dtype=torch.float32, device=runtime_device),
         time_array=time_array_valid,
+        unix_time=torch.tensor(unix_time_valid, dtype=torch.int64, device=runtime_device),
+        time_features=torch.tensor(time_features_np, dtype=torch.float32, device=runtime_device),
         n_time=int(vr_true_np.shape[0]),
     )
     return dataset
@@ -1465,6 +1582,7 @@ def train_general_purpose_solver(
         w_pf: float,
         verbose_every: int,
         seed: int = 0,
+        use_cartesian_voltage_loss: bool = True,
 ) -> None:
     """
     Train one shared solver across many graph datasets.
@@ -1476,10 +1594,11 @@ def train_general_purpose_solver(
     :param steps: optimizer steps
     :param graphs_per_step: sampled graph windows per optimizer step
     :param lr: learning rate
-    :param w_v: voltage magnitude loss weight
+    :param w_v: voltage supervised loss weight
     :param w_pf: power-flow mismatch loss weight
     :param verbose_every: log frequency
     :param seed: random seed
+    :param use_cartesian_voltage_loss: whether to optimize Cartesian voltage loss instead of magnitude loss
     :returns: ``None``
     """
     # Global view of this function:
@@ -1532,15 +1651,25 @@ def train_general_purpose_solver(
                 qinj_tn=window_sample.qinj,
                 branch_active_tm=window_sample.branch_active,
                 vref_tn=window_sample.vref,
+                time_features_tk=window_sample.time_features,
             )
             # This term keeps the learned solver close to the solved voltages seen in the data.
-            # The supervised term says whether the predicted voltage magnitude matches the solved target.
-            loss_v: torch.Tensor = voltage_magnitude_loss(
-                vr_pred=vr_pred,
-                vi_pred=vi_pred,
-                vr_true=window_sample.vr_true,
-                vi_true=window_sample.vi_true,
-            )
+            # The default supervised term now matches the Cartesian voltage metric used in evaluation.
+            loss_v: torch.Tensor
+            if use_cartesian_voltage_loss:
+                loss_v = voltage_cartesian_loss(
+                    vr_pred=vr_pred,
+                    vi_pred=vi_pred,
+                    vr_true=window_sample.vr_true,
+                    vi_true=window_sample.vi_true,
+                )
+            else:
+                loss_v = voltage_magnitude_loss(
+                    vr_pred=vr_pred,
+                    vi_pred=vi_pred,
+                    vr_true=window_sample.vr_true,
+                    vi_true=window_sample.vi_true,
+                )
             # Evaluate the predicted voltages against the exact AC equations for that same graph.
             evaluation: PhysicsEvaluation = physics(
                 graph=window_sample.graph,
@@ -1571,7 +1700,7 @@ def train_general_purpose_solver(
         if int(verbose_every) > 0 and (step_idx % int(verbose_every) == 0 or step_idx == 1):
             print(
                 f"[step {step_idx:6d}] "
-                f"loss_vm={loss_v_sum / float(graphs_per_step):.6e}  "
+                f"loss_v={loss_v_sum / float(graphs_per_step):.6e}  "
                 f"loss_pf={loss_pf_sum / float(graphs_per_step):.6e}  "
                 f"graphs_per_step={graphs_per_step}"
             )
@@ -1625,6 +1754,7 @@ def evaluate_general_purpose_solver_on_dataset(
             qinj_tn=dataset.qinj[tw],
             branch_active_tm=dataset.branch_active[tw],
             vref_tn=dataset.vref[tw],
+            time_features_tk=dataset.time_features[tw],
         )
         evaluation: PhysicsEvaluation = physics(
             graph=dataset.graph,
@@ -1974,6 +2104,7 @@ def main_multigrid_example(
         w_pf=w_pf,
         verbose_every=verbose_every,
         seed=0,
+        use_cartesian_voltage_loss=True,
     )
 
     print("\n[stage 4] testing shared solver on testing datasets")

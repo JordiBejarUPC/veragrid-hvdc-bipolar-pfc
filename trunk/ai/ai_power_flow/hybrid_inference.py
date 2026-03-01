@@ -129,6 +129,7 @@ def predict_voltage_window_with_gnn(
             qinj_tn=dataset.qinj[tw],
             branch_active_tm=dataset.branch_active[tw],
             vref_tn=dataset.vref[tw],
+            time_features_tk=dataset.time_features[tw],
         )
 
     result: GnnPredictionResult = GnnPredictionResult(

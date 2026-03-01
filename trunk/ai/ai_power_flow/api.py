@@ -47,11 +47,12 @@ class AiPowerFlowTrainingConfiguration:
     :param steps: optimizer steps
     :param graphs_per_step: sampled graph windows per optimizer step
     :param lr: learning rate
-    :param w_v: voltage-magnitude loss weight
+    :param w_v: voltage supervised loss weight
     :param w_pf: power-flow mismatch loss weight
     :param verbose_every: log frequency
     :param default_hours_number: repeated time points for snapshot grids
     :param seed: random seed
+    :param use_cartesian_voltage_loss: whether to optimize Cartesian voltage loss instead of voltage-magnitude loss
     """
 
     __slots__ = (
@@ -64,6 +65,7 @@ class AiPowerFlowTrainingConfiguration:
         "_seed",
         "_steps",
         "_tgn_layers",
+        "_use_cartesian_voltage_loss",
         "_verbose_every",
         "_w_pf",
         "_w_v",
@@ -85,6 +87,7 @@ class AiPowerFlowTrainingConfiguration:
         verbose_every: int = 50,
         default_hours_number: int = 1,
         seed: int = 0,
+        use_cartesian_voltage_loss: bool = True,
     ) -> None:
         """Initialize the training configuration."""
         self._embed_dim = int(embed_dim)
@@ -100,6 +103,7 @@ class AiPowerFlowTrainingConfiguration:
         self._verbose_every = int(verbose_every)
         self._default_hours_number = int(default_hours_number)
         self._seed = int(seed)
+        self._use_cartesian_voltage_loss = bool(use_cartesian_voltage_loss)
 
     @property
     def embed_dim(self) -> int:
@@ -165,6 +169,11 @@ class AiPowerFlowTrainingConfiguration:
     def seed(self) -> int:
         """Return the random seed."""
         return self._seed
+
+    @property
+    def use_cartesian_voltage_loss(self) -> bool:
+        """Return whether Cartesian voltage loss is enabled."""
+        return self._use_cartesian_voltage_loss
 
 
 class AiPowerFlowPlotConfiguration:
@@ -685,6 +694,7 @@ def run_workflow(request: AiPowerFlowWorkflowRequest) -> AiPowerFlowWorkflowResu
         w_pf=request.training.w_pf,
         verbose_every=request.training.verbose_every,
         seed=request.training.seed,
+        use_cartesian_voltage_loss=request.training.use_cartesian_voltage_loss,
     )
 
     validation_summary: Optional[SplitEvaluationSummary] = None
