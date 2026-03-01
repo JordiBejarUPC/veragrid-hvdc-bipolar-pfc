@@ -13,8 +13,8 @@ from typing import Optional
 
 import torch
 
-from general_purpose_power_flow_gnn import MultiGridDataset
-from general_purpose_power_flow_gnn import load_multigrid_collection
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import MultiGridDataset
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import load_multigrid_collection
 
 
 @dataclass(frozen=True)

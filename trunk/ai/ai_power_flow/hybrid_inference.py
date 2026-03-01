@@ -17,11 +17,11 @@ import VeraGridEngine as vg
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
 
-from general_purpose_power_flow_gnn import EvaluationMetrics
-from general_purpose_power_flow_gnn import GeneralPurposeTypedGNNSolver
-from general_purpose_power_flow_gnn import GraphSpec
-from general_purpose_power_flow_gnn import MultiGridDataset
-from general_purpose_power_flow_gnn import voltage_magnitude_loss
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import EvaluationMetrics
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import GeneralPurposeTypedGNNSolver
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import GraphSpec
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import MultiGridDataset
+from trunk.ai.ai_power_flow.general_purpose_power_flow_gnn import voltage_magnitude_loss
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
