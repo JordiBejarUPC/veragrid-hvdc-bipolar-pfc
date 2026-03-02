@@ -31,8 +31,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 import VeraGridEngine.api as gce
 
 
-pr = profile.Profile()
-pr.disable()
+# pr = profile.Profile()
+# pr.disable()
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
@@ -634,7 +634,7 @@ def rms_kundur():
     res = power_flow.results
     print(f"Converged: {res.converged}")
 
-    pr.enable()
+    # pr.enable()
 
     options = RmsOptions(time_step=0.001,
                          simulation_time=10,

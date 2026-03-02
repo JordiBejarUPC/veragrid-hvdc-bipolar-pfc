@@ -3,6 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import cProfile
+
 from typing import Dict, List, Tuple
 import time
 import numpy as np
@@ -348,7 +350,10 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
+                    profiler = cProfile.Profile()
                     t0 = time.perf_counter()
+                    if bus_index == 0:
+                        profiler.enable()
 
                     init_explicit(
                         mdl=elm.rms_model.model,
@@ -368,6 +373,9 @@ class RmsProblemDae(RmsProblemTemplate):
                         DIFF_NAME=self.DIFF_NAME,
                         CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                     )
+                    if bus_index == 0:
+                        profiler.disable()
+                        profiler.dump_stats("profiling_stats.prof")
 
                     total_init_explicit_time += time.perf_counter() - t0
 
