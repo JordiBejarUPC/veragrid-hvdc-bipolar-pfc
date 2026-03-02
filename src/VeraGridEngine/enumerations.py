@@ -2573,6 +2573,24 @@ class VarPowerFlowRefferenceType(Enum):
     it_B = "it_B"  # Branch current to in phase B in p.u.
     it_C = "it_C"  # Branch current to in phase C in p.u.
 
+    # Phasor representation (real/imaginary components)
+    Vr = "Vr"  # Bus voltage real part in p.u.
+    Vi = "Vi"  # Bus voltage imaginary part in p.u.
+    Vrf = "Vrf"  # From-bus voltage real part in p.u.
+    Vif = "Vif"  # From-bus voltage imaginary part in p.u.
+    Vrt = "Vrt"  # To-bus voltage real part in p.u.
+    Vit = "Vit"  # To-bus voltage imaginary part in p.u.
+
+    # Complex phasor representation (single complex variable)
+    V_complex = "V_complex"  # Complex voltage phasor V = Vr + j*Vi
+    Vf_complex = "Vf_complex"  # Complex voltage at from bus
+    Vt_complex = "Vt_complex"  # Complex voltage at to bus
+    I_complex = "I_complex"  # Complex current phasor I = Ir + j*Ii
+    If_complex = "If_complex"  # Complex current at from bus
+    It_complex = "It_complex"  # Complex current at to bus
+    S_complex = "S_complex"  # Complex power S = P + j*Q
+    Sf_complex = "Sf_complex"  # Complex power at from bus
+    St_complex = "St_complex"  # Complex power at to bus
 
     def __str__(self):
         return self.value

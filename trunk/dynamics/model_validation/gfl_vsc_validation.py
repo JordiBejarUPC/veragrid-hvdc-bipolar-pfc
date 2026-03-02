@@ -10,11 +10,10 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
@@ -29,6 +28,10 @@ from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 import VeraGridEngine.api as gce
 
 def block_dimensions(block:Block):
@@ -112,34 +115,166 @@ grid.add_load(bus=bus2, api_obj=load1)
 
 
 #########
-pf_driver = gce.PowerFlowDriver(grid=grid)
-pf_driver.run()
-res = pf_driver.results
-print('Voltage magnitudes (p.u.): ', abs(pf_driver.results.voltage))
-print('Voltage angles (deg): ', np.angle(pf_driver.results.voltage, deg=True))
+# Use generalized power flow for better VSC support
+print("Running generalized power flow...")
+nc = compile_numerical_circuit_at(circuit=grid)
+islands = nc.split_into_islands(consider_hvdc_as_island_links=True)
+print(f"Base: nbus {nc.nbus}, nbr: {nc.nbr}, nvsc: {nc.nvsc}, nhvdc: {nc.nhvdc}")
+
+pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR, tolerance=1e-11, verbose=2)
+logger = Logger()
+island = islands[0]
+
+# Get power injections and other data from the island
+S0 = island.get_power_injections_pu()
+I0 = island.get_current_injections_pu()
+Y0 = island.get_admittance_injections_pu()
+Qmin, Qmax = island.get_reactive_power_limits()
+
+problem = PfGeneralizedFormulation(V0=island.bus_data.Vbus,
+                                   S0=S0,
+                                   I0=I0,
+                                   Y0=Y0,
+                                   Qmin=Qmin,
+                                   Qmax=Qmax,
+                                   nc=island,
+                                   options=pf_options,
+                                   logger=logger)
+
+solution = newton_raphson_fx(problem=problem,
+                             tol=pf_options.tolerance,
+                             max_iter=pf_options.max_iter,
+                             trust=pf_options.trust_radius,
+                             verbose=pf_options.verbose,
+                             logger=logger)
+
+print("Solution converged:", solution.converged)
+print("Solution iterations:", solution.iterations)
+print("Solution error:", solution.norm_f)
+print("Solution voltage:", solution.V)
+
+# Create proper PowerFlowResults object from generalized power flow solution
+from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
+
+# Calculate power flows for branches
+Sf = np.zeros(nc.nbr, dtype=complex)
+St = np.zeros(nc.nbr, dtype=complex)
+V = solution.V
+
+for i in range(nc.nbr):
+    f = nc.passive_branch_data.F[i]
+    t = nc.passive_branch_data.T[i]
+    
+    r = nc.passive_branch_data.R[i]
+    x = nc.passive_branch_data.X[i]
+    b = nc.passive_branch_data.B[i]
+    
+    if r != 0 or x != 0:
+        y_series = 1.0 / complex(r, x)
+        I_from = y_series * (V[f] - V[t]) + complex(0, b/2) * V[f]
+        I_to = y_series * (V[t] - V[f]) + complex(0, b/2) * V[t]
+        
+        Sf[i] = V[f] * np.conj(I_from)
+        St[i] = V[t] * np.conj(I_to)
+
+# Get bus power injections
+Sbus = nc.get_power_injections_pu()
+
+# Create PowerFlowResults with required attributes
+bus_names = np.array([bus.name for bus in grid.buses])
+branch_names = np.array([br.name for br in grid.get_branches_iter()])
+hvdc_names = np.array([hvdc.name for hvdc in grid.hvdc_lines])
+vsc_names = np.array([vsc.name for vsc in grid.vsc_devices])
+gen_names = np.array([gen.name for gen in grid.generators])
+batt_names = np.array([batt.name for batt in grid.batteries])
+sh_names = np.array([sh.name for sh in grid.shunts])
+
+# Determine bus types (1=slack, 2=PV, 3=PQ)
+bus_types = np.zeros(nc.nbus, dtype=int)
+for i, bus in enumerate(grid.buses):
+    if bus.is_slack:
+        bus_types[i] = 1
+    else:
+        bus_types[i] = 3  # Assume PQ for now
+
+res = PowerFlowResults(
+    n=nc.nbus,
+    m=nc.nbr,
+    n_hvdc=nc.nhvdc,
+    n_vsc=nc.nvsc,
+    n_gen=len(grid.generators),
+    n_batt=len(grid.batteries),
+    n_sh=len(grid.shunts),
+    bus_names=bus_names,
+    branch_names=branch_names,
+    hvdc_names=hvdc_names,
+    vsc_names=vsc_names,
+    gen_names=gen_names,
+    batt_names=batt_names,
+    sh_names=sh_names,
+    bus_types=bus_types
+)
+
+# Set the solution data
+res.voltage = solution.V
+res.Sf = Sf
+res.St = St
+res.Sbus = Sbus
+
+# Calculate VSC power flow results from the generalized formulation solution
+# VSC power at the DC side (from bus) and AC side (to bus)
+res.Pfp_vsc = np.zeros(nc.nvsc, dtype=float)
+res.Pfn_vsc = np.zeros(nc.nvsc, dtype=float)
+res.St_vsc = np.zeros(nc.nvsc, dtype=complex)
+
+for i, vsc in enumerate(grid.vsc_devices):
+    # Get bus indices
+    dc_bus_idx = grid.buses.index(vsc.bus_from)
+    ac_bus_idx = grid.buses.index(vsc.bus_to)
+    
+    # Calculate power at AC side (St_vsc) from the solution
+    # This comes from the VSC's control values and the solution
+    V_ac = solution.V[ac_bus_idx]
+    V_dc = solution.V[dc_bus_idx]
+    
+    # Get control values (these are the setpoints from power flow)
+    P_set = vsc.control1_val if vsc.control1 in [ConverterControlType.Pac, ConverterControlType.Pdc] else 0.0
+    Q_set = vsc.control2_val if vsc.control2 == ConverterControlType.Qac else 0.0
+    
+    # For now, use the control setpoints as the power flow results
+    # In a real scenario, these would come from the power flow solution
+    res.St_vsc[i] = complex(-P_set, -Q_set)  # Negative because VSC injects power
+    res.Pfp_vsc[i] = P_set  # DC side power
+    res.Pfn_vsc[i] = 0.0  # Not used for 2-terminal VSC
+
+res.St_vsc = solution.St_vsc
+res.Pfn_vsc = solution.Pfn_vsc
+res.Pfp_vsc = solution.Pfp_vsc
+res.Sbus = solution.Scalc
+print('Voltage magnitudes (p.u.): ', abs(res.voltage))
+print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
 
 # Build dynamic_model_host
 line12_dynhost = DynamicModelHost()
 load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
-
 gen3_dynhost = DynamicModelHost()
 
 #Initialise the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+line12_mdl = get_line_rms_template(grid.var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block)
+    load_mdl = ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
 
 # Build VSC model with the same control modes used in the VSC device
-vsc_mdl = block_deep_copy(VscGflBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block)
+vsc_mdl = VscGflBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
-pv_cell_block  =  block_deep_copy(PVCellBuild(grid.var_factory).block)
-dc_source = block_deep_copy(DCVoltageSource(grid.var_factory, bus3.rms_model.model.out_vars[0]).block)
+pv_cell_block  =  PVCellBuild(grid.var_factory).block
+dc_source = DCVoltageSource(grid.var_factory, bus3.rms_model.model.out_vars[0]).block
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
@@ -153,9 +288,16 @@ line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
 line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
 
 # Updated connections for new VSC model with 3 inputs: [Vm, Va, Vdc]
+print("\nDEBUG: Before connect:")
+print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")
+print(f"  Bus2 out_vars[0]: {bus2.rms_model.model.out_vars[0].name} (uid={bus2.rms_model.model.out_vars[0].uid})")
+
 vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])  # Vm
 vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])  # Va
 vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])  # Vdc
+
+print("\nDEBUG: After connect:")
+print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")
 
 #vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]]) 
 #pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
@@ -177,9 +319,39 @@ load1.rms_model = load_dynhost
 gen1.rms_model = gen_dynhost
 gen3.rms_model = gen3_dynhost
 gen3.rms_model.model.unify_blocks()
+vsc1.rms_model.model = vsc_mdl
 
-block_dimensions(vsc_mdl)
-block_dimensions(gen3.rms_model.model)
+# Check init_eqs BEFORE unify_blocks
+print("\nDEBUG: Before unify_blocks - checking child blocks init_eqs:")
+for i, child in enumerate(vsc_mdl.children):
+    print(f"  Child {i}: {len(child.init_eqs)} init_eqs")
+    for var, expr in list(child.init_eqs.items())[:3]:  # Show first 3
+        print(f"    {var.name} = {expr}")
+
+vsc1.rms_model.model.unify_blocks()  # Merge init_eqs from child blocks
+
+# Debug: Check the external mapping of the VSC model
+print("\nDEBUG: VSC Model External Mapping:")
+for ref_type, var in vsc1.rms_model.model.external_mapping.items():
+    print(f"  {ref_type.value}: {var.name} (uid={var.uid})")
+
+print("\nDEBUG: VSC Model init_eqs:")
+for var, expr in vsc1.rms_model.model.init_eqs.items():
+    expr_vars = []
+    if hasattr(expr, 'free_symbols'):
+        expr_vars = [str(s) for s in expr.free_symbols]
+    elif hasattr(expr, 'name'):
+        expr_vars = [expr.name]
+    print(f"  {var.name} (uid={var.uid}) = {expr} [vars: {expr_vars}]")
+
+# Set initial value for Vpv0 in the DC source to avoid None values
+# Get the DC voltage from bus3 power flow results
+Vdc_bus3 = abs(res.voltage[2])  # Bus 3 is the DC bus
+Vpv0_var = find_name_in_block('Vpv0', gen3.rms_model.model)
+# Set the value in the event_dict (where Vpv0 is stored as a parameter)
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+gen3.rms_model.model.event_dict[Vpv0_var] = Const(Vdc_bus3 + 0.001)  # Slightly higher than Vdc
+
 Vpv0 = find_name_in_block('Vpv0', gen3.rms_model.model)
 
 # Find appropriate reference variable based on control mode

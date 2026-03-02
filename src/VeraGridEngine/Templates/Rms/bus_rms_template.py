@@ -50,17 +50,17 @@ class BusRmsTemplate(RmsModelTemplate):
             self.P = vf.add_var("P")
             self.Q = vf.add_var("Q")
 
-        self._block = Block(
-            algebraic_vars=[self.Vm, self.Va],
-            out_vars=[self.Vm, self.Va]
-        )
-
-        self._block.external_mapping = {
-            VarPowerFlowRefferenceType.Vm: self.Vm,
-            VarPowerFlowRefferenceType.Va: self.Va,
-            VarPowerFlowRefferenceType.P: self.P,
-            VarPowerFlowRefferenceType.Q: self.Q
-        }
+            self._block = Block(
+                algebraic_vars=[self.Vm, self.Va],
+                out_vars=[self.Vm, self.Va]
+            )
+    
+            self._block.external_mapping = {
+                VarPowerFlowRefferenceType.Vm: self.Vm,
+                VarPowerFlowRefferenceType.Va: self.Va,
+                VarPowerFlowRefferenceType.P: self.P,
+                VarPowerFlowRefferenceType.Q: self.Q
+            }
 
 
 def initialize_bus_rms(bus: Bus, vf: VarFactory):

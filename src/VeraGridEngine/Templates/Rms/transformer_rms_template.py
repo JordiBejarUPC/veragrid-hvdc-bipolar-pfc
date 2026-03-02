@@ -14,7 +14,7 @@ from VeraGridEngine.Templates.templates_common_functions import tf_to_diffblock_
 
 class TrafoRmsTemplate(RmsModelTemplate):
 
-    def __init__(self, trafo:Transformer2W, vf: VarFactory, name: str = "rms_bus_template"):
+    def __init__(self, trafo:Transformer2W, vf: VarFactory, Sbase:float = 100, name: str = "rms_bus_template"):
         """
         Created the RMS Template of a Bus
         :param vf: VarFactory
@@ -163,7 +163,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
                 block.children.extend([PI_control_block, Lead_Lag_block])
 
 
-            trafo.rms_model.model = block
+            self._block= block
 
 def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory):
     """

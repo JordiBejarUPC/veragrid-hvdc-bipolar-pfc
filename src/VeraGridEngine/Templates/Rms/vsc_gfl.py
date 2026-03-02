@@ -478,6 +478,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     
     # Build the converter model with specified control modes
     gfl_block, i_d, i_q, P, Q = build_gfl_converter_model(
+        vfactory = vfactory,
         inputs=[Vm, Va, v_dc, Pt_vsc, Qt_vsc],
         control1=control1,
         control2=control2
@@ -525,5 +526,5 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     vsc_block.add(gfl_block)
     vsc_block.name = 'gfl_block'
 
-    templ.block = vsc_block
+    templ._block = vsc_block
     return templ
