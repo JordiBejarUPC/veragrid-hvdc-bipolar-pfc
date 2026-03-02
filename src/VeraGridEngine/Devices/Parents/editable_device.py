@@ -7,6 +7,7 @@ import uuid
 import numpy as np
 import pandas as pd
 
+from VeraGridEngine import RmsInitializationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
@@ -18,7 +19,8 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
-                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode)
+                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
+                                         EmtLineTypes,SmallSignalEmtBuildTypes)
 
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
@@ -61,7 +63,11 @@ GCPROP_TYPES = Union[
     Type[BusGraphicType],
     Type[SwitchGraphicType],
     Type[DynamicIntegrationMethod],
-    Type[OpfDispatchMode]
+    Type[RmsInitializationMethod],
+    Type[OpfDispatchMode],
+    Type[EmtLineTypes],
+    Type[EmtSolverTypes],
+    Type[SmallSignalEmtBuildTypes]
 ]
 
 
@@ -617,6 +623,15 @@ class EditableDevice:
         """
         return getattr(self, prop.name)
 
+    def set_snapshot_value(self, property_name, value: Any) -> None:
+        """
+        Set the value of a snapshot property
+        :param property_name: name of the property
+        :param value: Any
+        """
+        # set the snapshot value whatever it is
+        setattr(self, property_name, value)
+
     def get_snapshot_value_by_name(self, name) -> Any:
         """
         Return the stored object value from the property index
@@ -753,15 +768,6 @@ class EditableDevice:
             else:
                 # return the normal property
                 setattr(self, prop.name, value)
-
-    def set_snapshot_value(self, property_name, value: Any) -> None:
-        """
-        Set the value of a snapshot property
-        :param property_name: name of the property
-        :param value: Any
-        """
-        # set the snapshot value whatever it is
-        setattr(self, property_name, value)
 
     def create_profiles(self, index):
         """
@@ -909,8 +915,11 @@ class EditableDevice:
                           idtag=uuid.uuid4().hex if forced_new_idtag else self.idtag,
                           code=self.code,
                           device_type=self.device_type)
+            new_obj.disable_auto_updates()
+
         except TypeError:
             new_obj = tpe()
+            new_obj.disable_auto_updates()
 
         for prop_name, gc_prop in self.registered_properties.items():
             value = getattr(self, prop_name)
@@ -927,6 +936,7 @@ class EditableDevice:
         if forced_new_idtag:
             new_obj.idtag = uuid.uuid4().hex
 
+        new_obj.enable_auto_updates()
         return new_obj
 
     @staticmethod

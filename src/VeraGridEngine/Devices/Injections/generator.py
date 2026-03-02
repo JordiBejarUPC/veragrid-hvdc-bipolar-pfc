@@ -8,15 +8,16 @@ import numpy as np
 import pandas as pd
 from typing import Union
 from matplotlib import pyplot as plt
+
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.Devices.Parents.editable_device import get_at
+# from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
 class Generator(GeneratorParent):
@@ -624,99 +625,11 @@ class Generator(GeneratorParent):
         self.Qmax += other.Qmax
         self.Qmin += other.Qmin
 
-    def initialize_rms(self, rms_event=False):
-        """
-        Initialize the RMS model
-        """
-
-        if self.rms_model.empty():
-            delta = Var("delta")
-            omega = Var("omega")
-            psid = Var("psid")
-            psiq = Var("psiq")
-            i_d = Var("i_d")
-            i_q = Var("i_q")
-            v_d = Var("v_d")
-            v_q = Var("v_q")
-            te = Var("te")
-            et = Var("et")
-            tm = Var("tm")
-            P_g = Var("P_g", pf_ref=VarPowerFlowRefferenceType.P)
-            Q_g = Var("Q_g", pf_ref=VarPowerFlowRefferenceType.Q)
-
-            R1 = Var("R1")
-            X1 = Var("X1")
-            freq = Var("frequ")
-            M = Var("M")
-            D = Var("D")
-            omega_ref = Var("omega_ref")
-            Kp = Var("Kp")
-            Ki = Var("Ki")
-
-            vf = UndefinedConst()
-            tm0 = UndefinedConst()
-
-            Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-
-            block = Block(
-                state_vars=[delta, omega],
-                state_eqs=[
-                    (2 * np.pi * freq) * (omega - omega_ref),
-                    (tm - te - D * (omega - omega_ref)) / M,
-                ],
-                algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq,
-                                te, tm, et],
-                algebraic_eqs=[
-                    psid - (R1 * i_q + v_q),
-                    psiq + (R1 * i_d + v_d),
-                    0 - (psid + X1 * i_d - vf),
-                    0 - (psiq + X1 * i_q),
-                    v_d - (Vm * sin(delta - Va)),
-                    v_q - (Vm * cos(delta - Va)),
-                    te - (psid * i_q - psiq * i_d),
-                    P_g - (v_d * i_d + v_q * i_q),
-                    Q_g - (v_q * i_d - v_d * i_q),
-                    tm - (self.tm0 + Kp * (omega - omega_ref) + Ki * et),
-                    2 * np.pi * freq * et - delta,
-                ],
-
-                init_eqs={
-                    delta: imag(
-                        log((Vm * exp(1j * Va) + (R1 + 1j * X1) * (
-                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
-                                abs(Vm * exp(1j * Va) + (R1 + 1j * X1) * (
-                                    conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
-                    omega: omega_ref,
-                    v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
-                    v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
-                    i_d: real(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
-                    i_q: imag(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
-                    psid: R1 * i_q + v_q,
-                    psiq: -R1 * i_d - v_d,
-                    te: psid * i_q - psiq * i_d,
-                    tm: te,
-                    et: Const(0),
-                })
-
-            block.fix_vars = [tm0, vf]
-            block.fix_vars_eqs = {
-                tm0.uid: tm,
-                vf.uid: psid + X1 * i_d
-            }
-
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.P: P_g,
-                VarPowerFlowRefferenceType.Q: Q_g
-            }
-
-            block.event_dict = {R1: Const(self.R1),
-                                X1: Const(self.X1),
-                                freq: Const(self.freq),
-                                M: Const(self.M),
-                                D: Const(self.D),
-                                omega_ref: Const(self.omega_ref),
-                                Kp: Const(self.Kp),
-                                Ki: Const(self.Ki)}
-
-            self.rms_model.model = block
+    # def initialize_rms(self, var_factory: VarFactory):
+    #     """
+    #     Initialize the RMS model
+    #     """
+    #
+    #     if self._rms_model.empty():
+    #         generator_template = get_complete_generator_template(var_factory)
+    #         self.rms_model.model = generator_template.block

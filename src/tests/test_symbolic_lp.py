@@ -8,8 +8,8 @@ import math
 from pathlib import Path
 import pytest
 
-from VeraGridEngine.Utils.Symbolic.lp_model import LPModel, LinExpr
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, sin
+from VeraGridEngine.Utils.Symbolic.lp_model import LPModel, LinExpr, Constraint
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, sin, CmpOp
 
 TOL = 1e-8
 
@@ -85,9 +85,10 @@ def test_constraint_valid_senses():
     x = m.add_var("x")
     # all three senses should be accepted
     a = x == 0
-    m += x <= 1
-    m += x >= -1
-    m += x == 0
+
+    m += Constraint.from_sides(x, CmpOp.LE, Const(1))
+    m += Constraint.from_sides(x, CmpOp.GE, Const(-1))
+    m += Constraint.from_sides(x, CmpOp.EQ, Const(0))
     # model still has three constraints
     assert len(m._constraints) == 3
 

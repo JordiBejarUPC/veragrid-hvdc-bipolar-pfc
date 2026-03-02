@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
+
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Associations.technology import Technology
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -47,6 +48,7 @@ class InjectionParent(PhysicalDevice):
         'bus_pos',
         '_conn',
         '_rms_model',
+        '_emt_model',
         'time',
         'color'
     )
@@ -124,6 +126,7 @@ class InjectionParent(PhysicalDevice):
         self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
+        self._emt_model: DynamicModelHost = DynamicModelHost()
 
         self.bus_pos: int = 0
 
@@ -321,6 +324,23 @@ class InjectionParent(PhysicalDevice):
     def rms_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
             self._rms_model = value
+        else:
+            raise ValueError(f"RMS model cannot accept {value}")
+
+    @property
+    def emt_model(self) -> DynamicModelHost:
+        """
+
+        :return:
+        """
+        return self._emt_model
+
+    @emt_model.setter
+    def emt_model(self, value: DynamicModelHost):
+        if isinstance(value, DynamicModelHost):
+            self._emt_model = value
+        else:
+            raise ValueError(f"RMS model cannot accept {value}")
 
     def get_S_with_sign(self) -> complex:
         """
@@ -400,3 +420,6 @@ class InjectionParent(PhysicalDevice):
             if val.value > mx:
                 col = val.api_object.color
         self.color = col
+
+
+

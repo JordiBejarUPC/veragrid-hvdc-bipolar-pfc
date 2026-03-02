@@ -2,21 +2,38 @@ from __future__ import annotations
 
 import numpy as np
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import run_small_signal_stability
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
+
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
+from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
+from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_template
+from VeraGridEngine.Utils.Symbolic import Block
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+
 import VeraGridEngine.api as gce
+import time
 
 
 def stability_kundur_no_shunt():
+    t_start_total = time.perf_counter()
+    ###########################################################################################################################
+    # Build VeraGrid object
+    ###########################################################################################################################
+
     grid = gce.MultiCircuit()
 
     # Buses
@@ -44,88 +61,71 @@ def stability_kundur_no_shunt():
     grid.add_bus(bus10)
     grid.add_bus(bus11)
 
+    for bus in grid.buses:
+        initialize_bus_rms(bus, vf=grid.var_factory)
+
     # Line
 
-    line0 = grid.add_line(
-        Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+    line0 = gce.Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
+                     r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
-    line1 = grid.add_line(
-        Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+    line1 = gce.Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
+                     r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
-    line2 = grid.add_line(
-        Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line2 = gce.Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line3 = grid.add_line(
-        Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line3 = gce.Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line4 = grid.add_line(
-        Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line4 = gce.Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line5 = grid.add_line(
-        Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    line5 = gce.Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-    line6 = grid.add_line(
-        Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    line6 = gce.Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-    line7 = grid.add_line(
-        Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    line7 = gce.Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-    line8 = grid.add_line(
-        Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
-             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+    line8 = gce.Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
+                     r=0.01100, x=0.11000, b=0.19250, rate=400.0)
 
-    line9 = grid.add_line(
-        Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line9 = gce.Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
+                     r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line10 = grid.add_line(
-        Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line10 = gce.Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
+                      r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line11 = grid.add_line(
-        Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
-             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+    line11 = gce.Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
+                      r=0.00300, x=0.03000, b=0.00583, rate=700.0)
 
-    line12 = grid.add_line(
-        Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+    line12 = gce.Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
+                      r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
-    line13 = grid.add_line(
-        Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
-             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+    line13 = gce.Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
+                      r=0.00500, x=0.05000, b=0.02187, rate=750.0)
 
     # Transformers
     xt1 = 0.15 * (100.0 / 900.0)
-    trafo_G1 = grid.add_line(
-        Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
-             r=0.00000, x=xt1, b=0.0, rate=900.0))
+    trafo_G1 = Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
+                    r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-    trafo_G2 = grid.add_line(
-        Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+    trafo_G2 = gce.Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-    trafo_G3 = grid.add_line(
-        Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+    trafo_G3 = gce.Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
-    trafo_G4 = grid.add_line(
-        Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
-             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+    trafo_G4 = gce.Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
+                        r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0)
 
     # load
-    load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
-    load1_grid = grid.add_load(bus=bus7, api_obj=load1)
+    load1 = gce.Load(name="load1", P=967.0, Q=100.0)
 
-    load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
-    load2_grid = grid.add_load(bus=bus9, api_obj=load2)
+    load2 = gce.Load(name="load2", P=1767.0, Q=100.0)
 
     # Generators
     fn_1 = 60.0
@@ -205,10 +205,263 @@ def stability_kundur_no_shunt():
         Kp=Kp_4, Ki=Ki_4
     )
 
+    ######################################################################################################
+    # Build Rms models
+    ######################################################################################################
+
+    # Build rms models from template
+    # generators
+    genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+    genrow_mdl2 = get_genrow2_rms_template(grid.var_factory).block
+    genrow_mdl3 = get_genrow3_rms_template(grid.var_factory).block
+    genrow_mdl4 = get_genrow4_rms_template(grid.var_factory).block
+
+    # lines
+    line0_mdl = get_line_rms_template(grid.var_factory).block
+    line1_mdl = get_line_rms_template(grid.var_factory).block
+    line2_mdl = get_line_rms_template(grid.var_factory).block
+    line3_mdl = get_line_rms_template(grid.var_factory).block
+    line4_mdl = get_line_rms_template(grid.var_factory).block
+    line5_mdl = get_line_rms_template(grid.var_factory).block
+    line6_mdl = get_line_rms_template(grid.var_factory).block
+    line7_mdl = get_line_rms_template(grid.var_factory).block
+    line8_mdl = get_line_rms_template(grid.var_factory).block
+    line9_mdl = get_line_rms_template(grid.var_factory).block
+    line10_mdl = get_line_rms_template(grid.var_factory).block
+    line11_mdl = get_line_rms_template(grid.var_factory).block
+    line12_mdl = get_line_rms_template(grid.var_factory).block
+    line13_mdl = get_line_rms_template(grid.var_factory).block
+
+    # trafos
+    trafo1_mdl = get_line_rms_template(grid.var_factory).block
+    trafo2_mdl = get_line_rms_template(grid.var_factory).block
+    trafo3_mdl = get_line_rms_template(grid.var_factory).block
+    trafo4_mdl = get_line_rms_template(grid.var_factory).block
+
+    # loads
+    load1_mdl = get_load_rms_template(grid.var_factory).block
+    load2_mdl = get_load_rms_template(grid.var_factory).block
+
+    # set models parameters
+    load1_mdl.set_parameter_in_model(var_name="Pl0", new_value=-9.670000000007317)
+    load1_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.9999999999967969)
+
+    load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-17.6699999999199)
+    load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.999999999989467)
+
+    # connection with buses
+
+    genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
+    genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+
+    genrow_mdl2.connect([genrow_mdl2.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+    genrow_mdl2.connect([genrow_mdl2.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+
+    genrow_mdl3.connect([genrow_mdl3.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+    genrow_mdl3.connect([genrow_mdl3.in_vars[1]], [bus3.rms_model.model.out_vars[1]])
+
+    genrow_mdl4.connect([genrow_mdl4.in_vars[0]], [bus4.rms_model.model.out_vars[0]])
+    genrow_mdl4.connect([genrow_mdl4.in_vars[1]], [bus4.rms_model.model.out_vars[1]])
+
+    line0_mdl.connect([line0_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
+    line0_mdl.connect([line0_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
+
+    line0_mdl.connect([line0_mdl.in_vars[2]], [bus6.rms_model.model.out_vars[0]])
+    line0_mdl.connect([line0_mdl.in_vars[3]], [bus6.rms_model.model.out_vars[1]])
+
+    line1_mdl.connect([line1_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
+    line1_mdl.connect([line1_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
+
+    line1_mdl.connect([line1_mdl.in_vars[2]], [bus6.rms_model.model.out_vars[0]])
+    line1_mdl.connect([line1_mdl.in_vars[3]], [bus6.rms_model.model.out_vars[1]])
+
+    line2_mdl.connect([line2_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
+    line2_mdl.connect([line2_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
+
+    line2_mdl.connect([line2_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
+    line2_mdl.connect([line2_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
+
+    line3_mdl.connect([line3_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
+    line3_mdl.connect([line3_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
+
+    line3_mdl.connect([line3_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
+    line3_mdl.connect([line3_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
+
+    line4_mdl.connect([line4_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
+    line4_mdl.connect([line4_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
+
+    line4_mdl.connect([line4_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
+    line4_mdl.connect([line4_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
+
+    line5_mdl.connect([line5_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
+    line5_mdl.connect([line5_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
+
+    line5_mdl.connect([line5_mdl.in_vars[2]], [bus8.rms_model.model.out_vars[0]])
+    line5_mdl.connect([line5_mdl.in_vars[3]], [bus8.rms_model.model.out_vars[1]])
+
+    line6_mdl.connect([line6_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
+    line6_mdl.connect([line6_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
+
+    line6_mdl.connect([line6_mdl.in_vars[2]], [bus8.rms_model.model.out_vars[0]])
+    line6_mdl.connect([line6_mdl.in_vars[3]], [bus8.rms_model.model.out_vars[1]])
+
+    line7_mdl.connect([line7_mdl.in_vars[0]], [bus8.rms_model.model.out_vars[0]])
+    line7_mdl.connect([line7_mdl.in_vars[1]], [bus8.rms_model.model.out_vars[1]])
+
+    line7_mdl.connect([line7_mdl.in_vars[2]], [bus9.rms_model.model.out_vars[0]])
+    line7_mdl.connect([line7_mdl.in_vars[3]], [bus9.rms_model.model.out_vars[1]])
+
+    line8_mdl.connect([line8_mdl.in_vars[0]], [bus8.rms_model.model.out_vars[0]])
+    line8_mdl.connect([line8_mdl.in_vars[1]], [bus8.rms_model.model.out_vars[1]])
+
+    line8_mdl.connect([line8_mdl.in_vars[2]], [bus9.rms_model.model.out_vars[0]])
+    line8_mdl.connect([line8_mdl.in_vars[3]], [bus9.rms_model.model.out_vars[1]])
+
+    line9_mdl.connect([line9_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
+    line9_mdl.connect([line9_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
+
+    line9_mdl.connect([line9_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
+    line9_mdl.connect([line9_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
+
+    line10_mdl.connect([line10_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
+    line10_mdl.connect([line10_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
+
+    line10_mdl.connect([line10_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
+    line10_mdl.connect([line10_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
+
+    line11_mdl.connect([line11_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
+    line11_mdl.connect([line11_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
+
+    line11_mdl.connect([line11_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
+    line11_mdl.connect([line11_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
+
+    line12_mdl.connect([line12_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
+    line12_mdl.connect([line12_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
+
+    line12_mdl.connect([line12_mdl.in_vars[2]], [bus11.rms_model.model.out_vars[0]])
+    line12_mdl.connect([line12_mdl.in_vars[3]], [bus11.rms_model.model.out_vars[1]])
+
+    line13_mdl.connect([line13_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
+    line13_mdl.connect([line13_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
+
+    line13_mdl.connect([line13_mdl.in_vars[2]], [bus11.rms_model.model.out_vars[0]])
+    line13_mdl.connect([line13_mdl.in_vars[3]], [bus11.rms_model.model.out_vars[1]])
+
+    trafo1_mdl.connect([trafo1_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
+    trafo1_mdl.connect([trafo1_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
+
+    trafo1_mdl.connect([trafo1_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
+    trafo1_mdl.connect([trafo1_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+
+    trafo2_mdl.connect([trafo2_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
+    trafo2_mdl.connect([trafo2_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
+
+    trafo2_mdl.connect([trafo2_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
+    trafo2_mdl.connect([trafo2_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+    trafo3_mdl.connect([trafo3_mdl.in_vars[0]], [bus11.rms_model.model.out_vars[0]])
+    trafo3_mdl.connect([trafo3_mdl.in_vars[1]], [bus11.rms_model.model.out_vars[1]])
+
+    trafo3_mdl.connect([trafo3_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+    trafo3_mdl.connect([trafo3_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
+
+    trafo4_mdl.connect([trafo4_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
+
+    trafo4_mdl.connect([trafo4_mdl.in_vars[2]], [bus4.rms_model.model.out_vars[0]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[3]], [bus4.rms_model.model.out_vars[1]])
+
+    load1_mdl.connect([load1_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
+    load1_mdl.connect([load1_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
+
+    load2_mdl.connect([load2_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
+    load2_mdl.connect([load2_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
+
+    # external mapping
+
+    big_gen1 = Block(children=[genrow_mdl1])
+    big_gen2 = Block(children=[genrow_mdl2])
+    big_gen3 = Block(children=[genrow_mdl3])
+    big_gen4 = Block(children=[genrow_mdl4])
+
+    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
+    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+
+    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl2.out_vars[0]})
+    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl2.out_vars[1]})
+
+    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl3.out_vars[0]})
+    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl3.out_vars[1]})
+
+    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl4.out_vars[0]})
+    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl4.out_vars[1]})
+
+    # add models to opi objects
+
+    gen1.rms_model.model = big_gen1
+    gen2.rms_model.model = big_gen2
+    gen3.rms_model.model = big_gen3
+    gen4.rms_model.model = big_gen4
+
+    line0.rms_model.model = line0_mdl
+    line1.rms_model.model = line1_mdl
+    line2.rms_model.model = line2_mdl
+    line3.rms_model.model = line3_mdl
+    line4.rms_model.model = line4_mdl
+    line5.rms_model.model = line5_mdl
+    line6.rms_model.model = line6_mdl
+    line7.rms_model.model = line7_mdl
+    line8.rms_model.model = line8_mdl
+    line9.rms_model.model = line9_mdl
+    line10.rms_model.model = line10_mdl
+    line11.rms_model.model = line11_mdl
+    line12.rms_model.model = line12_mdl
+    line13.rms_model.model = line13_mdl
+
+    trafo_G1.rms_model.model = trafo1_mdl
+    trafo_G2.rms_model.model = trafo2_mdl
+    trafo_G3.rms_model.model = trafo3_mdl
+    trafo_G4.rms_model.model = trafo4_mdl
+
+    load1.rms_model.model = load1_mdl
+    load2.rms_model.model = load2_mdl
+
+
+    grid.add_line(line0)
+    grid.add_line(line1)
+    grid.add_line(line2)
+    grid.add_line(line3)
+    grid.add_line(line4)
+    grid.add_line(line5)
+    grid.add_line(line6)
+    grid.add_line(line7)
+    grid.add_line(line8)
+    grid.add_line(line9)
+    grid.add_line(line10)
+    grid.add_line(line11)
+    grid.add_line(line12)
+    grid.add_line(line13)
+
+    grid.add_line(trafo_G1)
+    grid.add_line(trafo_G2)
+    grid.add_line(trafo_G3)
+    grid.add_line(trafo_G4)
+
+    grid.add_load(bus=bus7, api_obj=load1)
+    grid.add_load(bus=bus9, api_obj=load2)
+
     grid.add_generator(bus=bus1, api_obj=gen1)
     grid.add_generator(bus=bus2, api_obj=gen2)
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
+
+    t_end_setup = time.perf_counter()
+
+    ###########################################################################################################################
+    # Power Flow Execution
+    ###########################################################################################################################
+
+    t_start_pf = time.perf_counter()
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -236,24 +489,47 @@ def stability_kundur_no_shunt():
     power_flow.run()
     res = power_flow.results
 
-    sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
+    t_end_pf = time.perf_counter()
 
-    params_mapping = {}
+    ###########################################################################################################################
+    # RMS Problem Compilation and SSS Driver Execution
+    ###########################################################################################################################
 
-    slv = BlockSolver(ss, sim_time, use_jit=False)
-    params0 = slv.build_init_params_vector(params_mapping)
-    x0 = slv.build_init_vars_vector_from_uid(init_guess)
+    rms_options = RmsOptions(time_step=0.001,
+                             simulation_time=10,
+                             tolerance=1e-6,
+                             integration_method=DynamicIntegrationMethod.DaeBackEuler,
+                             initialization_method=RmsInitializationMethod.Explicit,
+                             use_init_values=False,
+                             max_iter=1000,
+                             verbose=0)
 
-    (Eigenvalues,
-     PFactors,
-     damping_ratios,
-     conjugate_frequencies,
-     state_matrix) = run_small_signal_stability(slv=slv,
-                                                x=x0,
-                                                time=0,
-                                                verbose=1)
+    ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
-    return Eigenvalues, PFactors
+    t_start_problem = time.perf_counter()
+    t_end_problem = time.perf_counter()
+
+    t_start_sss = time.perf_counter()
+    small_signal_driver = SmallSignalStabilityRmsDriver(grid=grid,
+                                                        rms_options=rms_options,
+                                                        sss_options=ss_options,
+                                                        pf_results=power_flow.results)
+
+    small_signal_driver.run()
+    t_end_sss = time.perf_counter()
+
+    eigenvalues = small_signal_driver.results.eigenvalues
+    PFactors = small_signal_driver.results.participation_factors
+
+    print(f"\n--- PROFILING SUMMARY ---")
+    print(f"Grid Setup Time:           {t_end_setup - t_start_total:.4f} s")
+    print(f"Power Flow Time:           {t_end_pf - t_start_pf:.4f} s")
+    print(f"RMS Problem Setup/Compile: {t_end_problem - t_start_problem:.4f} s")
+    print(f"SSS Solver Execution:      {t_end_sss - t_start_sss:.4f} s")
+    print(f"Total Time:                {t_end_sss - t_start_total:.4f} s")
+    print("-------------------------\n")
+
+    return eigenvalues, PFactors
 
 
 def test_eigenvalues():

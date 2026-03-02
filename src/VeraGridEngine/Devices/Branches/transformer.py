@@ -7,6 +7,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Tuple
 
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
@@ -14,7 +15,6 @@ from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPha
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -854,47 +854,3 @@ class Transformer2W(ControllableBranchParent):
 
         return Yff, Yft, Ytf, Ytt
 
-    def initialize_rms(self):
-        if self.rms_model.empty():
-            Qf = Var("Qf")
-            Qt = Var("Qt")
-            Pf = Var("Pf")
-            Pt = Var("Pt")
-
-            ys = 1.0 / complex(self.R, self.X)
-            g = Var("g")
-            b = Var("b")
-            bsh = Var("bsh")
-
-            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-
-            block = Block(
-                algebraic_vars=[Pf, Pt, Qf, Qt],
-                algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
-                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
-                        Vaf - Vat) + b * Vmf * Vmt * sin(
-                        Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
-                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
-                        Vat - Vaf) + b * Vmt * Vmf * sin(
-                        Vat - Vaf + np.pi / 2)),
-                ])
-
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.Pf: Pf,
-                VarPowerFlowRefferenceType.Pt: Pt,
-                VarPowerFlowRefferenceType.Qf: Qf,
-                VarPowerFlowRefferenceType.Qt: Qt,
-            }
-
-            block.event_dict = {g: Const(ys.real),
-                                b: Const(ys.imag),
-                                bsh: Const(self.B)}
-
-            self.rms_model.model = block

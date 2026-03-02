@@ -2747,8 +2747,7 @@ class DiagramsMain(CompiledArraysMain):
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                     # create a new events group
                     group = dev.RmsEventsGroup(idtag=None,
-                                               name='Rms Events Group 1',
-                                               category="single" if len(target_devices) == 1 else "multiple")
+                                               name='Rms Events Group 1')
                     self.circuit.add_rms_events_group(group)
 
                     events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info

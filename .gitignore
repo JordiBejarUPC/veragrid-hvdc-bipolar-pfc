@@ -1,4 +1,5 @@
 __pycache__
+__pycache_jit__
 .pytest_cache
 *.swp
 /doc/build
@@ -36,3 +37,8 @@ demo_5_node.json
 /src/tests/data/output/raw_to_cgmes_export_results/
 .idea/workspace.xml
 .idea/workspace.xml
+.vscode
+
+
+.aider*
+.env
