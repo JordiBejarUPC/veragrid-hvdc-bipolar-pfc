@@ -158,6 +158,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_diff = 0
 
         ######################################## Initialize devices ########################################
+        total_init_explicit_time: float = 0
 
         # initialize buses
         bus_dict: Dict[Bus, int] = dict()
