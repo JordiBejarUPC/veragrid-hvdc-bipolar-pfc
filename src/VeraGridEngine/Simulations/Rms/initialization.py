@@ -5,6 +5,7 @@
 
 from typing import Dict, List
 import numpy as np
+from collections import defaultdict, deque
 
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, SymbolicParamsVectorInit
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
@@ -121,111 +122,115 @@ def init_explicit(mdl: Block,
             event_params_array[uid2idx_event_params[event_param.uid]] = result
 
     # compute and assign missing init_vars and None event parameters
-    vars_initialized: List[int] = list()
-    while len(vars_initialized) < len(mdl.init_eqs):
-        progress = False
 
-        vars_init_at_start = len(vars_initialized)
-        for var, eq in mdl.init_eqs.items():
-            if var.uid not in vars_initialized:
+    ####################################################################################################################################
 
-                # get all the variables inside the initialization equation
-                vars_needed = get_expression_vars(eq)
+    # construct graph of dependencies
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
 
-                calculate_now = True
-                for v_init in vars_needed:
-                    # check if this variable is already initialized
-                    key_deps = v_init.uid
+    dependencies = {}
 
-                    if v_init in mdl.event_dict.keys():
-                        if isinstance(mdl.event_dict[v_init], Const) and mdl.event_dict[v_init].value is None:
-                            calculate_now = False
+    for var, eq in mdl.init_eqs.items():
+
+        vars_in_eq = get_expression_vars(eq)
+        deps = [v.uid for v in vars_in_eq if v in mdl.init_eqs]
+
+        dependencies[var.uid] = deps
+
+        for dep_uid in deps:
+            if dep_uid != var.uid:
+                graph[dep_uid].append(var.uid)
+                in_degree[var.uid] += 1
+
+        if var.uid not in in_degree:
+            in_degree[var.uid] = 0
+
+    # topological sort
+    queue = deque([uid for uid in in_degree if in_degree[uid] == 0])
+    topo_order = []
+
+    while queue:
+        u = queue.popleft()
+        topo_order.append(u)
+
+        for v in graph[u]:
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+
+    if len(topo_order) != len(mdl.init_eqs):
+        raise RuntimeError("Cycle detected between different variables")
+
+    # evaluate
+    for uid in topo_order:
+
+        var = next(v for v in mdl.init_eqs if v.uid == uid)
+        eq = mdl.init_eqs[var]
+        vars_list = find_vars_order(eq)
+
+        if var in mdl.event_dict.keys():
+            uid_bindings: Dict[int, float] = {}
+            for vr in vars_list:
+                if vr.uid in uid2idx_event_params:
+                    uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
+                elif vr.uid in uid2idx_vars:
+                    uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+
+            result = eq.eval_uid(uid_bindings)
+            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
+            #
+            # result = float(eq_fn(x, event_params_array, 0.0)[0])
+            mdl.event_dict[var] = Const(result)
+            event_params_array[uid2idx_event_params[var.uid]] = result
+            index = variable_parameters.index(var)
+            if event_parameters_eqs[index].value is None:
+                event_parameters_eqs[index] = Const(result)
 
 
-                    else:
-                        if key_deps not in init_guess and v_init.uid != var.uid:
-                            calculate_now = False
+        else:
+            # check if implicit equation
+            is_self_implicit = uid in dependencies[uid]
 
+            if not is_self_implicit:
+                uid_bindings: Dict[int, float] = {}
+                vars_list = find_vars_order(eq)
+                for vr in vars_list:
+                    if vr.uid in uid2idx_event_params:
+                        uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
+                    elif vr.uid in uid2idx_vars:
+                        uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+                    elif vr.uid in uid2idx_params:
+                        uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
 
-                if calculate_now:
+                result = eq.eval_uid(uid_bindings)
+                # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+                #                        DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
+                # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
+                init_guess[var.uid] = result
+                x[uid2idx_vars[var.uid]] = result
 
-                    # We initialize the params with value None
-                    if var in mdl.event_dict.keys():
-                        if isinstance(eq, Const) and eq.value is not None:
-
-                            raise ValueError(f"Parameter {var.name} already initialized")
-
-                        else:
-                            uid_bindings: Dict[int, float] = {}
-                            vars_list = find_vars_order(eq)
-                            for vr in vars_list:
-                                if vr.uid in uid2idx_event_params:
-                                    uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
-                                elif vr.uid in uid2idx_vars:
-                                    uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
-
-                            result = eq.eval_uid(uid_bindings)
-                            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
-                            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
-                            #
-                            # result = float(eq_fn(x, event_params_array, 0.0)[0])
-                            mdl.event_dict[var] = Const(result)
-                            event_params_array[uid2idx_event_params[var.uid]] = result
-                            index= variable_parameters.index(var)
-                            if event_parameters_eqs[index].value is None:
-                                event_parameters_eqs[index] = Const(result)
-
-                    # We initialize the algebraic values
-                    else:
-                        vars_in_eqs = get_expression_vars(eq)
-
-                        if var not in vars_in_eqs:
-                            uid_bindings: Dict[int, float] = {}
-                            vars_list = find_vars_order(eq)
-                            for vr in vars_list:
-                                if vr.uid in uid2idx_event_params:
-                                    uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
-                                elif vr.uid in uid2idx_vars:
-                                    uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
-                                elif vr.uid in uid2idx_params:
-                                    uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
-
-                            result = eq.eval_uid(uid_bindings)
-                            # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
-                            #                        DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
-                            # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                            init_guess[var.uid] = result
-                            x[uid2idx_vars[var.uid]] = result
-                        else:
-                            eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
-                                                   VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
-                            init_val = 0
-                            tol = 1e-8
-                            error = 1
-                            alpha = 1.3
-                            x0 = 1.2
-                            x[uid2idx_vars[var.uid]] = x0
-                            while error > tol:
-                                try:
-                                    init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                                except:
-                                    x[uid2idx_vars[var.uid]] = -0.1
-                                    init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                                x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
-                                error = np.linalg.norm(init_val - x0)
-                                x0 = x[uid2idx_vars[var.uid]]
-                            init_guess[var.uid] = init_val
-                            x[uid2idx_vars[var.uid]] = init_val
-
-                    vars_initialized.append(var.uid)
-
-        vars_init_at_end = len(vars_initialized)
-        if vars_init_at_end > vars_init_at_start:
-            progress = True
-
-        if not progress:
-            unresolved = [v.name for v in mdl.init_eqs if (v.uid, v.name) not in vars_initialized]
-            raise RuntimeError(f"Unresolvable init equations: {unresolved}")
+            else:
+                eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
+                                       VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
+                init_val = 0
+                tol = 1e-8
+                error = 1
+                alpha = 1.3
+                x0 = 1.2
+                x[uid2idx_vars[var.uid]] = x0
+                while error > tol:
+                    try:
+                        init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
+                    except:
+                        x[uid2idx_vars[var.uid]] = -0.1
+                        init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
+                    x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
+                    error = np.linalg.norm(init_val - x0)
+                    x0 = x[uid2idx_vars[var.uid]]
+                init_guess[var.uid] = init_val
+                x[uid2idx_vars[var.uid]] = init_val
 
 
 def init_pseudo_transient():

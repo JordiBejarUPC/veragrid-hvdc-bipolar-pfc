@@ -1198,9 +1198,6 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
     """
     name = elmshnt.loc_name or _ref_id(elmshnt.ID) or "Shunt"
 
-    # Active losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
-    g_mw: float = 0.0
-
     shtype: int = elmshnt.shtype  # 1 reactor, 2 capacitor
     qtotn: float = elmshnt.qtotn
 
@@ -1240,6 +1237,13 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
         logger.add_warning(
             f"Shunt '{name}': computed B=0.0 MVAr (shtype={shtype}, qcapn={elmshnt.qcapn}, ncapa={elmshnt.ncapa}, qrean={elmshnt.qrean}, qtotn={qtotn})."
         )
+
+    if elmshnt.grea == 0:
+        # If ctive losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
+        g_mw: float = 0.0
+    else:
+        # grea is the quality factor, and the conductance can be found.
+        g_mw: float = -b_mvar / elmshnt.grea
 
     return g_mw, b_mvar
 
