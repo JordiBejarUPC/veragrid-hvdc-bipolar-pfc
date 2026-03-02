@@ -632,6 +632,7 @@ class ElmShnt(DGSElement):
         DgsProperty('ctech', 'i', 'DGS field ctech (i)', py_name='ctech'),
         DgsProperty('fres', 'r', 'DGS field fres (r)', py_name='fres'),
         DgsProperty('greaf0', 'r', 'DGS field greaf0 (r)', py_name='greaf0'),
+        DgsProperty('grea', 'r', 'DGS field grea (r)', py_name='grea'),
         DgsProperty('iswitch', 'i', 'DGS field iswitch (i)', py_name='iswitch'),
         DgsProperty('qtotn', 'r', 'DGS field qtotn (r)', py_name='qtotn'),
         # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
@@ -654,6 +655,7 @@ class ElmShnt(DGSElement):
         self.ctech: int = 0
         self.fres: float = 0.0
         self.greaf0: float = 0.0
+        self.grea: float = 0.0
         self.iswitch: int = 0
         self.qtotn: float = 0.0
         self.usetp: float = 1.0
