@@ -4,12 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import copy
-from typing import Dict
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
 
 
@@ -31,7 +27,7 @@ class RmsModelTemplate(PointerDeviceParent):
                          comment="",
                          device_type=DeviceType.RmsModelTemplateDevice)
 
-        self._tpe: DeviceType = DeviceType.NoDevice
+        self.tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
 
         self.register('block', units="p.u.", tpe=SubObjectType.DaeBlockType,

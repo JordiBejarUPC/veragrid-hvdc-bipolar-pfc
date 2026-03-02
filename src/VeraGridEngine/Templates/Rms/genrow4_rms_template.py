@@ -3,7 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
 import numpy as np
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory

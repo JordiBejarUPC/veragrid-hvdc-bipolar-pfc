@@ -1066,7 +1066,7 @@ class BlockSolver:
                  h: float,
                  x0: Vec,
                  dx0: Vec,
-                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.RungeKutta4,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.OdeRungeKutta4,
                  newton_tol: float = 1e-8,
                  alter_params: Vec | None = None,
                  newton_max_iter: int = 1000,
@@ -1097,7 +1097,7 @@ class BlockSolver:
         else:
             x0 = x0
 
-        if method == DynamicIntegrationMethod.BackEuler:
+        if method == DynamicIntegrationMethod.DaeBackEuler:
             return self._simulate_implicit_euler_diff(
                 t0=t0, t_end=t_end, h=h, x0=x0, dx0=dx0, alter_params = alter_params,
                 max_iter=newton_max_iter, verbose=verbose,

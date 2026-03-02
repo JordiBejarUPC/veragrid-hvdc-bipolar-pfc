@@ -2,13 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import List
+
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 
 
-def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> RmsModelTemplate:
+def get_load_rms_template(vfactory: VarFactory, name="Load rms template") -> RmsModelTemplate:
     """
     Get the RMS template model of the Load
     :return: RmsModelTemplate
@@ -17,9 +17,10 @@ def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> R
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    inputs: List[Var] = [vfactory.add_var("Vm_" + name),
-                         vfactory.add_var("Va_" + name)
-                         ]
+    inputs = [
+        vfactory.add_var("Vm_" + name),
+        vfactory.add_var("Va_" + name)
+    ]
 
     Pl0 = vfactory.add_var("Pl0")
     Ql0 = vfactory.add_var("Ql0")
@@ -32,9 +33,7 @@ def get_load_rms_template(vfactory: VarFactory, name = "Load rms template") -> R
 
     templ.block.algebraic_vars = [Pl, Ql]
 
-    templ.block.algebraic_eqs = [
-                Pl - Pl0,
-                Ql - Ql0]
+    templ.block.algebraic_eqs = [Pl - Pl0, Ql - Ql0]
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Va: inputs[0],

@@ -45,8 +45,8 @@ class BusRmsTemplate(RmsModelTemplate):
             }
 
         else:
-            self.Vm = vf.add_var("Vm")
-            self.Va = vf.add_var("Va")
+            self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
+            self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
             self.P = vf.add_var("P")
             self.Q = vf.add_var("Q")
 
@@ -80,6 +80,6 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
 
     return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
 
-def check_empty_bus(bus_rms_model: Block):
+def check_empty_bus_rms(bus_rms_model: Block):
     return len(bus_rms_model.algebraic_vars) == 0
 

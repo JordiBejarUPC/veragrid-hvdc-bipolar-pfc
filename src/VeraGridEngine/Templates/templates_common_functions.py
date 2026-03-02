@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Any
+from typing import Tuple, Optional, List, Callable, Dict
 
+from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, heaviside, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.enumerations import DeviceType
 
 
 def tf_to_block(var_factory: VarFactory,

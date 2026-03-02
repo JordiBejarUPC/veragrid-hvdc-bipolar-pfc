@@ -8,8 +8,8 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
-from VeraGridEngine.Templates.Rms.load2_rms_template import get_load2_rms_template
+
+from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
 from VeraGridEngine.Templates.Rms.genrow2_rms_template import get_genrow2_rms_template
 from VeraGridEngine.Templates.Rms.genrow3_rms_template import get_genrow3_rms_template
@@ -17,8 +17,8 @@ from VeraGridEngine.Templates.Rms.genrow4_rms_template import get_genrow4_rms_te
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
-from VeraGridEngine.Simulations.SmallSignalStability.small_signal_options import SmallSignalStabilityOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -239,8 +239,15 @@ def stability_kundur_no_shunt():
     trafo4_mdl = get_line_rms_template(grid.var_factory).block
 
     # loads
-    load1_mdl = get_load1_rms_template(grid.var_factory).block
-    load2_mdl = get_load2_rms_template(grid.var_factory).block
+    load1_mdl = get_load_rms_template(grid.var_factory).block
+    load2_mdl = get_load_rms_template(grid.var_factory).block
+
+    # set models parameters
+    load1_mdl.set_parameter_in_model(var_name="Pl0", new_value=-9.670000000007317)
+    load1_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.9999999999967969)
+
+    load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-17.6699999999199)
+    load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.999999999989467)
 
     # connection with buses
 
@@ -389,7 +396,7 @@ def stability_kundur_no_shunt():
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl4.out_vars[0]})
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl4.out_vars[1]})
 
-    # add models to dyn_host
+    # add models to opi objects
 
     gen1.rms_model.model = big_gen1
     gen2.rms_model.model = big_gen2
@@ -419,35 +426,6 @@ def stability_kundur_no_shunt():
     load1.rms_model.model = load1_mdl
     load2.rms_model.model = load2_mdl
 
-    # attach rms models to Veragrid objects
-
-    # gen1.rms_model.model = big_gen1
-    # gen2.rms_model.model = big_gen2
-    # gen3.rms_model.model = big_gen3
-    # gen4.rms_model.model = big_gen4
-    #
-    # line0.rms_model.model = line0_mdl
-    # line1.rms_model.model = line1_mdl
-    # line2.rms_model.model = line2_mdl
-    # line3.rms_model.model = line3_mdl
-    # line4.rms_model.model = line4_mdl
-    # line5.rms_model.model = line5_mdl
-    # line6.rms_model.model = line6_mdl
-    # line7.rms_model.model = line7_mdl
-    # line8.rms_model.model = line8_mdl
-    # line9.rms_model.model = line9_mdl
-    # line10.rms_model.model = line10_mdl
-    # line11.rms_model.model = line11_mdl
-    # line12.rms_model.model = line12_mdl
-    # line13.rms_model.model = line13_mdl
-    #
-    # trafo_G1.rms_model.model = trafo1_mdl
-    # trafo_G2.rms_model.model = trafo2_mdl
-    # trafo_G3.rms_model.model = trafo3_mdl
-    # trafo_G4.rms_model.model = trafo4_mdl
-    #
-    # load1.rms_model.model = load1_mdl
-    # load2.rms_model.model = load2_mdl
 
     grid.add_line(line0)
     grid.add_line(line1)
@@ -520,22 +498,22 @@ def stability_kundur_no_shunt():
     rms_options = RmsOptions(time_step=0.001,
                              simulation_time=10,
                              tolerance=1e-6,
-                             integration_method=DynamicIntegrationMethod.BackEuler,
+                             integration_method=DynamicIntegrationMethod.DaeBackEuler,
                              initialization_method=RmsInitializationMethod.Explicit,
                              use_init_values=False,
                              max_iter=1000,
                              verbose=0)
 
-    ss_options = SmallSignalStabilityOptions(ss_assessment_time=0)
+    ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
     t_start_problem = time.perf_counter()
     t_end_problem = time.perf_counter()
 
     t_start_sss = time.perf_counter()
-    small_signal_driver = SmallSignalStabilityDriver(grid=grid,
-                                                     rms_options=rms_options,
-                                                     sss_options=ss_options,
-                                                     pf_results=power_flow.results)
+    small_signal_driver = SmallSignalStabilityRmsDriver(grid=grid,
+                                                        rms_options=rms_options,
+                                                        sss_options=ss_options,
+                                                        pf_results=power_flow.results)
 
     small_signal_driver.run()
     t_end_sss = time.perf_counter()

@@ -3,17 +3,14 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
-import numpy as np
-import math
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
-import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.block import Block
 
-def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0 = 1.0, Ql0 =0.1) -> RmsModelTemplate:
+
+def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     Builds an RMS model template for an exponential load.
     
@@ -45,39 +42,39 @@ def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0 = 1.0, Ql0 =0
 
     inputs = [vfactory.add_var("Vm")]
 
-    #Vars:
+    # Vars:
     P = vfactory.add_var('P')
     Q = vfactory.add_var('Q')
-    
-    #Parameters:
+
+    # Parameters:
     P0 = vfactory.add_var('Pl0')
     Q0 = vfactory.add_var('Ql0')
     V0 = vfactory.add_var('V0')
     a = vfactory.add_var('a')
     b = vfactory.add_var('b')
-    
+
     # ZIP coefficients (classic formulation)
     events_dict = {
         P0: vfactory.add_const(Pl0),
         Q0: vfactory.add_const(Ql0),
         V0: vfactory.add_const(None),
-        
+
         a: vfactory.add_const(5),
         b: vfactory.add_const(5),
     }
-    
+
     init_eqs = {
         V0: inputs[0],
     }
-    
+
     templ.block = Block(
-        algebraic_eqs = [
-            P - P0*((inputs[0]/V0)**a),
-            Q - Q0*((inputs[0]/V0)**b),
+        algebraic_eqs=[
+            P - P0 * ((inputs[0] / V0) ** a),
+            Q - Q0 * ((inputs[0] / V0) ** b),
         ],
-        algebraic_vars=[P,Q],
-        event_dict= events_dict,
-        init_eqs = init_eqs,
+        algebraic_vars=[P, Q],
+        event_dict=events_dict,
+        init_eqs=init_eqs,
     )
 
     templ.block.external_mapping = {
@@ -85,7 +82,7 @@ def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0 = 1.0, Ql0 =0
         VarPowerFlowRefferenceType.Q: Q,
         VarPowerFlowRefferenceType.Vm: inputs[0],
     }
-    
+
     templ.block.in_vars = inputs
 
     return templ

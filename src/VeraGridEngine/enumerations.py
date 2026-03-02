@@ -2391,14 +2391,14 @@ class DynamicIntegrationMethod(Enum):
     Dynamic integration methods.
     """
     # Implicit time-stepping (DAE form)
-    Trapezoid = "trapezoidal"
-    BackEuler = "BackEuler"
-    BDF2 = "bdf2"
-    Continuous = "continuous"
+    DaeTrapezoidal = "DAE_Trapezoidal"
+    DaeBackEuler = "DAE_BackEuler"
+    DaeBDF2 = "DAE_bdf2"
+    DaeContinuous = "DAE_Continuous"
 
     # Explicit time-stepping (ODE form)
-    RungeKutta4 = "rk4"
-    Euler = "euler"
+    OdeRungeKutta4 = "ODE_Runge_Kutta 4"
+    OdeEuler = "ODE_Euler"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2417,19 +2417,75 @@ class DynamicIntegrationMethod(Enum):
     def list(cls):
         return list(map(lambda c: c.value, cls))
 
+
 class EmtSolverTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
     """
-    Symbolic = "symbolic"   # Symbolic differentiation (SD)
-    Automatic = "automatic" # Sparse forward-mode AD + graph coloring
-    StructuralAD = "structuralAD" # Sparse structural automatic differentiation
+    Symbolic = "symbolic"  # Symbolic differentiation (SD)
+    Automatic = "automatic"  # Sparse forward-mode AD + graph coloring
+    StructuralAD = "structuralAD"  # Sparse structural automatic differentiation
 
     def __str__(self) -> str:
         return str(self.value)
 
     def __repr__(self):
         return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtSolverTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
+class SmallSignalEmtBuildTypes(Enum):
+    """
+    Jacobian construction backends for implicit solvers.
+    """
+    Arnoldi = "Arnoldi"
+    HybridArnoldi = "Hybrid Arnoldi"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SmallSignalEmtBuildTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
@@ -2539,16 +2595,16 @@ class VarPowerFlowRefferenceType(Enum):
 
     # from Power Flow 3ph
     v_N = "v_N"  # Bus voltage at phase N.
-    v_A = "v_A" # Bus voltage at phase A.
+    v_A = "v_A"  # Bus voltage at phase A.
     v_B = "v_B"  # Bus voltage at phase B.
     v_C = "v_C"  # Bus voltage at phase C.
-    i_N = "i_N" # Injection current at phase N in p.u.
+    i_N = "i_N"  # Injection current at phase N in p.u.
     i_A = "i_A"  # Injection current at phase A in p.u.
     i_B = "i_B"  # Injection current at phase B in p.u.
     i_C = "i_C"  # Injection current at phase C in p.u.
     theta = "theta"  # Rotor angle in a synchronous generator in rad
 
-    P_N = "P_N" # Bus active power in phase N in p.u.
+    P_N = "P_N"  # Bus active power in phase N in p.u.
     P_A = "P_A"  # Bus active power in phase A in p.u.
     P_B = "P_B"  # Bus active power in phase B in p.u.
     P_C = "P_C"  # Bus active power in phase C in p.u.
@@ -2557,12 +2613,12 @@ class VarPowerFlowRefferenceType(Enum):
     Q_B = "Q_B"  # Bus reactive power in phase B in p.u.
     Q_C = "Q_C"  # Bus reactive power in phase C in p.u.
 
-    Sf_A = "Sf_A" # Branch active power from in phase A in p.u.
-    Sf_B = "Sf_B"  # Branch active power from in phase B in p.u.
-    Sf_C = "Sf_C"  # Branch active power from in phase C in p.u.
-    St_A = "St_A"  # Branch active power from in phase A in p.u.
-    St_B = "St_B"  # Branch active power from in phase B in p.u.
-    St_C = "St_C"  # Branch active power from in phase C in p.u.
+    Sf_A = "Sf_A"  # Branch power from in phase A in p.u.
+    Sf_B = "Sf_B"  # Branch power from in phase B in p.u.
+    Sf_C = "Sf_C"  # Branch power from in phase C in p.u.
+    St_A = "St_A"  # Branch power from in phase A in p.u.
+    St_B = "St_B"  # Branch power from in phase B in p.u.
+    St_C = "St_C"  # Branch power from in phase C in p.u.
 
     if_N = "if_N"  # Branch current from in phase N in p.u.
     if_A = "if_A"  # Branch current from in phase A in p.u.

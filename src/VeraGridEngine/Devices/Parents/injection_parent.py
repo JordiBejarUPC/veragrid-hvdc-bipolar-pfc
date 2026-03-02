@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
+
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Associations.technology import Technology
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -419,3 +420,6 @@ class InjectionParent(PhysicalDevice):
             if val.value > mx:
                 col = val.api_object.color
         self.color = col
+
+
+
