@@ -275,7 +275,7 @@ class EmtProblemTemplate(ABC):
         """
         dx = np.zeros(self._n_diff, dtype=np.float64)
         for uid, val in self.diff_init_guess.items():
-            idx = self._uid2idx_vars.get(uid, None)
+            idx = self._uid2idx_diff.get(uid, None)
             if idx is not None:
                 dx[idx] = float(val)
         return dx

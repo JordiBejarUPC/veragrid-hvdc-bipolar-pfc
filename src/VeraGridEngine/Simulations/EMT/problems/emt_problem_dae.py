@@ -14,6 +14,9 @@ from __future__ import annotations
 import time
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
+import scipy.sparse.linalg as spla
+import numpy.linalg as la
 from typing import Dict, List, Any, Set
 
 from VeraGridEngine.Devices import MultiCircuit
@@ -26,7 +29,6 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
-
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
@@ -97,6 +99,8 @@ class EmtProblemDae(EmtProblemTemplate):
         sys_block.unify_blocks()
         self._deduplicate_block_entities(sys_block)
 
+
+
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time)
 
@@ -105,7 +109,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
-        self.diff_init_guess.update(self.diff_init_guess)
+        # self.diff_init_guess.update(self.diff_init_guess)
 
 
         t_done = _toc(t_build)
@@ -272,42 +276,11 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.it_C,
         ]
 
-        def _apply_piecewise_events_if_any(dev, mdl: Block):
-            """Apply scheduled events to ANY device that defines event_dict."""
-            emt_events = getattr(grid, "emt_events", None)
-            if emt_events is None:
-                emt_events = getattr(grid, "rms_events", [])
 
-            if mdl.event_dict is None or len(mdl.event_dict) == 0:
-                return
-
-            collect_events = {key: {"times": [], "values": []} for key in mdl.event_dict.keys()}
-            dev_events = [evt for evt in emt_events if evt.device_idtag == dev.idtag]
-
-            for evt in dev_events:
-                if evt.parameter in collect_events:
-                    collect_events[evt.parameter]["times"].append(evt.time)
-                    collect_events[evt.parameter]["values"].append(evt.value)
-
-            for param, info in collect_events.items():
-                if len(info["times"]) == 0:
-                    continue
-                default_value = mdl.event_dict[param]
-                mdl.event_dict[param] = piecewise(
-                    time_var=glob_time,
-                    t_events=np.array(info["times"], dtype=np.float64),
-                    new_values=np.array(info["values"], dtype=np.float64),
-                    default_value=default_value,
-                )
 
         c0 = grid.var_factory.add_const(0.0)
 
-        def _get_bus_v_list(bus_block: Block):
-            out = []
-            for k in ph_v_keys:
-                vk = bus_block.E(k)
-                out.append(vk if vk is not None else c0)
-            return out
+
 
         # KCL accumulator per bus-phase
         I_kcl = {i: [c0, c0, c0, c0] for i in range(n_bus)}
@@ -325,7 +298,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl = bus.emt_model.model
             mdl.unify_blocks()
 
-            _apply_piecewise_events_if_any(bus, mdl)
+            self._apply_piecewise_events_if_any(dev = bus, mdl =mdl, grid= grid, glob_time = glob_time)
 
             self._add_model_to_system_mappings(bus, mdl)
             sys_block.add(mdl)
@@ -356,7 +329,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 mdl = br.emt_model.model
                 mdl.unify_blocks()
 
-                _apply_piecewise_events_if_any(br, mdl)
+                self._apply_piecewise_events_if_any(dev = br, mdl = mdl, grid = grid, glob_time = glob_time)
 
                 self._add_model_to_system_mappings(br, mdl)
                 sys_block.add(mdl)
@@ -366,8 +339,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._register_diff_init_model(mdl)
 
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
-                v_f_vars = _get_bus_v_list(br.bus_from.emt_model.model)
-                v_t_vars = _get_bus_v_list(br.bus_to.emt_model.model)
+                v_f_vars = self._get_bus_v_list(br.bus_from.emt_model.model)
+                v_t_vars = self._get_bus_v_list(br.bus_to.emt_model.model)
 
                 # Create runtime companion that owns buffers + update_history
                 rt = BergeronHistoryRuntime(line=br, line_block=mdl, h=h, sbase=Sbase, fbase=fbase)
@@ -385,7 +358,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl = br.emt_model.model
             mdl.unify_blocks()
 
-            _apply_piecewise_events_if_any(br, mdl)
+            self._apply_piecewise_events_if_any(dev = br, mdl = mdl, grid = grid, glob_time = glob_time)
 
             self._add_model_to_system_mappings(br, mdl)
             sys_block.add(mdl)
@@ -422,7 +395,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl = inj.emt_model.model
             mdl.unify_blocks()
 
-            _apply_piecewise_events_if_any(inj, mdl)
+            self._apply_piecewise_events_if_any(dev = inj, mdl = mdl, grid = grid, glob_time = glob_time)
 
             self._add_model_to_system_mappings(inj, mdl)
             sys_block.add(mdl)
@@ -464,6 +437,49 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if not has_any_phase:
                 self.logger.add_error("Bus has no phases (no voltage vars)", value=bus_idx)
+
+    def _apply_piecewise_events_if_any(self, dev, mdl: Block, grid: MultiCircuit, glob_time):
+        """
+
+        :param dev: device object
+        :param mdl: block
+        :param grid: MultiCircuit
+        :param glob_time: glob_time
+        :return:
+        """
+        emt_events = getattr(grid, "emt_events", None)
+        if emt_events is None:
+            emt_events = getattr(grid, "rms_events", [])
+
+        if mdl.event_dict is None or len(mdl.event_dict) == 0:
+            return
+
+        collect_events = {key: {"times": [], "values": []} for key in mdl.event_dict.keys()}
+        dev_events = [evt for evt in emt_events if evt.device_idtag == dev.idtag]
+
+        for evt in dev_events:
+            if evt.parameter in collect_events:
+                collect_events[evt.parameter]["times"].append(evt.time)
+                collect_events[evt.parameter]["values"].append(evt.value)
+
+        for param, info in collect_events.items():
+            if len(info["times"]) == 0:
+                continue
+            default_value = mdl.event_dict[param]
+            mdl.event_dict[param] = piecewise(
+                time_var=glob_time,
+                t_events=np.array(info["times"], dtype=np.float64),
+                new_values=np.array(info["values"], dtype=np.float64),
+                default_value=default_value,
+            )
+
+    def _get_bus_v_list(self, grid:MultiCircuit,  bus_block: Block, ph_v_keys):
+        out = []
+        c0 = grid.var_factory.add_const(0.0)
+        for k in ph_v_keys:
+            vk = bus_block.E(k)
+            out.append(vk if vk is not None else c0)
+        return out
 
     # ---------------------------------------------------------------------
     # MAPPINGS
@@ -739,18 +755,20 @@ class EmtProblemDae(EmtProblemTemplate):
         Removes duplicated symbolic objects within the block by UID
         while preserving their first appearance order.
         """
-        def _unique_keep_order(seq):
-            seen = set()
-            out = []
-            for x in seq:
-                if x.uid not in seen:
-                    seen.add(x.uid)
-                    out.append(x)
-            return out
 
-        block.state_vars = _unique_keep_order(block.state_vars)
-        block.algebraic_vars = _unique_keep_order(block.algebraic_vars)
-        block.diff_vars = _unique_keep_order(block.diff_vars)
+
+        block.state_vars = self._unique_keep_order(block.state_vars)
+        block.algebraic_vars = self._unique_keep_order(block.algebraic_vars)
+        block.diff_vars = self._unique_keep_order(block.diff_vars)
+
+    def _unique_keep_order(self, seq: List):
+        seen = set()
+        out = []
+        for x in seq:
+            if x.uid not in seen:
+                seen.add(x.uid)
+                out.append(x)
+        return out
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var):
         """
@@ -875,7 +893,7 @@ class EmtProblemDae(EmtProblemTemplate):
         """
         # Build x0 and dx0 from current guesses
         x0 = self.get_x0()
-        dx0 = self.get_dx0() # Assuming this method exists to retrieve the derivative vector
+        dx0 = self.get_dx0()
 
         uid2idx_vars = self.uid2idx_vars
         uid2idx_diff = self.uid2idx_diff

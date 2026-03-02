@@ -240,7 +240,7 @@ solver = JitSymbolicSolver(problem = problem,
                            t0 = 0.0,
                            t_end = options.simulation_time,
                            h = options.time_step,
-                           method_str=options.integration_method,
+                           method=options.integration_method,
                            verbose = True)
 
 x0 = problem.get_x0()

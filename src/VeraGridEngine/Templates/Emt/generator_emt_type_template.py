@@ -152,8 +152,9 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
         VarPowerFlowRefferenceType.theta: theta
     }
 
+    w = 2 * np.pi * 50.0
     templ.block.event_dict = {freq: vf.add_const(50.0),
-                       omega_base: vf.add_const(2 * np.pi * 50.0),
+                       omega_base: vf.add_const(w),
                        H: vf.add_const(5.0),
                        D: vf.add_const(2.0),
                        Ra: vf.add_const(0.001),
@@ -170,7 +171,7 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
                        # v_f0: vf.add_const(-0.018508071106644895)}
                        v_f0: vf.add_const(-0.017823457188517983)} #TODO: find vf0 from exciter/governor
 
-    a = np.exp(1j * 2 * np.pi / 3)
+    # a = np.exp(1j * 2 * np.pi / 3)
     templ.block.init_eqs = {
         omega: vf.add_const(1.0),
         # theta: ((1 / 3) * (inputs[0] + a * inputs[1] + (a * a) * inputs[2])) + (Ra + 1j * (Lmq + La)) * (1 / 3) * (i_A + a * i_B + (a * a) * i_C),

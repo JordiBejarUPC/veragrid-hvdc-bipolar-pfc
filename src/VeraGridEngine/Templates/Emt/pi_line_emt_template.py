@@ -115,9 +115,9 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Bsh_full = np.imag(Y_pu)
         C_full = Bsh_full / (w0 + 1e-20)    # B = wC  => C = B/w
 
-        print(f"R line = {R_full}")
-        print(f"L line = {L_full}")
-        print(f"C line = {C_full}")
+        # print(f"R line = {R_full}")
+        # print(f"L line = {L_full}")
+        # print(f"C line = {C_full}")
 
         # split shunt into two ends
         G_end_full = 0.5 * Gsh_full
