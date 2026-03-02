@@ -1183,7 +1183,7 @@ def convert_dgs_to_external_grid(elmxnet: ElmXnet,
     return bus, xgrid
 
 
-def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
+def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float, float]:
     """
     Extract (G, B) from an ElmShnt.
     VeraGrid expects:
@@ -1194,56 +1194,148 @@ def _extract_shunt_gb(elmshnt: ElmShnt, logger: Logger) -> Tuple[float, float]:
       - qcapn / ncapa for capacitor steps
       - qrean for reactor MVAr
       - qtotn as total rated MVAr magnitude (often positive regardless of type)
-      - shtype: 1 = reactor, 2 = capacitor
+      - shtype: 0 = R-L-C, 1 = R-L, 2 = C, 3 = R-L-C,Rp, 4 = R-L-C1-C2,Rp
     """
     name = elmshnt.loc_name or _ref_id(elmshnt.ID) or "Shunt"
 
-    shtype: int = elmshnt.shtype  # 1 reactor, 2 capacitor
-    qtotn: float = elmshnt.qtotn
+    shtype: int = elmshnt.shtype
+    Q: float = elmshnt.qtotn * 1e6 # Rated Reactive Power [Mvar] -> [var]
+    U: float = elmshnt.ushnm * 1e3 # Rated Voltage [kV] -> [V]
+    fres: float = elmshnt.fres # Resonance Frequency [Hz]
+    h = fres / f # Tuning Order
+    conn: int = elmshnt.ctech # Connection
+    quality_factor: float = elmshnt.grea # Quality Factor
 
-    # Default to 0.0 in case the element is not energized or data is missing
-    b_mvar: float = 0.0
+    w = 2 * np.pi * f # Electrical angular speed [rad/s]
+    d_y = 3.0 if conn == 0 else 1.0  # conn==0 -> 3PH-D, else -> 3PH-Y/YN
 
-    # Prefer total rating when available, but apply sign from shtype (PF export often stores magnitude)
-    if qtotn != 0.0:
-        b_mvar = abs(qtotn)
-    else:
-        if shtype == 1:
-            # Reactor
-            b_mvar = abs(elmshnt.qrean)
-        elif shtype == 2:
-            # Capacitor (may be step-based)
-            q_step: float = elmshnt.qcapn
-            n_on: int = elmshnt.ncapa
-            if n_on <= 0:
-                n_on = 1
-            b_mvar = abs(q_step) * float(n_on)
+    if shtype == 0: # R-L-C
+
+        C = Q / (d_y * w * U ** 2) * (1 - 1 / h ** 2)
+        L = 1 / ((h * w) ** 2 * C)
+        if quality_factor == 0.0:
+            R = 0.0
         else:
-            # Fallback: net MVAr = qcapn - qrean
-            q_step: float = elmshnt.qcapn
-            n_on: int = elmshnt.ncapa
-            if n_on <= 0:
-                n_on = 1
-            b_mvar = (q_step * float(n_on)) - elmshnt.qrean
+            R = (w * L) / quality_factor
 
-    # Apply sign convention
-    if shtype == 1:
-        b_mvar = -abs(b_mvar)
-    elif shtype == 2:
-        b_mvar = abs(b_mvar)
-    # else: keep computed sign (fallback branch)
+        Z = R + 1j * (w * L - 1 / (w * C))
+        S = d_y * U ** 2 / np.conj(Z)
 
-    if b_mvar == 0.0:
+        g_mw = np.real(S) / 1e6
+        b_mvar = -np.imag(S) / 1e6
+
+    elif shtype == 1: # R-L
+
+        L = d_y * U ** 2 / (w * Q)
+        if quality_factor == 0.0:
+            R = 0.0
+        else:
+            R = (w * L) / quality_factor
+
+        Z = R + 1j * w * L
+        S = d_y * U ** 2 / np.conj(Z)
+
+        g_mw = np.real(S) / 1e6
+        b_mvar = -np.imag(S) / 1e6
+
+    elif shtype == 2: # C
+
+        C = Q / (d_y * w * U ** 2)
+        G = w * C * elmshnt.tandc
+
+        Y = G + 1j * w * C
+        S = d_y * U**2 * np.conj(Y)
+
+        g_mw = np.real(S) / 1e6
+        b_mvar = -np.imag(S) / 1e6
+
+    elif shtype == 3: # R-L-C,Rp
+
+        C = Q / (d_y * w * U ** 2) * (1 - 1 / h ** 2)
+        L = 1 / ((h * w) ** 2 * C)
+        if quality_factor == 0.0:
+            R = 0.0
+        else:
+            R = (w * L) / quality_factor
+        Rp = elmshnt.rpara
+
+        Z = ((R + 1j * w * L) * Rp) / ((R + 1j * w * L) + Rp) + 1 / (1j * w * C)
+        S = d_y * U ** 2 / np.conj(Z)
+
+        g_mw = np.real(S) / 1e6
+        b_mvar = -np.imag(S) / 1e6
+
+    elif shtype == 4: # R-L-C1-C2,Rp
+
+        C2 = Q / (d_y * w * U ** 2)
+        C1 = C2 * (h**2 - 1)
+        L = 1 / (w**2 * C1)
+        if quality_factor == 0.0:
+            R = 0.0
+        else:
+            R = w * L / quality_factor
+        Rp = elmshnt.rpara
+
+        Z = ((R + 1j * w * L + 1/(1j * w * C1)) * Rp) / ((R + 1j * w * L + 1/(1j * w * C1)) + Rp) + 1 / (1j * w * C2)
+        S = d_y * U ** 2 / np.conj(Z)
+
+        g_mw = np.real(S) / 1e6
+        b_mvar = -np.imag(S) / 1e6
+
+    else:
+        g_mw = 0.0
+        b_mvar = 0.0
         logger.add_warning(
-            f"Shunt '{name}': computed B=0.0 MVAr (shtype={shtype}, qcapn={elmshnt.qcapn}, ncapa={elmshnt.ncapa}, qrean={elmshnt.qrean}, qtotn={qtotn})."
+            f"Shunt '{name}': can not be computed."
         )
 
-    if elmshnt.grea == 0:
-        # If ctive losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
-        g_mw: float = 0.0
-    else:
-        # grea is the quality factor, and the conductance can be found.
-        g_mw: float = -b_mvar / elmshnt.grea
+    # -----------------------------------------------------------------------------------------------------------------
+    # OLD
+    # -----------------------------------------------------------------------------------------------------------------
+
+    # # Default to 0.0 in case the element is not energized or data is missing
+    # b_mvar: float = 0.0
+    #
+    # # Prefer total rating when available, but apply sign from shtype (PF export often stores magnitude)
+    # if qtotn != 0.0:
+    #     b_mvar = abs(qtotn)
+    # else:
+    #     if shtype == 1:
+    #         # Reactor
+    #         b_mvar = abs(elmshnt.qrean)
+    #     elif shtype == 2:
+    #         # Capacitor (may be step-based)
+    #         q_step: float = elmshnt.qcapn
+    #         n_on: int = elmshnt.ncapa
+    #         if n_on <= 0:
+    #             n_on = 1
+    #         b_mvar = abs(q_step) * float(n_on)
+    #     else:
+    #         # Fallback: net MVAr = qcapn - qrean
+    #         q_step: float = elmshnt.qcapn
+    #         n_on: int = elmshnt.ncapa
+    #         if n_on <= 0:
+    #             n_on = 1
+    #         b_mvar = (q_step * float(n_on)) - elmshnt.qrean
+    #
+    # # Apply sign convention
+    # if shtype == 1:
+    #     b_mvar = -abs(b_mvar)
+    # elif shtype == 2:
+    #     b_mvar = abs(b_mvar)
+    # # else: keep computed sign (fallback branch)
+    #
+    # if b_mvar == 0.0:
+    #     logger.add_warning(
+    #         f"Shunt '{name}': computed B=0.0 MVAr (shtype={shtype}, qcapn={elmshnt.qcapn}, ncapa={elmshnt.ncapa}, qrean={elmshnt.qrean}, qtotn={qtotn})."
+    #     )
+    #
+    # if elmshnt.grea == 0:
+    #     # If active losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
+    #     g_mw: float = 0.0
+    # else:
+    #     # grea is the quality factor, and the conductance can be found.
+    #     g_mw: float = -b_mvar / elmshnt.grea
 
     return g_mw, b_mvar
 
@@ -1252,7 +1344,8 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                          buses: List[dev.Bus],
                          logger: Logger,
                          cubics_by_objid: Dict[str, List[StaCubic]],
-                         bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Shunt]:
+                         bus_by_term_id: Dict[str, dev.Bus],
+                         frequency: float) -> Tuple[dev.Bus, dev.Shunt]:
     """
     Convert ElmShnt to VeraGrid fixed Shunt.
     """
@@ -1264,7 +1357,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, logger=logger)
+    g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
 
     shunt = dev.Shunt(name=name,
                       G=g_mw,
@@ -1911,7 +2004,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 buses=grid.buses,
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
-                bus_by_term_id=bus_by_term_id
+                bus_by_term_id=bus_by_term_id,
+                frequency=frequency
             )
 
             grid.add_shunt(bus=bus, api_obj=shunt)
