@@ -167,7 +167,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
             self._block = block
 
-def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory):
+def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory, Sbase: float = 100):
     """
 
     :param trafo:
