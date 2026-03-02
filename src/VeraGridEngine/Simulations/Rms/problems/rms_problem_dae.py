@@ -291,7 +291,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.sys_block.add(mdl)
 
         # initialize injections
-        # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
+
         for elm in grid.get_vsc():
 
             if elm.rms_model.model.empty():
