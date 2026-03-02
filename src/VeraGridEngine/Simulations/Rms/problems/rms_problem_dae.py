@@ -193,10 +193,10 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 elm.rms_model.model.unify_blocks()
-                if isinstance(elm, Bus):
-                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+
+                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
