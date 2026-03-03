@@ -407,7 +407,7 @@ class StructuralVectorizedSolver:
 
     def simulate(self, x0=None, dx0=None, params0=None, boundary_update_fn=None) -> Tuple[Vec, Mat]:
         if x0 is None: x0 = self.problem.get_x0()
-        if dx0 is None: dx0 = np.zeros(self._n_vars, dtype=np.float64)
+        if dx0 is None: dx0 = self.problem.get_dx0()
         if params0 is None: params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
                                          boundary_update_fn, self.verbose, self.dense_threshold)
@@ -480,6 +480,79 @@ class StructuralVectorizedSolver:
                 delta = lu_solve(cached_lu, -res_global) if use_dense else cached_lu.solve(-res_global)
                 x_iter += delta
                 last_res_norm = res_norm
+                if i == 0 and k == 0:  # Paso 0, Primera iteración de Newton
+                    # print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+                    # all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    # abs_res = np.abs(res)
+                    # top_indices = np.argsort(abs_res)[-20:][::-1]
+                    #
+                    # print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
+                    # print("-" * 75)
+                    # for idx in top_indices:
+                    #     name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
+                    #     print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
+                    # print("=" * 75 + "\n")
+                    # ---- DEBUG: interpret residuals at Step 0, Iter 0 ----
+                    print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+
+                    all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    n_vars_dbg = len(all_vars)
+                    omega0 = 2.0 * np.pi * float(self.problem.grid.fBase)
+
+                    # Context
+                    state_delta = x_iter[:n_states] - x_prev[:n_states]
+                    print(
+                        f"t_curr={t_curr:.6f}, h={self.h:.6e}, fBase={float(self.problem.grid.fBase):.6f} Hz, omega0={omega0:.6f} rad/s")
+                    print(
+                        f"||x_iter-x_prev||_inf (states) = {np.linalg.norm(state_delta, np.inf):.6e} (expected 0 if no predictor)")
+                    print(f"||dx_prev||_inf (states)      = {np.linalg.norm(dx_prev[:n_states], np.inf):.6e}")
+                    print(f"max |h*dx_prev| (states)      = {np.max(np.abs(self.h * dx_prev[:n_states])):.6e}")
+                    print(f"n_eqs={n_eqs}, n_vars={n_vars_dbg}, n_states={n_states}")
+
+                    abs_res = np.abs(res)
+                    top_indices = np.argsort(abs_res)[-20:][::-1]
+
+                    header = (
+                        f"{'Idx':>4} | {'Type':<5} | {'Name':<38} | {'res':>12} | "
+                        f"{'x':>12} | {'x_prev':>12} | {'dx_prev':>12} | {'h*dx':>12}"
+                    )
+                    print(header)
+                    print("-" * len(header))
+
+                    for idx in top_indices:
+                        if idx >= n_vars_dbg:
+                            print(f"{idx:>4} | {'?':<5} | {'Eq_' + str(idx):<38} | {res[idx]:>12.6e}")
+                            continue
+
+                        v = all_vars[idx]
+                        vtype = "STATE" if idx < n_states else "ALG"
+                        x_val = float(x_iter[idx])
+                        x_prev_val = float(x_prev[idx])
+
+                        if vtype == "STATE":
+                            dx_val = float(dx_prev[idx])
+                            hdx_val = float(self.h * dx_prev[idx])
+                        else:
+                            dx_val = float("nan")
+                            hdx_val = float("nan")
+
+                        print(
+                            f"{idx:>4} | {vtype:<5} | {v.name:<38} | {res[idx]:>12.6e} | "
+                            f"{x_val:>12.6e} | {x_prev_val:>12.6e} | {dx_val:>12.6e} | {hdx_val:>12.6e}"
+                        )
+
+                    # Optional quick heuristics for common suspects
+                    suspects = ["omega", "theta", "psi_", "v_A", "v_B", "v_C", "i_ser", "q_f", "q_t"]
+                    print("\nHeuristic checks (name contains token):")
+                    for token in suspects:
+                        matches = [j for j, vv in enumerate(all_vars) if token in vv.name]
+                        if matches:
+                            j = matches[0]
+                            val = float(x_iter[j])
+                            print(f"  token '{token}': first match idx={j}, name='{all_vars[j].name}', x={val:.6e}")
+
+                    print("=" * len(header) + "\n")
+                    # ---- END DEBUG ----
 
             y[i + 1] = x_iter
 

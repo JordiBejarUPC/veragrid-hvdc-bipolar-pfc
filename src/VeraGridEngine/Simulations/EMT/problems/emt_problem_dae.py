@@ -17,7 +17,7 @@ import pandas as pd
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import numpy.linalg as la
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, Set, Optional
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -80,6 +80,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars_glob_name2uid: Dict[str, int] = dict()
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
+        self._temp_diff_init_guess: Dict[int, float] = dict()
 
         # for init_explicit
         self._models_with_init_eqs: List[Block] = []
@@ -106,6 +107,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
+        self.diff_init_guess.update(self._temp_diff_init_guess)
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
@@ -339,8 +341,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._register_diff_init_model(mdl)
 
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
-                v_f_vars = self._get_bus_v_list(br.bus_from.emt_model.model)
-                v_t_vars = self._get_bus_v_list(br.bus_to.emt_model.model)
+                v_f_vars = self._get_bus_v_list(grid = self.grid, bus_block = br.bus_from.emt_model.model, ph_v_keys=ph_v_keys)
+                v_t_vars = self._get_bus_v_list(grid = self.grid, bus_block = br.bus_to.emt_model.model, ph_v_keys=ph_v_keys)
 
                 # Create runtime companion that owns buffers + update_history
                 rt = BergeronHistoryRuntime(line=br, line_block=mdl, h=h, sbase=Sbase, fbase=fbase)
@@ -520,22 +522,30 @@ class EmtProblemDae(EmtProblemTemplate):
             if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
                 V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
                 v_N = np.sqrt(2) * V_N_rms * np.cos(V_N_angle)
+                d_v_N = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_N_rms * np.sin(V_N_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
             if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
                 V_A_rms, V_A_angle = np.abs(pf_results.voltage_A[bus_index]), np.angle(pf_results.voltage_A[bus_index])
                 v_A = np.sqrt(2) * V_A_rms * np.cos(V_A_angle)
+                d_v_A = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_A_rms * np.sin(V_A_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
             if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
                 V_B_rms, V_B_angle = np.abs(pf_results.voltage_B[bus_index]), np.angle(pf_results.voltage_B[bus_index])
                 v_B = np.sqrt(2) * V_B_rms * np.cos(V_B_angle)
+                d_v_B = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_B_rms * np.sin(V_B_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
             if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
                 V_C_rms, V_C_angle = np.abs(pf_results.voltage_C[bus_index]), np.angle(pf_results.voltage_C[bus_index])
                 v_C = np.sqrt(2) * V_C_rms * np.cos(V_C_angle)
+                d_v_C = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_C_rms * np.sin(V_C_angle)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
         except Exception:
             pass
@@ -569,9 +579,7 @@ class EmtProblemDae(EmtProblemTemplate):
         """
 
         try:
-            def set_if_exists(key, value):
-                if (key is not None) and (mdl.E(key) is not None):
-                    self.set_init_guess(mdl, key, float(value))
+
 
             phases = ["N", "A", "B", "C"]
 
@@ -631,12 +639,12 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 if (kSf is not None) and (mdl.E(kSf) is not None) and (Sf_arr[ph] is not None):
                     Sf_ph = Sf_arr[ph][branch_index] / sbase
-                    set_if_exists(kSf, Sf_ph)
+                    self.set_if_exists(mdl = mdl, key = kSf, value = float(Sf_ph))
                     Sf_sum += Sf_ph
 
                 if (kSt is not None) and (mdl.E(kSt) is not None) and (St_arr[ph] is not None):
                     St_ph = St_arr[ph][branch_index] / sbase
-                    set_if_exists(kSt, St_ph)
+                    self.set_if_exists(mdl = mdl, key = kSt, value = float(St_ph))
                     St_sum += St_ph
 
 
@@ -649,8 +657,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 # PF doesn't have Sf_N/St_N -> set N currents to 0 if needed
                 if (Sf_arr[ph] is None) or (St_arr[ph] is None) or (V_arr[ph] is None):
-                    set_if_exists(if_key[ph], 0.0)
-                    set_if_exists(it_key[ph], 0.0)
+                    self.set_if_exists(mdl = mdl, key = if_key[ph], value = 0.0)
+                    self.set_if_exists(mdl = mdl, key = it_key[ph], value = 0.0)
                     continue
 
                 Sf_ph = Sf_arr[ph][branch_index] / sbase
@@ -665,16 +673,85 @@ class EmtProblemDae(EmtProblemTemplate):
                 i_f0 = np.sqrt(2.0) * np.abs(I_f) * np.cos(np.angle(I_f))
                 i_t0 = np.sqrt(2.0) * np.abs(I_t) * np.cos(np.angle(I_t))
 
-                set_if_exists(if_key[ph], float(i_f0))
-                set_if_exists(it_key[ph], float(i_t0))
+                self.set_if_exists(mdl = mdl, key = if_key[ph], value = float(i_f0))
+                self.set_if_exists(mdl = mdl, key = it_key[ph], value = float(i_t0))
 
-            set_if_exists(VarPowerFlowRefferenceType.Pf, float(np.real(Sf_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Qf, float(np.imag(Sf_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Pt, float(np.real(St_sum)))
-            set_if_exists(VarPowerFlowRefferenceType.Qt, float(np.imag(St_sum)))
+            self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Pf, value = float(np.real(Sf_sum)))
+            self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Qf, value = float(np.imag(Sf_sum)))
+            self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Pt, value = float(np.real(St_sum)))
+            self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Qt, value = float(np.imag(St_sum)))
 
         except Exception:
             pass
+
+    # def _try_set_inj_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph, sbase: float):
+    #     """
+    #     Attempts to initialize injection variables based on PowerFlow results.
+    #     Fixed to handle Load (negative S) and Generation (positive S) consistently
+    #     by treating S as the magnitude of the exchange.
+    #     """
+    #     try:
+    #         Sbus_total = 0.0 + 0.0j
+    #
+    #         phase_specs = [
+    #             ("N", pf_results.Sbus_N, pf_results.voltage_N,
+    #              VarPowerFlowRefferenceType.i_N, VarPowerFlowRefferenceType.P_N, VarPowerFlowRefferenceType.Q_N),
+    #
+    #             ("A", pf_results.Sbus_A, pf_results.voltage_A,
+    #              VarPowerFlowRefferenceType.i_A, VarPowerFlowRefferenceType.P_A, VarPowerFlowRefferenceType.Q_A),
+    #
+    #             ("B", pf_results.Sbus_B, pf_results.voltage_B,
+    #              VarPowerFlowRefferenceType.i_B, VarPowerFlowRefferenceType.P_B, VarPowerFlowRefferenceType.Q_B),
+    #
+    #             ("C", pf_results.Sbus_C, pf_results.voltage_C,
+    #              VarPowerFlowRefferenceType.i_C, VarPowerFlowRefferenceType.P_C, VarPowerFlowRefferenceType.Q_C),
+    #         ]
+    #
+    #         for _, S_arr, V_arr, i_key, P_key, Q_key in phase_specs:
+    #
+    #             if (mdl.E(i_key) is None) and (mdl.E(P_key) is None) and (mdl.E(Q_key) is None):
+    #                 continue
+    #
+    #             # Force S to be positive magnitude so current matches the "Load" or "Gen" direction
+    #             # If Sbus is -2.65 (Load), we treat it as 2.65 for the component's internal variable
+    #             S_raw = S_arr[bus_index] / sbase
+    #             S = complex(abs(S_raw.real), abs(S_raw.imag))
+    #
+    #             V = V_arr[bus_index]
+    #
+    #             if V == 0:
+    #                 I = 0.0 + 0.0j
+    #             else:
+    #                 # Standard phasor current calculation
+    #                 I = np.conj(S / V)
+    #
+    #             I_rms = np.abs(I)
+    #             I_ang = np.angle(I)
+    #
+    #             # Convert to instantaneous value at t=0
+    #             i0 = np.sqrt(2.0) * I_rms * np.cos(I_ang)
+    #
+    #             self.set_if_exists(mdl=mdl, key=i_key, value=float(i0))
+    #             self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
+    #             self.set_if_exists(mdl=mdl, key=Q_key, value=float(np.imag(S)))
+    #
+    #             Sbus_total += S
+    #
+    #         # ... (Rest of the theta and total P/Q logic remains the same)
+    #         if mdl.E(VarPowerFlowRefferenceType.theta) is not None:
+    #             VA = pf_results.voltage_A[bus_index]
+    #             VB = pf_results.voltage_B[bus_index]
+    #             VC = pf_results.voltage_C[bus_index]
+    #             a = np.exp(1j * 2 * np.pi / 3)
+    #             V1 = (1 / 3) * (VA + a * VB + (a * a) * VC)
+    #             theta = np.angle(V1)
+    #             self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
+    #
+    #         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=float(np.real(Sbus_total)))
+    #         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=float(np.imag(Sbus_total)))
+    #
+    #     except Exception:
+    #         pass
 
     def _try_set_inj_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph, sbase: float):
         """
@@ -683,9 +760,7 @@ class EmtProblemDae(EmtProblemTemplate):
         Works per-phase and only computes each phase once if needed.
         """
         try:
-            def set_if_exists(key, value):
-                if mdl.E(key) is not None:
-                    self.set_init_guess(mdl, key, value)
+
 
             Sbus_total = 0.0 + 0.0j
 
@@ -708,7 +783,14 @@ class EmtProblemDae(EmtProblemTemplate):
                 if (mdl.E(i_key) is None) and (mdl.E(P_key) is None) and (mdl.E(Q_key) is None):
                     continue
 
+                # make S always positive
                 S = S_arr[bus_index] / sbase
+                if S.real < 0:
+                    # It's a load (withdrawal), treat as positive S for the load component
+                    S = -S
+                else:
+                    # It's a generator (injection)
+                    S = S
                 V = V_arr[bus_index]
 
                 if V == 0:
@@ -721,9 +803,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 i0 = np.sqrt(2.0) * I_rms * np.cos(I_ang)
 
-                set_if_exists(i_key, float(i0))
-                set_if_exists(P_key, float(np.real(S)))
-                set_if_exists(Q_key, float(np.imag(S)))
+                self.set_if_exists(mdl = mdl, key = i_key, value = float(i0))
+                self.set_if_exists(mdl = mdl, key = P_key, value = float(np.real(S)))
+                self.set_if_exists(mdl = mdl, key = Q_key, value = float(np.imag(S)))
 
                 Sbus_total += S
 
@@ -738,11 +820,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
-                # Prueba sumando o restando pi/2 si el modelo es Park estándar
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta) - np.pi / 2)
 
-            set_if_exists(VarPowerFlowRefferenceType.P, float(np.real(Sbus_total)))
-            set_if_exists(VarPowerFlowRefferenceType.Q, float(np.imag(Sbus_total)))
+            self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.P, value = float(np.real(Sbus_total)))
+            self.set_if_exists(mdl = mdl,key =VarPowerFlowRefferenceType.Q, value = float(np.imag(Sbus_total)))
 
         except Exception:
             pass
@@ -750,6 +830,12 @@ class EmtProblemDae(EmtProblemTemplate):
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------
+    def set_if_exists(self,mdl: Block,
+                      key: VarPowerFlowRefferenceType,
+                      value: float):
+        if mdl.E(key) is not None:
+            self.set_init_guess(mdl, key, value)
+
     def _deduplicate_block_entities(self, block: Block):
         """
         Removes duplicated symbolic objects within the block by UID
@@ -792,6 +878,19 @@ class EmtProblemDae(EmtProblemTemplate):
             if var is None:
                 return
             self._temp_init_guess[var.uid] = float(val)
+
+    def set_diff_init_guess(self, mdl: Block, reference_powerflow: Any, val: float):
+        """
+        Sets the temporary initial guess for a given derivative during the parsing phase.
+        (PF guesses go to _temp_diff_init_guess; then copied into self.diff_init_guess after super().__init__.)
+        """
+        if not hasattr(mdl, "external_mapping") or mdl.external_mapping is None:
+            return
+        if reference_powerflow in mdl.external_mapping:
+            d_var = mdl.external_mapping[reference_powerflow]
+            if d_var is None:
+                return
+            self._temp_diff_init_guess[d_var.uid] = float(val)
 
     def get_init_guess_info(self) -> pd.DataFrame:
         """
@@ -939,3 +1038,33 @@ class EmtProblemDae(EmtProblemTemplate):
             df = df.sort_values(sort_cols, ascending=[False, False, True, True]).reset_index(drop=True)
 
         return df
+
+    def get_missing_init_vars(self) -> dict:
+        """
+        Returns a dictionary of variables (State/Algebraic and Differential)
+         that are missing from the current initial guess dictionaries.
+        """
+        # 1. Identify all defined variables
+        all_vars = list(self.get_state_vars()) + list(self.get_algebraic_vars())
+        all_diff_vars = list(self.get_diff_vars())
+
+        # 2. Find variables NOT in the respective guess dictionaries
+        # We use sets for O(1) lookup efficiency
+        missing_vars = [v for v in all_vars if v.uid not in self.init_guess]
+        missing_diff_vars = [v for v in all_diff_vars if v.uid not in self.diff_init_guess]
+
+        return {
+            "vars": missing_vars,
+            "diff_vars": missing_diff_vars,
+            "total_count": len(missing_vars) + len(missing_diff_vars)
+        }
+
+    def get_missing_init_table(self) -> pd.DataFrame:
+        """Returns a DataFrame of only the variables missing from initial guesses."""
+        # Reuse your existing logic but force the 'missing' filter
+        full_table = self.get_init_guess_table(include_all_vars=True)
+
+        # Filter for rows where 'in_init_guess' is False
+        missing_df = full_table[full_table["in_init_guess"] == False].copy()
+
+        return missing_df.reset_index(drop=True)
