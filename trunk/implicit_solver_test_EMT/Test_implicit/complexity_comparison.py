@@ -1,13 +1,12 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.0
+# ==============================================================================
+# Complexity Benchmark (Big-O Empirical Analysis) for EMT Solvers
+# ==============================================================================
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+from typing import List, Dict, Any
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
@@ -20,17 +19,25 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 
 # --- CONCRETE CLASS FOR BENCHMARK ---
 class GenericEmtProblem(EmtProblemTemplate):
-    pass
+    __slots__ = list()
 
 
-def estimate_big_o(ns, times):
+def estimate_big_o(ns: np.ndarray, times: np.ndarray) -> str:
     """Calculates empirical complexity using Log-Log regression slope (m)."""
-    if len(ns) < 2: return "N/A"
-    valid = [i for i, t in enumerate(times) if t > 0.000001]
-    if len(valid) < 2: return "O(1) Constant"
+    if len(ns) < 2:
+        return "N/A"
+    else:
+        pass
 
-    log_n = np.log([ns[i] for i in valid])
-    log_t = np.log([times[i] for i in valid])
+    valid: List[int] = list([i for i, t in enumerate(times) if t > 0.000001])
+
+    if len(valid) < 2:
+        return "O(1) Constant"
+    else:
+        pass
+
+    log_n: np.ndarray = np.log([ns[i] for i in valid])
+    log_t: np.ndarray = np.log([times[i] for i in valid])
     slope, _ = np.polyfit(log_n, log_t, 1)
 
     if slope < 0.3: return f"O(1) (m={slope:.2f})"
@@ -38,95 +45,120 @@ def estimate_big_o(ns, times):
     if 1.8 <= slope <= 2.5: return f"O(N^2) Quadratic (m={slope:.2f})"
     return f"O(N^{slope:.2f})"
 
-
-def benchmark_new_architecture(n_oscillators, n_steps, backend="SD"):
+def benchmark_new_architecture(n_oscillators: int, n_steps: int, backend: str = "SD") -> Dict[str, float]:
     """Isolates Setup (Assembly) and Run (Physics) phases for complexity analysis."""
 
-    k_sym = Var("k")
+    k_sym: Var = Var("k")
 
-    # 1. Variables de Estado (Integrales puras, base_var=None)
-    vars_pos = [Var(f"x_{i}") for i in range(n_oscillators)]
-    vars_vel = [Var(f"v_{i}") for i in range(n_oscillators)]
+    vars_pos: List[Var] = list([Var(f"x_{i}") for i in range(n_oscillators)])
+    vars_vel: List[Var] = list([Var(f"v_{i}") for i in range(n_oscillators)])
 
-    # 2. Variables Diferenciales (Derivadas apuntando a su estado)
-    dvars_pos = [Var(f"dx_{i}", base_var=v) for i, v in enumerate(vars_pos)]
-    dvars_vel = [Var(f"dv_{i}", base_var=v) for i, v in enumerate(vars_vel)]
+    dvars_pos: List[Var] = list([Var(f"dx_{i}", base_var=v) for i, v in enumerate(vars_pos)])
+    dvars_vel: List[Var] = list([Var(f"dv_{i}", base_var=v) for i, v in enumerate(vars_vel)])
 
-    state_vars, state_eqs, diff_vars = [], [], []
+    state_vars: List[Var] = list()
+    state_eqs: List[Expr] = list()
+    diff_vars: List[Var] = list()
+
     for i in range(n_oscillators):
-        x_i, v_i = vars_pos[i], vars_vel[i]
-        dx_i, dv_i = dvars_pos[i], dvars_vel[i]
+        x_i: Var = vars_pos[i]
+        v_i: Var = vars_vel[i]
+        dx_i: Var = dvars_pos[i]
+        dv_i: Var = dvars_vel[i]
 
-        x_L = vars_pos[i - 1] if i > 0 else Const(0.0)
-        x_R = vars_pos[i + 1] if i < n_oscillators - 1 else Const(0.0)
+        if i > 0:
+            x_L: Expr = vars_pos[i - 1]
+        else:
+            x_L = Const(0.0)
 
-        # 3. El Sistema es f(x), el compilador armará el residual (dx - f(x))
-        force = k_sym * (x_L - x_i) + k_sym * (x_R - x_i) - 0.5 * v_i
+        if i < n_oscillators - 1:
+            x_R: Expr = vars_pos[i + 1]
+        else:
+            x_R = Const(0.0)
 
-        state_vars.extend([x_i, v_i])
-        state_eqs.extend([v_i, force])
-        diff_vars.extend([dx_i, dv_i])
+        force: Expr = k_sym * (x_L - x_i) + k_sym * (x_R - x_i) - 0.5 * v_i
 
-        # Asignamos al bloque las 3 listas requeridas
-    block = Block(name="Chain", state_vars=state_vars, state_eqs=state_eqs, parameters={k_sym: Const(10.0)})
+        state_vars.extend(list([x_i, v_i]))
+        state_eqs.extend(list([v_i, force]))
+        diff_vars.extend(list([dx_i, dv_i]))
+
+    block: Block = Block(
+        name="Chain",
+        state_vars=state_vars,
+        state_eqs=state_eqs,
+        parameters=dict({k_sym: Const(10.0)})
+    )
     block.diff_vars = diff_vars
     block.unify_blocks()
 
-    problem = GenericEmtProblem(block, Var("t_glob"))
-    h = 0.01
-    target_method = DynamicIntegrationMethod.DaeTrapezoidal
+    problem: GenericEmtProblem = GenericEmtProblem(block, Var("t_glob"))
+    h: float = 0.01
+    target_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal
 
     # --- PHASE 1: ASSEMBLY/SETUP ---
-    t_setup_start = time.perf_counter()
+    t_setup_start: float = time.perf_counter()
+
+    solver: Any
     if backend == "SD":
-        solver = JitSymbolicSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
-        solver.build_jit_kernel(target_method)
+        solver = JitSymbolicSolver(problem, t0=0.0, t_end=h, h=h, method=target_method)
     elif backend == "AD":
-        solver = JitAdSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
-        solver.build_jit_ad()
+        solver = JitAdSolver(problem, t0=0.0, t_end=h, h=h, method=target_method)
     elif backend == "StructuralVectorizedSolver":
-        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
-        solver.auto_detect_vectorization(method=target_method)
+        solver = StructuralVectorizedSolver(problem, t0=0.0, t_end=h, h=h, method=target_method)
+    else:
+        raise ValueError(f"Unknown backend: {backend}")
 
-    x0, dx0 = problem.get_x0(), np.zeros(len(state_vars))
-    p0 = np.zeros(problem.get_variable_parameter_number())
-    solver.t_end = h
+    x0: np.ndarray = problem.get_x0()
+    dx0: np.ndarray = np.zeros(len(state_vars), dtype=np.float64)
+    p0: np.ndarray = np.zeros(problem.get_variable_parameter_number(), dtype=np.float64)
 
+    # Warmup
     if backend == "SD":
         solver.simulate()
     else:
         solver.simulate(x0=x0, dx0=dx0, params0=p0)
 
-    t_setup = time.perf_counter() - t_setup_start
+    t_setup: float = time.perf_counter() - t_setup_start
 
     # --- PHASE 2: INTEGRATION/SIMULATION ---
-    solver.t_end = h * n_steps
-    t_run_start = time.perf_counter()
+    t_run_start: float = time.perf_counter()
 
     if backend == "SD":
-        solver.simulate()
-    else:
+        solver_run = JitSymbolicSolver(problem, t0=0.0, t_end=h * n_steps, h=h, method=target_method)
+        solver_run.simulate()
+        t_run: float = time.perf_counter() - t_run_start
+    elif backend == "AD":
+        solver.t_end = h * n_steps
         solver.simulate(x0=x0, dx0=dx0, params0=p0)
+        t_run: float = getattr(solver, 'last_sim_loop_time', time.perf_counter() - t_run_start)
+    elif backend == "StructuralVectorizedSolver":
+        solver.t_end = h * n_steps
+        solver.simulate(x0=x0, dx0=dx0, params0=p0)
+        t_run: float = getattr(solver, '_last_sim_loop_time', time.perf_counter() - t_run_start)
+    else:
+        t_run = 0.0
 
-    t_run = getattr(solver, 'last_sim_loop_time', time.perf_counter() - t_run_start)
+    return dict({'run': t_run, 'setup': t_setup})
 
-    return {'run': t_run, 'setup': t_setup}
 
-def run_full_analysis():
+def run_full_analysis() -> None:
     print("=" * 100)
     print(f"{'ARCHITECTURAL DUAL-COMPLEXITY ANALYSIS (BIG-O)':^100}")
     print("=" * 100)
 
-    sizes = [10, 50, 100, 200, 400]
-    backends = ["SD", "AD", "StructuralVectorizedSolver"]
-    results = {b: {'run': [], 'setup': []} for b in backends}
+    sizes: List[int] = list([10, 50, 100, 200, 400])
+    backends: List[str] = list(["SD", "AD", "StructuralVectorizedSolver"])
+
+    results: Dict[str, Dict[str, List[float]]] = dict()
+    for b in backends:
+        results[b] = dict({'run': list(), 'setup': list()})
 
     for b in backends:
         print(f"\n>>> Profiling Backend: {b}")
         print(f"{'States (2N)':<14} | {'Run Time (s)':<16} | {'Setup Time (s)':<12}")
         print("-" * 50)
         for N in sizes:
-            res = benchmark_new_architecture(N, 100, backend=b)
+            res: Dict[str, float] = benchmark_new_architecture(N, 100, backend=b)
             results[b]['run'].append(res['run'])
             results[b]['setup'].append(res['setup'])
             print(f"{N * 2:<14} | {res['run']:.6f}         | {res['setup']:.4f}")
@@ -138,8 +170,13 @@ def run_full_analysis():
     print(f"{'Backend':<30} | {'Setup Complexity':<30} | {'Sim Complexity':<30}")
     print("-" * 100)
     for b in backends:
-        setup_comp = estimate_big_o(np.array(sizes) * 2, np.array(results[b]['setup']))
-        sim_comp = estimate_big_o(np.array(sizes) * 2, np.array(results[b]['run']))
+        ns_arr: np.ndarray = np.array(sizes) * 2
+        setup_arr: np.ndarray = np.array(results[b]['setup'])
+        sim_arr: np.ndarray = np.array(results[b]['run'])
+
+        setup_comp: str = estimate_big_o(ns_arr, setup_arr)
+        sim_comp: str = estimate_big_o(ns_arr, sim_arr)
+
         print(f"{b:<30} | {setup_comp:<30} | {sim_comp:<30}")
     print("=" * 100)
 
