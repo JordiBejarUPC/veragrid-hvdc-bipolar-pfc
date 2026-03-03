@@ -1247,7 +1247,7 @@ class TemplateEditor(QtWidgets.QWidget):
         self.templates_catalogue = templates_catalogue
         self.model = Block()
         self.api_object = api_object
-        self.selected_template = None
+        self.selected_block = None
         self._vars_order = []
 
         # ---Main layout ---
@@ -1288,34 +1288,38 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", f"Template '{template_name}' not found.")
             return
 
-        self.selected_template = copy.deepcopy(self.templates_catalogue[template_name])
+        selected_template = self.templates_catalogue[template_name]
+        self.selected_block = Block()
         if self.api_object is not None:
-            if self.selected_template.tpe == DeviceType.GeneratorDevice:
+            if selected_template.tpe == DeviceType.GeneratorDevice:
                 if check_empty_bus_rms(self.api_object.bus.rms_model.model):
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
+                self.selected_block = selected_template.block.deep_copy()
 
                 Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
                 # substitute variables in block equations
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
-            if self.selected_template.tpe == DeviceType.LoadDevice:
+            if selected_template.tpe == DeviceType.LoadDevice:
                 if check_empty_bus_rms(self.api_object.bus.rms_model.model):
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
+                self.selected_block = selected_template.block.deep_copy()
 
                 Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
                 # substitute variables in block equations
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
-            if self.selected_template.tpe == DeviceType.LineDevice:
+            if selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
                 if check_empty_bus_rms(self.api_object.bus_from.rms_model.model):
                     initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+                self.selected_block = selected_template.block.deep_copy()
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
 
@@ -1324,26 +1328,26 @@ class TemplateEditor(QtWidgets.QWidget):
 
                 Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
 
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
-                self.selected_template.block.update_model(
-                    self.selected_template.block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                self.selected_block.update_model(
+                    self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
                 # power flow parameters
-                self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[
+                self.selected_block.parameters[
+                    self.selected_block.api_obj_mapping[
                         ParamPowerFlowRefferenceType.g]] = self.var_factory.add_const(
                     float(self.api_object.R / (self.api_object.R ** 2 + self.api_object.X ** 2)))
-                self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[
+                self.selected_block.parameters[
+                    self.selected_block.api_obj_mapping[
                         ParamPowerFlowRefferenceType.b]] = self.var_factory.add_const(
                     float(-self.api_object.X / (self.api_object.R ** 2 + self.api_object.X ** 2)))
-                self.selected_template.block.parameters[
-                    self.selected_template.block.api_obj_mapping[
+                self.selected_block.parameters[
+                    self.selected_block.api_obj_mapping[
                         ParamPowerFlowRefferenceType.bsh]] = self.var_factory.add_const(
                     self.api_object.B)
 
@@ -1353,14 +1357,14 @@ class TemplateEditor(QtWidgets.QWidget):
         self.template_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # call editable parameters dialog
-        self.selected_template.block.unify_blocks()
-        if hasattr(self.selected_template.block, 'event_dict'):
-            if self.selected_template.block.event_dict:
-                self.load_params_table()
+        self.selected_block.unify_blocks()
+
+        if self.selected_block.event_dict:
+            self.load_params_table()
         # call non-editable parameters dialog
-        if hasattr(self.selected_template.block, 'parameters'):
-            if self.selected_template.block.parameters:
-                self.load_fix_params_table()
+
+        if self.selected_block.parameters:
+            self.load_fix_params_table()
 
     def load_params_table(self):
         """
@@ -1369,7 +1373,7 @@ class TemplateEditor(QtWidgets.QWidget):
         :return:
         """
 
-        event_dict = self.selected_template.block.event_dict  # {Var: Const}
+        event_dict = self.selected_block.event_dict  # {Var: Const}
 
         self.params_table.blockSignals(True)
         self.params_table.setRowCount(0)
@@ -1401,7 +1405,7 @@ class TemplateEditor(QtWidgets.QWidget):
         Fills the parameters table with non-editable (fixed) parameters
         """
 
-        parameters = self.selected_template.block.parameters  # {Param: Const}
+        parameters = self.selected_block.parameters  # {Param: Const}
 
         self.params_table.blockSignals(True)
 
@@ -1425,7 +1429,7 @@ class TemplateEditor(QtWidgets.QWidget):
 
     def on_cell_changed(self, row, column):
         """Updates dict of parameters"""
-        if self.selected_template is None or column != 1:
+        if self.selected_block is None or column != 1:
             return
 
         var = self._vars_order[row]
@@ -1436,27 +1440,21 @@ class TemplateEditor(QtWidgets.QWidget):
         except ValueError:
             value = value_str
 
-        self.selected_template.block.event_dict[var] = self.var_factory.add_const(value=value, name=var.name)
+        self.selected_block.event_dict[var] = self.var_factory.add_const(value=value, name=var.name)
 
-        self.parametersUpdated.emit(self.selected_template.block.event_dict)
+        self.parametersUpdated.emit(self.selected_block.event_dict)
 
     def apply_template(self):
         """Apply template to api_object rms_model.template"""
 
-        if self.selected_template is None:
+        if self.selected_block is None:
             QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
             return
         try:
-            self.model = self.selected_template.block
+            self.model = self.selected_block
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to apply template:\n{e}")
             return
-
-    def get_event_dict(self):
-        """Returns current event_dict"""
-        if self.selected_template is not None:
-            return self.selected_template.event_dict
-        return {}
 
 
 class BlockBoxesEditor(QSplitter):
@@ -2378,7 +2376,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.ui.model_selector_comboBox.currentText() == self.templates_name:
-            if self.template_editor.selected_template is not None:
+            if self.template_editor.selected_block is not None:
                 self.template_editor.apply_template()
                 self.model_host.template = self.template_editor.model
             else:
