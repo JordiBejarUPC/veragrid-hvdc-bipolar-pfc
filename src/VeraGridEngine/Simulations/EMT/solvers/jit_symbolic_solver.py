@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Set, Tuple, Callable, List, Any
+from typing import Set, Tuple, Callable, List, Any, Union
 import numpy as np
 import numba as nb
 import scipy.sparse as sp
@@ -109,8 +109,8 @@ class HybridJacobianEvaluator:
                  use_sparse: bool,
                  n_vars: int,
                  alpha_mult: float,
-                 np_rows: IntVec| None = None,
-                 np_cols: IntVec| None = None) -> None:
+                 np_rows: Union[IntVec| None] = None,
+                 np_cols: Union[IntVec| None] = None) -> None:
         """
         Initializes the evaluator with the compiled Numba kernel and matrix topology.
 
@@ -136,7 +136,7 @@ class HybridJacobianEvaluator:
         self.np_cols = np_cols
 
     def evaluate(self, states: Vec, params: Vec, history: Vec, d_history: Vec, h: float,
-                 history2: Vec| None = None) -> Mat | CscMat:
+                 history2: Union[Vec| None] = None) -> Mat | CscMat:
         """
         Executes the JIT kernel and constructs the resulting Jacobian matrix.
 
@@ -377,8 +377,8 @@ class JitSymbolicSolver:
         else:
             alpha_mult = 1.0
 
-        np_rows: IntVec | None = np.array(rows, dtype=np.int32) if use_sparse else None
-        np_cols: IntVec | None = np.array(cols, dtype=np.int32) if use_sparse else None
+        np_rows: Union[IntVec | None] = np.array(rows, dtype=np.int32) if use_sparse else None
+        np_cols: Union[IntVec | None] = np.array(cols, dtype=np.int32) if use_sparse else None
 
         evaluator_obj = HybridJacobianEvaluator(
             kernel_jit=kernel_jit,
