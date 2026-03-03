@@ -200,7 +200,7 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
         psi_q: -(Ra * i_d - v_d) / omega,
         psi_0: L0 * i_0,
 
-        Te:  (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        Te: - (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
     }
 

@@ -216,6 +216,14 @@ class EmtProblemTemplate(ABC):
         """
         return self._constant_parameters
 
+    def get_diff_vars(self):
+        """
+
+        Returns the list of derivatives.
+
+        """
+        return self._diff_vars
+
     def get_parameters_values(self):
         """
         Returns the list of constant parameter values.
@@ -269,7 +277,7 @@ class EmtProblemTemplate(ABC):
         """
         dx = np.zeros(self._n_diff, dtype=np.float64)
         for uid, val in self.diff_init_guess.items():
-            idx = self._uid2idx_vars.get(uid, None)
+            idx = self._uid2idx_diff.get(uid, None)
             if idx is not None:
                 dx[idx] = float(val)
         return dx
