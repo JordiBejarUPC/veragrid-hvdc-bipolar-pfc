@@ -67,6 +67,11 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
+
+
+
+
+
 class RmsProblemDae(RmsProblemTemplate):
     """
     DAE (Differential-Algebraic Equation) class to store and manage.
@@ -304,7 +309,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # flatten model
                 elm.rms_model.model.unify_blocks()
-                # mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
