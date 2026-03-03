@@ -113,6 +113,11 @@ class PiLineEmtTemplate(EmtModelTemplate):
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
 
+        print(f"Rfull = {R_full}")
+        print(f"Xfull = {X_full}")
+        print(f"Lfull = {L_full}")
+        print(f"Cfull = {C_full}")
+
         idx_global = idx
         n_mat = R_full.shape[0]
 
@@ -236,7 +241,8 @@ class PiLineEmtTemplate(EmtModelTemplate):
             #     Gab = float(G_end[a, b])
             #     if Gab != 0.0:
             #         gv = gv + Gab * vt_vars[b]
-            alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
+            alg_eqs.append(i_ser[a] + it_act[a] - i_cap_t[a])
+            # alg_eqs.append(it_act[a] - (-i_ser[a]  i_cap_t[a]))
 
         self._block.algebraic_eqs = alg_eqs
 

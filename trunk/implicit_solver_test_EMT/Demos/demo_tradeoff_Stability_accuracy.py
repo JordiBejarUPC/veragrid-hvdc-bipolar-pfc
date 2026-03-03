@@ -1,130 +1,146 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.0
-
-"""
-Implicit Methods Benchmark: Boost Converter Stiff Test.
-
-This script compares the 3 implemented implicit methods (BackEuler, Trapezoidal, BDF2)
-on a stiff switched-mode power supply (Boost Converter).
-
-Objective: Demonstrate the trade-off between STABILITY (Damping) and ACCURACY (Ripple preservation).
-
-NEW ARCHITECTURE UPDATE: Uses BaseProblem + JitSymbolicSolver.
-"""
+# ==============================================================================
+# Implicit Methods Benchmark: Boost Converter Stiff Test.
+# ==============================================================================
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import time
+from typing import Tuple, List, Dict, Any
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver, BoundaryUpdateWrapper
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+
 class GenericEmtProblem(EmtProblemTemplate):
-    pass
+    __slots__ = list()
 
-def create_boost_system():
-    i_L = Var("i_L")
-    v_C = Var("v_C")
-    Vin = Var("Vin")
-    Sw = Var("Sw")
-    R = Var("R")
-    L = Var("L")
-    C = Var("C")
 
-    boost = Block(
+class BoostPWMWrapper(BoundaryUpdateWrapper):
+    __slots__ = ['f_sw', 'duty', 'offset', 'idx']
+
+    def __init__(self, f_sw: float, duty: float, offset: int, idx: int):
+        self.f_sw: float = f_sw
+        self.duty: float = duty
+        self.offset: int = offset
+        self.idx: int = idx
+
+    def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
+        t_mod: float = t % (1.0 / self.f_sw)
+        if t_mod < (self.duty / self.f_sw):
+            sw_val: float = 1.0
+        else:
+            sw_val: float = 0.0
+
+        params[self.offset + self.idx] = sw_val
+
+
+def create_boost_system() -> Tuple[Block, Var, Var]:
+    i_L: Var = Var("i_L")
+    v_C: Var = Var("v_C")
+    Vin: Var = Var("Vin")
+    Sw: Var = Var("Sw")
+    R: Var = Var("R")
+    L: Var = Var("L")
+    C: Var = Var("C")
+
+    state_vars: List[Var] = list([i_L, v_C])
+    state_eqs: List[Expr] = list([
+        (Vin - (Const(1.0) - Sw) * v_C) / L,
+        ((Const(1.0) - Sw) * i_L - v_C / R) / C
+    ])
+    parameters: Dict[Var, Const] = dict({
+        Vin: Const(12.0),
+        Sw: Const(1.0),
+        R: Const(10.0),
+        L: Const(50e-6),
+        C: Const(220e-6)
+    })
+
+    boost: Block = Block(
         name="Boost_Benchmark",
-        state_vars=[i_L, v_C],
-        state_eqs=[
-            (Vin - (Const(1.0) - Sw) * v_C) / L,
-            ((Const(1.0) - Sw) * i_L - v_C / R) / C
-        ],
-        parameters={
-            Vin: Const(12.0),
-            Sw: Const(1.0),
-            R: Const(10.0),
-            L: Const(50e-6),
-            C: Const(220e-6)
-        }
+        state_vars=state_vars,
+        state_eqs=state_eqs,
+        parameters=parameters
     )
     return boost, Sw, Vin
 
 
-def run_method_benchmark():
+def run_method_benchmark() -> None:
     print("==================================================================")
     print("   IMPLICIT METHODS BENCHMARK: STABILITY VS ACCURACY")
     print("==================================================================")
 
-    V_IN = 12.0
-    DUTY = 0.5
-    F_SW = 25e3
-    DT = 1e-6
-    T_END = 0.004
+    DUTY: float = 0.5
+    F_SW: float = 25e3
+    DT: float = 1e-6
+    T_END: float = 0.004
 
     # Using string identifiers for the new JIT architecture
-    methods = [
+    methods: List[Tuple[DynamicIntegrationMethod, str]] = list([
         (DynamicIntegrationMethod.DaeBackEuler, "Backward Euler (L-Stable)"),
         (DynamicIntegrationMethod.DaeTrapezoidal, "Trapezoidal (A-Stable)"),
         (DynamicIntegrationMethod.DaeBDF2, "BDF2 (L-Stable)")
-    ]
+    ])
 
-    results = {}
-    kpis = []
+    results: Dict[str, Dict[str, np.ndarray]] = dict()
+    kpis: List[Dict[str, Any]] = list()
 
     sys_block, sw_var, _ = create_boost_system()
     sys_block.unify_blocks()
-    glob_time = Var("t_glob")
+    glob_time: Var = Var("t_glob")
 
     # 1. Create BaseProblem (Network Topology & Equations)
-    problem = GenericEmtProblem(sys_block, glob_time)
+    problem: GenericEmtProblem = GenericEmtProblem(sys_block, glob_time)
 
-    # Controller
-    def pwm_ctrl(t, x, params):
-        sw_val = 1.0 if (t % (1 / F_SW)) < (DUTY / F_SW) else 0.0
-        offset = problem.get_variable_parameter_number()
-        idx = offset + problem.uid2idx_params[sw_var.uid]
-        params[idx] = sw_val
+    # 2. Configure Controller
+    offset: int = problem.get_variable_parameter_number()
+    idx: int = problem.uid2idx_params[sw_var.uid]
+    pwm_updater: BoostPWMWrapper = BoostPWMWrapper(F_SW, DUTY, offset, idx)
 
     for method_enum, method_name in methods:
         print(f"\n> Testing: {method_name}...")
 
-        # 2. Instantiate JIT Solver
+        # 3. Instantiate JIT Solver
         solver = JitSymbolicSolver(
             problem=problem, t0=0.0, t_end=T_END, h=DT,
             method=method_enum, verbose=False
         )
 
-        # 3. Simulate (JitSymbolicSolver extracts x0 internally)
-        t0 = time.perf_counter()
-        t_arr, y_arr = solver.simulate(boundary_update_fn=pwm_ctrl)
-        elapsed = time.perf_counter() - t0
+        # 4. Simulate
+        t0: float = time.perf_counter()
+        t_arr, y_arr = solver.simulate(boundary_updater=pwm_updater)
+        elapsed: float = time.perf_counter() - t0
 
         # Extract Data
-        i_L = y_arr[:, problem.get_var_idx(sys_block.state_vars[0])]
-        v_C = y_arr[:, problem.get_var_idx(sys_block.state_vars[1])]
+        i_L: np.ndarray = y_arr[:, problem.get_var_idx(sys_block.state_vars[0])]
+        v_C: np.ndarray = y_arr[:, problem.get_var_idx(sys_block.state_vars[1])]
 
         # Metrics
-        mask_ss = t_arr > (T_END * 0.8)
-        ripple_current = np.max(i_L[mask_ss]) - np.min(i_L[mask_ss])
-        avg_voltage = np.mean(v_C[mask_ss])
+        mask_ss: np.ndarray = t_arr > (T_END * 0.8)
+        ripple_current: float = float(np.max(i_L[mask_ss]) - np.min(i_L[mask_ss]))
+        avg_voltage: float = float(np.mean(v_C[mask_ss]))
 
-        kpis.append({
+        if ripple_current < 1.0:
+            behavior: str = "High Damping"
+        else:
+            behavior: str = "Accurate"
+
+        kpis.append(dict({
             "Method": method_name.split(' ')[0],
             "Sim Time (s)": f"{elapsed:.4f}",
             "V_out Avg (V)": f"{avg_voltage:.2f}",
             "Ripple I_L (A)": f"{ripple_current:.3f}",
-            "Behavior": "High Damping" if ripple_current < 1.0 else "Accurate"
-        })
+            "Behavior": behavior
+        }))
 
-        results[method_name] = {'t': t_arr, 'i': i_L, 'v': v_C}
+        results[method_name] = dict({'t': t_arr, 'i': i_L, 'v': v_C})
 
     print("\n=== BENCHMARK RESULTS ===")
-    df = pd.DataFrame(kpis)
+    df: pd.DataFrame = pd.DataFrame(kpis)
     print(df.to_string(index=False))
 
     plt.figure(figsize=(12, 8))
@@ -138,7 +154,7 @@ def run_method_benchmark():
 
     plt.subplot(2, 1, 2)
     for name, data in results.items():
-        mask = data['t'] > (T_END - 0.0005)
+        mask: np.ndarray = data['t'] > (T_END - 0.0005)
         plt.plot(data['t'][mask] * 1000, data['i'][mask], linewidth=1.5, marker='.', markersize=4, label=name)
     plt.title('Ripple Accuracy Detail (Zoomed)')
     plt.xlabel('Time [ms]')

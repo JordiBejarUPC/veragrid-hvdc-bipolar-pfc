@@ -227,10 +227,8 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
-                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal)
-
-
-
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     verbose = 1)
 
 problem = EmtProblemDae(grid=grid,
                         options=options,
@@ -242,31 +240,6 @@ print(vars)
 
 df = problem.get_init_guess_table()
 print(df)
-df2 = problem.get_missing_init_table()
-print(df2)
-
-
-solver = JitSymbolicSolver(problem = problem,
-                           t0 = 0.0,
-                           t_end = options.simulation_time,
-                           h = options.time_step,
-                           method=options.integration_method,
-                           verbose = True)
-# solver = StructuralVectorizedSolver(problem = problem,
-#                                     t0 = 0.0,
-#                                     t_end = options.simulation_time,
-#                                     h = options.time_step,
-#                                     method = options.integration_method,
-#                                     verbose = True)
-# solver = JitAdSolver(problem = problem,
-#                      t0 = 0.0,
-#                      t_end = options.simulation_time,
-#                      h = options.time_step,
-#                      method=options.integration_method,
-#                      verbose = True)
-
-t, y = solver.simulate()
-
 
 x0 = problem.get_x0()
 print("len(x0) =", len(x0))
@@ -282,9 +255,28 @@ print("infs =", np.isinf(dx0).sum())
 print("nonzeros =", np.count_nonzero(dx0))
 print("len(diff_init_guess) =", len(problem.diff_init_guess))
 
+df2 = problem.get_missing_init_table()
+print(df2)
 
+solver = JitSymbolicSolver(problem = problem,
+                           t0 = 0.0,
+                           t_end = options.simulation_time,
+                           h = options.time_step,
+                           method=options.integration_method,
+                           verbose = True)
 
-
+# solver = StructuralVectorizedSolver(problem = problem,
+#                                     t0 = 0.0,
+#                                     t_end = options.simulation_time,
+#                                     h = options.time_step,
+#                                     method = options.integration_method,
+#                                     verbose = True)
+# solver = JitAdSolver(problem = problem,
+#                      t0 = 0.0,
+#                      t_end = options.simulation_time,
+#                      h = options.time_step,
+#                      method=options.integration_method,
+#                      verbose = True)
 
 t, y = solver.simulate()
 

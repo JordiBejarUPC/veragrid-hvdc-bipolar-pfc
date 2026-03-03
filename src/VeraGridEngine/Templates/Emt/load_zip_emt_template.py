@@ -9,6 +9,9 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
 def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
+
+    # In the load model S and currents are defined as positive, from powerflow they are negative (sign convention).
+    # That's why the  VarPowerFlowReferenceType has the sign changed.
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
@@ -45,16 +48,16 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     eps = vf.add_var("eps_" + name)
 
     # Parameter Registration (event_dict) for the case P= 9.999999, Q= 0.999999
-    P0 = -9.999999 / sbase
-    Q0 = -0.999999 / sbase
+    P0 = 9.999999 / sbase
+    Q0 = 0.999999 / sbase
     # P0 = -0.0 / sbase
     # Q0 = -0.0 / sbase
-    templ.block.event_dict[P0_A] = vf.add_const(-P0 / 3.0)
-    templ.block.event_dict[Q0_A] = vf.add_const(-Q0 / 3.0)
-    templ.block.event_dict[P0_B] = vf.add_const(-P0/ 3.0)
-    templ.block.event_dict[Q0_B] = vf.add_const(-Q0 / 3.0)
-    templ.block.event_dict[P0_C] = vf.add_const(-P0 / 3.0)
-    templ.block.event_dict[Q0_C] = vf.add_const(-Q0 / 3.0)
+    templ.block.event_dict[P0_A] = vf.add_const(P0 / 3.0)
+    templ.block.event_dict[Q0_A] = vf.add_const(Q0 / 3.0)
+    templ.block.event_dict[P0_B] = vf.add_const(P0/ 3.0)
+    templ.block.event_dict[Q0_B] = vf.add_const(Q0 / 3.0)
+    templ.block.event_dict[P0_C] = vf.add_const(P0 / 3.0)
+    templ.block.event_dict[Q0_C] = vf.add_const(Q0 / 3.0)
     templ.block.event_dict[V0] = vf.add_const(1.0)
     templ.block.event_dict[f_nom] = vf.add_const(fbase)
     templ.block.event_dict[k_sogi] = vf.add_const(1.41421356)
@@ -119,13 +122,13 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     Q_B = vf.add_var("Q_B_" + name)
     P_C = vf.add_var("P_C_" + name)
     Q_C = vf.add_var("Q_C_" + name)
-    iA = vf.add_var("iA_" + name)
-    iB = vf.add_var("iB_" + name)
-    iC = vf.add_var("iC_" + name)
+    i_A = vf.add_var("i_A_" + name)
+    i_B = vf.add_var("i_B_" + name)
+    i_C = vf.add_var("i_C_" + name)
 
     templ.block.algebraic_vars = [
         VA2, VB2, VC2, VmA, VmB, VmC, rA, rB, rC,
-        P_A, Q_A, P_B, Q_B, P_C, Q_C, iA, iB, iC
+        P_A, Q_A, P_B, Q_B, P_C, Q_C, i_A, i_B, i_C
     ]
 
     # Algebraic Equations: Definitions for magnitudes and the ZIP polynomial
@@ -142,17 +145,30 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         rA - (VmA / V0),
         rB - (VmB / V0),
         rC - (VmC / V0),
+        # # ZIP Polynomials for P and Q
+        # P_A - (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
+        # Q_A - (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
+        # P_B - (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
+        # Q_B - (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
+        # P_C - (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
+        # Q_C - (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
+        # # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
+        # i_A - (c2 * (u_A * P_A + q_A * Q_A) / (VA2 + eps)),
+        # i_B - (c2 * (u_B * P_B + q_B * Q_B) / (VB2 + eps)),
+        # i_C - (c2 * (u_C * P_C + q_C * Q_C) / (VC2 + eps)),
+
+        # CHANGE SIGN CONVENTION ! POWERS AND CURRENTS FROM POWERFLOW ARE NEGATIVE (sign convention injection leaving the bus is negative)
         # ZIP Polynomials for P and Q
-        P_A - (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
-        Q_A - (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
-        P_B - (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
-        Q_B - (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
-        P_C - (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
-        Q_C - (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
+        P_A + (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
+        Q_A + (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
+        P_B + (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
+        Q_B + (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
+        P_C + (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
+        Q_C + (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
         # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
-        iA - (c2 * (u_A * P_A + q_A * Q_A) / (VA2 + eps)),
-        iB - (c2 * (u_B * P_B + q_B * Q_B) / (VB2 + eps)),
-        iC - (c2 * (u_C * P_C + q_C * Q_C) / (VC2 + eps)),
+        i_A + (c2 * (u_A * (-P_A) + q_A * (-Q_A)) / (VA2 + eps)),
+        i_B + (c2 * (u_B * (-P_B) + q_B * (-Q_B)) / (VB2 + eps)),
+        i_C + (c2 * (u_C * (-P_C) + q_C * (-Q_C)) / (VC2 + eps)),
     ]
 
     # FULL INITIALIZATION (30 Variables)
@@ -168,16 +184,8 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
 
         # 18 Algebraics: Complete chain for current injection
         VA2: (u_A ** 2 + q_A ** 2), VmA: ((VA2 + eps) ** c05), rA: (VmA / V0),
-        # P_A: (P0_A * (a1 * rA ** 2 + a2 * rA + a3)), Q_A: (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
-        # iA: (c2 * (u_A * P_A + q_A * Q_A) / (VA2 + eps)),
-
         VB2: (u_B ** 2 + q_B ** 2), VmB: ((VB2 + eps) ** c05), rB: (VmB / V0),
-        # P_B: (P0_B * (a1 * rB ** 2 + a2 * rB + a3)), Q_B: (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
-        # iB: (c2 * (u_B * P_B + q_B * Q_B) / (VB2 + eps)),
-
         VC2: (u_C ** 2 + q_C ** 2), VmC: ((VC2 + eps) ** c05), rC: (VmC / V0),
-        # P_C: (P0_C * (a1 * rC ** 2 + a2 * rC + a3)), Q_C: (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
-        # iC: (c2 * (u_C * P_C + q_C * Q_C) / (VC2 + eps)),
     }
 
     templ.block.diff_init_eqs = {
@@ -190,8 +198,24 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         d_q_C: w * u_C,
     }
 
-
     # Complete External Mapping (Interface with the simulation engine)
+    # templ.block.external_mapping = {
+    #     VarPowerFlowRefferenceType.P: None,
+    #     VarPowerFlowRefferenceType.Q: None,
+    #     VarPowerFlowRefferenceType.P_N: None,
+    #     VarPowerFlowRefferenceType.Q_N: None,
+    #     VarPowerFlowRefferenceType.P_A: -P_A,
+    #     VarPowerFlowRefferenceType.Q_A: -Q_A,
+    #     VarPowerFlowRefferenceType.P_B: -P_B,
+    #     VarPowerFlowRefferenceType.Q_B: -Q_B,
+    #     VarPowerFlowRefferenceType.P_C: -P_C,
+    #     VarPowerFlowRefferenceType.Q_C: -Q_C,
+    #     VarPowerFlowRefferenceType.i_N: None,
+    #     VarPowerFlowRefferenceType.i_A: -i_A,
+    #     VarPowerFlowRefferenceType.i_B: -i_B,
+    #     VarPowerFlowRefferenceType.i_C: -i_C,
+    #     VarPowerFlowRefferenceType.theta: None
+    # }
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
@@ -204,9 +228,9 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         VarPowerFlowRefferenceType.P_C: P_C,
         VarPowerFlowRefferenceType.Q_C: Q_C,
         VarPowerFlowRefferenceType.i_N: None,
-        VarPowerFlowRefferenceType.i_A: iA,
-        VarPowerFlowRefferenceType.i_B: iB,
-        VarPowerFlowRefferenceType.i_C: iC,
+        VarPowerFlowRefferenceType.i_A: i_A,
+        VarPowerFlowRefferenceType.i_B: i_B,
+        VarPowerFlowRefferenceType.i_C: i_C,
         VarPowerFlowRefferenceType.theta: None
     }
 

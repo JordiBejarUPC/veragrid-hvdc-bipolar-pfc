@@ -187,13 +187,15 @@ def init_explicit_emt(
     """
 
     # Initialize memory buffers for numerical evaluation
-    # EMT solvers require flat arrays for efficient computation via SymbolicVector
+    # EMT solvers require flat arrays for efficient computation
     x: np.ndarray = np.ones(len(sys_vars))
     dx: np.ndarray = np.zeros(len(sys_diff_vars))
 
     # Hydrate buffers with existing user-provided guesses
     for uid, val in init_guess.items():
+        # print(f"uid from var = {uid} with val = {val}")
         x[uid2idx_vars[uid]] = val
+
     for uid, val in diff_init_guess.items():
         dx[uid2idx_diff[uid]] = val
 

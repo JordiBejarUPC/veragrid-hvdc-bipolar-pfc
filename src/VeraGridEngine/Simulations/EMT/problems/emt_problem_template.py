@@ -204,12 +204,6 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_eqs
 
-    def get_diff_vars(self):
-        """
-        Returns the list of state variables.
-        """
-        return self._diff_vars
-
     def get_variable_parameters(self):
         """
         Returns the list of variable parameters.
@@ -221,6 +215,14 @@ class EmtProblemTemplate(ABC):
         Returns the list of constant parameters.
         """
         return self._constant_parameters
+
+    def get_diff_vars(self):
+        """
+
+        Returns the list of derivatives.
+
+        """
+        return self._diff_vars
 
     def get_parameters_values(self):
         """
@@ -266,7 +268,7 @@ class EmtProblemTemplate(ABC):
         for uid, val in self.init_guess.items():
             idx = self._uid2idx_vars.get(uid, None)
             if idx is not None:
-                x[idx] = float(abs(val))
+                x[idx] = float(val)
         return x
 
     def get_dx0(self) -> Vec:
@@ -347,6 +349,10 @@ class EmtProblemTemplate(ABC):
     @property
     def uid2idx_diff(self):
         return self._uid2idx_diff
+
+    @property
+    def event_params_values(self):
+        return self._event_params_values
 
 
 
