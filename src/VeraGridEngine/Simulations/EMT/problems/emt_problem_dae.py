@@ -116,7 +116,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         t_done = _toc(t_build)
 
-        if getattr(options, "verbose", 0) > 0:
+        if options.verbose > 0:
             print(
                 f"EMT electrical problem parsed in {t_done:.4f}s | "
                 f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
@@ -200,7 +200,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                 )
             except Exception as e:
-                if getattr(self.options, "verbose", 0) > 0:
+                if self.options.verbose > 0:
                     print(f"[EMT][init_explicit] failed for block '{getattr(mdl, 'name', 'unknown')}'. Error: {e}")
 
         # for mdl in self._models_with_diff_init_eqs:
@@ -278,10 +278,7 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.it_C,
         ]
 
-
-
         c0 = grid.var_factory.add_const(0.0)
-
 
 
         # KCL accumulator per bus-phase
@@ -350,8 +347,11 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 i_f_exprs, i_t_exprs = rt.get_nodal_injections()
                 for ph in range(4):
-                    I_kcl[f][ph] = I_kcl[f][ph] + i_f_exprs[ph]
-                    I_kcl[t][ph] = I_kcl[t][ph] + i_t_exprs[ph]
+                    # I_kcl[f][ph] = I_kcl[f][ph] + i_f_exprs[ph]
+                    # I_kcl[t][ph] = I_kcl[t][ph] + i_t_exprs[ph]
+                    # currents in branches are defined as going out of the bus (sign convention)
+                    I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
+                    I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
 
                 self.history_models.append(rt)
                 continue
@@ -374,10 +374,15 @@ class EmtProblemDae(EmtProblemTemplate):
                 If_expr = mdl.E(br_if_keys[ph])
                 It_expr = mdl.E(br_it_keys[ph])
 
+                # if If_expr is not None:
+                #     I_kcl[f][ph] = I_kcl[f][ph] + If_expr
+                # if It_expr is not None:
+                #     I_kcl[t][ph] = I_kcl[t][ph] + It_expr
+                # currents in branches are defined as going out of the bus (sign convention)
                 if If_expr is not None:
-                    I_kcl[f][ph] = I_kcl[f][ph] + If_expr
+                    I_kcl[f][ph] = I_kcl[f][ph] - If_expr
                 if It_expr is not None:
-                    I_kcl[t][ph] = I_kcl[t][ph] + It_expr
+                    I_kcl[t][ph] = I_kcl[t][ph] - It_expr
 
             # PF init for branch internal variables (and if/it)
             if pf_results is not None:
@@ -408,10 +413,11 @@ class EmtProblemDae(EmtProblemTemplate):
 
             b = bus_dict[inj.bus]
 
+            # currents in injections are defined as entering the bus (sign convention)
             for ph in range(4):
                 i_expr = mdl.E(inj_i_keys[ph])
                 if i_expr is not None:
-                    I_kcl[b][ph] = I_kcl[b][ph] - i_expr
+                    I_kcl[b][ph] = I_kcl[b][ph] + i_expr
 
             if pf_results is not None:
                 self._try_set_inj_pf_init(
@@ -520,30 +526,46 @@ class EmtProblemDae(EmtProblemTemplate):
 
         try:
             if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
-                V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
-                v_N = np.sqrt(2) * V_N_rms * np.cos(V_N_angle)
-                d_v_N = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_N_rms * np.sin(V_N_angle)
+                # V_N_rms, V_N_angle = np.abs(pf_results.voltage_N[bus_index]), np.angle(pf_results.voltage_N[bus_index])
+                # v_N = np.sqrt(2) * V_N_rms * np.cos(V_N_angle)
+                # d_v_N = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_N_rms * np.sin(V_N_angle)
+
+                V_N = pf_results.voltage_N[bus_index]
+                v_N = np.sqrt(2.0) * np.real(V_N)
+                d_v_N = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2.0) * np.imag(V_N)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
             if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
-                V_A_rms, V_A_angle = np.abs(pf_results.voltage_A[bus_index]), np.angle(pf_results.voltage_A[bus_index])
-                v_A = np.sqrt(2) * V_A_rms * np.cos(V_A_angle)
-                d_v_A = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_A_rms * np.sin(V_A_angle)
+                # V_A_rms, V_A_angle = np.abs(pf_results.voltage_A[bus_index]), np.angle(pf_results.voltage_A[bus_index])
+                # v_A = np.sqrt(2) * V_A_rms * np.cos(V_A_angle)
+                # d_v_A = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_A_rms * np.sin(V_A_angle)
+
+                V_A = pf_results.voltage_A[bus_index]
+                v_A = np.sqrt(2.0) * np.real(V_A)
+                d_v_A = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2.0) * np.imag(V_A)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
             if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
-                V_B_rms, V_B_angle = np.abs(pf_results.voltage_B[bus_index]), np.angle(pf_results.voltage_B[bus_index])
-                v_B = np.sqrt(2) * V_B_rms * np.cos(V_B_angle)
-                d_v_B = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_B_rms * np.sin(V_B_angle)
+                # V_B_rms, V_B_angle = np.abs(pf_results.voltage_B[bus_index]), np.angle(pf_results.voltage_B[bus_index])
+                # v_B = np.sqrt(2) * V_B_rms * np.cos(V_B_angle)
+                # d_v_B = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_B_rms * np.sin(V_B_angle)
+
+                V_B = pf_results.voltage_B[bus_index]
+                v_B = np.sqrt(2.0) * np.real(V_B)
+                d_v_B = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2.0) * np.imag(V_B)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
             if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
-                V_C_rms, V_C_angle = np.abs(pf_results.voltage_C[bus_index]), np.angle(pf_results.voltage_C[bus_index])
-                v_C = np.sqrt(2) * V_C_rms * np.cos(V_C_angle)
-                d_v_C = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_C_rms * np.sin(V_C_angle)
+                # V_C_rms, V_C_angle = np.abs(pf_results.voltage_C[bus_index]), np.angle(pf_results.voltage_C[bus_index])
+                # v_C = np.sqrt(2) * V_C_rms * np.cos(V_C_angle)
+                # d_v_C = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2) * V_C_rms * np.sin(V_C_angle)
+
+                V_C = pf_results.voltage_C[bus_index]
+                v_C = np.sqrt(2.0) * np.real(V_C)
+                d_v_C = - 2.0 * np.pi * self.grid.fBase * np.sqrt(2.0) * np.imag(V_C)
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
@@ -669,12 +691,28 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 I_f = 0.0 + 0.0j if Vf_ph == 0 else np.conj(Sf_ph / Vf_ph)
                 I_t = 0.0 + 0.0j if Vt_ph == 0 else np.conj(St_ph / Vt_ph)
+                # IMPORTANT: enforce "branch currents leave the bus" at the to-end too.
+                # If PF gives St as receiving-end power (typically negative when the branch delivers power to the bus),
+                # then the bus->branch injection is -St.
+                # I_t = 0.0 + 0.0j if Vt_ph == 0 else np.conj((-St_ph) / Vt_ph)
 
-                i_f0 = np.sqrt(2.0) * np.abs(I_f) * np.cos(np.angle(I_f))
-                i_t0 = np.sqrt(2.0) * np.abs(I_t) * np.cos(np.angle(I_t))
+
+                # i_f0 = np.sqrt(2.0) * np.abs(I_f) * np.cos(np.angle(I_f))
+                # i_t0 = np.sqrt(2.0) * np.abs(I_t) * np.cos(np.angle(I_t))
+                i_f0 = np.sqrt(2.0) * np.real(I_f)
+                i_t0 = np.sqrt(2.0) * np.real(I_t)
+
+                if self.options.verbose>0:
+                    print(f"i_f{ph} = {i_f0}")
+                    print(f"i_t{ph} = {i_t0}")
 
                 self.set_if_exists(mdl = mdl, key = if_key[ph], value = float(i_f0))
                 self.set_if_exists(mdl = mdl, key = it_key[ph], value = float(i_t0))
+
+                # idx_if = self.uid2idx_vars.get(v_if.uid)
+                # idx_it = self.uid2idx_vars.get(v_it.uid)
+                # x0 = self.get_x0()
+                # print("x0_if_after_set", x0[idx_if], "x0_it_after_set", x0[idx_it])
 
             self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Pf, value = float(np.real(Sf_sum)))
             self.set_if_exists(mdl = mdl, key = VarPowerFlowRefferenceType.Qf, value = float(np.imag(Sf_sum)))
@@ -785,12 +823,12 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 # make S always positive
                 S = S_arr[bus_index] / sbase
-                if S.real < 0:
-                    # It's a load (withdrawal), treat as positive S for the load component
-                    S = -S
-                else:
-                    # It's a generator (injection)
-                    S = S
+                # if S.real < 0:
+                #     # It's a load (withdrawal), treat as positive S for the load component
+                #     S = -S
+                # else:
+                #     # It's a generator (injection)
+                #     S = S
                 V = V_arr[bus_index]
 
                 if V == 0:
@@ -798,10 +836,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     I = np.conj(S / V)
 
-                I_rms = np.abs(I)
-                I_ang = np.angle(I)
-
-                i0 = np.sqrt(2.0) * I_rms * np.cos(I_ang)
+                # I_rms = np.abs(I)
+                # I_ang = np.angle(I)
+                # i0 = np.sqrt(2.0) * I_rms * np.cos(I_ang)
+                i0 = np.sqrt(2.0) * np.real(I)
 
                 self.set_if_exists(mdl = mdl, key = i_key, value = float(i0))
                 self.set_if_exists(mdl = mdl, key = P_key, value = float(np.real(S)))
@@ -835,6 +873,8 @@ class EmtProblemDae(EmtProblemTemplate):
                       value: float):
         if mdl.E(key) is not None:
             self.set_init_guess(mdl, key, value)
+            if self.options.verbose > 0:
+                print(f"init guess key = {key}, value = {value}")
 
     def _deduplicate_block_entities(self, block: Block):
         """

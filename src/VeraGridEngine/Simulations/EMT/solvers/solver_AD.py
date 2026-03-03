@@ -17,7 +17,7 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, N
                                                       NewtonSolveContext, dense_lstsq_fallback,
                                                       sparse_lsqr_fallback)
 from VeraGridEngine.basic_structures import Vec, Mat
-from typing import Tuple, Callable, List, Any, Dict, Set
+from typing import Tuple, Callable, List, Any, Dict, Set, Union
 import uuid
 from scipy.sparse import csc_matrix
 
@@ -57,11 +57,11 @@ def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
     """
     Scatter a single JVP evaluation into the CSC data array for all columns in a given color.
     """
-    k0: int = color_ptr[color_id]
-    k1: int = color_ptr[color_id + 1]
+    k0: int = int(color_ptr[color_id])
+    k1: int = int(color_ptr[color_id + 1])
     for k in range(k0, k1):
-        p0: int = col_ptr[k]
-        p1: int = col_ptr[k + 1]
+        p0: int = int(col_ptr[k])
+        p1: int = int(col_ptr[k + 1])
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
 
@@ -311,7 +311,7 @@ class SparseADJacobian:
                  history: np.ndarray,
                  d_history: np.ndarray,
                  h: float,
-                 history2: np.ndarray | None = None) -> csc_matrix:
+                 history2: Union[np.ndarray | None] = None) -> csc_matrix:
         """
         Evaluates the AD Jacobian.
 
@@ -460,9 +460,9 @@ class JitAdSolver:
             pass
 
     def simulate(self,
-                 x0: Vec | None = None,
-                 dx0: Vec | None = None,
-                 params0: Vec | None = None,
+                 x0: Union[Vec | None] = None,
+                 dx0: Union[Vec | None] = None,
+                 params0: Union[Vec | None] = None,
                  boundary_updater: Any | None = None) -> Tuple[Vec, Mat]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.

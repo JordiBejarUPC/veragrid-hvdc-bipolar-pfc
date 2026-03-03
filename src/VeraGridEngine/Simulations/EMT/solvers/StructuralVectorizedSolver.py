@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Callable, List, Any, Dict
+from typing import Tuple, Callable, List, Any, Dict, Union, Set
 import uuid
 import time
 import hashlib
@@ -593,9 +593,9 @@ class StructuralVectorizedSolver:
         print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
     def simulate(self,
-                 x0:Vec| None = None,
-                 dx0: Vec| None = None,
-                 params0: Vec| None = None,
+                 x0: Union[Vec| None] = None,
+                 dx0: Union[Vec| None] = None,
+                 params0: Union[Vec| None] = None,
                  boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat]:
 
         """
