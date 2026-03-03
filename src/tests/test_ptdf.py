@@ -540,9 +540,13 @@ def test_ptdf_generation_contingencies():
         pf_options = gce.PowerFlowOptions(gce.SolverType.Linear, verbose=0, control_q=False)
         # DC power flow method
 
+        # This step is important to ensure the "sparsification" of the PTDF and LODF affect in any form to the results
+        lin_opt = gce.LinearAnalysisOptions(ptdf_threshold=1e-10, lodf_threshold=1e-10)
+
         options1 = gce.ContingencyAnalysisOptions(
             pf_options=pf_options,
-            contingency_method=gce.ContingencyMethod.PowerFlow
+            contingency_method=gce.ContingencyMethod.PowerFlow,
+            lin_options=lin_opt,
         )
         cont_analysis_driver1 = gce.ContingencyAnalysisDriver(
             grid=main_circuit,
@@ -564,7 +568,8 @@ def test_ptdf_generation_contingencies():
 
         options2 = gce.ContingencyAnalysisOptions(
             pf_options=pf_options,
-            contingency_method=gce.ContingencyMethod.Linear
+            contingency_method=gce.ContingencyMethod.Linear,
+            lin_options=lin_opt,
         )
         cont_analysis_driver2 = gce.ContingencyAnalysisDriver(
             grid=main_circuit,
