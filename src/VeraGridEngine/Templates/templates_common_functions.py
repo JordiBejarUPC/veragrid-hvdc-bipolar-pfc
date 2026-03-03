@@ -36,13 +36,15 @@ def tf_to_block(var_factory: VarFactory,
     if y is None:
         y = var_factory.add_var('y_' + name)
 
-    aux_eqs: List[Expr] = []
-    aux_vars: List[Expr] = []
+    aux_eqs: List[Expr] = list()
+    aux_vars: List[Expr] = list()
+    init_eqs = dict()
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
         aux_eqs.append((u - x).simplify())
         aux_vars.append(u)
+        init_eqs[u] = x
         x = u
 
     diff_vars_x = [x]
@@ -73,7 +75,7 @@ def tf_to_block(var_factory: VarFactory,
     block.diff_vars = diff_vars
     block.in_vars = [x]  # Input is x
     block.out_vars = [y]  # Output is y
-
+    block.init_eqs = init_eqs
     return block, y
 
 

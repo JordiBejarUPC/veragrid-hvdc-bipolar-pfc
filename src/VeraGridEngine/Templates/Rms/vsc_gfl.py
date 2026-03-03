@@ -260,8 +260,8 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         L: vfactory.add_const(0.1),
         P_ref: vfactory.add_const(0.0),
         Q_ref: vfactory.add_const(0.0),
-        Vdc_ref: vfactory.add_const(1.0),
-        Vm_ac_ref: vfactory.add_const(1.0),
+        Vdc_ref: vfactory.add_const(),
+        Vm_ac_ref: vfactory.add_const(None),
     }
 
     # P and Q at the point of common coupling
@@ -398,6 +398,8 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         v_q_c: v_q_g + (R*i_q - omega*L*i_d),
         vd_hat: v_d_c - (v_d_g + L*(omega)*i_q),
         vq_hat: v_q_c - (v_q_g - L*(omega)*i_d),
+        Vdc_ref: v_dc,
+        Vm_ac_ref: Vm,
     }
     
     # Add control-specific initialization
@@ -411,7 +413,7 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     if control2 == ConverterControlType.Qac:
         init_eqs[Q_ref] = Q
     elif control2 == ConverterControlType.Vm_ac:
-        init_eqs[Vm_ac_ref] = v_q_g
+        init_eqs[Vm_ac_ref] = Vm
         # For AC voltage control, initialize i_d_ref based on initial reactive power
         init_eqs[i_d_ref] = (2 / 3) * Q / v_q_g
 

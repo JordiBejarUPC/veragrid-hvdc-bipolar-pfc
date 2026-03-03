@@ -227,6 +227,10 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 mdl = elm.rms_model.model
+
+                # flatten model to collect all variables including those from child blocks
+                mdl.unify_blocks()
+
                 St_vsc = (self.power_flow_results.St_vsc)/ self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i])/self.grid.Sbase
                 # fill init_guess
@@ -286,7 +290,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
                 setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
                 setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
-                self.sys_block.add(mdl)
+                #self.sys_block.add(mdl)
 
         # initialize injections
         # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
@@ -298,13 +302,12 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
 
-                # flatten model
+                # flatten model - variables already registered in first VSC loop above
                 elm.rms_model.model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=mdl,
+                    init_explicit(mdl=elm.rms_model.model,
                                   sys_vars=self.sys_vars,
                                   variable_parameters=self._variable_parameters,
                                   event_parameters_eqs=self._event_parameters_eqs,
@@ -323,6 +326,9 @@ class RmsProblemDae(RmsProblemTemplate):
                                   )
                 else:
                     raise ValueError("Not implemented initialization method")
+                # add model to system block
+                self.sys_block.add(elm.rms_model.model)
+
         for elm in grid.get_injection_devices_iter():
 
             if elm.rms_model.model.empty():
@@ -335,10 +341,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 elm.rms_model.model.unify_blocks()
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
-                                    np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
-                                    np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                if elm.bus.is_dc:
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
+                        np.real(self.power_flow_results.Sbus[bus_index] ))
+                else:
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
+                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
+                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
                 k = bus_dict[elm.bus]
                 if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
@@ -399,11 +409,14 @@ class RmsProblemDae(RmsProblemTemplate):
         for b in self.sys_block.get_all_blocks():
 
             for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
-                self._event_parameters_eqs.append(eq)
+                # Check if parameter is already added (avoid duplicates from nested blocks)
+                if param not in self._variable_parameters:
+                    self._variable_parameters.append(param)
+                    self._event_parameters_eqs.append(eq)
             for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
-                self._parameters_values.append(constant)
+                if param not in self._constant_parameters:
+                    self._constant_parameters.append(param)
+                    self._parameters_values.append(constant)
 
 
         # We define the parameter dt and delta
@@ -470,6 +483,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._uid2idx_diff[ep.uid] = k
 
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
+        self._alias_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
 
         for it, eq in enumerate(self._event_parameters_eqs):
@@ -605,6 +619,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # i is for variables
         for v in mdl.state_vars:
+            if v.uid in self._uid2idx_vars:
+                raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
@@ -615,6 +632,9 @@ class RmsProblemDae(RmsProblemTemplate):
             self._n_vars += 1
 
         for v in mdl.algebraic_vars:
+            if v.uid in self._uid2idx_vars:
+                raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
@@ -626,6 +646,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # j is for parameters
         for ep, const in mdl.parameters.items():
+            if ep.uid in self._uid2idx_params:
+                raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate parameter.")
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
             self._uid2idx_params[ep.uid] = self._n_params
@@ -635,6 +658,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # m is for variable parameters
         for ep, eq in mdl.event_dict.items():
+            if ep.uid in self._uid2idx_event_params:
+                raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate event parameter.")
             self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
@@ -644,6 +670,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # l is for differential vars
         for v in mdl.diff_vars:
+            if v.uid in self._uid2idx_diff:
+                raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate differential variable.")
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
             self._uid2idx_diff[v.uid] = self._n_diff
