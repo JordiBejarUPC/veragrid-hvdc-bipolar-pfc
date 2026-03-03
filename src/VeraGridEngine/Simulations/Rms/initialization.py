@@ -3,9 +3,14 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+
+import cProfile
+import time
 from typing import Dict, List
 import numpy as np
 from collections import defaultdict, deque
+
+from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector, SymbolicParamsVectorInit
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
@@ -31,6 +36,72 @@ def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarra
             raise ValueError(f"Missing variable {key} definition")
 
     return x
+
+def solve_secant(eq_fn, x, idx, event_params_array, params_array,
+                 tol=1e-8, max_iter=50):
+
+    # total_init_explicit_time: float = 0
+    # # profiler = cProfile.Profile()
+    # t0 = time.perf_counter()
+    # # profiler.enable()
+
+    x0 = 1.0
+    x1 = 1.1
+
+    for _ in range(max_iter):
+
+        x[idx] = x0
+        f0 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x0
+
+        x[idx] = x1
+        f1 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x1
+
+        if abs(f1) < tol:
+            return x1
+
+        denom = (f1 - f0)
+        if abs(denom) < 1e-12:
+            break
+
+        x2 = x1 - f1 * (x1 - x0) / denom
+        x0, x1 = x1, x2
+
+    # profiler.disable()
+    # profiler.dump_stats("profiling_stats.prof")
+    # total_init_explicit_time += time.perf_counter() - t0
+    # print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+
+    return x1
+
+def solve_newton(eq_fn, x, idx, event_params_array, params_array,
+                 dummy_diff,
+                 tol=1e-8, max_iter=20, h=1e-6):
+
+    x0 = x[idx]
+
+    for _ in range(max_iter):
+
+        x[idx] = x0
+        fx = float(eq_fn(x, dummy_diff, event_params_array, params_array)[0])
+
+        # g(x) = f(x) - x
+        gx = fx - x0
+
+        if abs(gx) < tol:
+            return x0
+
+        # numeric derivative
+        x[idx] = x0 + h
+        fx_h = float(eq_fn(x, dummy_diff, event_params_array, params_array)[0])
+
+        g_prime = (fx_h - fx)/h - 1.0
+
+        if abs(g_prime) < 1e-12:
+            break
+
+        x0 = x0 - gx / g_prime
+
+    return x0
 
 
 def init_explicit(mdl: Block,
@@ -89,6 +160,15 @@ def init_explicit(mdl: Block,
     :rtype: Union[None, Tuple[Dict[Tuple[int, str], float], VeraGridEngine.Utils.Symbolic.block.Block]]
     """
 
+    rms_compiler = RMSCompiler(
+        variables=list(sys_vars.values()),
+        diff_vars=list(),
+        v_params=variable_parameters,
+        c_params=constant_parameters,
+        dt_var= Var("dt"),
+        compiler_names_dict=compiler_names_dict
+    )
+
     # initialize array for model variables
     x = np.ones(len(sys_vars))
 
@@ -134,20 +214,20 @@ def init_explicit(mdl: Block,
     for var, eq in mdl.init_eqs.items():
 
         vars_in_eq = get_expression_vars(eq)
-        deps = [v.uid for v in vars_in_eq if v in mdl.init_eqs]
+        deps = [v for v in vars_in_eq if v in mdl.init_eqs]
 
-        dependencies[var.uid] = deps
+        dependencies[var] = deps
 
-        for dep_uid in deps:
-            if dep_uid != var.uid:
-                graph[dep_uid].append(var.uid)
-                in_degree[var.uid] += 1
+        for dep in deps:
+            if dep.uid != var.uid:
+                graph[dep].append(var)
+                in_degree[var] += 1
 
-        if var.uid not in in_degree:
-            in_degree[var.uid] = 0
+        if var not in in_degree:
+            in_degree[var] = 0
 
     # topological sort
-    queue = deque([uid for uid in in_degree if in_degree[uid] == 0])
+    queue = deque([var for var in in_degree if in_degree[var] == 0])
     topo_order = []
 
     while queue:
@@ -163,9 +243,10 @@ def init_explicit(mdl: Block,
         raise RuntimeError("Cycle detected between different variables")
 
     # evaluate
-    for uid in topo_order:
+    for var in topo_order:
+        dummy_diff = np.ones(1)
 
-        var = next(v for v in mdl.init_eqs if v.uid == uid)
+        # var = next(v for v in mdl.init_eqs if v.uid == uid)
         eq = mdl.init_eqs[var]
         vars_list = find_vars_order(eq)
 
@@ -191,7 +272,7 @@ def init_explicit(mdl: Block,
 
         else:
             # check if implicit equation
-            is_self_implicit = uid in dependencies[uid]
+            is_self_implicit = var in dependencies[var]
 
             if not is_self_implicit:
                 uid_bindings: Dict[int, float] = {}
@@ -205,32 +286,77 @@ def init_explicit(mdl: Block,
                         uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
 
                 result = eq.eval_uid(uid_bindings)
-                # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
-                #                        DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
+                # eq_fn = rms_compiler.compile_rhs([eq], "equation")
                 # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                 init_guess[var.uid] = result
                 x[uid2idx_vars[var.uid]] = result
 
             else:
-                eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
-                                       VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
-                init_val = 0
-                tol = 1e-8
-                error = 1
-                alpha = 1.3
-                x0 = 1.2
-                x[uid2idx_vars[var.uid]] = x0
-                while error > tol:
-                    try:
-                        init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                    except:
-                        x[uid2idx_vars[var.uid]] = -0.1
-                        init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                    x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
-                    error = np.linalg.norm(init_val - x0)
-                    x0 = x[uid2idx_vars[var.uid]]
+                # compile equations
+                eq_fn = rms_compiler.compile_rhs([eq], "equation")
+
+                idx = uid2idx_vars[var.uid]
+
+                # solve using secant method
+                init_val = solve_secant(
+                    eq_fn=eq_fn,
+                    x=x,
+                    idx=idx,
+                    event_params_array=event_params_array,
+                    params_array=params_array,
+                    tol=1e-8,
+                    max_iter=50
+                )
+
                 init_guess[var.uid] = init_val
-                x[uid2idx_vars[var.uid]] = init_val
+                x[idx] = init_val
+
+            # else:
+            #     # compile equation
+            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
+            #
+            #     idx = uid2idx_vars[var.uid]
+            #
+            #     # Solve with Newton
+            #     init_val = solve_newton(
+            #         eq_fn=eq_fn,
+            #         x=x,
+            #         idx=idx,
+            #         event_params_array=event_params_array,
+            #         params_array=params_array,
+            #         dummy_diff=dummy_diff,
+            #         tol=1e-8,
+            #         max_iter=20
+            #     )
+            #
+            #     init_guess[var.uid] = init_val
+            #     x[idx] = init_val
+
+
+
+            # else:
+            #     # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
+            #     #                        VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
+            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
+            #     init_val = 0
+            #     tol = 1e-8
+            #     error = 1
+            #     alpha = 1.3
+            #     x0 = 1.2
+            #     x[uid2idx_vars[var.uid]] = x0
+            #     while error > tol:
+            #         try:
+            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
+            #         except:
+            #             x[uid2idx_vars[var.uid]] = -0.1
+            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
+            #         x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
+            #         error = np.linalg.norm(init_val - x0)
+            #         x0 = x[uid2idx_vars[var.uid]]
+            #     init_guess[var.uid] = init_val
+            #     x[uid2idx_vars[var.uid]] = init_val
+
+
 
 
 def init_pseudo_transient():

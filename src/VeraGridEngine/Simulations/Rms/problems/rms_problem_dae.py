@@ -3,6 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import cProfile
+
 from typing import Dict, List, Tuple
 import time
 import numpy as np
@@ -120,6 +122,8 @@ class RmsProblemDae(RmsProblemTemplate):
         # --------------------------------------------------------------------------------------------------------------
 
         ######################### Initialize containers#############################
+        total_init_explicit_time: float = 0
+        t0 = time.perf_counter()
 
         # dictionaries to store device-variable ifo
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
@@ -158,7 +162,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_diff = 0
 
         ######################################## Initialize devices ########################################
-        total_init_explicit_time: float = 0
+
 
         # initialize buses
         bus_dict: Dict[Bus, int] = dict()
@@ -289,7 +293,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.sys_block.add(mdl)
 
         # initialize injections
-        # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
+
         for elm in grid.get_vsc():
 
             if elm.rms_model.model.empty():
@@ -348,7 +352,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
-                    t0 = time.perf_counter()
 
                     init_explicit(
                         mdl=elm.rms_model.model,
@@ -369,8 +372,6 @@ class RmsProblemDae(RmsProblemTemplate):
                         CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                     )
 
-                    total_init_explicit_time += time.perf_counter() - t0
-
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
                 else:
@@ -378,6 +379,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 self.sys_block.add(elm.rms_model.model)
 
+        total_init_explicit_time += time.perf_counter() - t0
         print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
 
         # add the nodal balance equations
