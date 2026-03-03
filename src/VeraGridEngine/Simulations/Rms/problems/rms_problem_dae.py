@@ -86,10 +86,10 @@ class RmsProblemDae(RmsProblemTemplate):
     TIME_NAME = "glob_time"
 
     def __init__(self,
-                 progress_signal: DummySignal,
                  grid: MultiCircuit,
                  options: RmsOptions,
-                 pf_results: PowerFlowResults | None):
+                 pf_results: PowerFlowResults | None,
+                 progress_signal: DummySignal | None =None):
         """
 
         :param grid:
@@ -388,8 +388,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
         total_init_explicit_time += time.perf_counter() - t0
         print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
-
-        self.progress_signal.emit(10)
+        if self.progress_signal is not None:
+            self.progress_signal.emit(10)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
@@ -664,7 +664,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._state_eqs.extend(mdl.state_eqs)
         self._algebraic_eqs.extend(mdl.algebraic_eqs)
 
-        self.progress_signal.emit(20)
+        if self.progress_signal is not None:
+            self.progress_signal.emit(20)
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """

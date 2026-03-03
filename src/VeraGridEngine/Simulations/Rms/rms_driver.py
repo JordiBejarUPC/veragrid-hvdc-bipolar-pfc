@@ -101,10 +101,10 @@ class RmsSimulationDriver(DriverTemplate):
             self.progress_signal.emit(5)
 
             problem = RmsProblemDae(
-                progress_signal=self.progress_signal,
                 grid=self.grid,
                 options=self.options,
-                pf_results=self.pf_results)
+                pf_results=self.pf_results,
+                progress_signal=self.progress_signal)
 
             solver = self.integration_methods_dict[self.options.integration_method](
                 problem=problem,
