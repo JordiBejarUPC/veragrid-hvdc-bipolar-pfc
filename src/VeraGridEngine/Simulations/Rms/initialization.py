@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-
+import cProfile
+import time
 from typing import Dict, List
 import numpy as np
 from collections import defaultdict, deque
@@ -39,6 +40,11 @@ def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarra
 def solve_secant(eq_fn, x, idx, event_params_array, params_array,
                  tol=1e-8, max_iter=50):
 
+    # total_init_explicit_time: float = 0
+    # # profiler = cProfile.Profile()
+    # t0 = time.perf_counter()
+    # # profiler.enable()
+
     x0 = 1.0
     x1 = 1.1
 
@@ -59,6 +65,11 @@ def solve_secant(eq_fn, x, idx, event_params_array, params_array,
 
         x2 = x1 - f1 * (x1 - x0) / denom
         x0, x1 = x1, x2
+
+    # profiler.disable()
+    # profiler.dump_stats("profiling_stats.prof")
+    # total_init_explicit_time += time.perf_counter() - t0
+    # print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
 
     return x1
 
