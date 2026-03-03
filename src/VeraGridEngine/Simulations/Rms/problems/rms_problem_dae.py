@@ -304,11 +304,11 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # flatten model
                 elm.rms_model.model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+                # mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=mdl,
+                    init_explicit(mdl=elm.rms_model.model,
                                   sys_vars=self.sys_vars,
                                   variable_parameters=self._variable_parameters,
                                   event_parameters_eqs=self._event_parameters_eqs,
@@ -393,19 +393,19 @@ class RmsProblemDae(RmsProblemTemplate):
                         self._algebraic_eqs.append(Q[i])
                     self._algebraic_eqs.append(P[i])
 
-        self._variable_parameters: List[Var] = list()
-        self._event_parameters_eqs: List[Expr | Const] = list()
-        self._constant_parameters: List[Var] = list()
-        self._parameters_values: List[Const] = list()
+        # self._variable_parameters: List[Var] = list()
+        # self._event_parameters_eqs: List[Expr | Const] = list()
+        # self._constant_parameters: List[Var] = list()
+        # self._parameters_values: List[Const] = list()
 
-        for b in self.sys_block.get_all_blocks():
-
-            for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
-                self._event_parameters_eqs.append(eq)
-            for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
-                self._parameters_values.append(constant)
+        # for b in self.sys_block.get_all_blocks():
+        #
+        #     for param, eq in b.event_dict.items():
+        #         self._variable_parameters.append(param)
+        #         self._event_parameters_eqs.append(eq)
+        #     for param, constant in b.parameters.items():
+        #         self._constant_parameters.append(param)
+        #         self._parameters_values.append(constant)
 
 
         # We define the parameter dt and delta
@@ -435,11 +435,11 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_alg = len(self._algebraic_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
-        self._compiler_names_dict: Dict[int, str] = dict()
-        self._alias_names_dict: Dict[int, str] = dict()
+        # self._compiler_names_dict: Dict[int, str] = dict()
+        # self._alias_names_dict: Dict[int, str] = dict()
         self._uid2idx_vars: Dict[int, int] = dict()
-        self._uid2idx_event_params: Dict[int, int] = dict()
-        self._uid2idx_params: Dict[int, int] = dict()
+        # self._uid2idx_event_params: Dict[int, int] = dict()
+        # self._uid2idx_params: Dict[int, int] = dict()
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
@@ -456,15 +456,15 @@ class RmsProblemDae(RmsProblemTemplate):
             self._uid2idx_vars[v.uid] = i
             i += 1
 
-        for j, ep in enumerate(self._constant_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
-            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
-            self._uid2idx_params[ep.uid] = j
-
-        for k, ep in enumerate(self._variable_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-            self._uid2idx_event_params[ep.uid] = k
+        # for j, ep in enumerate(self._constant_parameters):
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
+        #     self._uid2idx_params[ep.uid] = j
+        #
+        # for k, ep in enumerate(self._variable_parameters):
+        #     self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+        #     self._uid2idx_event_params[ep.uid] = k
 
         for k, ep in enumerate(self._diff_vars):
             self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
