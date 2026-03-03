@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Set, Tuple
+from typing import Set, Tuple, Callable, List, Any
 import numpy as np
 import numba as nb
 import scipy.sparse as sp
@@ -11,16 +11,173 @@ import time
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, UnOp, Func
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
                                                       NewtonSolveContext, dense_lstsq_fallback,
                                                       sparse_lsqr_fallback)
-from VeraGridEngine.basic_structures import Vec, Mat
+from VeraGridEngine.basic_structures import Vec, Mat, IntVec, CscMat
 
+
+def get_vars_in_expr(expr: Expr) -> Set[int]:
+    """
+    Recursively collects UIDs of all variables present in an expression.
+
+    :param expr: The symbolic expression to analyze.
+    :type expr: Expr
+    :return: A set containing the unique identifiers (UIDs) of the variables.
+    :rtype: Set[int]
+    """
+    found: Set[int] = set()
+    stack: List[Expr] = list()
+    visited: Set[int] = set()
+
+    stack.append(expr)
+
+    while stack:
+        node: Expr = stack.pop()
+        node_id: int = id(node)
+
+        if node_id in visited:
+            # Explicit state: The node has already been processed.
+            # We do nothing to prevent infinite loops in Directed Acyclic Graphs (DAGs).
+            pass
+        else:
+            visited.add(node_id)
+
+            # Flat type dispatch to evaluate AST nodes.
+            # This avoids deep nesting and keeps the execution path predictable.
+            if isinstance(node, Var):
+                found.add(node.uid)
+
+                # Since the node is guaranteed to be a Var instance, we can safely
+                # access the base_var property directly.
+                if node.base_var is not None:
+                    found.add(node.base_var.uid)
+                else:
+                    # Terminal state: The variable is a base state, no derivative to track.
+                    pass
+
+            elif isinstance(node, Func):
+                stack.append(node.arg)
+
+            elif isinstance(node, UnOp):
+                stack.append(node.operand)
+
+            elif isinstance(node, BinOp):
+                stack.append(node.left)
+                stack.append(node.right)
+
+            else:
+                # Terminal state: Const nodes or unknown types have no children to traverse.
+                pass
+
+    return found
+
+
+class BoundaryUpdateWrapper:
+    """
+    Interface for injecting boundary conditions and events before the Newton step.
+    Users must inherit from this class to update parameters safely.
+    """
+    __slots__ = []  # No state allowed in the base class
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """
+        Updates the parameters vector in place based on the current time and state.
+
+        :param t: The current simulation time.
+        :type t: float
+        :param x: The current state vector.
+        :type x: Vec
+        :param params: The parameter vector to be modified.
+        :type params: Vec
+        :rtype: None
+        """
+        pass  # Explicit no-op for base class
+
+class HybridJacobianEvaluator:
+    """
+    Evaluates the JIT-compiled Jacobian and formats it as either Dense or Sparse.
+    This class replaces nested functions to ensure memory determinism and strict type safety.
+    """
+    __slots__ = ['kernel_jit', 'use_sparse', 'n_vars', 'alpha_mult', 'np_rows', 'np_cols']
+
+    def __init__(self,
+                 kernel_jit: Callable,
+                 use_sparse: bool,
+                 n_vars: int,
+                 alpha_mult: float,
+                 np_rows: IntVec| None = None,
+                 np_cols: IntVec| None = None) -> None:
+        """
+        Initializes the evaluator with the compiled Numba kernel and matrix topology.
+
+        :param kernel_jit: The compiled Numba function for the Jacobian.
+        :type kernel_jit: Callable
+        :param use_sparse: Flag indicating if the output should be a sparse matrix.
+        :type use_sparse: bool
+        :param n_vars: The number of variables (size of the N x N matrix).
+        :type n_vars: int
+        :param alpha_mult: The scaling factor for the integration method.
+        :type alpha_mult: float
+        :param np_rows: Row indices for the sparse matrix format.
+        :type np_rows: IntVec
+        :param np_cols: Column indices for the sparse matrix format.
+        :type np_cols: IntVec
+        :rtype: None
+        """
+        self.kernel_jit = kernel_jit
+        self.use_sparse = use_sparse
+        self.n_vars = n_vars
+        self.alpha_mult = alpha_mult
+        self.np_rows = np_rows
+        self.np_cols = np_cols
+
+    def evaluate(self, states: Vec, params: Vec, history: Vec, d_history: Vec, h: float,
+                 history2: Vec| None = None) -> Mat | CscMat:
+        """
+        Executes the JIT kernel and constructs the resulting Jacobian matrix.
+
+        :param states: The current state vector.
+        :type states: Vec
+        :param params: The parameter vector.
+        :type params: Vec
+        :param history: The state history vector.
+        :type history: Vec
+        :param d_history: The derivative history vector.
+        :type d_history: Vec
+        :param h: The integration time step.
+        :type h: float
+        :param history2: The secondary history vector (for BDF2).
+        :type history2: Vec
+        :return: The assembled Jacobian matrix (Dense or Sparse CSC).
+        :rtype: Mat | CscMat
+        """
+        # Allocate a new array to append the alpha scaling factor required by the kernel
+        params_with_alpha: Vec = np.empty(len(params) + 1, dtype=np.float64)
+        params_with_alpha[:-1] = params
+        params_with_alpha[-1] = self.alpha_mult / h
+
+        # Execute the JIT compiled kernel to obtain the raw data values
+        data: Vec = self.kernel_jit(states, params_with_alpha, history, d_history, h, history2)
+
+        # Assemble the matrix based on the requested storage format
+        if self.use_sparse:
+            return sp.csc_matrix((data, (self.np_rows, self.np_cols)), shape=(self.n_vars, self.n_vars))
+        else:
+            return data.reshape((self.n_vars, self.n_vars))
 
 class JitSymbolicSolver:
+
+    __slots__ = [
+        'problem', 't0', 't_end', 'h', 'method', 'dense_threshold', 'verbose',
+        'steps', 't', 'y', 'jit_kernels', 'jit_jacobian_symbolic',
+        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs',
+        'jit_compiler'
+    ]
+
     def __init__(self,
                  problem: EmtProblemTemplate,
                  t0: float,
@@ -28,7 +185,7 @@ class JitSymbolicSolver:
                  h: float,
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  dense_threshold: int = 100,
-                 verbose: bool = False):
+                 verbose: bool = False)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -51,8 +208,8 @@ class JitSymbolicSolver:
         self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
 
         # Solver specific caches
-        self.jit_kernels = {}
-        self.jit_jacobian_symbolic = {}
+        self.jit_kernels = dict()
+        self.jit_jacobian_symbolic = dict()
 
         self.state_vars = self.problem.get_state_vars()
         self.algebraic_vars = self.problem.get_algebraic_vars()
@@ -63,21 +220,28 @@ class JitSymbolicSolver:
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
     # ==============================================================================
 
-    def build_jit_kernel(self, method: DynamicIntegrationMethod):
+    def build_jit_kernel(self, method: DynamicIntegrationMethod)-> None:
         """
         Compiles the numerical residual function using JIT.
         It uses a batching strategy (splitting equations into chunks) to prevent
         Numba/LLVM from hanging when compiling very large non-linear systems.
+
+        :param method: The dynamic integration method to compile for.
+        :type method: DynamicIntegrationMethod
+        :rtype: None
         """
         print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
 
-        if not hasattr(self, 'jit_kernels'):
-            self.jit_kernels = {}
+        sorted_vars: List[Any] = list()
+        sorted_vars.extend(self.state_vars)
+        sorted_vars.extend(self.algebraic_vars)
 
-        sorted_vars = self.state_vars + self.algebraic_vars
-        all_params = self.problem.get_variable_parameters() + self.problem.get_constant_parameters()
+        all_params: List[Any] = list()
+        all_params.extend(self.problem.get_variable_parameters())
+        all_params.extend(self.problem.get_constant_parameters())
 
-        equations = []
+        equations: List[Expr] = list()
+
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
             d_term = Var(name=f"d_{sv.name}", base_var=sv)
@@ -103,62 +267,36 @@ class JitSymbolicSolver:
 
         self.jit_kernels[method] = batched_kernels
 
-    # ==============================================================================
-    #  HELPER: SYMBOLIC TOPOLOGY ANALYSIS
-    # ==============================================================================
-
-    @staticmethod
-    def _get_vars_in_expr(expr: Expr) -> Set[int]:
-        """
-        Recursively collects UIDs of all variables (Var, DiffVar, LagVar)
-        present in an expression using a non-recursive stack traversal.
-        """
-        found = set()
-        stack = [expr]
-        visited = set()
-
-        while stack:
-            node = stack.pop()
-            if id(node) in visited: continue
-            visited.add(id(node))
-
-            if isinstance(node, Var):
-                found.add(node.uid)
-                base = getattr(node, 'base_var', None)
-                if base is not None:
-                    found.add(base.uid)
-
-            if hasattr(node, 'args'):
-                stack.extend(node.args)
-            elif hasattr(node, 'left'):
-                stack.append(node.left)
-                stack.append(node.right)
-            elif hasattr(node, 'operand'):
-                stack.append(node.operand)
-            elif hasattr(node, 'arg'):
-                stack.append(node.arg)
-
-        return found
-
-    def _build_jit_symbolic_hybrid(self, method: DynamicIntegrationMethod, use_sparse: bool):
+    def _build_jit_symbolic_hybrid(self, method: DynamicIntegrationMethod, use_sparse: bool)-> None:
         """
         Compiles a Hybrid Symbolic Jacobian.
         It generates a Numba kernel that evaluates the Jacobian entries and
         returns either a Scipy CSC Matrix (Sparse mode) or a Numpy Array (Dense mode).
         """
         cache_key = f"{method}_{use_sparse}"
-        if hasattr(self, 'jit_jacobian_symbolic') and cache_key in self.jit_jacobian_symbolic:
+        if cache_key in self.jit_jacobian_symbolic:
             return
+        else:
+            pass
 
         print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
         t0 = time.time()
 
-        sorted_vars = self.state_vars + self.algebraic_vars
-        all_params = self.problem.get_variable_parameters() + self.problem.get_constant_parameters()
-        var_uid_to_idx = {v.uid: i for i, v in enumerate(sorted_vars)}
+        sorted_vars: List[Any] = list()
+        sorted_vars.extend(self.state_vars)
+        sorted_vars.extend(self.algebraic_vars)
 
-        equations = []
-        base_var_uid_to_diff_var = {}
+        all_params: List[Any] = list()
+        all_params.extend(self.problem.get_variable_parameters())
+        all_params.extend(self.problem.get_constant_parameters())
+
+        var_uid_to_idx: dict = dict()
+        for i, v in enumerate(sorted_vars):
+            var_uid_to_idx[v.uid] = i
+
+        equations: List[Expr] = list()
+        base_var_uid_to_diff_var: dict = dict()
+
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
             d_term = Var(name=f"d_{sv.name}", base_var=sv)
@@ -168,14 +306,20 @@ class JitSymbolicSolver:
 
         N = len(sorted_vars)
         n_states = len(self.state_vars)
-        jac_expression, rows, cols = [], [], []
+        jac_expression: List[Expr] = list()
+        rows: List[int] = list()
+        cols: List[int] = list()
         alpha_sym = Var("alpha_scaling_factor")
 
         if use_sparse:
             nnz = 0
             for r, eq in enumerate(equations):
-                dependencies = self._get_vars_in_expr(eq)
-                if r < n_states: dependencies.add(self.state_vars[r].uid)
+                dependencies = get_vars_in_expr(eq)
+
+                if r < n_states:
+                    dependencies.add(self.state_vars[r].uid)
+                else:
+                    pass
 
                 for v in sorted_vars:
                     if v.uid in dependencies:
@@ -185,6 +329,8 @@ class JitSymbolicSolver:
 
                         if v.uid in base_var_uid_to_diff_var:
                             d_diff = eq.diff(base_var_uid_to_diff_var[v.uid])
+                        else:
+                            pass
 
                         final_expr = (d_direct + alpha_sym * d_diff) if not (
                                 isinstance(d_diff, Const) and d_diff.value == 0) else d_direct
@@ -195,53 +341,73 @@ class JitSymbolicSolver:
                             rows.append(r)
                             cols.append(c)
                             nnz += 1
+                        else:
+                            pass
+
+                    else:
+                        pass
+
             print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
         else:
             for r, eq in enumerate(equations):
                 for c, v in enumerate(sorted_vars):
                     d_direct = eq.diff(v)
                     d_diff = Const(0)
+
                     if v.uid in base_var_uid_to_diff_var:
                         d_diff = eq.diff(base_var_uid_to_diff_var[v.uid])
+                    else:
+                        pass
+
                     final_expr = d_direct + alpha_sym * d_diff
                     jac_expression.append(final_expr.simplify())
 
-        compile_params = all_params + [alpha_sym]
+        compile_params: List[Any] = list()
+        compile_params.extend(all_params)
+        compile_params.append(alpha_sym)
         compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method)
         func_name = f"jac_eval_{method}_{'sparse' if use_sparse else 'dense'}"
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
         kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
 
-        alpha_mult = 2.0 if method == DynamicIntegrationMethod.DaeTrapezoidal else (1.5 if method == DynamicIntegrationMethod.DaeBDF2 else 1.0)
+        if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            alpha_mult = 2.0
+        elif method == DynamicIntegrationMethod.DaeBDF2:
+            alpha_mult = 1.5
+        else:
+            alpha_mult = 1.0
 
-        np_rows = np.array(rows, dtype=np.int32) if use_sparse else None
-        np_cols = np.array(cols, dtype=np.int32) if use_sparse else None
+        np_rows: IntVec | None = np.array(rows, dtype=np.int32) if use_sparse else None
+        np_cols: IntVec | None = np.array(cols, dtype=np.int32) if use_sparse else None
 
-        def jacobian_evaluator(states, params, history, d_history, h, history2=None):
-            params_with_alpha = np.empty(len(params) + 1, dtype=np.float64)
-            params_with_alpha[:-1] = params
-            params_with_alpha[-1] = alpha_mult / h
+        evaluator_obj = HybridJacobianEvaluator(
+            kernel_jit=kernel_jit,
+            use_sparse=use_sparse,
+            n_vars=N,
+            alpha_mult=alpha_mult,
+            np_rows=np_rows,
+            np_cols=np_cols
+        )
 
-            data = kernel_jit(states, params_with_alpha, history, d_history, h, history2)
-
-            if use_sparse:
-                return sp.csc_matrix((data, (np_rows, np_cols)), shape=(N, N))
-
-            return data.reshape((N, N))
-
-        if not hasattr(self, 'jit_jacobian_symbolic'): self.jit_jacobian_symbolic = {}
-        self.jit_jacobian_symbolic[cache_key] = jacobian_evaluator
+        self.jit_jacobian_symbolic[cache_key] = evaluator_obj
         print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
 
-    def simulate(self, boundary_update_fn=None) -> Tuple[Vec, Mat]:
+    def simulate(self, boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat]:
         """
         Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
+
+        :param boundary_updater: Boundary condition updater, defaults to None.
+        :type boundary_updater: BoundaryUpdateWrapper | None
+        :return: A tuple containing the time vector and the state trajectory matrix.
+        :rtype: Tuple[Vec, Mat]
         """
         t_start = time.time()
         method = self.method
 
-        if not hasattr(self, 'jit_kernels'): self.jit_kernels = {}
-        if method not in self.jit_kernels: self.build_jit_kernel(method)
+        if method not in self.jit_kernels:
+            self.build_jit_kernel(method)
+        else:
+            pass
 
         kernel_list = self.jit_kernels[method]
 
@@ -256,14 +422,12 @@ class JitSymbolicSolver:
         if self.verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
             print(f"   [Config] System N={n_eqs}. Using {mode_str} linear solver (Threshold={self.dense_threshold}).")
+        else:
+            pass
+
 
         x0 = self.problem.get_x0()
-        dx0 = self.problem.get_dx0()
-        # x0 = np.zeros(n_eqs, dtype=np.float64)
-        # dx0 = np.zeros(n_states, dtype=np.float64)
-
-        print(f"simulate with JitSymbolic solver x0 = {x0}")
-        print(f"simulate with JitSymbolic solver dx0 = {dx0}")
+        dx0 = np.zeros(n_eqs, dtype=np.float64)
 
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
@@ -283,18 +447,27 @@ class JitSymbolicSolver:
         sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
                                                collector=trace_collector, config=diag_cfg, solver_name="sparse")
 
-        if self.verbose: print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
+        if self.verbose:
+            print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
+        else:
+            pass
 
         for i in range(self.steps):
-            if self.verbose: print(f"Simulating at step {i}")
+            if self.verbose:
+                print(f"Simulating at step {i}")
+            else:
+                pass
+
             t_curr = self.t0 + (i + 1) * self.h
             self.t[i + 1] = t_curr
 
             ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
             full_params = np.concatenate((ev_params, static_vals))
 
-            if boundary_update_fn:
-                boundary_update_fn(t_curr, x_prev, full_params)
+            if boundary_updater is not None:
+                boundary_updater.update(t_curr, x_prev, full_params)
+            else:
+                pass
 
             for k in range(15):
                 ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
@@ -304,84 +477,30 @@ class JitSymbolicSolver:
                 for kn in kernel_list:
                     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
 
-                if i == 0 and k == 0:  # Paso 0, Primera iteración de Newton
-                    # print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
-                    # all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
-                    # abs_res = np.abs(res)
-                    # top_indices = np.argsort(abs_res)[-20:][::-1]
-                    #
-                    # print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
-                    # print("-" * 75)
-                    # for idx in top_indices:
-                    #     name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
-                    #     print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
-                    # print("=" * 75 + "\n")
-                    # ---- DEBUG: interpret residuals at Step 0, Iter 0 ----
+                if i == 0 and k == 0 and self.verbose:  # Step 0, First Newton iteration
                     print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
-
-                    all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
-                    n_vars_dbg = len(all_vars)
-                    omega0 = 2.0 * np.pi * float(self.problem.grid.fBase)
-
-                    # Context
-                    state_delta = x_iter[:n_states] - x_prev[:n_states]
-                    print(
-                        f"t_curr={t_curr:.6f}, h={self.h:.6e}, fBase={float(self.problem.grid.fBase):.6f} Hz, omega0={omega0:.6f} rad/s")
-                    print(
-                        f"||x_iter-x_prev||_inf (states) = {np.linalg.norm(state_delta, np.inf):.6e} (expected 0 if no predictor)")
-                    print(f"||dx_prev||_inf (states)      = {np.linalg.norm(dx_prev[:n_states], np.inf):.6e}")
-                    print(f"max |h*dx_prev| (states)      = {np.max(np.abs(self.h * dx_prev[:n_states])):.6e}")
-                    print(f"n_eqs={n_eqs}, n_vars={n_vars_dbg}, n_states={n_states}")
-
+                    all_vars: List[Any] = list()
+                    all_vars.extend(self.problem.get_state_vars())
+                    all_vars.extend(self.problem.get_algebraic_vars())
                     abs_res = np.abs(res)
                     top_indices = np.argsort(abs_res)[-20:][::-1]
 
-                    header = (
-                        f"{'Idx':>4} | {'Type':<5} | {'Name':<38} | {'res':>12} | "
-                        f"{'x':>12} | {'x_prev':>12} | {'dx_prev':>12} | {'h*dx':>12}"
-                    )
-                    print(header)
-                    print("-" * len(header))
-
+                    print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
+                    print("-" * 75)
                     for idx in top_indices:
-                        if idx >= n_vars_dbg:
-                            print(f"{idx:>4} | {'?':<5} | {'Eq_' + str(idx):<38} | {res[idx]:>12.6e}")
-                            continue
+                        name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
+                        print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
+                    print("=" * 75 + "\n")
+                else:
+                    pass
 
-                        v = all_vars[idx]
-                        vtype = "STATE" if idx < n_states else "ALG"
-                        x_val = float(x_iter[idx])
-                        x_prev_val = float(x_prev[idx])
+                if np.linalg.norm(res, np.inf) < 1e-6:
+                    break
+                else:
+                    pass
 
-                        if vtype == "STATE":
-                            dx_val = float(dx_prev[idx])
-                            hdx_val = float(self.h * dx_prev[idx])
-                        else:
-                            dx_val = float("nan")
-                            hdx_val = float("nan")
-
-                        print(
-                            f"{idx:>4} | {vtype:<5} | {v.name:<38} | {res[idx]:>12.6e} | "
-                            f"{x_val:>12.6e} | {x_prev_val:>12.6e} | {dx_val:>12.6e} | {hdx_val:>12.6e}"
-                        )
-
-                    # Optional quick heuristics for common suspects
-                    suspects = ["omega", "theta", "psi_", "v_A", "v_B", "v_C", "i_ser", "q_f", "q_t"]
-                    print("\nHeuristic checks (name contains token):")
-                    for token in suspects:
-                        matches = [j for j, vv in enumerate(all_vars) if token in vv.name]
-                        if matches:
-                            j = matches[0]
-                            val = float(x_iter[j])
-                            print(f"  token '{token}': first match idx={j}, name='{all_vars[j].name}', x={val:.6e}")
-
-                    print("=" * len(header) + "\n")
-                    # ---- END DEBUG ----
-
-                if np.linalg.norm(res, np.inf) < 1e-6: break
-
-                J_final = current_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
-                                           h=self.h, history2=x_prev2)
+                J_final = current_jacobian.evaluate(states=x_iter, params=full_params, history=x_prev,
+                                                    d_history=dx_prev,h=self.h, history2=x_prev2)
 
                 if use_dense_solver:
                     delta = dense_solve(J_final, -res, ctx)
@@ -399,8 +518,16 @@ class JitSymbolicSolver:
             else:
                 dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
 
-            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2 = x_prev.copy()
+            if method != DynamicIntegrationMethod.DaeBDF2:
+                x_prev2 = x_prev.copy()
+            else:
+                pass
+
             x_prev = x_iter.copy()
 
-        if self.verbose: print(f"JIT Finished: {time.time() - t_start:.4f}s")
+        if self.verbose:
+            print(f"JIT Finished: {time.time() - t_start:.4f}s")
+        else:
+            pass
+
         return self.t, self.y
