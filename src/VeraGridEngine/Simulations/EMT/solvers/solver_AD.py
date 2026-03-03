@@ -471,6 +471,7 @@ class JitAdSolver:
         self.t = t
 
         if x0 is None: x0 = self.problem.get_x0()
+        if dx0 is None: dx0 = self.problem.get_dx0()
 
         self.y[0, :] = x0.copy()
 
@@ -515,6 +516,149 @@ class JitAdSolver:
                 res = np.zeros(n_eqs, dtype=np.float64)
                 for kn in kernel_list:
                     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
+
+
+                if i == 0 and k == 0:  # Paso 0, Primera iteración de Newton
+                    # print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+                    # all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    # abs_res = np.abs(res)
+                    # top_indices = np.argsort(abs_res)[-20:][::-1]
+                    #
+                    # print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
+                    # print("-" * 75)
+                    # for idx in top_indices:
+                    #     name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
+                    #     print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
+                    # print("=" * 75 + "\n")
+
+                    # ---- DEBUG: interpret residuals at Step 0, Iter 0 ----
+                    # print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+                    #
+                    # all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    # n_vars_dbg = len(all_vars)
+                    # omega0 = 2.0 * np.pi * float(self.problem.grid.fBase)
+                    #
+                    # # Context
+                    # state_delta = x_iter[:n_states] - x_prev[:n_states]
+                    # print(
+                    #     f"t_curr={t_curr:.6f}, h={self.h:.6e}, fBase={float(self.problem.grid.fBase):.6f} Hz, omega0={omega0:.6f} rad/s")
+                    # print(
+                    #     f"||x_iter-x_prev||_inf (states) = {np.linalg.norm(state_delta, np.inf):.6e} (expected 0 if no predictor)")
+                    # print(f"||dx_prev||_inf (states)      = {np.linalg.norm(dx_prev[:n_states], np.inf):.6e}")
+                    # print(f"max |h*dx_prev| (states)      = {np.max(np.abs(self.h * dx_prev[:n_states])):.6e}")
+                    # print(f"n_eqs={n_eqs}, n_vars={n_vars_dbg}, n_states={n_states}")
+                    #
+                    # abs_res = np.abs(res)
+                    # top_indices = np.argsort(abs_res)[-20:][::-1]
+                    #
+                    # header = (
+                    #     f"{'Idx':>4} | {'Type':<5} | {'Name':<38} | {'res':>12} | "
+                    #     f"{'x':>12} | {'x_prev':>12} | {'dx_prev':>12} | {'h*dx':>12}"
+                    # )
+                    # print(header)
+                    # print("-" * len(header))
+                    #
+                    # for idx in top_indices:
+                    #     if idx >= n_vars_dbg:
+                    #         print(f"{idx:>4} | {'?':<5} | {'Eq_' + str(idx):<38} | {res[idx]:>12.6e}")
+                    #         continue
+                    #
+                    #     v = all_vars[idx]
+                    #     vtype = "STATE" if idx < n_states else "ALG"
+                    #     x_val = float(x_iter[idx])
+                    #     x_prev_val = float(x_prev[idx])
+                    #
+                    #     if vtype == "STATE":
+                    #         dx_val = float(dx_prev[idx])
+                    #         hdx_val = float(self.h * dx_prev[idx])
+                    #     else:
+                    #         dx_val = float("nan")
+                    #         hdx_val = float("nan")
+                    #
+                    #     print(
+                    #         f"{idx:>4} | {vtype:<5} | {v.name:<38} | {res[idx]:>12.6e} | "
+                    #         f"{x_val:>12.6e} | {x_prev_val:>12.6e} | {dx_val:>12.6e} | {hdx_val:>12.6e}"
+                    #     )
+                    #
+                    # # Optional quick heuristics for common suspects
+                    # suspects = ["omega", "theta", "psi_", "v_A", "v_B", "v_C", "i_ser", "q_f", "q_t"]
+                    # print("\nHeuristic checks (name contains token):")
+                    # for token in suspects:
+                    #     matches = [j for j, vv in enumerate(all_vars) if token in vv.name]
+                    #     if matches:
+                    #         j = matches[0]
+                    #         val = float(x_iter[j])
+                    #         print(f"  token '{token}': first match idx={j}, name='{all_vars[j].name}', x={val:.6e}")
+                    #
+                    # print("=" * len(header) + "\n")
+                    # ---- END DEBUG ----
+
+                    alpha = 2.0 / self.h  # trapezoidal
+
+                    print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
+                    all_vars = self.problem.get_state_vars() + self.problem.get_algebraic_vars()
+                    abs_res = np.abs(res)
+                    top_indices = np.argsort(abs_res)[-20:][::-1]
+
+                    print(f"t_curr={t_curr:.6f}, h={self.h:.6e}, alpha={alpha:.6e}")
+                    print(
+                        f"||x_iter-x_prev||_inf (states) = {np.linalg.norm(x_iter[:n_states] - x_prev[:n_states], np.inf):.6e}")
+
+                    header = (
+                        f"{'Idx':>4} | {'Type':<5} | {'Name':<38} | {'res':>12} | "
+                        f"{'x':>12} | {'xdot_n':>12} | {'xdot_hat':>12} | {'rhs_est':>12}"
+                    )
+                    print(header)
+                    print("-" * len(header))
+
+                    for idx in top_indices:
+                        if idx >= len(all_vars):
+                            print(f"{idx:>4} | {'?':<5} | {'Eq_' + str(idx):<38} | {res[idx]:>12.6e}")
+                            continue
+
+                        v = all_vars[idx]
+                        vtype = "STATE" if idx < n_states else "ALG"
+                        x_val = float(x_iter[idx])
+
+                        if vtype == "STATE":
+                            # xdot_n is the stored derivative history at t_n
+                            xdot_n = float(dx_prev[idx])
+
+                            # trapezoidal implied derivative at t_{n+1} for the current guess x_iter
+                            xdot_hat = float(alpha * (x_iter[idx] - x_prev[idx]) - dx_prev[idx])
+
+                            # if residual is (xdot_hat - rhs), rhs_est = xdot_hat - res
+                            rhs_est = float(xdot_hat - res[idx])
+
+                            print(
+                                f"{idx:>4} | {vtype:<5} | {v.name:<38} | {res[idx]:>12.6e} | "
+                                f"{x_val:>12.6e} | {xdot_n:>12.6e} | {xdot_hat:>12.6e} | {rhs_est:>12.6e}"
+                            )
+                        else:
+                            print(
+                                f"{idx:>4} | {vtype:<5} | {v.name:<38} | {res[idx]:>12.6e} | "
+                                f"{x_val:>12.6e} | {'':>12} | {'':>12} | {'':>12}"
+                            )
+
+                    print("=" * len(header) + "\n")
+
+                    # Extra: check directly the generator swing equations using names (to detect mislabelling)
+                    name2idx = {vv.name: j for j, vv in enumerate(all_vars)}
+
+                    def _find_idx(substr: str):
+                        for j, vv in enumerate(all_vars):
+                            if substr in vv.name:
+                                return j
+                        return None
+
+                    idx_theta = _find_idx("theta_emt_type_generator_template")
+                    idx_omega = _find_idx("omega_emt_type_generator_template")
+
+                    if idx_theta is not None and idx_omega is not None:
+                        dtheta = float(dx_prev[idx_theta])
+                        omega = float(x_iter[idx_omega])
+                        print(
+                            f"[GEN CHECK] d_theta - omega = {dtheta - omega:.6e}  (d_theta={dtheta:.6e}, omega={omega:.6e})")
 
                 if np.linalg.norm(res, np.inf) < 1e-5: break
 

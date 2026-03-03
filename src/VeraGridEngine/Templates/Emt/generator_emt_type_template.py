@@ -91,21 +91,24 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
 
     templ.block = Block(
         state_eqs=[
-            v_d - Ra * i_d - omega * psi_q,
-            v_q - Ra * i_q + omega * psi_d,
-            v_0 - R0 * i_0,
-            v_f - Rf * i_f,
-            omega_base * (omega - omega_ref),
-            (Tm - Te - D * (omega - omega_ref)) / (2 * H),
-            omega_base * (omega_ref - omega),  # d_et
+            v_d - Ra * i_d - omega * psi_q, # d_psi_d
+            v_q - Ra * i_q + omega * psi_d, # d_psi_q
+            v_0 - R0 * i_0, # d_psi_0
+            v_f - Rf * i_f, # d_psi_f
+            # omega_base * (omega - omega_ref),
+            # omega_base * omega, # d_theta
+            omega,  # d_theta
+            (Tm - Te - D * (omega - omega_ref)) / (2 * H), # d_omega
+            # omega_base * (omega_ref - omega),  # d_et
+            (omega_ref - omega),  # d_et
         ],
         state_vars=[psi_d, psi_q, psi_0, psi_f, theta, omega, et], #6
 
         algebraic_eqs=[
             psi_d - ((Lmd + La) * i_d + Lmd * i_f),  # i_d
             psi_q - ((Lmq + La) * i_q),  # i_q
-            psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),  # i_f
             psi_0 - L0 * i_0,  # i_0
+            psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),  # i_f
 
             v_d - (2 / 3) * (inputs[0] * sym.cos(theta) + inputs[1] * sym.cos(theta - 2 * np.pi / 3) + inputs[2] * sym.cos(theta + 2 * np.pi / 3)),  # v_d
             v_q - (2 / 3) * (inputs[0] * sym.sin(theta) + inputs[1] * sym.sin(theta - 2 * np.pi / 3) + inputs[2] * sym.sin(theta + 2 * np.pi / 3)),  # v_q
@@ -115,7 +118,7 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
             i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),  # i_B
             i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),  # i_C
 
-            Te + (3 / 2) * (psi_d * i_q - psi_q * i_d),  # T_e
+            Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),  # T_e
 
             Pe - (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),  # Pe
             Qe - (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C + (inputs[1] - inputs[2]) * i_A + (inputs[2] - inputs[0]) * i_B),  # Qe
@@ -123,9 +126,8 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
             Tm - (Te + Kp * (omega_ref - omega) + Ki * et),  # Tm
             v_f - v_f0,  # v_f
             Pm - Pe  # Pm
-            # Pm - omega * Tm  # Pm
         ],
-        algebraic_vars=[i_d, i_q, i_f, i_0,  # v_A, v_B, v_C,
+        algebraic_vars=[i_d, i_q, i_0, i_f,  # v_A, v_B, v_C,
                         v_d, v_q, v_0, i_A, i_B, i_C, Te, Pe, Qe,
                         Tm, v_f, Pm],
         in_vars=inputs,
@@ -166,10 +168,13 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
                        R0: vf.add_const(0.001),
                        L0: vf.add_const(0.14),
                        omega_ref: vf.add_const(1.0),
+                       # omega_ref: vf.add_const(0.0),
                        Kp: vf.add_const(2.0),
                        Ki: vf.add_const(2.0),
                        # v_f0: vf.add_const(-0.018508071106644895)}
-                       v_f0: vf.add_const(-0.017823457188517983)} #TODO: find vf0 from exciter/governor
+                       v_f0: vf.add_const(0.000855)}
+                       # v_f0: vf.add_const(0.0)}
+                       # v_f0: vf.add_const(-0.017823457188517983)} #TODO: find vf0 from exciter/governor
 
     # a = np.exp(1j * 2 * np.pi / 3)
     templ.block.init_eqs = {
@@ -195,12 +200,21 @@ def get_generator_emt_template(vf: VarFactory, name: str="emt_type_generator_tem
         psi_q: -(Ra * i_d - v_d) / omega,
         psi_0: L0 * i_0,
 
-        Te: - (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        Te:  (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
     }
 
+    c0 = vf.add_const(0.0)
+    c1 = vf.add_const(1.0)
     templ.block.diff_init_eqs = {
-        d_theta: omega_base
+        # d_theta: omega_base,
+        d_theta: c1,
+        d_omega: c0,
+        d_psi_d: c0,
+        d_psi_q: c0,
+        d_psi_0: c0,
+        d_psi_f: c0,
+        d_et: c0
     }
 
     return templ

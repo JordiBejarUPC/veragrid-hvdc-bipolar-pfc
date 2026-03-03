@@ -2598,6 +2598,11 @@ class VarPowerFlowRefferenceType(Enum):
     v_A = "v_A"  # Bus voltage at phase A.
     v_B = "v_B"  # Bus voltage at phase B.
     v_C = "v_C"  # Bus voltage at phase C.
+    d_v_N = "d_v_N"  # Bus voltage derivative at phase N.
+    d_v_A = "d_v_A"  # Bus voltage derivative at phase A.
+    d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
+    d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
+
     i_N = "i_N"  # Injection current at phase N in p.u.
     i_A = "i_A"  # Injection current at phase A in p.u.
     i_B = "i_B"  # Injection current at phase B in p.u.

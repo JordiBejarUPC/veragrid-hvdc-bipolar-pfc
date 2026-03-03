@@ -38,12 +38,12 @@ class PiLineEmtTemplate(EmtModelTemplate):
       (3) dq_t = i_cap_t
       (4) q_f = C_end vf
       (5) q_t = C_end vt
-      (6) If = i_ser + G_end vf + i_cap_f
-      (7) It = -i_ser + G_end vt + i_cap_t
+      (6) If = i_ser +  i_cap_f
+      (7) It = -i_ser +  i_cap_t
     """
 
     def __init__(self,
-                 vf:VarFactory,
+                 vf: VarFactory,
                  line: Line,
                  sbase: float,
                  fbase: float,
@@ -70,7 +70,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         active_ph = [ph_labels[i] for i in idx] # names in canonical order
         m = len(active_ph)
 
-
         if m == 0:
             raise ValueError(f"PI line '{line.name}' has no enabled phases in line.ys")
 
@@ -80,10 +79,8 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         vf_vars = [vf.add_var(f"vf_{ph}_{line.name}") for ph in active_ph]
         vt_vars = [vf.add_var(f"vt_{ph}_{line.name}") for ph in active_ph]
-
-        # These are the "active" voltage vectors
-        vf_act = vf_vars
-        vt_act = vt_vars
+        d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in zip(active_ph, vf_vars)]
+        d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in zip(active_ph, vt_vars)]
 
         # -----------------------------
         # 2) Compute continuous parameters in pu (R, L, G_end, C_end) in ACTIVE subspace
@@ -95,37 +92,29 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Zbase = (Vbase * Vbase) / S
         Ybase = 1.0 / Zbase
 
-        # per-meter matrices ( in ohm/km and S/km -> /1e3 to per meter)
-        Z_phys_m = line.template.z_nabc / 1e3
-        Y_phys_m = line.template.y_nabc / 1e3
+        # per-meter matrices to lumped over length
+        # Z_phys = (line.template.z_nabc / 1e3) * line.length
+        # Y_phys = (line.template.y_nabc / 1e3) * line.length
+        Z_phys = line.template.z_nabc * line.length
+        Y_phys = line.template.y_nabc * line.length
 
-        # lumped over length
-        Z_phys = Z_phys_m * line.length
-        Y_phys = Y_phys_m * line.length
-
-        # pu
+        # pu conversion
         Z_pu = Z_phys / Zbase
         Y_pu = Y_phys / Ybase
 
         R_full = np.real(Z_pu)
         X_full = np.imag(Z_pu)
-        L_full = X_full / (w0 + 1e-20)      # X = wL  => L = X/w
+        L_full = X_full / (w0 + 1e-20)
 
         Gsh_full = np.real(Y_pu)
         Bsh_full = np.imag(Y_pu)
-        C_full = Bsh_full / (w0 + 1e-20)    # B = wC  => C = B/w
+        C_full = Bsh_full / (w0 + 1e-20)
 
-        # print(f"R line = {R_full}")
-        # print(f"L line = {L_full}")
-        # print(f"C line = {C_full}")
-
-        # split shunt into two ends
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
 
         idx_global = idx
-
-        n_mat = R_full.shape[0]  # same as Z_pu.shape[0]
+        n_mat = R_full.shape[0]
 
         if n_mat == 3:
             # Matrices are ABC only
@@ -142,30 +131,22 @@ class PiLineEmtTemplate(EmtModelTemplate):
                 f"Unsupported template matrix size {n_mat} for line '{line.name}' (expected 3 or 4)."
             )
 
-        m = len(idx_mat)
-        active_ph = [ph_labels[i] for i in idx_global]  # still N/A/B/C labels for mapping external vars
-
-        # reduce to active subspace using idx
-        # Now slice using idx_mat, not idx_global
         R = R_full[np.ix_(idx_mat, idx_mat)]
         L = L_full[np.ix_(idx_mat, idx_mat)]
         G_end = G_end_full[np.ix_(idx_mat, idx_mat)]
         C_end = C_end_full[np.ix_(idx_mat, idx_mat)]
 
         # -----------------------------
-        # 3) Create model vars (ACTIVE dimension only)
+        # 3) Create model vars
         # -----------------------------
-        # States
         i_ser = [vf.add_var(f"i_ser_{line.name}_{k}") for k in range(m)]
         q_f   = [vf.add_var(f"q_f_{line.name}_{k}")   for k in range(m)]
         q_t   = [vf.add_var(f"q_t_{line.name}_{k}")   for k in range(m)]
 
-        # Diff vars (aligned with state_vars)
-        di_ser = [vf.add_diff_var(name = f"di_ser_{line.name}_{k}", base_var = i_ser[k]) for k in range(m)]
-        dq_f   = [vf.add_diff_var(name = f"dq_f_{line.name}_{k}", base_var = q_f[k])   for k in range(m)]
-        dq_t   = [vf.add_diff_var(name = f"dq_t_{line.name}_{k}", base_var = q_t[k])   for k in range(m)]
+        di_ser = [vf.add_diff_var(name=f"di_ser_{line.name}_{k}", base_var=i_ser[k]) for k in range(m)]
+        dq_f   = [vf.add_diff_var(name=f"dq_f_{line.name}_{k}", base_var=q_f[k])   for k in range(m)]
+        dq_t   = [vf.add_diff_var(name=f"dq_t_{line.name}_{k}", base_var=q_t[k])   for k in range(m)]
 
-        # Algebraic vars
         i_cap_f = [vf.add_var(f"i_cap_f_{line.name}_{k}") for k in range(m)]
         i_cap_t = [vf.add_var(f"i_cap_t_{line.name}_{k}") for k in range(m)]
         if_act  = [vf.add_var(f"if_{line.name}_{k}")      for k in range(m)]
@@ -175,11 +156,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # 4) Build block
         # -----------------------------
         self._block = Block(name=f"PiLine_{line.name}")
-
-        # inputs: only active phases
-        self._block.in_vars = vf_vars + vt_vars
-
-        # declare vars
+        self._block.in_vars = vf_vars + vt_vars + d_vf_vars + d_vt_vars
         self._block.state_vars = i_ser + q_f + q_t
         self._block.diff_vars = di_ser + dq_f + dq_t
         self._block.algebraic_vars = i_cap_f + i_cap_t + if_act + it_act
@@ -188,9 +165,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # 5) State equations
         # -----------------------------
         state_eqs = []
-
-
-
         #  L * di_ser + R * i_ser - (vf - vt) = 0
         # di_ser = L^-1 * [(vf - vt) - R * i_ser]
         L_inv = np.linalg.inv(L)
@@ -201,12 +175,11 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Linv_ab = float(L_inv[a, b])
                 if Linv_ab != 0.0:
-                    v_diff_R_i_b = (vf_act[b] - vt_act[b])
+                    v_diff_R_i_b = (vf_vars[b] - vt_vars[b])
                     for k in range(m):
                         R_bk = float(R[b, k])
                         if R_bk != 0.0:
                             v_diff_R_i_b = v_diff_R_i_b - R_bk * i_ser[k]
-
                     expr_rhs = expr_rhs + Linv_ab * v_diff_R_i_b
             state_eqs.append(expr_rhs)
 
@@ -235,7 +208,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Cab = float(C_end[a, b])
                 if Cab != 0.0:
-                    rhs = rhs + Cab * vf_act[b]
+                    rhs = rhs + Cab * vf_vars[b]
             alg_eqs.append(q_f[a] - rhs)
 
         # (5) q_t - C_end * vt = 0
@@ -244,30 +217,30 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Cab = float(C_end[a, b])
                 if Cab != 0.0:
-                    rhs = rhs + Cab * vt_act[b]
+                    rhs = rhs + Cab * vt_vars[b]
             alg_eqs.append(q_t[a] - rhs)
 
-        # (6) If - (i_ser + G_end*vf + i_cap_f) = 0
+        # (6) If - (i_ser + i_cap_f) = 0
         for a in range(m):
             gv = c0
-            for b in range(m):
-                Gab = float(G_end[a, b])
-                if Gab != 0.0:
-                    gv = gv + Gab * vf_act[b]
+            # for b in range(m):
+            #     Gab = float(G_end[a, b])
+            #     if Gab != 0.0:
+            #         gv = gv + Gab * vf_vars[b]
             alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
 
-        # (7) It - (-i_ser + G_end*vt + i_cap_t) = 0
+        # (7) It - (-i_ser + i_cap_t) = 0
         for a in range(m):
             gv = c0
-            for b in range(m):
-                Gab = float(G_end[a, b])
-                if Gab != 0.0:
-                    gv = gv + Gab * vt_act[b]
+            # for b in range(m):
+            #     Gab = float(G_end[a, b])
+            #     if Gab != 0.0:
+            #         gv = gv + Gab * vt_vars[b]
             alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
 
         self._block.algebraic_eqs = alg_eqs
 
-        # outputs (optional)
+        # outputs
         self._block.out_vars = if_act + it_act
 
         # -----------------------------
@@ -308,8 +281,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
         for k, ph in enumerate(active_ph):
             mapping[if_keys[ph]] = if_act[k]
             mapping[it_keys[ph]] = it_act[k]
-            mapping[Sf_keys[ph]] = None
-            mapping[St_keys[ph]] = None
 
         self._block.external_mapping = mapping
 
@@ -324,7 +295,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Cab = float(C_end[a, b])
                 if Cab != 0.0:
-                    rhs = rhs + Cab * vf_act[b]
+                    rhs = rhs + Cab * vf_vars[b]
             init_eqs[q_f[a]] = rhs
 
         # q_t = C_end * vt
@@ -333,50 +304,49 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Cab = float(C_end[a, b])
                 if Cab != 0.0:
-                    rhs = rhs + Cab * vt_act[b]
+                    rhs = rhs + Cab * vt_vars[b]
             init_eqs[q_t[a]] = rhs
 
-        # i_cap seeds (no dv/dt available at init)
+        # i_cap seeds
+        # for a in range(m): INCORRECT ASSUMPTION FOR EMT IN abc DOMAIN
+        #     init_eqs[i_cap_f[a]] = c0
+        #     init_eqs[i_cap_t[a]] = c0
+
+        # i_cap_f = C_end * d_vf
         for a in range(m):
-            init_eqs[i_cap_f[a]] = c0
-            init_eqs[i_cap_t[a]] = c0
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * d_vf_vars[b]
+            init_eqs[i_cap_f[a]] = rhs
 
-        # i_ser seed using R^{-1} (assuming di/dt=0 at t=0 as a seed)
-        Rinv = np.linalg.inv(R)  # numeric m x m
+        # i_cap_t = C_end * d_vt
         for a in range(m):
-            Z_mag = np.sqrt(float(R[a, a]) ** 2 + (w0 * float(L[a, a])) ** 2)
-            # i = delta_V / Z
-            init_eqs[i_ser[a]] = (vf_act[a] - vt_act[a]) / Z_mag
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * d_vt_vars[b]
+            init_eqs[i_cap_t[a]] = rhs
 
-
-            # init_eqs[i_ser[a]] = c0
-
-
-            # rhs = c0
-            # for b in range(m):
-            #     Rab = float(Rinv[a, b])
-            #     if Rab != 0.0:
-            #         rhs = rhs + Rab * (vf_act[b] - vt_act[b])
-            # init_eqs[i_ser[a]] = rhs
-
+        # i_ser seed using KLC
+        for a in range(m):
+            init_eqs[i_ser[a]] = if_act[a] - i_cap_f[a]
 
         self._block.init_eqs = init_eqs
-
 
         # -----------------------------
         # 9) Derivative initialization (diff_init_eqs)
         # -----------------------------
         diff_init_eqs: Dict[Var, Expr] = {}
-
         Linv_numeric = np.linalg.inv(L)
 
         for a in range(m):
             # (A) di_ser = L_inv * (Vf - Vt - R*i_ser)
             di_expression = c0
-
             for b in range(m):
-
-                term_b = (vf_act[b] - vt_act[b])
+                term_b = (vf_vars[b] - vt_vars[b])
                 for k in range(m):
                     if R[b, k] != 0:
                         term_b -= float(R[b, k]) * i_ser[k]
@@ -389,7 +359,6 @@ class PiLineEmtTemplate(EmtModelTemplate):
             # (B) dq_f = i_cap_f y dq_t = i_cap_t
             diff_init_eqs[dq_f[a]] = i_cap_f[a]
             diff_init_eqs[dq_t[a]] = i_cap_t[a]
-
 
         self._block.diff_init_eqs = diff_init_eqs
 
