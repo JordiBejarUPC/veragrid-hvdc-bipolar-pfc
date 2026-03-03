@@ -50,9 +50,9 @@ class RmsSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = RmsResults(empty_rms_models = list(),
-                                  well_initialized = True,
-                                  converged = True,
+        self.results = RmsResults(empty_rms_models=list(),
+                                  well_initialized=True,
+                                  converged=True,
                                   values=np.empty(0),
                                   time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
                                   variables=list(),
@@ -76,7 +76,7 @@ class RmsSimulationDriver(DriverTemplate):
         Performs the numerical integration using the chosen method.
         :return:
         """
-
+        self.progress_signal.emit(0)
         # Check that every element in the grid has a valid rms model
         # empty_rms_models =  self.grid.check_rms_models()
         if len(self.grid.check_rms_models()) != 0:
@@ -98,12 +98,13 @@ class RmsSimulationDriver(DriverTemplate):
             print(f"Converged: {res.converged}")
             print(res.get_bus_df())
             print(res.get_branch_df())
+            self.progress_signal.emit(5)
 
-            problem = RmsProblemDae(grid=self.grid,
-                                    options=self.options,
-                                    pf_results=self.pf_results)
-
-
+            problem = RmsProblemDae(
+                progress_signal=self.progress_signal,
+                grid=self.grid,
+                options=self.options,
+                pf_results=self.pf_results)
 
             solver = self.integration_methods_dict[self.options.integration_method](
                 problem=problem,
@@ -114,6 +115,8 @@ class RmsSimulationDriver(DriverTemplate):
             )
 
             t, y, well_initialized, converged = solver.simulate()
+
+            self.progress_signal.emit(90)
 
             self.results = RmsResults(
                 empty_rms_models=list(),
@@ -126,5 +129,4 @@ class RmsSimulationDriver(DriverTemplate):
                 vars_glob_name2uid=problem.vars_glob_name2uid,
                 devices_vars_info=problem.get_device_vars_dict()
             )
-
-
+            self.progress_signal.emit(100)

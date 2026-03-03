@@ -3274,29 +3274,25 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
 
+                self.remove_simulation(SimulationTypes.RmsDynamic_run)
+
                 _, pf_results = self.session.power_flow
 
                 if pf_results is not None:
 
-                    self.add_simulation(SimulationTypes.RmsDynamic_run)
-
+                    # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                    self.ui.progress_label.setText('Running rms simulation...')
+                    QtGui.QGuiApplication.processEvents()
                     self.LOCK()
 
-                    # Compile the grid
-                    self.ui.progress_label.setText('Compiling the grid...')
-                    QtGui.QGuiApplication.processEvents()
-
-                    # get the rms simulation options from the GUI
-                    options = self.get_selected_rms_simulation_options()
-
-                    self.ui.progress_label.setText('Running rms simulation...')
-
-                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=options, pf_results=pf_results)
+                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=self.get_selected_rms_simulation_options(), pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_rms,
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
+
+
 
 
                 else:
