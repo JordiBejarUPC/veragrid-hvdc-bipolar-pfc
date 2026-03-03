@@ -266,7 +266,7 @@ class EmtProblemTemplate(ABC):
         for uid, val in self.init_guess.items():
             idx = self._uid2idx_vars.get(uid, None)
             if idx is not None:
-                x[idx] = float(abs(val))
+                x[idx] = float(val)
         return x
 
     def get_dx0(self) -> Vec:
