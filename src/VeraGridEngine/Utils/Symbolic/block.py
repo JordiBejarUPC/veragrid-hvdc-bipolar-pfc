@@ -326,14 +326,6 @@ class Block:
                 not self.name
         )
 
-    # def check_empty(self) -> bool:
-    #     """
-    #     check if a model does not have state and algebraic variables
-    #
-    #     :return:
-    #     """
-    #     return (len(self.state_vars) + len(self.algebraic_vars)) == 0
-
     def empty(self) -> bool:
         """
         check if a model is empty
@@ -384,15 +376,6 @@ class Block:
         :param val: Block
         """
         self.children.remove(val)
-
-    # def apply_events(self, events: List[RmsEvent]):
-    #     """
-    #     Apply events to this block
-    #     :param events:
-    #     :return:
-    #     """
-    #     # TODO Implement filling self.event_dicts with the RmsEvents info
-    #     pass
 
     def get_all_blocks(self) -> List[Block]:
         """
