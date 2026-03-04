@@ -38,7 +38,7 @@ from VeraGridEngine.Templates.predefined_blocks import (
     absolut,
     generic
 )
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars, check_empty_bus_rms
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
@@ -1292,7 +1292,7 @@ class TemplateEditor(QtWidgets.QWidget):
         self.selected_block = Block()
         if self.api_object is not None:
             if selected_template.tpe == DeviceType.GeneratorDevice:
-                if check_empty_bus_rms(self.api_object.bus.rms_model.model):
+                if self.api_object.bus.rms_model.model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
@@ -1304,7 +1304,7 @@ class TemplateEditor(QtWidgets.QWidget):
                     self.selected_block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if selected_template.tpe == DeviceType.LoadDevice:
-                if check_empty_bus_rms(self.api_object.bus.rms_model.model):
+                if self.api_object.bus.rms_model.model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
@@ -1317,13 +1317,13 @@ class TemplateEditor(QtWidgets.QWidget):
 
             if selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
-                if check_empty_bus_rms(self.api_object.bus_from.rms_model.model):
+                if self.api_object.bus_from.rms_model.model.empty():
                     initialize_bus_rms(self.api_object.bus_from, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
 
-                if check_empty_bus_rms(self.api_object.bus_to.rms_model.model):
+                if self.api_object.bus_to.rms_model.model.empty():
                     initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
                 Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
@@ -1556,7 +1556,7 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn From"
             bus_from_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            if check_empty_bus_rms(self.api_object.bus_from.rms_model.model):
+            if self.api_object.bus_from.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
 
             Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
@@ -1595,7 +1595,7 @@ class BlockBoxesEditor(QSplitter):
 
             bus_to_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            if check_empty_bus_rms(self.api_object.bus_to.rms_model.model):
+            if self.api_object.bus_to.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
             Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
@@ -1635,7 +1635,7 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn Bus"
 
             bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
-            if check_empty_bus_rms(self.api_object.bus.rms_model.model):
+            if self.api_object.bus.rms_model.model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
 
             Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
