@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -13,7 +13,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
 
 
 class ShuntParent(InjectionParent):
@@ -48,6 +48,25 @@ class ShuntParent(InjectionParent):
         '_Bc_prof',
 
         '_ysh'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='G', units='MW', tpe=float, definition='Active power', profile_name='G_prof'),
+        GCPropDecl(key='G0', units='MW', tpe=float,
+                      definition='Zero sequence active power of the impedance component at V=1.0 p.u.',
+                      profile_name='G0_prof'),
+        GCPropDecl(key='Ga', units='MW', tpe=float, definition='Active power', profile_name='Ga_prof'),
+        GCPropDecl(key='Gb', units='MW', tpe=float, definition='Active power', profile_name='Gb_prof'),
+        GCPropDecl(key='Gc', units='MW', tpe=float, definition='Active power', profile_name='Gc_prof'),
+        GCPropDecl(key='B', units='MVAr', tpe=float, definition='Reactive power', profile_name='B_prof'),
+        GCPropDecl(key='B0', units='MVAr', tpe=float,
+                      definition='Zero sequence reactive power of the impedance component at V=1.0 p.u.',
+                      profile_name='B0_prof'),
+        GCPropDecl(key='Ba', units='MVAr', tpe=float, definition='Reactive power', profile_name='Ba_prof'),
+        GCPropDecl(key='Bb', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bb_prof'),
+        GCPropDecl(key='Bc', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bc_prof'),
+        GCPropDecl('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
+                      definition='Shunt admittance matrix of the branch', editable=False, display=False),
     )
 
     def __init__(self,
@@ -145,24 +164,8 @@ class ShuntParent(InjectionParent):
 
         self._ysh = AdmittanceMatrix()
 
-        self.register(key='G', units='MW', tpe=float, definition='Active power', profile_name='G_prof')
-        self.register(key='G0', units='MW', tpe=float,
-                      definition='Zero sequence active power of the impedance component at V=1.0 p.u.',
-                      profile_name='G0_prof')
-        self.register(key='Ga', units='MW', tpe=float, definition='Active power', profile_name='Ga_prof')
-        self.register(key='Gb', units='MW', tpe=float, definition='Active power', profile_name='Gb_prof')
-        self.register(key='Gc', units='MW', tpe=float, definition='Active power', profile_name='Gc_prof')
 
-        self.register(key='B', units='MVAr', tpe=float, definition='Reactive power', profile_name='B_prof')
-        self.register(key='B0', units='MVAr', tpe=float,
-                      definition='Zero sequence reactive power of the impedance component at V=1.0 p.u.',
-                      profile_name='B0_prof')
-        self.register(key='Ba', units='MVAr', tpe=float, definition='Reactive power', profile_name='Ba_prof')
-        self.register(key='Bb', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bb_prof')
-        self.register(key='Bc', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bc_prof')
 
-        self.register('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
-                      definition='Shunt admittance matrix of the branch', editable=False, display=False)
 
     @property
     def G_prof(self) -> Profile:

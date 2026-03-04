@@ -3,10 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+from typing import Tuple
 
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
 
 
 class RmsModelTemplate(PointerDeviceParent):
@@ -17,6 +19,11 @@ class RmsModelTemplate(PointerDeviceParent):
     __slots__ = (
         '_block',
         '_device_type'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
+                      definition='DAE block', editable=False, display=False),
     )
 
     def __init__(self, idtag="", name: str = ""):
@@ -30,8 +37,6 @@ class RmsModelTemplate(PointerDeviceParent):
         self.tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()
 
-        self.register('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
-                      definition='DAE block', editable=False, display=False)
 
     def __deepcopy__(self, memo):
         cls = self.__class__

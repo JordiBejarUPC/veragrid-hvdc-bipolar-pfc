@@ -3,9 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Optional
+from typing import Optional, Tuple
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class SmallSignalStabilityEmtOptions(OptionsTemplate):
@@ -56,6 +58,28 @@ class SmallSignalStabilityEmtOptions(OptionsTemplate):
         Upper cap for adaptive Krylov dimension expansion.
     """
 
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="k", tpe=int),
+        GCPropDecl(key="target_period", tpe=float),
+        GCPropDecl(key="target_frequency_hz", tpe=float),
+        GCPropDecl(key="max_krylov_dim", tpe=int),
+        GCPropDecl(key="ss_assessment_time", tpe=float),
+        GCPropDecl(key="verbose", tpe=int),
+        GCPropDecl(key="max_restarts", tpe=int),
+        GCPropDecl(key="restart_tol", tpe=float),
+        GCPropDecl(key="use_refined_ritz", tpe=bool),
+        GCPropDecl(key="adaptive_restart", tpe=bool),
+        GCPropDecl(key="stagnation_improve_ratio", tpe=float),
+        GCPropDecl(key="stagnation_patience", tpe=int),
+        GCPropDecl(key="deflation_tol", tpe=float),
+        GCPropDecl(key="prefer_ak_operator", tpe=bool),
+        GCPropDecl(key="use_numba_kernels", tpe=bool),
+        GCPropDecl(key="min_block_size", tpe=int),
+        GCPropDecl(key="max_block_size", tpe=int),
+        GCPropDecl(key="max_krylov_dim_cap", tpe=int),
+        GCPropDecl(key="build_type", tpe=SmallSignalEmtBuildTypes),
+    )
+
     def __init__(self,
                  k: int = 6,
                  target_period: float = 0.02,
@@ -100,25 +124,6 @@ class SmallSignalStabilityEmtOptions(OptionsTemplate):
         self.max_krylov_dim_cap: Optional[int] = max_krylov_dim_cap
         self.build_type: SmallSignalEmtBuildTypes = build_type
 
-        self.register(key="k", tpe=int)
-        self.register(key="target_period", tpe=float)
-        self.register(key="target_frequency_hz", tpe=float)
-        self.register(key="max_krylov_dim", tpe=int)
-        self.register(key="ss_assessment_time", tpe=float)
-        self.register(key="verbose", tpe=int)
 
-        self.register(key="max_restarts", tpe=int)
-        self.register(key="restart_tol", tpe=float)
-        self.register(key="use_refined_ritz", tpe=bool)
-        self.register(key="adaptive_restart", tpe=bool)
-        self.register(key="stagnation_improve_ratio", tpe=float)
-        self.register(key="stagnation_patience", tpe=int)
-        self.register(key="deflation_tol", tpe=float)
 
-        self.register(key="prefer_ak_operator", tpe=bool)
-        self.register(key="use_numba_kernels", tpe=bool)
 
-        self.register(key="min_block_size", tpe=int)
-        self.register(key="max_block_size", tpe=int)
-        self.register(key="max_krylov_dim_cap", tpe=int)
-        self.register(key="build_type", tpe=SmallSignalEmtBuildTypes)

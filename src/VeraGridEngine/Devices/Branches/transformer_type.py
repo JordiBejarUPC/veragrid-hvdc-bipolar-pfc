@@ -5,7 +5,7 @@
 from typing import Tuple, Union
 from numpy import sqrt
 from VeraGridEngine.enumerations import TapChangerTypes, WindingType
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 
 
@@ -26,6 +26,34 @@ class TransformerType(EditableDevice):
         'vector_group_number',
         'capex',
         'opex'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='HV', units='kV', tpe=float, definition='Nominal voltage al the high voltage side'),
+        GCPropDecl(key='LV', units='kV', tpe=float, definition='Nominal voltage al the low voltage side'),
+        GCPropDecl(key='Sn', units='MVA', tpe=float, definition='Nominal power', old_names=['rating']),
+        GCPropDecl(key='Pcu', units='kW', tpe=float, definition='Copper losses'),
+        GCPropDecl(key='Pfe', units='kW', tpe=float, definition='Iron losses'),
+        GCPropDecl(key='I0', units='%', tpe=float, definition='No-load current'),
+        GCPropDecl(key='Vsc', units='%', tpe=float, definition='Short-circuit voltage'),
+        GCPropDecl(key='capex', units='currency', tpe=float, definition='Capital expenditure'),
+        GCPropDecl(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
+        GCPropDecl(key='tc_type', units='', tpe=TapChangerTypes, definition='Regulation type'),
+        GCPropDecl(key='total_positions', units='', tpe=int, definition='Number of tap positions'),
+        GCPropDecl(key='dV', units='p.u.', tpe=float, definition='Voltage increment per step'),
+        GCPropDecl(key='neutral_position', units='', tpe=int, definition='neutral position counting from zero'),
+        GCPropDecl(key='asymmetry_angle', units='deg', tpe=float, definition='Asymmetry_angle'),
+        GCPropDecl(key='conn_hv', units='', tpe=WindingType,
+                      definition='Winding 3 phase connection at the from side'),
+        GCPropDecl(key='conn_lv', units='', tpe=WindingType,
+                      definition='Winding 3 phase connection at the to side'),
+        GCPropDecl(key='vector_group_number', units='', tpe=int,
+                      definition='Vector group number. It indicates the structural phase:'
+                                 'phase = vector_group_number · 30º'),
+        GCPropDecl(key='tap_module_min', units='p.u.', tpe=float, definition='Min tap module', editable=False),
+        GCPropDecl(key='tap_module_max', units='p.u.', tpe=float, definition='Max tap module', editable=False),
+        GCPropDecl(key='tap_phase_min', units='rad', tpe=float, definition='Min tap phase', editable=False),
+        GCPropDecl(key='tap_phase_max', units='rad', tpe=float, definition='Max tap phase', editable=False),
     )
 
     def __init__(self,
@@ -106,37 +134,12 @@ class TransformerType(EditableDevice):
                                        asymmetry_angle=asymmetry_angle,
                                        tc_type=tc_type)
 
-        self.register(key='HV', units='kV', tpe=float, definition='Nominal voltage al the high voltage side')
-        self.register(key='LV', units='kV', tpe=float, definition='Nominal voltage al the low voltage side')
-        self.register(key='Sn', units='MVA', tpe=float, definition='Nominal power', old_names=['rating'])
-        self.register(key='Pcu', units='kW', tpe=float, definition='Copper losses')
-        self.register(key='Pfe', units='kW', tpe=float, definition='Iron losses')
-        self.register(key='I0', units='%', tpe=float, definition='No-load current')
-        self.register(key='Vsc', units='%', tpe=float, definition='Short-circuit voltage')
 
-        self.register(key='capex', units='currency', tpe=float, definition='Capital expenditure')
-        self.register(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure')
 
-        self.register(key='tc_type', units='', tpe=TapChangerTypes, definition='Regulation type')
-        self.register(key='total_positions', units='', tpe=int, definition='Number of tap positions')
-        self.register(key='dV', units='p.u.', tpe=float, definition='Voltage increment per step')
-        self.register(key='neutral_position', units='', tpe=int, definition='neutral position counting from zero')
-        self.register(key='asymmetry_angle', units='deg', tpe=float, definition='Asymmetry_angle')
 
-        self.register(key='conn_hv', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the from side')
 
-        self.register(key='conn_lv', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the to side')
 
-        self.register(key='vector_group_number', units='', tpe=int,
-                      definition='Vector group number. It indicates the structural phase:'
-                                 'phase = vector_group_number · 30º')
 
-        self.register(key='tap_module_min', units='p.u.', tpe=float, definition='Min tap module', editable=False)
-        self.register(key='tap_module_max', units='p.u.', tpe=float, definition='Max tap module', editable=False)
-        self.register(key='tap_phase_min', units='rad', tpe=float, definition='Min tap phase', editable=False)
-        self.register(key='tap_phase_max', units='rad', tpe=float, definition='Max tap phase', editable=False)
 
     @property
     def tap_module_min(self) -> float:

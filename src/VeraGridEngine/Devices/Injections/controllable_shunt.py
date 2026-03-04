@@ -4,14 +4,14 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, Tuple
 import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -37,6 +37,32 @@ class ControllableShunt(ShuntParent):
         '_control_bus_prof',
         'Vset',
         '_Vset_prof',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?'),
+        GCPropDecl(key='is_controlled', units='', tpe=bool, definition='Is controlled?'),
+        GCPropDecl(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus'),
+        GCPropDecl(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
+                      definition='Conductance steps', editable=False),
+        GCPropDecl(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
+                      definition='Susceptance steps', editable=False),
+        GCPropDecl(key='Gmax', units='MW', tpe=float,
+                      definition='Maximum conductance', editable=True),
+        GCPropDecl(key='Gmin', units='MW', tpe=float,
+                      definition='Minimum conductance', editable=True),
+        GCPropDecl(key='Bmax', units='MVAr', tpe=float,
+                      definition='Maximum susceptance', editable=True),
+        GCPropDecl(key='Bmin', units='MVAr', tpe=float,
+                      definition='Minimum susceptance', editable=True),
+        GCPropDecl(key='active_steps', units='', tpe=SubObjectType.Array,
+                      definition='steps active?', editable=False),
+        GCPropDecl(key='step', units='', tpe=int,
+                      definition='Device step position (0~N-1)',
+                      profile_name='step_prof'),
+        GCPropDecl(key='Vset', units='p.u.', tpe=float,
+                      definition='Set voltage. This is used for controlled shunts.',
+                      profile_name='Vset_prof'),
     )
 
     def __init__(self,
@@ -141,40 +167,17 @@ class ControllableShunt(ShuntParent):
         # voltage set profile for this load in p.u.
         self._Vset_prof = Profile(default_value=self.Vset, data_type=float)
 
-        self.register(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?')
 
-        self.register(key='is_controlled', units='', tpe=bool, definition='Is controlled?')
 
-        self.register(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus')
 
-        self.register(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
-                      definition='Conductance steps', editable=False)
 
-        self.register(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
-                      definition='Susceptance steps', editable=False)
 
-        self.register(key='Gmax', units='MW', tpe=float,
-                      definition='Maximum conductance', editable=True)
 
-        self.register(key='Gmin', units='MW', tpe=float,
-                      definition='Minimum conductance', editable=True)
 
-        self.register(key='Bmax', units='MVAr', tpe=float,
-                      definition='Maximum susceptance', editable=True)
 
-        self.register(key='Bmin', units='MVAr', tpe=float,
-                      definition='Minimum susceptance', editable=True)
 
-        self.register(key='active_steps', units='', tpe=SubObjectType.Array,
-                      definition='steps active?', editable=False)
 
-        self.register(key='step', units='', tpe=int,
-                      definition='Device step position (0~N-1)',
-                      profile_name='step_prof')
 
-        self.register(key='Vset', units='p.u.', tpe=float,
-                      definition='Set voltage. This is used for controlled shunts.',
-                      profile_name='Vset_prof')
 
     @property
     def step(self):

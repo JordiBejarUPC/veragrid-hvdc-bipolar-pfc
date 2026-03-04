@@ -2,19 +2,37 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import List, Union
+from typing import List, Union, Tuple
 from VeraGridEngine.enumerations import ContingencyMethod, SubObjectType, DeviceType
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class ContingencyAnalysisOptions(OptionsTemplate):
     """
     Contingency analysis options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="use_provided_flows", tpe=bool),
+        GCPropDecl(key="Pf", tpe=SubObjectType.Array),
+        GCPropDecl(key="contingency_method", tpe=ContingencyMethod),
+        GCPropDecl(key="pf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCPropDecl(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCPropDecl(key="use_srap", tpe=bool),
+        GCPropDecl(key="srap_max_power", tpe=float),
+        GCPropDecl(key="srap_top_n", tpe=int),
+        GCPropDecl(key="srap_deadband", tpe=float),
+        GCPropDecl(key="srap_rever_to_nominal_rating", tpe=bool),
+        GCPropDecl(key="detailed_massive_report", tpe=bool),
+        GCPropDecl(key="contingency_deadband", tpe=float),
+        GCPropDecl(key="contingency_groups", tpe=SubObjectType.ObjectsList),
+    )
 
     def __init__(self,
                  use_provided_flows: bool = False,
@@ -77,16 +95,3 @@ class ContingencyAnalysisOptions(OptionsTemplate):
 
         self.contingency_groups: Union[List[ContingencyGroup], None] = contingency_groups
 
-        self.register(key="use_provided_flows", tpe=bool)
-        self.register(key="Pf", tpe=SubObjectType.Array)
-        self.register(key="contingency_method", tpe=ContingencyMethod)
-        self.register(key="pf_options", tpe=DeviceType.SimulationOptionsDevice)
-        self.register(key="lin_options", tpe=DeviceType.SimulationOptionsDevice)
-        self.register(key="use_srap", tpe=bool)
-        self.register(key="srap_max_power", tpe=float)
-        self.register(key="srap_top_n", tpe=int)
-        self.register(key="srap_deadband", tpe=float)
-        self.register(key="srap_rever_to_nominal_rating", tpe=bool)
-        self.register(key="detailed_massive_report", tpe=bool)
-        self.register(key="contingency_deadband", tpe=float)
-        self.register(key="contingency_groups", tpe=SubObjectType.ObjectsList)

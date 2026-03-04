@@ -3,15 +3,32 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
+
 from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow import (CpfStopAt,
                                                                                       CpfParametrization)
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class ContinuationPowerFlowOptions(OptionsTemplate):
     """
     ContinuationPowerFlowOptions
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="step", tpe=float),
+        GCPropDecl(key="approximation_order", tpe=CpfParametrization),
+        GCPropDecl(key="adapt_step", tpe=bool),
+        GCPropDecl(key="step_min", tpe=float),
+        GCPropDecl(key="step_max", tpe=float),
+        GCPropDecl(key="step_tol", tpe=float),
+        GCPropDecl(key="solution_tol", tpe=float),
+        GCPropDecl(key="max_it", tpe=int),
+        GCPropDecl(key="stop_at", tpe=CpfStopAt),
+        GCPropDecl(key="verbose", tpe=int),
+    )
 
     def __init__(self,
                  step=0.01,
@@ -59,13 +76,3 @@ class ContinuationPowerFlowOptions(OptionsTemplate):
 
         self.verbose = verbose
 
-        self.register(key="step", tpe=float)
-        self.register(key="approximation_order", tpe=CpfParametrization)
-        self.register(key="adapt_step", tpe=bool)
-        self.register(key="step_min", tpe=float)
-        self.register(key="step_max", tpe=float)
-        self.register(key="step_tol", tpe=float)
-        self.register(key="solution_tol", tpe=float)
-        self.register(key="max_it", tpe=int)
-        self.register(key="stop_at", tpe=CpfStopAt)
-        self.register(key="verbose", tpe=int)

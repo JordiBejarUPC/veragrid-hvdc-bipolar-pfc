@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, Tuple
 import numpy as np
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
@@ -12,11 +12,25 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
 
 
 class FluidInjectionTemplate(PhysicalDevice):
     __slots__ = ('active', '_active_prof', 'efficiency', 'max_flow_rate',
                  '_plant', '_generator', 'build_status', 'facility')
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof'),
+        GCPropDecl(key='efficiency', units="MWh/m3", tpe=float,
+                      definition="Power plant energy production per fluid unit"),
+        GCPropDecl(key='max_flow_rate', units="m3/s", tpe=float, definition="maximum fluid flow"),
+        GCPropDecl(key='plant', units="", tpe=DeviceType.FluidNodeDevice, definition="Connection reservoir/node",
+                      editable=False),
+        GCPropDecl(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
+                      editable=False),
+        GCPropDecl(key='facility', units='', tpe=DeviceType.FacilityDevice,
+                      definition='Facility where this is located', editable=True),
+    )
 
     def __init__(self,
                  name: str = '',
@@ -57,17 +71,7 @@ class FluidInjectionTemplate(PhysicalDevice):
 
         self.facility: Facility | None = None
 
-        self.register(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof')
 
-        self.register(key='efficiency', units="MWh/m3", tpe=float,
-                      definition="Power plant energy production per fluid unit")
-        self.register(key='max_flow_rate', units="m3/s", tpe=float, definition="maximum fluid flow")
-        self.register(key='plant', units="", tpe=DeviceType.FluidNodeDevice, definition="Connection reservoir/node",
-                      editable=False)
-        self.register(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
-                      editable=False)
-        self.register(key='facility', units='', tpe=DeviceType.FacilityDevice,
-                      definition='Facility where this is located', editable=True)
 
     @property
     def plant(self) -> FluidNode:

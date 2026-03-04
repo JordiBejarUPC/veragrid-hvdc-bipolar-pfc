@@ -2,17 +2,39 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Union
+from typing import Union, Tuple
 import numpy as np
 from VeraGridEngine.enumerations import AvailableTransferMode, SubObjectType
 from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class AvailableTransferCapacityOptions(OptionsTemplate):
     """
     Available Transfer Capacity Options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="distributed_slack", tpe=bool),
+        GCPropDecl(key="correct_values", tpe=bool),
+        GCPropDecl(key="use_provided_flows", tpe=bool),
+        GCPropDecl(key="bus_idx_from", tpe=SubObjectType.Array),
+        GCPropDecl(key="bus_idx_to", tpe=SubObjectType.Array),
+        GCPropDecl(key="inter_area_branch_idx", tpe=SubObjectType.Array),
+        GCPropDecl(key="inter_area_branch_sense", tpe=SubObjectType.Array),
+        GCPropDecl(key="Pf", tpe=SubObjectType.Array),
+        GCPropDecl(key="idx_hvdc_br", tpe=SubObjectType.Array),
+        GCPropDecl(key="inter_area_hvdc_branch_sense", tpe=SubObjectType.Array),
+        GCPropDecl(key="Pf_hvdc", tpe=SubObjectType.Array),
+        GCPropDecl(key="dT", tpe=float),
+        GCPropDecl(key="threshold", tpe=float),
+        GCPropDecl(key="mode", tpe=AvailableTransferMode),
+        GCPropDecl(key="max_report_elements", tpe=int),
+        GCPropDecl(key="use_clustering", tpe=bool),
+        GCPropDecl(key="cluster_number", tpe=int),
+    )
 
     def __init__(self,
                  distributed_slack: bool = True,
@@ -80,22 +102,5 @@ class AvailableTransferCapacityOptions(OptionsTemplate):
         self.use_clustering = use_clustering
         self.cluster_number = cluster_number
 
-        self.register(key="distributed_slack", tpe=bool)
-        self.register(key="correct_values", tpe=bool)
-        self.register(key="use_provided_flows", tpe=bool)
 
-        self.register(key="bus_idx_from", tpe=SubObjectType.Array)
-        self.register(key="bus_idx_to", tpe=SubObjectType.Array)
-        self.register(key="inter_area_branch_idx", tpe=SubObjectType.Array)
-        self.register(key="inter_area_branch_sense", tpe=SubObjectType.Array)
-        self.register(key="Pf", tpe=SubObjectType.Array)
-        self.register(key="idx_hvdc_br", tpe=SubObjectType.Array)
-        self.register(key="inter_area_hvdc_branch_sense", tpe=SubObjectType.Array)
-        self.register(key="Pf_hvdc", tpe=SubObjectType.Array)
 
-        self.register(key="dT", tpe=float)
-        self.register(key="threshold", tpe=float)
-        self.register(key="mode", tpe=AvailableTransferMode)
-        self.register(key="max_report_elements", tpe=int)
-        self.register(key="use_clustering", tpe=bool)
-        self.register(key="cluster_number", tpe=int)

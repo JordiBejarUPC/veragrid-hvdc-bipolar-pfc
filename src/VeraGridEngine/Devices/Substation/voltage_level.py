@@ -3,16 +3,23 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Union
+from typing import Union, Tuple
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.substation import Substation
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
 
 
 class VoltageLevel(PhysicalDevice):
     __slots__ = (
         'Vnom',
         'substation',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='Vnom', units='kV', tpe=float, definition='Nominal voltage'),
+        GCPropDecl(key="substation", tpe=DeviceType.SubstationDevice,
+                      definition="Substation of this Voltage level (optional)"),
     )
 
     def __init__(self, name='VoltageLevel',
@@ -40,7 +47,4 @@ class VoltageLevel(PhysicalDevice):
 
         self.substation: Union[None, Substation] = substation
 
-        self.register(key='Vnom', units='kV', tpe=float, definition='Nominal voltage')
 
-        self.register(key="substation", tpe=DeviceType.SubstationDevice,
-                      definition="Substation of this Voltage level (optional)")

@@ -7127,7 +7127,7 @@ class Assets:
                 if elm_from_base is not None:
 
                     for prop in api_obj.property_list:
-                        if prop.selected_to_merge:
+                        if api_obj.get_property_selected_to_merge(property_name=prop.name):
                             val = api_obj.get_property_value(prop=prop, t_idx=None)
                             elm_from_base.set_property_value(prop=prop, value=val, t_idx=None)
                 else:

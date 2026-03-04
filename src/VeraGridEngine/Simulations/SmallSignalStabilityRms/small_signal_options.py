@@ -3,14 +3,24 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
+
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class SmallSignalStabilityRmsOptions(OptionsTemplate):
     """
     Rms simulation options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="ss_assessment_time", tpe=float),
+        GCPropDecl(key="k", tpe=int),
+        GCPropDecl(key="verbose", tpe=int),
+    )
 
     def __init__(self,
                  k: int | None = None,
@@ -29,6 +39,3 @@ class SmallSignalStabilityRmsOptions(OptionsTemplate):
         self.k: int | None = k
         self.verbose: int = verbose
 
-        self.register(key="ss_assessment_time", tpe=float)
-        self.register(key="k", tpe=int)
-        self.register(key="verbose", tpe=int)

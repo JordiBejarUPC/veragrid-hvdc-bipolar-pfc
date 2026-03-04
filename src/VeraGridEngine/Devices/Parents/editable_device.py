@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import random
 import uuid
 import numpy as np
@@ -215,6 +217,59 @@ class GCProp:
         return "prop:" + self.name
 
 
+class GCPropDecl:
+    """
+    Immutable declaration of a VeraGrid property at class-definition time.
+    """
+    __slots__ = (
+        "key",
+        "tpe",
+        "units",
+        "definition",
+        "profile_name",
+        "display",
+        "editable",
+        "old_names",
+        "is_color",
+        "is_date",
+    )
+
+    def __init__(self,
+                 key: str,
+                 tpe: GCPROP_TYPES,
+                 units: str = "",
+                 definition: str = "",
+                 profile_name: str = '',
+                 display: bool = True,
+                 editable: bool = True,
+                 old_names: Tuple[str, ...] = (),
+                 is_color: bool = False,
+                 is_date: bool = False) -> None:
+        """
+        Build an immutable property declaration object.
+        :param key: Property name
+        :param tpe: Property type
+        :param units: Property units
+        :param definition: Property description
+        :param profile_name: Optional linked profile property name
+        :param display: Should the property be shown in views
+        :param editable: Should the property be editable
+        :param old_names: Historical aliases used for compatibility
+        :param is_color: Whether this property encodes a color
+        :param is_date: Whether this property encodes a date
+        """
+        self.key: str = key
+        self.tpe: GCPROP_TYPES = tpe
+        self.units: str = units
+        self.definition: str = definition
+        self.profile_name: str = profile_name
+        self.display: bool = display
+        self.editable: bool = editable
+        self.old_names: Tuple[str, ...] = old_names
+        self.is_color: bool = is_color
+        self.is_date: bool = is_date
+
+
 def get_action_symbol(action: ActionType):
     """
 
@@ -249,7 +304,72 @@ def get_at(snapshot_val: float | bool | int,
         return profile[t]
 
 
-class EditableDevice:
+class EditableDeviceMeta(type):
+    """
+    Metaclass that pre-builds inherited class schema declarations.
+    """
+
+    def __new__(mcs, name, bases, namespace):
+        """
+        Build a new class and aggregate property declarations from base to child.
+        :param name: Class name
+        :param bases: Base classes
+        :param namespace: Class namespace
+        :return: New class
+        """
+        cls = super().__new__(mcs, name, bases, namespace)
+
+        aggregated_declarations: List[GCPropDecl] = list()
+        for base in bases:
+            base_declarations: Tuple[GCPropDecl, ...] = getattr(base, "CLASS_PROPERTY_DECLARATIONS", tuple())
+            for declaration in base_declarations:
+                aggregated_declarations.append(declaration)
+
+        local_declarations: Tuple[GCPropDecl, ...] = namespace.get("LOCAL_PROPERTY_DECLARATIONS", tuple())
+        for declaration in local_declarations:
+            aggregated_declarations.append(declaration)
+
+        cls.CLASS_PROPERTY_DECLARATIONS = tuple(aggregated_declarations)
+
+        class_property_list: List[GCProp] = list()
+        class_registered_properties: Dict[str, GCProp] = dict()
+        class_non_editable_properties: List[str] = list()
+        class_properties_with_profile: Dict[str, str] = dict()
+
+        for declaration in cls.CLASS_PROPERTY_DECLARATIONS:
+            prop: GCProp = GCProp(prop_name=declaration.key,
+                                  units=declaration.units,
+                                  tpe=declaration.tpe,
+                                  definition=declaration.definition,
+                                  profile_name=declaration.profile_name,
+                                  display=declaration.display,
+                                  editable=declaration.editable,
+                                  old_names=list(declaration.old_names),
+                                  is_color=declaration.is_color,
+                                  is_date=declaration.is_date)
+
+            class_registered_properties[prop.name] = prop
+            class_property_list.append(prop)
+
+            if declaration.profile_name != '':
+                class_properties_with_profile[prop.name] = declaration.profile_name
+            else:
+                pass
+
+            if declaration.editable:
+                pass
+            else:
+                class_non_editable_properties.append(prop.name)
+
+        cls.CLASS_PROPERTY_LIST = tuple(class_property_list)
+        cls.CLASS_REGISTERED_PROPERTIES = class_registered_properties
+        cls.CLASS_NON_EDITABLE_PROPERTIES = tuple(class_non_editable_properties)
+        cls.CLASS_PROPERTIES_WITH_PROFILE = class_properties_with_profile
+
+        return cls
+
+
+class EditableDevice(metaclass=EditableDeviceMeta):
     """
     This is the main device class from which all inherit
     """
@@ -262,12 +382,24 @@ class EditableDevice:
         'comment',
         'action',
         'selected_to_merge',
-        'property_list',
-        'registered_properties',
-        'non_editable_properties',
-        'properties_with_profile',
+        'property_merge_selections',
         '__auto_update_enabled',
     )
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='idtag', units='', tpe=str, definition='Unique ID', editable=False),
+        GCPropDecl(key='name', units='', tpe=str, definition='Name of the device.'),
+        GCPropDecl(key='code', units='', tpe=str, definition='Secondary ID'),
+        GCPropDecl(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility'),
+        GCPropDecl(key='action', units='', tpe=ActionType,
+                   definition='Object action to perform.\nOnly used for model merging.',
+                   display=False),
+        GCPropDecl(key='comment', units='', tpe=str, definition='User comment'),
+    )
+    CLASS_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = tuple()
+    CLASS_PROPERTY_LIST: Tuple[GCProp, ...] = tuple()
+    CLASS_REGISTERED_PROPERTIES: Dict[str, GCProp] = dict()
+    CLASS_NON_EDITABLE_PROPERTIES: Tuple[str, ...] = tuple()
+    CLASS_PROPERTIES_WITH_PROFILE: Dict[str, str] = dict()
 
     def __init__(self,
                  name: str,
@@ -303,30 +435,69 @@ class EditableDevice:
         self.action: ActionType = ActionType.NoAction
         self.selected_to_merge = True
 
-        # list of registered properties. This is supremely useful when accessing via the Table and Tree models
-        self.property_list: List[GCProp] = list()
-
-        # dictionary of properties
-        self.registered_properties: Dict[str, GCProp] = dict()
-
-        # list of properties that cannot be edited
-        self.non_editable_properties: List[str] = list()
-
-        # dictionary with property name -> profile name
-        self.properties_with_profile: Dict[str, str] = dict()
+        # This per-instance map stores merge toggles to avoid mutating shared schema objects.
+        self.property_merge_selections: Dict[str, bool] = dict()
 
         # some devices have an auto update of a property when another property changes
         # (i.e. Line's R, X, B when the length changes) this controls that behaviour and disables it during loading
         self.__auto_update_enabled = True
 
-        self.register(key='idtag', units='', tpe=str, definition='Unique ID', editable=False)
-        self.register(key='name', units='', tpe=str, definition='Name of the device.')
-        self.register(key='code', units='', tpe=str, definition='Secondary ID')
-        self.register(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility')
-        self.register(key='action', units='', tpe=ActionType,
-                      definition='Object action to perform.\nOnly used for model merging.',
-                      display=False)
-        self.register(key='comment', units='', tpe=str, definition='User comment')
+    @property
+    def property_list(self) -> Tuple[GCProp, ...]:
+        """
+        Class-level property list exposed as read-only instance view.
+        :return: Tuple of GCProp
+        """
+        self_cls: type = type(self)
+        return self_cls.CLASS_PROPERTY_LIST
+
+    @property
+    def registered_properties(self) -> Dict[str, GCProp]:
+        """
+        Class-level registered properties exposed as read-only instance view.
+        :return: Dict[str, GCProp]
+        """
+        self_cls: type = type(self)
+        return self_cls.CLASS_REGISTERED_PROPERTIES
+
+    @property
+    def non_editable_properties(self) -> Tuple[str, ...]:
+        """
+        Class-level non-editable property names exposed as read-only instance view.
+        :return: Tuple[str, ...]
+        """
+        self_cls: type = type(self)
+        return self_cls.CLASS_NON_EDITABLE_PROPERTIES
+
+    @property
+    def properties_with_profile(self) -> Dict[str, str]:
+        """
+        Class-level property/profile map exposed as read-only instance view.
+        :return: Dict[str, str]
+        """
+        self_cls: type = type(self)
+        return self_cls.CLASS_PROPERTIES_WITH_PROFILE
+
+    def set_property_selected_to_merge(self, property_name: str, selected: bool) -> None:
+        """
+        Set merge-selection state for one property in this instance.
+        :param property_name: Property name
+        :param selected: Should this property be merged
+        :return: None
+        """
+        self.property_merge_selections[property_name] = selected
+
+    def get_property_selected_to_merge(self, property_name: str) -> bool:
+        """
+        Query merge-selection state for one property in this instance.
+        :param property_name: Property name
+        :return: True if selected for merge
+        """
+        selected = self.property_merge_selections.get(property_name, None)
+        if selected is None:
+            return True
+        else:
+            return selected
 
     @property
     def auto_update_enabled(self):
@@ -471,8 +642,7 @@ class EditableDevice:
                  is_color: bool = False,
                  is_date: bool = False):
         """
-        Register property
-        The property must exist, and if provided, the profile_name property must exist too
+        Runtime registration is intentionally disabled.
         :param key: key (this is the displayed name)
         :param units: string with the declared units
         :param tpe: type of the attribute [Type[int], Type[bool], Type[float], Type[str], DeviceType, Type[BuildStatus]]
@@ -484,34 +654,10 @@ class EditableDevice:
         :param is_color: is this a color property?
         :param is_date: Is this a date property?
         """
-        assert (hasattr(self, key))  # the property must exist, this avoids bugs when registering
-
-        # create GCProp object
-        prop = GCProp(prop_name=key,
-                      units=units,
-                      tpe=tpe,
-                      definition=definition,
-                      profile_name=profile_name,
-                      display=display,
-                      editable=editable,
-                      old_names=old_names,
-                      is_color=is_color,
-                      is_date=is_date)
-
-        if key in self.registered_properties.keys():
-            raise Exception(f"Property {key} already registered!")
-
-        self.registered_properties[key] = prop
-
-        self.property_list.append(prop)
-
-        if profile_name != '':
-            assert (hasattr(self, profile_name))  # the profile property must exist, this avoids bugs in registering
-            assert (isinstance(getattr(self, profile_name), Profile))  # the profile must be of type "Profile"
-            self.properties_with_profile[key] = profile_name
-
-        if not editable:
-            self.non_editable_properties.append(key)
+        raise RuntimeError(
+            "Runtime property registration is disabled. "
+            "Declare properties in LOCAL_PROPERTY_DECLARATIONS."
+        )
 
     def get_property_name_replacements_dict(self) -> Dict[str, str]:
         """

@@ -3,14 +3,42 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
+
 from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class PowerFlowOptions(OptionsTemplate):
     """
     Power flow options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="solver_type", tpe=SolverType),
+        GCPropDecl(key="retry_with_other_methods", tpe=bool),
+        GCPropDecl(key="tolerance", tpe=float),
+        GCPropDecl(key="max_iter", tpe=int),
+        GCPropDecl(key="limit_i_vsc", tpe=bool),
+        GCPropDecl(key="control_Q", tpe=bool),
+        GCPropDecl(key="verbose", tpe=int),
+        GCPropDecl(key="initialize_with_existing_solution", tpe=bool),
+        GCPropDecl(key="control_taps_modules", tpe=bool),
+        GCPropDecl(key="control_taps_phase", tpe=bool),
+        GCPropDecl(key="control_remote_voltage", tpe=bool),
+        GCPropDecl(key="orthogonalize_controls", tpe=bool),
+        GCPropDecl(key="apply_temperature_correction", tpe=bool),
+        GCPropDecl(key="branch_impedance_tolerance_mode", tpe=BranchImpedanceMode),
+        GCPropDecl(key="distributed_slack", tpe=bool),
+        GCPropDecl(key="ignore_single_node_islands", tpe=bool),
+        GCPropDecl(key="trust_radius", tpe=float),
+        GCPropDecl(key="backtracking_parameter", tpe=float),
+        GCPropDecl(key="use_stored_guess", tpe=bool),
+        GCPropDecl(key="initialize_angles", tpe=bool),
+        GCPropDecl(key="generate_report", tpe=bool),
+    )
 
     def __init__(self,
                  solver_type: SolverType = SolverType.NR,
@@ -97,24 +125,3 @@ class PowerFlowOptions(OptionsTemplate):
 
         self.generate_report = generate_report
 
-        self.register(key="solver_type", tpe=SolverType)
-        self.register(key="retry_with_other_methods", tpe=bool)
-        self.register(key="tolerance", tpe=float)
-        self.register(key="max_iter", tpe=int)
-        self.register(key="limit_i_vsc", tpe=bool)
-        self.register(key="control_Q", tpe=bool)
-        self.register(key="verbose", tpe=int)
-        self.register(key="initialize_with_existing_solution", tpe=bool)
-        self.register(key="control_taps_modules", tpe=bool)
-        self.register(key="control_taps_phase", tpe=bool)
-        self.register(key="control_remote_voltage", tpe=bool)
-        self.register(key="orthogonalize_controls", tpe=bool)
-        self.register(key="apply_temperature_correction", tpe=bool)
-        self.register(key="branch_impedance_tolerance_mode", tpe=BranchImpedanceMode)
-        self.register(key="distributed_slack", tpe=bool)
-        self.register(key="ignore_single_node_islands", tpe=bool)
-        self.register(key="trust_radius", tpe=float)
-        self.register(key="backtracking_parameter", tpe=float)
-        self.register(key="use_stored_guess", tpe=bool)
-        self.register(key="initialize_angles", tpe=bool)
-        self.register(key="generate_report", tpe=bool)

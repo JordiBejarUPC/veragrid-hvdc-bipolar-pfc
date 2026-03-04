@@ -3,14 +3,27 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
+
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+
 
 
 class EmtOptions(OptionsTemplate):
     """
     Rms simulation options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key="time_step", tpe=float),
+        GCPropDecl(key="simulation_time", tpe=float),
+        GCPropDecl(key="tolerance", tpe=float),
+        GCPropDecl(key="solver", tpe=EmtSolverTypes),
+        GCPropDecl(key="integration_method", tpe=DynamicIntegrationMethod),
+        GCPropDecl(key="verbose", tpe=int),
+    )
 
     def __init__(self,
                  time_step: float = 0.0001,
@@ -36,10 +49,4 @@ class EmtOptions(OptionsTemplate):
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.verbose = verbose
 
-        self.register(key="time_step", tpe=float)
-        self.register(key="simulation_time", tpe=float)
-        self.register(key="tolerance", tpe=float)
-        self.register(key="solver", tpe=EmtSolverTypes)
-        self.register(key="integration_method", tpe=DynamicIntegrationMethod)
-        self.register(key="verbose", tpe=int)
 

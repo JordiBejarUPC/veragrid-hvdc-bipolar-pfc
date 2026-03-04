@@ -9,6 +9,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.enumerations import DeviceType, SubObjectType, BuildStatus
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
+from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import CONNECTION_TYPE
@@ -22,6 +23,16 @@ class FluidPath(PhysicalDevice):
         'max_flow',
         'color',
         '_locations',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
+        GCPropDecl(key='source', units="", tpe=DeviceType.FluidNodeDevice, definition="Source node"),
+        GCPropDecl(key='target', units="", tpe=DeviceType.FluidNodeDevice, definition="Target node"),
+        GCPropDecl(key='min_flow', units="m3/s", tpe=float, definition="Minimum flow"),
+        GCPropDecl(key='max_flow', units="m3/s", tpe=float, definition="Maximum flow"),
+        GCPropDecl(key='locations', units='', tpe=SubObjectType.LineLocations, definition='Locations', editable=False),
+        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint the device in the map diagram',
+                      is_color=True),
     )
 
     def __init__(self,
@@ -62,13 +73,6 @@ class FluidPath(PhysicalDevice):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-        self.register(key='source', units="", tpe=DeviceType.FluidNodeDevice, definition="Source node")
-        self.register(key='target', units="", tpe=DeviceType.FluidNodeDevice, definition="Target node")
-        self.register(key='min_flow', units="m3/s", tpe=float, definition="Minimum flow")
-        self.register(key='max_flow', units="m3/s", tpe=float, definition="Maximum flow")
-        self.register(key='locations', units='', tpe=SubObjectType.LineLocations, definition='Locations', editable=False)
-        self.register(key='color', units='', tpe=str, definition='Color to paint the device in the map diagram',
-                      is_color=True)
 
     def copy(self):
         """
