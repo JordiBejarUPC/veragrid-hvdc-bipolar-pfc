@@ -13,7 +13,7 @@ import math
 
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec, Vec, CxMat
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.enumerations import SubObjectType
 
@@ -270,14 +270,14 @@ class OverheadLineType(EditableDevice):
         'opex'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='earth_resistivity', units='Ohm/m3', tpe=float, definition='Earth resistivity'),
-        GCPropDecl(key='frequency', units='Hz', tpe=float, definition='Frequency'),
-        GCPropDecl(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line'),
-        GCPropDecl(key='wires_in_tower', units='', tpe=SubObjectType.ListOfWires,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='earth_resistivity', units='Ohm/m3', tpe=float, definition='Earth resistivity'),
+        GCProp(key='frequency', units='Hz', tpe=float, definition='Frequency'),
+        GCProp(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line'),
+        GCProp(key='wires_in_tower', units='', tpe=SubObjectType.ListOfWires,
                       definition='List of wires', editable=False, display=False),
-        GCPropDecl(key='capex', units='currency/km', tpe=float, definition='Capital expenditure per km'),
-        GCPropDecl(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
+        GCProp(key='capex', units='currency/km', tpe=float, definition='Capital expenditure per km'),
+        GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
     )
 
     def __init__(self, name='Tower', idtag: str | None = None,

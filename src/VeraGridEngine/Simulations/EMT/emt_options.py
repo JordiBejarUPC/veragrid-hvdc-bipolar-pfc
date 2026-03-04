@@ -7,7 +7,7 @@ from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -16,13 +16,13 @@ class EmtOptions(OptionsTemplate):
     Rms simulation options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="time_step", tpe=float),
-        GCPropDecl(key="simulation_time", tpe=float),
-        GCPropDecl(key="tolerance", tpe=float),
-        GCPropDecl(key="solver", tpe=EmtSolverTypes),
-        GCPropDecl(key="integration_method", tpe=DynamicIntegrationMethod),
-        GCPropDecl(key="verbose", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="time_step", tpe=float),
+        GCProp(key="simulation_time", tpe=float),
+        GCProp(key="tolerance", tpe=float),
+        GCProp(key="solver", tpe=EmtSolverTypes),
+        GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
+        GCProp(key="verbose", tpe=int),
     )
 
     def __init__(self,

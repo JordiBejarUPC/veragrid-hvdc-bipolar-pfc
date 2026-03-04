@@ -7,7 +7,7 @@ from typing import Tuple
 
 from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -16,28 +16,28 @@ class PowerFlowOptions(OptionsTemplate):
     Power flow options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="solver_type", tpe=SolverType),
-        GCPropDecl(key="retry_with_other_methods", tpe=bool),
-        GCPropDecl(key="tolerance", tpe=float),
-        GCPropDecl(key="max_iter", tpe=int),
-        GCPropDecl(key="limit_i_vsc", tpe=bool),
-        GCPropDecl(key="control_Q", tpe=bool),
-        GCPropDecl(key="verbose", tpe=int),
-        GCPropDecl(key="initialize_with_existing_solution", tpe=bool),
-        GCPropDecl(key="control_taps_modules", tpe=bool),
-        GCPropDecl(key="control_taps_phase", tpe=bool),
-        GCPropDecl(key="control_remote_voltage", tpe=bool),
-        GCPropDecl(key="orthogonalize_controls", tpe=bool),
-        GCPropDecl(key="apply_temperature_correction", tpe=bool),
-        GCPropDecl(key="branch_impedance_tolerance_mode", tpe=BranchImpedanceMode),
-        GCPropDecl(key="distributed_slack", tpe=bool),
-        GCPropDecl(key="ignore_single_node_islands", tpe=bool),
-        GCPropDecl(key="trust_radius", tpe=float),
-        GCPropDecl(key="backtracking_parameter", tpe=float),
-        GCPropDecl(key="use_stored_guess", tpe=bool),
-        GCPropDecl(key="initialize_angles", tpe=bool),
-        GCPropDecl(key="generate_report", tpe=bool),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="solver_type", tpe=SolverType),
+        GCProp(key="retry_with_other_methods", tpe=bool),
+        GCProp(key="tolerance", tpe=float),
+        GCProp(key="max_iter", tpe=int),
+        GCProp(key="limit_i_vsc", tpe=bool),
+        GCProp(key="control_Q", tpe=bool),
+        GCProp(key="verbose", tpe=int),
+        GCProp(key="initialize_with_existing_solution", tpe=bool),
+        GCProp(key="control_taps_modules", tpe=bool),
+        GCProp(key="control_taps_phase", tpe=bool),
+        GCProp(key="control_remote_voltage", tpe=bool),
+        GCProp(key="orthogonalize_controls", tpe=bool),
+        GCProp(key="apply_temperature_correction", tpe=bool),
+        GCProp(key="branch_impedance_tolerance_mode", tpe=BranchImpedanceMode),
+        GCProp(key="distributed_slack", tpe=bool),
+        GCProp(key="ignore_single_node_islands", tpe=bool),
+        GCProp(key="trust_radius", tpe=float),
+        GCProp(key="backtracking_parameter", tpe=float),
+        GCProp(key="use_stored_guess", tpe=bool),
+        GCProp(key="initialize_angles", tpe=bool),
+        GCProp(key="generate_report", tpe=bool),
     )
 
     def __init__(self,

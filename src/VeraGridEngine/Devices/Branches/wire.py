@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class Wire(EditableDevice):
@@ -22,14 +22,14 @@ class Wire(EditableDevice):
         '_max_current',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='R', units='Ohm/km', tpe=float, definition='resistance of the conductor', old_names=['r']),
-        GCPropDecl(key='diameter', units='mm', tpe=float, definition='Diameter of wire', old_names=['GMR', 'gmr']),
-        GCPropDecl(key='diameter_internal', units='mm', tpe=float, definition='Internal radius of the conductor'),
-        GCPropDecl(key='is_tube', units='', tpe=bool, definition='Is it a tubular conductor?'),
-        GCPropDecl(key='max_current', units='kA', tpe=float, definition='Maximum current of the conductor'),
-        GCPropDecl(key='stranding', tpe=str, definition='Stranding of wire'),
-        GCPropDecl(key='material', tpe=str, definition='Material of wire'),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='Ohm/km', tpe=float, definition='resistance of the conductor', old_names=['r']),
+        GCProp(key='diameter', units='mm', tpe=float, definition='Diameter of wire', old_names=['GMR', 'gmr']),
+        GCProp(key='diameter_internal', units='mm', tpe=float, definition='Internal radius of the conductor'),
+        GCProp(key='is_tube', units='', tpe=bool, definition='Is it a tubular conductor?'),
+        GCProp(key='max_current', units='kA', tpe=float, definition='Maximum current of the conductor'),
+        GCProp(key='stranding', tpe=str, definition='Stranding of wire'),
+        GCProp(key='material', tpe=str, definition='Material of wire'),
     )
 
     def __init__(self, name='',

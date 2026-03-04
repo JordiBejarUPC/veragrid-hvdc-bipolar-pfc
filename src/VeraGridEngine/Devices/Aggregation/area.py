@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class GenericAreaGroup(EditableDevice):
@@ -14,10 +14,10 @@ class GenericAreaGroup(EditableDevice):
         'color',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name=''),
-        GCPropDecl(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name=''),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='longitude', units='deg', tpe=float, definition='longitude.', profile_name=''),
+        GCProp(key='latitude', units='deg', tpe=float, definition='latitude.', profile_name=''),
+        GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
                       is_color=True),
     )
 

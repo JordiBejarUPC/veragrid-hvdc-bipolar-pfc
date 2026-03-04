@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 if TYPE_CHECKING:
@@ -42,42 +42,42 @@ class VSC(BranchParent):
         'y'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        # GCPropDecl(key='bus_dc_p', units="", tpe=DeviceType.BusDevice,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        # GCProp(key='bus_dc_p', units="", tpe=DeviceType.BusDevice,
         #               definition='DC positive bus', editable=False),
-        GCPropDecl(key='bus_dc_n', units="", tpe=DeviceType.BusDevice,
+        GCProp(key='bus_dc_n', units="", tpe=DeviceType.BusDevice,
                       definition='DC negative bus', editable=False),
-        # GCPropDecl(key='bus_ac', units="", tpe=DeviceType.BusDevice,
+        # GCProp(key='bus_ac', units="", tpe=DeviceType.BusDevice,
         #               definition='AC bus', editable=False),
-        GCPropDecl(key='alpha1', units='', tpe=float,
+        GCProp(key='alpha1', units='', tpe=float,
                       definition='Losses constant parameter (IEC 62751-2 loss Correction).'),
-        GCPropDecl(key='alpha2', units='', tpe=float,
+        GCProp(key='alpha2', units='', tpe=float,
                       definition='Losses linear parameter (IEC 62751-2 loss Correction).'),
-        GCPropDecl(key='alpha3', units='', tpe=float,
+        GCProp(key='alpha3', units='', tpe=float,
                       definition='Losses quadratic parameter (IEC 62751-2 loss Correction).'),
-        GCPropDecl(key='kdp', units='p.u./p.u.', tpe=float, definition='Droop Power/Voltage slope.'),
-        GCPropDecl(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
+        GCProp(key='kdp', units='p.u./p.u.', tpe=float, definition='Droop Power/Voltage slope.'),
+        GCProp(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
                       definition='Control mode 1.'),
-        GCPropDecl(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
+        GCProp(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
                       definition='Control mode 2.'),
-        GCPropDecl(key='control1_val', units='', tpe=float, profile_name="control1_val_prof",
+        GCProp(key='control1_val', units='', tpe=float, profile_name="control1_val_prof",
                       definition='Control value 1.'
                                  'p.u. for voltage\n'
                                  'rad for angles\n'
                                  'MW for P\n'
                                  'MVAr for Q'),
-        GCPropDecl(key='control2_val', units='', tpe=float, profile_name="control2_val_prof",
+        GCProp(key='control2_val', units='', tpe=float, profile_name="control2_val_prof",
                       definition='Control value 2.'
                                  'p.u. for voltage\n'
                                  'rad for angles\n'
                                  'MW for P\n'
                                  'MVAr for Q'),
-        GCPropDecl(key='control1_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control1_dev_prof",
+        GCProp(key='control1_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control1_dev_prof",
                       definition='Controlled device, None to apply to this converter', editable=False),
-        GCPropDecl(key='control2_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control2_dev_prof",
+        GCProp(key='control2_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control2_dev_prof",
                       definition='Controlled device, None to apply to this converter', editable=False),
-        GCPropDecl(key='x', units='px', tpe=float, definition='x position'),
-        GCPropDecl(key='y', units='px', tpe=float, definition='y position'),
+        GCProp(key='x', units='px', tpe=float, definition='x position'),
+        GCProp(key='y', units='px', tpe=float, definition='y position'),
     )
 
     def __init__(self,

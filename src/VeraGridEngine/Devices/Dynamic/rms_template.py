@@ -8,7 +8,7 @@ from typing import Tuple
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class RmsModelTemplate(PointerDeviceParent):
@@ -21,8 +21,8 @@ class RmsModelTemplate(PointerDeviceParent):
         '_device_type'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
                       definition='DAE block', editable=False, display=False),
     )
 

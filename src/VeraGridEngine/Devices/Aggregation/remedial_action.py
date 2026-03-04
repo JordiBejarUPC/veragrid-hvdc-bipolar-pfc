@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.remedial_action_group import RemedialActionGroup
 from VeraGridEngine.enumerations import ContingencyOperationTypes, DeviceType
@@ -16,11 +16,11 @@ class RemedialAction(PointerDeviceParent):
     """
     __slots__ = ('_prop', '_value', '_group')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='prop', units='', tpe=ContingencyOperationTypes,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='prop', units='', tpe=ContingencyOperationTypes,
                       definition=f'Object property to change'),
-        GCPropDecl(key='value', units='', tpe=float, definition='Property value'),
-        GCPropDecl(key='group', units='', tpe=DeviceType.RemedialActionGroupDevice,
+        GCProp(key='value', units='', tpe=float, definition='Property value'),
+        GCProp(key='group', units='', tpe=DeviceType.RemedialActionGroupDevice,
                       definition='Remedial action group'),
     )
 

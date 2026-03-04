@@ -6,7 +6,7 @@
 from typing import Optional, Tuple
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.enumerations import SmallSignalEmtBuildTypes
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -58,26 +58,26 @@ class SmallSignalStabilityEmtOptions(OptionsTemplate):
         Upper cap for adaptive Krylov dimension expansion.
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="k", tpe=int),
-        GCPropDecl(key="target_period", tpe=float),
-        GCPropDecl(key="target_frequency_hz", tpe=float),
-        GCPropDecl(key="max_krylov_dim", tpe=int),
-        GCPropDecl(key="ss_assessment_time", tpe=float),
-        GCPropDecl(key="verbose", tpe=int),
-        GCPropDecl(key="max_restarts", tpe=int),
-        GCPropDecl(key="restart_tol", tpe=float),
-        GCPropDecl(key="use_refined_ritz", tpe=bool),
-        GCPropDecl(key="adaptive_restart", tpe=bool),
-        GCPropDecl(key="stagnation_improve_ratio", tpe=float),
-        GCPropDecl(key="stagnation_patience", tpe=int),
-        GCPropDecl(key="deflation_tol", tpe=float),
-        GCPropDecl(key="prefer_ak_operator", tpe=bool),
-        GCPropDecl(key="use_numba_kernels", tpe=bool),
-        GCPropDecl(key="min_block_size", tpe=int),
-        GCPropDecl(key="max_block_size", tpe=int),
-        GCPropDecl(key="max_krylov_dim_cap", tpe=int),
-        GCPropDecl(key="build_type", tpe=SmallSignalEmtBuildTypes),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="k", tpe=int),
+        GCProp(key="target_period", tpe=float),
+        GCProp(key="target_frequency_hz", tpe=float),
+        GCProp(key="max_krylov_dim", tpe=int),
+        GCProp(key="ss_assessment_time", tpe=float),
+        GCProp(key="verbose", tpe=int),
+        GCProp(key="max_restarts", tpe=int),
+        GCProp(key="restart_tol", tpe=float),
+        GCProp(key="use_refined_ritz", tpe=bool),
+        GCProp(key="adaptive_restart", tpe=bool),
+        GCProp(key="stagnation_improve_ratio", tpe=float),
+        GCProp(key="stagnation_patience", tpe=int),
+        GCProp(key="deflation_tol", tpe=float),
+        GCProp(key="prefer_ak_operator", tpe=bool),
+        GCProp(key="use_numba_kernels", tpe=bool),
+        GCProp(key="min_block_size", tpe=int),
+        GCProp(key="max_block_size", tpe=int),
+        GCProp(key="max_krylov_dim_cap", tpe=int),
+        GCProp(key="build_type", tpe=SmallSignalEmtBuildTypes),
     )
 
     def __init__(self,

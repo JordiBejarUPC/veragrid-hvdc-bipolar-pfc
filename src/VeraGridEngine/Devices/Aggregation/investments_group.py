@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class InvestmentsGroup(EditableDevice):
@@ -17,10 +17,10 @@ class InvestmentsGroup(EditableDevice):
         'CAPEX',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='category', units='', tpe=str, definition='Some tag to category the investment group'),
-        GCPropDecl(key='discount_rate', units='%', tpe=float, definition='Investment group discount rate'),
-        GCPropDecl(key='CAPEX', units='€', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='category', units='', tpe=str, definition='Some tag to category the investment group'),
+        GCProp(key='discount_rate', units='%', tpe=float, definition='Investment group discount rate'),
+        GCProp(key='CAPEX', units='€', tpe=float,
                       definition="Capital Expenditure of the group (added to the individual investments' capex)"),
     )
 

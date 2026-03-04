@@ -8,7 +8,7 @@ from typing import Tuple
 from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow import (CpfStopAt,
                                                                                       CpfParametrization)
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -17,17 +17,17 @@ class ContinuationPowerFlowOptions(OptionsTemplate):
     ContinuationPowerFlowOptions
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="step", tpe=float),
-        GCPropDecl(key="approximation_order", tpe=CpfParametrization),
-        GCPropDecl(key="adapt_step", tpe=bool),
-        GCPropDecl(key="step_min", tpe=float),
-        GCPropDecl(key="step_max", tpe=float),
-        GCPropDecl(key="step_tol", tpe=float),
-        GCPropDecl(key="solution_tol", tpe=float),
-        GCPropDecl(key="max_it", tpe=int),
-        GCPropDecl(key="stop_at", tpe=CpfStopAt),
-        GCPropDecl(key="verbose", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="step", tpe=float),
+        GCProp(key="approximation_order", tpe=CpfParametrization),
+        GCProp(key="adapt_step", tpe=bool),
+        GCProp(key="step_min", tpe=float),
+        GCProp(key="step_max", tpe=float),
+        GCProp(key="step_tol", tpe=float),
+        GCProp(key="solution_tol", tpe=float),
+        GCProp(key="max_it", tpe=int),
+        GCProp(key="stop_at", tpe=CpfStopAt),
+        GCProp(key="verbose", tpe=int),
     )
 
     def __init__(self,

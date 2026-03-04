@@ -7,7 +7,7 @@ import numpy as np
 from VeraGridEngine.enumerations import AvailableTransferMode, SubObjectType
 from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -16,24 +16,24 @@ class AvailableTransferCapacityOptions(OptionsTemplate):
     Available Transfer Capacity Options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="distributed_slack", tpe=bool),
-        GCPropDecl(key="correct_values", tpe=bool),
-        GCPropDecl(key="use_provided_flows", tpe=bool),
-        GCPropDecl(key="bus_idx_from", tpe=SubObjectType.Array),
-        GCPropDecl(key="bus_idx_to", tpe=SubObjectType.Array),
-        GCPropDecl(key="inter_area_branch_idx", tpe=SubObjectType.Array),
-        GCPropDecl(key="inter_area_branch_sense", tpe=SubObjectType.Array),
-        GCPropDecl(key="Pf", tpe=SubObjectType.Array),
-        GCPropDecl(key="idx_hvdc_br", tpe=SubObjectType.Array),
-        GCPropDecl(key="inter_area_hvdc_branch_sense", tpe=SubObjectType.Array),
-        GCPropDecl(key="Pf_hvdc", tpe=SubObjectType.Array),
-        GCPropDecl(key="dT", tpe=float),
-        GCPropDecl(key="threshold", tpe=float),
-        GCPropDecl(key="mode", tpe=AvailableTransferMode),
-        GCPropDecl(key="max_report_elements", tpe=int),
-        GCPropDecl(key="use_clustering", tpe=bool),
-        GCPropDecl(key="cluster_number", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="distributed_slack", tpe=bool),
+        GCProp(key="correct_values", tpe=bool),
+        GCProp(key="use_provided_flows", tpe=bool),
+        GCProp(key="bus_idx_from", tpe=SubObjectType.Array),
+        GCProp(key="bus_idx_to", tpe=SubObjectType.Array),
+        GCProp(key="inter_area_branch_idx", tpe=SubObjectType.Array),
+        GCProp(key="inter_area_branch_sense", tpe=SubObjectType.Array),
+        GCProp(key="Pf", tpe=SubObjectType.Array),
+        GCProp(key="idx_hvdc_br", tpe=SubObjectType.Array),
+        GCProp(key="inter_area_hvdc_branch_sense", tpe=SubObjectType.Array),
+        GCProp(key="Pf_hvdc", tpe=SubObjectType.Array),
+        GCProp(key="dT", tpe=float),
+        GCProp(key="threshold", tpe=float),
+        GCProp(key="mode", tpe=AvailableTransferMode),
+        GCProp(key="max_report_elements", tpe=int),
+        GCProp(key="use_clustering", tpe=bool),
+        GCProp(key="cluster_number", tpe=int),
     )
 
     def __init__(self,

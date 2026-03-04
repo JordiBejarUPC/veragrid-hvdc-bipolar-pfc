@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 
 
 class UPFC(BranchParent):
@@ -34,28 +34,28 @@ class UPFC(BranchParent):
         'Qfset',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='R', units='p.u.', tpe=float, definition='Series positive sequence resistance.',
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='p.u.', tpe=float, definition='Series positive sequence resistance.',
                       old_names=['Rs']),
-        GCPropDecl(key='X', units='p.u.', tpe=float, definition='Series positive sequence reactance.',
+        GCProp(key='X', units='p.u.', tpe=float, definition='Series positive sequence reactance.',
                       old_names=['Xs']),
-        GCPropDecl(key='Rsh', units='p.u.', tpe=float, definition='Shunt positive sequence resistance.'),
-        GCPropDecl(key='Xsh', units='p.u.', tpe=float, definition='Shunt positive sequence resistance.'),
-        GCPropDecl(key='R0', units='p.u.', tpe=float, definition='Series zero sequence resistance.',
+        GCProp(key='Rsh', units='p.u.', tpe=float, definition='Shunt positive sequence resistance.'),
+        GCProp(key='Xsh', units='p.u.', tpe=float, definition='Shunt positive sequence resistance.'),
+        GCProp(key='R0', units='p.u.', tpe=float, definition='Series zero sequence resistance.',
                       old_names=['Rs0']),
-        GCPropDecl(key='X0', units='p.u.', tpe=float, definition='Series zero sequence reactance.',
+        GCProp(key='X0', units='p.u.', tpe=float, definition='Series zero sequence reactance.',
                       old_names=['Xs0']),
-        GCPropDecl(key='Rsh0', units='p.u.', tpe=float, definition='Shunt zero sequence resistance.'),
-        GCPropDecl(key='Xsh0', units='p.u.', tpe=float, definition='Shunt zero sequence resistance.'),
-        GCPropDecl(key='R2', units='p.u.', tpe=float, definition='Series negative sequence resistance.',
+        GCProp(key='Rsh0', units='p.u.', tpe=float, definition='Shunt zero sequence resistance.'),
+        GCProp(key='Xsh0', units='p.u.', tpe=float, definition='Shunt zero sequence resistance.'),
+        GCProp(key='R2', units='p.u.', tpe=float, definition='Series negative sequence resistance.',
                       old_names=['Rs2']),
-        GCPropDecl(key='X2', units='p.u.', tpe=float, definition='Series negative sequence reactance.',
+        GCProp(key='X2', units='p.u.', tpe=float, definition='Series negative sequence reactance.',
                       old_names=['Xs2']),
-        GCPropDecl(key='Rsh2', units='p.u.', tpe=float, definition='Shunt negative sequence resistance.'),
-        GCPropDecl(key='Xsh2', units='p.u.', tpe=float, definition='Shunt negative sequence resistance.'),
-        GCPropDecl(key='Vsh', units='p.u.', tpe=float, definition='Shunt voltage set point.'),
-        GCPropDecl(key='Pfset', units='MW', tpe=float, definition='Active power set point.'),
-        GCPropDecl(key='Qfset', units='MVAr', tpe=float, definition='Active power set point.'),
+        GCProp(key='Rsh2', units='p.u.', tpe=float, definition='Shunt negative sequence resistance.'),
+        GCProp(key='Xsh2', units='p.u.', tpe=float, definition='Shunt negative sequence resistance.'),
+        GCProp(key='Vsh', units='p.u.', tpe=float, definition='Shunt voltage set point.'),
+        GCProp(key='Pfset', units='MW', tpe=float, definition='Active power set point.'),
+        GCProp(key='Qfset', units='MVAr', tpe=float, definition='Active power set point.'),
     )
 
     def __init__(self,

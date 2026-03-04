@@ -5,17 +5,17 @@
 
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class Technology(EditableDevice):
     __slots__ = ('name2', 'name3', 'name4', 'color')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='name2', units='', tpe=str, definition='Name 2 of the technology'),
-        GCPropDecl(key='name3', units='', tpe=str, definition='Name 3 of the technology'),
-        GCPropDecl(key='name4', units='', tpe=str, definition='Name 4 of the technology'),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='name2', units='', tpe=str, definition='Name 2 of the technology'),
+        GCProp(key='name3', units='', tpe=str, definition='Name 3 of the technology'),
+        GCProp(key='name4', units='', tpe=str, definition='Name 4 of the technology'),
+        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
     )
 
     def __init__(self, name: str = '',

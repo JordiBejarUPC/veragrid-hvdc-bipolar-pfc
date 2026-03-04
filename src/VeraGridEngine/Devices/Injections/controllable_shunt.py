@@ -11,7 +11,7 @@ from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -39,28 +39,28 @@ class ControllableShunt(ShuntParent):
         '_Vset_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?'),
-        GCPropDecl(key='is_controlled', units='', tpe=bool, definition='Is controlled?'),
-        GCPropDecl(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus'),
-        GCPropDecl(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?'),
+        GCProp(key='is_controlled', units='', tpe=bool, definition='Is controlled?'),
+        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus'),
+        GCProp(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
                       definition='Conductance steps', editable=False),
-        GCPropDecl(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
+        GCProp(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
                       definition='Susceptance steps', editable=False),
-        GCPropDecl(key='Gmax', units='MW', tpe=float,
+        GCProp(key='Gmax', units='MW', tpe=float,
                       definition='Maximum conductance', editable=True),
-        GCPropDecl(key='Gmin', units='MW', tpe=float,
+        GCProp(key='Gmin', units='MW', tpe=float,
                       definition='Minimum conductance', editable=True),
-        GCPropDecl(key='Bmax', units='MVAr', tpe=float,
+        GCProp(key='Bmax', units='MVAr', tpe=float,
                       definition='Maximum susceptance', editable=True),
-        GCPropDecl(key='Bmin', units='MVAr', tpe=float,
+        GCProp(key='Bmin', units='MVAr', tpe=float,
                       definition='Minimum susceptance', editable=True),
-        GCPropDecl(key='active_steps', units='', tpe=SubObjectType.Array,
+        GCProp(key='active_steps', units='', tpe=SubObjectType.Array,
                       definition='steps active?', editable=False),
-        GCPropDecl(key='step', units='', tpe=int,
+        GCProp(key='step', units='', tpe=int,
                       definition='Device step position (0~N-1)',
                       profile_name='step_prof'),
-        GCPropDecl(key='Vset', units='p.u.', tpe=float,
+        GCProp(key='Vset', units='p.u.', tpe=float,
                       definition='Set voltage. This is used for controlled shunts.',
                       profile_name='Vset_prof'),
     )

@@ -12,23 +12,23 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class FluidInjectionTemplate(PhysicalDevice):
     __slots__ = ('active', '_active_prof', 'efficiency', 'max_flow_rate',
                  '_plant', '_generator', 'build_status', 'facility')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof'),
-        GCPropDecl(key='efficiency', units="MWh/m3", tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof'),
+        GCProp(key='efficiency', units="MWh/m3", tpe=float,
                       definition="Power plant energy production per fluid unit"),
-        GCPropDecl(key='max_flow_rate', units="m3/s", tpe=float, definition="maximum fluid flow"),
-        GCPropDecl(key='plant', units="", tpe=DeviceType.FluidNodeDevice, definition="Connection reservoir/node",
+        GCProp(key='max_flow_rate', units="m3/s", tpe=float, definition="maximum fluid flow"),
+        GCProp(key='plant', units="", tpe=DeviceType.FluidNodeDevice, definition="Connection reservoir/node",
                       editable=False),
-        GCPropDecl(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
+        GCProp(key='generator', units="", tpe=DeviceType.GeneratorDevice, definition="Electrical machine",
                       editable=False),
-        GCPropDecl(key='facility', units='', tpe=DeviceType.FacilityDevice,
+        GCProp(key='facility', units='', tpe=DeviceType.FacilityDevice,
                       definition='Facility where this is located', editable=True),
     )
 

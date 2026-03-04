@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import InjectionParent
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.profile import Profile
 
 
@@ -41,29 +41,29 @@ class CurrentInjection(InjectionParent):
 
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='Ir', units='MW', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
                       profile_name='Ir_prof'),
-        GCPropDecl(key='Ir1', units='MW', tpe=float,
+        GCProp(key='Ir1', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
                       profile_name='Ir1_prof'),
-        GCPropDecl(key='Ir2', units='MW', tpe=float,
+        GCProp(key='Ir2', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
                       profile_name='Ir2_prof'),
-        GCPropDecl(key='Ir3', units='MW', tpe=float,
+        GCProp(key='Ir3', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.',
                       profile_name='Ir3_prof'),
-        GCPropDecl(key='Ii', units='MVAr', tpe=float,
+        GCProp(key='Ii', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
                       profile_name='Ii_prof'),
-        GCPropDecl(key='Ii1', units='MVAr', tpe=float,
+        GCProp(key='Ii1', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
                       profile_name='Ii1_prof'),
-        GCPropDecl(key='Ii2', units='MVAr', tpe=float,
+        GCProp(key='Ii2', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
                       profile_name='Ii2_prof'),
-        GCPropDecl(key='Ii3', units='MVAr', tpe=float,
+        GCProp(key='Ii3', units='MVAr', tpe=float,
                       definition='Reactive power of the current component at V=1.0 p.u.',
                       profile_name='Ii3_prof'),
     )

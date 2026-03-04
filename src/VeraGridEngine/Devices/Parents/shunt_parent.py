@@ -13,7 +13,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class ShuntParent(InjectionParent):
@@ -50,22 +50,22 @@ class ShuntParent(InjectionParent):
         '_ysh'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='G', units='MW', tpe=float, definition='Active power', profile_name='G_prof'),
-        GCPropDecl(key='G0', units='MW', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='G', units='MW', tpe=float, definition='Active power', profile_name='G_prof'),
+        GCProp(key='G0', units='MW', tpe=float,
                       definition='Zero sequence active power of the impedance component at V=1.0 p.u.',
                       profile_name='G0_prof'),
-        GCPropDecl(key='Ga', units='MW', tpe=float, definition='Active power', profile_name='Ga_prof'),
-        GCPropDecl(key='Gb', units='MW', tpe=float, definition='Active power', profile_name='Gb_prof'),
-        GCPropDecl(key='Gc', units='MW', tpe=float, definition='Active power', profile_name='Gc_prof'),
-        GCPropDecl(key='B', units='MVAr', tpe=float, definition='Reactive power', profile_name='B_prof'),
-        GCPropDecl(key='B0', units='MVAr', tpe=float,
+        GCProp(key='Ga', units='MW', tpe=float, definition='Active power', profile_name='Ga_prof'),
+        GCProp(key='Gb', units='MW', tpe=float, definition='Active power', profile_name='Gb_prof'),
+        GCProp(key='Gc', units='MW', tpe=float, definition='Active power', profile_name='Gc_prof'),
+        GCProp(key='B', units='MVAr', tpe=float, definition='Reactive power', profile_name='B_prof'),
+        GCProp(key='B0', units='MVAr', tpe=float,
                       definition='Zero sequence reactive power of the impedance component at V=1.0 p.u.',
                       profile_name='B0_prof'),
-        GCPropDecl(key='Ba', units='MVAr', tpe=float, definition='Reactive power', profile_name='Ba_prof'),
-        GCPropDecl(key='Bb', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bb_prof'),
-        GCPropDecl(key='Bc', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bc_prof'),
-        GCPropDecl('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
+        GCProp(key='Ba', units='MVAr', tpe=float, definition='Reactive power', profile_name='Ba_prof'),
+        GCProp(key='Bb', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bb_prof'),
+        GCProp(key='Bc', units='MVAr', tpe=float, definition='Reactive power', profile_name='Bc_prof'),
+        GCProp('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
                       definition='Shunt admittance matrix of the branch', editable=False, display=False),
     )
 

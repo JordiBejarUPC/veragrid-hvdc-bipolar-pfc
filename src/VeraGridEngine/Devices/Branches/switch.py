@@ -8,7 +8,7 @@ from typing import Tuple
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, SwitchGraphicType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 
 
 class Switch(BranchParent):
@@ -25,18 +25,18 @@ class Switch(BranchParent):
         'graphic_type'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='R', units='pu', tpe=float, definition='Positive-sequence resistance'),
-        GCPropDecl(key='X', units='pu', tpe=float, definition='Positive-sequence reactance'),
-        # GCPropDecl(key='is_open', units="", tpe=bool,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='pu', tpe=float, definition='Positive-sequence resistance'),
+        GCProp(key='X', units='pu', tpe=float, definition='Positive-sequence reactance'),
+        # GCProp(key='is_open', units="", tpe=bool,
         #               definition='Switch is open', old_names=['open']),
-        GCPropDecl(key='retained', units="", tpe=bool,
+        GCProp(key='retained', units="", tpe=bool,
                       definition='Switch is retained'),
-        GCPropDecl(key='normal_open', units="", tpe=bool,
+        GCProp(key='normal_open', units="", tpe=bool,
                       definition='Normal position of the switch'),
-        GCPropDecl(key='rated_current', units="kA", tpe=float,
+        GCProp(key='rated_current', units="kA", tpe=float,
                       definition='Rated current of the switch device.'),
-        GCPropDecl(key='graphic_type', units='', tpe=SwitchGraphicType,
+        GCProp(key='graphic_type', units='', tpe=SwitchGraphicType,
                       definition='Graphic to use in the schematic.'),
     )
 

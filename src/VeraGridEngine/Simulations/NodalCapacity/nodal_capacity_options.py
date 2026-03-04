@@ -9,7 +9,7 @@ from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Simulations import OptimalPowerFlowOptions
 from VeraGridEngine.enumerations import NodalCapacityMethod, SubObjectType, DeviceType
 from VeraGridEngine.basic_structures import IntVec
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -18,11 +18,11 @@ class NodalCapacityOptions(OptionsTemplate):
     Nodal Capacity Options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="capacity_nodes_idx", tpe=SubObjectType.Array),
-        GCPropDecl(key="method", tpe=NodalCapacityMethod),
-        GCPropDecl(key="nodal_capacity_sign", tpe=float),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="capacity_nodes_idx", tpe=SubObjectType.Array),
+        GCProp(key="method", tpe=NodalCapacityMethod),
+        GCProp(key="nodal_capacity_sign", tpe=float),
     )
 
     def __init__(self,

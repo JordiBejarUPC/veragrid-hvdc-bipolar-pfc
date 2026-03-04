@@ -7,7 +7,7 @@ from typing import Tuple
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -16,14 +16,14 @@ class RmsOptions(OptionsTemplate):
     Rms simulation options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="integration_method", tpe=DynamicIntegrationMethod),
-        GCPropDecl(key="initialization_method", tpe=RmsInitializationMethod),
-        GCPropDecl(key="time_step", tpe=float),
-        GCPropDecl(key="simulation_time", tpe=float),
-        GCPropDecl(key="tolerance", tpe=float),
-        GCPropDecl(key="use_init_values", tpe=bool),
-        GCPropDecl(key="max_iter", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
+        GCProp(key="initialization_method", tpe=RmsInitializationMethod),
+        GCProp(key="time_step", tpe=float),
+        GCProp(key="simulation_time", tpe=float),
+        GCProp(key="tolerance", tpe=float),
+        GCProp(key="use_init_values", tpe=bool),
+        GCProp(key="max_iter", tpe=int),
     )
 
     def __init__(self,

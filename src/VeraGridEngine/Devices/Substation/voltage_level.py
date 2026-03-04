@@ -7,7 +7,7 @@ from typing import Union, Tuple
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.substation import Substation
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class VoltageLevel(PhysicalDevice):
@@ -16,10 +16,10 @@ class VoltageLevel(PhysicalDevice):
         'substation',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='Vnom', units='kV', tpe=float, definition='Nominal voltage'),
-        GCPropDecl(key="substation", tpe=DeviceType.SubstationDevice,
-                      definition="Substation of this Voltage level (optional)"),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Vnom', units='kV', tpe=float, definition='Nominal voltage'),
+        GCProp(key="substation", tpe=DeviceType.SubstationDevice,
+               definition="Substation of this Voltage level (optional)"),
     )
 
     def __init__(self, name='VoltageLevel',
@@ -46,5 +46,3 @@ class VoltageLevel(PhysicalDevice):
         self.Vnom = float(Vnom)
 
         self.substation: Union[None, Substation] = substation
-
-

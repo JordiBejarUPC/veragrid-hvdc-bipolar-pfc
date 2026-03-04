@@ -13,7 +13,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class LoadParent(InjectionParent):
@@ -43,15 +43,15 @@ class LoadParent(InjectionParent):
         '_Qc_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
-        GCPropDecl(key='Pa', units='MW', tpe=float, definition='Phase A active power', profile_name='Pa_prof'),
-        GCPropDecl(key='Pb', units='MW', tpe=float, definition='Phase B active power', profile_name='Pb_prof'),
-        GCPropDecl(key='Pc', units='MW', tpe=float, definition='Phase C active power', profile_name='Pc_prof'),
-        GCPropDecl(key='Q', units='MVAr', tpe=float, definition='Reactive power', profile_name='Q_prof'),
-        GCPropDecl(key='Qa', units='MVAr', tpe=float, definition='Phase A reactive power', profile_name='Qa_prof'),
-        GCPropDecl(key='Qb', units='MVAr', tpe=float, definition='Phase B reactive power', profile_name='Qb_prof'),
-        GCPropDecl(key='Qc', units='MVAr', tpe=float, definition='Phase C reactive power', profile_name='Qc_prof'),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
+        GCProp(key='Pa', units='MW', tpe=float, definition='Phase A active power', profile_name='Pa_prof'),
+        GCProp(key='Pb', units='MW', tpe=float, definition='Phase B active power', profile_name='Pb_prof'),
+        GCProp(key='Pc', units='MW', tpe=float, definition='Phase C active power', profile_name='Pc_prof'),
+        GCProp(key='Q', units='MVAr', tpe=float, definition='Reactive power', profile_name='Q_prof'),
+        GCProp(key='Qa', units='MVAr', tpe=float, definition='Phase A reactive power', profile_name='Qa_prof'),
+        GCProp(key='Qb', units='MVAr', tpe=float, definition='Phase B reactive power', profile_name='Qb_prof'),
+        GCProp(key='Qc', units='MVAr', tpe=float, definition='Phase C reactive power', profile_name='Qc_prof'),
     )
 
     def __init__(self,

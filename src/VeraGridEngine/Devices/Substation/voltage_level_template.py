@@ -5,18 +5,18 @@
 from __future__ import annotations
 from typing import Tuple
 
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.enumerations import DeviceType, VoltageLevelTypes
 
 
 class VoltageLevelTemplate(EditableDevice):
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='vl_type', units='', tpe=VoltageLevelTypes, definition='Voltage level type', editable=True),
-        GCPropDecl(key='voltage', units='kV', tpe=float, definition='Voltage.', editable=True),
-        GCPropDecl(key='n_bays', units='', tpe=int,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='vl_type', units='', tpe=VoltageLevelTypes, definition='Voltage level type', editable=True),
+        GCProp(key='voltage', units='kV', tpe=float, definition='Voltage.', editable=True),
+        GCProp(key='n_bays', units='', tpe=int,
                       definition='Number of bays or modules to add.', editable=True),
-        GCPropDecl(key='add_disconnectors', units='', tpe=bool,
+        GCProp(key='add_disconnectors', units='', tpe=bool,
                       definition='Add disconnectors additionally to the circuit breakers', editable=True),
     )
 

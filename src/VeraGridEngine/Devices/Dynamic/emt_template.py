@@ -10,7 +10,7 @@ from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDevicePa
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class EmtModelTemplate(PointerDeviceParent):
@@ -22,8 +22,8 @@ class EmtModelTemplate(PointerDeviceParent):
         '_block',
         '_device_type')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
                       definition='DAE block', editable=False, display=False),
     )
 

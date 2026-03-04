@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.profile import Profile
 
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 
 # Global sqrt of 3 (bad practice?)
 SQRT3 = np.sqrt(3.0)
@@ -62,25 +62,25 @@ class BranchType(Enum):
 
 class Branch(BranchParent):
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
-        GCPropDecl(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
-        GCPropDecl(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.'),
-        GCPropDecl(key='G', units='p.u.', tpe=float, definition='Total positive sequence shunt conductance.'),
-        GCPropDecl(key='tolerance', units='%', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
+        GCProp(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
+        GCProp(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.'),
+        GCProp(key='G', units='p.u.', tpe=float, definition='Total positive sequence shunt conductance.'),
+        GCProp(key='tolerance', units='%', tpe=float,
                       definition='Tolerance expected for the impedance values % is expected for '
                                  'transformers0% for lines.'),
-        GCPropDecl(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
-        GCPropDecl(key='tap_module', units='', tpe=float, definition='Tap changer module, it a value close to 1.0'),
-        GCPropDecl(key='angle', units='rad', tpe=float, definition='Angle shift of the tap changer.'),
-        # GCPropDecl(key='template', units='', tpe=BranchType, definition='', editable=False),
-        GCPropDecl(key='bus_to_regulated', units='', tpe=bool, definition='Is the regulation at the bus to?'),
-        GCPropDecl(key='vset', units='p.u.', tpe=float, definition='set control voltage.'),
-        GCPropDecl(key='r_fault', units='p.u.', tpe=float, definition='Fault resistance.'),
-        GCPropDecl(key='x_fault', units='p.u.', tpe=float, definition='Fault reactance.'),
-        GCPropDecl(key='fault_pos', units='p.u.', tpe=float,
+        GCProp(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
+        GCProp(key='tap_module', units='', tpe=float, definition='Tap changer module, it a value close to 1.0'),
+        GCProp(key='angle', units='rad', tpe=float, definition='Angle shift of the tap changer.'),
+        # GCProp(key='template', units='', tpe=BranchType, definition='', editable=False),
+        GCProp(key='bus_to_regulated', units='', tpe=bool, definition='Is the regulation at the bus to?'),
+        GCProp(key='vset', units='p.u.', tpe=float, definition='set control voltage.'),
+        GCProp(key='r_fault', units='p.u.', tpe=float, definition='Fault resistance.'),
+        GCProp(key='x_fault', units='p.u.', tpe=float, definition='Fault reactance.'),
+        GCProp(key='fault_pos', units='p.u.', tpe=float,
                       definition='proportion of the fault location measured from the "from" bus.'),
-        # GCPropDecl(key='branch_type', units='p.u.', tpe=DeviceType, definition='Fault resistance.'),
+        # GCProp(key='branch_type', units='p.u.', tpe=DeviceType, definition='Fault resistance.'),
     )
 
     def __init__(self,

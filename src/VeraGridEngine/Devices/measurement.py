@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Union, Tuple
 import numpy as np
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Branches.line import Line
@@ -48,10 +48,10 @@ class MeasurementTemplate(PointerDeviceParent):
         '_sigma_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl("value", tpe=float, profile_name="value_prof",
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp("value", tpe=float, profile_name="value_prof",
                       definition="Value of the measurement"),
-        GCPropDecl("sigma", tpe=float, profile_name="sigma_prof",
+        GCProp("sigma", tpe=float, profile_name="sigma_prof",
                       definition="Uncertainty of the measurement"),
     )
 

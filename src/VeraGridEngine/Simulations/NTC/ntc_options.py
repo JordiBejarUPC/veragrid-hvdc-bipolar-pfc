@@ -10,7 +10,7 @@ from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.enumerations import AvailableTransferMode, SubObjectType, DeviceType
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -19,21 +19,21 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
     OptimalNetTransferCapacityOptions
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="sending_bus_idx", tpe=SubObjectType.Array),
-        GCPropDecl(key="receiving_bus_idx", tpe=SubObjectType.Array),
-        GCPropDecl(key="transfer_method", tpe=AvailableTransferMode),
-        GCPropDecl(key="loading_threshold_to_report", tpe=float),
-        GCPropDecl(key="skip_generation_limits", tpe=bool),
-        GCPropDecl(key="transmission_reliability_margin", tpe=float),
-        GCPropDecl(key="branch_exchange_sensitivity", tpe=float),
-        GCPropDecl(key="use_branch_exchange_sensitivity", tpe=bool),
-        GCPropDecl(key="branch_rating_contribution", tpe=float),
-        GCPropDecl(key="monitor_only_ntc_load_rule_branches", tpe=bool),
-        GCPropDecl(key="consider_contingencies", tpe=bool),
-        GCPropDecl(key="strict_formulation", tpe=bool),
-        GCPropDecl(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="sending_bus_idx", tpe=SubObjectType.Array),
+        GCProp(key="receiving_bus_idx", tpe=SubObjectType.Array),
+        GCProp(key="transfer_method", tpe=AvailableTransferMode),
+        GCProp(key="loading_threshold_to_report", tpe=float),
+        GCProp(key="skip_generation_limits", tpe=bool),
+        GCProp(key="transmission_reliability_margin", tpe=float),
+        GCProp(key="branch_exchange_sensitivity", tpe=float),
+        GCProp(key="use_branch_exchange_sensitivity", tpe=bool),
+        GCProp(key="branch_rating_contribution", tpe=float),
+        GCProp(key="monitor_only_ntc_load_rule_branches", tpe=bool),
+        GCProp(key="consider_contingencies", tpe=bool),
+        GCProp(key="strict_formulation", tpe=bool),
+        GCProp(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
     )
 
     def __init__(self,

@@ -5,14 +5,14 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
 class ClusteringAnalysisOptions(OptionsTemplate):
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="n_points", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="n_points", tpe=int),
     )
 
     def __init__(self, n_points: int):

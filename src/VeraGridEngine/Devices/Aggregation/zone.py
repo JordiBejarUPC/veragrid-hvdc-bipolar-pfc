@@ -4,15 +4,15 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Aggregation.area import GenericAreaGroup, Area
 
 
 class Zone(GenericAreaGroup):
     __slots__ = ('area',)
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="area", units="", tpe=DeviceType.AreaDevice, definition="Area of this zone."),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="area", units="", tpe=DeviceType.AreaDevice, definition="Area of this zone."),
     )
 
     def __init__(self, name='Zone',

@@ -9,7 +9,7 @@ from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from typing import Union
 from VeraGridEngine.enumerations import SolverType
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -18,12 +18,12 @@ class InvestmentsEvaluationOptions(OptionsTemplate):
     Investments Evaluation Options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="max_eval", tpe=int),
-        GCPropDecl(key="pf_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="solver", tpe=InvestmentEvaluationMethod),
-        GCPropDecl(key="objf_tpe", tpe=InvestmentsEvaluationObjectives),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="max_eval", tpe=int),
+        GCProp(key="pf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="solver", tpe=InvestmentEvaluationMethod),
+        GCProp(key="objf_tpe", tpe=InvestmentsEvaluationObjectives),
     )
 
     def __init__(self, max_eval: int,

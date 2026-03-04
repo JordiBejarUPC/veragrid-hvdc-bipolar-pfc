@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 from VeraGridEngine.enumerations import BranchGroupTypes
 
 
@@ -13,9 +13,9 @@ class BranchGroup(EditableDevice):
         'color'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='group_type', units='', tpe=BranchGroupTypes, definition=f'Type of branch group'),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='group_type', units='', tpe=BranchGroupTypes, definition=f'Type of branch group'),
+        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
     )
 
     def __init__(self,

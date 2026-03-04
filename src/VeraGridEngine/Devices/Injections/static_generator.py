@@ -8,14 +8,14 @@ from typing import Tuple
 
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class StaticGenerator(LoadParent):
     __slots__ = ("_Snom")
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
     )
 
     def __init__(self, name='StaticGen', idtag=None, code='', P=0.0, Q=0.0, active=True,

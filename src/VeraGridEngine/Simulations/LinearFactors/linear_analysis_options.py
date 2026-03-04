@@ -5,7 +5,7 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -14,11 +14,11 @@ class LinearAnalysisOptions(OptionsTemplate):
     LinearAnalysisOptions
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="distribute_slack", tpe=bool),
-        GCPropDecl(key="correct_values", tpe=bool),
-        GCPropDecl(key="ptdf_threshold", tpe=float),
-        GCPropDecl(key="lodf_threshold", tpe=float),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="distribute_slack", tpe=bool),
+        GCProp(key="correct_values", tpe=bool),
+        GCProp(key="ptdf_threshold", tpe=float),
+        GCProp(key="lodf_threshold", tpe=float),
     )
 
     def __init__(self,

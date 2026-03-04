@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class ContingencyGroup(EditableDevice):
@@ -13,9 +13,9 @@ class ContingencyGroup(EditableDevice):
     """
     __slots__ = ('category', 'active')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='category', units='', tpe=str, definition='Some tag to category the contingency group'),
-        GCPropDecl(key='active', units='', tpe=bool, definition='Is the contingency group active for consideration?'),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='category', units='', tpe=str, definition='Some tag to category the contingency group'),
+        GCProp(key='active', units='', tpe=bool, definition='Is the contingency group active for consideration?'),
     )
 
     def __init__(self, idtag: Union[str, None] = None, name="ContingencyGroup", category='', active: bool = True):

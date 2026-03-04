@@ -5,15 +5,15 @@
 
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class Owner(EditableDevice):
     __slots__ = ('address', 'color')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='address', units='', tpe=str, definition='Owner address'),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='address', units='', tpe=str, definition='Owner address'),
+        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
     )
 
     def __init__(self, name: str = '',

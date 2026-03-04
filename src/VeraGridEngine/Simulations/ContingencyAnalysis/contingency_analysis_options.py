@@ -9,7 +9,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -18,20 +18,20 @@ class ContingencyAnalysisOptions(OptionsTemplate):
     Contingency analysis options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="use_provided_flows", tpe=bool),
-        GCPropDecl(key="Pf", tpe=SubObjectType.Array),
-        GCPropDecl(key="contingency_method", tpe=ContingencyMethod),
-        GCPropDecl(key="pf_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="use_srap", tpe=bool),
-        GCPropDecl(key="srap_max_power", tpe=float),
-        GCPropDecl(key="srap_top_n", tpe=int),
-        GCPropDecl(key="srap_deadband", tpe=float),
-        GCPropDecl(key="srap_rever_to_nominal_rating", tpe=bool),
-        GCPropDecl(key="detailed_massive_report", tpe=bool),
-        GCPropDecl(key="contingency_deadband", tpe=float),
-        GCPropDecl(key="contingency_groups", tpe=SubObjectType.ObjectsList),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="use_provided_flows", tpe=bool),
+        GCProp(key="Pf", tpe=SubObjectType.Array),
+        GCProp(key="contingency_method", tpe=ContingencyMethod),
+        GCProp(key="pf_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="use_srap", tpe=bool),
+        GCProp(key="srap_max_power", tpe=float),
+        GCProp(key="srap_top_n", tpe=int),
+        GCProp(key="srap_deadband", tpe=float),
+        GCProp(key="srap_rever_to_nominal_rating", tpe=bool),
+        GCProp(key="detailed_massive_report", tpe=bool),
+        GCProp(key="contingency_deadband", tpe=float),
+        GCProp(key="contingency_groups", tpe=SubObjectType.ObjectsList),
     )
 
     def __init__(self,

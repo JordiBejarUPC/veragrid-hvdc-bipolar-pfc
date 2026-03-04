@@ -11,7 +11,7 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class GeneratorParent(InjectionParent):
@@ -32,15 +32,15 @@ class GeneratorParent(InjectionParent):
         '_srap_enabled_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Control bus',
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Control bus',
                       editable=True),
-        GCPropDecl(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
-        GCPropDecl(key='Pmin', units='MW', tpe=float, definition='Minimum active power. Used in OPF.',
+        GCProp(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
+        GCProp(key='Pmin', units='MW', tpe=float, definition='Minimum active power. Used in OPF.',
                       profile_name='Pmin_prof'),
-        GCPropDecl(key='Pmax', units='MW', tpe=float, definition='Maximum active power. Used in OPF.',
+        GCProp(key='Pmax', units='MW', tpe=float, definition='Maximum active power. Used in OPF.',
                       profile_name='Pmax_prof'),
-        GCPropDecl(key='srap_enabled', units='', tpe=bool,
+        GCProp(key='srap_enabled', units='', tpe=bool,
                       definition='Is the unit available for SRAP participation?',
                       editable=True, profile_name="srap_enabled_prof"),
     )

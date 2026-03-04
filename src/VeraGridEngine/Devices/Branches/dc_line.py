@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class DcLine(BranchParent):
@@ -27,16 +27,16 @@ class DcLine(BranchParent):
         '_locations',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
-        GCPropDecl(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
-        GCPropDecl(key='r_fault', units='p.u.', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
+        GCProp(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
+        GCProp(key='r_fault', units='p.u.', tpe=float,
                       definition='Resistance of the mid-line fault.Used in short circuit studies.'),
-        GCPropDecl(key='fault_pos', units='p.u.', tpe=float,
+        GCProp(key='fault_pos', units='p.u.', tpe=float,
                       definition='Per-unit positioning of the fault:0 would be at the "from" side,1 would '
                                  'be at the "to" side,therefore 0.5 is at the middle.'),
-        GCPropDecl(key='template', units='', tpe=DeviceType.AnyLineTemplateDevice, definition='', editable=False),
-        GCPropDecl(key='locations', units='', tpe=SubObjectType.LineLocations, definition='', editable=False),
+        GCProp(key='template', units='', tpe=DeviceType.AnyLineTemplateDevice, definition='', editable=False),
+        GCProp(key='locations', units='', tpe=SubObjectType.LineLocations, definition='', editable=False),
     )
 
     def __init__(self,

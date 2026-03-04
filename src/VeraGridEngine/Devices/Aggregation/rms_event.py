@@ -7,7 +7,7 @@ from typing import Union, Any, Tuple
 import numpy as np
 
 from VeraGridEngine import SubObjectType
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 #
 # from VeraGridEngine.Devices.Branches import *
 # from VeraGridEngine.Devices.Injections import *
@@ -29,14 +29,14 @@ class RmsEvent(PointerDeviceParent):
         '_group'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='parameter', units='', tpe=SubObjectType.VarType,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='parameter', units='', tpe=SubObjectType.VarType,
                       definition='parameter that the event changes'),
-        GCPropDecl(key='time', units='', tpe=float,
+        GCProp(key='time', units='', tpe=float,
                       definition='Time when the event occurs'),
-        GCPropDecl(key='value', units='', tpe=float,
+        GCProp(key='value', units='', tpe=float,
                       definition='New value for the parameter'),
-        GCPropDecl(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
+        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
     )
 
     def __init__(self,

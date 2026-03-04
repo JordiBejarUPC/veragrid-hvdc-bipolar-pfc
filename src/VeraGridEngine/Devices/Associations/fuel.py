@@ -5,16 +5,16 @@
 from typing import Union, Tuple
 import numpy as np
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class Fuel(EditableDevice):
     __slots__ = ('cost', '_cost_prof', 'color')
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='cost', units='e/t', tpe=float, definition='Cost of fuel (e / ton)',
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='cost', units='e/t', tpe=float, definition='Cost of fuel (e / ton)',
                       profile_name='cost_prof'),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
+        GCProp(key='color', units='', tpe=str, definition='Color to paint', is_color=True),
     )
 
     def __init__(self, name='',

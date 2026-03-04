@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class FluidNode(PhysicalDevice):
@@ -32,28 +32,28 @@ class FluidNode(PhysicalDevice):
         '_min_soc_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='min_level', units='hm3', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='min_level', units='hm3', tpe=float,
                       definition="Minimum amount of fluid at the node/reservoir"),
-        GCPropDecl(key='max_level', units='hm3', tpe=float,
+        GCProp(key='max_level', units='hm3', tpe=float,
                       definition="Maximum amount of fluid at the node/reservoir"),
-        GCPropDecl(key='min_soc', units='p.u.', tpe=float,
+        GCProp(key='min_soc', units='p.u.', tpe=float,
                       definition="Minimum SOC of fluid at the node/reservoir",
                       profile_name='min_soc_prof'),
-        GCPropDecl(key='max_soc', units='p.u.', tpe=float,
+        GCProp(key='max_soc', units='p.u.', tpe=float,
                       definition="Maximum SOC of fluid at the node/reservoir",
                       profile_name='max_soc_prof'),
-        GCPropDecl(key='initial_level', units='hm3', tpe=float,
+        GCProp(key='initial_level', units='hm3', tpe=float,
                       definition="Initial level of the node/reservoir"),
-        GCPropDecl(key='bus', units='', tpe=DeviceType.BusDevice,
+        GCProp(key='bus', units='', tpe=DeviceType.BusDevice,
                       definition='Electrical bus.', editable=False),
-        GCPropDecl(key='spillage_cost', units='e/(m3/s)', tpe=float,
+        GCProp(key='spillage_cost', units='e/(m3/s)', tpe=float,
                       definition='Cost of nodal spillage',
                       profile_name='spillage_cost_prof'),
-        GCPropDecl(key='inflow', units='m3/s', tpe=float,
+        GCProp(key='inflow', units='m3/s', tpe=float,
                       definition='Flow of fluid coming from the rain',
                       profile_name='inflow_prof'),
-        GCPropDecl(key='color', units='', tpe=str, definition='Color to paint the device in the map diagram',
+        GCProp(key='color', units='', tpe=str, definition='Color to paint the device in the map diagram',
                       is_color=True),
     )
 

@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Var
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 # from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
@@ -64,50 +64,50 @@ class Generator(GeneratorParent):
         '_must_run_prof'
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
-        GCPropDecl(key='Pf', units='', tpe=float,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
+        GCProp(key='Pf', units='', tpe=float,
                       definition='Power factor (cos(phi)). This is used for non-controlled generators.',
                       profile_name='Pf_prof'),
-        GCPropDecl(key='Vset', units='p.u.', tpe=float,
+        GCProp(key='Vset', units='p.u.', tpe=float,
                       definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
-        GCPropDecl(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
-        GCPropDecl(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
+        GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
+        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
                       profile_name='Qmin_prof'),
-        GCPropDecl(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
+        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
                       profile_name='Qmax_prof'),
-        GCPropDecl(key='use_reactive_power_curve', units='', tpe=bool,
+        GCProp(key='use_reactive_power_curve', units='', tpe=bool,
                       definition='Use the reactive power capability curve?'),
-        GCPropDecl(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
+        GCProp(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
                       definition='Capability curve data (double click on the generator to edit)',
                       editable=False, display=False),
-        GCPropDecl(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
-        GCPropDecl(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
-        GCPropDecl(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
-        GCPropDecl(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.'),
-        GCPropDecl(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
-        GCPropDecl(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
-        GCPropDecl(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
+        GCProp(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
+        GCProp(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
+        GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
+        GCProp(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.'),
+        GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
+        GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
+        GCProp(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
                       profile_name='Cost2_prof'),
-        GCPropDecl(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
+        GCProp(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
                       profile_name='Cost0_prof'),
-        GCPropDecl(key='StartupCost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.'),
-        GCPropDecl(key='ShutdownCost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.'),
-        GCPropDecl(key='MinTimeUp', units='h', tpe=float,
+        GCProp(key='StartupCost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.'),
+        GCProp(key='ShutdownCost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.'),
+        GCProp(key='MinTimeUp', units='h', tpe=float,
                       definition='Minimum time that the generator has to be on when started. Used in OPF.'),
-        GCPropDecl(key='MinTimeDown', units='h', tpe=float,
+        GCProp(key='MinTimeDown', units='h', tpe=float,
                       definition='Minimum time that the generator has to be off when shut down. Used in OPF.'),
-        GCPropDecl(key='RampUp', units='MW/h', tpe=float,
+        GCProp(key='RampUp', units='MW/h', tpe=float,
                       definition='Maximum amount of generation increase per hour.'),
-        GCPropDecl(key='RampDown', units='MW/h', tpe=float,
+        GCProp(key='RampDown', units='MW/h', tpe=float,
                       definition='Maximum amount of generation decrease per hour.'),
-        GCPropDecl(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
+        GCProp(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
                       definition='Enabled for dispatch? Used in OPF.'),
-        GCPropDecl(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
+        GCProp(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
                       definition='P >= Pmin constraint. Used in OPF with unit commitment active.'),
-        GCPropDecl(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
+        GCProp(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
                       definition='List of emissions', display=False),
-        GCPropDecl(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
+        GCProp(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
                       definition='List of fuels', display=False),
     )
 

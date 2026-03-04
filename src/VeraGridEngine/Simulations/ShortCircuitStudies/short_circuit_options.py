@@ -6,7 +6,7 @@ from typing import Tuple
 
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -15,17 +15,17 @@ class ShortCircuitOptions(OptionsTemplate):
     Short circuit options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="bus_index", tpe=int),
-        GCPropDecl(key="fault_type", tpe=FaultType),
-        GCPropDecl(key="method", tpe=MethodShortCircuit),
-        GCPropDecl(key="phases", tpe=PhasesShortCircuit),
-        GCPropDecl(key="mid_line_fault", tpe=bool),
-        GCPropDecl(key="branch_index", tpe=int),
-        GCPropDecl(key="branch_fault_locations", tpe=float),
-        GCPropDecl(key="branch_fault_r", tpe=int),
-        GCPropDecl(key="branch_fault_x", tpe=int),
-        GCPropDecl(key="verbose", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="bus_index", tpe=int),
+        GCProp(key="fault_type", tpe=FaultType),
+        GCProp(key="method", tpe=MethodShortCircuit),
+        GCProp(key="phases", tpe=PhasesShortCircuit),
+        GCProp(key="mid_line_fault", tpe=bool),
+        GCProp(key="branch_index", tpe=int),
+        GCProp(key="branch_fault_locations", tpe=float),
+        GCProp(key="branch_fault_r", tpe=int),
+        GCProp(key="branch_fault_x", tpe=int),
+        GCProp(key="verbose", tpe=int),
     )
 
     def __init__(self,

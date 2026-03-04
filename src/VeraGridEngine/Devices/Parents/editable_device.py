@@ -123,20 +123,33 @@ def smart_compare(a, b, atol=1.e-10):
 
 class GCProp:
     """
-    VeraGrid property
+    VeraGrid property, this class must remain immutable
     """
+    __slots__ = (
+        "_name",
+        "_units",
+        "_tpe",
+        "_definition",
+        "_profile_name",
+        "_display",
+        "_editable",
+        "_old_names",
+        "_is_color",
+        "_is_date",
+    )
 
     def __init__(self,
-                 prop_name: str,
-                 units: str,
-                 tpe: GCPROP_TYPES,
-                 definition: str,
+                 prop_name: Union[str, None] = None,
+                 units: str = "",
+                 tpe: Union[GCPROP_TYPES, None] = None,
+                 definition: str = "",
                  profile_name: str = '',
                  display: bool = True,
                  editable: bool = True,
-                 old_names: List[str] = None,
+                 old_names: Union[List[str], Tuple[str, ...], None] = None,
                  is_color: bool = False,
-                 is_date: bool = False):
+                 is_date: bool = False,
+                 key: Union[str, None] = None):
         """
         VeraGrid property
         :param prop_name:
@@ -150,27 +163,109 @@ class GCProp:
         :param is_date: Is this a date? i.e. the tpe is int but represents a date
         """
 
-        self.name = prop_name
+        if prop_name is None:
+            if key is None:
+                raise ValueError("Either 'prop_name' or 'key' must be provided.")
+            else:
+                self._name = key
+        else:
+            self._name = prop_name
+        if tpe is None:
+            raise ValueError("The 'tpe' argument must be provided.")
+        else:
+            pass
+        self._units: str = units
+        self._tpe: GCPROP_TYPES = tpe
+        self._definition: str = definition
+        self._profile_name: str = profile_name
+        self._display: bool = display
+        self._editable: bool = editable
+        self._is_color: bool = is_color
+        self._is_date: bool = is_date
+        if old_names is None:
+            self._old_names: Tuple[str, ...] = tuple()
+        else:
+            self._old_names = tuple(old_names)
 
-        self.units = units
+    @property
+    def name(self) -> str:
+        """
+        Property name.
+        :return: str
+        """
+        return self._name
 
-        self.tpe = tpe
+    @property
+    def units(self) -> str:
+        """
+        Property units.
+        :return: str
+        """
+        return self._units
 
-        self.definition = definition
+    @property
+    def tpe(self) -> GCPROP_TYPES:
+        """
+        Property type.
+        :return: GCPROP_TYPES
+        """
+        return self._tpe
 
-        self.profile_name = profile_name
+    @property
+    def definition(self) -> str:
+        """
+        Property definition.
+        :return: str
+        """
+        return self._definition
 
-        self.display = display
+    @property
+    def profile_name(self) -> str:
+        """
+        Linked profile name.
+        :return: str
+        """
+        return self._profile_name
 
-        self.editable = editable
+    @property
+    def display(self) -> bool:
+        """
+        Display flag.
+        :return: bool
+        """
+        return self._display
 
-        self.is_color = is_color
+    @property
+    def editable(self) -> bool:
+        """
+        Editable flag.
+        :return: bool
+        """
+        return self._editable
 
-        self.is_date = is_date
+    @property
+    def old_names(self) -> Tuple[str, ...]:
+        """
+        Compatibility aliases.
+        :return: Tuple[str, ...]
+        """
+        return self._old_names
 
-        self.old_names = old_names if old_names is not None else list()
+    @property
+    def is_color(self) -> bool:
+        """
+        Color flag.
+        :return: bool
+        """
+        return self._is_color
 
-        self.selected_to_merge = True  # only applicable if we want to apply the value of this property on merge
+    @property
+    def is_date(self) -> bool:
+        """
+        Date flag.
+        :return: bool
+        """
+        return self._is_date
 
     def has_profile(self) -> bool:
         """
@@ -216,58 +311,6 @@ class GCProp:
     def __repr__(self):
         return "prop:" + self.name
 
-
-class GCPropDecl:
-    """
-    Immutable declaration of a VeraGrid property at class-definition time.
-    """
-    __slots__ = (
-        "key",
-        "tpe",
-        "units",
-        "definition",
-        "profile_name",
-        "display",
-        "editable",
-        "old_names",
-        "is_color",
-        "is_date",
-    )
-
-    def __init__(self,
-                 key: str,
-                 tpe: GCPROP_TYPES,
-                 units: str = "",
-                 definition: str = "",
-                 profile_name: str = '',
-                 display: bool = True,
-                 editable: bool = True,
-                 old_names: Tuple[str, ...] = (),
-                 is_color: bool = False,
-                 is_date: bool = False) -> None:
-        """
-        Build an immutable property declaration object.
-        :param key: Property name
-        :param tpe: Property type
-        :param units: Property units
-        :param definition: Property description
-        :param profile_name: Optional linked profile property name
-        :param display: Should the property be shown in views
-        :param editable: Should the property be editable
-        :param old_names: Historical aliases used for compatibility
-        :param is_color: Whether this property encodes a color
-        :param is_date: Whether this property encodes a date
-        """
-        self.key: str = key
-        self.tpe: GCPROP_TYPES = tpe
-        self.units: str = units
-        self.definition: str = definition
-        self.profile_name: str = profile_name
-        self.display: bool = display
-        self.editable: bool = editable
-        self.old_names: Tuple[str, ...] = old_names
-        self.is_color: bool = is_color
-        self.is_date: bool = is_date
 
 
 def get_action_symbol(action: ActionType):
@@ -319,13 +362,13 @@ class EditableDeviceMeta(type):
         """
         cls = super().__new__(mcs, name, bases, namespace)
 
-        aggregated_declarations: List[GCPropDecl] = list()
+        aggregated_declarations: List[GCProp] = list()
         for base in bases:
-            base_declarations: Tuple[GCPropDecl, ...] = getattr(base, "CLASS_PROPERTY_DECLARATIONS", tuple())
+            base_declarations: Tuple[GCProp, ...] = getattr(base, "CLASS_PROPERTY_DECLARATIONS", tuple())
             for declaration in base_declarations:
                 aggregated_declarations.append(declaration)
 
-        local_declarations: Tuple[GCPropDecl, ...] = namespace.get("LOCAL_PROPERTY_DECLARATIONS", tuple())
+        local_declarations: Tuple[GCProp, ...] = namespace.get("LOCAL_PROPERTY_DECLARATIONS", tuple())
         for declaration in local_declarations:
             aggregated_declarations.append(declaration)
 
@@ -337,26 +380,16 @@ class EditableDeviceMeta(type):
         class_properties_with_profile: Dict[str, str] = dict()
 
         for declaration in cls.CLASS_PROPERTY_DECLARATIONS:
-            prop: GCProp = GCProp(prop_name=declaration.key,
-                                  units=declaration.units,
-                                  tpe=declaration.tpe,
-                                  definition=declaration.definition,
-                                  profile_name=declaration.profile_name,
-                                  display=declaration.display,
-                                  editable=declaration.editable,
-                                  old_names=list(declaration.old_names),
-                                  is_color=declaration.is_color,
-                                  is_date=declaration.is_date)
-
+            prop: GCProp = declaration
             class_registered_properties[prop.name] = prop
             class_property_list.append(prop)
 
-            if declaration.profile_name != '':
-                class_properties_with_profile[prop.name] = declaration.profile_name
+            if prop.profile_name != '':
+                class_properties_with_profile[prop.name] = prop.profile_name
             else:
                 pass
 
-            if declaration.editable:
+            if prop.editable:
                 pass
             else:
                 class_non_editable_properties.append(prop.name)
@@ -385,17 +418,17 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         'property_merge_selections',
         '__auto_update_enabled',
     )
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='idtag', units='', tpe=str, definition='Unique ID', editable=False),
-        GCPropDecl(key='name', units='', tpe=str, definition='Name of the device.'),
-        GCPropDecl(key='code', units='', tpe=str, definition='Secondary ID'),
-        GCPropDecl(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility'),
-        GCPropDecl(key='action', units='', tpe=ActionType,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='idtag', units='', tpe=str, definition='Unique ID', editable=False),
+        GCProp(key='name', units='', tpe=str, definition='Name of the device.'),
+        GCProp(key='code', units='', tpe=str, definition='Secondary ID'),
+        GCProp(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility'),
+        GCProp(key='action', units='', tpe=ActionType,
                    definition='Object action to perform.\nOnly used for model merging.',
                    display=False),
-        GCPropDecl(key='comment', units='', tpe=str, definition='User comment'),
+        GCProp(key='comment', units='', tpe=str, definition='User comment'),
     )
-    CLASS_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = tuple()
+    CLASS_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = tuple()
     CLASS_PROPERTY_LIST: Tuple[GCProp, ...] = tuple()
     CLASS_REGISTERED_PROPERTIES: Dict[str, GCProp] = dict()
     CLASS_NON_EDITABLE_PROPERTIES: Tuple[str, ...] = tuple()
@@ -498,6 +531,17 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             return True
         else:
             return selected
+
+    def iter_properties_selected_to_merge(self):
+        """
+        Iterate over properties selected to be merged for this instance.
+        :return: Generator[GCProp, None, None]
+        """
+        for prop in self.property_list:
+            if self.get_property_selected_to_merge(property_name=prop.name):
+                yield prop
+            else:
+                pass
 
     @property
     def auto_update_enabled(self):

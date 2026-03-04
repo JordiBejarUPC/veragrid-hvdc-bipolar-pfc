@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Tuple
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Aggregation.area import GenericAreaGroup
 from VeraGridEngine.Devices.Aggregation.country import Country
 
@@ -14,8 +14,8 @@ class Community(GenericAreaGroup):
         'country',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="country", units="", tpe=DeviceType.CountryDevice,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="country", units="", tpe=DeviceType.CountryDevice,
                       definition="Substation country, altenativelly this can be obtained from the community"),
     )
 

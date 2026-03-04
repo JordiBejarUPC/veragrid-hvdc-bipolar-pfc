@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, ExternalGridMode
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Parents.editable_device import get_at, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class ExternalGrid(LoadParent):
@@ -24,13 +24,13 @@ class ExternalGrid(LoadParent):
         '_Va_prof',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='mode', units='', tpe=ExternalGridMode,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='mode', units='', tpe=ExternalGridMode,
                       definition='Operation mode of the external grid (voltage or load)'),
-        GCPropDecl(key='substituted_device_id', units='', tpe=str,
+        GCProp(key='substituted_device_id', units='', tpe=str,
                       definition='idtag of the device that was substituted by this external grid equivalent'),
-        GCPropDecl(key='Vm', units='p.u.', tpe=float, definition='Active power', profile_name='Vm_prof'),
-        GCPropDecl(key='Va', units='radians', tpe=float, definition='Reactive power', profile_name='Va_prof'),
+        GCProp(key='Vm', units='p.u.', tpe=float, definition='Active power', profile_name='Vm_prof'),
+        GCProp(key='Va', units='radians', tpe=float, definition='Reactive power', profile_name='Va_prof'),
     )
 
     def __init__(self, name='External grid', idtag=None, code='', active=True, substituted_device_id: str = '',

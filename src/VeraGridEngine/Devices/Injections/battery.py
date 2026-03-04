@@ -6,7 +6,7 @@
 
 from typing import Tuple
 
-from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Injections.generator import Generator, BuildStatus
 
 
@@ -30,14 +30,14 @@ class Battery(Generator):
         'energy',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='Enom', units='MWh', tpe=float, definition='Nominal energy capacity.'),
-        GCPropDecl(key='max_soc', units='p.u.', tpe=float, definition='Minimum state of charge.'),
-        GCPropDecl(key='min_soc', units='p.u.', tpe=float, definition='Maximum state of charge.'),
-        GCPropDecl(key='soc_0', units='p.u.', tpe=float, definition='Initial state of charge.'),
-        GCPropDecl(key='charge_efficiency', units='p.u.', tpe=float, definition='Charging efficiency.'),
-        GCPropDecl(key='discharge_efficiency', units='p.u.', tpe=float, definition='Discharge efficiency.'),
-        GCPropDecl(key='discharge_per_cycle', units='p.u.', tpe=float, definition=''),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Enom', units='MWh', tpe=float, definition='Nominal energy capacity.'),
+        GCProp(key='max_soc', units='p.u.', tpe=float, definition='Minimum state of charge.'),
+        GCProp(key='min_soc', units='p.u.', tpe=float, definition='Maximum state of charge.'),
+        GCProp(key='soc_0', units='p.u.', tpe=float, definition='Initial state of charge.'),
+        GCProp(key='charge_efficiency', units='p.u.', tpe=float, definition='Charging efficiency.'),
+        GCProp(key='discharge_efficiency', units='p.u.', tpe=float, definition='Discharge efficiency.'),
+        GCProp(key='discharge_per_cycle', units='p.u.', tpe=float, definition=''),
     )
 
     def __init__(self, name='batt', idtag=None, code="", P=0.0, power_factor=0.8, vset=1.0,

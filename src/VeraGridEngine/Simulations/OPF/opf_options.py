@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGrou
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -21,36 +21,36 @@ class OptimalPowerFlowOptions(OptionsTemplate):
     OptimalPowerFlowOptions
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="verbose", tpe=int),
-        GCPropDecl(key="solver", tpe=SolverType),
-        GCPropDecl(key="time_grouping", tpe=TimeGrouping),
-        GCPropDecl(key="zonal_grouping", tpe=ZonalGrouping),
-        GCPropDecl(key="mip_solver", tpe=MIPSolvers),
-        GCPropDecl(key="dispatch_mode", tpe=OpfDispatchMode),
-        GCPropDecl(key="power_flow_options", tpe=DeviceType.SimulationOptionsDevice),
-        GCPropDecl(key="skip_generation_limits", tpe=bool),
-        GCPropDecl(key="consider_contingencies", tpe=bool),
-        GCPropDecl(key="contingency_groups_used", tpe=SubObjectType.Array),
-        GCPropDecl(key="lodf_tolerance", tpe=float),
-        GCPropDecl(key="add_losses_approximation", tpe=bool),
-        GCPropDecl(key="use_glsk_as_cost", tpe=bool),
-        GCPropDecl(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo),
-        GCPropDecl(key="consider_ramps", tpe=bool),
-        GCPropDecl(key="consider_time_up_down", tpe=bool),
-        GCPropDecl(key="area_spinning_reserve", tpe=bool),
-        GCPropDecl(key="report_formulation", tpe=bool),
-        GCPropDecl(key="generate_report", tpe=bool),
-        GCPropDecl(key="acopf_mode", tpe=AcOpfMode),
-        GCPropDecl(key="ips_method", tpe=SolverType),
-        GCPropDecl(key="ips_tolerance", tpe=float),
-        GCPropDecl(key="ips_iterations", tpe=int),
-        GCPropDecl(key="ips_trust_radius", tpe=float),
-        GCPropDecl(key="ips_init_with_pf", tpe=bool),
-        GCPropDecl(key="ips_control_q_limits", tpe=bool),
-        GCPropDecl(key="robust", tpe=bool),
-        GCPropDecl(key="acopf_v0", tpe=Vec),
-        GCPropDecl(key="acopf_S0", tpe=Vec),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="verbose", tpe=int),
+        GCProp(key="solver", tpe=SolverType),
+        GCProp(key="time_grouping", tpe=TimeGrouping),
+        GCProp(key="zonal_grouping", tpe=ZonalGrouping),
+        GCProp(key="mip_solver", tpe=MIPSolvers),
+        GCProp(key="dispatch_mode", tpe=OpfDispatchMode),
+        GCProp(key="power_flow_options", tpe=DeviceType.SimulationOptionsDevice),
+        GCProp(key="skip_generation_limits", tpe=bool),
+        GCProp(key="consider_contingencies", tpe=bool),
+        GCProp(key="contingency_groups_used", tpe=SubObjectType.Array),
+        GCProp(key="lodf_tolerance", tpe=float),
+        GCProp(key="add_losses_approximation", tpe=bool),
+        GCProp(key="use_glsk_as_cost", tpe=bool),
+        GCProp(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo),
+        GCProp(key="consider_ramps", tpe=bool),
+        GCProp(key="consider_time_up_down", tpe=bool),
+        GCProp(key="area_spinning_reserve", tpe=bool),
+        GCProp(key="report_formulation", tpe=bool),
+        GCProp(key="generate_report", tpe=bool),
+        GCProp(key="acopf_mode", tpe=AcOpfMode),
+        GCProp(key="ips_method", tpe=SolverType),
+        GCProp(key="ips_tolerance", tpe=float),
+        GCProp(key="ips_iterations", tpe=int),
+        GCProp(key="ips_trust_radius", tpe=float),
+        GCProp(key="ips_init_with_pf", tpe=bool),
+        GCProp(key="ips_control_q_limits", tpe=bool),
+        GCProp(key="robust", tpe=bool),
+        GCProp(key="acopf_v0", tpe=Vec),
+        GCProp(key="acopf_S0", tpe=Vec),
     )
 
     def __init__(self,

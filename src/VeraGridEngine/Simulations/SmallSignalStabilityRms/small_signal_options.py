@@ -7,7 +7,7 @@ from typing import Tuple
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.Devices.Parents.editable_device import GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
@@ -16,10 +16,10 @@ class SmallSignalStabilityRmsOptions(OptionsTemplate):
     Rms simulation options
     """
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key="ss_assessment_time", tpe=float),
-        GCPropDecl(key="k", tpe=int),
-        GCPropDecl(key="verbose", tpe=int),
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="ss_assessment_time", tpe=float),
+        GCProp(key="k", tpe=int),
+        GCProp(key="verbose", tpe=int),
     )
 
     def __init__(self,

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Union, Tuple
 
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCPropDecl
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.enumerations import DeviceType, FaultType, MethodShortCircuit, PhasesShortCircuit
 
@@ -22,11 +22,11 @@ class ShortCircuitEvent(PointerDeviceParent):
         'active',
     )
 
-    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCPropDecl, ...] = (
-        GCPropDecl(key='fault_type', units='', tpe=FaultType, definition='Type of short circuit'),
-        GCPropDecl(key='method', units='', tpe=MethodShortCircuit, definition='Method of short circuit'),
-        GCPropDecl(key='phases', units='', tpe=PhasesShortCircuit, definition='Phases involved'),
-        GCPropDecl(key='active', units='', tpe=bool,
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='fault_type', units='', tpe=FaultType, definition='Type of short circuit'),
+        GCProp(key='method', units='', tpe=MethodShortCircuit, definition='Method of short circuit'),
+        GCProp(key='phases', units='', tpe=PhasesShortCircuit, definition='Phases involved'),
+        GCProp(key='active', units='', tpe=bool,
                       definition='If true the short-circuit activates when calculated, otherwise is deactivated.'),
     )
 
