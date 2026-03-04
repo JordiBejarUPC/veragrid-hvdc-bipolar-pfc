@@ -9,7 +9,41 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import sin, cos
-from VeraGridEngine.Templates.templates_common_functions import tf_to_diffblock_with_output
+from VeraGridEngine.Templates.templates_common_functions import tf_to_diffblock_with_output, tf_to_block, discrete_control_block
+from VeraGridEngine.enumerations import WindingsConnection
+
+
+def parse_windings_connection(conn: WindingsConnection) -> tuple[WindingType, WindingType]:
+    """
+    Parse a WindingsConnection enum into (conn_f, conn_t) WindingType values.
+    
+    WindingsConnection values are two-character strings:
+    - G: GroundedStar
+    - S: NeutralStar (ungrounded star)  
+    - D: Delta
+    
+    Examples:
+    - GG -> (GroundedStar, GroundedStar)
+    - GD -> (GroundedStar, Delta)
+    - DD -> (Delta, Delta)
+    """
+    conn_str = str(conn)
+    if len(conn_str) != 2:
+        raise ValueError(f"Invalid WindingsConnection: {conn}")
+    
+    char_to_winding = {
+        'G': WindingType.GroundedStar,
+        'S': WindingType.NeutralStar,
+        'D': WindingType.Delta,
+    }
+    
+    conn_f = char_to_winding.get(conn_str[0])
+    conn_t = char_to_winding.get(conn_str[1])
+    
+    if conn_f is None or conn_t is None:
+        raise ValueError(f"Invalid WindingsConnection characters: {conn_str}")
+    
+    return conn_f, conn_t
 
 
 class TrafoRmsTemplate(RmsModelTemplate):
@@ -40,7 +74,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
             bmu = vf.add_var('bmu')
             vtap_f, vtap_t = trafo.get_virtual_taps()
             print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
-            print(f"DEBUG Trafo: tap={trafo.tap_module}, vtap_f={vtap_f}, vtap_t={vtap_t}")
+            print(f"DEBUG Trafo: tap_mod={trafo.tap_module}, tap_phase={trafo.tap_phase}, vtap_f={vtap_f}, vtap_t={vtap_t}")
 
             print(f"vtap  p is {vtap_f}")
             print(f"vtap  t is {vtap_t}")
@@ -52,12 +86,14 @@ class TrafoRmsTemplate(RmsModelTemplate):
             Vat = trafo.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
             # Calculate phase displacement matching transformer_admittance logic
-            conn_y_from = trafo.conn_f == WindingType.NeutralStar or trafo.conn_f == WindingType.GroundedStar
-            conn_y_to = trafo.conn_t == WindingType.NeutralStar or trafo.conn_t == WindingType.GroundedStar
+            # Use conn attribute (preserves user intent) instead of conn_f/conn_t (may be overwritten by template)
+            conn_f, conn_t = parse_windings_connection(trafo.conn)
+            conn_y_from = conn_f == WindingType.NeutralStar or conn_f == WindingType.GroundedStar
+            conn_y_to = conn_t == WindingType.NeutralStar or conn_t == WindingType.GroundedStar
 
-            if trafo.conn_f == WindingType.Delta and conn_y_to:  # Dy
+            if conn_f == WindingType.Delta and conn_y_to:  # Dy
                 phase_displacement = np.deg2rad(60.0)
-            elif conn_y_from and trafo.conn_t == WindingType.Delta:  # Yd
+            elif conn_y_from and conn_t == WindingType.Delta:  # Yd
                 phase_displacement = np.deg2rad(0.0)
             else:
                 phase_displacement = 0.0
@@ -83,7 +119,8 @@ class TrafoRmsTemplate(RmsModelTemplate):
                 event_dict={
                     m: vf.add_const(trafo.tap_module),
                     phi: vf.add_const(trafo.tap_phase)
-                }
+                },
+                in_vars=[Vmf, Vaf, Vmt, Vat],
             )
 
             block.external_mapping = {
@@ -119,7 +156,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
                     control_var = Vmt
                     block.event_dict[var_ref] = vf.add_const(trafo.vset)
 
-                PI_control_block, _, _ = tf_to_diffblock_with_output(
+                PI_control_block, _, _ = tf_to_block(
                     var_factory=vf,
                     num=[Ki],
                     den=[Kd, vf.add_const(1)],
@@ -129,41 +166,65 @@ class TrafoRmsTemplate(RmsModelTemplate):
                 block.add(PI_control_block)
 
             if trafo.tap_phase_control_mode != TapPhaseControl.fixed:
-                del block.event_dict[phi]
-                block.init_eqs[phi] = vf.add_const(trafo.tap_phase)
+                discretized_control = True
+                if discretized_control:
+                    del block.event_dict[phi]
+                    block.init_eqs[phi] = vf.add_const(trafo.tap_phase)
 
-                Ki = vf.add_var('Ki_phase')
-                Kp = vf.add_var('Kp_phase')
-                Tm = vf.add_var('Tm')
-                var_ref = vf.add_var('var_ref')
-                block.event_dict[Ki] = vf.add_const(0.1)
-                block.event_dict[Kp] = vf.add_const(0.1)
-                block.event_dict[Tm] = vf.add_const(0.1)
+                    Ki = vf.add_var('Ki_phase')
+                    Kp = vf.add_var('Kp_phase')
+                    Tm = vf.add_var('Tm')
+                    var_ref = vf.add_var('var_ref')
+                    block.event_dict[Ki] = vf.add_const(0.1)
+                    block.event_dict[Kp] = vf.add_const(0.1)
+                    block.event_dict[Tm] = vf.add_const(0.1)
 
-                if trafo.tap_phase_control_mode == TapPhaseControl.Pf:
-                    control_var = Pf
-                    block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
-                elif trafo.tap_phase_control_mode == TapPhaseControl.Pt:
-                    control_var = Pt
-                    block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
+                    if trafo.tap_phase_control_mode == TapPhaseControl.Pf:
+                        control_var = Pf
+                        block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
+                    elif trafo.tap_phase_control_mode == TapPhaseControl.Pt:
+                        control_var = Pt
+                        block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
 
-                Lead_Lag_block, control_var_mes, _ = tf_to_diffblock_with_output(
-                    var_factory=vf,
-                    num=[vf.add_const(1)],
-                    den=[vf.add_const(1), Tm],
-                    x=control_var,
-                )
+                    discretized_control,_ = discrete_control_block(
+                        var_factory=vf,
+                        m=m,
+                        m_min=trafo.tap_phase_min,
+                        m_max=trafo.tap_phase_max,
+                        delta_m=trafo.tap_phase_step,
+                        v=control_var,
+                        v_ref=var_ref,
+                        delta_v=0.01,
+                        ts=Tm,
+                    )
+                    block.children.append(discretized_control)
+                else:
+                    del block.event_dict[phi]
+                    block.init_eqs[phi] = vf.add_const(trafo.tap_phase)
 
-                PI_control_block, _, _ = tf_to_diffblock_with_output(
-                    var_factory=vf,
-                    num=[Ki, Kp],
-                    den=[0, vf.add_const(1)],
-                    x=control_var_mes - var_ref,
-                    y=phi,
-                )
-                block.init_eqs[control_var_mes] = control_var
-                block.children.extend([PI_control_block, Lead_Lag_block])
+                    Ki = vf.add_var('Ki_phase')
+                    Kp = vf.add_var('Kp_phase')
+                    var_ref = vf.add_var('var_ref')
+                    block.event_dict[Ki] = vf.add_const(0.1)
+                    block.event_dict[Kp] = vf.add_const(0.1)
 
+                    if trafo.tap_phase_control_mode == TapPhaseControl.Pf:
+                        control_var = Pf
+                        block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
+                    elif trafo.tap_phase_control_mode == TapPhaseControl.Pt:
+                        control_var = Pt
+                        block.event_dict[var_ref] = vf.add_const(trafo.Pset / Sbase)
+
+                    PI_control_block, _ = tf_to_block(
+                        var_factory=vf,
+                        num=[Ki, Kp],
+                        den=[0, vf.add_const(1)],
+                        x=control_var - var_ref,
+                        y=phi,
+                        name="Phase_Control_PI"
+                    )
+                    block.children.append(PI_control_block)
+            block.unify_blocks()
 
             self._block = block
 

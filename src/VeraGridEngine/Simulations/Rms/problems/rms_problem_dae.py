@@ -22,6 +22,7 @@ from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_ps
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 
@@ -194,9 +195,10 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.model.unify_blocks()
 
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                if not isinstance(elm, Transformer2W):
+                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                    elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
@@ -205,6 +207,28 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
+
+                # Run explicit initialization for branches to solve algebraic equations
+                if isinstance(elm, Transformer2W):
+
+                    if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                        init_explicit(mdl=elm.rms_model.model,
+                                      sys_vars=self.sys_vars,
+                                      variable_parameters=self._variable_parameters,
+                                      event_parameters_eqs=self._event_parameters_eqs,
+                                      constant_parameters=self._constant_parameters,
+                                      init_guess=self.init_guess,
+                                      uid2idx_vars=self.uid2idx_vars,
+                                      uid2idx_params=self._uid2idx_params,
+                                      uid2idx_event_params=self._uid2idx_event_params,
+                                      compiler_names_dict=self._compiler_names_dict,
+                                      alias_names_dict=self._alias_names_dict,
+                                      VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                                      TIME_NAME=self.TIME_NAME,
+                                      VARS_NAME=self.VARS_NAME,
+                                      DIFF_NAME=self.DIFF_NAME,
+                                      CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                                      )
 
                 # add model to system block
                 self.sys_block.add(elm.rms_model.model)
@@ -382,7 +406,27 @@ class RmsProblemDae(RmsProblemTemplate):
                     total_init_explicit_time += time.perf_counter() - t0
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
+                    init_pseudo_transient(
+                        mdl=elm.rms_model.model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        dtau0=1e0,
+                        max_iter=1000,
+                        tol=1e-6
+                    )
                 else:
                     raise ValueError("Not implemented initialization method")
 

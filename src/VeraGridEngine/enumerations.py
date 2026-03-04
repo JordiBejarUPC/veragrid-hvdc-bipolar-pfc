@@ -2672,6 +2672,9 @@ class ParamPowerFlowRefferenceType(Enum):
     ParamPowerFlowRefferenceType
     """
     NOTHING = "nothing"
+    #General
+    dt = "dt"  # time step for dynamic simulations
+    
     # Branch / load parameters
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
@@ -2745,6 +2748,8 @@ class ParamPowerFlowRefferenceType(Enum):
     freq = "freq"  # corresponds to Var("frequ")
     vf = "vf"
     tm0 = "tm0"
+
+
 
     def __str__(self):
         return self.value

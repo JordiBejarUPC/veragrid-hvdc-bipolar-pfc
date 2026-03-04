@@ -267,7 +267,7 @@ def VscGfmBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     event_dict = {
         a0: vfactory.add_const(0.0),
         a1: vfactory.add_const(0.0),
-        a2: vfactory.add_const(0.0),
+        a2: vfactory.add_const(0.1),
         Qf: vfactory.add_const(0.0),
     }
 
