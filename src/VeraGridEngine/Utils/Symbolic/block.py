@@ -301,11 +301,39 @@ class Block:
 
     def check_empty(self) -> bool:
         """
-        check if a model does not have state and algebraic variables
-
+        check if a block is an empty block
         :return:
+        :rtype: bool
         """
-        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
+        return (
+                not self.state_vars and
+                not self.state_eqs and
+                not self.algebraic_vars and
+                not self.algebraic_eqs and
+                not self.diff_vars and
+                not self.reformulated_vars and
+                not self.differential_eqs and
+                not self.parameters and
+                not self.alter_params and
+                not self.init_values and
+                not self.init_eqs and
+                not self.diff_init_eqs and
+                not self.children and
+                not self.in_vars and
+                not self.out_vars and
+                not self.event_dict and
+                not self.external_mapping and
+                not self.api_obj_mapping and
+                not self.name
+        )
+
+    # def check_empty(self) -> bool:
+    #     """
+    #     check if a model does not have state and algebraic variables
+    #
+    #     :return:
+    #     """
+    #     return (len(self.state_vars) + len(self.algebraic_vars)) == 0
 
     def empty(self) -> bool:
         """

@@ -3232,3 +3232,26 @@ class MultiCircuit(Assets):
                 other.add_element(inj)
 
         return other
+
+    def check_rms_models(self) -> List[str]:
+        """
+        This function checks that a device has a valid rms model
+        :return:
+        """
+        empty_elem:List[str] = list()
+        for elm in self.buses:
+            if elm.rms_model.model.empty():
+                empty_elem.append(elm.name)
+        for elm in self.get_branches_iter():
+            if elm.rms_model.model.empty():
+                empty_elem.append(elm.name)
+        for elm in self.get_injection_devices_iter():
+            if elm.rms_model.model.empty():
+                empty_elem.append(elm.name)
+        return empty_elem
+
+
+
+
+
+

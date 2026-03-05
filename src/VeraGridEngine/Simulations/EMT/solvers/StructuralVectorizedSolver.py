@@ -5,17 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Callable, List, Any, Dict
+from typing import Tuple, Callable, List, Any, Dict, Union, Set
 import uuid
 import time
 import hashlib
-from collections import defaultdict
 
 import numpy as np
 import numba as nb
 from scipy.sparse import csc_matrix
 from scipy.linalg import lu_factor, lu_solve
-from scipy.sparse.linalg import splu
+from scipy.sparse.linalg import splu, SuperLU
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -28,19 +27,130 @@ from VeraGridEngine.basic_structures import Vec, Mat
 # Generic helpers
 # ==============================================================================
 
-def _safe_njit(py_func: Callable, *, fastmath: bool = True, cache: bool = True, signature=None):
-    try:
-        code_obj = getattr(py_func, "__code__", None)
-        filename = code_obj.co_filename if code_obj else None
-    except AttributeError:
-        filename = None
+def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool = True, signature: Any = None) -> \
+Callable[..., Any]:
+    """
+    Safely wraps a python function with Numba's njit compiler.
+    The caller must explicitly pass cache=False if the function is generated via strings.
 
-    use_cache = bool(cache) and (filename is not None) and (filename != "<string>")
-
+    :param py_func: The python function to compile.
+    :type py_func: Callable[..., Any]
+    :param fastmath: Flag to enable fastmath operations, defaults to True.
+    :type fastmath: bool
+    :param cache: Flag to enable caching of the compiled function, defaults to True.
+    :type cache: bool
+    :param signature: Optional Numba signature.
+    :type signature: Any
+    :return: The Numba JIT compiled function.
+    :rtype: Callable[..., Any]
+    """
     if signature is not None:
-        return nb.njit(signature, fastmath=fastmath, cache=use_cache)(py_func)
-    return nb.njit(fastmath=fastmath, cache=use_cache)(py_func)
+        return nb.njit(signature, fastmath=fastmath, cache=cache)(py_func)
+    else:
+        return nb.njit(fastmath=fastmath, cache=cache)(py_func)
 
+
+def _canonicalize_node(node: Expr, unique_slots: Dict[int, str], found_vars_ordered: List[Var],
+                       seen_nodes: Set[int]) -> str:
+    """
+    Recursively canonicalizes an expression node to generate a structural signature.
+    State containers are passed explicitly to avoid forbidden nested closures.
+
+    :param node: The symbolic expression node.
+    :type node: Expr
+    :param unique_slots: Dictionary mapping variable UIDs to canonical string slots.
+    :type unique_slots: Dict[int, str]
+    :param found_vars_ordered: List storing variables in the order they are found.
+    :type found_vars_ordered: List[Var]
+    :param seen_nodes: Set storing IDs of nodes already processed to avoid duplication.
+    :type seen_nodes: Set[int]
+    :return: The canonical string representation of the node.
+    :rtype: str
+    """
+    if isinstance(node, Var):
+        target_uid: int = node.uid
+
+        if node.base_var is not None:
+            target_uid = node.base_var.uid
+        else:
+            pass
+
+        if target_uid not in unique_slots:
+            unique_slots[target_uid] = f"__VAR_{len(unique_slots)}__"
+        else:
+            pass
+
+        node_id: int = id(node)
+        if node_id not in seen_nodes:
+            seen_nodes.add(node_id)
+            found_vars_ordered.append(node)
+        else:
+            pass
+
+        return unique_slots[target_uid]
+
+    elif isinstance(node, Const):
+        return f"{float(node.value):.6g}"
+    elif isinstance(node, BinOp):
+        left_str: str = _canonicalize_node(node.left, unique_slots, found_vars_ordered, seen_nodes)
+        right_str: str = _canonicalize_node(node.right, unique_slots, found_vars_ordered, seen_nodes)
+        return f"({left_str}{node.op}{right_str})"
+    elif isinstance(node, UnOp):
+        op_str: str = _canonicalize_node(node.operand, unique_slots, found_vars_ordered, seen_nodes)
+        return f"{node.op}({op_str})"
+    elif isinstance(node, Func):
+        arg_str: str = _canonicalize_node(node.arg, unique_slots, found_vars_ordered, seen_nodes)
+        return f"{node.op}({arg_str})"
+    else:
+        return str(node)
+
+
+def canonicalize_expression(expr: Expr) -> Tuple[str, List[Var]]:
+    """
+    Generates a canonical string signature and an ordered list of variables
+    found in the expression.
+
+    :param expr: The expression to canonicalize.
+    :type expr: Expr
+    :return: A tuple containing the signature string and the list of variables.
+    :rtype: Tuple[str, List[Var]]
+    """
+    unique_slots: Dict[int, str] = dict()
+    found_vars_ordered: List[Var] = list()
+    seen_nodes: Set[int] = set()
+
+    canonical_str: str = _canonicalize_node(expr, unique_slots, found_vars_ordered, seen_nodes)
+    return canonical_str, found_vars_ordered
+
+
+def _compile_fused_residual(kernels_data: List[Dict[str, Any]]) -> Callable[..., Any]:
+    """
+    Compiles a fused residual kernel that calls all sub-kernels in sequence.
+
+    :param kernels_data: List of dictionaries containing the kernel functions and their indices.
+    :type kernels_data: List[Dict[str, Any]]
+    :return: A Numba JIT compiled fused function.
+    :rtype: Callable[..., Any]
+    """
+    namespace: Dict[str, Any] = dict()
+    namespace['np'] = np
+    namespace['nb'] = nb
+
+    lines: List[str] = list()
+    lines.append("def fused_residual_kernel(states, params, history, d_history, h, args, out, history2=None):")
+    lines.append("    out[:] = 0.0")
+
+    for i, k_data in enumerate(kernels_data):
+        func_key: str = f"func_{i}"
+        namespace[func_key] = k_data['func']
+
+        lines.append(f"    target_{i} = args[{2 * i}]")
+        lines.append(f"    indices_{i} = args[{2 * i + 1}]")
+        lines.append(f"    r_part_{i} = {func_key}(states, params, history, d_history, h, indices_{i}, history2)")
+        lines.append(f"    out[target_{i}] = r_part_{i}")
+
+    exec("\n".join(lines), namespace)
+    return nb.njit(fastmath=True, cache=False)(namespace['fused_residual_kernel'])
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
@@ -54,12 +164,78 @@ def _scatter_color_jvp_to_csc_data(
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
 
+class EquationGroup:
+    """
+    Data structure to hold clustered equations for auto-vectorization.
+    Replaces the generic dictionary for strict type hinting and safety.
+    """
+    __slots__ = ['_idx_matrix', '_row_indices', '_template_eq', '_template_vars']
+
+    def __init__(self) -> None:
+        self._idx_matrix: List[List[int]] = list()
+        self._row_indices: List[int] = list()
+        self._template_eq: Expr | None = None
+        self._template_vars: List[Var] | None = None
+
+    def add_indices(self, var_indices: List[int], row_index: int) -> None:
+        """Adds matrix indices and row index to the cluster."""
+        self._idx_matrix.append(var_indices)
+        self._row_indices.append(row_index)
+
+    def set_template(self, template_eq: Expr, template_vars: List[Var]) -> None:
+        """Sets the structural template for this group."""
+        self._template_eq = template_eq
+        self._template_vars = template_vars
+
+    def get_idx_matrix(self) -> List[List[int]]:
+        """Returns the index matrix."""
+        return self._idx_matrix
+
+    def get_row_indices(self) -> List[int]:
+        """Returns the row indices."""
+        return self._row_indices
+
+    def get_template_eq(self) -> Expr | None:
+        """Returns the template equation."""
+        return self._template_eq
+
+    def get_template_vars(self) -> List[Var] | None:
+        """Returns the template variables."""
+        return self._template_vars
+
+
+class BoundaryUpdateWrapper:
+    """
+    Interface for injecting boundary conditions and events before the Newton step.
+    Users must inherit from this class to update parameters safely.
+    """
+    __slots__ = []  # No state allowed in the base class
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """
+        Updates the parameters vector in place based on the current time and state.
+
+        :param t: The current simulation time.
+        :type t: float
+        :param x: The current state vector.
+        :type x: Vec
+        :param params: The parameter vector to be modified.
+        :type params: Vec
+        :rtype: None
+        """
+        pass  # Explicit no-op for base class
 
 # ==============================================================================
 # Sparse AD Jacobian
 # ==============================================================================
 
 class SparseADJacobian:
+    __slots__ = [
+        'verbose', 'equations', 'variables', 'parameters', 'method', 'dtype',
+        'n_rows', 'n_cols', 'var_map', 'col_rows', 'J', 'colors', 'n_colors',
+        'color_groups', 'color_ptr', 'color_cols', 'col_ptr', 'row_idx', 'data_idx',
+        '_compiler', 'ad_kernels', 'master_jac', '_seeds'
+    ]
     def __init__(
             self, equations: List[Any], variables: List[Any], parameters: List[Any],
             method: DynamicIntegrationMethod, use_cse: bool = True, dtype=np.float64, verbose: bool = False,
@@ -74,44 +250,55 @@ class SparseADJacobian:
         self.n_rows = len(equations)
         self.n_cols = len(variables)
 
-        self.var_map = {v.uid: i for i, v in enumerate(variables)}
+        self.var_map: Dict[int, int] = dict({id(v): i for i, v in enumerate(variables)})
 
         # Sparsity detection
-        col_rows: List[List[int]] = [[] for _ in range(self.n_cols)]
-        for r, eq in enumerate(equations):
-            stack = [eq]
-            visited = set()
-            uids = set()
+        col_rows: List[List[int]] = list([list() for _ in range(self.n_cols)])
+        for r_idx, eq in enumerate(equations):
+            stack: List[Expr] = list([eq])
+            visited: set = set()
+            uids: set = set()
 
             while stack:
-                n = stack.pop()
-                if id(n) in visited: continue
-                visited.add(id(n))
+                node: Expr = stack.pop()
+                if id(node) in visited:
+                    pass
+                else:
+                    visited.add(id(node))
 
-                cname = n.__class__.__name__
-                if cname == "Var" and hasattr(n, "uid"):
-                    uids.add(n.uid)
-                    if getattr(n, "base_var", None): uids.add(n.base_var.uid)
-                    continue
-                if cname in ("DiffVar", "LagVar"):
-                    if getattr(n, "base_var", None): uids.add(n.base_var.uid)
-                    continue
+                    match node:
+                        case Var():
+                            uids.add(id(node))
+                            if node.base_var is not None:
+                                uids.add(id(node.base_var))
+                            else:
+                                pass
 
-                for attr in ("left", "right", "arg", "operand"):
-                    val = getattr(n, attr, None)
-                    if val is not None: stack.append(val)
-                if getattr(n, "args", None):
-                    for ch in n.args: stack.append(ch)
+                        case BinOp(left=l, right=r):
+                            stack.append(l)
+                            stack.append(r)
+
+                        case UnOp(operand=op):
+                            stack.append(op)
+
+                        case Func(arg=a):
+                            stack.append(a)
+
+                        case _:
+                            pass
 
             for uid in uids:
-                j = self.var_map.get(uid, -1)
-                if j >= 0: col_rows[j].append(r)
+                j: int = self.var_map.get(uid, -1)
+                if j >= 0:
+                    col_rows[j].append(r_idx)
+                else:
+                    pass
 
-        self.col_rows = [sorted(set(rows)) for rows in col_rows]
+        self.col_rows = list([sorted(set(rows)) for rows in col_rows])
 
         # CSC structure
         indptr = np.zeros(self.n_cols + 1, dtype=np.int32)
-        nnz = 0
+        nnz: int = 0
         for j in range(self.n_cols):
             nnz += len(self.col_rows[j])
             indptr[j + 1] = nnz
@@ -119,18 +306,19 @@ class SparseADJacobian:
         indices = np.empty(nnz, dtype=np.int32)
         data = np.zeros(nnz, dtype=self.dtype)
 
-        k = 0
+        k: int = 0
         for j in range(self.n_cols):
-            for r in self.col_rows[j]:
-                indices[k] = r
+            for r_idx in self.col_rows[j]:
+                indices[k] = r_idx
                 k += 1
 
         self.J = csc_matrix((data, indices, indptr), shape=(self.n_rows, self.n_cols))
 
         # Coloring
         self.colors, self.n_colors = self._greedy_color_columns(self.col_rows, self.n_rows)
-        groups: List[List[int]] = [[] for _ in range(self.n_colors)]
-        for j in range(self.n_cols): groups[self.colors[j]].append(j)
+        groups: List[List[int]] = list([list() for _ in range(self.n_colors)])
+        for j in range(self.n_cols):
+            groups[self.colors[j]].append(j)
         self.color_groups = groups
 
         # Scatter map
@@ -142,7 +330,7 @@ class SparseADJacobian:
         color_ptr[self.n_colors] = len(color_cols)
 
         col_ptr = np.zeros(len(color_cols) + 1, dtype=np.int32)
-        total_map = 0
+        total_map:int = 0
         for kk, j in enumerate(color_cols):
             total_map += len(self.col_rows[j])
             col_ptr[kk + 1] = total_map
@@ -150,12 +338,12 @@ class SparseADJacobian:
         row_idx = np.empty(total_map, dtype=np.int32)
         data_idx = np.empty(total_map, dtype=np.int32)
 
-        pos = 0
+        pos: int = 0
         indptr_arr = self.J.indptr
         for kk, j in enumerate(color_cols):
             base = indptr_arr[j]
-            for local, r in enumerate(self.col_rows[j]):
-                row_idx[pos] = r
+            for local, r_idx in enumerate(self.col_rows[j]):
+                row_idx[pos] = r_idx
                 data_idx[pos] = base + local
                 pos += 1
 
@@ -164,7 +352,7 @@ class SparseADJacobian:
 
         # Compile kernels
         self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
-        self.ad_kernels = []
+        self.ad_kernels = list()
 
         for c in range(self.n_colors):
             k_name = f"advec_step_color_{c}_{uuid.uuid4().hex[:4]}"
@@ -172,11 +360,13 @@ class SparseADJacobian:
                                                      active_indices=set(self.color_groups[c]))
             self.ad_kernels.append(_safe_njit(py_ad, cache=False, fastmath=True))
 
-        global_env = {"_scatter": _scatter_color_jvp_to_csc_data}
-        for c in range(self.n_colors): global_env[f"kernel_{c}"] = self.ad_kernels[c]
+        global_env: Dict[str, Any] = dict({"_scatter": _scatter_color_jvp_to_csc_data})
+        for c in range(self.n_colors):
+            global_env[f"kernel_{c}"] = self.ad_kernels[c]
 
-        src = [
-            "def master_jac(states, seeds, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"]
+        src: List[str] = list([
+            "def master_jac(states, seeds, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"
+        ])
         for c in range(self.n_colors):
             src.append(f"    jvp_{c} = kernel_{c}(states, seeds, params, history, d_history, h, history2)")
             src.append(f"    _scatter(jvp_{c}, data, color_ptr, col_ptr, row_idx, data_idx, {c})")
@@ -187,19 +377,22 @@ class SparseADJacobian:
 
     @staticmethod
     def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
-        n_cols = len(col_rows)
-        row_cols: List[List[int]] = [[] for _ in range(n_rows)]
+        n_cols: int = len(col_rows)
+        row_cols: List[List[int]] = list([list() for _ in range(n_rows)])
         for j in range(n_cols):
-            for r in col_rows[j]: row_cols[r].append(j)
+            for r_idx in col_rows[j]:
+                row_cols[r_idx].append(j)
 
-        adj = [set() for _ in range(n_cols)]
+        adj: List[set] = list([set() for _ in range(n_cols)])
         for cols in row_cols:
-            m = len(cols)
+            m: int = len(cols)
             for a in range(m):
                 for b in range(a + 1, m):
                     if cols[b] != cols[a]:
                         adj[cols[a]].add(cols[b])
                         adj[cols[b]].add(cols[a])
+                    else:
+                        pass
 
         degrees = np.array([len(adj[j]) for j in range(n_cols)], dtype=np.int32)
         order = list(np.argsort(-degrees))
@@ -210,11 +403,18 @@ class SparseADJacobian:
         for j in order:
             used[:] = False
             for nbj in adj[j]:
-                if colors[nbj] >= 0: used[colors[nbj]] = True
-            c = 0
-            while c < n_cols and used[c]: c += 1
+                if colors[nbj] >= 0:
+                    used[colors[nbj]] = True
+                else:
+                    pass
+            c: int = 0
+            while c < n_cols and used[c]:
+                c += 1
             colors[j] = c
-            if c > max_color: max_color = c
+            if c > max_color:
+                max_color = c
+            else:
+                pass
         return colors, int(max_color + 1)
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
@@ -222,22 +422,19 @@ class SparseADJacobian:
                         self.col_ptr, self.row_idx, self.data_idx)
         return self.J
 
-
 # ==============================================================================
 # StructuralVectorizedSolver
 # ==============================================================================
-class EquationGroup:
-    """
-    Data structure to hold clustered equations for auto-vectorization.
-    Replaces the generic dictionary for strict type hinting and safety.
-    """
-    def __init__(self):
-        self.idx_matrix: List[List[int]] = []
-        self.row_indices: List[int] = []
-        self.template_eq: Expr | None = None
-        self.template_vars: List[Var] | None = None
-
 class StructuralVectorizedSolver:
+    __slots__ = [
+        'problem', 't0', 't_end', 'h', 'method', 'dense_threshold', 'verbose',
+        'vec_jacobian', 'vec_flat_args', 'fused_residual', 'vec_kernels',
+        '_state_vars', '_algebraic_vars', '_state_eqs', '_algebraic_eqs',
+        'sorted_vars', '_n_state', '_n_vars', 'uid2idx_vars',
+        '_event_parameters', '_parameters', '_parameters_values', '_event_params_fn',
+        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time'
+    ]
+
     def __init__(
             self,
             problem: EmtProblemTemplate,
@@ -248,7 +445,7 @@ class StructuralVectorizedSolver:
             dense_threshold: int = 100,
             verbose: bool = False,
             auto_vectorization: bool = True,
-    ):
+    )-> None:
         self.problem = problem
         self.t0 = t0
         self.t_end = t_end
@@ -267,7 +464,9 @@ class StructuralVectorizedSolver:
         self._state_eqs = self.problem.get_state_eqs()
         self._algebraic_eqs = self.problem.get_algebraic_eqs()
 
-        self.sorted_vars = self._state_vars + self._algebraic_vars
+        self.sorted_vars: List[Any] = list()
+        self.sorted_vars.extend(self._state_vars)
+        self.sorted_vars.extend(self._algebraic_vars)
         self._n_state = len(self._state_vars)
         self._n_vars = len(self.sorted_vars)
 
@@ -276,43 +475,12 @@ class StructuralVectorizedSolver:
         self._event_parameters = self.problem.get_variable_parameters()
         self._parameters = self.problem.get_constant_parameters()
         self._parameters_values = self.problem.get_parameters_values()
-        self._event_params_fn = self.problem.def_event_params_fn
 
-        self.jit_jacobians_ad: Dict[DynamicIntegrationMethod, SparseADJacobian] = {}
+        self.jit_jacobians_ad: Dict[DynamicIntegrationMethod, SparseADJacobian] = dict()
         self.vectorized_ready = False
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
-
-    @staticmethod
-    def _canonicalize_expression(expr: Expr) -> Tuple[str, List[Var]]:
-        unique_slots = {}
-        found_vars_ordered = []
-        seen_nodes = set()
-
-        def _visit_recursive(node):
-            if isinstance(node, Var):
-                target_uid = node.base_var.uid if getattr(node, "base_var", None) else node.uid
-                if target_uid not in unique_slots:
-                    unique_slots[target_uid] = f"__VAR_{len(unique_slots)}__"
-
-                if id(node) not in seen_nodes:
-                    seen_nodes.add(id(node))
-                    found_vars_ordered.append(node)
-                return unique_slots[target_uid]
-
-            elif isinstance(node, Const):
-                return f"{float(node.value):.6g}"
-            elif isinstance(node, BinOp):
-                return f"({_visit_recursive(node.left)}{node.op}{_visit_recursive(node.right)})"
-            elif isinstance(node, UnOp):
-                return f"{node.op}({_visit_recursive(node.operand)})"
-            elif isinstance(node, Func):
-                return f"{node.op}({_visit_recursive(node.arg)})"
-            return str(node)
-
-        canonical_str = _visit_recursive(expr)
-        return canonical_str, found_vars_ordered
 
     def auto_detect_vectorization(self, method: DynamicIntegrationMethod = None):
         """
@@ -321,118 +489,164 @@ class StructuralVectorizedSolver:
         """
         if method is None:
             method = self.method
+        else:
+            pass
 
-        print(f"--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
+        if self.verbose:
+            print(f"--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
         t0 = time.time()
 
-        groups: Dict[str, EquationGroup] = defaultdict(EquationGroup)
+        groups: Dict[str, EquationGroup] = dict()
 
-        full_eq_list = []
+        n_state: int = len(self._state_eqs)
+        n_alg: int = len(self._algebraic_eqs)
+        full_eq_list: List[Expr] = [Const(0.0) for _ in range(n_state + n_alg)]
+
         for i, rhs_eq in enumerate(self._state_eqs):
             sv = self._state_vars[i]
             d_term = Var(name=f"d_{sv.name}", base_var=sv)
-            full_eq_list.append(d_term - rhs_eq)
-        full_eq_list.extend(self._algebraic_eqs)
+            full_eq_list[i] = d_term - rhs_eq
+        for j, alg_eq in enumerate(self._algebraic_eqs):
+            full_eq_list[n_state + j] = alg_eq
 
         # PHASE 2: CLUSTERING
         for i, residual_eq in enumerate(full_eq_list):
-            sig_str, all_vars_found = self._canonicalize_expression(residual_eq)
+            sig_str, all_vars_found = canonicalize_expression(residual_eq)
             eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
 
-            group = groups[eq_hash]
+            group: EquationGroup
+            if eq_hash in groups:
+                group = groups[eq_hash]
+            else:
+                group = EquationGroup()
+                groups[eq_hash] = group
 
-            if group.template_eq is None:
-                group.template_eq = residual_eq
-                group.template_vars = all_vars_found
+            if group.get_template_eq() is None:
+                group.set_template(residual_eq, all_vars_found)
+            else:
+                pass
 
-            var_indices = []
+            var_indices: List[int] = list()
             for v in all_vars_found:
-                target_var = getattr(v, "base_var", None) or v
-                var_indices.append(self.uid2idx_vars.get(target_var.uid, -1))
+                target_uid: int = -1
 
-            group.idx_matrix.append(var_indices)
-            group.row_indices.append(i)
+                match v:
+                    case Var(base_var=bv) if bv is not None:
+                        target_uid = bv.uid
+                    case Var(uid=u):
+                        target_uid = u
+                    case _:
+                        pass
+
+                idx: int | None = self.uid2idx_vars.get(target_uid, None)
+                if idx is not None:
+                    var_indices.append(idx)
+                else:
+                    var_indices.append(-1)
+
+            group.add_indices(var_indices, i)
 
         print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
 
-        self.vec_kernels = []
-        all_params = self._event_parameters + self._parameters
+        self.vec_kernels: List[Dict[str, Any]] = list()
+
+        all_params: List[Any] = list()
+        all_params.extend(self._event_parameters)
+        all_params.extend(self._parameters)
 
         vec_compiler = MatrixVectorizedCompiler(self.sorted_vars, all_params, method=method)
 
         for signature, group_data in groups.items():
             k_name = f"vec_kernel_{signature[:8]}"
+
             py_func = vec_compiler.compile_matrix_kernel(
-                group_data.template_eq,
+                group_data.get_template_eq(),
                 func_name=k_name,
-                template_vars=group_data.template_vars
+                template_vars=group_data.get_template_vars()
             )
 
             self.vec_kernels.append({
                 'func': nb.njit(cache=True, fastmath=True)(py_func),
-                'indices': np.array(group_data.idx_matrix, dtype=np.int32),
-                'target': np.array(group_data.row_indices, dtype=np.int32)
+                'indices': np.array(group_data.get_idx_matrix(), dtype=np.int32),
+                'target': np.array(group_data.get_row_indices(), dtype=np.int32)
             })
 
         # PHASE 4: DISPATCHER SETUP
-        self.fused_residual = self._compile_fused_residual(self.vec_kernels)
-        self.vec_flat_args = []
+        self.fused_residual = _compile_fused_residual(self.vec_kernels)
+
+        temp_args: List[Any] = list()
         for k in self.vec_kernels:
-            self.vec_flat_args.extend([k['target'], k['indices']])
-        self.vec_flat_args = tuple(self.vec_flat_args)
+            temp_args.extend([k['target'], k['indices']])
+
+        self.vec_flat_args = tuple(temp_args)
 
         # PHASE 5: JACOBIAN SETUP
         if method not in self.jit_jacobians_ad:
             self.jit_jacobians_ad[method] = SparseADJacobian(
                 full_eq_list, self.sorted_vars, all_params, method, verbose=self.verbose
             )
+        else:
+            pass
 
         self.vec_jacobian = self.jit_jacobians_ad[method]
         self.vectorized_ready = True
         print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
-    @staticmethod
-    def _compile_fused_residual(kernels_data):
-        namespace = {'np': np, 'nb': nb}
-        lines = ["def fused_residual_kernel(states, params, history, d_history, h, args, out, history2=None):",
-                 "    out[:] = 0.0"]
-        for i, k_data in enumerate(kernels_data):
-            func_key = f"func_{i}"
-            namespace[func_key] = k_data['func']
-            lines.extend([f"    target_{i} = args[{2 * i}]", f"    indices_{i} = args[{2 * i + 1}]",
-                          f"    r_part_{i} = {func_key}(states, params, history, d_history, h, indices_{i}, history2)",
-                          f"    out[target_{i}] = r_part_{i}"])
-        exec("\n".join(lines), namespace)
-        return nb.njit(fastmath=True, cache=False)(namespace['fused_residual_kernel'])
+    def simulate(self,
+                 x0: Union[Vec| None] = None,
+                 dx0: Union[Vec| None] = None,
+                 params0: Union[Vec| None] = None,
+                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat]:
 
-    def simulate(self, x0=None, dx0=None, params0=None, boundary_update_fn=None) -> Tuple[Vec, Mat]:
-        if x0 is None: x0 = self.problem.get_x0()
-        if dx0 is None: dx0 = np.zeros(self._n_vars, dtype=np.float64)
-        if params0 is None: params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
+        """
+        Run the vectorized DAE time-domain simulation.
+
+        :param x0: Initial state vector.
+        :param dx0: Initial derivative vector.
+        :param params0: Initial event parameters.
+        :param boundary_updater: Boundary condition updater.
+        :return: Time vector and state trajectory matrix.
+        """
+
+        if x0 is None:
+            x0 = self.problem.get_x0()
+        else: pass
+
+        if dx0 is None:
+            dx0 = np.zeros(self._n_vars, dtype=np.float64)
+        else: pass
+
+        if params0 is None:
+            params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
+        else: pass
+
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
-                                         boundary_update_fn, self.verbose, self.dense_threshold)
+                                         boundary_updater, self.verbose, self.dense_threshold)
 
     def _simulate_vectorized(self,
-                             t0,
-                             t_end,
-                             h,
-                             x0,
-                             dx0,
-                             params0,
-                             method,
-                             boundary_update_fn,
-                             verbose,
-                             dense_threshold):
+                             t0:float,
+                             t_end:float,
+                             h: float,
+                             x0: Vec,
+                             dx0: Vec,
+                             params0: Vec,
+                             method: DynamicIntegrationMethod,
+                             boundary_updater: BoundaryUpdateWrapper,
+                             verbose: bool,
+                             dense_threshold: int)-> Tuple[Vec, Mat]:
         if not self.vectorized_ready:
             self.auto_detect_vectorization(method)
 
-        steps = int(np.ceil((t_end - t0) / h))
-        t = np.linspace(t0, t_end, steps + 1)
-        y = np.zeros((steps + 1, self._n_vars), dtype=np.float64)
+        steps: int = int(np.ceil((t_end - t0) / h))
+        t: Vec = t0 + h * np.arange(steps + 1, dtype=np.float64)
+        y: Mat = np.zeros((steps + 1, self._n_vars), dtype=np.float64)
         y[0] = x0.copy()
 
-        x_prev, dx_prev, x_prev2, x_iter = x0.copy(), dx0.copy(), x0.copy(), x0.copy()
-        res_global = np.zeros(self._n_vars, dtype=np.float64)
+        x_prev: Vec = x0.copy()
+        dx_prev: Vec = dx0.copy()
+        x_prev2: Vec = x0.copy()
+        x_iter: Vec = x0.copy()
+        res_global: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
         ev_params = np.asarray(params0, dtype=np.float64)
@@ -440,44 +654,84 @@ class StructuralVectorizedSolver:
         full_params = np.empty(len(self._event_parameters) + len(static_params), dtype=np.float64)
         full_params[len(ev_params):] = static_params
 
-        use_dense = (self._n_vars <= dense_threshold)
+        use_dense: bool = (self._n_vars <= dense_threshold)
 
         if verbose: print(f"-> JIT Warmup...")
         self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
         _ = self.vec_jacobian(states=x_prev, params=full_params, history=x_prev, d_history=dx_prev, h=h,
                               history2=x_prev2)
 
-        cached_J, cached_lu = None, None
+        cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
+        cached_lu_sparse: SuperLU | None = None
+
         t_start_loop = time.time()  # Timer local para debug
 
-        if verbose: print(f"-> Starting VECTORIZED Simulation (Bucle de integración)...")
+        if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
 
         for i in range(steps):
             if verbose: print(f"Simulating at step {i}")
-            t_curr = t[i + 1]
+            t_curr: float = float(t[i + 1])
 
             # Update params in-place
-            full_params[:len(ev_params)] = self._event_params_fn(ev_params, float(t_curr))
+            full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
 
-            if boundary_update_fn:
-                boundary_update_fn(t_curr, x_prev, full_params)
+            if boundary_updater is not None:
+                boundary_updater.update(t_curr, x_prev, full_params)
+            else:
+                pass
 
             x_iter[:] = x_prev
-            last_res_norm = 1.0
+            last_res_norm: float = 1.0
 
             for k in range(15):
                 self.fused_residual(x_iter, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
-                res_norm = np.max(np.abs(res_global))
+                res_norm: float = np.max(np.abs(res_global))
 
-                if res_norm < 1e-6: break
+                if res_norm < 1e-6:
+                    break
+                else:
+                    pass
 
-                recompute = (cached_lu is None) or (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
+                recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                                  (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
 
                 if recompute:
-                    cached_J = self.vec_jacobian(x_iter, full_params, x_prev, dx_prev, h, x_prev2)
-                    cached_lu = lu_factor(cached_J.toarray()) if use_dense else splu(cached_J.tocsc())
+                    cached_J: csc_matrix = self.vec_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
+                                                 h=h, history2=x_prev2)
 
-                delta = lu_solve(cached_lu, -res_global) if use_dense else cached_lu.solve(-res_global)
+                    # --- Use cached_J explicitly (diagnostics / invariants) ---
+                    if cached_J is None:
+                        raise RuntimeError("Internal error: Jacobian is None.")
+
+                    nnz_j: int = int(cached_J.nnz)
+                    if nnz_j <= 0:
+                        raise RuntimeError("Internal error: Jacobian has zero non-zeros (nnz == 0).")
+
+                    # Optional: quick NaN/Inf guard in verbose mode (dense is expensive)
+                    if verbose and use_dense:
+                        j_dense: np.ndarray = cached_J.toarray()
+                        if not np.all(np.isfinite(j_dense)):
+                            raise RuntimeError("Jacobian contains NaN/Inf values (dense check).")
+                        cached_lu_dense = lu_factor(j_dense)
+                        cached_lu_sparse = None
+                    else:
+                        if use_dense:
+                            cached_lu_dense = lu_factor(cached_J.toarray())
+                            cached_lu_sparse = None
+                        else:
+                            cached_lu_sparse = splu(cached_J)  # cached_J already CSC
+                            cached_lu_dense = None
+
+                delta: Vec
+                if use_dense:
+                    if cached_lu_dense is None:
+                        raise RuntimeError("Internal error: dense LU cache is None while use_dense is True.")
+                    delta = lu_solve(cached_lu_dense, -res_global)
+                else:
+                    if cached_lu_sparse is None:
+                        raise RuntimeError("Internal error: sparse LU cache is None while use_dense is False.")
+                    delta = cached_lu_sparse.solve(-res_global)
+
                 x_iter += delta
                 last_res_norm = res_norm
 
