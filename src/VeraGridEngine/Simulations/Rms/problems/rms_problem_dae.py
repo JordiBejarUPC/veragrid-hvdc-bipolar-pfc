@@ -89,7 +89,7 @@ class RmsProblemDae(RmsProblemTemplate):
                  grid: MultiCircuit,
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
-                 progress_signal: DummySignal | None =None):
+                 progress_signal: DummySignal | None = None):
         """
 
         :param grid:
