@@ -113,10 +113,10 @@ class PiLineEmtTemplate(EmtModelTemplate):
         G_end_full = 0.5 * Gsh_full
         C_end_full = 0.5 * C_full
 
-        print(f"Rfull = {R_full}")
-        print(f"Xfull = {X_full}")
-        print(f"Lfull = {L_full}")
-        print(f"Cfull = {C_full}")
+        # print(f"Rfull = {R_full}")
+        # print(f"Xfull = {X_full}")
+        # print(f"Lfull = {L_full}")
+        # print(f"Cfull = {C_full}")
 
         idx_global = idx
         n_mat = R_full.shape[0]
@@ -162,6 +162,7 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         self._block = Block(name=f"PiLine_{line.name}")
         self._block.in_vars = vf_vars + vt_vars + d_vf_vars + d_vt_vars
+        # self._block.in_vars = vf_vars + vt_vars
         self._block.state_vars = i_ser + q_f + q_t
         self._block.diff_vars = di_ser + dq_f + dq_t
         self._block.algebraic_vars = i_cap_f + i_cap_t + if_act + it_act
@@ -180,24 +181,22 @@ class PiLineEmtTemplate(EmtModelTemplate):
             for b in range(m):
                 Linv_ab = float(L_inv[a, b])
                 if Linv_ab != 0.0:
-                    v_diff_R_i_b = (vf_vars[b] - vt_vars[b])
+                    # term_b = (vf_b - vt_b) - sum_k R[b,k]*i_ser[k]
+                    term_b = (vf_vars[b] - vt_vars[b])
                     for k in range(m):
                         R_bk = float(R[b, k])
                         if R_bk != 0.0:
-                            v_diff_R_i_b = v_diff_R_i_b - R_bk * i_ser[k]
-                    expr_rhs = expr_rhs + Linv_ab * v_diff_R_i_b
+                            term_b = term_b - R_bk * i_ser[k]
+                    expr_rhs = expr_rhs + Linv_ab * term_b
             state_eqs.append(expr_rhs)
 
         # (2) Equations for the charge of the 'from' side capacitor (q_f)
-        # The derivative dq_f is simply the current flowing into the capacitor
+        # Capacitor charge dynamics:
+        #   dq_f = i_cap_f
+        #   dq_t = i_cap_t
         for a in range(m):
-            # dq_f = i_cap_f[a]
             state_eqs.append(i_cap_f[a])
-
-        # (3) Equations for the charge of the 'to' side capacitor (q_t)
-        # The derivative dq_t is simply the current flowing into the capacitor
         for a in range(m):
-            # dq_t = i_cap_t[a]
             state_eqs.append(i_cap_t[a])
 
         self._block.state_eqs = state_eqs
@@ -225,24 +224,35 @@ class PiLineEmtTemplate(EmtModelTemplate):
                     rhs = rhs + Cab * vt_vars[b]
             alg_eqs.append(q_t[a] - rhs)
 
-        # (6) If - (i_ser + i_cap_f) = 0
+        # (6) i_cap_f - C_end * d_vf = 0
+        # NOTE: d_vf_vars must be the bus diff_vars (shared), not duplicated inputs.
+        for a in range(m):
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * d_vf_vars[b]
+            alg_eqs.append(i_cap_f[a] - rhs)
+        # (7) i_cap_t - C_end * d_vt = 0
+        for a in range(m):
+            rhs = c0
+            for b in range(m):
+                Cab = float(C_end[a, b])
+                if Cab != 0.0:
+                    rhs = rhs + Cab * d_vt_vars[b]
+            alg_eqs.append(i_cap_t[a] - rhs)
+
+        # (8) Terminal current at from-bus:
+        # if = i_ser + i_cap_f
         for a in range(m):
             gv = c0
-            # for b in range(m):
-            #     Gab = float(G_end[a, b])
-            #     if Gab != 0.0:
-            #         gv = gv + Gab * vf_vars[b]
             alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
 
-        # (7) It - (-i_ser + i_cap_t) = 0
+        # (9) Terminal current at to-bus:
+        # it = -i_ser + i_cap_t
         for a in range(m):
             gv = c0
-            # for b in range(m):
-            #     Gab = float(G_end[a, b])
-            #     if Gab != 0.0:
-            #         gv = gv + Gab * vt_vars[b]
-            alg_eqs.append(i_ser[a] + it_act[a] - i_cap_t[a])
-            # alg_eqs.append(it_act[a] - (-i_ser[a]  i_cap_t[a]))
+            alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
 
         self._block.algebraic_eqs = alg_eqs
 
@@ -314,27 +324,27 @@ class PiLineEmtTemplate(EmtModelTemplate):
             init_eqs[q_t[a]] = rhs
 
         # i_cap seeds
-        # for a in range(m): INCORRECT ASSUMPTION FOR EMT IN abc DOMAIN
-        #     init_eqs[i_cap_f[a]] = c0
-        #     init_eqs[i_cap_t[a]] = c0
+        for a in range(m): # INCORRECT ASSUMPTION FOR EMT IN abc DOMAIN
+            init_eqs[i_cap_f[a]] = c0
+            init_eqs[i_cap_t[a]] = c0
 
-        # i_cap_f = C_end * d_vf
-        for a in range(m):
-            rhs = c0
-            for b in range(m):
-                Cab = float(C_end[a, b])
-                if Cab != 0.0:
-                    rhs = rhs + Cab * d_vf_vars[b]
-            init_eqs[i_cap_f[a]] = rhs
-
-        # i_cap_t = C_end * d_vt
-        for a in range(m):
-            rhs = c0
-            for b in range(m):
-                Cab = float(C_end[a, b])
-                if Cab != 0.0:
-                    rhs = rhs + Cab * d_vt_vars[b]
-            init_eqs[i_cap_t[a]] = rhs
+        # # i_cap_f = C_end * d_vf
+        # for a in range(m):
+        #     rhs = c0
+        #     for b in range(m):
+        #         Cab = float(C_end[a, b])
+        #         if Cab != 0.0:
+        #             rhs = rhs + Cab * d_vf_vars[b]
+        #     init_eqs[i_cap_f[a]] = rhs
+        #
+        # # i_cap_t = C_end * d_vt
+        # for a in range(m):
+        #     rhs = c0
+        #     for b in range(m):
+        #         Cab = float(C_end[a, b])
+        #         if Cab != 0.0:
+        #             rhs = rhs + Cab * d_vt_vars[b]
+        #     init_eqs[i_cap_t[a]] = rhs
 
         # i_ser seed using KLC
         for a in range(m):
@@ -349,22 +359,29 @@ class PiLineEmtTemplate(EmtModelTemplate):
         Linv_numeric = np.linalg.inv(L)
 
         for a in range(m):
-            # (A) di_ser = L_inv * (Vf - Vt - R*i_ser)
             di_expression = c0
             for b in range(m):
                 term_b = (vf_vars[b] - vt_vars[b])
                 for k in range(m):
-                    if R[b, k] != 0:
-                        term_b -= float(R[b, k]) * i_ser[k]
+                    R_bk = float(R[b, k])
+                    if R_bk != 0.0:
+                        term_b = term_b - R_bk * i_ser[k]
                 coeff = float(Linv_numeric[a, b])
                 if abs(coeff) > 1e-15:
-                    di_expression += coeff * term_b
+                    di_expression = di_expression + coeff * term_b
 
             diff_init_eqs[di_ser[a]] = di_expression
 
             # (B) dq_f = i_cap_f y dq_t = i_cap_t
-            diff_init_eqs[dq_f[a]] = i_cap_f[a]
-            diff_init_eqs[dq_t[a]] = i_cap_t[a]
+            # diff_init_eqs[dq_f[a]] = i_cap_f[a]
+            # diff_init_eqs[dq_t[a]] = i_cap_t[a]
+
+        # For trapezoidal start-up stability:
+        # - Set dq_f, dq_t to 0 as an initial guess.
+        # - They will be reconciled by Newton via state_eqs (dq = i_cap) and algebraic (i_cap = C*d_v).
+        for a in range(m):
+            diff_init_eqs[dq_f[a]] = c0
+            diff_init_eqs[dq_t[a]] = c0
 
         self._block.diff_init_eqs = diff_init_eqs
 

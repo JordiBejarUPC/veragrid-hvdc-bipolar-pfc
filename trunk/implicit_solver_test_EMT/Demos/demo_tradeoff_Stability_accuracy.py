@@ -13,6 +13,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver, BoundaryUpdateWrapper
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -38,16 +39,21 @@ class BoostPWMWrapper(BoundaryUpdateWrapper):
         params[self.offset + self.idx] = sw_val
 
 
-def create_boost_system() -> Tuple[Block, Var, Var]:
-    i_L: Var = Var("i_L")
-    v_C: Var = Var("v_C")
-    Vin: Var = Var("Vin")
-    Sw: Var = Var("Sw")
-    R: Var = Var("R")
-    L: Var = Var("L")
-    C: Var = Var("C")
+def create_boost_system(vf: VarFactory) -> Tuple[Block, Var, Var]:
+
+    i_L = vf.add_var("i_L")
+    v_C = vf.add_var("v_C")
+    Vin = vf.add_var("Vin")
+    Sw = vf.add_var("Sw")
+    R = vf.add_var("R")
+    L = vf.add_var("L")
+    C = vf.add_var("C")
+
+    d_i_L = vf.add_diff_var(name="d_i_L", base_var=i_L)
+    d_v_C = vf.add_diff_var(name="d_v_C", base_var=v_C)
 
     state_vars: List[Var] = list([i_L, v_C])
+    diff_vars: List[Var] = list([d_i_L, d_v_C])
     state_eqs: List[Expr] = list([
         (Vin - (Const(1.0) - Sw) * v_C) / L,
         ((Const(1.0) - Sw) * i_L - v_C / R) / C
@@ -63,6 +69,7 @@ def create_boost_system() -> Tuple[Block, Var, Var]:
     boost: Block = Block(
         name="Boost_Benchmark",
         state_vars=state_vars,
+        diff_vars=diff_vars,
         state_eqs=state_eqs,
         parameters=parameters
     )
@@ -89,9 +96,10 @@ def run_method_benchmark() -> None:
     results: Dict[str, Dict[str, np.ndarray]] = dict()
     kpis: List[Dict[str, Any]] = list()
 
-    sys_block, sw_var, _ = create_boost_system()
+    vf = VarFactory()
+    sys_block, sw_var, _ = create_boost_system(vf)
     sys_block.unify_blocks()
-    glob_time: Var = Var("t_glob")
+    glob_time = vf.add_var("t_glob")
 
     # 1. Create BaseProblem (Network Topology & Equations)
     problem: GenericEmtProblem = GenericEmtProblem(sys_block, glob_time)

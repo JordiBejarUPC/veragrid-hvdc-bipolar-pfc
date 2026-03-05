@@ -86,7 +86,7 @@ tower.compute()
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # load
-P= 9.999999
+P=1
 Q= 0.999999
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load.conn = ShuntConnectionType.GroundedStar
