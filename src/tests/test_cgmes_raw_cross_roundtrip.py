@@ -26,7 +26,11 @@ def run_cgmes_to_raw(import_path: str | list[str], export_fname: str):
     """
     logger = Logger()
     # CGMES model import to MultiCircuit
-    fileOpenOptions = FileOpenOptions(cgmes_map_areas_like_raw=True)
+    fileOpenOptions = FileOpenOptions(
+        file_type=FileType.CGMES,
+        cgmes_version=gce.CGMESVersions.v2_4_15,
+        cgmes_map_areas_like_raw=True
+    )
 
     circuit = gce.FileOpen(file_name=import_path, options=fileOpenOptions).open()
     nc_1 = gce.compile_numerical_circuit_at(circuit)
@@ -55,7 +59,10 @@ def run_cgmes_to_raw(import_path: str | list[str], export_fname: str):
 
     raw_export.save()
 
-    circuit_2 = gce.FileOpen(file_name=export_fname, options=FileOpenOptions()).open()
+    circuit_2 = gce.FileOpen(
+        file_name=export_fname,
+        options=FileOpenOptions(file_type=FileType.PSSE_raw)
+    ).open()
     nc_2 = gce.compile_numerical_circuit_at(circuit_2)
     pf_res_2 = gce.power_flow(circuit_2, pf_options)
 

@@ -36,7 +36,8 @@ def create_file_save_options(boundary_zip_path: str) -> FileSavingOptions:
     return options
 
 
-def create_file_open_options() -> FileOpenOptions:
+def create_file_open_options(file_type: FileType,
+                             cgmes_version: CGMESVersions | None = None) -> FileOpenOptions:
     """
     :return:
     """
@@ -45,6 +46,9 @@ def create_file_open_options() -> FileOpenOptions:
         cgmes_try_to_map_dc_to_hvdc_line=True,
         # crash_on_errors=True,
         psse_adjust_taps_to_discrete_positions=True,
+        file_type=file_type,
+        cgmes_version=cgmes_version,
+
     )
 
     return options
@@ -90,11 +94,11 @@ def run_raw_to_cgmes(import_path: str | list[str],
     :param boundary_zip_path:
     :return:
     """
-    file_open_options = create_file_open_options()
+    file_open_options_raw = create_file_open_options(file_type=FileType.PSSE_raw)
 
     # RAW model import to MultiCircuit
     file_open_1 = FileOpen(file_name=import_path,
-                           options=file_open_options)
+                           options=file_open_options_raw)
     circuit1 = file_open_1.open()
 
     # run power flow
@@ -121,9 +125,14 @@ def run_raw_to_cgmes(import_path: str | list[str],
     cgmes_export.save()
     logger_saving.print()
 
+    file_open_options_cgmes = create_file_open_options(
+        file_type=FileType.CGMES,
+        cgmes_version=CGMESVersions.v2_4_15
+    )
+
     # OPEN CGMES model
     file_open_2 = FileOpen(file_name=[export_fname, boundary_zip_path],
-                           options=file_open_options)
+                           options=file_open_options_cgmes)
     circuit2 = file_open_2.open()
 
     # run power flow

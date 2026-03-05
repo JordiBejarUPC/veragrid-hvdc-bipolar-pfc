@@ -46,6 +46,8 @@ def create_file_open_options() -> FileOpenOptions:
         cgmes_try_to_map_dc_to_hvdc_line=True,
         # crash_on_errors=True,
         psse_adjust_taps_to_discrete_positions=True,
+        file_type=FileType.CGMES,
+        cgmes_version=CGMESVersions.v2_4_15
     )
 
     return options

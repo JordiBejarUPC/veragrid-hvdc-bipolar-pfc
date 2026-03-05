@@ -17,18 +17,21 @@ def test_ieee14_cgmes() -> None:
     """
 
     # load IEEE14 ------------------------------------------------------------------------------------------------------
-    file_open_options = FileOpenOptions(
-        cgmes_map_areas_like_raw=True,
-        cgmes_try_to_map_dc_to_hvdc_line=True,
-        # crash_on_errors=True,
-        psse_adjust_taps_to_discrete_positions=True,
-    )
+
     script_path = os.path.abspath(__file__)
     tests_root = os.path.dirname(script_path)
 
     # RAW model import to MultiCircuit
-    file_open1 = FileOpen(file_name=os.path.join(tests_root, "data", "grids", "RAW", "IEEE 14 bus.raw"),
-                          options=file_open_options)
+    file_open1 = FileOpen(
+        file_name=os.path.join(tests_root, "data", "grids", "RAW", "IEEE 14 bus.raw"),
+        options=FileOpenOptions(
+            file_type=gce.FileType.PSSE_raw,
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+        )
+    )
     grid1 = file_open1.open()
     nc1 = gce.compile_numerical_circuit_at(grid1)
     pf_res1 = gce.power_flow(grid1)
@@ -54,8 +57,17 @@ def test_ieee14_cgmes() -> None:
 
     # load again from CGMES into a new grid object
     # grid2 = gce.open_file(filename=[output_cgmes_path, bd_set])
-    file_open2 = FileOpen(file_name=[output_cgmes_path, bd_set],
-                          options=file_open_options)
+    file_open2 = FileOpen(
+        file_name=[output_cgmes_path, bd_set],
+        options=FileOpenOptions(
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+            file_type=gce.FileType.CGMES,
+            cgmes_version=gce.CGMESVersions.v2_4_15
+        )
+    )
     grid2 = file_open2.open()
     nc2 = gce.compile_numerical_circuit_at(grid2)
     pf_res2 = gce.power_flow(grid2)
@@ -73,9 +85,18 @@ def test_ieee14_cgmes() -> None:
         print("TUC 17.1 is OK")
 
     # load a CGMES grid made with CImConverter -------------------------------------------------------------------------
-    file_open3 = FileOpen(file_name=[os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"),
-                                    bd_set],
-                          options=file_open_options)
+    file_open3 = FileOpen(
+        file_name=[os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"),
+                   bd_set],
+        options=FileOpenOptions(
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+            file_type=gce.FileType.CGMES,
+            cgmes_version=gce.CGMESVersions.v2_4_15
+        )
+    )
     grid3 = file_open3.open()
     nc3 = gce.compile_numerical_circuit_at(grid3)
     pf_res3 = gce.power_flow(grid3)
@@ -147,7 +168,6 @@ def test_ieee14_cgmes() -> None:
     assert grid1_ok
     assert grid2_ok
     # assert grid3_ok
-
 
 # def test_ieee_grids() -> None:
 #     """
