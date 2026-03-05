@@ -187,6 +187,7 @@ def test_simulation_with_event():
     t, y, well_initialized, converged = solver.simulate()
 
     results = RmsResults(
+                empty_rms_models=list(),
                 well_initialized=well_initialized,
                 converged=converged,
                 values=solver.y,

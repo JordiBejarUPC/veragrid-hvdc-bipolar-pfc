@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import cProfile
+import copy
+
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -50,8 +52,10 @@ bus1 = gce.Bus(name="Bus1", Vnom=10)
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 
+
 for bus in grid.buses:
     initialize_bus_rms(bus, vf=grid.var_factory)
+
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -80,6 +84,8 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 # generator
 genqec_mdl = get_complete_generator_template(grid.var_factory).block
+# genqec_mdl_template = get_complete_generator_template(grid.var_factory)
+# template_copy = copy.deepcopy(genqec_mdl_template)
 
 # line
 line_mdl = get_line_rms_template(grid.var_factory).block

@@ -9,22 +9,27 @@ from VeraGridEngine.Simulations.options_template import OptionsTemplate
 
 class SmallSignalStabilityRmsOptions(OptionsTemplate):
     """
-    Rms simulation options
+    Small Signal Stability RMS simulation options.
     """
+    __slots__ = ['ss_assessment_time', 'k', 'verbose']
 
     def __init__(self,
                  k: int | None = None,
-                 ss_assessment_time: float = 5,
+                 ss_assessment_time: float = 5.0,
                  verbose: int = 0):
 
         """
-        RmsOptions
-        :param k: number of eigenvalues that must be calculated
-        :param ss_assessment_time: stability assessment time (s)
-        :param verbose: verbosity
-        """
+        SmallSignalStabilityRmsOptions constructor.
 
+        :param k: number of eigenvalues that must be calculated
+        :type k: int | None
+        :param ss_assessment_time: stability assessment time (s)
+        :type ss_assessment_time: float
+        :param verbose: verbosity level
+        :type verbose: int
+        """
         OptionsTemplate.__init__(self, name='RmsSimulationOptions')
+
         self.ss_assessment_time: float = ss_assessment_time
         self.k: int | None = k
         self.verbose: int = verbose

@@ -12,8 +12,9 @@ import pandas as pd
 
 from VeraGridEngine import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector,   SymbolicDerivative
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
@@ -87,7 +88,8 @@ class RmsProblemDae(RmsProblemTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: RmsOptions,
-                 pf_results: PowerFlowResults | None):
+                 pf_results: PowerFlowResults | None,
+                 progress_signal: DummySignal | None =None):
         """
 
         :param grid:
@@ -97,6 +99,7 @@ class RmsProblemDae(RmsProblemTemplate):
         super().__init__()
 
         self.logger = Logger()
+        self.progress_signal = progress_signal
         self.grid: MultiCircuit = grid
         self.power_flow_results: PowerFlowResults = pf_results
         self.Sf = self.power_flow_results.Sf / self.grid.Sbase
@@ -163,7 +166,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
         ######################################## Initialize devices ########################################
 
-
         # initialize buses
         bus_dict: Dict[Bus, int] = dict()
         for bus_num, elm in enumerate(self.grid.buses):
@@ -178,11 +180,14 @@ class RmsProblemDae(RmsProblemTemplate):
             # add init values from powerflow to initial guess
             if elm.is_dc:
                 # DC bus: use Vdc (magnitude) - angle is not applicable for DC
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vdc, np.abs(self.power_flow_results.voltage[bus_num]))
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vdc,
+                                    np.abs(self.power_flow_results.voltage[bus_num]))
             else:
                 # AC bus: use Vm and Va
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vm, np.abs(self.power_flow_results.voltage[bus_num]))
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Va, np.angle(self.power_flow_results.voltage[bus_num]))
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vm,
+                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Va,
+                                    np.angle(self.power_flow_results.voltage[bus_num]))
 
             # add model to system block
             self.sys_block.add(elm.rms_model.model)
@@ -198,9 +203,14 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.model.unify_blocks()
 
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                elm.rms_model.model.parameters[
+                    elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                    float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                elm.rms_model.model.parameters[
+                    elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                    float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                elm.rms_model.model.parameters[
+                    elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
@@ -222,7 +232,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 setQ(Q, Q_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Qf))
                 setQ(Q, Q_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Qt))
 
-
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
             if elm.rms_model.model.empty():
@@ -231,8 +240,8 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 mdl = elm.rms_model.model
-                St_vsc = (self.power_flow_results.St_vsc)/ self.grid.Sbase
-                Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i])/self.grid.Sbase
+                St_vsc = (self.power_flow_results.St_vsc) / self.grid.Sbase
+                Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
                 # fill init_guess
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
@@ -244,7 +253,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 t = bus_dict[elm.bus_to]
                 setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
                 setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-                setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt)) 
+                setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
                 self.sys_block.add(mdl)
 
         # Populating HVDC init guess (similar to VSCs)
@@ -255,7 +264,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 mdl = elm.rms_model.model
-                
+
                 # Get HVDC power flow results from generalized formulation
                 if hasattr(self.power_flow_results, 'Sf_hvdc') and self.power_flow_results.Sf_hvdc is not None:
                     # Use values from generalized formulation (complex power)
@@ -269,9 +278,9 @@ class RmsProblemDae(RmsProblemTemplate):
                     # Use Pset as fallback
                     Sf_hvdc = elm.Pset / self.grid.Sbase
                     St_hvdc = -elm.Pset / self.grid.Sbase
-                
+
                 self.add_variables_to_compilation_dicts(elm, mdl)
-                
+
                 # Set initialization values for HVDC
                 if hasattr(Sf_hvdc, 'real'):
                     # Complex number from generalized formulation
@@ -283,7 +292,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     # Real number only (no Q values)
                     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Sf_hvdc)
                     self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, St_hvdc)
-                
+
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
                 setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
@@ -304,11 +313,10 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # flatten model
                 elm.rms_model.model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=mdl,
+                    init_explicit(mdl=elm.rms_model.model,
                                   sys_vars=self.sys_vars,
                                   variable_parameters=self._variable_parameters,
                                   event_parameters_eqs=self._event_parameters_eqs,
@@ -352,7 +360,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
-
                     init_explicit(
                         mdl=elm.rms_model.model,
                         sys_vars=self.sys_vars,
@@ -381,6 +388,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
         total_init_explicit_time += time.perf_counter() - t0
         print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        if self.progress_signal is not None:
+            self.progress_signal.emit(10)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
@@ -393,20 +402,19 @@ class RmsProblemDae(RmsProblemTemplate):
                         self._algebraic_eqs.append(Q[i])
                     self._algebraic_eqs.append(P[i])
 
-        self._variable_parameters: List[Var] = list()
-        self._event_parameters_eqs: List[Expr | Const] = list()
-        self._constant_parameters: List[Var] = list()
-        self._parameters_values: List[Const] = list()
+        # self._variable_parameters: List[Var] = list()
+        # self._event_parameters_eqs: List[Expr | Const] = list()
+        # self._constant_parameters: List[Var] = list()
+        # self._parameters_values: List[Const] = list()
 
-        for b in self.sys_block.get_all_blocks():
-
-            for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
-                self._event_parameters_eqs.append(eq)
-            for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
-                self._parameters_values.append(constant)
-
+        # for b in self.sys_block.get_all_blocks():
+        #
+        #     for param, eq in b.event_dict.items():
+        #         self._variable_parameters.append(param)
+        #         self._event_parameters_eqs.append(eq)
+        #     for param, constant in b.parameters.items():
+        #         self._constant_parameters.append(param)
+        #         self._parameters_values.append(constant)
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
@@ -417,14 +425,14 @@ class RmsProblemDae(RmsProblemTemplate):
         self._event_parameters_eqs.append(Const(1))
 
         # add these parameters, m is for variable parameters
-        self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self._n_event_params}]"
-        self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self._n_event_params}"
-        self._uid2idx_event_params[self._dt.uid] =  self._n_event_params
+        self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+        self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        self._uid2idx_event_params[self._dt.uid] = self._n_event_params
         self._n_event_params += 1
 
-        self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self._n_event_params}]"
-        self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self._n_event_params}"
-        self._uid2idx_event_params[self._delta.uid] =  self._n_event_params
+        self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+        self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        self._uid2idx_event_params[self._delta.uid] = self._n_event_params
         self._n_event_params += 1
 
         ##################### To be removed when order is preserved in the first part #############################
@@ -435,11 +443,11 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_alg = len(self._algebraic_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
-        self._compiler_names_dict: Dict[int, str] = dict()
-        self._alias_names_dict: Dict[int, str] = dict()
+        # self._compiler_names_dict: Dict[int, str] = dict()
+        # self._alias_names_dict: Dict[int, str] = dict()
         self._uid2idx_vars: Dict[int, int] = dict()
-        self._uid2idx_event_params: Dict[int, int] = dict()
-        self._uid2idx_params: Dict[int, int] = dict()
+        # self._uid2idx_event_params: Dict[int, int] = dict()
+        # self._uid2idx_params: Dict[int, int] = dict()
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
@@ -456,15 +464,15 @@ class RmsProblemDae(RmsProblemTemplate):
             self._uid2idx_vars[v.uid] = i
             i += 1
 
-        for j, ep in enumerate(self._constant_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
-            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
-            self._uid2idx_params[ep.uid] = j
-
-        for k, ep in enumerate(self._variable_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-            self._uid2idx_event_params[ep.uid] = k
+        # for j, ep in enumerate(self._constant_parameters):
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
+        #     self._uid2idx_params[ep.uid] = j
+        #
+        # for k, ep in enumerate(self._variable_parameters):
+        #     self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
+        #     self._uid2idx_event_params[ep.uid] = k
 
         for k, ep in enumerate(self._diff_vars):
             self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
@@ -477,7 +485,6 @@ class RmsProblemDae(RmsProblemTemplate):
         for it, eq in enumerate(self._event_parameters_eqs):
             if isinstance(eq, Const) and eq.value is None:
                 raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
-
 
         # Substitute in algebraic eqs
         self._stability_eqs = list()
@@ -492,9 +499,9 @@ class RmsProblemDae(RmsProblemTemplate):
         # add events modifying values of event_parameters equations
 
         collect_events = {
-                            param: {"times": [], "values": []}
-                            for param in self._variable_parameters
-                        }
+            param: {"times": [], "values": []}
+            for param in self._variable_parameters
+        }
 
         for rms_evt in self.grid.rms_events:
             collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
@@ -657,6 +664,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._state_eqs.extend(mdl.state_eqs)
         self._algebraic_eqs.extend(mdl.algebraic_eqs)
 
+        if self.progress_signal is not None:
+            self.progress_signal.emit(20)
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """
@@ -676,7 +685,8 @@ class RmsProblemDae(RmsProblemTemplate):
             self.init_guess[var.uid] = val
             print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
         else:
-            print(f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
+            print(
+                f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
 
     def get_init_guess_info(self) -> pd.DataFrame:
         """
@@ -840,7 +850,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def get_dt(self):
         return self._dt
-    
+
     def get_dt_value(self):
         dt_value = self._variable_parameters_values[-2]
         return dt_value

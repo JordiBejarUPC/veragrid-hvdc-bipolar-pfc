@@ -143,6 +143,8 @@ class ControllableShunt(ShuntParent):
 
         self.register(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?')
 
+        self.register(key='is_controlled', units='', tpe=bool, definition='Is controlled?')
+
         self.register(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus')
 
         self.register(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,

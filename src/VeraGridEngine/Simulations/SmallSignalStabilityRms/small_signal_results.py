@@ -6,7 +6,7 @@
 import numpy as np
 import math
 from matplotlib import pyplot as plt
-from typing import List
+from typing import List, Any
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
@@ -14,17 +14,65 @@ from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
+class SPlotInteractionHandler:
+    """
+    Handles interactive annotations and hover events for S-Domain stability plots.
+    """
+    __slots__ = ['sc', 'annot', 'fig', 'ax']
+
+    def __init__(self, sc: Any, annot: Any, fig: Any, ax: Any) -> None:
+        """
+        SPlotInteractionHandler constructor.
+        """
+        self.sc: Any = sc
+        self.annot: Any = annot
+        self.fig: Any = fig
+        self.ax: Any = ax
+
+    def update_annotation(self, ind: dict) -> None:
+        """
+        Updates the annotation text and position based on the hovered point.
+        """
+        pos = self.sc.get_offsets()[ind["ind"][0]]
+        self.annot.xy = pos
+        text: str = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
+        self.annot.set_text(text)
+        self.annot.get_bbox_patch().set_alpha(0.8)
+
+    def on_hover(self, event: Any) -> None:
+        """
+        Hover event callback logic.
+        """
+        if event.inaxes == self.ax:
+            cont, ind = self.sc.contains(event)
+            if cont:
+                self.update_annotation(ind)
+                self.annot.set_visible(True)
+                self.fig.canvas.draw_idle()
+            else:
+                if self.annot.get_visible():
+                    self.annot.set_visible(False)
+                    self.fig.canvas.draw_idle()
+                else:
+                    pass
+        else:
+            pass
 
 class SmallSignalStabilityRmsResults(ResultsTemplate):
-
+    """
+    Small-signal Analysis results storage and visualization.
+    """
+    __slots__ = [
+        'stat_vars_array', 'eigenvalues', 'participation_factors',
+        'damping_ratios', 'conjugate_frequencies', 'state_matrix'
+    ]
     def __init__(self,
-                 eigenvalues: Mat,
+                 eigenvalues: Vec,
                  participation_factors: Mat,
                  damping_ratios: Vec,
                  conjugate_frequencies: Vec,
                  state_matrix: Mat,
-                 stat_vars: List[Var],
-                 reduced_state_matrix: Mat| None = None):
+                 stat_vars: List[Var])-> None:
         """
         Small-signal Analysis results
         :param eigenvalues:
@@ -35,37 +83,41 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
         :param stat_vars:
         :param reduced_state_matrix:
         """
+
+        available_list: list = list([
+            ResultTypes.StateMatrix,
+            ResultTypes.Modes,
+            ResultTypes.ParticipationFactors,
+            ResultTypes.SDomainPlot,
+            ResultTypes.SDomainPlotHz
+        ])
+
         ResultsTemplate.__init__(
             self,
             name='Small Signal Stability',
-            available_results=[
-                ResultTypes.StateMatrix,
-                ResultTypes.Modes,
-                ResultTypes.ParticipationFactors,
-                ResultTypes.SDomainPlot,
-                ResultTypes.SDomainPlotHz
-            ],
+            available_results=available_list,
             time_array=None,
             clustering_results=None,
             study_results_type=StudyResultsType.SmallSignalStability
         )
 
-        stat_vars_names = [f"{var}{i // 2 + 1}" for i, var in enumerate(stat_vars)]
+        names_list: list = list()
+        for i, var in enumerate(stat_vars):
+            names_list.append(f"{var}{i // 2 + 1}")
 
-        self.stat_vars_array = np.array(stat_vars_names, dtype=np.str_)
+        self.stat_vars_array: Vec = np.array(names_list, dtype=np.str_)
+        self.eigenvalues: Vec = eigenvalues
+        self.participation_factors: Mat = participation_factors
+        self.damping_ratios: Vec = damping_ratios
+        self.conjugate_frequencies: Vec = conjugate_frequencies
 
-        self.eigenvalues = eigenvalues
-        self.participation_factors = participation_factors
-        self.damping_ratios = [str(r) if not np.isnan(r) else '-' for r in damping_ratios]
-        self.conjugate_frequencies = [str(r) if not np.isnan(r) else '-' for r in conjugate_frequencies]
-        self.state_matrix = state_matrix
-
+        self.state_matrix: Mat = state_matrix
 
         self.register(name='eigenvalues', tpe=Vec)
-        self.register(name='participation_factors', tpe=Vec)
+        self.register(name='participation_factors', tpe=Mat)
         self.register(name='damping_ratios', tpe=Vec)
         self.register(name='conjugate_frequencies', tpe=Vec)
-        self.register(name='state_matrix', tpe=Vec)
+        self.register(name='state_matrix', tpe=Mat)
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
@@ -82,7 +134,7 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                 cols_device_type=DeviceType.NoDevice
             )
 
-        if result_type == ResultTypes.ParticipationFactors:
+        elif result_type == ResultTypes.ParticipationFactors:
 
             return ResultsTable(
                 data=self.participation_factors,
@@ -94,11 +146,11 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.Modes:
-            re = self.eigenvalues.real
-            im = self.eigenvalues.imag
-            data = np.c_[re, im, self.damping_ratios, self.conjugate_frequencies]
+            re: Vec = self.eigenvalues.real
+            im: Vec = self.eigenvalues.imag
+            data_modes: Mat = np.c_[re, im, self.damping_ratios, self.conjugate_frequencies]
             return ResultsTable(
-                data=data,
+                data=data_modes,
                 index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
                 columns=np.array(["Real", "Imaginary", "Damping ratio", "Oscillation frequency"]),
                 title="Eigenvalues",
@@ -106,72 +158,51 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                 cols_device_type=DeviceType.NoDevice
             )
         elif result_type == ResultTypes.SDomainPlot:
-            re = self.eigenvalues.real
-            im = self.eigenvalues.imag
-            data = np.c_[re, im]
+            re: Vec = self.eigenvalues.real
+            im: Vec = self.eigenvalues.imag
+            data: Mat = np.c_[re, im]
 
-            d = np.abs(np.nan_to_num(re))
-            colors = (-d / d.max())
+            d: Vec = np.abs(np.nan_to_num(re))
+            colors: Vec = (-d / d.max())
 
-            slope = 1 / 0.05
-            x_z = np.linspace(-200, 0, 400)
-            y_z = slope * x_z
+            slope: float = 1 / 0.05
+            x_z: Vec = np.linspace(-200, 0, 400)
+            y_z: Vec = slope * x_z
 
-            margin_x = (re.max() - re.min()) * 0.1
-            margin_y = (im.max() - im.min()) * 0.1
-            x_min = re.min() - margin_x
-            x_max = re.max() + margin_x
-            y_min = im.min() - margin_y
-            y_max = im.max() + margin_y
-
+            margin_x: float = (re.max() - re.min()) * 0.1
+            margin_y: float = (im.max() - im.min()) * 0.1
+            x_min: float = re.min() - margin_x
+            x_max: float = re.max() + margin_x
+            y_min: float = im.min() - margin_y
+            y_max: float = im.max() + margin_y
 
             if self.plotting_allowed():
                 plt.ion()
-                fig = plt.figure(figsize=(8, 6))
-                ax = fig.add_subplot(111)
-                ax.plot(x_z, y_z, '--', color='grey',linewidth=0.7, alpha=0.6, label='ζ = 5%')
-                ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
-                sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
+                fig: Any = plt.figure(figsize=(8, 6))
+                ax: Any = fig.add_subplot(111)
+                ax.plot(x_z, y_z, '--', color='grey', linewidth=0.7, alpha=0.6, label='ζ = 5%')
+                ax.plot(x_z, -y_z, '--', color='grey', linewidth=0.7, alpha=0.6)
+                sc: Any = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real')
                 ax.set_ylabel(r'Imaginary [rad/s]')
-                ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
+                ax.axhline(0, color='black', linewidth=1)
                 ax.axvline(0, color='black', linewidth=1)
                 plt.xlim([x_min, x_max])
                 plt.ylim([y_min, y_max])
                 plt.tight_layout()
                 plt.show()
-                annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
-                                    textcoords="offset points",
-                                    bbox=dict(boxstyle="round", fc="w"),
-                                    arrowprops=dict(arrowstyle="->"),
-                                    fontsize=8)
+                annot: Any = ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                                         textcoords="offset points",
+                                         bbox=dict(boxstyle="round", fc="w"),
+                                         arrowprops=dict(arrowstyle="->"),
+                                         fontsize=8)
                 annot.set_visible(False)
 
-                def update_annotation(ind):
-                    """
-                    :param ind:
-                    :return:
-                    """
-                    pos = sc.get_offsets()[ind["ind"][0]]
-                    annot.xy = pos
-                    text = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
-                    annot.set_text(text)
-                    annot.get_bbox_patch().set_alpha(0.8)
-
-                def hover(event):
-                    if event.inaxes == ax:
-                        cont, ind = sc.contains(event)
-                        if cont:
-                            update_annotation(ind)
-                            annot.set_visible(True)
-                            fig.canvas.draw_idle()
-                        else:
-                            if annot.get_visible():
-                                annot.set_visible(False)
-                                fig.canvas.draw_idle()
-
-                fig.canvas.mpl_connect("motion_notify_event", hover)
+                handler: SPlotInteractionHandler = SPlotInteractionHandler(sc, annot, fig, ax)
+                fig.canvas.mpl_connect("motion_notify_event", handler.on_hover)
+            else:
+                pass
 
             return ResultsTable(data=data,
                                 index=np.empty(len(self.eigenvalues), dtype=np.str_),
@@ -181,32 +212,32 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                                 title="S-Domain Stability plot"
                                 )
         elif result_type == ResultTypes.SDomainPlotHz:
-            re = self.eigenvalues.real
-            im = self.eigenvalues.imag / (2*math.pi)
-            data = np.c_[re, im]
+            re: Vec = self.eigenvalues.real
+            im: Vec = self.eigenvalues.imag / (2 * math.pi)
+            data: Mat = np.c_[re, im]
 
-            d = np.abs(np.nan_to_num(re))
-            colors = (-d / d.max())
+            d: Vec = np.abs(np.nan_to_num(re))
+            colors: Vec = (-d / d.max())
 
-            slope = 1 / 0.05
-            x_z = np.linspace(-200, 0, 400)
-            y_z = slope * x_z / (2*math.pi)
+            slope: float = 1 / 0.05
+            x_z: Vec = np.linspace(-200, 0, 400)
+            y_z: Vec = slope * x_z / (2 * math.pi)
 
-            margin_x = (re.max() - re.min()) * 0.1
-            margin_y = (im.max() - im.min()) * 0.1
-            x_min = re.min() - margin_x
-            x_max = re.max() + margin_x
-            y_min = im.min() - margin_y
-            y_max = im.max() + margin_y
+            margin_x: float = (re.max() - re.min()) * 0.1
+            margin_y: float = (im.max() - im.min()) * 0.1
+            x_min: float = re.min() - margin_x
+            x_max: float = re.max() + margin_x
+            y_min: float = im.min() - margin_y
+            y_max: float = im.max() + margin_y
 
 
             if self.plotting_allowed():
                 plt.ion()
-                fig = plt.figure(figsize=(8, 6))
-                ax = fig.add_subplot(111)
+                fig: Any = plt.figure(figsize=(8, 6))
+                ax: Any = fig.add_subplot(111)
                 ax.plot(x_z, y_z, '--', color='grey',linewidth=0.7, alpha=0.6, label='ζ = 5%')
                 ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
-                sc = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
+                sc: Any = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
                 fig.suptitle("S-Domain Stability plot")
                 ax.set_xlabel(r'Real')
                 ax.set_ylabel(r'Imaginary [Hz]')
@@ -216,37 +247,18 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                 plt.ylim([y_min, y_max])
                 plt.tight_layout()
                 plt.show()
-                annot = ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                annot: Any = ax.annotate("", xy=(0, 0), xytext=(20, 20),
                                     textcoords="offset points",
                                     bbox=dict(boxstyle="round", fc="w"),
                                     arrowprops=dict(arrowstyle="->"),
                                     fontsize=8)
                 annot.set_visible(False)
 
-                def update_annotation(ind):
-                    """
-                    :param ind:
-                    :return:
-                    """
-                    pos = sc.get_offsets()[ind["ind"][0]]
-                    annot.xy = pos
-                    text = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
-                    annot.set_text(text)
-                    annot.get_bbox_patch().set_alpha(0.8)
+                hz_handler: SPlotInteractionHandler = SPlotInteractionHandler(sc, annot, fig, ax)
+                fig.canvas.mpl_connect("motion_notify_event", hz_handler.on_hover)
 
-                def hover(event):
-                    if event.inaxes == ax:
-                        cont, ind = sc.contains(event)
-                        if cont:
-                            update_annotation(ind)
-                            annot.set_visible(True)
-                            fig.canvas.draw_idle()
-                        else:
-                            if annot.get_visible():
-                                annot.set_visible(False)
-                                fig.canvas.draw_idle()
-
-                fig.canvas.mpl_connect("motion_notify_event", hover)
+            else:
+                pass
 
             return ResultsTable(data=data,
                                 index=np.empty(len(self.eigenvalues), dtype=np.str_),
