@@ -17,7 +17,7 @@ from VeraGrid.Gui.messages import *
 from VeraGrid.Gui.RosetaExplorer.roseta_explorer import Ui_RosetaExplorer, QMainWindow
 from VeraGrid.Gui.RosetaExplorer.roseta_objects_model import RosetaObjectsModel
 from VeraGrid.Gui.TreeModelViewer.TreeModelViewer import TreeModelViewerGUI
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, populate_cim_item_children, get_cim_tree_model
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
@@ -84,6 +84,17 @@ class RosetaExplorerGUI(QMainWindow):
         self.properties_proxy_model.setFilterKeyColumn(0)
         self.ui.propertiesTableView.setSortingEnabled(True)
 
+        # Tree
+        self.treeProxyModel = QtCore.QSortFilterProxyModel(self.ui.mainTreeView)
+        self.treeProxyModel.setRecursiveFilteringEnabled(True)
+        self.treeProxyModel.setFilterKeyColumn(0)
+        self.ui.mainTreeView.setSortingEnabled(True)
+
+        self.ui.treeFilterComboBox.setModel(get_list_model(['Class', 'Property', 'Value']))
+        self.ui.treeFilterComboBox.setCurrentIndex(0)
+
+        self.current_model = None
+
         # DB
         self.db_handler: DbHandler = DbHandler(new_db=False) if db_handler is None else db_handler
         self.update_combo_boxes()
@@ -97,8 +108,6 @@ class RosetaExplorerGUI(QMainWindow):
         # triggered
         self.ui.actionSave_logs.triggered.connect(self.save_logs)
 
-        self.ui.actionNavigation_tree.triggered.connect(self.launch_tree_view)
-
         self.ui.actionNew.triggered.connect(self.new_rosetta_explorer)
 
         self.ui.actionDocumentation.triggered.connect(self.show_docs)
@@ -109,10 +118,13 @@ class RosetaExplorerGUI(QMainWindow):
 
         self.ui.filterButton.clicked.connect(self.filter_properties_table)
         self.ui.modelTypeLabel.mouseDoubleClickEvent = self.display_circuit
+        self.ui.treeFilterButton.clicked.connect(self.filter_main_tree)
+        self.ui.mainTreeView.clicked.connect(self.update_main_tree_on_click)
 
         # text changed
 
         self.ui.filterComboBox.currentTextChanged.connect(self.on_filter_combobox_changed)
+        self.ui.treeFilterComboBox.currentTextChanged.connect(self.on_tree_filter_combobox_changed)
 
         # lineedit enter
 
@@ -169,7 +181,7 @@ class RosetaExplorerGUI(QMainWindow):
 
     def update_combo_boxes(self):
         """
-        Properly update te combo boxes
+        Properly update the combo boxes
         """
         if isinstance(self.circuit, PsseCircuit):
             # we do this first so that the model changing does not trigger the on_combo_box_text_change function
@@ -286,12 +298,16 @@ class RosetaExplorerGUI(QMainWindow):
             if trim_empty:
                 classes = [cl for cl in classes if len(self.circuit.get_objects_list(elm_type=cl)) > 0]
 
+            # Table
             self.classes_model = get_list_model(classes)
-
             self.ui.clasesListView.setModel(self.classes_model)
-
             self.set_model_label()
             self.update_combo_boxes()
+
+            # Tree
+            self.current_model = get_cim_tree_model(self.circuit)
+            self.treeProxyModel.setSourceModel(self.current_model)
+            self.ui.mainTreeView.setModel(self.treeProxyModel)
 
             if self.console:
                 for key, val in {'app': self,
@@ -387,25 +403,25 @@ class RosetaExplorerGUI(QMainWindow):
         else:
             warning_msg('There no logs :)')
 
-    def launch_tree_view(self):
-        """
-        Launch tree view of the model
-        """
-        if self.circuit is not None:
-
-            if isinstance(self.circuit, CgmesCircuit):
-                window = TreeModelViewerGUI()
-                self.tree_navigation_windows.append(window)
-                h = 740
-                window.resize(int(1.61 * h), h)  # golden ratio :)
-
-                window.set_circuit(self.circuit)
-
-                window.show()
-            else:
-                info_msg("Only CGMES models are available for the tree view :/")
-        else:
-            warning_msg("There is not model :/")
+    # def launch_tree_view(self):
+    #     """
+    #     Launch tree view of the model
+    #     """
+    #     if self.circuit is not None:
+    #
+    #         if isinstance(self.circuit, CgmesCircuit):
+    #             window = TreeModelViewerGUI()
+    #             self.tree_navigation_windows.append(window)
+    #             h = 740
+    #             window.resize(int(1.61 * h), h)  # golden ratio :)
+    #
+    #             window.set_circuit(self.circuit)
+    #
+    #             window.show()
+    #         else:
+    #             info_msg("Only CGMES models are available for the tree view :/")
+    #     else:
+    #         warning_msg("There is not model :/")
 
     def new_rosetta_explorer(self, model: Union[PsseCircuit, CgmesCircuit, None] = None,
                              logger: Union[DataLogger, None] = None):
@@ -477,3 +493,33 @@ class RosetaExplorerGUI(QMainWindow):
         :return:
         """
         pass
+
+
+    def filter_main_tree(self):
+        self.treeProxyModel.setFilterRegularExpression(self.ui.filterLineEdit.text())
+
+    def update_main_tree_on_click(self, index):
+        # ix = self.proxyModel.mapToSource(index)
+        # parent = self.current_model.itemFromIndex(ix)
+        # for text in ['Object class', 'Property', 'Value']:
+        #     children = QtGui.QStandardItem("{}_{}".format(parent.text(), text))
+        #     parent.appendRow(children)
+        # self.ui.mainTreeView.expand(index)
+        pass
+
+    def on_tree_expanded(self, index):
+        if self.current_model is None:
+            return
+        src_index = self.treeProxyModel.mapToSource(index)
+        item = self.current_model.itemFromIndex(src_index)
+        if item is None:
+            return
+        populate_cim_item_children(item, editable=False)
+
+    def on_tree_filter_combobox_changed(self):
+
+        idx = self.ui.treeFilterComboBox.currentIndex()
+
+        if idx > -1:
+            self.treeProxyModel.setFilterKeyColumn(idx)
+
