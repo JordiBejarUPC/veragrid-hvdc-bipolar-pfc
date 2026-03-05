@@ -39,6 +39,7 @@ class CgmesProfileType(Enum):
 
 class CgmesRecoveryMode(Enum):
     Strict = "Strict"
+    Auto = "Auto"
     Recover = "Recover"
 
     def __str__(self):

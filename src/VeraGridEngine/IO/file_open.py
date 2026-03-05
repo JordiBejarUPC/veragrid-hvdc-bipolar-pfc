@@ -62,7 +62,7 @@ class FileOpenOptions:
                  psse_adjust_taps_to_discrete_positions: bool = False,
                  psse_use_short_names: bool = True,
                  psse_flatten_virtual_taps: bool = False,
-                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Recover):
+                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto):
         """
         :param file_type: FileType to load, none is unsure
         :param crash_on_errors: Mainly debug feature to allow finding the exact crash issue when loading files
@@ -115,7 +115,7 @@ def open_cgmes(files: List[str] | str,
                text_func: Union[None, Callable] = None,
                progress_func: Union[None, Callable] = None,
                cgmes_logger: DataLogger = DataLogger(),
-               cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Recover) -> Tuple[MultiCircuit, CgmesCircuit]:
+               cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto) -> Tuple[MultiCircuit, CgmesCircuit]:
     """
     Load cgmes files
     :param files: file or list of files
@@ -202,22 +202,27 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
     :param file_name: file path(s) with the extension
     """
     if isinstance(file_name, list):
-
-        looks_like_ucte = False
+        looks_like_ucte = True
+        looks_like_cgmes = True
         for f in file_name:
             _, file_extension = os.path.splitext(f)
             if file_extension.lower() in ['.xml', '.zip']:
                 looks_like_ucte = False
 
             elif file_extension.lower() in ['.ucte']:
-                looks_like_ucte = True
+                looks_like_cgmes = False
 
             else:
                 looks_like_ucte = False
+                looks_like_cgmes = False
 
         if looks_like_ucte:
 
             return FileType.UCTE
+
+        elif looks_like_cgmes:
+
+            return FileType.CGMES
 
         else:
             return None  # needs further clarification
@@ -275,9 +280,12 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
         elif file_extension.lower() == '.epc':
             return FileType.EPC
 
-        elif file_extension.lower() in ['.xml', '.zip']:
+        elif file_extension.lower() == '.xml':
             # inconclusive
             return None
+
+        elif file_extension.lower() == '.zip':
+            return FileType.CGMES
 
         elif file_extension.lower() == '.hdf5':
             return FileType.PyPsa_h5

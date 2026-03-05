@@ -94,7 +94,13 @@ def run_import_export_test(import_path: str | list[str],
     logger = Logger()
     # Import 1 ----------------------------------------------------
     # CGMES model import to MultiCircuit
-    circuit_1 = gc.FileOpen(file_name=import_path, options=FileOpenOptions()).open()
+    if isinstance(import_path, list):
+        initial_import_files = import_path
+    else:
+        initial_import_files = [import_path, boundary_zip_path]
+
+    circuit_1 = gc.FileOpen(file_name=initial_import_files, options=create_file_open_options()).open()
+    assert circuit_1 is not None
     circuit_1.buses.sort(key=lambda obj: obj.name, reverse=False)  # SORTING
     # circuit_1.buses.sort(key=lambda obj: obj.idtag)     # SORTING by idtag
     nc_1 = gc.compile_numerical_circuit_at(circuit_1)
@@ -118,10 +124,11 @@ def run_import_export_test(import_path: str | list[str],
     cgmes_export = FileSave(circuit=circuit_1,
                             file_name=export_fname,
                             options=options)
-    cgmes_export.save_cgmes()
+    cgmes_export.save()
 
     # Import 2 ---------------------------------------------
-    circuit_2 = gc.FileOpen(file_name=[export_fname, boundary_zip_path], options=FileOpenOptions()).open()
+    circuit_2 = gc.FileOpen(file_name=[export_fname, boundary_zip_path], options=create_file_open_options()).open()
+    assert circuit_2 is not None
     circuit_2.buses.sort(key=lambda obj: obj.name, reverse=False)  # SORTING
     # Move the first element to the last position, if sorting doesn't work
     if not circuit_1.buses[0].name == circuit_2.buses[0].name:
@@ -175,7 +182,6 @@ def run_import_export_test(import_path: str | list[str],
     assert ok
 
 
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
 def test_cgmes_roundtrip():
     """
 

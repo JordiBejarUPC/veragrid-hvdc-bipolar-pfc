@@ -28,6 +28,8 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      get_slack_id,
                                                      find_object_by_idtag,
                                                      find_terminal_bus,
+                                                     normalize_cgmes_reference_uuid,
+                                                     is_reference_priority_one,
                                                      build_cgmes_limit_dicts,
                                                      get_voltage_shunt)
 
@@ -340,9 +342,36 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
              Dict[str, gcdev.Bus], fatal error?
     """
 
-    slack_id = get_slack_id(cgmes_model.cgmes_assets.SynchronousMachine_list)
-    if slack_id is None:
-        logger.add_error(msg="Couldn't find referencePriority 1 in the SynchronousMachines.",
+    slack_tp_uuid_set = set()
+
+    slack_tp_uuid = get_slack_id(cgmes_model.cgmes_assets.SynchronousMachine_list)
+    if slack_tp_uuid is not None:
+        slack_tp_uuid_set.add(slack_tp_uuid)
+
+    for machine in cgmes_model.cgmes_assets.SynchronousMachine_list:
+        reference_priority = getattr(machine, "referencePriority", None)
+        if is_reference_priority_one(reference_priority):
+            machine_terminals = getattr(machine, "Terminals", None)
+            if isinstance(machine_terminals, list):
+                for machine_terminal in machine_terminals:
+                    if hasattr(machine_terminal, "TopologicalNode"):
+                        machine_tp_uuid = normalize_cgmes_reference_uuid(machine_terminal.TopologicalNode)
+                        if machine_tp_uuid is not None:
+                            slack_tp_uuid_set.add(machine_tp_uuid)
+            elif machine_terminals is not None:
+                if hasattr(machine_terminals, "TopologicalNode"):
+                    machine_tp_uuid = normalize_cgmes_reference_uuid(machine_terminals.TopologicalNode)
+                    if machine_tp_uuid is not None:
+                        slack_tp_uuid_set.add(machine_tp_uuid)
+
+    for island in cgmes_model.cgmes_assets.TopologicalIsland_list:
+        angle_ref = getattr(island, "AngleRefTopologicalNode", None)
+        island_tp_uuid = normalize_cgmes_reference_uuid(angle_ref)
+        if island_tp_uuid is not None:
+            slack_tp_uuid_set.add(island_tp_uuid)
+
+    if len(slack_tp_uuid_set) == 0:
+        logger.add_error(msg="Couldn't find slack reference from SynchronousMachines or TopologicalIslands.",
                          device_class="SynchronousMachine",
                          device_property="referencePriority")
 
@@ -395,9 +424,21 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                 vm = 1.0
                 va = 0.0
 
+            cn_uuid = normalize_cgmes_reference_uuid(cn_elm.uuid)
+            cn_rdfid_uuid = normalize_cgmes_reference_uuid(cn_elm.rdfid)
+            cn_tp_uuid = normalize_cgmes_reference_uuid(
+                cn_elm.TopologicalNode if hasattr(cn_elm, "TopologicalNode") else None
+            )
+
             is_slack = False
-            if slack_id == cn_elm.rdfid:
+            if cn_uuid is not None and cn_uuid in slack_tp_uuid_set:
                 is_slack = True
+            elif cn_rdfid_uuid is not None and cn_rdfid_uuid in slack_tp_uuid_set:
+                is_slack = True
+            elif cn_tp_uuid is not None and cn_tp_uuid in slack_tp_uuid_set:
+                is_slack = True
+            else:
+                is_slack = False
 
             gcdev_elm = gcdev.Bus(
                 idtag=cn_elm.uuid,
@@ -456,8 +497,12 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                 vm = 1.0
                 va = 0.0
 
+            tp_uuid = normalize_cgmes_reference_uuid(tp_node.uuid)
+            tp_rdfid_uuid = normalize_cgmes_reference_uuid(tp_node.rdfid)
             is_slack = False
-            if slack_id == tp_node.rdfid:
+            if tp_uuid is not None and tp_uuid in slack_tp_uuid_set:
+                is_slack = True
+            elif tp_rdfid_uuid is not None and tp_rdfid_uuid in slack_tp_uuid_set:
                 is_slack = True
 
             volt_lev = None
@@ -573,6 +618,21 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
                     gc_model.add_bus(gcdev_elm)
 
                 calc_node_dict[gcdev_elm.idtag] = gcdev_elm
+
+    has_slack = any(bus.is_slack for bus in gc_model.buses)
+    if not has_slack:
+        matched_slack_uuid_set = set()
+        for slack_tp_uuid in slack_tp_uuid_set:
+            slack_bus = calc_node_dict.get(slack_tp_uuid, None)
+            if slack_bus is not None:
+                slack_bus.is_slack = True
+                matched_slack_uuid_set.add(slack_tp_uuid)
+
+        if len(slack_tp_uuid_set) > 0 and len(matched_slack_uuid_set) == 0:
+            logger.add_warning(msg='Slack node reference not matched to imported buses',
+                               device_class='TopologicalNode',
+                               device_property='AngleRefTopologicalNode',
+                               value=str(slack_tp_uuid_set))
 
     return calc_node_dict, False
 
@@ -1883,9 +1943,26 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                             tc_type=tc_type
                         )
 
-                        # SET tap_module and tap_phase from its own TapChanger object
-                        winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
-                        winding_w_tc.tap_phase = winding_w_tc.tap_changer.get_tap_phase()
+                        if winding_w_tc.tap_changer.tc_type == TapChangerTypes.NoRegulation:
+                            winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
+                            winding_w_tc.tap_changer.tc_type = TapChangerTypes.VoltageRegulation
+                            winding_w_tc.tap_changer.recalc()
+                            winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
+                            winding_w_tc.tap_changer.tc_type = TapChangerTypes.NoRegulation
+                            winding_w_tc.tap_phase = winding_w_tc.tap_changer.get_tap_phase()
+                        elif winding_w_tc.tap_changer.tc_type == TapChangerTypes.VoltageRegulation:
+                            winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
+                            winding_w_tc.tap_phase = winding_w_tc.tap_changer.get_tap_phase()
+                        elif winding_w_tc.tap_changer.tc_type == TapChangerTypes.Symmetrical:
+                            winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
+                            winding_w_tc.tap_phase = winding_w_tc.tap_changer.get_tap_phase()
+                        elif winding_w_tc.tap_changer.tc_type == TapChangerTypes.Asymmetrical:
+                            winding_w_tc.tap_module = winding_w_tc.tap_changer.get_tap_module()
+                            winding_w_tc.tap_phase = winding_w_tc.tap_changer.get_tap_phase()
+                        else:
+                            logger.add_error(msg="CGMES import: Winding TapChanger has no Type",
+                                             device=winding_w_tc.device_type,
+                                             value=winding_w_tc.tap_changer.tc_type)
                     else:
                         logger.add_error("Winding of the tap changer not found",
                                          device_class="TransformerEnd",
