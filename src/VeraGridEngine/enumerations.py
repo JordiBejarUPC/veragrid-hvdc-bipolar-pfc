@@ -1917,26 +1917,18 @@ class ResultTypes(Enum):
     RmsPlotResults = 'Rms plot results'
 
     RmsGeneratorResults = 'Rms Generator results'
-    RmsGenqecResults = 'Rms Genqec results'
-    RmsGenrawResults = 'Rms Genraw results'
-
     RmsLineResults = 'Rms Line results'
-    RmsSimpleLineResults = 'Rms Simple line results'
-
     RmsLoadResults = 'Rms load results'
-    RmsSimpleLoadResults = 'Rms Simple load results'
 
-    RmsGenqecOmegaResults = 'Rms Genqec omega results'
-    RmsGenqecDeltaResults = 'Rms Genqec delta results'
 
-    RmsGenrawOmegaResults = 'Rms Genraw omega results'
-    RmsGenrawDeltaResults = 'Rms Genraw delta results'
+    RmsGeneratorOmegaResults = 'Rms Genqec omega results'
+    RmsGeneratorDeltaResults = 'Rms Genqec delta results'
 
-    RmsSimpleLoadPResults = 'Rms Load P results'
-    RmsSimpleLoadQResults = 'Rms Load Q results'
+    RmsLoadPResults = 'Rms Load P results'
+    RmsLoadQResults = 'Rms Load Q results'
 
-    RmsSimpleLinePResults = 'Rms Simple Line P results'
-    RmsSimpleLineQResults = 'Rms Simple Line Q results'
+    RmsLinePResults = 'Rms Simple Line P results'
+    RmsLineQResults = 'Rms Simple Line Q results'
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
