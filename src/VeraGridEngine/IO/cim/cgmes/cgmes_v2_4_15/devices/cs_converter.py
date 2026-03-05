@@ -2,10 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_converter import ACDCConverter
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, CsOperatingModeKind, UnitSymbol, CsPpccControlKind
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CsOperatingModeKind, UnitSymbol, CsPpccControlKind
 
 
 class CsConverter(ACDCConverter):

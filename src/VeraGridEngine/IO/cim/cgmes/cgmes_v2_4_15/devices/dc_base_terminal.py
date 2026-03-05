@@ -2,19 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_node import DCNode
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_topological_node import DCTopologicalNode
 
 
 class DCBaseTerminal(ACDCTerminal):
 	def __init__(self, rdfid='', tpe='DCBaseTerminal'):
 		ACDCTerminal.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_node import DCNode
 		self.DCNode: DCNode | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_topological_node import DCTopologicalNode
 		self.DCTopologicalNode: DCTopologicalNode | None = None
 
 		self.register_property(

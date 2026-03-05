@@ -2,17 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_converter import ACDCConverter
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol, VsPpccControlKind, VsQpccControlKind
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol, VsPpccControlKind, VsQpccControlKind
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.vs_capability_curve import VsCapabilityCurve
 
 
 class VsConverter(ACDCConverter):
 	def __init__(self, rdfid='', tpe='VsConverter'):
 		ACDCConverter.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.vs_capability_curve import VsCapabilityCurve
 		self.CapabilityCurve: VsCapabilityCurve | None = None
 		self.maxModulationIndex: float = None
 		self.maxValveCurrent: float = None

@@ -3,18 +3,20 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 
 
 class MutualCoupling(IdentifiedObject):
 	def __init__(self, rdfid='', tpe='MutualCoupling'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.First_Terminal: Terminal | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.Second_Terminal: Terminal | None = None
 		self.b0ch: float = None
 		self.distance11: float = None

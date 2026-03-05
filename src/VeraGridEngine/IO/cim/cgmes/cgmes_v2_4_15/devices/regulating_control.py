@@ -2,19 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, RegulatingControlModeKind, UnitMultiplier
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import RegulatingControlModeKind, UnitMultiplier
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.regulating_cond_eq import RegulatingCondEq
 
 
 class RegulatingControl(PowerSystemResource):
 	def __init__(self, rdfid='', tpe='RegulatingControl'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.Terminal: Terminal | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.regulating_cond_eq import RegulatingCondEq
 		self.RegulatingCondEq: RegulatingCondEq | None = None
 		self.mode: RegulatingControlModeKind = None
 		self.discrete: bool = None

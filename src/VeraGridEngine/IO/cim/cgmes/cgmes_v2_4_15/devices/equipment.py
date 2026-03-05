@@ -2,10 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.operational_limit_set import OperationalLimitSet
 
 
 class Equipment(PowerSystemResource):
@@ -13,9 +16,7 @@ class Equipment(PowerSystemResource):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 
 		self.aggregate: bool = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
 		self.EquipmentContainer: EquipmentContainer | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.operational_limit_set import OperationalLimitSet
 		self.OperationalLimitSet: OperationalLimitSet | None = None
 
 		self.register_property(

@@ -2,10 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.tap_changer import TapChanger
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, TransformerControlMode, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import TransformerControlMode, UnitSymbol
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.ratio_tap_changer_table import RatioTapChangerTable
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.transformer_end import TransformerEnd
 
 
 class RatioTapChanger(TapChanger):
@@ -14,9 +18,7 @@ class RatioTapChanger(TapChanger):
 
 		self.tculControlMode: TransformerControlMode = None
 		self.stepVoltageIncrement: float = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.ratio_tap_changer_table import RatioTapChangerTable
 		self.RatioTapChangerTable: RatioTapChangerTable | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.transformer_end import TransformerEnd
 		self.TransformerEnd: TransformerEnd | None = None
 
 		self.register_property(

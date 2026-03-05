@@ -2,10 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.base import Base
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.tap_changer import TapChanger
+
 
 
 class SvTapStep(Base):
@@ -13,7 +16,6 @@ class SvTapStep(Base):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 
 		self.position: float = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.tap_changer import TapChanger
 		self.TapChanger: TapChanger | None = None
 
 		self.register_property(

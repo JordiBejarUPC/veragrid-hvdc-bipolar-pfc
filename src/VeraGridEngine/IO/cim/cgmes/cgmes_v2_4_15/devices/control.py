@@ -2,10 +2,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
+import datetime
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol, UnitMultiplier
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol, UnitMultiplier
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
 
 
 class Control(IdentifiedObject):
@@ -14,11 +20,9 @@ class Control(IdentifiedObject):
 
 		self.controlType: str = None
 		self.operationInProgress: bool = None
-		import datetime
 		self.timeStamp: datetime.datetime | None = None
 		self.unitMultiplier: UnitMultiplier = None
 		self.unitSymbol: UnitSymbol = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
 		self.PowerSystemResource: PowerSystemResource | None = None
 
 		self.register_property(
@@ -26,7 +30,8 @@ class Control(IdentifiedObject):
 			class_type=str,
 			multiplier=UnitMultiplier.none,
 			unit=UnitSymbol.none,
-			description='''Specifies the type of Control, e.g. BreakerOn/Off, GeneratorVoltageSetPoint, TieLineFlow etc. The ControlType.name shall be unique among all specified types and describe the type.''',
+			description='''Specifies the type of Control, e.g. BreakerOn/Off, GeneratorVoltageSetPoint, TieLineFlow etc. 
+			The ControlType.name shall be unique among all specified types and describe the type.''',
 			profiles=[]
 		)
 		self.register_property(

@@ -2,11 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol, PhaseCode, UnitMultiplier
-
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol, PhaseCode, UnitMultiplier
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
 
 class Measurement(IdentifiedObject):
 	def __init__(self, rdfid='', tpe='Measurement'):
@@ -15,10 +18,8 @@ class Measurement(IdentifiedObject):
 		self.measurementType: str = None
 		self.phases: PhaseCode = None
 		self.unitSymbol: UnitSymbol = None
-		self.unitMultiplier: UnitMultiplier = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
-		self.Terminal: ACDCTerminal | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_system_resource import PowerSystemResource
+		self.unitMultiplier: UnitMultiplier | None  = None
+		self.Terminal: ACDCTerminal= None
 		self.PowerSystemResource: PowerSystemResource | None = None
 
 		self.register_property(

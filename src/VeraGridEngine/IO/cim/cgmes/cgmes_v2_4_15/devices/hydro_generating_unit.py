@@ -2,18 +2,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.generating_unit import GeneratingUnit
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, HydroEnergyConversionKind
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import HydroEnergyConversionKind
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.hydro_power_plant import HydroPowerPlant
 
 
 class HydroGeneratingUnit(GeneratingUnit):
 	def __init__(self, rdfid='', tpe='HydroGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 
-		self.energyConversionCapability: HydroEnergyConversionKind = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.hydro_power_plant import HydroPowerPlant
+		self.energyConversionCapability: HydroEnergyConversionKind | None = None
 		self.HydroPowerPlant: HydroPowerPlant | None = None
 
 		self.register_property(

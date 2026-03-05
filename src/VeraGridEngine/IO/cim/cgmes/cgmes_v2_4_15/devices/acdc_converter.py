@@ -2,10 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.conducting_equipment import ConductingEquipment
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_converterdc_terminal import ACDCConverterDCTerminal
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 
 
 class ACDCConverter(ConductingEquipment):
@@ -21,9 +26,7 @@ class ACDCConverter(ConductingEquipment):
 		self.resistiveLoss: float = None
 		self.switchingLoss: float = None
 		self.valveU0: float = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_converterdc_terminal import ACDCConverterDCTerminal
 		self.DCTerminals: ACDCConverterDCTerminal | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.PccTerminal: Terminal | None = None
 		self.idc: float = None
 		self.poleLossP: float = None

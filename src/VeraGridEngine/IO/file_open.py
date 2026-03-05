@@ -39,7 +39,7 @@ from VeraGridEngine.IO.others.rte_parser import rte2veragrid
 from VeraGridEngine.IO.others.anarede import PWFParser
 from VeraGridEngine.IO.iidm.iidm_parser_pypowsybl import IidmParser
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import CGMESVersions, FileType
+from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, FileType
 
 
 class FileOpenOptions:
@@ -55,6 +55,8 @@ class FileOpenOptions:
                  cgmes_version: CGMESVersions | None = None,
                  cgmes_map_areas_like_raw: bool = False,
                  cgmes_try_to_map_dc_to_hvdc_line: bool = True,
+                 cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
+                 cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
                  # PSSe
                  psse_adjust_taps_to_discrete_positions: bool = False,
                  psse_use_short_names: bool = True,
@@ -71,6 +73,12 @@ class FileOpenOptions:
                                             SubGeographicalRegion <-> Community
         :param cgmes_try_to_map_dc_to_hvdc_line: Converters and DC lines in CGMES are attempted to be converted
                                             to the simplified HvdcLine objects in VeraGrid
+        :param cgmes_topology_mode: CGMES topology conversion mode.
+                                    Auto: decide from model content.
+                                    ConnectivityNode: import node-breaker view.
+                                    TopologicalNode: import bus-branch view.
+        :param cgmes_create_busbar_section_for_every_connectivity_node: If true, create a BusBar for each
+                                                                         ConnectivityNode similarly to powsybl.
         :param psse_adjust_taps_to_discrete_positions: Modify the tap angle and module to the discrete positions
         """
 
@@ -82,6 +90,10 @@ class FileOpenOptions:
         self.cgmes_version: CGMESVersions | None = cgmes_version
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
         self.cgmes_try_to_map_dc_to_hvdc_line = cgmes_try_to_map_dc_to_hvdc_line
+        self.cgmes_topology_mode: CgmesTopologyMode = cgmes_topology_mode
+        self.cgmes_create_busbar_section_for_every_connectivity_node = (
+            cgmes_create_busbar_section_for_every_connectivity_node
+        )
 
         # PSS/e options
         self.psse_adjust_taps_to_discrete_positions = psse_adjust_taps_to_discrete_positions
@@ -95,6 +107,8 @@ def open_cgmes(files: List[str] | str,
                version: CGMESVersions | None = None,
                cgmes_map_areas_like_raw: bool = False,
                try_to_map_dc_to_hvdc_line: bool = False,
+               cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
+               cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
                text_func: Union[None, Callable] = None,
                progress_func: Union[None, Callable] = None,
                cgmes_logger: DataLogger = DataLogger()) -> Tuple[MultiCircuit, CgmesCircuit]:
@@ -104,6 +118,8 @@ def open_cgmes(files: List[str] | str,
     :param version:
     :param cgmes_map_areas_like_raw:
     :param try_to_map_dc_to_hvdc_line:
+    :param cgmes_topology_mode:
+    :param cgmes_create_busbar_section_for_every_connectivity_node:
     :param text_func:
     :param progress_func:
     :param cgmes_logger:
@@ -138,6 +154,10 @@ def open_cgmes(files: List[str] | str,
     circuit = cgmes_to_veragrid(
         cgmes_model=cgmes_circuit,
         map_dc_to_hvdc_line=try_to_map_dc_to_hvdc_line,
+        cgmes_topology_mode=cgmes_topology_mode,
+        create_busbar_section_for_every_connectivity_node=(
+            cgmes_create_busbar_section_for_every_connectivity_node
+        ),
         logger=cgmes_logger
     )
 
@@ -505,6 +525,10 @@ class FileOpen:
                 version=self.options.cgmes_version,  # will be determined inside if possible
                 cgmes_map_areas_like_raw=self.options.cgmes_map_areas_like_raw,
                 try_to_map_dc_to_hvdc_line=self.options.cgmes_try_to_map_dc_to_hvdc_line,
+                cgmes_topology_mode=self.options.cgmes_topology_mode,
+                cgmes_create_busbar_section_for_every_connectivity_node=(
+                    self.options.cgmes_create_busbar_section_for_every_connectivity_node
+                ),
                 text_func=text_func,
                 progress_func=progress_func,
                 cgmes_logger=self.cgmes_logger

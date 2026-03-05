@@ -2,10 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.reporting_group import ReportingGroup
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
 
 
 class BusNameMarker(IdentifiedObject):
@@ -13,9 +17,7 @@ class BusNameMarker(IdentifiedObject):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
 		self.priority: int = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.reporting_group import ReportingGroup
 		self.ReportingGroup: ReportingGroup | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
 		self.Terminal: ACDCTerminal | None = None
 
 		self.register_property(

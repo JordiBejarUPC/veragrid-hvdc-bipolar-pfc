@@ -2,21 +2,23 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.bay import Bay
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.substation import Substation
 
 
 class VoltageLevel(EquipmentContainer):
 	def __init__(self, rdfid='', tpe='VoltageLevel'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
 		self.BaseVoltage: BaseVoltage | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.bay import Bay
 		self.Bays: Bay | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.substation import Substation
 		self.Substation: Substation | None = None
 		self.highVoltageLimit: float = None
 		self.lowVoltageLimit: float = None

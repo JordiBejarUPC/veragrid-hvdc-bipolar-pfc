@@ -2,10 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment import Equipment
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, GeneratorControlSource, UnitSymbol, Currency
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import GeneratorControlSource, UnitSymbol, Currency
+if TYPE_CHECKING:
+		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.control_area_generating_unit import ControlAreaGeneratingUnit
+		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.rotating_machine import RotatingMachine
 
 
 class GeneratingUnit(Equipment):
@@ -27,9 +31,7 @@ class GeneratingUnit(Equipment):
 		self.startupCost: float = None
 		self.variableCost: float = None
 		self.totalEfficiency: float = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.control_area_generating_unit import ControlAreaGeneratingUnit
 		self.ControlAreaGeneratingUnit: ControlAreaGeneratingUnit | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.rotating_machine import RotatingMachine
 		self.RotatingMachine: RotatingMachine | None = None
 		self.normalPF: float = None
 

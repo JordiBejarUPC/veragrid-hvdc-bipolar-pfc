@@ -5,7 +5,7 @@
 
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equivalent_equipment import EquivalentEquipment
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
 
 
 class EquivalentBranch(EquivalentEquipment):

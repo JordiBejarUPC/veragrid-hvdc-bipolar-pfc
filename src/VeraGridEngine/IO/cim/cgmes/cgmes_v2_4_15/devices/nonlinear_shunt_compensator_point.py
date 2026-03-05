@@ -2,17 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.base import Base
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.nonlinear_shunt_compensator import NonlinearShuntCompensator
 
 
 class NonlinearShuntCompensatorPoint(Base):
 	def __init__(self, rdfid, tpe='NonlinearShuntCompensatorPoint', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.nonlinear_shunt_compensator import NonlinearShuntCompensator
 		self.NonlinearShuntCompensator: NonlinearShuntCompensator | None = None
 		self.b: float = None
 		self.b0: float = None

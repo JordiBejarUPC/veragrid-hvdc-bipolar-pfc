@@ -2,10 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, FuelType
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import FuelType
+if TYPE_CHECKING:
+		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.thermal_generating_unit import ThermalGeneratingUnit
+
 
 
 class FossilFuel(IdentifiedObject):
@@ -13,7 +17,6 @@ class FossilFuel(IdentifiedObject):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
 		self.fossilFuelType: FuelType = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.thermal_generating_unit import ThermalGeneratingUnit
 		self.ThermalGeneratingUnit: ThermalGeneratingUnit | None = None
 
 		self.register_property(

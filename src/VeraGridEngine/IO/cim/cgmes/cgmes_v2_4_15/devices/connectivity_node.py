@@ -4,21 +4,23 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node_container import ConnectivityNodeContainer
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_node import TopologicalNode
 
 
 class ConnectivityNode(IdentifiedObject):
 	def __init__(self, rdfid='', tpe: str = 'ConnectivityNode') -> None:
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.Terminals: Terminal | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node_container import ConnectivityNodeContainer
 		self.ConnectivityNodeContainer: ConnectivityNodeContainer | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_node import TopologicalNode
 		self.TopologicalNode: TopologicalNode | None = None
 
 		self.register_property(

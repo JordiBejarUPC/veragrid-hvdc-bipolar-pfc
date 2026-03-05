@@ -2,10 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.conducting_equipment import ConductingEquipment
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.load_response_characteristic import \
+		LoadResponseCharacteristic
 
 
 class EnergyConsumer(ConductingEquipment):
@@ -16,7 +21,6 @@ class EnergyConsumer(ConductingEquipment):
 		self.pfixedPct: float = None
 		self.qfixed: float = None
 		self.qfixedPct: float = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.load_response_characteristic import LoadResponseCharacteristic
 		self.LoadResponse: LoadResponseCharacteristic | None = None
 		self.p: float = None
 		self.q: float = None

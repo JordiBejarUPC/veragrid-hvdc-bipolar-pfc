@@ -2,17 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.transformer_end import TransformerEnd
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol, WindingConnection
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol, WindingConnection
+if TYPE_CHECKING:
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_transformer import PowerTransformer
 
 
 class PowerTransformerEnd(TransformerEnd):
 	def __init__(self, rdfid='', tpe='PowerTransformerEnd'):
 		TransformerEnd.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.power_transformer import PowerTransformer
 		self.PowerTransformer: PowerTransformer | None = None
 		self.b: float = None
 		self.connectionKind: WindingConnection = None

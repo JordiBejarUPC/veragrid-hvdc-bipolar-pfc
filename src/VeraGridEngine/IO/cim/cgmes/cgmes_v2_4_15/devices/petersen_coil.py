@@ -5,7 +5,7 @@
 
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.earth_fault_compensator import EarthFaultCompensator
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, UnitSymbol, PetersenCoilModeKind
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol, PetersenCoilModeKind
 
 
 class PetersenCoil(EarthFaultCompensator):
