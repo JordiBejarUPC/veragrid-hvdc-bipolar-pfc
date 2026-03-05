@@ -10,6 +10,7 @@ from collections.abc import Callable
 from typing import Union, List, Tuple
 
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesRecoveryMode
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.excel_interface import (load_from_xls, interpret_excel_v3, interprete_excel_v2)
@@ -60,7 +61,8 @@ class FileOpenOptions:
                  # PSSe
                  psse_adjust_taps_to_discrete_positions: bool = False,
                  psse_use_short_names: bool = True,
-                 psse_flatten_virtual_taps: bool = False):
+                 psse_flatten_virtual_taps: bool = False,
+                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Recover):
         """
         :param file_type: FileType to load, none is unsure
         :param crash_on_errors: Mainly debug feature to allow finding the exact crash issue when loading files
@@ -94,6 +96,7 @@ class FileOpenOptions:
         self.cgmes_create_busbar_section_for_every_connectivity_node = (
             cgmes_create_busbar_section_for_every_connectivity_node
         )
+        self.cgmes_recovery_mode: CgmesRecoveryMode = cgmes_recovery_mode
 
         # PSS/e options
         self.psse_adjust_taps_to_discrete_positions = psse_adjust_taps_to_discrete_positions
@@ -111,7 +114,8 @@ def open_cgmes(files: List[str] | str,
                cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
                text_func: Union[None, Callable] = None,
                progress_func: Union[None, Callable] = None,
-               cgmes_logger: DataLogger = DataLogger()) -> Tuple[MultiCircuit, CgmesCircuit]:
+               cgmes_logger: DataLogger = DataLogger(),
+               cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Recover) -> Tuple[MultiCircuit, CgmesCircuit]:
     """
     Load cgmes files
     :param files: file or list of files
@@ -123,6 +127,7 @@ def open_cgmes(files: List[str] | str,
     :param text_func:
     :param progress_func:
     :param cgmes_logger:
+    :param cgmes_recovery_mode:
     :return:
     """
 
@@ -147,6 +152,7 @@ def open_cgmes(files: List[str] | str,
         cgmes_version=cgmes_version,
         text_func=text_func,
         cgmes_map_areas_like_raw=cgmes_map_areas_like_raw,
+        cgmes_recovery_mode=cgmes_recovery_mode,
         progress_func=progress_func,
         logger=cgmes_logger
     )
@@ -529,6 +535,7 @@ class FileOpen:
                 cgmes_create_busbar_section_for_every_connectivity_node=(
                     self.options.cgmes_create_busbar_section_for_every_connectivity_node
                 ),
+                cgmes_recovery_mode=self.options.cgmes_recovery_mode,
                 text_func=text_func,
                 progress_func=progress_func,
                 cgmes_logger=self.cgmes_logger

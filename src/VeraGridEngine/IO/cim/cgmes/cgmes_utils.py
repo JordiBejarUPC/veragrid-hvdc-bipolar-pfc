@@ -728,6 +728,116 @@ def base_voltage_to_str(base_voltage: CGMES_BASE_VOLTAGE) -> str:
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+def extract_base_voltage_value(base_voltage_obj) -> float | None:
+    """
+    Extract nominal voltage value from a BaseVoltage-like object.
+
+    :param base_voltage_obj: BaseVoltage object, scalar token or None
+    :return: Nominal voltage in kV if available
+    """
+    if base_voltage_obj is None:
+        return None
+    if isinstance(base_voltage_obj, str):
+        return None
+    if hasattr(base_voltage_obj, "nominalVoltage"):
+        try:
+            return float(base_voltage_obj.nominalVoltage)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def recover_base_voltage_from_container(container_obj) -> float | None:
+    """
+    Recover nominal voltage from a ConnectivityNodeContainer/VoltageLevel-like object.
+
+    :param container_obj: Container object
+    :return: Nominal voltage in kV if available
+    """
+    if container_obj is None:
+        return None
+    if hasattr(container_obj, "VoltageLevel"):
+        voltage_level = container_obj.VoltageLevel
+        if voltage_level is not None and hasattr(voltage_level, "BaseVoltage"):
+            recovered = extract_base_voltage_value(voltage_level.BaseVoltage)
+            if recovered is not None:
+                return recovered
+    if hasattr(container_obj, "BaseVoltage"):
+        recovered = extract_base_voltage_value(container_obj.BaseVoltage)
+        if recovered is not None:
+            return recovered
+    return None
+
+
+def recover_base_voltage_from_topological_node(topological_node) -> float | None:
+    """
+    Recover nominal voltage from a TopologicalNode-like object with fallback paths.
+
+    :param topological_node: Topological node object
+    :return: Nominal voltage in kV if available
+    """
+    if topological_node is None:
+        return None
+    if hasattr(topological_node, "BaseVoltage"):
+        recovered = extract_base_voltage_value(topological_node.BaseVoltage)
+        if recovered is not None:
+            return recovered
+    if hasattr(topological_node, "ConnectivityNodeContainer"):
+        recovered = recover_base_voltage_from_container(topological_node.ConnectivityNodeContainer)
+        if recovered is not None:
+            return recovered
+    return None
+
+
+def recover_terminal_base_voltage(controlled_terminal) -> float | None:
+    """
+    Recover terminal nominal voltage using tolerant fallback chain.
+
+    :param controlled_terminal: Terminal-like object (or a list containing one)
+    :return: Nominal voltage in kV if available
+    """
+    terminal_obj = controlled_terminal
+    if isinstance(controlled_terminal, list):
+        if len(controlled_terminal) > 0:
+            terminal_obj = controlled_terminal[0]
+        else:
+            terminal_obj = None
+
+    if terminal_obj is None:
+        return None
+
+    if hasattr(terminal_obj, "TopologicalNode"):
+        recovered = recover_base_voltage_from_topological_node(terminal_obj.TopologicalNode)
+        if recovered is not None:
+            return recovered
+
+    if hasattr(terminal_obj, "ConnectivityNode"):
+        connectivity_node = terminal_obj.ConnectivityNode
+        if connectivity_node is not None:
+            if hasattr(connectivity_node, "TopologicalNode"):
+                recovered = recover_base_voltage_from_topological_node(connectivity_node.TopologicalNode)
+                if recovered is not None:
+                    return recovered
+            if hasattr(connectivity_node, "ConnectivityNodeContainer"):
+                recovered = recover_base_voltage_from_container(connectivity_node.ConnectivityNodeContainer)
+                if recovered is not None:
+                    return recovered
+
+    if hasattr(terminal_obj, "ConductingEquipment"):
+        equipment = terminal_obj.ConductingEquipment
+        if equipment is not None:
+            if hasattr(equipment, "BaseVoltage"):
+                recovered = extract_base_voltage_value(equipment.BaseVoltage)
+                if recovered is not None:
+                    return recovered
+            if hasattr(equipment, "EquipmentContainer"):
+                recovered = recover_base_voltage_from_container(equipment.EquipmentContainer)
+                if recovered is not None:
+                    return recovered
+
+    return None
+
+
 def get_regulating_control_params(cgmes_elm,
                                   cgmes_enums,
                                   bus_dict,
@@ -780,15 +890,14 @@ def get_regulating_control_params(cgmes_elm,
             # control_node = # TODO get gc.cn from terminal
 
             base_voltage = 0  # default
-            if controlled_terminal.TopologicalNode:
-                if controlled_terminal.TopologicalNode.BaseVoltage is not None:
-                    base_voltage = controlled_terminal.TopologicalNode.BaseVoltage.nominalVoltage
-                else:
-                    pass
+            recovered_base_voltage = recover_terminal_base_voltage(controlled_terminal)
+            if recovered_base_voltage is not None:
+                base_voltage = recovered_base_voltage
             else:
-                if controlled_terminal.ConnectivityNode:
-                    tn = controlled_terminal.ConnectivityNode.TopologicalNode
-                    base_voltage = tn.BaseVoltage.nominalVoltage
+                logger.add_warning(msg='Unable to recover BaseVoltage from regulating terminal',
+                                   device=cgmes_elm.rdfid,
+                                   device_class=cgmes_elm.tpe,
+                                   device_property="RegulatingControl.Terminal")
 
             if base_voltage != 0:
                 v_set = v_control_value / base_voltage

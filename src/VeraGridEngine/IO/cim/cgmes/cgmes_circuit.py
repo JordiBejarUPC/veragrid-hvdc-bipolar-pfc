@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Union, Tuple, Callable
+from typing import Dict, List, Set, Union, Tuple, Callable
 from enum import Enum, EnumMeta
 import pandas as pd
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
@@ -11,10 +11,18 @@ import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_3_0_0_assets as cgmes30
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 from VeraGridEngine.IO.base.base_circuit import BaseCircuit
-from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType, CgmesRecoveryMode
 from VeraGridEngine.IO.cim.cgmes.cgmes_typing import CGMES_ASSETS
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.enumerations import CGMESVersions
+
+
+class ReferenceIndex:
+    __slots__ = ("values", "ambiguous")
+
+    def __init__(self):
+        self.values: Dict[str, CGMES_ASSETS] = dict()
+        self.ambiguous: Set[str] = set()
 
 
 def find_attribute(obj: CGMES_ASSETS,
@@ -30,12 +38,169 @@ def find_attribute(obj: CGMES_ASSETS,
     return association_inverse_dict.get((obj.tpe, property_name))
 
 
+def normalize_reference_token(value: str) -> str:
+    """
+    Normalize a CGMES reference token to a canonical lookup string.
+
+    :param value: Raw reference token
+    :return: Normalized token
+    """
+    token = value.strip()
+    if token.startswith("urn:uuid:"):
+        token = token[9:]
+    if token.startswith("#"):
+        token = token[1:]
+    if token.startswith("_"):
+        token = token[1:]
+    return token
+
+
+def form_uuid_hyphenated(value: str) -> Union[str, None]:
+    """
+    Convert a 32-hex UUID token to hyphenated UUID form.
+
+    :param value: UUID-like token
+    :return: Hyphenated UUID string or None if not convertible
+    """
+    if len(value) == 32:
+        return f"{value[:8]}-{value[8:12]}-{value[12:16]}-{value[16:20]}-{value[20:]}"
+    else:
+        return None
+
+
+def get_reference_candidates(value: str) -> List[str]:
+    """
+    Build candidate reference keys for tolerant reference resolution.
+
+    :param value: Raw reference token
+    :return: Ordered unique candidate keys
+    """
+    normalized = normalize_reference_token(value)
+    no_dash = normalized.replace("-", "")
+    hyphenated = form_uuid_hyphenated(no_dash)
+    candidates = list()
+    for token in [value, normalized, no_dash, hyphenated]:
+        if token is not None:
+            stripped = token.strip()
+            if stripped != "":
+                candidates.append(stripped)
+                candidates.append(stripped.lower())
+    unique_candidates = list()
+    seen = set()
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            unique_candidates.append(candidate)
+    return unique_candidates
+
+
+def add_index_entry(index: ReferenceIndex, key: str, obj: CGMES_ASSETS) -> None:
+    """
+    Add an object to a reference index, tracking ambiguous keys.
+
+    :param index: Index to update
+    :param key: Candidate key
+    :param obj: Object instance
+    """
+    if key == "":
+        return
+    current = index.values.get(key, None)
+    if current is None and key not in index.ambiguous:
+        index.values[key] = obj
+    elif current is obj:
+        return
+    elif key in index.ambiguous:
+        return
+    else:
+        index.ambiguous.add(key)
+        if key in index.values:
+            del index.values[key]
+
+
+def build_reference_index(objects_dict: Dict[str, CGMES_ASSETS]) -> ReferenceIndex:
+    """
+    Build tolerant reference index from subject IDs, UUIDs and mRIDs.
+
+    :param objects_dict: Object dictionary keyed by rdfid
+    :return: Tolerant lookup index
+    """
+    index = ReferenceIndex()
+    for key, obj in objects_dict.items():
+        if isinstance(key, str):
+            for candidate in get_reference_candidates(key):
+                add_index_entry(index=index, key=candidate, obj=obj)
+        rdfid = getattr(obj, "rdfid", None)
+        if isinstance(rdfid, str):
+            for candidate in get_reference_candidates(rdfid):
+                add_index_entry(index=index, key=candidate, obj=obj)
+        uuid_value = getattr(obj, "uuid", None)
+        if isinstance(uuid_value, str):
+            for candidate in get_reference_candidates(uuid_value):
+                add_index_entry(index=index, key=candidate, obj=obj)
+        mrid = getattr(obj, "mRID", None)
+        if isinstance(mrid, str):
+            for candidate in get_reference_candidates(mrid):
+                add_index_entry(index=index, key=candidate, obj=obj)
+    return index
+
+
+def resolve_reference_token(token: str,
+                            all_objects_dict: Dict[str, CGMES_ASSETS],
+                            all_objects_dict_boundary: Union[Dict[str, CGMES_ASSETS], None],
+                            enable_reference_recovery: bool,
+                            model_index: Union[ReferenceIndex, None],
+                            boundary_index: Union[ReferenceIndex, None]) -> Tuple[Union[CGMES_ASSETS, None], bool, bool]:
+    """
+    Resolve reference token with strict and recovery fallback chains.
+
+    :param token: Raw reference token
+    :param all_objects_dict: Main object dictionary
+    :param all_objects_dict_boundary: Boundary object dictionary
+    :param enable_reference_recovery: Enable tolerant fallback lookup
+    :param model_index: Main tolerant index
+    :param boundary_index: Boundary tolerant index
+    :return: (resolved object, came_from_boundary, is_ambiguous)
+    """
+    direct = all_objects_dict.get(token, None)
+    if direct is not None:
+        return direct, False, False
+
+    if all_objects_dict_boundary is not None:
+        boundary_direct = all_objects_dict_boundary.get(token, None)
+        if boundary_direct is not None:
+            return boundary_direct, True, False
+
+    if not enable_reference_recovery:
+        return None, False, False
+
+    ambiguous = False
+    for candidate in get_reference_candidates(token):
+        if model_index is not None:
+            if candidate in model_index.ambiguous:
+                ambiguous = True
+            else:
+                model_hit = model_index.values.get(candidate, None)
+                if model_hit is not None:
+                    return model_hit, False, False
+
+        if boundary_index is not None:
+            if candidate in boundary_index.ambiguous:
+                ambiguous = True
+            else:
+                boundary_hit = boundary_index.values.get(candidate, None)
+                if boundary_hit is not None:
+                    return boundary_hit, True, False
+
+    return None, False, ambiguous
+
+
 def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                     all_objects_dict: Dict[str, CGMES_ASSETS],
                     all_objects_dict_boundary: Union[Dict[str, CGMES_ASSETS], None],
                     association_inverse_dict: Dict[Tuple[str, str], str],
                     logger: DataLogger,
-                    mark_used: bool) -> None:
+                    mark_used: bool,
+                    enable_reference_recovery: bool = True) -> None:
     """
     Replaces the references in the "actual" properties of the objects
     :param elements_by_type: Dictionary of elements by type to fill in (same as all_objects_dict but by categories)
@@ -48,6 +213,13 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
     :param association_inverse_dict: Containing the name of the attributes which associate with each other.
     """
     added_from_the_boundary_set = list()
+    model_index: Union[ReferenceIndex, None] = None
+    boundary_index: Union[ReferenceIndex, None] = None
+    if enable_reference_recovery:
+        model_index = build_reference_index(all_objects_dict)
+        if all_objects_dict_boundary is not None:
+            boundary_index = build_reference_index(all_objects_dict_boundary)
+
     # Store dictionary values in local variables
     elements_by_type_items = elements_by_type.items()
     # find cross-references
@@ -117,14 +289,32 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                     else:
                         # search for the reference, if not found -> return None
                         if not isinstance(value, list):
-                            referenced_object = all_objects_dict.get(value, None)
+                            if not isinstance(value, str):
+                                element.missing_references[property_name] = value
+                                if use_direct_storage:
+                                    element_dict[property_name] = None
+                                else:
+                                    setattr(element, property_name, None)
+                                logger.add_error(msg='Invalid reference token type',
+                                                 device=element.rdfid,
+                                                 device_class=class_name,
+                                                 device_property=property_name,
+                                                 value=str(type(value)),
+                                                 expected_value='str')
+                                continue
 
-                            if referenced_object is None and all_objects_dict_boundary:
-                                # search for the reference in the boundary set
-                                referenced_object = all_objects_dict_boundary.get(value, None)
+                            is_ambiguous = False
+                            referenced_object, referenced_from_boundary, is_ambiguous = resolve_reference_token(
+                                token=value,
+                                all_objects_dict=all_objects_dict,
+                                all_objects_dict_boundary=all_objects_dict_boundary,
+                                enable_reference_recovery=enable_reference_recovery,
+                                model_index=model_index,
+                                boundary_index=boundary_index
+                            )
 
-                                # add to the normal data if it wasn't added before
-                                if referenced_object is not None and referenced_object.rdfid not in all_objects_dict:
+                            if referenced_object is not None and referenced_from_boundary:
+                                if referenced_object.rdfid not in all_objects_dict:
                                     all_objects_dict[referenced_object.rdfid] = referenced_object
                                     added_from_the_boundary_set.append(referenced_object)
 
@@ -163,6 +353,12 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                      device_property=property_name,
                                                      value='Not found',
                                                      expected_value=value)
+                                    if is_ambiguous:
+                                        logger.add_warning(msg='Ambiguous reference during tolerant resolution',
+                                                           device=element.rdfid,
+                                                           device_class=class_name,
+                                                           device_property=property_name,
+                                                           value=value)
                                 else:
                                     logger.add_error(msg='Reference not found for (debugger error)',
                                                      device=element.rdfid,
@@ -175,15 +371,28 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                             for v in value:
                                 if isinstance(v, CGMES_ASSETS):
                                     continue
+                                if not isinstance(v, str):
+                                    element.missing_references[property_name] = v
+                                    logger.add_error(msg='Invalid reference token type',
+                                                     device=element.rdfid,
+                                                     device_class=class_name,
+                                                     device_property=property_name,
+                                                     value=str(type(v)),
+                                                     expected_value='str')
+                                    continue
 
-                                referenced_object = all_objects_dict.get(v, None)
+                                is_ambiguous = False
+                                referenced_object, referenced_from_boundary, is_ambiguous = resolve_reference_token(
+                                    token=v,
+                                    all_objects_dict=all_objects_dict,
+                                    all_objects_dict_boundary=all_objects_dict_boundary,
+                                    enable_reference_recovery=enable_reference_recovery,
+                                    model_index=model_index,
+                                    boundary_index=boundary_index
+                                )
 
-                                if referenced_object is None and all_objects_dict_boundary:
-                                    # search for the reference in the boundary set
-                                    referenced_object = all_objects_dict_boundary.get(v, None)
-
-                                    # add to the normal data if it wasn't added before
-                                    if referenced_object is not None and referenced_object.rdfid not in all_objects_dict:
+                                if referenced_object is not None and referenced_from_boundary:
+                                    if referenced_object.rdfid not in all_objects_dict:
                                         all_objects_dict[referenced_object.rdfid] = referenced_object
                                         added_from_the_boundary_set.append(referenced_object)
 
@@ -219,6 +428,12 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                          device_property=property_name,
                                                          value='Not found',
                                                          expected_value=v)
+                                        if is_ambiguous:
+                                            logger.add_warning(msg='Ambiguous reference during tolerant resolution',
+                                                               device=element.rdfid,
+                                                               device_class=class_name,
+                                                               device_property=property_name,
+                                                               value=v)
                                     else:
                                         logger.add_error(msg='Reference not found for (debugger error)',
                                                          device=element.rdfid,
@@ -272,7 +487,8 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                             elements_by_type: Dict[str, List[CGMES_ASSETS]],
                             class_dict: Dict[str, CGMES_ASSETS],
                             association_inverse_dict,
-                            logger: DataLogger) -> None:
+                            logger: DataLogger,
+                            enable_reference_recovery: bool = True) -> None:
     """
     Convert CGMES data dictionaries to proper CGMES objects
     :param data: source data to convert
@@ -331,7 +547,8 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                         all_objects_dict_boundary=all_objects_dict_boundary,
                         association_inverse_dict=association_inverse_dict,
                         logger=logger,
-                        mark_used=True)
+                        mark_used=True,
+                        enable_reference_recovery=enable_reference_recovery)
 
 
 def is_valid_cgmes(cgmes_version) -> bool:
@@ -358,7 +575,8 @@ class CgmesCircuit(BaseCircuit):
                  cgmes_map_areas_like_raw: bool = False,
                  text_func: Union[Callable, None] = None,
                  progress_func: Union[Callable, None] = None,
-                 logger=DataLogger()):
+                 logger=DataLogger(),
+                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Recover):
         """
         CIM circuit constructor
         :param cgmes_version:
@@ -371,6 +589,7 @@ class CgmesCircuit(BaseCircuit):
 
         self.cgmes_version: CGMESVersions = cgmes_version
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
+        self.cgmes_recovery_mode: CgmesRecoveryMode = cgmes_recovery_mode
         self.logger: DataLogger = logger
 
         self.text_func = text_func
@@ -439,7 +658,8 @@ class CgmesCircuit(BaseCircuit):
                                 elements_by_type=self.elements_by_type_boundary,
                                 class_dict=self.cgmes_assets.class_dict,
                                 association_inverse_dict=self.cgmes_assets.association_inverse_dict,
-                                logger=self.logger)
+                                logger=self.logger,
+                                enable_reference_recovery=(self.cgmes_recovery_mode == CgmesRecoveryMode.Recover))
 
         self.emit_progress(33)
         # convert the dictionaries to the internal class model,
@@ -451,7 +671,8 @@ class CgmesCircuit(BaseCircuit):
                                 elements_by_type=self.elements_by_type,
                                 class_dict=self.cgmes_assets.class_dict,
                                 association_inverse_dict=self.cgmes_assets.association_inverse_dict,
-                                logger=self.logger)
+                                logger=self.logger,
+                                enable_reference_recovery=(self.cgmes_recovery_mode == CgmesRecoveryMode.Recover))
 
         # Assign the data from all_objects_dict to the appropriate lists in the circuit
         self.emit_progress(42)

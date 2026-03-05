@@ -246,6 +246,98 @@ def sort_cgmes_files(links: List[Tuple[str, str, str]]) -> List[str]:
     return items
 
 
+def process_cgmes_file_data(file_name: str,
+                            file_cgmes_data: Dict[str, Dict[str, Dict[str, str]]],
+                            cgmes2_4_15_uri: List[str],
+                            cgmes3_0_0_uri: List[str],
+                            parsed_data: Dict[str, Dict[str, Dict[str, str]]],
+                            data: Dict[str, Dict[str, Dict[str, str]]],
+                            boundary_set: Dict[str, Dict[str, Dict[str, str]]],
+                            logger: DataLogger) -> Union[CGMESVersions, None]:
+    """
+    Process one parsed CGMES file dictionary and route objects to normal/boundary stores.
+
+    :param file_name: Source file name
+    :param file_cgmes_data: Parsed CGMES dictionary
+    :param cgmes2_4_15_uri: Known CGMES v2.4.15 profile URIs
+    :param cgmes3_0_0_uri: Known CGMES v3.0.0 profile URIs
+    :param parsed_data: Per-file parsed dictionary output
+    :param data: Normal model dictionary store
+    :param boundary_set: Boundary model dictionary store
+    :param logger: Logger instance
+    :return: Detected CGMES version for this file, or None
+    """
+    detected_version: Union[CGMESVersions, None] = None
+    full_models_dict = file_cgmes_data.get('FullModel', None)
+    difference_full_models_dict = file_cgmes_data.get('DifferenceModel', None)
+
+    if full_models_dict:
+        model_keys = list(file_cgmes_data['FullModel'])
+        if len(model_keys) == 1:  # there must be exacly one FullModel
+            model_info = file_cgmes_data['FullModel'][model_keys[0]]
+            parsed_data[file_name] = file_cgmes_data
+            profile = model_info.get('profile', '')
+
+            if isinstance(profile, list):
+                for prof in profile:
+                    if prof in cgmes2_4_15_uri:
+                        detected_version = CGMESVersions.v2_4_15
+                    elif prof in cgmes3_0_0_uri:
+                        detected_version = CGMESVersions.v3_0_0
+
+                if len(profile) > 0 and 'Boundary' in profile[0]:
+                    merge(boundary_set, file_cgmes_data, logger)
+                else:
+                    merge(data, file_cgmes_data, logger)
+            else:
+                if profile in cgmes2_4_15_uri:
+                    detected_version = CGMESVersions.v2_4_15
+                elif profile in cgmes3_0_0_uri:
+                    detected_version = CGMESVersions.v3_0_0
+
+                if 'Boundary' in profile:
+                    merge(boundary_set, file_cgmes_data, logger)
+                else:
+                    merge(data, file_cgmes_data, logger)
+        else:
+            logger.add_error("File does not contain exactly one FullModel",
+                             device=file_name,
+                             device_class="",
+                             device_property='FullModel', value="", expected_value="FullModel",
+                             comment="This is not a proper CGMES file")
+    elif difference_full_models_dict:
+        model_keys = list(file_cgmes_data['DifferenceModel'])
+        if len(model_keys) == 1:  # there must be exacly one Ontology
+            model_info = file_cgmes_data['DifferenceModel'][model_keys[0]]
+            parsed_data[file_name] = file_cgmes_data
+            profile = model_info.get('priorVersion', '')
+
+            for prof in profile:
+                if prof in cgmes2_4_15_uri:
+                    detected_version = CGMESVersions.v2_4_15
+                elif prof in cgmes3_0_0_uri:
+                    detected_version = CGMESVersions.v3_0_0
+
+            if 'Boundary' in profile:
+                merge(boundary_set, file_cgmes_data, logger)
+            else:
+                merge(data, file_cgmes_data, logger)
+        else:
+            logger.add_error("File does not contain exactly one DifferenceModel",
+                             device=file_name,
+                             device_class="",
+                             device_property='DifferenceModel', value="", expected_value="DifferenceModel",
+                             comment="This is not a proper CGMES file")
+    else:
+        logger.add_error("File does not contain any FullModel or DifferenceModel",
+                         device=file_name,
+                         device_class="",
+                         device_property='FullModel', value="", expected_value="FullModel",
+                         comment="This is not a proper CGMES file")
+
+    return detected_version
+
+
 class CgmesDataParser(BaseCircuit):
     """
     Class to read any cgmes-like set of files
@@ -311,75 +403,6 @@ class CgmesDataParser(BaseCircuit):
                           "http://iec.ch/TC57/ns/CIM/SteadyStateHypothesis-EU/3.0",
                           "http://iec.ch/TC57/ns/CIM/StateVariables-EU/3.0",
                           "http://iec.ch/TC57/ns/CIM/Topology-EU/3.0"]
-        def process_parsed_file(file_name: str, file_cgmes_data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
-            full_models_dict = file_cgmes_data.get('FullModel', None)
-            difference_full_models_dict = file_cgmes_data.get('DifferenceModel', None)
-
-            if full_models_dict:
-                model_keys = list(file_cgmes_data['FullModel'])
-                if len(model_keys) == 1:  # there must be exacly one FullModel
-                    model_info = file_cgmes_data['FullModel'][model_keys[0]]
-                    self.parsed_data[file_name] = file_cgmes_data
-                    profile = model_info.get('profile', '')
-
-                    if isinstance(profile, list):
-                        for prof in profile:
-                            if prof in cgmes2_4_15_uri:
-                                self.cgmes_version = CGMESVersions.v2_4_15
-                            elif prof in cgmes3_0_0_uri:
-                                self.cgmes_version = CGMESVersions.v3_0_0
-
-                        if len(profile) > 0 and 'Boundary' in profile[0]:
-                            merge(self.boundary_set, file_cgmes_data, self.logger)
-                        else:
-                            merge(self.data, file_cgmes_data, self.logger)
-                    else:
-                        if profile in cgmes2_4_15_uri:
-                            self.cgmes_version = CGMESVersions.v2_4_15
-                        elif profile in cgmes3_0_0_uri:
-                            self.cgmes_version = CGMESVersions.v3_0_0
-
-                        if 'Boundary' in profile:
-                            merge(self.boundary_set, file_cgmes_data, self.logger)
-                        else:
-                            merge(self.data, file_cgmes_data, self.logger)
-                else:
-                    self.logger.add_error("File does not contain exactly one FullModel",
-                                          device=file_name,
-                                          device_class="",
-                                          device_property='FullModel', value="", expected_value="FullModel",
-                                          comment="This is not a proper CGMES file")
-            elif difference_full_models_dict:
-                model_keys = list(file_cgmes_data['DifferenceModel'])
-                if len(model_keys) == 1:  # there must be exacly one Ontology
-                    model_info = file_cgmes_data['DifferenceModel'][model_keys[0]]
-                    self.parsed_data[file_name] = file_cgmes_data
-                    profile = model_info.get('priorVersion', '')
-                    self.cgmes_version = model_info.get('versionInfo', '')
-
-                    for prof in profile:
-                        if prof in cgmes2_4_15_uri:
-                            self.cgmes_version = CGMESVersions.v2_4_15
-                        elif prof in cgmes3_0_0_uri:
-                            self.cgmes_version = CGMESVersions.v3_0_0
-
-                    if 'Boundary' in profile:
-                        merge(self.boundary_set, file_cgmes_data, self.logger)
-                    else:
-                        merge(self.data, file_cgmes_data, self.logger)
-                else:
-                    self.logger.add_error("File does not contain exactly one DifferenceModel",
-                                          device=file_name,
-                                          device_class="",
-                                          device_property='DifferenceModel', value="", expected_value="DifferenceModel",
-                                          comment="This is not a proper CGMES file")
-            else:
-                self.logger.add_error("File does not contain any FullModel or DifferenceModel",
-                                      device=file_name,
-                                      device_class="",
-                                      device_property='FullModel', value="", expected_value="FullModel",
-                                      comment="This is not a proper CGMES file")
-
         xml_files: List[str] = list()
         zip_members: Dict[str, List[str]] = dict()
         for path in files:
@@ -409,7 +432,16 @@ class CgmesDataParser(BaseCircuit):
             self.emit_text('Parsing xml structure of ' + name)
             with open(xml_path, "rb") as file_ptr:
                 file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
-            process_parsed_file(file_name=file_name, file_cgmes_data=file_cgmes_data)
+            detected_version = process_cgmes_file_data(file_name=file_name,
+                                                       file_cgmes_data=file_cgmes_data,
+                                                       cgmes2_4_15_uri=cgmes2_4_15_uri,
+                                                       cgmes3_0_0_uri=cgmes3_0_0_uri,
+                                                       parsed_data=self.parsed_data,
+                                                       data=self.data,
+                                                       boundary_set=self.boundary_set,
+                                                       logger=self.logger)
+            if detected_version is not None:
+                self.cgmes_version = detected_version
             if n_items > 0:
                 self.emit_progress((i + 1) / n_items * 100)
             i += 1
@@ -422,7 +454,16 @@ class CgmesDataParser(BaseCircuit):
                     self.emit_text('Parsing xml structure of ' + name)
                     with zip_ptr.open(member_name) as file_ptr:
                         file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
-                    process_parsed_file(file_name=file_name, file_cgmes_data=file_cgmes_data)
+                    detected_version = process_cgmes_file_data(file_name=file_name,
+                                                               file_cgmes_data=file_cgmes_data,
+                                                               cgmes2_4_15_uri=cgmes2_4_15_uri,
+                                                               cgmes3_0_0_uri=cgmes3_0_0_uri,
+                                                               parsed_data=self.parsed_data,
+                                                               data=self.data,
+                                                               boundary_set=self.boundary_set,
+                                                               logger=self.logger)
+                    if detected_version is not None:
+                        self.cgmes_version = detected_version
                     if n_items > 0:
                         self.emit_progress((i + 1) / n_items * 100)
                     i += 1
