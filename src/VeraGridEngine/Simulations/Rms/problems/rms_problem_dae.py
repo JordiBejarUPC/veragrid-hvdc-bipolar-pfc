@@ -314,7 +314,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
                 setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
                 setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
-                #self.sys_block.add(mdl)
+                self.sys_block.add(mdl)
 
         # initialize injections
         # bus_regions_dict = self.grid.get_injection_devices_grouped_by_bus()
@@ -635,7 +635,7 @@ class RmsProblemDae(RmsProblemTemplate):
             print(f"Model compiled with {self._n_vars} variables")
             print("\nCompilation timing summary:")
             for k, v in timings.items():
-                print(f"  {k: 30s}: {v: 8.4f} s")
+                print(f"  {k:30s}: {v:8.4f} s")
             print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())

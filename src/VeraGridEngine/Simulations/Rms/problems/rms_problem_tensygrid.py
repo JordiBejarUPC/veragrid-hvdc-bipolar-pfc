@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, S
     SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -170,7 +170,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
 
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -186,7 +186,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -218,7 +218,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                 for elm in dev_list:
                     # flatten model
                     elm.rms_model.model.unify_blocks()
-                    mdl = block_deep_copy(elm.rms_model.model)
+                    mdl = (elm.rms_model.model)
 
                     self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -285,7 +285,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
