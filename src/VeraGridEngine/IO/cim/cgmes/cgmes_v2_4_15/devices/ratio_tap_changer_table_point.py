@@ -6,21 +6,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.base import Base
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.ratio_tap_changer_table import RatioTapChangerTable
 
-
 class RatioTapChangerTablePoint(Base):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='RatioTapChangerTable', class_type='RatioTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Points of this table.''', profiles=[]),
+	)
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 
 		self.RatioTapChangerTable: RatioTapChangerTable | None = None
-
-		self.register_property(
-			name='RatioTapChangerTable',
-			class_type=RatioTapChangerTable,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Points of this table.''',
-			profiles=[]
-		)

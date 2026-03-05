@@ -7,17 +7,26 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
-	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.phase_tap_changer import PhaseTapChanger
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.ratio_tap_changer import RatioTapChanger
-
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 
 class TransformerEnd(IdentifiedObject):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='BaseVoltage', class_type='BaseVoltage', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Base voltage of the transformer end.  This is essential for PU calculation.''', profiles=[]),
+		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Terminal of the power transformer to which this transformer end belongs.''', profiles=[]),
+		CgmesProperty(property_name='PhaseTapChanger', class_type='PhaseTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Transformer end to which this phase tap changer belongs.''', profiles=[]),
+		CgmesProperty(property_name='RatioTapChanger', class_type='RatioTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Transformer end to which this ratio tap changer belongs.''', profiles=[]),
+		CgmesProperty(property_name='rground', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
+		CgmesProperty(property_name='endNumber', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Number for this transformer end, corresponding to the end's order in the power transformer vector group or phase angle clock number.  Highest voltage winding should be 1.  Each end within a power transformer should have a unique subsequent end number.   Note the transformer end number need not match the terminal sequence number.''', profiles=[]),
+		CgmesProperty(property_name='grounded', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''(for Yn and Zn connections) True if the neutral is solidly grounded.''', profiles=[]),
+		CgmesProperty(property_name='xground', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='TransformerEnd'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
-
 
 		self.BaseVoltage: BaseVoltage | None = None
 		self.Terminal: Terminal | None = None
@@ -27,68 +36,3 @@ class TransformerEnd(IdentifiedObject):
 		self.endNumber: int = None
 		self.grounded: bool = None
 		self.xground: float = None
-
-		self.register_property(
-			name='BaseVoltage',
-			class_type=BaseVoltage,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Base voltage of the transformer end.  This is essential for PU calculation.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='Terminal',
-			class_type=Terminal,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Terminal of the power transformer to which this transformer end belongs.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='PhaseTapChanger',
-			class_type=PhaseTapChanger,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Transformer end to which this phase tap changer belongs.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='RatioTapChanger',
-			class_type=RatioTapChanger,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Transformer end to which this ratio tap changer belongs.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='rground',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.ohm,
-			description='''Resistance (real part of impedance).''',
-			profiles=[]
-		)
-		self.register_property(
-			name='endNumber',
-			class_type=int,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Number for this transformer end, corresponding to the end's order in the power transformer vector group or phase angle clock number.  Highest voltage winding should be 1.  Each end within a power transformer should have a unique subsequent end number.   Note the transformer end number need not match the terminal sequence number.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='grounded',
-			class_type=bool,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''(for Yn and Zn connections) True if the neutral is solidly grounded.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='xground',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.ohm,
-			description='''Reactance (imaginary part of impedance), at rated frequency.''',
-			profiles=[]
-		)

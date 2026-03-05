@@ -6,33 +6,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 
 if TYPE_CHECKING:
-	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.generating_unit import GeneratingUnit
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.control_area import ControlArea
-
+	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.generating_unit import GeneratingUnit
 
 class ControlAreaGeneratingUnit(IdentifiedObject):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='GeneratingUnit', class_type='GeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The generating unit specified for this control area.  
+			Note that a control area should include a GeneratingUnit only once.''', profiles=[]),
+		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The parent control area for the generating unit specifications.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='ControlAreaGeneratingUnit'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
 		self.GeneratingUnit: GeneratingUnit | None = None
 		self.ControlArea: ControlArea | None = None
-
-		self.register_property(
-			name='GeneratingUnit',
-			class_type=GeneratingUnit,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The generating unit specified for this control area.  
-			Note that a control area should include a GeneratingUnit only once.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='ControlArea',
-			class_type=ControlArea,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The parent control area for the generating unit specifications.''',
-			profiles=[]
-		)

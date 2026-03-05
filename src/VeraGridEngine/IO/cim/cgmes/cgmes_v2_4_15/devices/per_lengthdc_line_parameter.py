@@ -7,11 +7,17 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.base import Base
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_line_segment import DCLineSegment
 
-
 class PerLengthDCLineParameter(Base):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='DCLineSegments', class_type='DCLineSegment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All line segments described by this set of per-length parameters.''', profiles=[]),
+		CgmesProperty(property_name='capacitance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.F, description='''Capacitance per unit of length.''', profiles=[]),
+		CgmesProperty(property_name='inductance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.H, description='''Inductance per unit of length.''', profiles=[]),
+		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance) per unit of length.''', profiles=[]),
+	)
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 
@@ -19,36 +25,3 @@ class PerLengthDCLineParameter(Base):
 		self.capacitance: float = None
 		self.inductance: float = None
 		self.resistance: float = None
-
-		self.register_property(
-			name='DCLineSegments',
-			class_type=DCLineSegment,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''All line segments described by this set of per-length parameters.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='capacitance',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.F,
-			description='''Capacitance per unit of length.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='inductance',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.H,
-			description='''Inductance per unit of length.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='resistance',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.ohm,
-			description='''Resistance (real part of impedance) per unit of length.''',
-			profiles=[]
-		)

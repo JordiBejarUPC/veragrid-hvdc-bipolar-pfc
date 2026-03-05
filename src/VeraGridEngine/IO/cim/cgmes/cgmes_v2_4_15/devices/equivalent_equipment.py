@@ -6,21 +6,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.conducting_equipment import ConductingEquipment
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equivalent_network import EquivalentNetwork
 
-
 class EquivalentEquipment(ConductingEquipment):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='EquivalentNetwork', class_type='EquivalentNetwork', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The associated reduced equivalents.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='EquivalentEquipment'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 
 		self.EquivalentNetwork: EquivalentNetwork | None = None
-
-		self.register_property(
-			name='EquivalentNetwork',
-			class_type=EquivalentNetwork,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The associated reduced equivalents.''',
-			profiles=[]
-		)

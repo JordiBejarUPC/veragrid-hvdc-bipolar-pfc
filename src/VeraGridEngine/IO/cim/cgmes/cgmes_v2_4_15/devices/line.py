@@ -6,21 +6,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.sub_geographical_region import SubGeographicalRegion
 
-
 class Line(EquipmentContainer):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The sub-geographical region of the line.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='Line'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 
 		self.Region: SubGeographicalRegion | None = None
-
-		self.register_property(
-			name='Region',
-			class_type=SubGeographicalRegion,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The sub-geographical region of the line.''',
-			profiles=[]
-		)

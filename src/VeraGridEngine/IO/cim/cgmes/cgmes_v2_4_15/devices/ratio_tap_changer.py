@@ -7,12 +7,18 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.tap_changer import TapChanger
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import TransformerControlMode, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.ratio_tap_changer_table import RatioTapChangerTable
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.transformer_end import TransformerEnd
 
-
 class RatioTapChanger(TapChanger):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='tculControlMode', class_type=TransformerControlMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the regulation control mode (voltage or reactive) of the RatioTapChanger.''', profiles=[]),
+		CgmesProperty(property_name='stepVoltageIncrement', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[]),
+		CgmesProperty(property_name='RatioTapChangerTable', class_type='RatioTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The ratio tap changer of this tap ratio table.''', profiles=[]),
+		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Ratio tap changer associated with this transformer end.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='RatioTapChanger'):
 		TapChanger.__init__(self, rdfid, tpe)
 
@@ -20,36 +26,3 @@ class RatioTapChanger(TapChanger):
 		self.stepVoltageIncrement: float = None
 		self.RatioTapChangerTable: RatioTapChangerTable | None = None
 		self.TransformerEnd: TransformerEnd | None = None
-
-		self.register_property(
-			name='tculControlMode',
-			class_type=TransformerControlMode,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Specifies the regulation control mode (voltage or reactive) of the RatioTapChanger.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='stepVoltageIncrement',
-			class_type=float,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='RatioTapChangerTable',
-			class_type=RatioTapChangerTable,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The ratio tap changer of this tap ratio table.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='TransformerEnd',
-			class_type=TransformerEnd,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Ratio tap changer associated with this transformer end.''',
-			profiles=[]
-		)

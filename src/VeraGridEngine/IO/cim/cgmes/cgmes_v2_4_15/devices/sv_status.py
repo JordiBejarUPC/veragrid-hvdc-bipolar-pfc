@@ -6,30 +6,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.base import Base
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.conducting_equipment import ConductingEquipment
 
-
 class SvStatus(Base):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='ConductingEquipment', class_type='ConductingEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The conducting equipment associated with the status state variable.''', profiles=[]),
+		CgmesProperty(property_name='inService', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The in service status as a result of topology processing.''', profiles=[]),
+	)
 	def __init__(self, rdfid, tpe='SvStatus', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 
 		self.ConductingEquipment: ConductingEquipment | None = None
 		self.inService: bool = None
-
-		self.register_property(
-			name='ConductingEquipment',
-			class_type=ConductingEquipment,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The conducting equipment associated with the status state variable.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='inService',
-			class_type=bool,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The in service status as a result of topology processing.''',
-			profiles=[]
-		)

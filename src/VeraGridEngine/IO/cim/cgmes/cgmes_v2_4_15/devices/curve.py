@@ -7,12 +7,19 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CurveStyle, UnitSymbol
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.curve_data import CurveData
 
-
 class Curve(IdentifiedObject):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='curveStyle', class_type=CurveStyle, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The style or shape of the curve.''', profiles=[]),
+		CgmesProperty(property_name='xUnit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The X-axis units of measure.''', profiles=[]),
+		CgmesProperty(property_name='y1Unit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The Y1-axis units of measure.''', profiles=[]),
+		CgmesProperty(property_name='y2Unit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The Y2-axis units of measure.''', profiles=[]),
+		CgmesProperty(property_name='CurveDatas', class_type='CurveData', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The curve of  this curve data point.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='Curve'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
@@ -21,44 +28,3 @@ class Curve(IdentifiedObject):
 		self.y1Unit: UnitSymbol = None
 		self.y2Unit: UnitSymbol = None
 		self.CurveDatas: CurveData | None = None
-
-		self.register_property(
-			name='curveStyle',
-			class_type=CurveStyle,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The style or shape of the curve.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='xUnit',
-			class_type=UnitSymbol,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The X-axis units of measure.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='y1Unit',
-			class_type=UnitSymbol,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The Y1-axis units of measure.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='y2Unit',
-			class_type=UnitSymbol,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The Y2-axis units of measure.''',
-			profiles=[]
-		)
-		self.register_property(
-			name='CurveDatas',
-			class_type=CurveData,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''The curve of  this curve data point.''',
-			profiles=[]
-		)

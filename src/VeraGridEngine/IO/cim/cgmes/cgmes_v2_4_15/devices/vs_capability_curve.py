@@ -6,22 +6,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.curve import Curve
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.vs_converter import VsConverter
 
-
 class VsCapabilityCurve(Curve):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='VsConverterDCSides', class_type='VsConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Capability curve of this converter.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='VsCapabilityCurve'):
 		Curve.__init__(self, rdfid, tpe)
 
-
 		self.VsConverterDCSides: VsConverter | None = None
-
-		self.register_property(
-			name='VsConverterDCSides',
-			class_type=VsConverter,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''Capability curve of this converter.''',
-			profiles=[]
-		)

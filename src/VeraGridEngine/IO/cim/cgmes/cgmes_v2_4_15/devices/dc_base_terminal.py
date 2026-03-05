@@ -6,32 +6,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.acdc_terminal import ACDCTerminal
+from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 
 if TYPE_CHECKING:
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_node import DCNode
 	from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.dc_topological_node import DCTopologicalNode
 
-
 class DCBaseTerminal(ACDCTerminal):
+	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
+		CgmesProperty(property_name='DCNode', class_type='DCNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
+		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''See association end TopologicalNode.Terminal.''', profiles=[]),
+	)
 	def __init__(self, rdfid='', tpe='DCBaseTerminal'):
 		ACDCTerminal.__init__(self, rdfid, tpe)
 
 		self.DCNode: DCNode | None = None
 		self.DCTopologicalNode: DCTopologicalNode | None = None
-
-		self.register_property(
-			name='DCNode',
-			class_type=DCNode,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''None''',
-			profiles=[]
-		)
-		self.register_property(
-			name='DCTopologicalNode',
-			class_type=DCTopologicalNode,
-			multiplier=UnitMultiplier.none,
-			unit=UnitSymbol.none,
-			description='''See association end TopologicalNode.Terminal.''',
-			profiles=[]
-		)
