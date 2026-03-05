@@ -1916,6 +1916,28 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
     RmsPlotResults = 'Rms plot results'
 
+    RmsGeneratorResults = 'Rms Generator results'
+    RmsGenqecResults = 'Rms Genqec results'
+    RmsGenrawResults = 'Rms Genraw results'
+
+    RmsLineResults = 'Rms Line results'
+    RmsSimpleLineResults = 'Rms Simple line results'
+
+    RmsLoadResults = 'Rms load results'
+    RmsSimpleLoadResults = 'Rms Simple load results'
+
+    RmsGenqecOmegaResults = 'Rms Genqec omega results'
+    RmsGenqecDeltaResults = 'Rms Genqec delta results'
+
+    RmsGenrawOmegaResults = 'Rms Genraw omega results'
+    RmsGenrawDeltaResults = 'Rms Genraw delta results'
+
+    RmsSimpleLoadPResults = 'Rms Load P results'
+    RmsSimpleLoadQResults = 'Rms Load Q results'
+
+    RmsSimpleLinePResults = 'Rms Simple Line P results'
+    RmsSimpleLineQResults = 'Rms Simple Line Q results'
+
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
     StateMatrix = "State Matrix"
@@ -2058,6 +2080,8 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value
