@@ -854,8 +854,22 @@ class RawTransformer(RawObject):
         # yeah, self.NOMV1 and self.NOMV2 may be zero....
         NOMV1 = self.NOMV1 if self.NOMV1 > 0 else v_bus_i
         NOMV2 = self.NOMV2 if self.NOMV2 > 0 else v_bus_j
-        z_base_winding = (NOMV1 * NOMV1) / self.SBASE1_2
-        z_base_sys = (v_bus_i * v_bus_i) / Sbase
+        if NOMV1 <= 0.0:
+            NOMV1 = 1.0
+        if NOMV2 <= 0.0:
+            NOMV2 = NOMV1
+
+        winding_base_power = self.SBASE1_2 if self.SBASE1_2 > 0.0 else Sbase
+        if winding_base_power <= 0.0:
+            winding_base_power = 100.0
+
+        bus_i_base_voltage = v_bus_i if v_bus_i > 0.0 else NOMV1
+        bus_j_base_voltage = v_bus_j if v_bus_j > 0.0 else NOMV2
+
+        system_base_power = Sbase if Sbase > 0.0 else 100.0
+
+        z_base_winding = (NOMV1 * NOMV1) / winding_base_power
+        z_base_sys = (bus_i_base_voltage * bus_i_base_voltage) / system_base_power
 
         'The winding data I/O code defines the units in which the turns ratios '
         'WINDV1, WINDV2 and WINDV3 are specified (the units of RMAn and RMIn are '
@@ -875,8 +889,8 @@ class RawTransformer(RawObject):
             """
             WINDV1 is the actual Winding 1 voltage in kV; WINDV1 is equal to the base voltage of bus I by default.
             """
-            ti = self.WINDV1 / v_bus_i
-            tj = self.WINDV2 / v_bus_j
+            ti = self.WINDV1 / bus_i_base_voltage
+            tj = self.WINDV2 / bus_j_base_voltage
             tap_module = ti / tj
 
         elif self.CW == 3:
@@ -922,11 +936,11 @@ class RawTransformer(RawObject):
             Pcu = self.R1_2 / 1000.0  # Pcu comes in W from PSSe, we want it in kW
             Vsc = self.X1_2 * 100.0  # Vsc comes in p.u. from Psse, we want it in %
             GR_hv1 = 0.5
-            Sn = self.SBASE1_2
+            Sn = winding_base_power
             HV = max(NOMV1, NOMV2)
             LV = min(NOMV1, NOMV2)
-            VH_bus = max(v_bus_i, v_bus_j)
-            VL_bus = min(v_bus_i, v_bus_j)
+            VH_bus = max(bus_i_base_voltage, bus_j_base_voltage)
+            VL_bus = min(bus_i_base_voltage, bus_j_base_voltage)
 
             zsc = Vsc / 100.0
             rsc = (Pcu / 1000.0) / Sn
@@ -946,8 +960,8 @@ class RawTransformer(RawObject):
             z_series_lv = zs * (1.0 - GR_hv1) * z_base_lv  # Ohm
 
             # convert impedances from ohms to system per unit
-            z_base_hv_sys = (VH_bus * VH_bus) / Sbase
-            z_base_lv_sys = (VL_bus * VL_bus) / Sbase
+            z_base_hv_sys = (VH_bus * VH_bus) / system_base_power
+            z_base_lv_sys = (VL_bus * VL_bus) / system_base_power
 
             z_series = z_series_hv / z_base_hv_sys + z_series_lv / z_base_lv_sys
 
@@ -972,13 +986,13 @@ class RawTransformer(RawObject):
             """
             Pfe = self.MAG1 / 1000.0  # Iron losses, AKA magnetic losses (kW) Mag1 comes in W, convert it to kW
             I0 = self.MAG2 * 100  # No-load current (%), comes in p.u. from PSSe
-            Sn = self.SBASE1_2  # Base power MVA
+            Sn = winding_base_power  # Base power MVA
 
             # Shunt impedance (leakage)
             if Pfe > 0.0 and I0 > 0.0:
 
-                rm = Sbase / (Pfe / 1000.0)
-                I0 = I0 * Sn / Sbase
+                rm = system_base_power / (Pfe / 1000.0)
+                I0 = I0 * Sn / system_base_power
                 zm = 1.0 / (I0 / 100.0)
 
                 if zm < rm:  # only with this is possible to perform xm, otherwise we get div0 or sqrt(neg)

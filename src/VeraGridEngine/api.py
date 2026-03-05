@@ -93,7 +93,7 @@ def save_cgmes_file(grid: MultiCircuit,
 
     # save in CGMES format
     handler = FileSave(circuit=grid, file_name=filename, options=options)
-    logger += handler.save_cgmes()
+    logger += handler.save()
 
     return logger
 
