@@ -16,7 +16,6 @@ from PySide6 import QtGui, QtCore
 from VeraGrid.Gui.messages import *
 from VeraGrid.Gui.RosetaExplorer.roseta_explorer import Ui_RosetaExplorer, QMainWindow
 from VeraGrid.Gui.RosetaExplorer.roseta_objects_model import RosetaObjectsModel
-from VeraGrid.Gui.TreeModelViewer.TreeModelViewer import TreeModelViewerGUI
 from VeraGrid.Gui.gui_functions import add_menu_entry, populate_cim_item_children, get_cim_tree_model
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.pandas_model import PandasModel
@@ -70,7 +69,7 @@ class RosetaExplorerGUI(QMainWindow):
         self.project_directory = ''
         self.lock_ui = True
 
-        self.tree_navigation_windows: List[TreeModelViewerGUI] = list()
+        self.tree_navigation_windows: List["RosetaExplorerGUI"] = list()
 
         self.circuit: Union[CgmesCircuit, PsseCircuit, None] = None
 
@@ -108,30 +107,21 @@ class RosetaExplorerGUI(QMainWindow):
         # triggered
         self.ui.actionSave_logs.triggered.connect(self.save_logs)
 
-        self.ui.actionNew.triggered.connect(self.new_rosetta_explorer)
-
-        self.ui.actionDocumentation.triggered.connect(self.show_docs)
-
-        self.ui.actionAbout.triggered.connect(self.about)
-
         # clicked
-
         self.ui.filterButton.clicked.connect(self.filter_properties_table)
         self.ui.modelTypeLabel.mouseDoubleClickEvent = self.display_circuit
         self.ui.treeFilterButton.clicked.connect(self.filter_main_tree)
         self.ui.mainTreeView.clicked.connect(self.update_main_tree_on_click)
+        self.ui.mainTreeView.expanded.connect(self.on_tree_expanded)
 
         # text changed
-
         self.ui.filterComboBox.currentTextChanged.connect(self.on_filter_combobox_changed)
         self.ui.treeFilterComboBox.currentTextChanged.connect(self.on_tree_filter_combobox_changed)
 
         # lineedit enter
-
         self.ui.filterLineEdit.returnPressed.connect(self.filter_properties_table)
 
         # list clicks
-
         self.ui.clasesListView.clicked.connect(self.on_class_click)
 
         # context menu
@@ -522,4 +512,3 @@ class RosetaExplorerGUI(QMainWindow):
 
         if idx > -1:
             self.treeProxyModel.setFilterKeyColumn(idx)
-
