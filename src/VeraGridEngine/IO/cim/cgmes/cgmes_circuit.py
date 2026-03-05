@@ -53,15 +53,20 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
     # find cross-references
     for class_name, elements in elements_by_type_items:
         for element in elements:  # for every element of the type
+            element_dict = element.__dict__
             if mark_used:
                 element.used = True
 
             # check the declared properties
             for property_name, cim_prop in element.declared_properties.items():
+                use_direct_storage = property_name in element_dict
 
                 # try to get the property value, else, fill with None
                 # at this point val is always the string that came in the XML
-                value = getattr(element, property_name)
+                if use_direct_storage:
+                    value = element_dict.get(property_name, None)
+                else:
+                    value = getattr(element, property_name)
                 if value is not None and isinstance(value, CGMES_ASSETS):
                     continue
 
@@ -71,9 +76,15 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                         # set the referenced object in the property
                         try:
                             if isinstance(value, list):
-                                setattr(element, property_name, value)
+                                if use_direct_storage:
+                                    element_dict[property_name] = value
+                                else:
+                                    setattr(element, property_name, value)
                             else:
-                                setattr(element, property_name, cim_prop.class_type(value))
+                                if use_direct_storage:
+                                    element_dict[property_name] = cim_prop.class_type(value)
+                                else:
+                                    setattr(element, property_name, cim_prop.class_type(value))
 
                         except ValueError:
                             logger.add_error(msg='Value error',
@@ -90,7 +101,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                             value2 = chunks[-1]
                             try:
                                 enum_val = cim_prop.class_type(value2)
-                                setattr(element, property_name, enum_val)
+                                if use_direct_storage:
+                                    element_dict[property_name] = enum_val
+                                else:
+                                    setattr(element, property_name, enum_val)
 
                             except TypeError as e:
                                 logger.add_error(msg='Could not convert Enum',
@@ -120,7 +134,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     referenced_object.used = True
 
                                 # set the referenced object in the property
-                                setattr(element, property_name, referenced_object)
+                                if use_direct_storage:
+                                    element_dict[property_name] = referenced_object
+                                else:
+                                    setattr(element, property_name, referenced_object)
                                 # register the inverse reference
                                 ref_attribute = find_attribute(obj=element,
                                                                property_name=property_name,
@@ -134,7 +151,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                 element.missing_references[property_name] = value
 
                                 # set the referencing property to None:
-                                setattr(element, property_name, None)
+                                if use_direct_storage:
+                                    element_dict[property_name] = None
+                                else:
+                                    setattr(element, property_name, None)
 
                                 if hasattr(element, 'rdfid'):
                                     logger.add_error(msg='Reference not found',
@@ -187,7 +207,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     element.missing_references[property_name] = v
 
                                     # set the referencing property to None:
-                                    setattr(element, property_name, None)
+                                    if use_direct_storage:
+                                        element_dict[property_name] = None
+                                    else:
+                                        setattr(element, property_name, None)
 
                                     if hasattr(element, 'rdfid'):
                                         logger.add_error(msg='Reference not found',
@@ -204,9 +227,15 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                          value='Not found',
                                                          expected_value=v)
                             if len(referenced_object_list) > 1:
-                                setattr(element, property_name, list(referenced_object_list))
+                                if use_direct_storage:
+                                    element_dict[property_name] = list(referenced_object_list)
+                                else:
+                                    setattr(element, property_name, list(referenced_object_list))
                             elif len(referenced_object_list) == 1:
-                                setattr(element, property_name, list(referenced_object_list)[0])
+                                if use_direct_storage:
+                                    element_dict[property_name] = list(referenced_object_list)[0]
+                                else:
+                                    setattr(element, property_name, list(referenced_object_list)[0])
 
                     if cim_prop.out_of_the_standard:
                         logger.add_warning(msg='Property supported but out of the standard',
