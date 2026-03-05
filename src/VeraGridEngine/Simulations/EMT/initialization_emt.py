@@ -193,7 +193,7 @@ def init_explicit_emt(
 
     # Hydrate buffers with existing user-provided guesses
     for uid, val in init_guess.items():
-        # print(f"uid from var = {uid} with val = {val}")
+        print(f"uid from var = {uid} with val = {val}")
         x[uid2idx_vars[uid]] = val
 
     for uid, val in diff_init_guess.items():

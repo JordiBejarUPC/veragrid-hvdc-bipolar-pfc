@@ -289,6 +289,43 @@ class SymbolicToPythonVisitor:
         self.in_cse_def = False
         self._str_cache: Dict[Tuple[int, int], str] = dict()
 
+    def _prec(self, node) -> int:
+        """Return precedence of a node. Non-operators get 'infinite' precedence."""
+        # BinOp nodes define precedence; everything else we treat as atomic.
+        if isinstance(node, BinOp):
+            return self.OP_PRECEDENCE.get(node.op, 0)
+        return 10 ** 9
+
+    def _maybe_parenthesize(self, code: str, child_node, parent_op: str, parent_prec: int, side: str) -> str:
+        """
+        Decide whether to wrap child expression in parentheses.
+
+        Rules:
+          - If child's precedence < parent's precedence => need parentheses.
+          - If child's precedence == parent's precedence:
+              * For non-associative ops (-, /): right child must be parenthesized.
+              * For exponent (**), which is right-associative: left child must be parenthesized when equal precedence.
+              * For associative ops (+, *): no parentheses needed.
+        """
+        child_prec = self._prec(child_node)
+
+        # Lower precedence always needs parentheses
+        if child_prec < parent_prec:
+            return f"({code})"
+
+        # Equal precedence: depends on operator and side
+        if child_prec == parent_prec:
+            if parent_op in ('-', '/'):
+                # a - (b - c) and a / (b / c) must keep parentheses on right
+                if side == 'right':
+                    return f"({code})"
+            if parent_op == '**':
+                # (a ** b) ** c must keep parentheses on left (since ** is right-associative)
+                if side == 'left':
+                    return f"({code})"
+            # + and * are associative enough here -> no parentheses
+        return code
+
     def visit(self, node: Expr, precedence: int = 0) -> str:
         """
         Dispatches node processing using explicit type matching to avoid reflection.
@@ -343,11 +380,35 @@ class SymbolicToPythonVisitor:
     def generic_visit(self, node: Expr, _: int) -> str:
         raise NotImplementedError(f"Node not supported: {type(node)}")
 
-    def visit_binop(self, node: BinOp, prec: int) -> str:
-        curr_prec = self.OP_PRECEDENCE.get(node.op, 0)
-        l = self.visit(node.left, curr_prec)
-        r = self.visit(node.right, curr_prec)
-        code = f"{l} {node.op} {r}"
+    # def visit_binop(self, node: BinOp, prec: int) -> str:
+    #     curr_prec = self.OP_PRECEDENCE.get(node.op, 0)
+    #     l = self.visit(node.left, curr_prec)
+    #     r = self.visit(node.right, curr_prec)
+    #     code = f"{l} {node.op} {r}"
+    #     return f"({code})" if curr_prec < prec else code
+
+    def visit_binop(self, node: 'BinOp', prec: int) -> str:
+        """
+        Emit Python code for a binary operation with correct parentheses.
+
+        Important:
+        - We do NOT just compare prec numerically in a naive way; we also handle
+          associativity for '-', '/', and '**' to avoid sign/structure bugs.
+        """
+        op = node.op
+        curr_prec = self.OP_PRECEDENCE.get(op, 0)
+
+        # Visit children using current operator precedence as the "context"
+        l_code = self.visit(node.left, curr_prec)
+        r_code = self.visit(node.right, curr_prec)
+
+        # Parenthesize children if needed (precedence + associativity)
+        l_code = self._maybe_parenthesize(l_code, node.left, op, curr_prec, side='left')
+        r_code = self._maybe_parenthesize(r_code, node.right, op, curr_prec, side='right')
+
+        code = f"{l_code} {op} {r_code}"
+
+        # If parent context has higher precedence, wrap the whole expression
         return f"({code})" if curr_prec < prec else code
 
     def visit_unop(self, node: UnOp, _) -> str:

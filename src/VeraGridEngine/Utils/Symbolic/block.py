@@ -38,6 +38,7 @@ class Block:
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  diff_init_eqs: Dict[Var, Expr] | None = None,
+                 discrete_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
@@ -91,7 +92,7 @@ class Block:
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.alter_params: List[Var] = list() if alter_params is None else alter_params
-
+        self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = (dict()
                                                                         if external_mapping is None
                                                                         else external_mapping)
@@ -300,11 +301,31 @@ class Block:
 
     def check_empty(self) -> bool:
         """
-        check if a model does not have state and algebraic variables
-
+        check if a block is an empty block
         :return:
+        :rtype: bool
         """
-        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
+        return (
+                not self.state_vars and
+                not self.state_eqs and
+                not self.algebraic_vars and
+                not self.algebraic_eqs and
+                not self.diff_vars and
+                not self.reformulated_vars and
+                not self.differential_eqs and
+                not self.parameters and
+                not self.alter_params and
+                not self.init_values and
+                not self.init_eqs and
+                not self.diff_init_eqs and
+                not self.children and
+                not self.in_vars and
+                not self.out_vars and
+                not self.event_dict and
+                not self.external_mapping and
+                not self.api_obj_mapping and
+                not self.name
+        )
 
     def empty(self) -> bool:
         """
@@ -356,15 +377,6 @@ class Block:
         :param val: Block
         """
         self.children.remove(val)
-
-    # def apply_events(self, events: List[RmsEvent]):
-    #     """
-    #     Apply events to this block
-    #     :param events:
-    #     :return:
-    #     """
-    #     # TODO Implement filling self.event_dicts with the RmsEvents info
-    #     pass
 
     def get_all_blocks(self) -> List[Block]:
         """

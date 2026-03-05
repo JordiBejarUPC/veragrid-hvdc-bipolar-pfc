@@ -4,15 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from dataclasses import replace
 import numpy as np
-import math
-from typing import Dict, Any, List
-from VeraGridEngine.Utils.Symbolic.block import (Block, VarPowerFlowRefferenceType)
+from typing import List
+from VeraGridEngine.Utils.Symbolic.block import (Block)
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, Func, BinOp)
-from VeraGridEngine.Templates.templates_common_functions import (tf_to_diffblock_with_output, 
-                                                                  tf_to_diffblock_with_antiwindup)
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
@@ -62,7 +57,7 @@ def ml_max(vf: VarFactory, u:Expr, v:Expr, alternative:bool = True, name:str='')
         max_expr = u + neg_part_uv
     return max_expr, block_hv
 
-def ml_hard_sat(vf: VarFactory, u:Expr, u_min, u_max:Const, name:str=""):
+def ml_hard_sat(vf: VarFactory, u:Expr, u_min:Expr, u_max:Expr, name:str=""):
     block1, expr1_plus, expr1_minus = ml_positive_part(vf, u - u_max, name+"_max")
     block2, expr2_plus, expr2_minus = ml_positive_part(vf, u - u_min, name+"_min")
     final_expr = u_min + expr2_plus - expr1_plus 
@@ -70,8 +65,8 @@ def ml_hard_sat(vf: VarFactory, u:Expr, u_min, u_max:Const, name:str=""):
     return final_block, final_expr 
 
 def exponential_ml(vf: VarFactory, x:Expr, name:str=""):
-    algebraic_eqs = []
-    algebraic_vars = []
+    algebraic_eqs = list()
+    algebraic_vars = list()
     y = vf.add_var('exp_' + name)
     dy = vf.add_diff_var('dt_'+y.name, base_var=y)
     
@@ -83,10 +78,11 @@ def exponential_ml(vf: VarFactory, x:Expr, name:str=""):
             init_eqs={u:x},
         )
     else:
+        aux_block = Block()
         u = x
 
     du = vf.add_diff_var('dt_'+u.name, base_var=u)
-    children = [aux_block] if aux_block is not None else []
+    children = [aux_block]
     block = Block(
         algebraic_eqs= [dy - du*y] + algebraic_eqs,
         algebraic_vars=[y] + algebraic_vars,
@@ -141,12 +137,12 @@ def ml_piecewise(
     """
     # --- base cases ---
     if isinstance(x, Var) or isinstance(x, Const):
-        return x, [], counter
+        return x, list(), counter
 
     # --- Heaviside function case ---
     if isinstance(x, Func) and x.op == "heaviside":
         local_name = f"{name or 'hv'}_{counter}"
-        y, block = ml_heaviside(vf, x.arg, local_name)
+        block, y = ml_heaviside(vf, x.arg, local_name)
         return y, [block], counter + 1
 
     # --- General function (like sin, exp, etc.) ---

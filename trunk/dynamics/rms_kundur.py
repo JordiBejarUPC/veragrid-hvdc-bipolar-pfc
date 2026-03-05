@@ -5,7 +5,7 @@ from __future__ import annotations
 import cProfile as profile
 
 import numpy as np
-
+import time
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
@@ -637,17 +637,23 @@ def rms_kundur():
     # pr.enable()
 
     options = RmsOptions(time_step=0.001,
-                         simulation_time=10,
+                         simulation_time=20,
                          tolerance=1e-6,
                          integration_method=DynamicIntegrationMethod.DaeBackEuler,
                          initialization_method=RmsInitializationMethod.Explicit,
                          use_init_values=False,
                          max_iter=1000,
                          verbose=0)
+    total_init_time: float = 0
+    t0 = time.perf_counter()
 
     problem = RmsProblemDae(grid=grid,
                             options=options,
                             pf_results=res)
+    total_init_time += time.perf_counter() - t0
+    print(f"total init time: {total_init_time}")
+
+
 
     solver = BackEulerImplicitIntegration(
         problem=problem,
@@ -657,7 +663,13 @@ def rms_kundur():
         max_iter=options.max_iter
     )
 
+    total_simulation_time: float = 0
+    t0 = time.perf_counter()
+
     t, y, well_init, converged = solver.simulate()
+
+    total_simulation_time += time.perf_counter() - t0
+    print(f"total simulation time: {total_simulation_time}")
 
     # sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
     #

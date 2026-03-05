@@ -1012,7 +1012,7 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     y = vfactory.add_var('y')
     dy = vfactory.add_diff_var('y', base_var=y)
     algebraic_eqs.append(dy - (sym.heaviside(T_off - y) * sym.heaviside(I_ref - I_act - I_THoff) - (
-            vfactory.add_const(1) - sym.heaviside(I_ref - I_act - I_THoff)) * heaviside(y) * vfactory.add_const(
+            vfactory.add_const(1) - sym.heaviside(I_ref - I_act - I_THoff)) * sym.heaviside(y) * vfactory.add_const(
         1000)))
     c1 = (I_ref == I_inst).to_expression()
     c2 = sym.heaviside(y - T_off + vfactory.add_const(1e-3))
@@ -1051,7 +1051,7 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     oel_block.in_vars = inputs
     oel_block.out_vars = [V_oel_sat]
     templ.block = oel_block
-    return oel_block, V_oel_sat
+    return templ
 
 
 def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
