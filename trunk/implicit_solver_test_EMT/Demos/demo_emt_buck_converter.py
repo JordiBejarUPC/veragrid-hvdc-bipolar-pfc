@@ -17,6 +17,7 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver, BoundaryUpdateWrapper
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -45,16 +46,20 @@ class PWMControllerWrapper(BoundaryUpdateWrapper):
 # Model definition
 # -----------------------------------------------------------------------------
 
-def create_buck_converter_system() -> Tuple[Block, Var]:
-    i_L = Var("i_L")
-    v_C = Var("v_C")
+def create_buck_converter_system(vf: VarFactory) -> Tuple[Block, Var]:
+    i_L = vf.add_var("i_L")
+    v_C = vf.add_var("v_C")
 
-    Vin_sw = Var("Vin_sw")
-    R = Var("R")
-    L = Var("L")
-    C = Var("C")
+    Vin_sw = vf.add_var("Vin_sw")
+    R = vf.add_var("R")
+    L = vf.add_var("L")
+    C = vf.add_var("C")
+
+    d_i_L = vf.add_diff_var(name = "d_i_L", base_var=i_L)
+    d_v_C = vf.add_diff_var(name ="d_v_C",base_var=v_C)
 
     state_vars: List[Var] = list([i_L, v_C])
+    diff_vars: List[Var] = list([d_i_L, d_v_C])
     state_eqs: List[Expr] = list([
         (Vin_sw - v_C) / L,
         (i_L - v_C / R) / C,
@@ -70,6 +75,7 @@ def create_buck_converter_system() -> Tuple[Block, Var]:
     block = Block(
         name="BuckConverter",
         state_vars=state_vars,
+        diff_vars=diff_vars,
         state_eqs=state_eqs,
         parameters=parameters,
     )
@@ -96,9 +102,11 @@ def run_case(backend_str: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, floa
     DT: float = 1e-6
     T_TOTAL: float = 0.020
 
-    block, vin_var = create_buck_converter_system()
+    vf = VarFactory()
+    block, vin_var = create_buck_converter_system(vf=vf)
     block.unify_blocks()
-    glob_time = Var("t_glob")
+    # glob_time = Var("t_glob")
+    glob_time = vf.add_var("t_glob")
 
     problem = GenericEmtProblem(sys_block=block, glob_time=glob_time)
     problem.set_newton_trace_collector(NewtonTraceCollector())
@@ -181,6 +189,8 @@ def main() -> None:
     print(f"Max Error AD vs SD      : {err_ad_v:.3e}")
     print(f"Max Error StructuralVectorizedSolver vs SD  : {err_vec_v:.3e}")
 
+    print(f"v_sym = {v_sym}")
+    print(f"v_ad = {v_ad}")
     assert np.allclose(v_sym, v_ad, atol=1e-5), "AD Solver Failed Accuracy Check!"
     assert np.allclose(v_sym, v_vec, atol=1e-5), "StructuralVectorizedSolver Solver Failed Accuracy Check!"
 

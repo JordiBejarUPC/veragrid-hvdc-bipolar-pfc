@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
     SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import SimulationBackend, VarPowerFlowRefferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -84,7 +85,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: RmsOptions,
-                 pf_results: PowerFlowResults | None):
+                 pf_results: PowerFlowResults | None,
+                 progress_signal: DummySignal | None = None):
         """
 
         :param grid:
@@ -94,6 +96,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         super().__init__()
 
         self.logger = Logger()
+        self.progress_signal = progress_signal
         self.grid: MultiCircuit = grid
         self.power_flow_results: PowerFlowResults = pf_results
         self.Sf = self.power_flow_results.Sf / self.grid.Sbase
@@ -121,6 +124,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         # --------------------------------------------------------------------------------------------------------------
 
         ######################### Initialize containers#############################
+        total_init_explicit_time: float = 0
+        t0 = time.perf_counter()
 
         # dictionaries to store device-variable ifo
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
@@ -170,7 +175,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
 
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -186,7 +191,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             # flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -218,7 +223,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                 for elm in dev_list:
                     # flatten model
                     elm.rms_model.model.unify_blocks()
-                    mdl = block_deep_copy(elm.rms_model.model)
+                    mdl = (elm.rms_model.model)
 
                     self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -257,35 +262,16 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                     else:
                         raise ValueError("Not implemented initialization method")
 
-                    # add events
-                    if mdl.event_dict is not None:
-                        collect_events = {
-                            key: {"times": [], "values": []}
-                            for key in mdl.event_dict.keys()
-                        }
-                        # find out if there are events affecting the device parameters
-                        rms_evts = [rms_evt for rms_evt in self.grid.rms_events if rms_evt.device_idtag == elm.idtag]
-                        if len(rms_evts) != 0:
-                            for rms_evt in rms_evts:
-                                collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-                                collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-                                # TODO: implement the function in block: apply_event
-                            for param, events_info in collect_events.items():
-                                default_value = elm.rms_model.model.event_dict[param]
-                                # mdl.event_dict_def[param] = default_value
-                                mdl.event_dict[param] = piecewise(
-                                    time_var=self._glob_time,
-                                    t_events=np.array(events_info["times"]),
-                                    new_values=np.array(events_info["values"]),
-                                    default_value=default_value
-                                )
-
-
                     self.sys_block.add(mdl)
+
+        total_init_explicit_time += time.perf_counter() - t0
+        print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
+        if self.progress_signal is not None:
+            self.progress_signal.emit(10)
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model)
+            mdl = (elm.rms_model.model)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -293,19 +279,21 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                     self._algebraic_eqs.append(P[i])
                     self._algebraic_eqs.append(Q[i])
 
-        self._variable_parameters: List[Var] = list()
-        self._event_parameters_eqs: List[Expr | Const] = list()
-        self._constant_parameters: List[Var] = list()
-        self._parameters_values: List[Const] = list()
-
+        # self._variable_parameters: List[Var] = list()
+        # self._event_parameters_eqs: List[Expr | Const] = list()
+        # self._constant_parameters: List[Var] = list()
+        # self._parameters_values: List[Const] = list()
+        #
+        # for b in self.sys_block.get_all_blocks():
+        #
+        #     for param, eq in b.event_dict.items():
+        #         self._variable_parameters.append(param)
+        #         self._event_parameters_eqs.append(eq)
+        #     for param, constant in b.parameters.items():
+        #         self._constant_parameters.append(param)
+        #         self._parameters_values.append(constant)
+        # Collect reformulated_vars (tensygrid-specific)
         for b in self.sys_block.get_all_blocks():
-
-            for param, eq in b.event_dict.items():
-                self._variable_parameters.append(param)
-                self._event_parameters_eqs.append(eq)
-            for param, constant in b.parameters.items():
-                self._constant_parameters.append(param)
-                self._parameters_values.append(constant)
             for var in b.reformulated_vars:
                 self._reformulated_vars.append(var)
 
@@ -319,14 +307,14 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         self._event_parameters_eqs.append(Const(1))
 
         # add these parameters, m is for variable parameters
-        self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self._n_event_params}]"
-        self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self._n_event_params}"
-        self._uid2idx_event_params[self._dt.uid] =  self._n_event_params
+        self._compiler_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+        self._alias_names_dict[self._dt.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        self._uid2idx_event_params[self._dt.uid] = self._n_event_params
         self._n_event_params += 1
 
-        self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{ self._n_event_params}]"
-        self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{ self._n_event_params}"
-        self._uid2idx_event_params[self._delta.uid] =  self._n_event_params
+        self._compiler_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+        self._alias_names_dict[self._delta.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        self._uid2idx_event_params[self._delta.uid] = self._n_event_params
         self._n_event_params += 1
 
         ##################### To be removed when order is preserved in the first part #############################
@@ -337,11 +325,11 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         self._n_alg = len(self._algebraic_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
-        self._compiler_names_dict: Dict[int, str] = dict()
-        self._alias_names_dict: Dict[int, str] = dict()
+        # self._compiler_names_dict: Dict[int, str] = dict()
+        # self._alias_names_dict: Dict[int, str] = dict()
         self._uid2idx_vars: Dict[int, int] = dict()
-        self._uid2idx_event_params: Dict[int, int] = dict()
-        self._uid2idx_params: Dict[int, int] = dict()
+        # self._uid2idx_event_params: Dict[int, int] = dict()
+        # self._uid2idx_params: Dict[int, int] = dict()
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
@@ -358,17 +346,10 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             self._uid2idx_vars[v.uid] = i
             i += 1
 
-        for j, ep in enumerate(self._constant_parameters):
-            self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
-            self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
-            self._uid2idx_params[ep.uid] = j
-
-        i = 0
-        for ep in self._variable_parameters:
-            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{i}]"
-            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{i}"
-            self._uid2idx_event_params[ep.uid] = i
-            i += 1
+        # for j, ep in enumerate(self._constant_parameters):
+        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
+        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
+        #     self._uid2idx_params[ep.uid] = j
         
         for var in self._reformulated_vars:
             fixed_var = Var('ref_var' + str(i))
@@ -379,6 +360,12 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             self._alias_names_dict[fixed_var.uid] = f"{self.VARIABLE_PARAMS_NAME}_{i}"
             self._uid2idx_event_params[fixed_var.uid] = i
             i += 1
+        
+        # Re-index variable parameters to ensure sequential indices after all additions
+        for idx, ep in enumerate(self._variable_parameters):
+            self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{idx}]"
+            self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{idx}"
+            self._uid2idx_event_params[ep.uid] = idx
 
         for k, ep in enumerate(self._diff_vars):
             self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
@@ -420,6 +407,26 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                     eq = eq.subs({var: 0.5*(var + var_lagged)})
                     eq = eq.simplify()
                     self._state_eqs[it] = eq 
+
+        # add events modifying values of event_parameters equations
+
+        collect_events = {
+            param: {"times": [], "values": []}
+            for param in self._variable_parameters
+        }
+
+        for rms_evt in self.grid.rms_events:
+            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+            # TODO: implement the function in block: apply_event
+        for param, events_info in collect_events.items():
+            default_value = self._event_parameters_eqs[self._variable_parameters.index(param)]
+            self._event_parameters_eqs[self._variable_parameters.index(param)] = piecewise(
+                time_var=self._glob_time,
+                t_events=np.array(events_info["times"]),
+                new_values=np.array(events_info["values"]),
+                default_value=default_value
+            )
 
         # --------------------------------------------------------------------------------------------------------------
         # Compile RHS and Jacobian using JIT Compiler adaptation
@@ -491,7 +498,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             print(f"Model compiled with {self._n_vars} variables")
             print("\nCompilation timing summary:")
             for k, v in timings.items():
-                print(f"  {k: 30s}: {v: 8.4f} s")
+                print(f"  {k:30s}: {v:8.4f} s")
             print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())
@@ -569,6 +576,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         self._state_eqs.extend(mdl.state_eqs)
         self._algebraic_eqs.extend(mdl.algebraic_eqs)
 
+        if self.progress_signal is not None:
+            self.progress_signal.emit(20)
 
     def set_init_guess(self, mdl: Block, reference_powerflow: VarPowerFlowRefferenceType, val: float):
         """
@@ -761,7 +770,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
 
     def get_dt(self):
         return self._dt
-    
+
     def get_dt_value(self):
         dt_value = self._variable_parameters_values[-2]
         return dt_value

@@ -260,15 +260,46 @@ class EmtProblemTemplate(ABC):
         """
         return self._n_event_params
 
+    # def get_x0(self) -> Vec:
+    #     """
+    #     Builds and returns the initial condition vector based on the initialization guess.
+    #     """
+    #     # x = np.zeros(self._n_vars, dtype=np.float64)
+    #     x = np.zeros(self._n_vars)
+    #     for uid, val in self.init_guess.items():
+    #         idx = self._uid2idx_vars.get(uid, None)
+    #         print(f"get_x0 uid = {uid}, idx = {idx}, val = {val}")
+    #         if idx is not None:
+    #             # x[idx] = float(val)
+    #             x[idx] = val
+    #     return x
+
     def get_x0(self) -> Vec:
         """
         Builds and returns the initial condition vector based on the initialization guess.
         """
         x = np.zeros(self._n_vars, dtype=np.float64)
+
+        # Build uid -> name map from known variables
+        uid2name = {}
+        for v in list(self.get_state_vars()) + list(self.get_algebraic_vars()):
+            uid2name[v.uid] = v.name
+
         for uid, val in self.init_guess.items():
             idx = self._uid2idx_vars.get(uid, None)
+
+            # Only process naming and printing if verbose is enabled
+            # if self.options.verbose > 0:
+            #     vname = uid2name.get(uid, "<unknown-var>")
+            #     alias = None
+            #     if hasattr(self, "_alias_names_dict"):
+            #         alias = self._alias_names_dict.get(uid, None)
+            #
+            #     print(f"get_x0 | name={vname} | alias={alias} | uid={uid} | idx={idx} | val={val}")
+
             if idx is not None:
                 x[idx] = float(val)
+
         return x
 
     def get_dx0(self) -> Vec:

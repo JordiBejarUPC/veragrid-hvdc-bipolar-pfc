@@ -12,31 +12,34 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class GenericEmtProblem(EmtProblemTemplate):
     __slots__ = list()
 
 
-def integrator(initial_val: Any, name: str) -> Tuple[Var, Block]:
+def integrator(initial_val: Any, vf: VarFactory, name: str) -> Tuple[Var, Block]:
     """
     Creates a state variable and a container block with a placeholder equation.
     """
-    var: Var = Var(name)
+    var= vf.add_var(name)
+    diff_var = vf.add_diff_var(name = f"d_{name}", base_var=var)
     blk: Block = Block(
         name=f"int_{name}",
         state_vars=list([var]),
+        diff_vars = list([diff_var]),
         state_eqs=list([Const(0.0)])
     )
     return var, blk
 
 
-def build_oscillator_system(omega: float = 1.0) -> Tuple[Block, Var, Var]:
+def build_oscillator_system(vf: VarFactory, omega: float = 1.0) -> Tuple[Block, Var, Var]:
     """
     Constructs the State-Space model for a harmonic oscillator.
     """
-    x, blk_x = integrator(None, name="x")
-    v, blk_v = integrator(None, name="v")
+    x, blk_x = integrator(None, name="x", vf= vf)
+    v, blk_v = integrator(None, name="v", vf= vf)
 
     # Coupling: dx/dt = v, dv/dt = -omega^2 * x
     blk_x.state_eqs[0] = v
@@ -63,9 +66,10 @@ def run_test() -> None:
     print(f"Interval: [{t0}, {t_end}] s, step h={h} s")
 
     # 1. Build Block and Unify
-    sys_block, var_x, var_v = build_oscillator_system(omega)
+    vf = VarFactory()
+    sys_block, var_x, var_v = build_oscillator_system(vf=vf, omega = omega)
     sys_block.unify_blocks()
-    glob_time: Var = Var("t_glob")
+    glob_time = vf.add_var("t_glob")
 
     # 2. Setup Problem
     problem: GenericEmtProblem = GenericEmtProblem(sys_block, glob_time)

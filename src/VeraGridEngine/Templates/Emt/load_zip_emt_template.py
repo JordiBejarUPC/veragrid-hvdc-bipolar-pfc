@@ -48,7 +48,7 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     eps = vf.add_var("eps_" + name)
 
     # Parameter Registration (event_dict) for the case P= 9.999999, Q= 0.999999
-    P0 = 9.999999 / sbase
+    P0 = 1 / sbase
     Q0 = 0.999999 / sbase
     # P0 = -0.0 / sbase
     # Q0 = -0.0 / sbase
@@ -58,7 +58,8 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     templ.block.event_dict[Q0_B] = vf.add_const(Q0 / 3.0)
     templ.block.event_dict[P0_C] = vf.add_const(P0 / 3.0)
     templ.block.event_dict[Q0_C] = vf.add_const(Q0 / 3.0)
-    templ.block.event_dict[V0] = vf.add_const(1.0)
+    # templ.block.event_dict[V0] = vf.add_const(1.0)
+    templ.block.event_dict[V0] = vf.add_const(np.sqrt(2))
     templ.block.event_dict[f_nom] = vf.add_const(fbase)
     templ.block.event_dict[k_sogi] = vf.add_const(1.41421356)
     templ.block.event_dict[eps] = vf.add_const(1e-12)
@@ -175,12 +176,18 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     # This section ensures zero residuals at t=0 by accounting for AC steady state.
     templ.block.init_eqs = {
         # 6 States: u follows grid voltage, q is the orthogonal component
+        # u_A: v_A,
+        # q_A: ((V0 ** 2 - v_A ** 2 + eps) ** c05),
+        # u_B: v_B,
+        # q_B: ((V0 ** 2 - v_B ** 2 + eps) ** c05),
+        # u_C: v_C,
+        # q_C: ((V0 ** 2 - v_C ** 2 + eps) ** c05),
         u_A: v_A,
-        q_A: ((V0 ** 2 - v_A ** 2 + eps) ** c05),
+        q_A: c0,
         u_B: v_B,
-        q_B: ((V0 ** 2 - v_B ** 2 + eps) ** c05),
+        q_B: c0,
         u_C: v_C,
-        q_C: ((V0 ** 2 - v_C ** 2 + eps) ** c05),
+        q_C: c0,
 
         # 18 Algebraics: Complete chain for current injection
         VA2: (u_A ** 2 + q_A ** 2), VmA: ((VA2 + eps) ** c05), rA: (VmA / V0),
@@ -190,12 +197,18 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
 
     templ.block.diff_init_eqs = {
         # 6 Derivatives: MUST be non-zero in EMT to match harmonic motion
-        d_u_A: -w * q_A,
-        d_q_A: w * u_A,
-        d_u_B: -w * q_B,
-        d_q_B: w * u_B,
-        d_u_C: -w * q_C,
-        d_q_C: w * u_C,
+        # d_u_A: -w * q_A,
+        # d_q_A: w * u_A,
+        # d_u_B: -w * q_B,
+        # d_q_B: w * u_B,
+        # d_u_C: -w * q_C,
+        # d_q_C: w * u_C,
+        d_u_A: c0,
+        d_q_A: c0,
+        d_u_B: c0,
+        d_q_B: c0,
+        d_u_C: c0,
+        d_q_C: c0,
     }
 
     # Complete External Mapping (Interface with the simulation engine)

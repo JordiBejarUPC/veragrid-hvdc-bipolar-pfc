@@ -20,6 +20,7 @@ from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -90,7 +91,6 @@ gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00)
 
 # Define loads
 load1 = gce.Load(name='Load1', P=10, Q=1.0)
-#load2 = gce.Load(name='Load2', P=2.0, Q=0.5)
 
 
 #Grid modifications
@@ -247,6 +247,8 @@ for i, vsc in enumerate(grid.vsc_devices):
     res.Pfp_vsc[i] = P_set  # DC side power
     res.Pfn_vsc[i] = 0.0  # Not used for 2-terminal VSC
 
+res.St = solution.St
+res.Sf = solution.Sf
 res.St_vsc = solution.St_vsc
 res.Pfn_vsc = solution.Pfn_vsc
 res.Pfp_vsc = solution.Pfp_vsc
@@ -269,6 +271,7 @@ else:
     raise ValueError(f"Unknown load type: {load_type}")
     
 genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+genrow_mdl1 = get_complete_generator_template(grid.var_factory).block
 
 # Build VSC model with the same control modes used in the VSC device
 vsc_mdl = VscGflBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
@@ -397,12 +400,11 @@ xlim = options.simulation_time
 
 Pg = genrow_mdl1.out_vars[0]
 Qg = genrow_mdl1.out_vars[1]
-delta = find_name_in_block("delta", genrow_mdl1)
-Vm_var = find_name_in_block("Vm", genrow_mdl1)
+delta = find_name_in_block("deltagenqec", big_gen1)
 
 plt.figure(figsize=(10, 6))
-plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-plt.plot(t, y[:, problem.get_var_idx(Vm_var)], label="Vm (pu)")
+if delta is not None:
+    plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
 
@@ -410,11 +412,10 @@ plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
 plt.ylabel("Values (pu)")
 plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'VSC GFL Control: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+# plt.show()  # Disabled to prevent hanging
 
 pv_all = gen3.rms_model.model 
 vdc = find_name_in_block('Vdc', bus3.rms_model.model)
@@ -447,11 +448,10 @@ plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
 plt.ylabel("Values (pu)")
 plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
 plt.title(f'VSC DC Side: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
-plt.show()
+plt.show()  # Disabled to prevent hanging
 
 print(f"\nSimulation completed with control modes: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}")
 print("Supported combinations:")

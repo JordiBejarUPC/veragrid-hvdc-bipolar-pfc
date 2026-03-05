@@ -109,9 +109,15 @@ class EmtProblemDae(EmtProblemTemplate):
         self.init_guess.update(self._temp_init_guess)
         self.diff_init_guess.update(self._temp_diff_init_guess)
 
+
+
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
         # self.diff_init_guess.update(self.diff_init_guess)
+
+
+        print(f"init guess = {self.init_guess}")
+        print(f"diff init guess = {self.diff_init_guess}")
 
 
         t_done = _toc(t_build)
@@ -702,9 +708,9 @@ class EmtProblemDae(EmtProblemTemplate):
                 i_f0 = np.sqrt(2.0) * np.real(I_f)
                 i_t0 = np.sqrt(2.0) * np.real(I_t)
 
-                if self.options.verbose>0:
-                    print(f"i_f{ph} = {i_f0}")
-                    print(f"i_t{ph} = {i_t0}")
+                # if self.options.verbose>0:
+                #     print(f"i_f{ph} = {i_f0}")
+                #     print(f"i_t{ph} = {i_t0}")
 
                 self.set_if_exists(mdl = mdl, key = if_key[ph], value = float(i_f0))
                 self.set_if_exists(mdl = mdl, key = it_key[ph], value = float(i_t0))
@@ -873,8 +879,8 @@ class EmtProblemDae(EmtProblemTemplate):
                       value: float):
         if mdl.E(key) is not None:
             self.set_init_guess(mdl, key, value)
-            if self.options.verbose > 0:
-                print(f"init guess key = {key}, value = {value}")
+            # if self.options.verbose > 0:
+            #     print(f"init guess key = {key}, value = {value}")
 
     def _deduplicate_block_entities(self, block: Block):
         """
@@ -1064,7 +1070,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     "uid": uid,
                     "type": var_type, # NEW: Distinguishes between Var and DiffVar
                     "alias": alias,
-                    "name": getattr(v, "name", None),
+                    "name": v.name,
                     "value": val,
                     "in_init_guess": in_guess,
                     "is_zero": abs(val) <= tol_zero,

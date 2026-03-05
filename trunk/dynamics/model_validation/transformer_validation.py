@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -18,8 +18,10 @@ from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
@@ -118,16 +120,16 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # Build Rms models
-line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
-trafo_1.initialize_rms()
+line12_mdl = (get_line_rms_template(grid.var_factory).block)
+initialize_trafo_rms(trafo_1, grid.var_factory, Sbase=grid.Sbase)
 trafo_mdl = trafo_1.rms_model.model
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0=-0.01, Ql0=-0.001).block)
+    load_mdl = (ZIPLoadBuild(grid.var_factory, Pl0=-0.01, Ql0=-0.001).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+genrow_mdl1 = (get_complete_generator_template(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
@@ -139,6 +141,13 @@ line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
 
 line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
 line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+
+trafo_mdl.connect([trafo_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+trafo_mdl.connect([trafo_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+
+trafo_mdl.connect([trafo_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+trafo_mdl.connect([trafo_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
+
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -187,7 +196,7 @@ xlim = options.simulation_time
 Pg = genrow_mdl1.out_vars[0]
 Qg = genrow_mdl1.out_vars[1]
 delta = find_name_in_block("delta", genrow_mdl1)
-Vm = find_name_in_block("Vm", genrow_mdl1)
+Vm = find_name_in_block("omega", genrow_mdl1)
 
 plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")

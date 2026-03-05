@@ -174,7 +174,7 @@ class JitSymbolicSolver:
     __slots__ = [
         'problem', 't0', 't_end', 'h', 'method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'jit_kernels', 'jit_jacobian_symbolic',
-        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs',
+        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
         'jit_compiler'
     ]
 
@@ -215,6 +215,7 @@ class JitSymbolicSolver:
         self.algebraic_vars = self.problem.get_algebraic_vars()
         self.state_eqs = self.problem.get_state_eqs()
         self.algebraic_eqs = self.problem.get_algebraic_eqs()
+        self.diff_vars  = self.problem.get_diff_vars()
 
     # ==============================================================================
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
@@ -236,6 +237,10 @@ class JitSymbolicSolver:
         sorted_vars.extend(self.state_vars)
         sorted_vars.extend(self.algebraic_vars)
 
+        print("\nFULL states[] ORDER (state + algebraic):")
+        for idx, v in enumerate(sorted_vars):
+            print(f"{idx:3d}  {v.name}")
+
         all_params: List[Any] = list()
         all_params.extend(self.problem.get_variable_parameters())
         all_params.extend(self.problem.get_constant_parameters())
@@ -243,11 +248,28 @@ class JitSymbolicSolver:
         equations: List[Expr] = list()
 
         for i, rhs in enumerate(self.state_eqs):
-            sv = self.state_vars[i]
-            d_term = Var(name=f"d_{sv.name}", base_var=sv)
+            # sv = self.state_vars[i]
+            # d_term = Var(name=f"d_{sv.name}", base_var=sv)
+            d_term = self.diff_vars[i]  # real associated diff_var
             equations.append(d_term - rhs)
 
         equations.extend(self.algebraic_eqs)
+
+        # print("STATE VARS ORDER:")
+        # for i, sv in enumerate(self.state_vars):
+        #     print(i, sv.name)
+        #
+        # print("\nSTATE EQS ORDER (rhs):")
+        # for i, rhs in enumerate(self.state_eqs):
+        #     print(i, rhs)  # o str(rhs) si es sympy-like
+        #
+        # print("ALGEBRAIC VARS ORDER:")
+        # for i, sv in enumerate(self.algebraic_vars):
+        #     print(i, sv.name)
+        #
+        # print("\nALGEBRAIC EQS ORDER (rhs):")
+        # for i, rhs in enumerate(self.algebraic_eqs):
+        #     print(i, rhs)  # o str(rhs) si es sympy-like
 
         self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method)
 
@@ -299,7 +321,8 @@ class JitSymbolicSolver:
 
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
-            d_term = Var(name=f"d_{sv.name}", base_var=sv)
+            # d_term = Var(name=f"d_{sv.name}", base_var=sv)
+            d_term = self.diff_vars[i]  # real associated diff_var
             base_var_uid_to_diff_var[sv.uid] = d_term
             equations.append(d_term - rhs)
         equations.extend(self.algebraic_eqs)
@@ -408,6 +431,9 @@ class JitSymbolicSolver:
             self.build_jit_kernel(method)
         else:
             pass
+        if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            if DynamicIntegrationMethod.DaeBackEuler not in self.jit_kernels:
+                self.build_jit_kernel(DynamicIntegrationMethod.DaeBackEuler)
 
         kernel_list = self.jit_kernels[method]
 
@@ -419,6 +445,16 @@ class JitSymbolicSolver:
         jac_key = f"{method}_{not use_dense_solver}"
         current_jacobian = self.jit_jacobian_symbolic[jac_key]
 
+        use_dense_solver = (n_eqs <= self.dense_threshold)
+        # Build Jacobians for the main method
+        self._build_jit_symbolic_hybrid(method, use_sparse=not use_dense_solver)
+        jac_key_main = f"{method}_{not use_dense_solver}"
+        # If trapezoidal, also build BE jacobian for the first step
+        jac_key_be = None
+        if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            self._build_jit_symbolic_hybrid(DynamicIntegrationMethod.DaeBackEuler, use_sparse=not use_dense_solver)
+            jac_key_be = f"{DynamicIntegrationMethod.DaeBackEuler}_{not use_dense_solver}"
+
         if self.verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
             print(f"   [Config] System N={n_eqs}. Using {mode_str} linear solver (Threshold={self.dense_threshold}).")
@@ -427,7 +463,7 @@ class JitSymbolicSolver:
 
 
         x0 = self.problem.get_x0()
-        dx0 = np.zeros(n_eqs, dtype=np.float64)
+        dx0 = self.problem.get_dx0()
 
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
@@ -453,6 +489,13 @@ class JitSymbolicSolver:
             pass
 
         for i in range(self.steps):
+            method_eff = method
+            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                method_eff = DynamicIntegrationMethod.DaeBackEuler
+
+            kernel_list_eff = self.jit_kernels[method_eff]
+            jac_key_eff = jac_key_main if method_eff == method else jac_key_be
+            current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_eff]
             if self.verbose:
                 print(f"Simulating at step {i}")
             else:
@@ -464,43 +507,160 @@ class JitSymbolicSolver:
             ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
             full_params = np.concatenate((ev_params, static_vals))
 
+            if i == 0 and self.verbose:
+                print("\nFULL params[] ORDER (objects + values):")
+                for idx, pobj in enumerate(full_params):
+                    # pobj is a Var/Const-like object
+                    val = full_params[idx] if idx < len(full_params) else None
+                    name = getattr(pobj, "name", str(pobj))
+                    uid = getattr(pobj, "uid", None)
+                    print(f"{idx:3d}  {name:40s}  uid={uid}  val={val}")
+
             if boundary_updater is not None:
                 boundary_updater.update(t_curr, x_prev, full_params)
             else:
                 pass
+
+            # PREDICTOR
+            if i == 0:
+                # Backward Euler: good initial guess is explicit Euler predictor
+                # x_{n+1}^0 = x_n + h * dx_n
+                x_iter[:] = x_prev
+                x_iter[:n_states] = x_prev[:n_states] + self.h * dx_prev[:n_states]
+            else:
+                # optional: also use predictor on other steps if you want
+                x_iter[:] = x_prev
+                x_iter[:n_states] = x_prev[:n_states] + self.h * dx_prev[:n_states]
 
             for k in range(15):
                 ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
                                          method=str(method))
 
                 res = np.zeros(n_eqs, dtype=np.float64)
-                for kn in kernel_list:
+                # for kn in kernel_list:
+                #     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
+                #
+                for kn in kernel_list_eff:
                     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
 
-                if i == 0 and k == 0 and self.verbose:  # Step 0, First Newton iteration
-                    print(f"\n>>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<")
-                    all_vars: List[Any] = list()
-                    all_vars.extend(self.problem.get_state_vars())
-                    all_vars.extend(self.problem.get_algebraic_vars())
-                    abs_res = np.abs(res)
-                    top_indices = np.argsort(abs_res)[-20:][::-1]
-
-                    print(f"{'Index':<8} | {'Variable/Equation':<40} | {'Residual value':<15}")
-                    print("-" * 75)
-                    for idx in top_indices:
-                        name = all_vars[idx].name if idx < len(all_vars) else f"Eq_{idx}"
-                        print(f"{idx:<8} | {name:<40} | {res[idx]:.6e}")
-                    print("=" * 75 + "\n")
-                else:
-                    pass
+                # if i == 0 and k == 0 and self.verbose:
+                #     states = list(self.problem.get_state_vars())
+                #     algs = list(self.problem.get_algebraic_vars())
+                #
+                #     n_states = len(states)
+                #     n_algs = len(algs)
+                #
+                #     print("\n[Residual Debug] Sizes:")
+                #     print(f"  n_eqs(res)       = {n_eqs}")
+                #     print(f"  n_states         = {n_states}")
+                #     print(f"  n_algebraic_vars = {n_algs}")
+                #     print(f"  n_states+n_algs  = {n_states + n_algs}")
+                #     if n_eqs != (n_states + n_algs):
+                #         print("  [WARNING] n_eqs != n_states+n_algs -> residual indexing is not vars-based.\n")
+                #
+                #     abs_res = np.abs(res)
+                #     top_indices = np.argsort(abs_res)[-20:][::-1]
+                #
+                #     # -------------------------
+                #     # Pretty table formatting
+                #     # -------------------------
+                #     W_IDX = 4
+                #     W_KIND = 5
+                #     W_LABEL = 62  # adjust if you want more/less text
+                #     W_RES = 13
+                #     W_ABS = 13
+                #     W_XIT = 13
+                #     W_XPR = 13
+                #     W_DXPR = 13
+                #
+                #     def _clip(s: str, width: int) -> str:
+                #         s = str(s)
+                #         if len(s) <= width:
+                #             return s.ljust(width)
+                #         if width <= 3:
+                #             return s[:width]
+                #         return (s[:width - 3] + "...")
+                #
+                #     def _fmt_num(x) -> str:
+                #         # right-aligned scientific; keep NaN readable
+                #         if x is None:
+                #             return " " * W_RES
+                #         try:
+                #             xf = float(x)
+                #         except Exception:
+                #             return str(x).rjust(W_RES)
+                #         if np.isnan(xf):
+                #             return "nan".rjust(W_RES)
+                #         return f"{xf: .6e}".rjust(W_RES)
+                #
+                #     # Header
+                #     title = f">>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<"
+                #     print("\n" + title)
+                #     header = (
+                #         f"{'idx':>{W_IDX}} | "
+                #         f"{'kind':<{W_KIND}} | "
+                #         f"{'label':<{W_LABEL}} | "
+                #         f"{'res':>{W_RES}} | "
+                #         f"{'|res|':>{W_ABS}} | "
+                #         f"{'x_iter':>{W_XIT}} | "
+                #         f"{'x_prev':>{W_XPR}} | "
+                #         f"{'dx_prev':>{W_DXPR}}"
+                #     )
+                #     print(header)
+                #     print("-" * len(header))
+                #
+                #     for idx in top_indices:
+                #         if idx < n_states:
+                #             sv = states[idx]
+                #             kind = "STATE"
+                #             label = f"d_{sv.name} - rhs_{sv.name}"
+                #             x_it = x_iter[idx]
+                #             x_pr = x_prev[idx]
+                #             dx_pr = dx_prev[idx]
+                #         else:
+                #             j = idx - n_states
+                #             kind = "ALG"
+                #             if j < n_algs:
+                #                 label = f"alg for {algs[j].name}"
+                #                 x_it = x_iter[n_states + j]
+                #                 x_pr = x_prev[n_states + j]
+                #             else:
+                #                 label = f"ALG_EQ_{j}"
+                #                 x_it = np.nan
+                #                 x_pr = np.nan
+                #             dx_pr = np.nan
+                #
+                #         row = (
+                #             f"{idx:>{W_IDX}d} | "
+                #             f"{kind:<{W_KIND}} | "
+                #             f"{_clip(label, W_LABEL)} | "
+                #             f"{_fmt_num(res[idx])} | "
+                #             f"{_fmt_num(abs_res[idx])} | "
+                #             f"{_fmt_num(x_it)} | "
+                #             f"{_fmt_num(x_pr)} | "
+                #             f"{_fmt_num(dx_pr)}"
+                #         )
+                #         print(row)
+                #
+                #     print("-" * len(header))
+                #     print("=" * len(header) + "\n")
+                #
+                #     # rhs estimate from residuals because res = d_est - rhs
+                #     # when x_iter == x_prev, d_est for BE is (x - xprev)/h = 0
+                #     # so rhs ≈ -res for state eqs
+                #     rhs_est = -res[:n_states].copy()
+                #     print("[DBG] max|rhs_est - dx_prev|:", np.max(np.abs(rhs_est - dx_prev[:n_states])))
 
                 if np.linalg.norm(res, np.inf) < 1e-6:
                     break
                 else:
                     pass
 
-                J_final = current_jacobian.evaluate(states=x_iter, params=full_params, history=x_prev,
-                                                    d_history=dx_prev,h=self.h, history2=x_prev2)
+                # J_final = current_jacobian.evaluate(states=x_iter, params=full_params, history=x_prev,
+                #                                     d_history=dx_prev,h=self.h, history2=x_prev2)
+
+                J_final = current_jacobian_eff.evaluate(states=x_iter, params=full_params, history=x_prev,
+                                                    d_history=dx_prev, h=self.h, history2=x_prev2)
 
                 if use_dense_solver:
                     delta = dense_solve(J_final, -res, ctx)
@@ -510,13 +670,22 @@ class JitSymbolicSolver:
 
             self.y[i + 1, :] = x_iter
 
-            if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            # if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            #     alpha = 2.0 / self.h
+            #     dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
+            # elif method == DynamicIntegrationMethod.DaeBDF2:
+            #     x_prev2 = x_prev.copy()
+            # else:
+            #     dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
+            if method_eff == DynamicIntegrationMethod.DaeTrapezoidal:
                 alpha = 2.0 / self.h
                 dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
-            elif method == DynamicIntegrationMethod.DaeBDF2:
+            elif method_eff == DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
             else:
+                # Backward Euler / Forward Euler equivalent update for stored derivative
                 dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
+
 
             if method != DynamicIntegrationMethod.DaeBDF2:
                 x_prev2 = x_prev.copy()
