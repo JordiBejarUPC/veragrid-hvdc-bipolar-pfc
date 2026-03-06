@@ -9,6 +9,7 @@ import numpy as np
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
@@ -16,9 +17,6 @@ from VeraGridEngine.enumerations import ProceduralGridMethods
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 
-
-def latlon_distance(lat1: float, lon1: float, lat2: float, lon2: float):
-    return (lat1 - lat2) ** 2 + (lon1 - lon2) ** 2
 
 class ProceduralGridWindow(QtWidgets.QDialog):
     """
@@ -33,7 +31,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         QtWidgets.QDialog.__init__(self, parent)
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
-        self.setWindowTitle('System scaling')
+        self.setWindowTitle('Procedural grid expansion')
 
         # Setup combobox
         self.methods_dict, methods_mdl = enums_to_model(
@@ -78,7 +76,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         for j, se_graphic_target in enumerate(self.connection_substations_graphics_list):
             for i, se_graphic_candidate in enumerate(self.all_substations_graphics_in_diagram_list):
 
-                distances[i, j] = latlon_distance(
+                distances[i, j] = haversine_distance(
                     lat1=se_graphic_candidate.lat,
                     lon1=se_graphic_candidate.lon,
                     lat2=se_graphic_target.lat,
