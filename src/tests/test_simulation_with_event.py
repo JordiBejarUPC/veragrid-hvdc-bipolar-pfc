@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
 import os
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -15,12 +14,21 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, ResultTypes
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
+
+def find_name_in_block(name: str, block: Block):
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
+        if name == var.name:
+            return var
+
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
 
 def test_simulation_with_event():
     """
@@ -33,7 +41,7 @@ def test_simulation_with_event():
     # retrieve reference results df
 
     folder = os.path.join('data', 'dynamics')
-    name = "test_event_reference.csv"
+    name = "simulation_with_event.csv"
 
     fname = os.path.join(folder, name)
 
@@ -43,15 +51,7 @@ def test_simulation_with_event():
     # Build VeraGrid object
 
 
-    def find_name_in_block(name: str, block: Block):
-        for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-            if name == var.name:
-                return var
 
-        for mdl in block.children:
-            res = find_name_in_block(name, mdl)
-            if res is not None:
-                return res
 
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
@@ -185,20 +185,8 @@ def test_simulation_with_event():
     )
 
     t, y, well_initialized, converged = solver.simulate()
-
-    results = RmsResults(
-                empty_rms_models=list(),
-                well_initialized=well_initialized,
-                converged=converged,
-                values=solver.y,
-                time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-                variables=problem.state_and_algebraic_vars,
-                uid2idx=problem.uid2idx_vars,
-                vars_glob_name2uid=problem.vars_glob_name2uid,
-                devices_vars_info=problem.get_device_vars_dict()
-            )
-
-    results_df = results.mdl(ResultTypes.RmsSimulationReport).to_df()
+    cols = [f"var{i}" for i in range(0, y.shape[1])]
+    results_df = pd.DataFrame(y, columns=cols)
 
     results_df = results_df[reference_df.columns]
 
@@ -209,5 +197,3 @@ def test_simulation_with_event():
         check_index_type=False,
         atol=1e-6
     )
-
-
