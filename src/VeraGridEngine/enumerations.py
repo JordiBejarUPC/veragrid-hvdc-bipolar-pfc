@@ -2934,3 +2934,29 @@ class BlockType(Enum):
             return BlockType[s]
         except KeyError:
             return s
+
+
+
+class ProceduralGridMethods(Enum):
+    """
+    this class contains the existing types of blocks
+    """
+    SteinerAlone = "Steiner tree"
+    SteinerAndOptimization = "Steiner tree + optimization"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ProceduralGridMethods[s]
+        except KeyError:
+            return s
