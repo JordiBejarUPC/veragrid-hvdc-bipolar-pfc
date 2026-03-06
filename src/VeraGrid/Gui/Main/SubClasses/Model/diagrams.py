@@ -673,7 +673,7 @@ class DiagramsMain(CompiledArraysMain):
             hvdc_losses=results.losses_hvdc,
             hvdc_loading=results.loading_hvdc,
             hvdc_active=hvdc_active,
-            vsc_Pf=results.Pfp_vsc,
+            vsc_Pf=results.Pf_vsc,
             vsc_Pt=results.St_vsc.real,
             vsc_Qt=results.St_vsc.imag,
             vsc_losses=results.losses_vsc,
@@ -2529,7 +2529,7 @@ class DiagramsMain(CompiledArraysMain):
 
     def set_big_bus_marker_colours(self,
                                    buses: List[dev.Bus],
-                                   colors: Iterable[type(QtGui.QColor)],
+                                   colors: Iterable[QtGui.QColor],
                                    tool_tips: Union[None, List[str]] = None):
         """
         Set a big marker at the selected buses with the matching colours
