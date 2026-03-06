@@ -8,7 +8,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING
+from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable
 from collections.abc import Callable
 from collections import defaultdict
 from warnings import warn
@@ -1923,7 +1923,7 @@ class SchematicWidget(BaseDiagramWidget):
             # could not find any graphics :(
             to_port = None
         else:
-            # the from bu is found, return its terminal
+            # the from bus is found, return its terminal
             to_port = bus_graphic1.get_terminal()
 
         return to_port
@@ -2985,7 +2985,7 @@ class SchematicWidget(BaseDiagramWidget):
 
     def set_big_bus_marker_colours(self,
                                    buses: List[Bus],
-                                   colors: List[type(QColor)],
+                                   colors: Iterable[QColor],
                                    tool_tips: Union[None, List[str]] = None):
         """
         Set a big marker at the selected buses with the matching colours
