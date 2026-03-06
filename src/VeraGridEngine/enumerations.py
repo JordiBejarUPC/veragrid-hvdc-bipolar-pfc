@@ -1533,6 +1533,33 @@ class CGMESVersions(Enum):
             return s
 
 
+class CgmesTopologyMode(Enum):
+    """
+    Topology conversion mode for CGMES imports.
+    """
+    Auto = "Auto"
+    ConnectivityNode = "ConnectivityNode"
+    TopologicalNode = "TopologicalNode"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CgmesTopologyMode[s]
+        except KeyError:
+            return s
+
+
 class SparseSolver(Enum):
     """
     Sparse solvers to use
@@ -1916,6 +1943,20 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
     RmsPlotResults = 'Rms plot results'
 
+    RmsGeneratorResults = 'Rms Generator results'
+    RmsLineResults = 'Rms Line results'
+    RmsLoadResults = 'Rms load results'
+
+
+    RmsGeneratorOmegaResults = 'Rms Genqec omega results'
+    RmsGeneratorDeltaResults = 'Rms Genqec delta results'
+
+    RmsLoadPResults = 'Rms Load P results'
+    RmsLoadQResults = 'Rms Load Q results'
+
+    RmsLinePResults = 'Rms Simple Line P results'
+    RmsLineQResults = 'Rms Simple Line Q results'
+
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
     StateMatrix = "State Matrix"
@@ -2058,6 +2099,8 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value

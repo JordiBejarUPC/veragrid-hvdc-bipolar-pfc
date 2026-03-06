@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pytest
 
@@ -12,92 +12,87 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.cgmes_to_veragrid import get_gcdev_generators
 import VeraGridEngine.Devices as gcdev
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
-from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node import ConnectivityNode
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.generating_unit import GeneratingUnit
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.regulating_control import RegulatingControl
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.synchronous_machine import SynchronousMachine
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_node import TopologicalNode
-from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.regulating_control import RegulatingControl
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import CGMESVersions
 
-tn_test = TopologicalNode()
-cn_test = ConnectivityNode()
 
+def build_generator_case(p: float) -> Tuple[CgmesCircuit, Dict[str, gcdev.Bus], Dict[str, List[Terminal]], float]:
+    """
+    Build a deterministic CGMES generator import case.
 
-def cgmes_object(p):
+    :param p: Active power in MW.
+    :return: CGMES model, bus dictionary, device-to-terminal dictionary, expected PF.
+    """
     circuit = CgmesCircuit(cgmes_version=CGMESVersions.v2_4_15)
-    generator = SynchronousMachine("sm_rdfid", "tpe")
-    generator.GeneratingUnit = GeneratingUnit()
-    regulating_control = RegulatingControl("regulating_rdfid", "regulating_tpe")
+
+    generator = SynchronousMachine("sm_rdfid", "SynchronousMachine")
+    generator.GeneratingUnit = GeneratingUnit("gu_rdfid", "GeneratingUnit")
+    generator.description = "test description"
+    generator.name = "test name"
+    generator.ratedS = 10.0
+    generator.p = p
+    generator.q = 3.0
+    generator.maxQ = 50.0
+    generator.minQ = 60.0
+    generator.GeneratingUnit.minOperatingP = 30.0
+    generator.GeneratingUnit.maxOperatingP = 40.0
+
+    terminal = Terminal("term_rdfid", "Terminal")
+    topological_node = TopologicalNode("tn_rdfid", "TopologicalNode")
+    topological_node.BaseVoltage = BaseVoltage("tn_bv_rdfid", "BaseVoltage")
+    topological_node.BaseVoltage.nominalVoltage = 3.0
+    terminal.TopologicalNode = topological_node
+
+    regulating_control = RegulatingControl("regulating_rdfid", "RegulatingControl")
     regulating_control.mode = cgmes_enums.RegulatingControlModeKind.voltage
     regulating_control.targetValue = 5000.0
+    regulating_control.enabled = True
+    regulating_control.Terminal = terminal
     generator.RegulatingControl = regulating_control
-    generator.RegulatingControl.Terminal = Terminal()
-    generator.RegulatingControl.Terminal.TopologicalNode = TopologicalNode()
-    generator.RegulatingControl.Terminal.TopologicalNode.BaseVoltage = BaseVoltage()
-    generator.RegulatingControl.Terminal.TopologicalNode.BaseVoltage.nominalVoltage = 3
+    generator.controlEnabled = True
 
     generator.EquipmentContainer = EquipmentContainer("equipmentcontainer_rdfid", "VoltageLevel")
-    generator.EquipmentContainer.BaseVoltage = BaseVoltage()
+    generator.EquipmentContainer.BaseVoltage = BaseVoltage("container_bv_rdfid", "BaseVoltage")
     generator.EquipmentContainer.BaseVoltage.nominalVoltage = 2.0
 
     circuit.cgmes_assets.SynchronousMachine_list = [generator]
 
-    generator.GeneratingUnit = GeneratingUnit("generating_rdfid")
-    generator.description = "test description"
-    generator.name = "test name"
-    generator.ratedS = 10
-    generator.p = p
-    generator.q = 3
-    generator.GeneratingUnit.minOperatingP = 30
-    generator.GeneratingUnit.maxOperatingP = 40
-    generator.maxQ = 50
-    generator.minQ = 60
+    bus = gcdev.Bus(name="test_bus", idtag=topological_node.uuid, Vnom=3.0)
+    bus_dict = dict()
+    bus_dict[topological_node.uuid] = bus
 
-    return circuit
+    device_to_terminal_dict = dict()
+    device_to_terminal_dict[generator.uuid] = [terminal]
 
+    if p != 0.0:
+        expected_power_factor = 0.55
+    else:
+        expected_power_factor = 1.0
 
-def calc_node_dict_object() -> Dict[str, gcdev.Bus]:
-    d = dict()
-    d[tn_test] = tn_test  # TODO ?
-    return d
+    return circuit, bus_dict, device_to_terminal_dict, expected_power_factor
 
 
-def cn_dict_object() -> Dict[str, gcdev.Bus]:
-    d = dict()
-    d[cn_test] = cn_test  # TODO ?
-    return d
+@pytest.mark.parametrize("p,expected_power_factor", [(2.0, 0.55), (0.0, 1.0)])
+def test_get_gcdev_generators(p: float, expected_power_factor: float) -> None:
+    """
+    Verify generator conversion and power factor behaviour.
+    """
+    cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=p)
 
-
-def device_to_terminal_dict_object() -> Dict[str, List[Terminal]]:
-    d = dict()
-    t = Terminal("rdfterminal", "tpeterminal")
-
-    t.TopologicalNode = tn_test
-    t.TopologicalNode.BaseVoltage = BaseVoltage('b', 'v')
-    t.TopologicalNode.BaseVoltage.nominalVoltage = 100
-    t.ConnectivityNode = cn_test
-    d['smrdfid'] = [t]
-    return d
-
-
-generators_test_params = [(cgmes_object(2), calc_node_dict_object(), cn_dict_object(),
-                           device_to_terminal_dict_object(), 0.55),
-                          (cgmes_object(0), calc_node_dict_object(), cn_dict_object(),
-                           device_to_terminal_dict_object(), 1.0)]
-
-
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
-@pytest.mark.parametrize("cgmes_model,calc_node_dict,cn_dict,device_to_terminal_dict,expected_power_factor",
-                         generators_test_params)
-def test_get_gcdev_generators(cgmes_model, calc_node_dict, cn_dict, device_to_terminal_dict, expected_power_factor):
     logger = DataLogger()
     multi_circuit = MultiCircuit()
     get_gcdev_generators(cgmes_model, multi_circuit, calc_node_dict, device_to_terminal_dict, logger)
+
+    assert len(multi_circuit.generators) == 1
     created_generator = multi_circuit.generators[0]
     cgmes_syncronous_machine = cgmes_model.cgmes_assets.SynchronousMachine_list[0]
+
     assert created_generator.idtag == cgmes_syncronous_machine.uuid
     assert created_generator.code == cgmes_syncronous_machine.description
     assert created_generator.name == cgmes_syncronous_machine.name
@@ -110,51 +105,67 @@ def test_get_gcdev_generators(cgmes_model, calc_node_dict, cn_dict, device_to_te
     assert created_generator.Qmin == cgmes_syncronous_machine.minQ
     assert created_generator.Pf == pytest.approx(expected_power_factor, abs=0.01)
 
+    if p == 0.0:
+        assert any(entry.msg == 'GeneratingUnit p is 0.' for entry in logger.entries)
+    else:
+        assert len(logger.entries) == 0
 
-def test_get_gcdev_generators_zero_terminals_log_error():
-    device_terminal_dict = dict()
-    device_terminal_dict[tn_test] = tn_test
+
+def test_get_gcdev_generators_zero_terminals_log_error() -> None:
+    """
+    Verify missing terminals are explicitly logged.
+    """
+    cgmes_model, calc_node_dict, _, _ = build_generator_case(p=2.0)
+
     logger = DataLogger()
     multi_circuit = MultiCircuit()
-    cgmes = cgmes_object(p=2)
-    get_gcdev_generators(cgmes, multi_circuit, calc_node_dict_object(),
-                         device_terminal_dict, logger)
+    get_gcdev_generators(cgmes_model, multi_circuit, calc_node_dict, dict(), logger)
+
     assert len(logger.entries) == 2
     assert logger.entries[0].msg == 'No terminal for the device'
     assert logger.entries[1].msg == 'Not exactly one terminal'
 
 
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
-def test_get_gcdev_generators_generating_unit_is_none_log_error():
+def test_get_gcdev_generators_generating_unit_is_none_log_error() -> None:
+    """
+    Verify missing GeneratingUnit is logged as error.
+    """
+    cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
+    cgmes_model.cgmes_assets.SynchronousMachine_list[0].GeneratingUnit = None
+
     logger = DataLogger()
     multi_circuit = MultiCircuit()
-    cgmes = cgmes_object(p=2)
-    cgmes.cgmes_assets.SynchronousMachine_list[0].GeneratingUnit = None
-    get_gcdev_generators(cgmes, multi_circuit, calc_node_dict_object(),
-                         device_to_terminal_dict_object(), logger)
+    get_gcdev_generators(cgmes_model, multi_circuit, calc_node_dict, device_to_terminal_dict, logger)
+
     assert len(logger.entries) == 1
     assert logger.entries[0].msg == 'SynchronousMachine has no generating unit'
 
 
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
-def test_get_gcdev_generators_regulating_controls_none_log_warning():
+def test_get_gcdev_generators_regulating_controls_none_log_warning() -> None:
+    """
+    Verify missing regulating control is logged as warning.
+    """
+    cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
+    cgmes_model.cgmes_assets.SynchronousMachine_list[0].RegulatingControl = None
+
     logger = DataLogger()
     multi_circuit = MultiCircuit()
-    cgmes = cgmes_object(p=2)
-    cgmes.cgmes_assets.SynchronousMachine_list[0].RegulatingControl = None
-    get_gcdev_generators(cgmes, multi_circuit, calc_node_dict_object(),
-                         device_to_terminal_dict_object(), logger)
+    get_gcdev_generators(cgmes_model, multi_circuit, calc_node_dict, device_to_terminal_dict, logger)
+
     assert len(logger.entries) == 1
     assert logger.entries[0].msg == 'RegulatingCondEq has no control'
 
 
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
-def test_get_gcdev_generators_regulating_control_mode_kind_not_voltage_log_warning():
+def test_get_gcdev_generators_regulating_control_mode_kind_not_voltage_log_warning() -> None:
+    """
+    Verify non-voltage regulating mode is logged as warning.
+    """
+    cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
+    cgmes_model.cgmes_assets.SynchronousMachine_list[0].RegulatingControl.mode = "aaa"
+
     logger = DataLogger()
     multi_circuit = MultiCircuit()
-    cgmes = cgmes_object(p=2)
-    cgmes.cgmes_assets.SynchronousMachine_list[0].RegulatingControl.mode = "aaa"
-    get_gcdev_generators(cgmes, multi_circuit, calc_node_dict_object(),
-                         device_to_terminal_dict_object(), logger)
+    get_gcdev_generators(cgmes_model, multi_circuit, calc_node_dict, device_to_terminal_dict, logger)
+
     assert len(logger.entries) == 1
     assert logger.entries[0].msg == 'RegulatingCondEq has control, but not voltage'

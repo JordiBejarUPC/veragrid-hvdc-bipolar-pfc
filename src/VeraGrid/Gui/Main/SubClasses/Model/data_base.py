@@ -237,7 +237,7 @@ class DataBaseTableMain(DiagramsMain):
         template_elm, dictionary_of_lists = self.circuit.get_dictionary_of_lists(elm_type=elm_type)
 
         mdl = ObjectsModel(objects=elements,
-                           property_list=template_elm.property_list,
+                           property_list=list(template_elm.property_list),
                            time_index=self.get_db_slider_index(),
                            parent=self.ui.dataStructureTableView,
                            editable=True,

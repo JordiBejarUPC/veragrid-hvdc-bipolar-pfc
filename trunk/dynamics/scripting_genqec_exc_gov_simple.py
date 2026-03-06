@@ -6,6 +6,8 @@
 import cProfile
 import copy
 
+import time
+
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -26,9 +28,6 @@ import VeraGridEngine.api as gce
 # Build VeraGrid object
 ###########################################################################################################################
 
-profiler = cProfile.Profile()
-profiler.enable()
-
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
@@ -41,13 +40,19 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
+#####################################################################################
+#                    Grid
+#####################################################################################
+
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+
+#####################################################################################
+#                    Devices
+#####################################################################################
 
 # Buses
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
 bus1 = gce.Bus(name="Bus1", Vnom=10)
-
-
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
@@ -84,8 +89,6 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 # generator
 genqec_mdl = get_complete_generator_template(grid.var_factory).block
-# genqec_mdl_template = get_complete_generator_template(grid.var_factory)
-# template_copy = copy.deepcopy(genqec_mdl_template)
 
 # line
 line_mdl = get_line_rms_template(grid.var_factory).block
@@ -97,7 +100,9 @@ load_mdl = get_load_rms_template(grid.var_factory).block
 load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
 load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 
-# add model to api object
+######################################################################################################
+# Add models to devices
+######################################################################################################
 
 set_rms_model(device=gen0, model=genqec_mdl)
 
@@ -106,13 +111,18 @@ set_rms_model(device=line0, model=line_mdl)
 set_rms_model(device=load, model=load_mdl)
 
 
-# apply event
+######################################################################################################
+# Create event
+######################################################################################################
+
 Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098)
 grid.add_rms_event(event)
 
 
-# gce.save_file(grid=grid, filename='gen_load_save_event.veragrid')
+######################################################################################################
+# Power flow
+######################################################################################################
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -145,7 +155,7 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=1,
+                     simulation_time=20,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
@@ -153,9 +163,15 @@ options = RmsOptions(time_step=0.001,
                      max_iter=1000,
                      verbose=0)
 
+######################################################################################################
+# Prepare and run simulation
+######################################################################################################
+
+
 problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
@@ -167,8 +183,11 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-profiler.disable()
-profiler.dump_stats("profiling_stats.prof")
+
+
+#
+#
+#
 #
 # xlim = options.simulation_time
 #
@@ -203,7 +222,7 @@ profiler.dump_stats("profiling_stats.prof")
 # plt.grid(True)
 # plt.tight_layout()
 # plt.show()
-
+#
 #
 # Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)
 # Ed_prime = find_name_in_block("Ed_prime", genqec_mdl)
@@ -212,8 +231,8 @@ profiler.dump_stats("profiling_stats.prof")
 #
 # Ed1 = find_name_in_block("Ed1", genqec_mdl)
 # Eq1 = find_name_in_block("Eq1", genqec_mdl)
-
-# Generator state variables
+#
+# # Generator state variables
 # plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
 # plt.plot(t, y[:, problem.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
 # plt.plot(t, y[:, problem.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")

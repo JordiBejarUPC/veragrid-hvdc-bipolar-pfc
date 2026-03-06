@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from typing import Union
+from typing import Union, Tuple
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.basic_structures import Logger
@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Var
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 # from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
@@ -62,6 +62,53 @@ class Generator(GeneratorParent):
         'Kw',
         'must_run',
         '_must_run_prof'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
+        GCProp(key='Pf', units='', tpe=float,
+                      definition='Power factor (cos(phi)). This is used for non-controlled generators.',
+                      profile_name='Pf_prof'),
+        GCProp(key='Vset', units='p.u.', tpe=float,
+                      definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
+        GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
+        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
+                      profile_name='Qmin_prof'),
+        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
+                      profile_name='Qmax_prof'),
+        GCProp(key='use_reactive_power_curve', units='', tpe=bool,
+                      definition='Use the reactive power capability curve?'),
+        GCProp(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
+                      definition='Capability curve data (double click on the generator to edit)',
+                      editable=False, display=False),
+        GCProp(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
+        GCProp(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
+        GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
+        GCProp(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.'),
+        GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
+        GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
+        GCProp(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
+                      profile_name='Cost2_prof'),
+        GCProp(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
+                      profile_name='Cost0_prof'),
+        GCProp(key='StartupCost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.'),
+        GCProp(key='ShutdownCost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.'),
+        GCProp(key='MinTimeUp', units='h', tpe=float,
+                      definition='Minimum time that the generator has to be on when started. Used in OPF.'),
+        GCProp(key='MinTimeDown', units='h', tpe=float,
+                      definition='Minimum time that the generator has to be off when shut down. Used in OPF.'),
+        GCProp(key='RampUp', units='MW/h', tpe=float,
+                      definition='Maximum amount of generation increase per hour.'),
+        GCProp(key='RampDown', units='MW/h', tpe=float,
+                      definition='Maximum amount of generation decrease per hour.'),
+        GCProp(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
+                      definition='Enabled for dispatch? Used in OPF.'),
+        GCProp(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
+                      definition='P >= Pmin constraint. Used in OPF with unit commitment active.'),
+        GCProp(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
+                      definition='List of emissions', display=False),
+        GCProp(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
+                      definition='List of fuels', display=False),
     )
 
     def __init__(self,
@@ -261,56 +308,12 @@ class Generator(GeneratorParent):
         self.Kp = Kp
         self.Ki = Ki
 
-        self.register(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?')
 
-        self.register(key='Pf', units='', tpe=float,
-                      definition='Power factor (cos(phi)). This is used for non-controlled generators.',
-                      profile_name='Pf_prof')
-        self.register(key='Vset', units='p.u.', tpe=float,
-                      definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof')
-        self.register(key='Snom', units='MVA', tpe=float, definition='Nominal power.')
-        self.register(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
-                      profile_name='Qmin_prof')
-        self.register(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
-                      profile_name='Qmax_prof')
-        self.register(key='use_reactive_power_curve', units='', tpe=bool,
-                      definition='Use the reactive power capability curve?')
-        self.register(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
-                      definition='Capability curve data (double click on the generator to edit)',
-                      editable=False, display=False)
 
-        self.register(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.')
-        self.register(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.')
-        self.register(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.')
-        self.register(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.')
-        self.register(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.')
-        self.register(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.')
-        self.register(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
-                      profile_name='Cost2_prof')
 
-        self.register(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
-                      profile_name='Cost0_prof')
-        self.register(key='StartupCost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.')
-        self.register(key='ShutdownCost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.')
-        self.register(key='MinTimeUp', units='h', tpe=float,
-                      definition='Minimum time that the generator has to be on when started. Used in OPF.')
-        self.register(key='MinTimeDown', units='h', tpe=float,
-                      definition='Minimum time that the generator has to be off when shut down. Used in OPF.')
-        self.register(key='RampUp', units='MW/h', tpe=float,
-                      definition='Maximum amount of generation increase per hour.')
-        self.register(key='RampDown', units='MW/h', tpe=float,
-                      definition='Maximum amount of generation decrease per hour.')
 
-        self.register(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
-                      definition='Enabled for dispatch? Used in OPF.')
-        self.register(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
-                      definition='P >= Pmin constraint. Used in OPF with unit commitment active.')
 
-        self.register(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
-                      definition='List of emissions', display=False)
 
-        self.register(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
-                      definition='List of fuels', display=False)
 
     @property
     def Pf_prof(self) -> Profile:

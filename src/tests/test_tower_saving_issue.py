@@ -1,9 +1,11 @@
 import sys
+import pytest
 from PySide6 import QtWidgets
 import VeraGridEngine.api as vge
 from VeraGrid.Gui.Main.VeraGridMain import VeraGridMainGUI
 
 
+# @pytest.mark.skip(reason="...")
 def test_tower_saving_issue():
     """
     This test is because when saving from the GUI it
