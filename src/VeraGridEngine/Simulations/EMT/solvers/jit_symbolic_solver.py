@@ -231,7 +231,7 @@ class JitSymbolicSolver:
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy', 'jit_kernels', 'jit_jacobian_symbolic',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
-        'jit_compiler'
+        'jit_compiler', '_residual_debug_info'
     ]
 
     def __init__(self,
@@ -277,6 +277,8 @@ class JitSymbolicSolver:
         self.algebraic_eqs = self.problem.get_algebraic_eqs()
         self.diff_vars  = self.problem.get_diff_vars()
 
+        self._residual_debug_info = list()
+
     # ==============================================================================
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
     # ==============================================================================
@@ -297,20 +299,64 @@ class JitSymbolicSolver:
         sorted_vars.extend(self.state_vars)
         sorted_vars.extend(self.algebraic_vars)
 
+        var_uid_to_global_idx: dict = dict()
+        for idx, v in enumerate(sorted_vars):
+            var_uid_to_global_idx[v.uid] = idx
+
         all_params: List[Any] = list()
         all_params.extend(self.problem.get_variable_parameters())
         all_params.extend(self.problem.get_constant_parameters())
 
         equations: List[Expr] = list()
+        residual_debug_info: List[dict] = list()
+
+        # for i, rhs in enumerate(self.state_eqs):
+        #     # sv = self.state_vars[i]
+        #     # d_term = Var(name=f"d_{sv.name}", base_var=sv)
+        #     d_term = self.diff_vars[i]  # real associated diff_var
+        #     equations.append(d_term - rhs)
 
         for i, rhs in enumerate(self.state_eqs):
-            # sv = self.state_vars[i]
-            # d_term = Var(name=f"d_{sv.name}", base_var=sv)
             d_term = self.diff_vars[i]  # real associated diff_var
+            sv = self.state_vars[i]
+
             equations.append(d_term - rhs)
 
-        equations.extend(self.algebraic_eqs)
+            residual_debug_info.append({
+                "kind": "STATE",
+                "label": f"d_{sv.name} - rhs_{sv.name}",
+                "var_name": sv.name,
+                "state_idx": var_uid_to_global_idx[sv.uid],
+            })
+
+        if len(self.algebraic_eqs) != len(self.algebraic_vars):
+            print("[WARNING] len(algebraic_eqs) != len(algebraic_vars)")
+            print(f"          algebraic_eqs  = {len(self.algebraic_eqs)}")
+            print(f"          algebraic_vars = {len(self.algebraic_vars)}")
+        # equations.extend(self.algebraic_eqs)
+        for j, eq in enumerate(self.algebraic_eqs):
+            av = self.algebraic_vars[j] if j < len(self.algebraic_vars) else None
+
+            equations.append(eq)
+
+            if av is not None:
+                residual_debug_info.append({
+                    "kind": "ALG",
+                    "label": f"alg for {av.name}",
+                    "var_name": av.name,
+                    "state_idx": var_uid_to_global_idx.get(av.uid, None),
+                })
+            else:
+                residual_debug_info.append({
+                    "kind": "ALG",
+                    "label": f"ALG_EQ_{j}",
+                    "var_name": f"<no algebraic var for eq {j}>",
+                    "state_idx": None,
+                })
+
         self.jit_compiler = EquationCompiler(variables=sorted_vars, parameters=all_params, method=method)
+
+        self._residual_debug_info = residual_debug_info
 
         # Batch compilation strategy
         BATCH_SIZE = 100
@@ -325,6 +371,16 @@ class JitSymbolicSolver:
             py_func = self.jit_compiler.compile(chunk, func_name=f_name, use_cse=True, offset=i, inplace=True)
             jit_func = nb.njit(cache=True, fastmath=True)(py_func)
             batched_kernels.append(jit_func)
+
+        if self.verbose:
+            print("\n[DBG] Residual debug info order")
+            for r, info in enumerate(self._residual_debug_info[:80]):
+                print(
+                    f"{r:>4} | "
+                    f"{info['kind']:<5} | "
+                    f"{(info['state_idx'] if info['state_idx'] is not None else 'None'):>4} | "
+                    f"{info['var_name']}"
+                )
 
         self.jit_kernels[method] = batched_kernels
 
@@ -471,7 +527,6 @@ class JitSymbolicSolver:
         kernel_list = self.jit_kernels[method]
 
         n_eqs = self.problem.get_all_vars_number()
-        n_diff = self.problem.get_diff_var_number()
         n_states = self.problem.get_states_number()
 
         use_dense_solver = (n_eqs <= self.dense_threshold)
@@ -560,30 +615,28 @@ class JitSymbolicSolver:
                 for kn in kernel_list:
                     kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
 
-                if i == 0 and k == 0 and self.verbose:
-                    states = list(self.problem.get_state_vars())
-                    algs = list(self.problem.get_algebraic_vars())
-
-                    n_states = len(states)
-                    n_algs = len(algs)
+                if i == 0 and self.verbose:
+                    dbg = getattr(self, "_residual_debug_info", None)
 
                     print("\n[Residual Debug] Sizes:")
                     print(f"  n_eqs(res)       = {n_eqs}")
-                    print(f"  n_states         = {n_states}")
-                    print(f"  n_algebraic_vars = {n_algs}")
-                    print(f"  n_states+n_algs  = {n_states + n_algs}")
-                    if n_eqs != (n_states + n_algs):
-                        print("  [WARNING] n_eqs != n_states+n_algs -> residual indexing is not vars-based.\n")
+                    print(f"  len(debug_info)  = {len(dbg) if dbg is not None else 'None'}")
+                    print(f"  n_states(vec)    = {len(x_iter)}")
+
+                    if dbg is None:
+                        print("  [WARNING] self._residual_debug_info is missing.")
+                    elif len(dbg) != n_eqs:
+                        print("  [WARNING] len(self._residual_debug_info) != n_eqs")
+                        print("            residual table labels may be wrong.\n")
 
                     abs_res = np.abs(res)
                     top_indices = np.argsort(abs_res)[-20:][::-1]
 
-                    # -------------------------
-                    # Pretty table formatting
-                    # -------------------------
                     W_IDX = 4
-                    W_KIND = 5
-                    W_LABEL = 62  # adjust if you want more/less text
+                    W_KIND = 6
+                    W_STATEIDX = 8
+                    W_VARNAME = 40
+                    W_LABEL = 62
                     W_RES = 13
                     W_ABS = 13
                     W_XIT = 13
@@ -596,26 +649,26 @@ class JitSymbolicSolver:
                             return s.ljust(width)
                         if width <= 3:
                             return s[:width]
-                        return (s[:width - 3] + "...")
+                        return s[:width - 3] + "..."
 
-                    def _fmt_num(x) -> str:
-                        # right-aligned scientific; keep NaN readable
+                    def _fmt_num(x, width: int = 13) -> str:
                         if x is None:
-                            return " " * W_RES
+                            return " " * width
                         try:
                             xf = float(x)
                         except Exception:
-                            return str(x).rjust(W_RES)
+                            return str(x).rjust(width)
                         if np.isnan(xf):
-                            return "nan".rjust(W_RES)
-                        return f"{xf: .6e}".rjust(W_RES)
+                            return "nan".rjust(width)
+                        return f"{xf: .6e}".rjust(width)
 
-                    # Header
                     title = f">>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<"
                     print("\n" + title)
                     header = (
                         f"{'idx':>{W_IDX}} | "
                         f"{'kind':<{W_KIND}} | "
+                        f"{'state_i':>{W_STATEIDX}} | "
+                        f"{'var_name':<{W_VARNAME}} | "
                         f"{'label':<{W_LABEL}} | "
                         f"{'res':>{W_RES}} | "
                         f"{'|res|':>{W_ABS}} | "
@@ -627,46 +680,46 @@ class JitSymbolicSolver:
                     print("-" * len(header))
 
                     for idx in top_indices:
-                        if idx < n_states:
-                            sv = states[idx]
-                            kind = "STATE"
-                            label = f"d_{sv.name} - rhs_{sv.name}"
-                            x_it = x_iter[idx]
-                            x_pr = x_prev[idx]
-                            dx_pr = dx_prev[idx]
+                        if dbg is not None and idx < len(dbg):
+                            info = dbg[idx]
+                            kind = info.get("kind", "UNK")
+                            var_name = info.get("var_name", "<?>")
+                            label = info.get("label", f"residual_{idx}")
+                            state_idx = info.get("state_idx", None)
                         else:
-                            j = idx - n_states
-                            kind = "ALG"
-                            if j < n_algs:
-                                label = f"alg for {algs[j].name}"
-                                x_it = x_iter[n_states + j]
-                                x_pr = x_prev[n_states + j]
-                            else:
-                                label = f"ALG_EQ_{j}"
-                                x_it = np.nan
-                                x_pr = np.nan
+                            kind = "UNK"
+                            var_name = "<?>"
+                            label = f"residual_{idx}"
+                            state_idx = None
+
+                        if state_idx is not None and 0 <= state_idx < len(x_iter):
+                            x_it = x_iter[state_idx]
+                            x_pr = x_prev[state_idx]
+                        else:
+                            x_it = np.nan
+                            x_pr = np.nan
+
+                        if kind == "STATE" and state_idx is not None and 0 <= state_idx < len(dx_prev):
+                            dx_pr = dx_prev[state_idx]
+                        else:
                             dx_pr = np.nan
 
                         row = (
                             f"{idx:>{W_IDX}d} | "
                             f"{kind:<{W_KIND}} | "
+                            f"{state_idx if state_idx is not None else -1:>{W_STATEIDX}d} | "
+                            f"{_clip(var_name, W_VARNAME)} | "
                             f"{_clip(label, W_LABEL)} | "
-                            f"{_fmt_num(res[idx])} | "
-                            f"{_fmt_num(abs_res[idx])} | "
-                            f"{_fmt_num(x_it)} | "
-                            f"{_fmt_num(x_pr)} | "
-                            f"{_fmt_num(dx_pr)}"
+                            f"{_fmt_num(res[idx], W_RES)} | "
+                            f"{_fmt_num(abs_res[idx], W_ABS)} | "
+                            f"{_fmt_num(x_it, W_XIT)} | "
+                            f"{_fmt_num(x_pr, W_XPR)} | "
+                            f"{_fmt_num(dx_pr, W_DXPR)}"
                         )
                         print(row)
 
                     print("-" * len(header))
                     print("=" * len(header) + "\n")
-
-                    # rhs estimate from residuals because res = d_est - rhs
-                    # when x_iter == x_prev, d_est for BE is (x - xprev)/h = 0
-                    # so rhs ≈ -res for state eqs
-                    rhs_est = -res[:n_states].copy()
-                    print("[DBG] max|rhs_est - dx_prev|:", np.max(np.abs(rhs_est - dx_prev[:n_states])))
 
                 if np.linalg.norm(res, np.inf) < 1e-6:
                     break

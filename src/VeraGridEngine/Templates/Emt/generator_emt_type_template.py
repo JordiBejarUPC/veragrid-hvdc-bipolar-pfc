@@ -114,25 +114,8 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # --------------------------------------------------------------------------------------
     # STATE EQUATIONS (seconds + pu)
     # --------------------------------------------------------------------------------------
-    # Define omega_e = omega_base * omega (rad/s). In the pu-flux model we use omega (pu) inside the bracket
-    # and omega_base multiplies the whole bracket, which results in omega_base*omega*psi coupling (correct).
     templ.block = Block(
         state_eqs=[
-            # # d_psi_d = omega_base * (v_d - Ra*i_d + omega*psi_q)
-            # omega_base * (v_d - Ra * i_d + omega * psi_q),
-            # # d_psi_q = omega_base * (v_q - Ra*i_q - omega*psi_d)
-            # omega_base * (v_q - Ra * i_q - omega * psi_d),
-            # # d_psi_0 = omega_base * (v_0 - R0*i_0)
-            # omega_base * (v_0 - R0 * i_0),
-            # # d_psi_f = omega_base * (v_f - Rf*i_f)
-            # omega_base * (v_f - Rf * i_f),
-            # # d_theta = omega_base * omega
-            # omega_base * omega,
-            # # d_omega = omega_base/(2H) * (Tm - Te - D*(omega-omega_ref))
-            # (omega_base * (Tm - Te - D * (omega - omega_ref))) / (2 * H),
-            # # d_et = (omega_ref - omega)   (NO omega_base)
-            # (omega_ref - omega),
-
 
             v_d - Ra * i_d + omega * psi_q,
             v_q - Ra * i_q - omega * psi_d,
@@ -184,7 +167,8 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
             v_f - v_f0,
 
             # Mechanical power proxy
-            Pm - Pe,
+            Pm - Tm * omega,
+            # Pm - Pe,
         ],
         algebraic_vars=[
             i_d, i_q, i_0, i_f,
@@ -252,11 +236,55 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # Note: these are "electrical steady-state" assumptions, not a full machine equilibrium.
     # --------------------------------------------------------------------------------------
     templ.block.init_eqs = {
-        # omega: omega_ref,
-        omega: vf.add_const(1.0),
-        et:    vf.add_const(0.0),
+        # # omega: omega_ref,
+        # omega: vf.add_const(1.0),
+        # et:    vf.add_const(0.0),
+        #
+        # # dq0 from abc voltages
+        # v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
+        #               sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+        #               sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
+        # v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
+        #               sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
+        #               sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
+        # v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+        #
+        # # dq0 from abc currents (inverse-consistent with your algebraic abc reconstruction)
+        # i_d: 2 / 3 * (sym.cos(theta) * i_A +
+        #               sym.cos(theta - 2 * np.pi / 3) * i_B +
+        #               sym.cos(theta + 2 * np.pi / 3) * i_C),
+        # i_q: 2 / 3 * (sym.sin(theta) * i_A +
+        #               sym.sin(theta - 2 * np.pi / 3) * i_B +
+        #               sym.sin(theta + 2 * np.pi / 3) * i_C),
+        # i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
+        #
+        # # electrical steady-state fluxes (corrected signs!)
+        # psi_d: (v_q - Ra * i_q) / omega,
+        # psi_q: (Ra * i_d - v_d) / omega,
+        # # psi_d: ((Lmd + La) * i_d + Lmd * i_f),
+        # # psi_q: ((Lmq + La) * i_q),
+        #
+        # # choose i_f from psi_d relation (kept from your original approach)
+        # i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
+        #
+        # # field voltage steady-state
+        # v_f: i_f * Rf,
+        #
+        # # remaining flux algebraic closures
+        # psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
+        # psi_0: L0 * i_0,
+        #
+        # Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        #
+        # # close mechanical with Te at init
+        # Tm: Te,
+        # Pm: Tm * omega,
+        # # Pm: Pe,
 
-        # dq0 from abc voltages
+        omega: vf.add_const(1.0),
+        et: vf.add_const(0.0),
+
+        # dq0 from abc terminal voltages
         v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
                       sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
                       sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
@@ -265,7 +293,7 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
                       sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
         v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
 
-        # dq0 from abc currents (inverse-consistent with your algebraic abc reconstruction)
+        # dq0 currents from abc currents
         i_d: 2 / 3 * (sym.cos(theta) * i_A +
                       sym.cos(theta - 2 * np.pi / 3) * i_B +
                       sym.cos(theta + 2 * np.pi / 3) * i_C),
@@ -274,38 +302,39 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
                       sym.sin(theta + 2 * np.pi / 3) * i_C),
         i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
 
-        # electrical steady-state fluxes (corrected signs!)
+        # q-axis flux from algebraic closure
+        psi_q: (Lmq + La) * i_q,
+
+        # d-axis flux from steady-state voltage equation
         psi_d: (v_q - Ra * i_q) / omega,
-        psi_q: (Ra * i_d - v_d) / omega,
 
-        # choose i_f from psi_d relation (kept from your original approach)
-        i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
+        # field current from d-axis flux algebraic closure
+        i_f: (psi_d - (Lmd + La) * i_d) / Lmd,
 
-        # field voltage steady-state
-        v_f: i_f * Rf,
-
-        # remaining flux algebraic closures
+        # remaining magnetic closures
         psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
         psi_0: L0 * i_0,
 
-        Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        # field voltage steady-state
+        v_f: Rf * i_f,
 
-        # close mechanical with Te at init
+        # torque/power consistency
+        Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
-        Pm: Pe,
+        Pm: Tm * omega
     }
 
     # --------------------------------------------------------------------------------------
     # DIFF INIT EQS
     # Must be consistent with the chosen model:
-    #   d_theta = omega_base*omega
+    #   d_theta = omega
     #   d_et    = omega_ref - omega
     # and at equilibrium: d_omega = 0, d_psi_* = 0, d_et = 0
     # --------------------------------------------------------------------------------------
     c0 = vf.add_const(0.0)
     templ.block.diff_init_eqs = {
         d_theta: omega,
-        d_et:    (omega_ref - omega),
+        d_et: (omega_ref - omega),
         d_omega: c0,
         d_psi_d: c0,
         d_psi_q: c0,
