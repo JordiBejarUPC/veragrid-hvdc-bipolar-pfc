@@ -237,7 +237,8 @@ def convert_dgs_to_overhead_line_type(
     name = typtow.loc_name if typtow.loc_name is not None and str(typtow.loc_name).strip() != '' else f"Tower_{tid}"
 
     # Frequency / earth parameters
-    freq = float(typtow.frnom) if typtow.frnom is not None and float(typtow.frnom) > 0.0 else float(default_frequency_hz)
+    freq = float(typtow.frnom) if typtow.frnom is not None and float(typtow.frnom) > 0.0 else float(
+        default_frequency_hz)
     earth_res = _convert_gearth_us_per_cm_to_resistivity_ohm_m(float(typtow.gearth))
 
     # Determine nominal voltage from referenced conductor types.
@@ -1134,7 +1135,6 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
     if int(elmgenstat.ip_ctrl) == 1:
         bus.is_slack = True
 
-
     stagen = dev.StaticGenerator(
         name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
         P=elmgenstat.pgini,
@@ -1199,17 +1199,17 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
     name = elmshnt.loc_name or _ref_id(elmshnt.ID) or "Shunt"
 
     shtype: int = elmshnt.shtype
-    Q: float = elmshnt.qtotn * 1e6 # Rated Reactive Power [Mvar] -> [var]
-    U: float = elmshnt.ushnm * 1e3 # Rated Voltage [kV] -> [V]
-    fres: float = elmshnt.fres # Resonance Frequency [Hz]
-    h = fres / f # Tuning Order
-    conn: int = elmshnt.ctech # Connection
-    quality_factor: float = elmshnt.grea # Quality Factor
+    Q: float = elmshnt.qtotn * 1e6  # Rated Reactive Power [Mvar] -> [var]
+    U: float = elmshnt.ushnm * 1e3  # Rated Voltage [kV] -> [V]
+    fres: float = elmshnt.fres  # Resonance Frequency [Hz]
+    h = fres / f  # Tuning Order
+    conn: int = elmshnt.ctech  # Connection
+    quality_factor: float = elmshnt.grea  # Quality Factor
 
-    w = 2 * np.pi * f # Electrical angular speed [rad/s]
+    w = 2 * np.pi * f  # Electrical angular speed [rad/s]
     d_y = 3.0 if conn == 0 else 1.0  # conn==0 -> 3PH-D, else -> 3PH-Y/YN
 
-    if shtype == 0: # R-L-C
+    if shtype == 0:  # R-L-C
 
         C = Q / (d_y * w * U ** 2) * (1 - 1 / h ** 2)
         L = 1 / ((h * w) ** 2 * C)
@@ -1224,7 +1224,7 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
         g_mw = np.real(S) / 1e6
         b_mvar = -np.imag(S) / 1e6
 
-    elif shtype == 1: # R-L
+    elif shtype == 1:  # R-L
 
         L = d_y * U ** 2 / (w * Q)
         if quality_factor == 0.0:
@@ -1238,18 +1238,18 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
         g_mw = np.real(S) / 1e6
         b_mvar = -np.imag(S) / 1e6
 
-    elif shtype == 2: # C
+    elif shtype == 2:  # C
 
         C = Q / (d_y * w * U ** 2)
         G = w * C * elmshnt.tandc
 
         Y = G + 1j * w * C
-        S = d_y * U**2 * np.conj(Y)
+        S = d_y * U ** 2 * np.conj(Y)
 
         g_mw = np.real(S) / 1e6
         b_mvar = -np.imag(S) / 1e6
 
-    elif shtype == 3: # R-L-C,Rp
+    elif shtype == 3:  # R-L-C,Rp
 
         C = Q / (d_y * w * U ** 2) * (1 - 1 / h ** 2)
         L = 1 / ((h * w) ** 2 * C)
@@ -1259,29 +1259,42 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
             R = (w * L) / quality_factor
         Rp = elmshnt.rpara
 
-        Z = ((R + 1j * w * L) * Rp) / ((R + 1j * w * L) + Rp) + 1 / (1j * w * C)
-        S = d_y * U ** 2 / np.conj(Z)
+        try:
+            Z = ((R + 1j * w * L) * Rp) / ((R + 1j * w * L) + Rp) + 1 / (1j * w * C)
+            S = d_y * U ** 2 / np.conj(Z)
 
-        g_mw = np.real(S) / 1e6
-        b_mvar = -np.imag(S) / 1e6
+            g_mw = np.real(S) / 1e6
+            b_mvar = -np.imag(S) / 1e6
+        except ZeroDivisionError:
+            g_mw = 0.0
+            b_mvar = 0.0
+            logger.add_warning(
+                f"Shunt '{name}': can not be computed."
+            )
 
-    elif shtype == 4: # R-L-C1-C2,Rp
+    elif shtype == 4:  # R-L-C1-C2,Rp
 
         C2 = Q / (d_y * w * U ** 2)
-        C1 = C2 * (h**2 - 1)
-        L = 1 / (w**2 * C1)
+        C1 = C2 * (h ** 2 - 1)
+        L = 1 / (w ** 2 * C1)
         if quality_factor == 0.0:
             R = 0.0
         else:
             R = w * L / quality_factor
         Rp = elmshnt.rpara
 
-        Z = ((R + 1j * w * L + 1/(1j * w * C1)) * Rp) / ((R + 1j * w * L + 1/(1j * w * C1)) + Rp) + 1 / (1j * w * C2)
-        S = d_y * U ** 2 / np.conj(Z)
+        try:
+            Z = ((R + 1j * w * L + 1 / (1j * w * C1)) * Rp) / ((R + 1j * w * L + 1 / (1j * w * C1)) + Rp) + 1 / (1j * w * C2)
+            S = d_y * U ** 2 / np.conj(Z)
 
-        g_mw = np.real(S) / 1e6
-        b_mvar = -np.imag(S) / 1e6
-
+            g_mw = np.real(S) / 1e6
+            b_mvar = -np.imag(S) / 1e6
+        except ZeroDivisionError:
+            g_mw = 0.0
+            b_mvar = 0.0
+            logger.add_warning(
+                f"Shunt '{name}': can not be computed."
+            )
     else:
         g_mw = 0.0
         b_mvar = 0.0
@@ -1339,6 +1352,7 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
 
     return g_mw, b_mvar
 
+
 def convert_dgs_to_shunt(elmshnt: ElmShnt,
                          stacubic_dict: Dict[str, List[int]],
                          buses: List[dev.Bus],
@@ -1365,7 +1379,6 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                       active=(elmshnt.outserv == 0))
 
     return bus, shunt
-
 
 
 def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndarray, int, float, float]:
@@ -1409,11 +1422,12 @@ def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndar
 
 
 def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
-                                                  stacubic_dict: Dict[str, List[int]],
-                                                  buses: List[dev.Bus],
-                                                  logger: Logger,
-                                                  cubics_by_objid: Dict[str, List[StaCubic]],
-                                                  bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+                                                   stacubic_dict: Dict[str, List[int]],
+                                                   buses: List[dev.Bus],
+                                                   logger: Logger,
+                                                   cubics_by_objid: Dict[str, List[StaCubic]],
+                                                   bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[
+    dev.Bus, dev.ControllableShunt]:
     """
     Convert stepped ElmShnt (ncapx > 1) to VeraGrid ControllableShunt.
 
@@ -1466,6 +1480,7 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
     cshunt.step = int(initial_step)
 
     return bus, cshunt
+
 
 def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
                                       stacubic_dict: Dict[str, List[int]],
@@ -1601,7 +1616,6 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     if int(elmsym.ip_ctrl) == 1:
         bus.is_slack = True
 
-
     # Resolve type
     typsym = typsym_dict.get(elmsym.typ_id, None)
     if typsym is None:
@@ -1664,8 +1678,6 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         Pmin=pmin,
                         Pmax=pmax,
                         Sbase=baseMVA)
-
-
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
@@ -2522,4 +2534,4 @@ def convert_dgs_to_switches_by_elements(cubics_by_objid: Dict[str, List[StaCubic
     return switches
 
 """
-#TODO: There might be an error with 3W trafos impedances
+# TODO: There might be an error with 3W trafos impedances
