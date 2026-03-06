@@ -12,9 +12,9 @@ from typing import Tuple, Optional, List, Callable, Dict
 from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, heaviside, expression2numba, get_expression_vars)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
 
 def tf_to_block(var_factory: VarFactory,
@@ -36,13 +36,15 @@ def tf_to_block(var_factory: VarFactory,
     if y is None:
         y = var_factory.add_var('y_' + name)
 
-    aux_eqs: List[Expr] = []
-    aux_vars: List[Expr] = []
+    aux_eqs: List[Expr] = list()
+    aux_vars: List[Expr] = list()
+    init_eqs = dict()
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
         aux_eqs.append((u - x).simplify())
         aux_vars.append(u)
+        init_eqs[u] = x
         x = u
 
     diff_vars_x = [x]
@@ -73,7 +75,7 @@ def tf_to_block(var_factory: VarFactory,
     block.diff_vars = diff_vars
     block.in_vars = [x]  # Input is x
     block.out_vars = [y]  # Output is y
-
+    block.init_eqs = init_eqs
     return block, y
 
 
@@ -92,8 +94,8 @@ def tf_to_diffblock_with_output(
     """
     if len(num) > len(den):
         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
-    if num[-1] == 0 or den[-1] == 0:
-        raise ValueError("Leading coefficient of cannot be zero.")
+    if (isinstance(num[-1], float) and num[-1] == 0) or (isinstance(den[-1], float) and den[-1] == 0):
+        raise ValueError("Leading coefficient of numerator or denominator cannot be zero.")
 
     if y is None:
         y = var_factory.add_var('y_' + name)
@@ -494,6 +496,41 @@ def tf_to_diffblock_with_antiwindup_by_feedback(
 
     return block, y
 
+def discrete_control_block(
+    var_factory: VarFactory,
+    m: Var,
+    delta_m: Var,
+    m_max: Var,
+    m_min: Var,
+    v: Var,
+    v_ref: Var,
+    delta_v: Var,
+    ts: Var,          # seconds
+    name: Optional[str] = ''
+) -> Tuple[Block, Var]:
+
+    m_last   = var_factory.add_var(f'm_last_{name}')
+    t_signal = var_factory.add_var(f't_signal_{name}')
+
+    tick = (t_signal >= ts).to_expression()
+
+    # your switching increment (only evaluated on tick)
+    inc = delta_m * (v - v_ref <= delta_v).to_expression() \
+        - delta_m * (v - v_ref >= delta_v).to_expression()
+
+    changed = (1 - Comparison(m_last, CmpOp.EQ, m).to_expression())
+
+    dt = var_factory.add_var(f'dt')
+    block = Block(
+        name=name + '_input_controlled_switch',
+        discrete_eqs={
+            t_signal: changed*(t_signal + dt),
+            m:hard_sat(m + inc * tick, m_min, m_max),
+            m_last: m,
+        },
+        api_obj_mapping={dt: ParamPowerFlowRefferenceType.dt}
+    )
+    return block, m
 
 def deadband_block(
         var_factory: VarFactory,

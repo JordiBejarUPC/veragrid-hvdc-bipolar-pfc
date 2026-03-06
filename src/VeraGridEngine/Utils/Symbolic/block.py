@@ -38,6 +38,7 @@ class Block:
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  diff_init_eqs: Dict[Var, Expr] | None = None,
+                 discrete_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
@@ -91,7 +92,7 @@ class Block:
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.alter_params: List[Var] = list() if alter_params is None else alter_params
-
+        self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = (dict()
                                                                         if external_mapping is None
                                                                         else external_mapping)
@@ -326,14 +327,6 @@ class Block:
                 not self.name
         )
 
-    # def check_empty(self) -> bool:
-    #     """
-    #     check if a model does not have state and algebraic variables
-    #
-    #     :return:
-    #     """
-    #     return (len(self.state_vars) + len(self.algebraic_vars)) == 0
-
     def empty(self) -> bool:
         """
         check if a model is empty
@@ -384,15 +377,6 @@ class Block:
         :param val: Block
         """
         self.children.remove(val)
-
-    # def apply_events(self, events: List[RmsEvent]):
-    #     """
-    #     Apply events to this block
-    #     :param events:
-    #     :return:
-    #     """
-    #     # TODO Implement filling self.event_dicts with the RmsEvents info
-    #     pass
 
     def get_all_blocks(self) -> List[Block]:
         """

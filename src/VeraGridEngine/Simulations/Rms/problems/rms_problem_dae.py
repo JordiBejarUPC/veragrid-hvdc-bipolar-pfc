@@ -25,6 +25,7 @@ from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_ps
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 
@@ -89,7 +90,7 @@ class RmsProblemDae(RmsProblemTemplate):
                  grid: MultiCircuit,
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
-                 progress_signal: DummySignal | None =None):
+                 progress_signal: DummySignal | None = None):
         """
 
         :param grid:
@@ -203,13 +204,14 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.model.unify_blocks()
 
-                elm.rms_model.model.parameters[
+                if not isinstance(elm, Transformer2W):
+                    elm.rms_model.model.parameters[
                     elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                     float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[
+                    elm.rms_model.model.parameters[
                     elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                     float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[
+                    elm.rms_model.model.parameters[
                     elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
@@ -219,6 +221,28 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
+
+                # Run explicit initialization for branches to solve algebraic equations
+                if isinstance(elm, Transformer2W):
+
+                    if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                        init_explicit(mdl=elm.rms_model.model,
+                                      sys_vars=self.sys_vars,
+                                      variable_parameters=self._variable_parameters,
+                                      event_parameters_eqs=self._event_parameters_eqs,
+                                      constant_parameters=self._constant_parameters,
+                                      init_guess=self.init_guess,
+                                      uid2idx_vars=self.uid2idx_vars,
+                                      uid2idx_params=self._uid2idx_params,
+                                      uid2idx_event_params=self._uid2idx_event_params,
+                                      compiler_names_dict=self._compiler_names_dict,
+                                      alias_names_dict=self._alias_names_dict,
+                                      VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                                      TIME_NAME=self.TIME_NAME,
+                                      VARS_NAME=self.VARS_NAME,
+                                      DIFF_NAME=self.DIFF_NAME,
+                                      CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                                      )
 
                 # add model to system block
                 self.sys_block.add(elm.rms_model.model)
@@ -240,8 +264,12 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 mdl = elm.rms_model.model
-                St_vsc = (self.power_flow_results.St_vsc) / self.grid.Sbase
-                Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
+
+                # flatten model to collect all variables including those from child blocks
+                mdl.unify_blocks()
+
+                St_vsc = (self.power_flow_results.St_vsc)/ self.grid.Sbase
+                Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i])/self.grid.Sbase
                 # fill init_guess
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
@@ -311,7 +339,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
 
-                # flatten model
+                # flatten model - variables already registered in first VSC loop above
                 elm.rms_model.model.unify_blocks()
 
                 # find init values for the variables of this model
@@ -335,6 +363,9 @@ class RmsProblemDae(RmsProblemTemplate):
                                   )
                 else:
                     raise ValueError("Not implemented initialization method")
+                # add model to system block
+                self.sys_block.add(elm.rms_model.model)
+
         for elm in grid.get_injection_devices_iter():
 
             if elm.rms_model.model.empty():
@@ -347,10 +378,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 elm.rms_model.model.unify_blocks()
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
-                                    np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
-                                    np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                if elm.bus.is_dc:
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
+                        np.real(self.power_flow_results.Sbus[bus_index] ))
+                else:
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
+                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
+                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
                 k = bus_dict[elm.bus]
                 if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
@@ -380,7 +415,27 @@ class RmsProblemDae(RmsProblemTemplate):
                     )
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    self._glob_time, sys_block_region, init_guess_region = init_pseudo_transient()
+                    init_pseudo_transient(
+                        mdl=elm.rms_model.model,
+                        sys_vars=self.sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        dtau0=1e0,
+                        max_iter=1000,
+                        tol=1e-6
+                    )
                 else:
                     raise ValueError("Not implemented initialization method")
 
@@ -480,6 +535,7 @@ class RmsProblemDae(RmsProblemTemplate):
             self._uid2idx_diff[ep.uid] = k
 
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
+        self._alias_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
 
         for it, eq in enumerate(self._event_parameters_eqs):
@@ -586,7 +642,7 @@ class RmsProblemDae(RmsProblemTemplate):
             print(f"Model compiled with {self._n_vars} variables")
             print("\nCompilation timing summary:")
             for k, v in timings.items():
-                print(f"  {k: 30s}: {v: 8.4f} s")
+                print(f"  {k:30s}: {v:8.4f} s")
             print(f"\nTotal JIT compile time: {sum(timings.values()):.4f} s")
 
         variable_parameters_init = np.ones(self.get_variable_parameter_number())
@@ -614,6 +670,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # i is for variables
         for v in mdl.state_vars:
+            if v.uid in self._uid2idx_vars:
+                raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
@@ -624,6 +683,9 @@ class RmsProblemDae(RmsProblemTemplate):
             self._n_vars += 1
 
         for v in mdl.algebraic_vars:
+            if v.uid in self._uid2idx_vars:
+                raise ValueError(f"Algebraic variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate variable.")
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
@@ -635,6 +697,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # j is for parameters
         for ep, const in mdl.parameters.items():
+            if ep.uid in self._uid2idx_params:
+                raise ValueError(f"Parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate parameter.")
             self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{self._n_params}]"
             self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{self._n_params}"
             self._uid2idx_params[ep.uid] = self._n_params
@@ -644,6 +709,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # m is for variable parameters
         for ep, eq in mdl.event_dict.items():
+            if ep.uid in self._uid2idx_event_params:
+                raise ValueError(f"Event parameter '{ep.name}' (uid={ep.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate event parameter.")
             self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
@@ -653,6 +721,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # l is for differential vars
         for v in mdl.diff_vars:
+            if v.uid in self._uid2idx_diff:
+                raise ValueError(f"Differential variable '{v.name}' (uid={v.uid}) is already registered in the system. "
+                               f"Previous device may have created a duplicate differential variable.")
             self._compiler_names_dict[v.uid] = f"{self.DIFF_NAME}[{self._n_diff}]"
             self._alias_names_dict[v.uid] = f"{self.DIFF_NAME}_{self._n_diff}"
             self._uid2idx_diff[v.uid] = self._n_diff

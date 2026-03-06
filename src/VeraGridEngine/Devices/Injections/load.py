@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, List
+from typing import Union, List, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -15,7 +15,7 @@ from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 class Load(LoadParent):
@@ -63,6 +63,53 @@ class Load(LoadParent):
         '_n_customers',
         '_n_customers_prof',
 
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Ir', units='MW', tpe=float,
+                      definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof'),
+        GCProp(key='Ir1', units='MW', tpe=float,
+                      definition='Active power of the phase 1 current component at V=1.0 p.u.', profile_name='Ir1_prof'),
+        GCProp(key='Ir2', units='MW', tpe=float,
+                      definition='Active power of the phase 2 current component at V=1.0 p.u.', profile_name='Ir2_prof'),
+        GCProp(key='Ir3', units='MW', tpe=float,
+                      definition='Active power of the phase 3 current component at V=1.0 p.u.', profile_name='Ir3_prof'),
+        GCProp(key='Ii', units='MVAr', tpe=float,
+                      definition='Reactive power of the current component at V=1.0 p.u.', profile_name='Ii_prof'),
+        GCProp(key='Ii1', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 1 current component at V=1.0 p.u.',
+                      profile_name='Ii1_prof'),
+        GCProp(key='Ii2', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 2 current component at V=1.0 p.u.',
+                      profile_name='Ii2_prof'),
+        GCProp(key='Ii3', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 3 current component at V=1.0 p.u.',
+                      profile_name='Ii3_prof'),
+        GCProp(key='G', units='MW', tpe=float,
+                      definition='Active power of the impedance component at V=1.0 p.u.', profile_name='G_prof'),
+        GCProp(key='G1', units='MW', tpe=float,
+                      definition='Active power of the phase 1 impedance component at V=1.0 p.u.',
+                      profile_name='G1_prof'),
+        GCProp(key='G2', units='MW', tpe=float,
+                      definition='Active power of the phase 2 impedance component at V=1.0 p.u.',
+                      profile_name='G2_prof'),
+        GCProp(key='G3', units='MW', tpe=float,
+                      definition='Active power of the phase 3 impedance component at V=1.0 p.u.',
+                      profile_name='G3_prof'),
+        GCProp(key='B', units='MVAr', tpe=float,
+                      definition='Reactive power of the impedance component at V=1.0 p.u.', profile_name='B_prof'),
+        GCProp(key='B1', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 1 impedance component at V=1.0 p.u.',
+                      profile_name='B1_prof'),
+        GCProp(key='B2', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 2 impedance component at V=1.0 p.u.',
+                      profile_name='B2_prof'),
+        GCProp(key='B3', units='MVAr', tpe=float,
+                      definition='Reactive power of the phase 3 impedance component at V=1.0 p.u.',
+                      profile_name='B3_prof'),
+        GCProp(key='n_customers', units='unit', tpe=int,
+                      definition='Number of customers represented by this load', profile_name='n_customers_prof'),
+        GCProp(key='contract_power', units='MW', tpe=float, definition='Nominal contracted power', ),
     )
 
     def __init__(self, name='Load', idtag=None, code='',
@@ -171,50 +218,6 @@ class Load(LoadParent):
 
         self._contract_power: float = contracted_power
 
-        self.register(key='Ir', units='MW', tpe=float,
-                      definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof')
-        self.register(key='Ir1', units='MW', tpe=float,
-                      definition='Active power of the phase 1 current component at V=1.0 p.u.', profile_name='Ir1_prof')
-        self.register(key='Ir2', units='MW', tpe=float,
-                      definition='Active power of the phase 2 current component at V=1.0 p.u.', profile_name='Ir2_prof')
-        self.register(key='Ir3', units='MW', tpe=float,
-                      definition='Active power of the phase 3 current component at V=1.0 p.u.', profile_name='Ir3_prof')
-        self.register(key='Ii', units='MVAr', tpe=float,
-                      definition='Reactive power of the current component at V=1.0 p.u.', profile_name='Ii_prof')
-        self.register(key='Ii1', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 1 current component at V=1.0 p.u.',
-                      profile_name='Ii1_prof')
-        self.register(key='Ii2', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 2 current component at V=1.0 p.u.',
-                      profile_name='Ii2_prof')
-        self.register(key='Ii3', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 3 current component at V=1.0 p.u.',
-                      profile_name='Ii3_prof')
-        self.register(key='G', units='MW', tpe=float,
-                      definition='Active power of the impedance component at V=1.0 p.u.', profile_name='G_prof')
-        self.register(key='G1', units='MW', tpe=float,
-                      definition='Active power of the phase 1 impedance component at V=1.0 p.u.',
-                      profile_name='G1_prof')
-        self.register(key='G2', units='MW', tpe=float,
-                      definition='Active power of the phase 2 impedance component at V=1.0 p.u.',
-                      profile_name='G2_prof')
-        self.register(key='G3', units='MW', tpe=float,
-                      definition='Active power of the phase 3 impedance component at V=1.0 p.u.',
-                      profile_name='G3_prof')
-        self.register(key='B', units='MVAr', tpe=float,
-                      definition='Reactive power of the impedance component at V=1.0 p.u.', profile_name='B_prof')
-        self.register(key='B1', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 1 impedance component at V=1.0 p.u.',
-                      profile_name='B1_prof')
-        self.register(key='B2', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 2 impedance component at V=1.0 p.u.',
-                      profile_name='B2_prof')
-        self.register(key='B3', units='MVAr', tpe=float,
-                      definition='Reactive power of the phase 3 impedance component at V=1.0 p.u.',
-                      profile_name='B3_prof')
-        self.register(key='n_customers', units='unit', tpe=int,
-                      definition='Number of customers represented by this load', profile_name='n_customers_prof')
-        self.register(key='contract_power', units='MW', tpe=float, definition='Nominal contracted power', )
 
     @property
     def Ir_prof(self) -> Profile:
