@@ -260,43 +260,13 @@ class EmtProblemTemplate(ABC):
         """
         return self._n_event_params
 
-    # def get_x0(self) -> Vec:
-    #     """
-    #     Builds and returns the initial condition vector based on the initialization guess.
-    #     """
-    #     # x = np.zeros(self._n_vars, dtype=np.float64)
-    #     x = np.zeros(self._n_vars)
-    #     for uid, val in self.init_guess.items():
-    #         idx = self._uid2idx_vars.get(uid, None)
-    #         print(f"get_x0 uid = {uid}, idx = {idx}, val = {val}")
-    #         if idx is not None:
-    #             # x[idx] = float(val)
-    #             x[idx] = val
-    #     return x
-
     def get_x0(self) -> Vec:
         """
         Builds and returns the initial condition vector based on the initialization guess.
         """
         x = np.zeros(self._n_vars, dtype=np.float64)
-
-        # Build uid -> name map from known variables
-        uid2name = {}
-        for v in list(self.get_state_vars()) + list(self.get_algebraic_vars()):
-            uid2name[v.uid] = v.name
-
         for uid, val in self.init_guess.items():
             idx = self._uid2idx_vars.get(uid, None)
-
-            # Only process naming and printing if verbose is enabled
-            # if self.options.verbose > 0:
-            #     vname = uid2name.get(uid, "<unknown-var>")
-            #     alias = None
-            #     if hasattr(self, "_alias_names_dict"):
-            #         alias = self._alias_names_dict.get(uid, None)
-            #
-            #     print(f"get_x0 | name={vname} | alias={alias} | uid={uid} | idx={idx} | val={val}")
-
             if idx is not None:
                 x[idx] = float(val)
 
@@ -325,6 +295,14 @@ class EmtProblemTemplate(ABC):
         """
         self._event_params_values = self._event_params_fn(self._event_params_values, float(t))
 
+    def get_full_param_index(self, uid: int) -> int:
+        n_ev = len(self._variable_parameters)
+        if uid in self._uid2idx_event_params:
+            return self._uid2idx_event_params[uid]
+        if uid in self._uid2idx_params:
+            return n_ev + self._uid2idx_params[uid]
+        raise KeyError(f"Unknown param uid={uid}")
+
     def get_newton_trace_collector(self) -> Any:
         """
         Returns the Newton trace collector instance.
@@ -348,6 +326,12 @@ class EmtProblemTemplate(ABC):
         Returns the index of a specific variable.
         """
         return self._uid2idx_vars[v.uid]
+
+    def get_diff_var_idx(self, dv: Var) -> int:
+        """
+        Returns the index of a specific derivative of a variable.
+        """
+        return self._uid2idx_diff[dv.uid]
 
     def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float):
         if not hasattr(mdl, "external_mapping") or mdl.external_mapping is None:

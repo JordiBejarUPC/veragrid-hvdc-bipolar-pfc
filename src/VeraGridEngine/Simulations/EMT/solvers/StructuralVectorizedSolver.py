@@ -164,6 +164,62 @@ def _scatter_color_jvp_to_csc_data(
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
 
+
+class Predictor:
+    """
+    Computes an explicit predictor for the Newton initial guess x_iter.
+    """
+    __slots__ = ['n_states']
+
+    def __init__(self,
+                 n_states: int) -> None:
+        self.n_states = n_states
+
+    def predict(self,
+                x_iter: Vec,
+                x_prev: Vec,
+                dx_prev: Vec,
+                h: float,
+                pred_method: Union[DynamicIntegrationMethod|None] = DynamicIntegrationMethod.DaeBackEuler) -> Vec:
+        """
+        Apply predictor in-place and return x_iter.
+        :param x_iter: Array to be written with the predictor guess (in-place).
+        :param x_prev: Previous full variable vector at time n.
+        :param dx_prev: Previous derivative vector (only first n_states are meaningful).
+        :param h: Time step.
+        :param pred_method: Integration method enum/value at the prediction step
+        :return:
+        """
+
+        # Default: no-op predictor
+        x_iter[:] = x_prev
+
+        # Dispatch per method
+        if pred_method == DynamicIntegrationMethod.OdeEuler:
+            return self._predict_euler_state(x_iter, x_prev, dx_prev, h)
+        elif pred_method == DynamicIntegrationMethod.DaeBDF2:
+            raise NotImplementedError(f"predictor method {pred_method} ")
+
+        # Otherwise keep default x_iter = x_prev
+        return x_iter
+
+    # ---------------------------------------------------------------------
+    # Predictor implementations
+    # ---------------------------------------------------------------------
+    def _predict_euler_state(self,
+                             x_iter: Vec,
+                             x_prev: Vec,
+                             dx_prev: Vec,
+                             h: float) -> Vec:
+        """
+        Explicit Euler predictor for the *state* subset:
+            x_{n+1}^0 = x_n + h * dx_n   (states only)
+        Algebraics remain at x_prev by default (already set in caller).
+        """
+        ns = self.n_states
+        x_iter[:ns] = x_prev[:ns] + h * dx_prev[:ns]
+        return x_iter
+
 class EquationGroup:
     """
     Data structure to hold clustered equations for auto-vectorization.
@@ -427,30 +483,40 @@ class SparseADJacobian:
 # ==============================================================================
 class StructuralVectorizedSolver:
     __slots__ = [
-        'problem', 't0', 't_end', 'h', 'method', 'dense_threshold', 'verbose',
+        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'vec_jacobian', 'vec_flat_args', 'fused_residual', 'vec_kernels',
-        '_state_vars', '_algebraic_vars', '_state_eqs', '_algebraic_eqs',
-        'sorted_vars', '_n_state', '_n_vars', 'uid2idx_vars',
+        '_state_vars', '_algebraic_vars', '_diff_vars', '_state_eqs', '_algebraic_eqs',
+        'sorted_vars', '_n_state', '_n_vars', '_n_diff', 'uid2idx_vars',
         '_event_parameters', '_parameters', '_parameters_values', '_event_params_fn',
         'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time'
     ]
 
-    def __init__(
-            self,
-            problem: EmtProblemTemplate,
-            t0: float,
-            t_end: float,
-            h: float,
-            method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
-            dense_threshold: int = 100,
-            verbose: bool = False,
-            auto_vectorization: bool = True,
-    )-> None:
+    def __init__(self,
+                 problem: EmtProblemTemplate,
+                 t0: float,
+                 t_end: float,
+                 h: float,
+                 method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
+                 pred_method:DynamicIntegrationMethod = None,
+                 dense_threshold: int = 100,
+                 verbose: bool = False,
+                 auto_vectorization: bool = True)-> None:
+        """
+        :param problem: The DAE problem definition.
+        :param t0: Initial time.
+        :param t_end: End time.
+        :param h: Time step.
+        :param method: DynamicIntegrationMethod (DaeTrapezoidal, DaeBackEuler, DaeBDF2).
+        :param pred_method: DynamicIntegrationMethod used in the predictor step if method is explicit.
+        :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
+        :param verbose: Print compilation and simulation timings.
+        """
         self.problem = problem
         self.t0 = t0
         self.t_end = t_end
         self.h = h
         self.method = method
+        self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
 
@@ -461,14 +527,17 @@ class StructuralVectorizedSolver:
 
         self._state_vars = self.problem.get_state_vars()
         self._algebraic_vars = self.problem.get_algebraic_vars()
+        self._diff_vars = self.problem.get_diff_vars()
         self._state_eqs = self.problem.get_state_eqs()
         self._algebraic_eqs = self.problem.get_algebraic_eqs()
+
 
         self.sorted_vars: List[Any] = list()
         self.sorted_vars.extend(self._state_vars)
         self.sorted_vars.extend(self._algebraic_vars)
         self._n_state = len(self._state_vars)
         self._n_vars = len(self.sorted_vars)
+        self._n_diff = len(self._diff_vars)
 
         self.uid2idx_vars = {v.uid: i for i, v in enumerate(self.sorted_vars)}
 
@@ -596,7 +665,7 @@ class StructuralVectorizedSolver:
                  x0: Union[Vec| None] = None,
                  dx0: Union[Vec| None] = None,
                  params0: Union[Vec| None] = None,
-                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat]:
+                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat, Mat]:
 
         """
         Run the vectorized DAE time-domain simulation.
@@ -613,7 +682,7 @@ class StructuralVectorizedSolver:
         else: pass
 
         if dx0 is None:
-            dx0 = np.zeros(self._n_vars, dtype=np.float64)
+            dx0 = self.problem.get_dx0()
         else: pass
 
         if params0 is None:
@@ -633,14 +702,16 @@ class StructuralVectorizedSolver:
                              method: DynamicIntegrationMethod,
                              boundary_updater: BoundaryUpdateWrapper,
                              verbose: bool,
-                             dense_threshold: int)-> Tuple[Vec, Mat]:
+                             dense_threshold: int)-> Tuple[Vec, Mat, Mat]:
         if not self.vectorized_ready:
             self.auto_detect_vectorization(method)
 
         steps: int = int(np.ceil((t_end - t0) / h))
         t: Vec = t0 + h * np.arange(steps + 1, dtype=np.float64)
         y: Mat = np.zeros((steps + 1, self._n_vars), dtype=np.float64)
+        dy: Mat = np.zeros((steps + 1, self._n_diff), dtype=np.float64)
         y[0] = x0.copy()
+        dy[0] = dx0.copy()
 
         x_prev: Vec = x0.copy()
         dx_prev: Vec = dx0.copy()
@@ -682,6 +753,18 @@ class StructuralVectorizedSolver:
 
             x_iter[:] = x_prev
             last_res_norm: float = 1.0
+
+            # PREDICTOR
+            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                n_states = self.problem.get_states_number()
+                predictor = Predictor(n_states=n_states)
+                predictor.predict(
+                    x_iter=x_iter,
+                    x_prev=x_prev,
+                    dx_prev=dx_prev,
+                    h=self.h,
+                    pred_method=self.pred_method,
+                )
 
             for k in range(15):
                 self.fused_residual(x_iter, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
@@ -736,6 +819,7 @@ class StructuralVectorizedSolver:
                 last_res_norm = res_norm
 
             y[i + 1] = x_iter
+            dy[i] = dx_prev
 
             if method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
@@ -753,4 +837,4 @@ class StructuralVectorizedSolver:
         self._last_sim_loop_time = time.time() - t_start_loop
         if verbose: print(f"VECTORIZED INTEGRATION LOOP Finished: {self._last_sim_loop_time:.4f}s")
 
-        return t, y
+        return t, y, dy

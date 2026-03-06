@@ -118,25 +118,28 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # and omega_base multiplies the whole bracket, which results in omega_base*omega*psi coupling (correct).
     templ.block = Block(
         state_eqs=[
-            # d_psi_d = omega_base * (v_d - Ra*i_d + omega*psi_q)
-            omega_base * (v_d - Ra * i_d + omega * psi_q),
+            # # d_psi_d = omega_base * (v_d - Ra*i_d + omega*psi_q)
+            # omega_base * (v_d - Ra * i_d + omega * psi_q),
+            # # d_psi_q = omega_base * (v_q - Ra*i_q - omega*psi_d)
+            # omega_base * (v_q - Ra * i_q - omega * psi_d),
+            # # d_psi_0 = omega_base * (v_0 - R0*i_0)
+            # omega_base * (v_0 - R0 * i_0),
+            # # d_psi_f = omega_base * (v_f - Rf*i_f)
+            # omega_base * (v_f - Rf * i_f),
+            # # d_theta = omega_base * omega
+            # omega_base * omega,
+            # # d_omega = omega_base/(2H) * (Tm - Te - D*(omega-omega_ref))
+            # (omega_base * (Tm - Te - D * (omega - omega_ref))) / (2 * H),
+            # # d_et = (omega_ref - omega)   (NO omega_base)
+            # (omega_ref - omega),
 
-            # d_psi_q = omega_base * (v_q - Ra*i_q - omega*psi_d)
-            omega_base * (v_q - Ra * i_q - omega * psi_d),
 
-            # d_psi_0 = omega_base * (v_0 - R0*i_0)
-            omega_base * (v_0 - R0 * i_0),
-
-            # d_psi_f = omega_base * (v_f - Rf*i_f)
-            omega_base * (v_f - Rf * i_f),
-
-            # d_theta = omega_base * omega
-            omega_base * omega,
-
-            # d_omega = omega_base/(2H) * (Tm - Te - D*(omega-omega_ref))
-            (omega_base * (Tm - Te - D * (omega - omega_ref))) / (2 * H),
-
-            # d_et = (omega_ref - omega)   (NO omega_base)
+            v_d - Ra * i_d + omega * psi_q,
+            v_q - Ra * i_q - omega * psi_d,
+            v_0 - R0 * i_0,
+            v_f - Rf * i_f,
+            omega,
+            (Tm - Te - D * (omega - omega_ref)) / (2 * H),
             (omega_ref - omega),
         ],
         state_vars=[psi_d, psi_q, psi_0, psi_f, theta, omega, et],
@@ -301,7 +304,7 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # --------------------------------------------------------------------------------------
     c0 = vf.add_const(0.0)
     templ.block.diff_init_eqs = {
-        d_theta: omega_base * omega,
+        d_theta: omega,
         d_et:    (omega_ref - omega),
         d_omega: c0,
         d_psi_d: c0,
