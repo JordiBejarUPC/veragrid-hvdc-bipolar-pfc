@@ -9,10 +9,9 @@ from VeraGridEngine.IO.file_save import FileSave
 
 def test_all_grids():
     # get the directory of this file
-    current_path = os.path.dirname(__file__)
 
     # navigate to the grids folder
-    grids_path = os.path.join(current_path, 'data', 'grids')
+    grids_path = os.path.join('data', 'grids')
 
     files = os.listdir(grids_path)
     failed = list()
@@ -49,11 +48,8 @@ def test_line_templates_finding():
     Test that checks that a line assigned a line template that is not a Sequence line can open it
     :return:
     """
-    # get the directory of this file
-    current_path = os.path.dirname(__file__)
-
     # navigate to the grids folder
-    fname = os.path.join(current_path, 'data', 'grids', 'test_line_templates.gridcal')
+    fname = os.path.join('data', 'grids', 'test_line_templates.gridcal')
 
     opener = FileOpen(fname)
     grid = opener.open()
@@ -67,11 +63,9 @@ def test_line_templates_finding():
 
 
 def test_issue_337():
-    # get the directory of this file
-    current_path = os.path.dirname(__file__)
 
     # navigate to the grids folder
-    fname = os.path.join(current_path, 'data', 'grids', 'RAW', 'issue_337.raw')
+    fname = os.path.join('data', 'grids', 'RAW', 'issue_337.raw')
 
     grid = FileOpen(fname).open()
 

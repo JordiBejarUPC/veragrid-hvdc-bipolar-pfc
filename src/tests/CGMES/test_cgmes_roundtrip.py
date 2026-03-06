@@ -210,16 +210,10 @@ def test_cgmes_roundtrip():
     # test_grid_name = 'IEEE_14_v35_3_nudox_1_hvdc_desf_rates_fs_ss.zip'
     # boundary_set_name = 'BD_IEEE_Grids.zip'
 
-    script_path = os.path.abspath(__file__)
+    cgmes_path = os.path.join('data', 'grids', 'CGMES_2_4_15', test_grid_name)
+    boundary_path = os.path.join('data', 'grids', 'CGMES_2_4_15', boundary_set_name)
+    export_name = os.path.join('data/output/cgmes_export_result', f'{test_grid_name[:-4]}_GC.zip')
 
-    cgmes_files_relative_path = os.path.join('data', 'grids', 'CGMES_2_4_15', test_grid_name)
-    cgmes_path = os.path.abspath(os.path.join(os.path.dirname(script_path), cgmes_files_relative_path))
-
-    boundary_relative_path = os.path.join('data', 'grids', 'CGMES_2_4_15', boundary_set_name)
-    boundary_path = os.path.abspath(os.path.join(os.path.dirname(script_path), boundary_relative_path))
-
-    export_relative_path = os.path.join('data/output/cgmes_export_result', f'{test_grid_name[:-4]}_GC.zip')
-    export_name = os.path.abspath(os.path.join(os.path.dirname(script_path), export_relative_path))
     if not os.path.exists(os.path.dirname(export_name)):
         os.makedirs(os.path.dirname(export_name))
 

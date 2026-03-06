@@ -2021,7 +2021,7 @@ def test_three_phase_fault():
     line_671_680.apply_template(config_601, grid.Sbase, grid.fBase, logger)
     grid.add_line(obj=line_671_680)
 
-    gce.save_file(grid, 'shortcircuit_IEEE13.veragrid')
+    gce.save_file(grid, '../shortcircuit_IEEE13.veragrid')
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow

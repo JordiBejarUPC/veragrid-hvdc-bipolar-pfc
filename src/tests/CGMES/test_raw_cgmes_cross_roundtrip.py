@@ -215,7 +215,6 @@ def test_raw_to_cgmes_cross_roundtrip():
 
     :return:
     """
-    script_path = os.path.abspath(__file__)
 
     # test_grid_name = 'IEEE 14 bus'  # PASSEED
     # boundary_relative_path = os.path.join('data', 'grids', 'CGMES_2_4_15', 'BD_IEEE_Grids.zip')
@@ -234,21 +233,19 @@ def test_raw_to_cgmes_cross_roundtrip():
 
     # PST is controlling
     test_grid_name = 'IEEE_14_v35_3_nudox_1_hvdc_desf_rates_fs_ss'
-    boundary_relative_path = os.path.join('data', 'grids', 'CGMES_2_4_15', 'BD_IEEE_Grids.zip')
+    boundary_path = os.path.join('data', 'grids', 'CGMES_2_4_15', 'BD_IEEE_Grids.zip')
 
     # test_grid_name = 'DACF_20240404_00_IGM'       # STORE it somewhewre else!
     # boundary_relative_path = os.path.join('data', 'grids', 'CGMES_2_4_15', 'DACF_20240404_Boundary.zip')
 
-    boundary_path = os.path.abspath(os.path.join(os.path.dirname(script_path), boundary_relative_path))
 
-    raw_relative_path = os.path.join('data', 'grids', 'RAW', f"{test_grid_name}.raw")
-    raw_path = os.path.abspath(os.path.join(os.path.dirname(script_path), raw_relative_path))
+    raw_path = os.path.join('data', 'grids', 'RAW', f"{test_grid_name}.raw")
 
-    export_relative_path = os.path.join(
+    export_name = os.path.join(
         'data', 'output', 'raw_to_cgmes_export_results',
         f'{test_grid_name}_from_raw_GC.zip'
     )
-    export_name = os.path.abspath(os.path.join(os.path.dirname(script_path), export_relative_path))
+
     if not os.path.exists(os.path.dirname(export_name)):
         os.makedirs(os.path.dirname(export_name))
 

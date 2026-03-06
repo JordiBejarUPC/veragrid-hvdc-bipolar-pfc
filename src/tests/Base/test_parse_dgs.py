@@ -20,8 +20,7 @@ def test_dgs_ieee_grids():
         ('IEEE118_v2_test.dgs', 'IEEE 118 Bus.sav.xlsx'),
     ]
 
-    tests_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(tests_dir, "data")
+    data_dir = os.path.join("data")
     for solver_type in [SolverType.NR,
                         SolverType.IWAMOTO,
                         SolverType.LM,
@@ -72,10 +71,8 @@ def test_roundtrip_raw_to_dgs_to_dgs_ieee_grids():
         ('IEEE 118 Bus v2.raw', 'IEEE 118 Bus.sav.xlsx'),
     ]
 
-    tests_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(tests_dir, "data")
 
-    out_dir = os.path.join(data_dir, "grids", "DGS", "_roundtrip_tmp")
+    out_dir = os.path.join("data", "grids", "DGS", "_roundtrip_tmp")
     os.makedirs(out_dir, exist_ok=True)
 
     for solver_type in [SolverType.NR,
@@ -91,7 +88,7 @@ def test_roundtrip_raw_to_dgs_to_dgs_ieee_grids():
                                    retry_with_other_methods=False)
 
         for f1, _ in files:
-            raw_path = os.path.join(data_dir, "grids", "RAW", f1)
+            raw_path = os.path.join("data", "grids", "RAW", f1)
             main_circuit = FileOpen(raw_path).open()
 
             pf1 = PowerFlowDriver(main_circuit, options)

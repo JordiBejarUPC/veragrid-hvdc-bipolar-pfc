@@ -47,14 +47,14 @@ def test_ieee_grids():
         for f1, f2 in files:
             print(f1, end=' ')
 
-            fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'RAW', f1)
+            fname = os.path.join('data', 'grids', 'RAW', f1)
             main_circuit = FileOpen(fname).open()
             power_flow = PowerFlowDriver(main_circuit, options)
             power_flow.run()
 
             # load the associated results file
-            df_v = pd.read_excel(os.path.join(SCRIPT_DIR, 'data', 'results', f2), sheet_name='Vabs', index_col=0)
-            df_p = pd.read_excel(os.path.join(SCRIPT_DIR, 'data', 'results', f2), sheet_name='Pbranch', index_col=0)
+            df_v = pd.read_excel(os.path.join('data',  'results', f2), sheet_name='Vabs', index_col=0)
+            df_p = pd.read_excel(os.path.join('data',  'results', f2), sheet_name='Pbranch', index_col=0)
 
             v_gc = np.abs(power_flow.results.voltage)
             v_psse = df_v.values[:, 0]
@@ -85,7 +85,7 @@ def test_dc_pf_ieee14():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'Matpower', 'case14.matpower')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
@@ -126,7 +126,7 @@ def test_dc_pf_ieee14_ps():
                                control_q=False,
                                retry_with_other_methods=False)
 
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'Matpower', 'case14_ps.matpower')
+    fname = os.path.join('data', 'grids', 'Matpower', 'case14_ps.matpower')
     main_circuit = FileOpen(fname).open()
     power_flow = PowerFlowDriver(main_circuit, options)
     power_flow.run()
@@ -162,7 +162,7 @@ def test_zip() -> None:
     Test the power flow with ZIP loads compared to PSSe
     """
 
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'ZIP_load_example.raw')
+    fname = os.path.join('data', 'grids', 'ZIP_load_example.raw')
     main_circuit = FileOpen(fname).open()
 
     options = PowerFlowOptions(tolerance=1e-6)
@@ -184,7 +184,7 @@ def test_controllable_shunt() -> None:
     This tests that the controllable shunt is indeed controlling voltage at 1.02 at the third bus
     """
 
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'Controllable_shunt_example.gridcal')
+    fname = os.path.join('data',  'grids', 'Controllable_shunt_example.gridcal')
     main_circuit = FileOpen(fname).open()
     options = PowerFlowOptions(control_q=False)
     power_flow = PowerFlowDriver(main_circuit, options)
@@ -200,7 +200,7 @@ def test_voltage_local_control_with_generation() -> None:
     """
     Check that a generator can perform remote voltage regulation
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'RAW', 'IEEE 14 bus.raw')
+    fname = os.path.join('data',  'grids', 'RAW', 'IEEE 14 bus.raw')
 
     grid = gce.open_file(fname)
 
@@ -244,7 +244,7 @@ def test_voltage_remote_control_with_generation() -> None:
     """
     Check that a generator can perform remote voltage regulation
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'RAW', 'IEEE 14 bus.raw')
+    fname = os.path.join('data',  'grids', 'RAW', 'IEEE 14 bus.raw')
 
     grid = gce.open_file(fname)
 
@@ -281,7 +281,7 @@ def test_voltage_control_with_ltc() -> None:
     Check that a transformer can regulate the voltage at a bus
     """
 
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_LTC_FACTS_Fig4.7.gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_LTC_FACTS_Fig4.7.gridcal')
 
     grid = gce.open_file(fname)
     bus_dict = grid.get_bus_index_dict()
@@ -318,7 +318,7 @@ def test_qf_control_with_ltc() -> None:
     """
     Check that a transformer can regulate the voltage at a bus
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_PST_FACTS_Fig4.10(Qf).gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_PST_FACTS_Fig4.10(Qf).gridcal')
 
     grid = gce.open_file(fname)
 
@@ -348,7 +348,7 @@ def test_qt_control_with_ltc() -> None:
     """
     Check that a transformer can regulate the voltage at a bus
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_PST_FACTS_Fig4.10(Qf).gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_PST_FACTS_Fig4.10(Qf).gridcal')
 
     grid = gce.open_file(fname)
     grid.transformers2w[0].tap_module_control_mode = gce.TapModuleControl.Qt
@@ -379,7 +379,7 @@ def test_power_flow_control_with_pst_pf() -> None:
     """
     Check that a transformer can regulate the voltage at a bus
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_PST_FACTS_Fig4.10.gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_PST_FACTS_Fig4.10.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -409,7 +409,7 @@ def test_power_flow_control_with_pst_pt() -> None:
     """
     Check that a transformer can regulate the voltage at a bus
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_PST_FACTS_Fig4.10(Pt).gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_PST_FACTS_Fig4.10(Pt).gridcal')
 
     grid = gce.open_file(fname)
 
@@ -440,7 +440,7 @@ def test_generator_Q_lims() -> None:
     """
     Check that we can shift the controls well when hitting Q limits
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '5Bus_LTC_FACTS_Fig4.7_Qlim.gridcal')
+    fname = os.path.join('data',  'grids', '5Bus_LTC_FACTS_Fig4.7_Qlim.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -475,7 +475,7 @@ def test_fubm() -> None:
 
     :return:
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'fubm_caseHVDC_vt_josep.gridcal')
+    fname = os.path.join('data',  'grids', 'fubm_caseHVDC_vt_josep.gridcal')
     grid = gce.open_file(fname)
 
     for solver_type in [SolverType.NR, SolverType.LM, SolverType.PowellDogLeg]:
@@ -509,7 +509,7 @@ def test_power_flow_12bus_acdc() -> None:
     """
     Check that a transformer can regulate the voltage at a bus
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'AC-DC with all and DCload.gridcal')
+    fname = os.path.join('data',  'grids', 'AC-DC with all and DCload.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -572,7 +572,7 @@ def test_vsc_current_limitation() -> None:
     """
     Full AC/DC Power Flow simulation with converter's current limitation and negative poles
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', 'vsc_current_limitation.veragrid')
+    fname = os.path.join('data',  'grids', 'vsc_current_limitation.veragrid')
 
     grid = gce.open_file(fname)
 
@@ -604,7 +604,7 @@ def test_hvdc_all_methods() -> None:
     """
     Checks that the HVDC logic is working for all power flow methods
     """
-    fname = os.path.join(SCRIPT_DIR, 'data', 'grids', '8_nodes_2_islands_hvdc.gridcal')
+    fname = os.path.join('data',  'grids', '8_nodes_2_islands_hvdc.gridcal')
     grid = gce.open_file(fname)
 
     for solver_type in [SolverType.NR,
