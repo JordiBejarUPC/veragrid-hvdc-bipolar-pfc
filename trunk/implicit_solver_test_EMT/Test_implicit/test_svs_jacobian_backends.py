@@ -11,6 +11,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -21,16 +22,21 @@ class GenericEmtProblem(EmtProblemTemplate):
 # Helpers
 # ==============================================================================
 
-def build_buck() -> Block:
+def build_buck(vf: VarFactory) -> Block:
     """Simple Buck converter for testing."""
-    i_L: Var = Var("i_L")
-    v_C: Var = Var("v_C")
-    Vin: Var = Var("Vin_sw")
-    R: Var = Var("R")
-    L: Var = Var("L")
-    C: Var = Var("C")
+    i_L: Var = vf.add_var("i_L")
+    v_C: Var = vf.add_var("v_C")
+    Vin: Var = vf.add_var("Vin_sw")
+    R: Var = vf.add_var("R")
+    L: Var = vf.add_var("L")
+    C: Var = vf.add_var("C")
+
+    d_i_L: Var = vf.add_diff_var(name = "d_i_L", base_var=i_L)
+    d_v_C: Var = vf.add_diff_var(name = "d_v_C", base_var=v_C)
+
 
     state_vars: List[Var] = list([i_L, v_C])
+    diff_vars: List[Var] = list([d_i_L, d_v_C])
     state_eqs: List[Expr] = list([(Vin - v_C) / L, (i_L - v_C / R) / C])
 
     parameters: Dict[Var, Const] = dict({
@@ -44,6 +50,7 @@ def build_buck() -> Block:
         name="Buck",
         state_vars=state_vars,
         state_eqs=state_eqs,
+        diff_vars=diff_vars,
         parameters=parameters
     )
     block.unify_blocks()
@@ -74,7 +81,9 @@ class TestSVSJacobianBackends(unittest.TestCase):
         """
         Validates that SVS performs clustering and produces a well-formed Sparse Jacobian.
         """
-        block: Block = build_buck()
+
+        vf: VarFactory = VarFactory()
+        block: Block = build_buck(vf)
         t_sys: Var = Var("t_sys")
         problem: GenericEmtProblem = GenericEmtProblem(block, t_sys)
 
@@ -100,7 +109,8 @@ class TestSVSJacobianBackends(unittest.TestCase):
         """
         Ensures SVS simulation runs without divergence in a standard EMT case.
         """
-        block: Block = build_buck()
+        vf: VarFactory = VarFactory()
+        block: Block = build_buck(vf)
         t_sys: Var = Var("t_sys")
         problem: GenericEmtProblem = GenericEmtProblem(block, t_sys)
 
@@ -111,7 +121,7 @@ class TestSVSJacobianBackends(unittest.TestCase):
             problem, t0=0.0, t_end=50e-6, h=1e-6, method=DynamicIntegrationMethod.DaeTrapezoidal
         )
 
-        t_arr, y_arr = solver.simulate(x0=x0, params0=p0)
+        t_arr, y_arr, _ = solver.simulate(x0=x0, params0=p0)
 
         self.assertEqual(len(t_arr), y_arr.shape[0])
         self.assertTrue(bool(np.all(np.isfinite(y_arr))))

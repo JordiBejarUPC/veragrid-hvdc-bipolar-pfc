@@ -235,13 +235,20 @@ problem = EmtProblemDae(grid=grid,
                         pf_results=res)
 problem.set_newton_trace_collector(NewtonTraceCollector())
 
-vars = problem.get_state_vars() + problem.get_algebraic_vars()
-print(vars)
+sv = problem.get_state_vars()
+dv = problem.get_diff_vars()
+
+assert len(sv) == len(dv)
+
 
 df = problem.get_init_guess_table()
-print(df)
+print(f"init_guess_table{df}")
+
+# print(f"state_vars = {problem.get_state_vars()}")
+# print(f"diff_vars = {problem.get_diff_vars()}")
 
 x0 = problem.get_x0()
+print("x0 =", x0)
 print("len(x0) =", len(x0))
 print("nans =", np.isnan(x0).sum())
 print("infs =", np.isinf(x0).sum())
@@ -249,20 +256,21 @@ print("nonzeros =", np.count_nonzero(x0))
 print("len(init_guess) =", len(problem.init_guess))
 
 dx0 = problem.get_dx0()
+print("dx0 =",dx0)
 print("len(dx0) =", len(dx0))
 print("nans =", np.isnan(dx0).sum())
 print("infs =", np.isinf(dx0).sum())
 print("nonzeros =", np.count_nonzero(dx0))
 print("len(diff_init_guess) =", len(problem.diff_init_guess))
 
-df2 = problem.get_missing_init_table()
-print(df2)
 
 solver = JitSymbolicSolver(problem = problem,
                            t0 = 0.0,
                            t_end = options.simulation_time,
                            h = options.time_step,
                            method=options.integration_method,
+                           pred_method=DynamicIntegrationMethod.OdeEuler,
+                           # pred_method=None,
                            verbose = True)
 
 # solver = StructuralVectorizedSolver(problem = problem,
@@ -278,7 +286,7 @@ solver = JitSymbolicSolver(problem = problem,
 #                      method=options.integration_method,
 #                      verbose = True)
 
-t, y = solver.simulate()
+t, y, dy = solver.simulate()
 
 collector = problem.get_newton_trace_collector()
 if collector:

@@ -116,7 +116,7 @@ def benchmark_new_architecture(n_oscillators: int, n_steps: int, backend: str = 
     if backend == "SD":
         solver.simulate()
     else:
-        solver.simulate(x0=x0, dx0=dx0, params0=p0)
+        solver.simulate()
 
     t_setup: float = time.perf_counter() - t_setup_start
 
@@ -129,11 +129,11 @@ def benchmark_new_architecture(n_oscillators: int, n_steps: int, backend: str = 
         t_run: float = time.perf_counter() - t_run_start
     elif backend == "AD":
         solver.t_end = h * n_steps
-        solver.simulate(x0=x0, dx0=dx0, params0=p0)
+        solver.simulate()
         t_run: float = getattr(solver, 'last_sim_loop_time', time.perf_counter() - t_run_start)
     elif backend == "StructuralVectorizedSolver":
         solver.t_end = h * n_steps
-        solver.simulate(x0=x0, dx0=dx0, params0=p0)
+        solver.simulate()
         t_run: float = getattr(solver, '_last_sim_loop_time', time.perf_counter() - t_run_start)
     else:
         t_run = 0.0

@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 # VeraGridEngine Imports
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
@@ -22,23 +23,29 @@ class GenericEmtProblem(EmtProblemTemplate):
 # -----------------------------------------------------------------------------
 # 1) Linear system factory (repeated structure)
 # -----------------------------------------------------------------------------
-def create_linear_chain(n_masses: int) -> Block:
+def create_linear_chain(n_masses: int,
+                        vf: VarFactory) -> Block:
     print(f" > [Linear Model] Building Chain (N={n_masses})...")
 
     pos_vars: List[Var] = list()
+    d_pos_vars: List[Var] = list()
     vel_vars: List[Var] = list()
+    d_vel_vars: List[Var] = list()
     for i in range(n_masses):
-        pos_vars.append(Var(f"x_{i}"))
-        vel_vars.append(Var(f"v_{i}"))
+        pos_vars.append(vf.add_var(f"x_{i}"))
+        d_pos_vars.append(vf.add_diff_var(name = f"d_x_{i}", base_var= pos_vars[i]))
+        vel_vars.append(vf.add_var(f"v_{i}"))
+        d_vel_vars.append(vf.add_diff_var(name=f"d_v_{i}", base_var=vel_vars[i]))
 
     k: Const = Const(5000.0)
     c: Const = Const(0.5)
 
     state_vars: List[Var] = list()
     state_eqs: List[Expr] = list()
+    diff_vars: List[Var] = list()
 
     for i in range(n_masses):
-        x_i, v_i = pos_vars[i], vel_vars[i]
+        x_i, d_x_i, v_i, d_v_i = pos_vars[i], d_pos_vars[i], vel_vars[i], d_vel_vars[i]
         if i > 0:
             x_L: Expr = pos_vars[i - 1]
         else:
@@ -52,7 +59,9 @@ def create_linear_chain(n_masses: int) -> Block:
         force: Expr = k * (x_L - x_i) + k * (x_R - x_i) - c * v_i
 
         state_vars.append(x_i)
+        diff_vars.append(d_x_i)
         state_vars.append(v_i)
+        diff_vars.append(d_v_i)
         state_eqs.append(v_i)
         state_eqs.append(force)
 
@@ -60,6 +69,7 @@ def create_linear_chain(n_masses: int) -> Block:
         name=f"Linear_N{n_masses}",
         state_vars=state_vars,
         state_eqs=state_eqs,
+        diff_vars=diff_vars,
         parameters=dict()
     )
 
@@ -125,7 +135,8 @@ def run_backend(
         h: float,
         verbose: bool = False
 ) -> Dict[str, Any]:
-    block: Block = create_linear_chain(n_nodes)
+    vf: VarFactory = VarFactory()
+    block: Block = create_linear_chain(n_masses=n_nodes, vf=vf)
     block.unify_blocks()
     t_sym: Var = Var("t_glob")
 
@@ -159,7 +170,7 @@ def run_backend(
         solver = solver_ad
 
     # Warmup step
-    solver.simulate(x0=x0, dx0=dx0, params0=params0)
+    solver.simulate()
 
     setup_s: float = time.perf_counter() - t_setup_start
     # -----------------------------------------------
@@ -168,7 +179,7 @@ def run_backend(
     print(f"   [{label} | {mode}] Simulating pure loop... (steps={n_steps})")
 
     t_sim_start: float = time.perf_counter()
-    _, y_arr = solver.simulate(x0=x0, dx0=dx0, params0=params0)
+    _, y_arr, _ = solver.simulate()
 
     if hasattr(solver, 'last_pure_sim_time'):
         sim_s: float = getattr(solver, 'last_pure_sim_time')

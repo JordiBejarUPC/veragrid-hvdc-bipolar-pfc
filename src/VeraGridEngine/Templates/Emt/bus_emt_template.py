@@ -32,8 +32,6 @@ class BusEmtTemplateNABC(EmtModelTemplate):
         self.v_A = vf.add_var("v_A"+name) if mask[1] else None
         self.v_B = vf.add_var("v_B"+name) if mask[2] else None
         self.v_C = vf.add_var("v_C"+name) if mask[3] else None
-        # self.P = vf.add_var("P"+name)
-        # self.Q = vf.add_var("Q"+name)
         self.d_v_N = vf.add_diff_var(name = f"d_v_N_{name}", base_var=self.v_N) if mask[0] else None
         self.d_v_A = vf.add_diff_var(name = f"d_v_A_{name}", base_var=self.v_A) if mask[1] else None
         self.d_v_B = vf.add_diff_var(name = f"d_v_B_{name}", base_var=self.v_B) if mask[2] else None
