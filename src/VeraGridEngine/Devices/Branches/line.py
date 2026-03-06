@@ -5,7 +5,7 @@
 
 import numpy as np
 import pandas as pd
-from typing import Union, List
+from typing import Union, List, Tuple
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -21,6 +21,7 @@ from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.block import Const
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 def accept_line_connection(V1: float, V2: float, branch_connection_voltage_tolerance=0.1) -> float:
@@ -79,6 +80,52 @@ class Line(BranchParent):
         'Qf',
         'Qt',
         'emt_model_type'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
+        GCProp(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
+        GCProp(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.'),
+        GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
+        GCProp(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.'),
+        GCProp(key='B0', units='p.u.', tpe=float, definition='Total zero sequence shunt susceptance.'),
+        GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
+        GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
+        GCProp(key='B2', units='p.u.', tpe=float, definition='Total negative sequence shunt susceptance.'),
+        GCProp('ys', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
+                      definition='Series admittance matrix of the branch', editable=False, display=False),
+        GCProp('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
+                      definition='Shunt admittance matrix of the branch', editable=False, display=False),
+        GCProp(key='tolerance', units='%', tpe=float,
+                      definition='Tolerance expected for the impedance values % is expected '
+                                 'for transformers0% for lines.'),
+        GCProp(key='circuit_idx', units='', tpe=int,
+                      definition='Circuit index, used for multiple circuits sharing towers (starts at zero)',
+                      editable=False),
+        GCProp(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
+        GCProp(key='r_fault', units='p.u.', tpe=float,
+                      definition='Resistance of the mid-line fault.Used in short circuit studies.'),
+        GCProp(key='x_fault', units='p.u.', tpe=float,
+                      definition='Reactance of the mid-line fault.Used in short circuit studies.'),
+        GCProp(key='fault_pos', units='p.u.', tpe=float,
+                      definition='Per-unit positioning of the fault:'
+                                 '0 would be at the "from" side,'
+                                 '1 would be at the "to" side,'
+                                 'therefore 0.5 is at the middle.'),
+        GCProp(key='template', units='', tpe=DeviceType.AnyLineTemplateDevice, definition='', editable=False),
+        GCProp(key='locations', units='', tpe=SubObjectType.LineLocations, definition='', editable=False),
+        GCProp(key='possible_tower_types', units='', tpe=SubObjectType.Associations,
+                      definition='Possible overhead line types (>1 to denote association), - to denote no association',
+                      display=False),
+        GCProp(key='possible_underground_line_types', units='', tpe=SubObjectType.Associations,
+                      definition='Possible underground line types (>1 to denote association), '
+                                 '- to denote no association',
+                      display=False),
+        GCProp(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
+                      definition='Possible sequence line types (>1 to denote association), - to denote no association',
+                      display=False),
+        GCProp(key='emt_model_type', units='', tpe=EmtLineTypes,
+                      definition='Line EMT model'),
     )
 
     def __init__(self,
@@ -217,59 +264,16 @@ class Line(BranchParent):
 
         self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
 
-        self.register(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.')
-        self.register(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.')
-        self.register(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.')
-        self.register(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.')
-        self.register(key='X0', units='p.u.', tpe=float, definition='Total zero sequence reactance.')
-        self.register(key='B0', units='p.u.', tpe=float, definition='Total zero sequence shunt susceptance.')
-        self.register(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.')
-        self.register(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.')
-        self.register(key='B2', units='p.u.', tpe=float, definition='Total negative sequence shunt susceptance.')
 
-        self.register('ys', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
-                      definition='Series admittance matrix of the branch', editable=False, display=False)
 
-        self.register('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
-                      definition='Shunt admittance matrix of the branch', editable=False, display=False)
 
-        self.register(key='tolerance', units='%', tpe=float,
-                      definition='Tolerance expected for the impedance values % is expected '
-                                 'for transformers0% for lines.')
 
-        self.register(key='circuit_idx', units='', tpe=int,
-                      definition='Circuit index, used for multiple circuits sharing towers (starts at zero)',
-                      editable=False)
 
-        self.register(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)')
 
-        self.register(key='r_fault', units='p.u.', tpe=float,
-                      definition='Resistance of the mid-line fault.Used in short circuit studies.')
-        self.register(key='x_fault', units='p.u.', tpe=float,
-                      definition='Reactance of the mid-line fault.Used in short circuit studies.')
-        self.register(key='fault_pos', units='p.u.', tpe=float,
-                      definition='Per-unit positioning of the fault:'
-                                 '0 would be at the "from" side,'
-                                 '1 would be at the "to" side,'
-                                 'therefore 0.5 is at the middle.')
-        self.register(key='template', units='', tpe=DeviceType.AnyLineTemplateDevice, definition='', editable=False)
-        self.register(key='locations', units='', tpe=SubObjectType.LineLocations, definition='', editable=False)
 
-        self.register(key='possible_tower_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible overhead line types (>1 to denote association), - to denote no association',
-                      display=False)
 
-        self.register(key='possible_underground_line_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible underground line types (>1 to denote association), '
-                                 '- to denote no association',
-                      display=False)
 
-        self.register(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible sequence line types (>1 to denote association), - to denote no association',
-                      display=False)
 
-        self.register(key='emt_model_type', units='', tpe=EmtLineTypes,
-                      definition='Line EMT model')
 
     @property
     def R(self):

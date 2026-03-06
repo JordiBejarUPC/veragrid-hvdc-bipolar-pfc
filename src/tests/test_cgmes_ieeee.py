@@ -3,7 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
-import pytest
 import numpy as np
 import pandas as pd
 import VeraGridEngine.api as gce
@@ -12,22 +11,27 @@ from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 pd.set_option('display.max_colwidth', None)
 
 
-@pytest.mark.skip(reason="Not passing because VeraGrid ConnectivityNodes were removed and this needs rethinking")
 def test_ieee14_cgmes() -> None:
     """
     This test load two supposedly equivalent grids and compared their internal structures and their power flow
     """
 
     # load IEEE14 ------------------------------------------------------------------------------------------------------
-    file_open_options = FileOpenOptions(
-        cgmes_map_areas_like_raw=True,
-        cgmes_try_to_map_dc_to_hvdc_line=True,
-        # crash_on_errors=True,
-        psse_adjust_taps_to_discrete_positions=True,
-    )
+
+    script_path = os.path.abspath(__file__)
+    tests_root = os.path.dirname(script_path)
+
     # RAW model import to MultiCircuit
-    file_open1 = FileOpen(file_name=os.path.join("data", "grids", "RAW", "IEEE 14 bus.raw"),
-                          options=file_open_options)
+    file_open1 = FileOpen(
+        file_name=os.path.join(tests_root, "data", "grids", "RAW", "IEEE 14 bus.raw"),
+        options=FileOpenOptions(
+            file_type=gce.FileType.PSSE_raw,
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+        )
+    )
     grid1 = file_open1.open()
     nc1 = gce.compile_numerical_circuit_at(grid1)
     pf_res1 = gce.power_flow(grid1)
@@ -38,11 +42,11 @@ def test_ieee14_cgmes() -> None:
     # save the model in CGMES ------------------------------------------------------------------------------------------
 
     # path to the boundary set
-    bd_set = os.path.join("data", "grids", "CGMES_2_4_15",
+    bd_set = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15",
                           "TestConfigurations_packageCASv2.0", 'MicroGrid', 'BaseCase_BC',
                           'CGMES_v2.4.15_MicroGridTestConfiguration_BD_v2.zip')
 
-    output_cgmes_path = os.path.join("data", "output", "IEEE14_test_ieee_export.zip")
+    output_cgmes_path = os.path.join(tests_root, "data", "output", "IEEE14_test_ieee_export.zip")
 
     gce.save_cgmes_file(grid=grid1,
                         filename=output_cgmes_path,
@@ -53,8 +57,17 @@ def test_ieee14_cgmes() -> None:
 
     # load again from CGMES into a new grid object
     # grid2 = gce.open_file(filename=[output_cgmes_path, bd_set])
-    file_open2 = FileOpen(file_name=[output_cgmes_path, bd_set],
-                          options=file_open_options)
+    file_open2 = FileOpen(
+        file_name=[output_cgmes_path, bd_set],
+        options=FileOpenOptions(
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+            file_type=gce.FileType.CGMES,
+            cgmes_version=gce.CGMESVersions.v2_4_15
+        )
+    )
     grid2 = file_open2.open()
     nc2 = gce.compile_numerical_circuit_at(grid2)
     pf_res2 = gce.power_flow(grid2)
@@ -65,14 +78,25 @@ def test_ieee14_cgmes() -> None:
     if not ok_nc:
         print("\n\tTUC 17.1 is NOT OK\n")
         logger_nc.print("CGMES roundtrip comparison with the original")
-        logger_nc.to_xlsx(os.path.join("data", "output", "tuc_17_1_ieee14.xlsx"))
+        output_dir = os.path.join(tests_root, "data", "output")
+        os.makedirs(output_dir, exist_ok=True)
+        logger_nc.to_xlsx(os.path.join(output_dir, "tuc_17_1_ieee14.xlsx"))
     else:
         print("TUC 17.1 is OK")
 
     # load a CGMES grid made with CImConverter -------------------------------------------------------------------------
-    file_open3 = FileOpen(file_name=[os.path.join("data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"),
-                                    bd_set],
-                          options=file_open_options)
+    file_open3 = FileOpen(
+        file_name=[os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"),
+                   bd_set],
+        options=FileOpenOptions(
+            cgmes_map_areas_like_raw=True,
+            cgmes_try_to_map_dc_to_hvdc_line=True,
+            # crash_on_errors=True,
+            psse_adjust_taps_to_discrete_positions=True,
+            file_type=gce.FileType.CGMES,
+            cgmes_version=gce.CGMESVersions.v2_4_15
+        )
+    )
     grid3 = file_open3.open()
     nc3 = gce.compile_numerical_circuit_at(grid3)
     pf_res3 = gce.power_flow(grid3)
@@ -86,12 +110,14 @@ def test_ieee14_cgmes() -> None:
 
     if not ok_nc3:
         logger_nc3.print("CGMES cim-converter comparison with the original")
-        logger_nc3.to_xlsx(os.path.join("data", "output", "tuc_17_1_ieee14_cim_converter.xlsx"))
+        output_dir = os.path.join(tests_root, "data", "output")
+        os.makedirs(output_dir, exist_ok=True)
+        logger_nc3.to_xlsx(os.path.join(output_dir, "tuc_17_1_ieee14_cim_converter.xlsx"))
     else:
         print("TUC Cimconverter 17.1 ok")
 
     # load the associated results file  --------------------------------------
-    results_folder = os.path.join('data', 'results')
+    results_folder = os.path.join(tests_root, 'data', 'results')
     results_file = 'IEEE 14 bus.sav.xlsx'
     df_v = pd.read_excel(os.path.join(results_folder, results_file),
                          sheet_name='Vabs', index_col=0)
@@ -106,7 +132,7 @@ def test_ieee14_cgmes() -> None:
     # Comparison
     # ------------------------------------------------------------------------------------------------------------------
     # load the associated results file
-    results_file = os.path.join('data', 'results', 'IEEE 14 bus.sav.xlsx')
+    results_file = os.path.join(tests_root, 'data', 'results', 'IEEE 14 bus.sav.xlsx')
     df_v = pd.read_excel(results_file, sheet_name='Vabs', index_col=0)
 
     # TUC 17.2 compare power flows
@@ -142,7 +168,6 @@ def test_ieee14_cgmes() -> None:
     assert grid1_ok
     assert grid2_ok
     # assert grid3_ok
-
 
 # def test_ieee_grids() -> None:
 #     """

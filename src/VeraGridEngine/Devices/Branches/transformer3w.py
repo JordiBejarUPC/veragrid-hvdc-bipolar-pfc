@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Branches.transformer_type import get_impedances
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
 def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, float]:
@@ -94,6 +94,40 @@ class Transformer3W(PhysicalDevice):
         '_winding3',
         'x',
         'y',
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='bus0', units='', tpe=DeviceType.BusDevice, definition='Middle point connection bus.',
+                      editable=False),
+        GCProp(key='bus1', units='', tpe=DeviceType.BusDevice, definition='Bus 1.', editable=False),
+        GCProp(key='bus2', units='', tpe=DeviceType.BusDevice, definition='Bus 2.', editable=False),
+        GCProp(key='bus3', units='', tpe=DeviceType.BusDevice, definition='Bus 3.', editable=False),
+        GCProp('active', units="", tpe=bool, definition='Is active?', profile_name="active_prof"),
+        GCProp(key='winding1', units='', tpe=DeviceType.WindingDevice, definition='Winding 1.', editable=False),
+        GCProp(key='winding2', units='', tpe=DeviceType.WindingDevice, definition='Winding 2.', editable=False),
+        GCProp(key='winding3', units='', tpe=DeviceType.WindingDevice, definition='Winding 3.', editable=False),
+        GCProp(key='V1', units='kV', tpe=float, definition='Side 1 rating'),
+        GCProp(key='V2', units='kV', tpe=float, definition='Side 2 rating'),
+        GCProp(key='V3', units='kV', tpe=float, definition='Side 3 rating'),
+        GCProp(key='r12', units='p.u.', tpe=float, definition='Resistance measured from 1->2'),
+        GCProp(key='r23', units='p.u.', tpe=float, definition='Resistance measured from 2->3'),
+        GCProp(key='r31', units='p.u.', tpe=float, definition='Resistance measured from 3->1'),
+        GCProp(key='x12', units='p.u.', tpe=float, definition='Reactance measured from 1->2'),
+        GCProp(key='x23', units='p.u.', tpe=float, definition='Reactance measured from 2->3'),
+        GCProp(key='x31', units='p.u.', tpe=float, definition='Reactance measured from 3->1'),
+        GCProp(key='rate1', units='MVA', tpe=float, definition='Rating 1', old_names=['rate12']),
+        GCProp(key='rate2', units='MVA', tpe=float, definition='Rating 2', old_names=['rate23']),
+        GCProp(key='rate3', units='MVA', tpe=float, definition='Rating 3', old_names=['rate31']),
+        GCProp(key='Pcu12', units='KW', tpe=float, definition='Copper loss between 1->2'),
+        GCProp(key='Pcu23', units='KW', tpe=float, definition='Copper loss between 2->3'),
+        GCProp(key='Pcu31', units='KW', tpe=float, definition='Copper loss between 3->1'),
+        GCProp(key='Vsc12', units='%', tpe=float, definition='Short-circuit voltage between 1->2'),
+        GCProp(key='Vsc23', units='%', tpe=float, definition='Short-circuit voltage between 2->3'),
+        GCProp(key='Vsc31', units='%', tpe=float, definition='Short-circuit voltage between 3->1'),
+        GCProp(key='Pfe', units='KW', tpe=float, definition='Iron loss'),
+        GCProp(key='I0', units='%', tpe=float, definition='No-load current'),
+        GCProp(key='x', units='px', tpe=float, definition='x position'),
+        GCProp(key='y', units='px', tpe=float, definition='y position'),
     )
 
     def __init__(self, idtag: Union[str, None] = None,
@@ -198,45 +232,14 @@ class Transformer3W(PhysicalDevice):
         self.x = float(x)
         self.y = float(y)
 
-        self.register(key='bus0', units='', tpe=DeviceType.BusDevice, definition='Middle point connection bus.',
-                      editable=False)
-        self.register(key='bus1', units='', tpe=DeviceType.BusDevice, definition='Bus 1.', editable=False)
-        self.register(key='bus2', units='', tpe=DeviceType.BusDevice, definition='Bus 2.', editable=False)
-        self.register(key='bus3', units='', tpe=DeviceType.BusDevice, definition='Bus 3.', editable=False)
 
-        self.register('active', units="", tpe=bool, definition='Is active?', profile_name="active_prof")
 
-        self.register(key='winding1', units='', tpe=DeviceType.WindingDevice, definition='Winding 1.', editable=False)
-        self.register(key='winding2', units='', tpe=DeviceType.WindingDevice, definition='Winding 2.', editable=False)
-        self.register(key='winding3', units='', tpe=DeviceType.WindingDevice, definition='Winding 3.', editable=False)
 
-        self.register(key='V1', units='kV', tpe=float, definition='Side 1 rating')
-        self.register(key='V2', units='kV', tpe=float, definition='Side 2 rating')
-        self.register(key='V3', units='kV', tpe=float, definition='Side 3 rating')
-        self.register(key='r12', units='p.u.', tpe=float, definition='Resistance measured from 1->2')
-        self.register(key='r23', units='p.u.', tpe=float, definition='Resistance measured from 2->3')
-        self.register(key='r31', units='p.u.', tpe=float, definition='Resistance measured from 3->1')
-        self.register(key='x12', units='p.u.', tpe=float, definition='Reactance measured from 1->2')
-        self.register(key='x23', units='p.u.', tpe=float, definition='Reactance measured from 2->3')
-        self.register(key='x31', units='p.u.', tpe=float, definition='Reactance measured from 3->1')
 
-        self.register(key='rate1', units='MVA', tpe=float, definition='Rating 1', old_names=['rate12'])
-        self.register(key='rate2', units='MVA', tpe=float, definition='Rating 2', old_names=['rate23'])
-        self.register(key='rate3', units='MVA', tpe=float, definition='Rating 3', old_names=['rate31'])
 
-        self.register(key='Pcu12', units='KW', tpe=float, definition='Copper loss between 1->2')
-        self.register(key='Pcu23', units='KW', tpe=float, definition='Copper loss between 2->3')
-        self.register(key='Pcu31', units='KW', tpe=float, definition='Copper loss between 3->1')
 
-        self.register(key='Vsc12', units='%', tpe=float, definition='Short-circuit voltage between 1->2')
-        self.register(key='Vsc23', units='%', tpe=float, definition='Short-circuit voltage between 2->3')
-        self.register(key='Vsc31', units='%', tpe=float, definition='Short-circuit voltage between 3->1')
 
-        self.register(key='Pfe', units='KW', tpe=float, definition='Iron loss')
-        self.register(key='I0', units='%', tpe=float, definition='No-load current')
 
-        self.register(key='x', units='px', tpe=float, definition='x position')
-        self.register(key='y', units='px', tpe=float, definition='y position')
 
     @property
     def winding1(self) -> Winding:

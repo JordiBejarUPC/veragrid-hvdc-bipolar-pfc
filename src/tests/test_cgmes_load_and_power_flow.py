@@ -12,7 +12,10 @@ def test_load_and_run_pf() -> None:
 
     :return:
     """
-    base_folder = os.path.join("data", "grids", "CGMES_2_4_15", "TestConfigurations_packageCASv2.0")
+    script_path = os.path.abspath(__file__)
+    base_folder = os.path.abspath(
+        os.path.join(os.path.dirname(script_path), "data", "grids", "CGMES_2_4_15", "TestConfigurations_packageCASv2.0")
+    )
 
     logger = gce.Logger()
 
@@ -203,4 +206,3 @@ def test_load_and_run_pf() -> None:
         print(f"Failed {failures} out of {n}, {failures/n*100:.2f}%")
 
     assert not logger.has_logs()
-
