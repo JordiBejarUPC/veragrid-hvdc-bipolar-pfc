@@ -1533,6 +1533,33 @@ class CGMESVersions(Enum):
             return s
 
 
+class CgmesTopologyMode(Enum):
+    """
+    Topology conversion mode for CGMES imports.
+    """
+    Auto = "Auto"
+    ConnectivityNode = "ConnectivityNode"
+    TopologicalNode = "TopologicalNode"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CgmesTopologyMode[s]
+        except KeyError:
+            return s
+
+
 class SparseSolver(Enum):
     """
     Sparse solvers to use

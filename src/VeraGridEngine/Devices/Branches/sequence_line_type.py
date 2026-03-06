@@ -5,7 +5,7 @@
 from typing import Tuple
 import numpy as np
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 from VeraGridEngine.basic_structures import Logger
 
 
@@ -102,6 +102,24 @@ class SequenceLineType(EditableDevice):
         'opex'
     )
 
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Imax', units='kA', tpe=float, definition='Current rating of the line', old_names=['rating']),
+        GCProp(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line'),
+        GCProp(key='R', units='Ohm/km', tpe=float, definition='Positive-sequence resistance per km'),
+        GCProp(key='X', units='Ohm/km', tpe=float, definition='Positive-sequence reactance per km'),
+        GCProp(key='B', units='uS/km', tpe=float, definition='Positive-sequence shunt susceptance per km'),
+        GCProp(key='R0', units='Ohm/km', tpe=float, definition='Zero-sequence resistance per km'),
+        GCProp(key='X0', units='Ohm/km', tpe=float, definition='Zero-sequence reactance per km'),
+        GCProp(key='B0', units='uS/km', tpe=float, definition='Zero-sequence shunt susceptance per km'),
+        GCProp(key='Cnf', units='nF/km', tpe=float, definition='Positive-sequence shunt conductance per km'),
+        GCProp(key='Cnf0', units='nF/km', tpe=float, definition='Zero-sequence shunt conductance per km'),
+        GCProp(key='use_conductance', units='', tpe=bool,
+                      definition='Use conductance? else the susceptance is used'),
+        GCProp(key='n_circuits', units='', tpe=int, definition='number of circuits'),
+        GCProp(key='capex', units='currency/km', tpe=float, definition='Capital expenditure per km'),
+        GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
+    )
+
     def __init__(self, name='SequenceLine', idtag=None, Imax=1, Vnom=1,
                  R=1e-20, X=1e-20, B=1e-20, R0=1e-20, X0=1e-20, B0=1e-20, CnF=1e-20, CnF0=1e-20,
                  use_conductance: bool = False,
@@ -149,21 +167,6 @@ class SequenceLineType(EditableDevice):
         self.capex = float(capex)
         self.opex = float(opex)
 
-        self.register(key='Imax', units='kA', tpe=float, definition='Current rating of the line', old_names=['rating'])
-        self.register(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line')
-        self.register(key='R', units='Ohm/km', tpe=float, definition='Positive-sequence resistance per km')
-        self.register(key='X', units='Ohm/km', tpe=float, definition='Positive-sequence reactance per km')
-        self.register(key='B', units='uS/km', tpe=float, definition='Positive-sequence shunt susceptance per km')
-        self.register(key='R0', units='Ohm/km', tpe=float, definition='Zero-sequence resistance per km')
-        self.register(key='X0', units='Ohm/km', tpe=float, definition='Zero-sequence reactance per km')
-        self.register(key='B0', units='uS/km', tpe=float, definition='Zero-sequence shunt susceptance per km')
-        self.register(key='Cnf', units='nF/km', tpe=float, definition='Positive-sequence shunt conductance per km')
-        self.register(key='Cnf0', units='nF/km', tpe=float, definition='Zero-sequence shunt conductance per km')
-        self.register(key='use_conductance', units='', tpe=bool,
-                      definition='Use conductance? else the susceptance is used')
-        self.register(key='n_circuits', units='', tpe=int, definition='number of circuits')
-        self.register(key='capex', units='currency/km', tpe=float, definition='Capital expenditure per km')
-        self.register(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure')
 
     def get_values(self, Sbase: float, freq: float, length: float, line_Vnom: float,
                    logger: Logger = Logger()):
