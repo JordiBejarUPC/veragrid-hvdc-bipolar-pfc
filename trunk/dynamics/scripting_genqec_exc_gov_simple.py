@@ -7,12 +7,13 @@ import cProfile
 import copy
 
 import time
-
+import pandas as pd
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -104,11 +105,11 @@ load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 # Add models to devices
 ######################################################################################################
 
-set_rms_model(device=gen0, model=genqec_mdl)
+set_rms_model(device=gen0, model=genqec_mdl, var_factory= grid.var_factory)
 
-set_rms_model(device=line0, model=line_mdl)
+set_rms_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_rms_model(device=load, model=load_mdl)
+set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 
 ######################################################################################################
@@ -118,6 +119,21 @@ set_rms_model(device=load, model=load_mdl)
 Pl0 = find_name_in_block('Pl0', load_mdl)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098)
 grid.add_rms_event(event)
+
+# choose variables to save values
+vars_to_save = list()
+vars_to_save.extend(grid.var_factory.get_vars_to_save(gen0, ["delta", "omega"]))
+vars_to_save.extend(grid.var_factory.get_vars_to_save(load, ["Pl", "Ql"]))
+
+uid2idx_save = dict()
+
+i = 0
+for var in vars_to_save:
+    uid2idx_save[var.uid] = i
+    i+=1
+
+
+
 
 
 ######################################################################################################
@@ -159,6 +175,7 @@ options = RmsOptions(time_step=0.001,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
+                     vars_to_save=vars_to_save,
                      use_init_values=False,
                      max_iter=1000,
                      verbose=0)
@@ -178,10 +195,23 @@ solver = BackEulerImplicitIntegration(
     t0=0,
     t_end=options.simulation_time,
     h=options.time_step,
-    max_iter=options.max_iter
+    max_iter=options.max_iter,
+    uid2idx_save=uid2idx_save,
 )
 
 t, y, well_initialized, converged = solver.simulate()
+
+results = RmsResults(
+            empty_rms_models=list(),
+            well_initialized=well_initialized,
+            converged=converged,
+            values=solver.y,
+            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+            variables=problem.state_and_algebraic_vars,
+            uid2idx=problem.uid2idx_vars,
+            vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices_vars_info=problem.get_device_vars_dict()
+            )
 
 
 

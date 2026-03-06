@@ -3,11 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Tuple
+from typing import Tuple, List
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 
@@ -32,6 +33,7 @@ class RmsOptions(OptionsTemplate):
                  tolerance: float = 1e-6,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeBackEuler,
                  initialization_method: RmsInitializationMethod = RmsInitializationMethod.Explicit,
+                 vars_to_save: List[Var] | None = None,
                  use_init_values: bool = False,
                  max_iter: int = 1000,
                  verbose: int = 0):
