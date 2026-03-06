@@ -20,6 +20,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
+from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
 # Engine imports
@@ -279,6 +280,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionReliability.triggered.connect(self.reliability_dispatcher)
         self.ui.actionRun_Dynamic_RMS_Simulation.triggered.connect(self.rms_dispatcher)
         self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.small_signal_dispatcher)
+        self.ui.actionProcedural_grid_expansion.triggered.connect(self.procedural_grid_expansion)
 
         self.ui.actionUse_clustering.triggered.connect(self.activate_clustering)
         self.ui.actionNodal_capacity.triggered.connect(self.run_nodal_capacity)
@@ -3468,3 +3470,12 @@ class SimulationsMain(TimeEventsMain):
         current_mip_framework = self.opf_mip_framework_dict[self.ui.mip_framework_comboBox.currentText()]
         mip_solvers = get_available_mip_solvers(tpe=current_mip_framework)
         self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
+
+    def procedural_grid_expansion(self):
+        """
+
+        :return:
+        """
+        self.procedural_grid_window = ProceduralGridWindow(app=self)
+        self.procedural_grid_window.exec()
+

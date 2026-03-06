@@ -1943,19 +1943,19 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
     RmsPlotResults = 'Rms plot results'
 
-    RmsGeneratorResults = 'Rms Generator results'
-    RmsLineResults = 'Rms Line results'
-    RmsLoadResults = 'Rms load results'
-
-
-    RmsGeneratorOmegaResults = 'Rms Genqec omega results'
-    RmsGeneratorDeltaResults = 'Rms Genqec delta results'
-
-    RmsLoadPResults = 'Rms Load P results'
-    RmsLoadQResults = 'Rms Load Q results'
-
-    RmsLinePResults = 'Rms Simple Line P results'
-    RmsLineQResults = 'Rms Simple Line Q results'
+    # RmsGeneratorResults = 'Rms Generator results'
+    # RmsLineResults = 'Rms Line results'
+    # RmsLoadResults = 'Rms load results'
+    #
+    #
+    # RmsGeneratorOmegaResults = 'Rms Genqec omega results'
+    # RmsGeneratorDeltaResults = 'Rms Genqec delta results'
+    #
+    # RmsLoadPResults = 'Rms Load P results'
+    # RmsLoadQResults = 'Rms Load Q results'
+    #
+    # RmsLinePResults = 'Rms Simple Line P results'
+    # RmsLineQResults = 'Rms Simple Line Q results'
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
@@ -2958,5 +2958,31 @@ class BlockType(Enum):
         """
         try:
             return BlockType[s]
+        except KeyError:
+            return s
+
+
+
+class ProceduralGridMethods(Enum):
+    """
+    this class contains the existing types of blocks
+    """
+    SteinerAlone = "Steiner tree"
+    SteinerAndOptimization = "Steiner tree + optimization"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ProceduralGridMethods[s]
         except KeyError:
             return s

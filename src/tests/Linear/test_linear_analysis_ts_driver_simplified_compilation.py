@@ -14,8 +14,8 @@ def test_linear_analysis_ts_driver_simplified_compilation_matches_full_compilati
     The simplified compilation path must honor the LinearAnalysisOptions (especially distribute_slack),
     otherwise the resulting flows/injections can be inconsistent.
     """
-    tests_dir = os.path.dirname(__file__)
-    fname = os.path.join(tests_dir, "data", "grids", "IEEE39_1W.gridcal")
+
+    fname = os.path.join("data", "grids", "IEEE39_1W.gridcal")
     grid = vg.open_file(fname)
 
     # Explicitly use the default behavior expected by LinearAnalysisOptions (distribute_slack=False)
