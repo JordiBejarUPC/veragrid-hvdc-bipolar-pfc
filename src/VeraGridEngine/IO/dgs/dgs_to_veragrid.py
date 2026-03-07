@@ -5,14 +5,22 @@
 from __future__ import annotations
 import math
 import numpy as np
-from typing import Tuple, Set
-from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
+from typing import Dict, List, Set, Tuple, TypeVar
+from VeraGridEngine.enumerations import (
+    ExternalGridMode,
+    SwitchGraphicType,
+    TapChangerTypes,
+    TapModuleControl,
+    WindingType,
+)
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType, WireInTower
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import *
+
+TDgsObject = TypeVar("TDgsObject")
 
 
 def _ref_id(x: str | None) -> str | None:
@@ -37,6 +45,95 @@ def _stacubic_obj_bus_sort_key(cubic: StaCubic) -> int:
 def _bus_vnom_sort_key(bus: dev.Bus) -> float:
     """Return bus nominal voltage sort key."""
     return float(bus.Vnom)
+
+
+def _resolve_pointer_dict_value(key: str | None, mapping: Dict[str, TDgsObject]) -> TDgsObject | None:
+    """Resolve a DGS pointer key using both raw and normalized forms."""
+    if key is None:
+        return None
+    value = mapping.get(key, None)
+    if value is not None:
+        return value
+    normalized_key = _ref_id(key)
+    if normalized_key is not None:
+        return mapping.get(normalized_key, None)
+    else:
+        return None
+
+
+def _get_non_empty_name(name: str | None, default_value: str) -> str:
+    """Return a non-empty name string."""
+    if name is not None and str(name).strip() != "":
+        return str(name)
+    else:
+        return default_value
+
+
+def _get_pf_machine_multiplier(count: int) -> float:
+    """Return the multiplicity factor for parallel machine blocks."""
+    if count > 0:
+        return float(count)
+    else:
+        return 1.0
+
+
+def _get_transformer_tap_changer_type(typtr2: TypTr2) -> TapChangerTypes:
+    """Infer the VeraGrid tap-changer type from PowerFactory magnitude and phase data."""
+    if int(typtr2.itapch) == 0:
+        return TapChangerTypes.NoRegulation
+    else:
+        pass
+
+    phase_deg = float(typtr2.phitr)
+    phase_mod = math.fmod(abs(phase_deg), 180.0)
+    if abs(phase_mod) < 1e-9:
+        return TapChangerTypes.VoltageRegulation
+    else:
+        if abs(phase_mod - 90.0) < 1e-6:
+            return TapChangerTypes.Asymmetrical
+        else:
+            return TapChangerTypes.Symmetrical
+
+
+def _get_switch_impedance_in_pu(r_ohm: float, x_ohm: float, vnom_kv: float, sbase_mva: float) -> Tuple[float, float]:
+    """Convert switch impedance from ohms to per-unit."""
+    if vnom_kv <= 0.0 or sbase_mva <= 0.0:
+        return 1e-20, 1e-20
+    else:
+        pass
+
+    zbase_ohm = (vnom_kv * vnom_kv) / sbase_mva
+    if zbase_ohm <= 0.0:
+        return 1e-20, 1e-20
+    else:
+        pass
+
+    r_pu = float(r_ohm) / zbase_ohm
+    x_pu = float(x_ohm) / zbase_ohm
+
+    return r_pu, x_pu
+
+
+def _apply_parallel_line_scaling(line: dev.Line, parallel_count: int) -> None:
+    """Apply PowerFactory ``nlnum`` semantics for parallel uncoupled lines."""
+    if parallel_count <= 1:
+        pass
+    else:
+        line.R = float(line.R) / float(parallel_count)
+        line.X = float(line.X) / float(parallel_count)
+        line.R0 = float(line.R0) / float(parallel_count)
+        line.X0 = float(line.X0) / float(parallel_count)
+        line.R2 = float(line.R2) / float(parallel_count)
+        line.X2 = float(line.X2) / float(parallel_count)
+        line.B = float(line.B) * float(parallel_count)
+        line.B0 = float(line.B0) * float(parallel_count)
+        line.B2 = float(line.B2) * float(parallel_count)
+        line.rate = float(line.rate) * float(parallel_count)
+
+
+def _line_section_index_sort_key(section: ElmLnesec) -> float:
+    """Return the section ordering index as float."""
+    return float(section.index)
 
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
@@ -153,6 +250,11 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         ypos=float(-y),
         active=(int(elmterm.outserv or 0) == 0),
     )
+
+    if float(elmterm.vtarget) > 0.0:
+        bus.Vm0 = float(elmterm.vtarget)
+    else:
+        pass
 
     return bus
 
@@ -412,6 +514,11 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
                               short_circuit_voltage=float(typtr2.uktr),
                               gr_hv1=0.5,
                               gx_hv1=0.5,
+                              total_positions=max(1, int(typtr2.ntpmx) - int(typtr2.ntpmn) + 1),
+                              neutral_position=max(0, int(typtr2.nntap0) - int(typtr2.ntpmn)),
+                              dV=float(typtr2.dutap) / 100.0,
+                              asymmetry_angle=float(typtr2.phitr),
+                              tc_type=_get_transformer_tap_changer_type(typtr2=typtr2),
                               name=typtr2.loc_name)
 
     conn_hv = _convert_pf_tr2_connection(typtr2.tr2cn_h)
@@ -422,6 +529,11 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
 
     if conn_lv is not None:
         tpe.conn_lv = conn_lv
+    else:
+        pass
+
+    vector_group_number = int(round(float(typtr2.nt2ag))) % 12
+    tpe.vector_group_number = vector_group_number
 
     return tpe
 
@@ -508,6 +620,93 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
     return buses_sorted[0], buses_sorted[1], buses_sorted[2]
 
 
+def _apply_tr3_winding_connection_data(
+        winding: dev.Winding,
+        pf_connection_code: str,
+        pf_vector_group_angle: float,
+) -> None:
+    """Apply PowerFactory 3W winding connection data to an inner VeraGrid winding."""
+    external_connection = _convert_pf_tr2_connection(code=pf_connection_code)
+    if external_connection is not None:
+        winding.conn_f = WindingType.GroundedStar
+        winding.conn_t = external_connection
+    else:
+        pass
+
+    winding.vector_group_number = int(round(float(pf_vector_group_angle))) % 12
+
+
+def _apply_tr3_winding_tap_data(
+        winding: dev.Winding,
+        current_position: int,
+        neutral_position: int,
+        minimum_position: int,
+        maximum_position: int,
+        step_percent: float,
+        phase_angle_deg: float,
+) -> None:
+    """Apply PowerFactory 3W tap data to an internal VeraGrid winding."""
+    total_positions = int(maximum_position) - int(minimum_position) + 1
+    if total_positions <= 0:
+        return
+    else:
+        pass
+
+    tc_type = TapChangerTypes.VoltageRegulation
+    if abs(float(phase_angle_deg)) > 1e-12:
+        tc_type = TapChangerTypes.Symmetrical
+        if abs(abs(float(phase_angle_deg)) % 180.0 - 90.0) < 1e-6:
+            tc_type = TapChangerTypes.Asymmetrical
+        else:
+            pass
+    else:
+        pass
+
+    winding.tap_changer.total_positions = int(total_positions)
+    winding.tap_changer.neutral_position = max(0, int(neutral_position) - int(minimum_position))
+    winding.tap_changer.dV = float(step_percent) / 100.0
+    winding.tap_changer.asymmetry_angle = float(phase_angle_deg)
+    winding.tap_changer.tc_type = tc_type
+
+    tap_position = int(current_position) - int(minimum_position)
+    if tap_position < 0:
+        tap_position = 0
+    else:
+        pass
+    if tap_position >= winding.tap_changer.total_positions:
+        tap_position = winding.tap_changer.total_positions - 1
+    else:
+        pass
+    winding.tap_changer.tap_position = tap_position
+
+    if tc_type == TapChangerTypes.VoltageRegulation:
+        step = float(step_percent) / 100.0
+        tap = 1.0 + (int(current_position) - int(neutral_position)) * step
+        tap_min = 1.0 + (int(minimum_position) - int(neutral_position)) * step
+        tap_max = 1.0 + (int(maximum_position) - int(neutral_position)) * step
+
+        if tap_min > tap_max:
+            old_tap_min = tap_min
+            tap_min = tap_max
+            tap_max = old_tap_min
+        else:
+            pass
+
+        winding.tap_module = tap
+        winding.tap_phase = 0.0
+        winding.tap_module_min = tap_min
+        winding.tap_module_max = tap_max
+        winding.tap_phase_min = 0.0
+        winding.tap_phase_max = 0.0
+    else:
+        winding.tap_module = winding.tap_changer.get_tap_module()
+        winding.tap_phase = winding.tap_changer.get_tap_phase()
+        winding.tap_module_min = winding.tap_changer.get_tap_module_min()
+        winding.tap_module_max = winding.tap_changer.get_tap_module_max()
+        winding.tap_phase_min = winding.tap_changer.get_tap_phase_min()
+        winding.tap_phase_max = winding.tap_changer.get_tap_phase_max()
+
+
 def convert_dgs_to_transformer(tr2: ElmTr2,
                                buses: List[dev.Bus],
                                stacubic_dict: Dict[str, List[int]],
@@ -540,7 +739,11 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
         raise ValueError(f"No template for the transformer {tr2.ID}")
 
     # Resolve the raw TypTr2 (needed to parse tap settings: step/min/max/neutral)
-    typtr2_raw = typtr2_dict.get(tr2.typ_id, None)
+    typtr2_raw = _resolve_pointer_dict_value(key=tr2.typ_id, mapping=typtr2_dict)
+    if typtr2_raw is None:
+        raise ValueError(f"No raw TypTr2 data for the transformer {tr2.ID}")
+    else:
+        pass
 
     # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
     term_ids = get_terminal_ids(element_id=tr2.ID, cubics_by_objid=cubics_by_objid)
@@ -573,6 +776,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                               template=template)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
+    trafo.vector_group_number = int(round(float(typtr2_raw.nt2ag))) % 12
+    trafo.rate = float(trafo.rate) * float(tr2.ratfac)
 
     #   - TypTr2.dutap   : tap step in percent (%)
     #   - TypTr2.nntap0  : neutral position (integer)
@@ -581,37 +786,99 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     #   - TypTr2.tap_side: side where the tap-changer is located (typically 0=HV, 1=LV)
     #   - ElmTr2.nntap   : current position (integer)
 
-    step: float = float(typtr2_raw.dutap) / 100.0
-    n0: int = int(typtr2_raw.nntap0)
-    n: int = int(tr2.nntap)
+    if int(typtr2_raw.itapch) != 0 and trafo.tap_changer.total_positions > 0:
+        tap_position = int(tr2.nntap) - int(typtr2_raw.ntpmn)
+        if tap_position < 0:
+            tap_position = 0
+        else:
+            pass
+        if tap_position >= trafo.tap_changer.total_positions:
+            tap_position = trafo.tap_changer.total_positions - 1
+        else:
+            pass
 
-    tap: float = 1.0 + (n - n0) * step
-    tap_min: float = 1.0 + (int(typtr2_raw.ntpmn) - n0) * step
-    tap_max: float = 1.0 + (int(typtr2_raw.ntpmx) - n0) * step
+        trafo.tap_changer.tap_position = tap_position
 
-    # Ensure ordering for min/max (in case data is inverted in the source)
-    if tap_min > tap_max:
-        tap_min, tap_max = tap_max, tap_min
+        tc_type = _get_transformer_tap_changer_type(typtr2=typtr2_raw)
+        if tc_type == TapChangerTypes.VoltageRegulation:
+            step: float = float(typtr2_raw.dutap) / 100.0
+            neutral_position: int = int(typtr2_raw.nntap0)
+            current_position: int = int(tr2.nntap)
 
-    # If tap-changer is on LV side, move it to HV side by inversion to match VeraGrid model
-    if float(bus_vg_from.Vnom) >= float(bus_vg_to.Vnom):
-        hv_bus, lv_bus = bus_vg_from, bus_vg_to
+            tap: float = 1.0 + (current_position - neutral_position) * step
+            tap_min: float = 1.0 + (int(typtr2_raw.ntpmn) - neutral_position) * step
+            tap_max: float = 1.0 + (int(typtr2_raw.ntpmx) - neutral_position) * step
+
+            if tap_min > tap_max:
+                old_tap_min = tap_min
+                tap_min = tap_max
+                tap_max = old_tap_min
+            else:
+                pass
+
+            hv_bus: dev.Bus
+            lv_bus: dev.Bus
+            if float(bus_vg_from.Vnom) >= float(bus_vg_to.Vnom):
+                hv_bus = bus_vg_from
+                lv_bus = bus_vg_to
+            else:
+                hv_bus = bus_vg_to
+                lv_bus = bus_vg_from
+
+            if int(typtr2_raw.tap_side) == 0:
+                tap_on_bus = hv_bus
+            else:
+                tap_on_bus = lv_bus
+
+            if tap_on_bus is not bus_vg_from:
+                tap = 1.0 / tap
+                tap_min_inverted = 1.0 / tap_min
+                tap_max_inverted = 1.0 / tap_max
+                tap_min = min(tap_min_inverted, tap_max_inverted)
+                tap_max = max(tap_min_inverted, tap_max_inverted)
+            else:
+                pass
+
+            trafo.tap_module = tap
+            trafo.tap_phase = 0.0
+            trafo.tap_module_min = tap_min
+            trafo.tap_module_max = tap_max
+            trafo.tap_phase_min = 0.0
+            trafo.tap_phase_max = 0.0
+        else:
+            trafo.tap_module = trafo.tap_changer.get_tap_module()
+            trafo.tap_phase = trafo.tap_changer.get_tap_phase()
+            trafo.tap_module_min = trafo.tap_changer.get_tap_module_min()
+            trafo.tap_module_max = trafo.tap_changer.get_tap_module_max()
+            trafo.tap_phase_min = trafo.tap_changer.get_tap_phase_min()
+            trafo.tap_phase_max = trafo.tap_changer.get_tap_phase_max()
     else:
-        hv_bus, lv_bus = bus_vg_to, bus_vg_from
-    if int(typtr2_raw.tap_side) == 0:
-        tap_on_bus = hv_bus
-    else:
-        tap_on_bus = lv_bus
-    if tap_on_bus is not bus_vg_from:
-        tap = 1.0 / tap
-        tap_min_i = 1.0 / tap_min
-        tap_max_i = 1.0 / tap_max
-        tap_min = min(tap_min_i, tap_max_i)
-        tap_max = max(tap_min_i, tap_max_i)
+        pass
 
-    trafo.tap_module = tap
-    trafo.tap_module_min = tap_min
-    trafo.tap_module_max = tap_max
+    if int(tr2.ntrcn) != 0:
+        trafo.tap_module_control_mode = TapModuleControl.Vm
+        if float(tr2.usetp) > 0.0:
+            trafo.vset = float(tr2.usetp)
+        else:
+            pass
+    else:
+        pass
+
+    if float(typtr2_raw.uk0tr) > 0.0:
+        nominal_power = float(typtr2_raw.strn)
+        if nominal_power > 0.0:
+            z0_pu = (float(typtr2_raw.uk0tr) / 100.0) * (float(baseMVA) / nominal_power)
+            r0_pu = (float(typtr2_raw.ur0tr) / 100.0) * (float(baseMVA) / nominal_power)
+            x0_sq = max(0.0, z0_pu * z0_pu - r0_pu * r0_pu)
+            trafo.R0 = r0_pu
+            trafo.X0 = math.sqrt(x0_sq)
+        else:
+            pass
+    else:
+        pass
+
+    trafo.R2 = trafo.R
+    trafo.X2 = trafo.X
     # ---------------------------------------------------------------
 
     trafo.fix_inconsistencies(logger=logger, maximum_difference=0.1)
@@ -682,6 +949,50 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
         Sbase=float(baseMVA),
     )
 
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding1,
+        current_position=int(tr3.n3tap_h),
+        neutral_position=int(template.n3tp0_h),
+        minimum_position=int(template.n3tmn_h),
+        maximum_position=int(template.n3tmx_h),
+        step_percent=float(template.du3tp_h),
+        phase_angle_deg=float(template.ph3tr_h)
+    )
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding2,
+        current_position=int(tr3.n3tap_m),
+        neutral_position=int(template.n3tp0_m),
+        minimum_position=int(template.n3tmn_m),
+        maximum_position=int(template.n3tmx_m),
+        step_percent=float(template.du3tp_m),
+        phase_angle_deg=float(template.ph3tr_m)
+    )
+    _apply_tr3_winding_tap_data(
+        winding=trafo3w.winding3,
+        current_position=int(tr3.n3tap_l),
+        neutral_position=int(template.n3tp0_l),
+        minimum_position=int(template.n3tmn_l),
+        maximum_position=int(template.n3tmx_l),
+        step_percent=float(template.du3tp_l),
+        phase_angle_deg=float(template.ph3tr_l)
+    )
+
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding1,
+        pf_connection_code=str(template.tr3cn_h),
+        pf_vector_group_angle=float(template.nt3ag_h)
+    )
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding2,
+        pf_connection_code=str(template.tr3cn_m),
+        pf_vector_group_angle=float(template.nt3ag_m)
+    )
+    _apply_tr3_winding_connection_data(
+        winding=trafo3w.winding3,
+        pf_connection_code=str(template.tr3cn_l),
+        pf_vector_group_angle=float(template.nt3ag_l)
+    )
+
     return trafo3w
 
 
@@ -705,6 +1016,8 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
                                          cubics_by_objid: Dict[str, List[StaCubic]],
                                          bus_by_term_id: Dict[str, dev.Bus],
                                          switch_by_cubic_id: Dict[str, StaSwitch],
+                                         typ_switch_by_id: Dict[str, TypSwitch],
+                                         sbase_mva: float,
                                          logger: Logger) -> List[dev.Switch]:
     """
     Create VeraGrid Switch devices from ElmCoup.
@@ -780,6 +1093,22 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
                 )
 
         graphic_type: SwitchGraphicType = _convert_pf_switch_graphic_type(iuse=0, ausage=coup.aUsage)
+        typ_switch = _resolve_pointer_dict_value(key=coup.typ_id, mapping=typ_switch_by_id)
+        rated_current = 0.0
+        switch_r = 1e-20
+        switch_x = 1e-20
+
+        if typ_switch is not None:
+            rated_current = max(float(typ_switch.InomA), float(typ_switch.InomB))
+            bus_vnom = max(float(bus_from.Vnom), float(bus_to.Vnom))
+            switch_r, switch_x = _get_switch_impedance_in_pu(
+                r_ohm=float(typ_switch.Ron),
+                x_ohm=float(typ_switch.Xon),
+                vnom_kv=bus_vnom,
+                sbase_mva=sbase_mva
+            )
+        else:
+            pass
 
         sw = dev.Switch(
             bus_from=bus_from,
@@ -787,10 +1116,12 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
             name=coup.loc_name or f"ElmCoup_{coup_id}",
             idtag=coup_id,
             code=coup.typ_id,
+            r=switch_r,
+            x=switch_x,
             active=is_closed,
             normal_open=not is_closed,
             retained=False,
-            rated_current=0.0,
+            rated_current=rated_current,
             graphic_type=graphic_type
         )
 
@@ -891,6 +1222,7 @@ def convert_dgs_to_line(
         templates_dict: Dict[str, dev.SequenceLineType],
         overhead_line_type_dict: Dict[str, OverheadLineType],
         line_type_by_line_id: Dict[str, str],
+        line_sections_by_line_id: Dict[str, List[ElmLnesec]],
         tower_template_by_line_id: Dict[str, OverheadLineType],
         freq: float,
         baseMVA: float,
@@ -942,6 +1274,23 @@ def convert_dgs_to_line(
         length=lne.dline
     )
 
+    line_key = _ref_id(lne.ID)
+    if line_key is None or line_key == "":
+        line_key = str(lne.ID)
+    else:
+        pass
+    owned_sections = line_sections_by_line_id.get(line_key, list())
+    if len(owned_sections) > 0:
+        sections_length = 0.0
+        for section in owned_sections:
+            sections_length += float(section.dline)
+        if sections_length > 0.0:
+            line.length = sections_length
+        else:
+            pass
+    else:
+        pass
+
     # ------------------------------------------------------------
     # Apply the resolved template
     # ------------------------------------------------------------
@@ -992,12 +1341,102 @@ def convert_dgs_to_line(
         # typ_id is missing: rely on tower coupling template
         ohl_template = tower_template
 
-    if seq_template is not None:
+    applied_template = False
+    if len(owned_sections) > 0:
+        section_r = 0.0
+        section_x = 0.0
+        section_b = 0.0
+        section_r0 = 0.0
+        section_x0 = 0.0
+        section_b0 = 0.0
+        section_rate: float | None = None
+        section_template_found = False
+        bus_vnom = line.get_max_bus_nominal_voltage()
+
+        ordered_sections = sorted(owned_sections, key=_line_section_index_sort_key)
+        for section in ordered_sections:
+            seq_section_template = _resolve_pointer_dict_value(key=section.typ_id, mapping=templates_dict)
+            ohl_section_template = _resolve_pointer_dict_value(key=section.typ_id, mapping=overhead_line_type_dict)
+
+            if seq_section_template is not None:
+                section_template_found = True
+                values = seq_section_template.get_values(
+                    Sbase=baseMVA,
+                    freq=freq,
+                    length=float(section.dline),
+                    line_Vnom=bus_vnom
+                )
+                section_r += float(values[0])
+                section_x += float(values[1])
+                section_b += float(values[2])
+                section_r0 += float(values[3])
+                section_x0 += float(values[4])
+                section_b0 += float(values[5])
+                current_rate = float(values[6])
+            elif ohl_section_template is not None:
+                if not ohl_section_template.is_computed():
+                    ohl_section_template.compute()
+                else:
+                    pass
+                section_template_found = True
+                values = ohl_section_template.get_values(
+                    Sbase=baseMVA,
+                    length=float(section.dline),
+                    circuit_index=1,
+                    Vnom=bus_vnom
+                )
+                section_r += float(values[0])
+                section_x += float(values[1])
+                section_b += float(values[2])
+                section_r0 += float(values[3])
+                section_x0 += float(values[4])
+                section_b0 += float(values[5])
+                current_rate = float(values[6])
+            else:
+                current_rate = 0.0
+                logger.add_warning(
+                    "Line section type not found.",
+                    device=section.loc_name,
+                    device_class="ElmLnesec",
+                    value=str(section.typ_id)
+                )
+
+            if section_rate is None:
+                section_rate = current_rate
+            else:
+                if current_rate > 0.0:
+                    section_rate = min(section_rate, current_rate)
+                else:
+                    pass
+
+        if section_template_found:
+            line.R = section_r
+            line.X = section_x
+            line.B = section_b
+            line.R0 = section_r0
+            line.X0 = section_x0
+            line.B0 = section_b0
+            if section_rate is not None:
+                line.rate = section_rate
+            else:
+                pass
+            applied_template = True
+        else:
+            applied_template = False
+    elif seq_template is not None:
         line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
+        applied_template = True
     elif ohl_template is not None:
         # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
         line.set_circuit_idx(val=1, obj=ohl_template)
         line.apply_template(obj=ohl_template, Sbase=baseMVA, freq=freq, logger=logger)
+        applied_template = True
+    else:
+        pass
+
+    if applied_template:
+        _apply_parallel_line_scaling(line=line, parallel_count=int(lne.nlnum))
+        line.rate = float(line.rate) * float(lne.fline)
     else:
         pass
 
@@ -1207,16 +1646,21 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
     if int(elmgenstat.ip_ctrl) == 1:
         bus.is_slack = True
 
+    machine_multiplier = _get_pf_machine_multiplier(count=int(elmgenstat.ngnum))
+
     stagen = dev.StaticGenerator(
         name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
-        P=elmgenstat.pgini,
-        Q=elmgenstat.qgini,
+        P=float(elmgenstat.pgini) * machine_multiplier,
+        Q=float(elmgenstat.qgini) * machine_multiplier,
+        Snom=float(elmgenstat.sgn) * machine_multiplier,
         active=not bool(elmgenstat.outserv)
     )
 
     # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
     if int(elmgenstat.ip_ctrl) == 1:
-        stagen.bus.is_slack = True
+        bus.is_slack = True
+    else:
+        pass
 
     return bus, stagen
 
@@ -1236,19 +1680,29 @@ def convert_dgs_to_external_grid(elmxnet: ElmXnet,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
+    bustype = str(elmxnet.bustp).strip().upper()
     xgrid = dev.ExternalGrid(
         name=elmxnet.loc_name or f"Load_{_ref_id(elmxnet.ID)}",
         active=not bool(elmxnet.outserv)
     )
 
-    if elmxnet.bustp == b'SL':
+    if bustype == 'SL':
         bus.is_slack = True
+        xgrid.mode = ExternalGridMode.VD
         xgrid.Vm = elmxnet.usetp
+        xgrid.Va = math.radians(float(elmxnet.phiini))
 
-    elif elmxnet.bustp == b'PV':
+    elif bustype == 'PV':
+        xgrid.mode = ExternalGridMode.PV
+        xgrid.Vm = elmxnet.usetp
         xgrid.P = elmxnet.pgini
 
-    elif elmxnet.bustp == b'PQ':
+    elif bustype == 'PQ':
+        xgrid.mode = ExternalGridMode.PQ
+        xgrid.P = elmxnet.pgini
+        xgrid.Q = elmxnet.qgini
+    else:
+        xgrid.mode = ExternalGridMode.PQ
         xgrid.P = elmxnet.pgini
         xgrid.Q = elmxnet.qgini
 
@@ -1486,9 +1940,10 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
 
     b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
-    # DGS does not reliably encode automatic voltage control semantics for ElmShnt.
-    # Stepped shunts are imported as operator-controlled devices (no automatic regulation).
-    is_controlled: bool = False
+    if int(elmshnt.iswitch) != 0:
+        is_controlled = True
+    else:
+        is_controlled = False
     vset: float = float(elmshnt.usetp)
 
     cshunt: dev.ControllableShunt = dev.ControllableShunt(
@@ -1666,8 +2121,9 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     if typsym is None:
         typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
 
-    p_mw = elmsym.pgini
-    q_mvar = elmsym.qgini
+    machine_multiplier = _get_pf_machine_multiplier(count=int(elmsym.ngnum))
+    p_mw = float(elmsym.pgini) * machine_multiplier
+    q_mvar = float(elmsym.qgini) * machine_multiplier
 
     # Voltage control
     vset = elmsym.usetp
@@ -1690,26 +2146,40 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     # Nominal power
     snom = 9999.0
     if typsym is not None:
-        snom = typsym.sgn
+        snom = float(typsym.sgn) * machine_multiplier
+    else:
+        pass
 
     # Limits (q_min/q_max are often in p.u. on Sbase in DGS exports)
-    qmin_raw = elmsym.q_min
-    qmax_raw = elmsym.q_max
+    qmin_raw = float(elmsym.q_min)
+    qmax_raw = float(elmsym.q_max)
+    if qmin_raw == 0.0 and typsym is not None:
+        qmin_raw = float(typsym.q_min)
+    else:
+        pass
+    if qmax_raw == 0.0 and typsym is not None:
+        qmax_raw = float(typsym.q_max)
+    else:
+        pass
 
     qmin = _interpret_pu_limit(value=qmin_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
                                logger=logger, name=name, field="q_min")
     qmax = _interpret_pu_limit(value=qmax_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
                                logger=logger, name=name, field="q_max")
+    qmin *= machine_multiplier
+    qmax *= machine_multiplier
 
     # Optional P limits if present in schema
-    pmin = elmsym.Pmin_uc
-    pmax = elmsym.Pmax_uc
+    pmin = float(elmsym.Pmin_uc)
+    pmax = float(elmsym.Pmax_uc)
 
     # Interpret P limits if they look like p.u. too
     pmin = _interpret_pu_limit(value=pmin, baseMVA=baseMVA, reference_abs=abs(p_mw),
                                logger=logger, name=name, field="Pmin_uc")
     pmax = _interpret_pu_limit(value=pmax, baseMVA=baseMVA, reference_abs=abs(p_mw),
                                logger=logger, name=name, field="Pmax_uc")
+    pmin *= machine_multiplier
+    pmax *= machine_multiplier
 
     gen = dev.Generator(name=name,
                         P=p_mw,
@@ -1732,6 +2202,20 @@ def convert_dgs_to_generator(elmsym: ElmSym,
         if r1 != 0.0 or x1 != 0.0:
             gen.R1 = float(r1)
             gen.X1 = float(x1)
+        else:
+            pass
+
+        if float(typsym.r0sy) != 0.0 or float(typsym.x0sy) != 0.0:
+            gen.R0 = float(typsym.r0sy)
+            gen.X0 = float(typsym.x0sy)
+        else:
+            pass
+
+        if float(typsym.r2sy) != 0.0 or float(typsym.x2sy) != 0.0:
+            gen.R2 = float(typsym.r2sy)
+            gen.X2 = float(typsym.x2sy)
+        else:
+            pass
 
     return bus, gen
 
@@ -1765,8 +2249,9 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    p_mw: float = float(elmasm.pgini)
-    q_mvar: float = float(elmasm.qgini)
+    machine_multiplier = _get_pf_machine_multiplier(count=int(elmasm.ngnum))
+    p_mw: float = float(elmasm.pgini) * machine_multiplier
+    q_mvar: float = float(elmasm.qgini) * machine_multiplier
 
     # Deduce power factor from P and Q
     # For a PQ generator in VeraGrid: Q ~= P * sqrt(1/Pf^2 - 1)
@@ -1811,11 +2296,11 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
     if typasmo is not None:
         # Prefer nominal apparent power if present
         if typasmo.sgn != 0.0:
-            snom = float(typasmo.sgn)
+            snom = float(typasmo.sgn) * machine_multiplier
         else:
             # Fallback: if cosn is available, estimate S from Pn/cosn
             if typasmo.pgn != 0.0 and typasmo.cosn != 0.0:
-                snom = float(typasmo.pgn / typasmo.cosn)
+                snom = float(typasmo.pgn / typasmo.cosn) * machine_multiplier
     else:
         # Fallback to operating point apparent power if non-zero
         s_op: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
@@ -1983,6 +2468,13 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         tid = _ref_id(typasmo.ID)
         if tid is not None:
             typasmo_dict[tid] = typasmo
+
+    typ_switch_dict: Dict[str, TypSwitch] = dict()
+    for typ_switch in dgs_grid.typswitches:
+        typ_switch_dict[typ_switch.ID] = typ_switch
+        tid = _ref_id(typ_switch.ID)
+        if tid is not None:
+            typ_switch_dict[tid] = typ_switch
 
     # Generators
     for elmsym in dgs_grid.elmsyms:
@@ -2176,6 +2668,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     # In some cases, ElmLnesec.fold_id references an IntFolder chain; we climb until we reach an ElmLne.
     # ------------------------------------------------------------
     line_type_by_line_id: Dict[str, str] = dict()
+    line_sections_by_line_id: Dict[str, List[ElmLnesec]] = dict()
 
     # Fast lookup of line IDs (raw and normalized)
     line_ids: Set[str] = set()
@@ -2263,6 +2756,19 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             if oid is not None and oid != "":
                 line_type_by_line_id[oid] = typ_id
 
+            normalized_owner_id = _ref_id(owner_line_id)
+            if normalized_owner_id is None or normalized_owner_id == "":
+                normalized_owner_id = owner_line_id
+            else:
+                pass
+            owned_sections = line_sections_by_line_id.get(normalized_owner_id, None)
+            if owned_sections is None:
+                line_sections_by_line_id[normalized_owner_id] = list()
+                owned_sections = line_sections_by_line_id[normalized_owner_id]
+            else:
+                pass
+            owned_sections.append(sec)
+
     # ------------------------------------------------------------
     # Tower coupling helper: ElmTow may define the line template (TypTow) instead of ElmLne.typ_id.
     # We build a direct mapping Line.ID -> OverheadLineType so convert_dgs_to_line can proceed
@@ -2322,6 +2828,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             templates_dict=typlne_dict,
             overhead_line_type_dict=overhead_line_type_dict,
             line_type_by_line_id=line_type_by_line_id,
+            line_sections_by_line_id=line_sections_by_line_id,
             tower_template_by_line_id=tower_template_by_line_id,
             freq=frequency,
             baseMVA=baseMVA,
@@ -2449,6 +2956,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         cubics_by_objid=cubics_by_objid,
         bus_by_term_id=bus_by_term_id,
         switch_by_cubic_id=switch_by_cubic_id,
+        typ_switch_by_id=typ_switch_dict,
+        sbase_mva=baseMVA,
         logger=logger
     )
 
