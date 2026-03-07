@@ -396,15 +396,19 @@ class Line(BranchParent):
         """
         # If the user is setting the circuit index, ensure that the template exists and is valid
         if obj is None:
-            raise Exception("Template must be set before changing the circuit index.")
+            raise ValueError("Template must be set before changing the circuit index.")
+
         if not isinstance(obj, (OverheadLineType, UndergroundLineType, SequenceLineType)):
-            raise Exception(
-                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType.")
+            raise ValueError(
+                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType."
+            )
+
         if isinstance(obj, OverheadLineType):
             if val > obj.n_circuits:
-                raise Exception("Circuit index exceeds the number of circuits in the template.")
+                raise ValueError("Circuit index exceeds the number of circuits in the template.")
+
         if val <= 0:
-            raise Exception("Circuit index must be greater than 0.")
+            raise ValueError("Circuit index must be greater than 0.")
         else:
             if val > 0:
                 self._circuit_idx = int(val)
@@ -426,43 +430,9 @@ class Line(BranchParent):
         """
         self.set_length(val)
 
-    # @BranchParent.rms_model.setter
-    # def rms_model(self, value: DynamicModelHost):
-    #     if isinstance(value, DynamicModelHost):
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.g,
-    #             Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.b,
-    #             Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.bsh,
-    #             Const(self.B)
-    #         )
-    #         self._rms_model = value
-
     @BranchParent.emt_model.setter
     def emt_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
-            # TODO: add here line properties !?!
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.g,
-            #     Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.b,
-            #     Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.bsh,
-            #     Const(self.B)
-            # )
             self._emt_model = value
 
     def set_length(self, val: float):

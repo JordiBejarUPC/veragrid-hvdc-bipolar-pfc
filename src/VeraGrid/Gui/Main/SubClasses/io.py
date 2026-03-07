@@ -47,7 +47,7 @@ class IoMain(ConfigurationMain):
         @param parent:
         """
 
-        # create main window
+        # create the main window
         ConfigurationMain.__init__(self, parent)
 
         self.rosetta_gui: Union[RosetaExplorerGUI, None] = None

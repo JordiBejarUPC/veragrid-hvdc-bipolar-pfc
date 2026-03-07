@@ -436,7 +436,14 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
     vc = float(bus_c.Vnom)
 
     if va == 0.0 or vb == 0.0 or vc == 0.0:
-        logger.add_warning(f"Transformer3W '{tr_name}': one or more buses have Vnom=0.0 (va={va}, vb={vb}, vc={vc}).")
+
+        logger.add_warning(
+            f"one or more buses have Vnom=0.0",
+            device=tr_name,
+            device_class="Transformer3W",
+            value=f"(va={va}, vb={vb}, vc={vc})"
+        )
+
         return bus_a, bus_b, bus_c
 
     buses: List[dev.Bus] = [bus_a, bus_b, bus_c]
@@ -448,7 +455,10 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
 
     if v0 == v1 or v1 == v2:
         logger.add_warning(
-            f"Transformer3W '{tr_name}': HV/MV/LV ambiguous (Vnom={v0}, {v1}, {v2}). Keeping Vnom-based ordering."
+            f"HV/MV/LV ambiguous, keeping Vnom-based ordering ",
+            device=tr_name,
+            device_class="Transformer3W",
+            value=f"(va={va}, vb={vb}, vc={vc})"
         )
 
     return buses_sorted[0], buses_sorted[1], buses_sorted[2]
@@ -556,6 +566,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     trafo.tap_module_min = tap_min
     trafo.tap_module_max = tap_max
     # ---------------------------------------------------------------
+
+    trafo.fix_inconsistencies(logger=logger, maximum_difference=0.1)
 
     return trafo
 
@@ -675,8 +687,11 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
 
         if len(term_ids) != 2:
             logger.add_warning(
-                f"ElmCoup '{coup.loc_name}' (ID={coup.ID}) skipped: "
-                f"expected 2 terminals, got {len(term_ids)}."
+                f"Not exactly 2 terminals.",
+                device=coup.ID,
+                device_class="ElmCoup",
+                value=str(len(term_ids)),
+                expected_value="2"
             )
             continue
 
@@ -686,7 +701,9 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
         # Skip degenerate cases
         if bus_from is bus_to:
             logger.add_warning(
-                f"ElmCoup '{coup.loc_name}' (ID={coup.ID}) skipped: both ends connect to the same bus."
+                f"Both ends connect to the same bus.",
+                device=coup.ID,
+                device_class="ElmCoup"
             )
             continue
 
@@ -708,10 +725,11 @@ def convert_dgs_to_switches_from_elmcoup(elmcoups: List[ElmCoup],
             stasw_closed: bool = (int(stasw.on_off) != 0)
             if stasw_closed != is_closed:
                 logger.add_warning(
-                    f"ElmCoup '{coup.loc_name}' (ID={coup.ID}) state differs from StaSwitch "
-                    f"'{stasw.loc_name}' (ID={stasw.ID}): "
-                    f"ElmCoup.on_off={int(coup.on_off)} vs StaSwitch.on_off={int(stasw.on_off)}. "
-                    f"Using ElmCoup.on_off as truth."
+                    f"state differs from StaSwitch. Using ElmCoup.on_off as truth.",
+                    device=coup.ID,
+                    device_class="ElmCoup",
+                    value=int(coup.on_off),
+                    expected_value=int(stasw.on_off)
                 )
 
         graphic_type: SwitchGraphicType = _convert_pf_switch_graphic_type(iuse=0, ausage=coup.aUsage)
@@ -788,7 +806,9 @@ def convert_dgs_to_switch(stasw: StaSwitch,
     term_ids: List[str] = get_terminal_ids(element_id=stasw.ID, cubics_by_objid=cubics_by_objid)
     if len(term_ids) != 2:
         logger.add_warning(
-            f"StaSwitch '{stasw.loc_name}' (ID={stasw.ID}) skipped: not connected to exactly 2 terminals."
+            f"not connected to exactly 2 terminals.",
+            device=f"'{stasw.loc_name}' (ID={stasw.ID})",
+            device_class="StaSwitch",
         )
         return None
 
@@ -831,7 +851,8 @@ def convert_dgs_to_line(
         cubics_by_objid: Dict[str, List[StaCubic]],
         bus_by_term_id: Dict[str, dev.Bus]
 ) -> dev.Line:
-    """Convert a PowerFactory/DGS ElmLne into a VeraGrid Line.
+    """
+    Convert a PowerFactory/DGS ElmLne into a VeraGrid Line.
 
     Template resolution order
     -------------------------
@@ -845,62 +866,7 @@ def convert_dgs_to_line(
     - This function must not reference the DGS container (dgs_grid). All required mappings are passed in.
     """
 
-    # ------------------------------------------------------------
-    # Resolve typ_id (some PF exports store the type in ElmLnesec instead of ElmLne).
-    # If the line is part of an ElmTow (tower coupling), it may legitimately have no typ_id.
-    # In that case, we defer the template to the tower mapping.
-    # ------------------------------------------------------------
-    typ_id: str | None = lne.typ_id
-    if typ_id is None or typ_id == "":
-        # Try raw line ID and normalized pointer ID
-        typ_id = line_type_by_line_id.get(lne.ID, None)
-        if typ_id is None or typ_id == "":
-            lid = _ref_id(lne.ID)
-            if lid is not None and lid != "":
-                typ_id = line_type_by_line_id.get(lid, None)
 
-    # Tower-derived template (ElmTow -> TypTow). This is used only when typ_id is missing.
-    tower_template: OverheadLineType | None = None
-    if typ_id is None or typ_id == "":
-        tower_template = tower_template_by_line_id.get(lne.ID, None)
-        if tower_template is None:
-            lid = _ref_id(lne.ID)
-            if lid is not None and lid != "":
-                tower_template = tower_template_by_line_id.get(lid, None)
-
-    if (typ_id is None or typ_id == "") and tower_template is None:
-        raise ValueError(
-            f"ElmLne '{lne.loc_name}' (ID={lne.ID}): missing typ_id in ElmLne and no ElmLnesec fallback found."
-        )
-
-    # ------------------------------------------------------------
-    # Resolve the line template (TypLne or TypTow)
-    # ------------------------------------------------------------
-    seq_template: dev.SequenceLineType | None = None
-    ohl_template: OverheadLineType | None = None
-
-    if typ_id is not None and typ_id != "":
-        seq_template = templates_dict.get(typ_id, None)
-        if seq_template is None:
-            tid = _ref_id(typ_id)
-            if tid is not None and tid != "":
-                seq_template = templates_dict.get(tid, None)
-
-        if seq_template is None:
-            ohl_template = overhead_line_type_dict.get(typ_id, None)
-            if ohl_template is None:
-                tid = _ref_id(typ_id)
-                if tid is not None and tid != "":
-                    ohl_template = overhead_line_type_dict.get(tid, None)
-    else:
-        # typ_id is missing: rely on tower coupling template
-        ohl_template = tower_template
-
-    if seq_template is None and ohl_template is None:
-        raise ValueError(
-            f"ElmLne '{lne.loc_name}' (ID={lne.ID}): no line template found for typ_id='{typ_id}'. "
-            f"Expected TypLne (SequenceLineType) or TypTow (OverheadLineType)."
-        )
 
     # ------------------------------------------------------------
     # Connectivity via StaCubic.fold_id -> ElmTerm.ID (preferred)
@@ -932,12 +898,61 @@ def convert_dgs_to_line(
     # ------------------------------------------------------------
     # Apply the resolved template
     # ------------------------------------------------------------
+
+    # ------------------------------------------------------------
+    # Resolve typ_id (some PF exports store the type in ElmLnesec instead of ElmLne).
+    # If the line is part of an ElmTow (tower coupling), it may legitimately have no typ_id.
+    # In that case, we defer the template to the tower mapping.
+    # ------------------------------------------------------------
+    typ_id: str | None = lne.typ_id
+    if typ_id is None or typ_id == "":
+        # Try raw line ID and normalized pointer ID
+        typ_id = line_type_by_line_id.get(lne.ID, None)
+        if typ_id is None or typ_id == "":
+            lid = _ref_id(lne.ID)
+            if lid is not None and lid != "":
+                typ_id = line_type_by_line_id.get(lid, None)
+
+    # Tower-derived template (ElmTow -> TypTow). This is used only when typ_id is missing.
+    tower_template: OverheadLineType | None = None
+    if typ_id is None or typ_id == "":
+        tower_template = tower_template_by_line_id.get(lne.ID, None)
+        if tower_template is None:
+            lid = _ref_id(lne.ID)
+            if lid is not None and lid != "":
+                tower_template = tower_template_by_line_id.get(lid, None)
+
+    # ------------------------------------------------------------
+    # Resolve the line template (TypLne or TypTow)
+    # ------------------------------------------------------------
+    seq_template: dev.SequenceLineType | None = None
+    ohl_template: OverheadLineType | None = None
+
+    if typ_id is not None and typ_id != "":
+        seq_template = templates_dict.get(typ_id, None)
+        if seq_template is None:
+            tid = _ref_id(typ_id)
+            if tid is not None and tid != "":
+                seq_template = templates_dict.get(tid, None)
+
+        if seq_template is None:
+            ohl_template = overhead_line_type_dict.get(typ_id, None)
+            if ohl_template is None:
+                tid = _ref_id(typ_id)
+                if tid is not None and tid != "":
+                    ohl_template = overhead_line_type_dict.get(tid, None)
+    else:
+        # typ_id is missing: rely on tower coupling template
+        ohl_template = tower_template
+
     if seq_template is not None:
         line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
-    else:
+    elif ohl_template is not None:
         # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
         line.set_circuit_idx(val=1, obj=ohl_template)
         line.apply_template(obj=ohl_template, Sbase=baseMVA, freq=freq, logger=logger)
+    else:
+        pass
 
     return line
 
@@ -1053,7 +1068,12 @@ def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
 
     # Heuristic: values > 10 are very likely percentages (e.g., 100 = 100%)
     if s > 10.0:
-        logger.add_warning(f"Load '{name}': scale0={s} looks like percent. Interpreting as {s / 100.0}.")
+        logger.add_warning(
+            f"looks like percent.",
+            device=name,
+            device_class="ElmLod",
+            value=s,
+        )
         return s / 100.0
 
     return s
@@ -1079,7 +1099,12 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
             p = s * cosphi
             sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
             q = s * sinphi
-            logger.add_warning(f"Load '{name}': P/Q not provided, derived from slini/coslini.")
+            logger.add_warning(
+                f"P/Q not provided, derived from slini/coslini.",
+                device=name,
+                device_class="ElmLod",
+                value=q,
+            )
 
     # Apply scaling
     scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
@@ -1269,7 +1294,9 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
             g_mw = 0.0
             b_mvar = 0.0
             logger.add_warning(
-                f"Shunt '{name}': can not be computed."
+                f"Cannot be computed because of zero division.",
+                device=name,
+                device_class="ElmShnt"
             )
 
     elif shtype == 4:  # R-L-C1-C2,Rp
@@ -1293,62 +1320,19 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
             g_mw = 0.0
             b_mvar = 0.0
             logger.add_warning(
-                f"Shunt '{name}': can not be computed."
+                f"Cannot be computed because of zero division.",
+                device=name,
+                device_class="ElmShnt"
             )
     else:
         g_mw = 0.0
         b_mvar = 0.0
         logger.add_warning(
-            f"Shunt '{name}': can not be computed."
+            f"Cannot be computed because of type not recognized.",
+            device=name,
+            device_class="ElmShnt",
+            value=shtype
         )
-
-    # -----------------------------------------------------------------------------------------------------------------
-    # OLD
-    # -----------------------------------------------------------------------------------------------------------------
-
-    # # Default to 0.0 in case the element is not energized or data is missing
-    # b_mvar: float = 0.0
-    #
-    # # Prefer total rating when available, but apply sign from shtype (PF export often stores magnitude)
-    # if qtotn != 0.0:
-    #     b_mvar = abs(qtotn)
-    # else:
-    #     if shtype == 1:
-    #         # Reactor
-    #         b_mvar = abs(elmshnt.qrean)
-    #     elif shtype == 2:
-    #         # Capacitor (may be step-based)
-    #         q_step: float = elmshnt.qcapn
-    #         n_on: int = elmshnt.ncapa
-    #         if n_on <= 0:
-    #             n_on = 1
-    #         b_mvar = abs(q_step) * float(n_on)
-    #     else:
-    #         # Fallback: net MVAr = qcapn - qrean
-    #         q_step: float = elmshnt.qcapn
-    #         n_on: int = elmshnt.ncapa
-    #         if n_on <= 0:
-    #             n_on = 1
-    #         b_mvar = (q_step * float(n_on)) - elmshnt.qrean
-    #
-    # # Apply sign convention
-    # if shtype == 1:
-    #     b_mvar = -abs(b_mvar)
-    # elif shtype == 2:
-    #     b_mvar = abs(b_mvar)
-    # # else: keep computed sign (fallback branch)
-    #
-    # if b_mvar == 0.0:
-    #     logger.add_warning(
-    #         f"Shunt '{name}': computed B=0.0 MVAr (shtype={shtype}, qcapn={elmshnt.qcapn}, ncapa={elmshnt.ncapa}, qrean={elmshnt.qrean}, qtotn={qtotn})."
-    #     )
-    #
-    # if elmshnt.grea == 0:
-    #     # If active losses are not provided in the common DGS export, assume 0.0 MW @ v=1 p.u.
-    #     g_mw: float = 0.0
-    # else:
-    #     # grea is the quality factor, and the conductance can be found.
-    #     g_mw: float = -b_mvar / elmshnt.grea
 
     return g_mw, b_mvar
 
@@ -1397,8 +1381,12 @@ def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndar
     qtotn: float = float(elmshnt.qtotn)
     if q_step == 0.0 and qtotn != 0.0:
         q_step = qtotn / float(ncapx)
+
         logger.add_warning(
-            f"ElmShnt '{name}': qcapn=0.0 but qtotn={qtotn}; using q_step=qtotn/ncapx={q_step}."
+            f"using q_step=qtotn/ncapx.",
+            device=name,
+            device_class="ElmShnt",
+            value=q_step
         )
 
     # Step increments: [0.0, q_step, q_step, ..., q_step] with length ncapx+1
@@ -1578,7 +1566,14 @@ def _interpret_pu_limit(value: float,
     # Heuristic: if |value| is small while reference magnitude is clearly in MW/MVAr,
     # then it is very likely a p.u. value and we scale by baseMVA.
     if abs(v) <= 5.0 and baseMVA > 0.0:
-        logger.add_warning(f"Generator '{name}': {field}={v} looks like p.u. on Sbase. Interpreting as {v * baseMVA}.")
+
+        logger.add_warning(
+            f"Interpreting set point as not in p.u.",
+            device=name,
+            device_class="Generator",
+            value=v * baseMVA
+        )
+
         return v * baseMVA
 
     return v
@@ -1739,18 +1734,22 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
         # We keep Pf=1.0 and warn if Q is not zero.
         pf = 1.0
         if abs_q > 0.0:
+
             logger.add_warning(
-                f"ElmAsm '{name}' has P=0 with Q={q_mvar}. "
-                f"PQ Generator in VeraGrid cannot encode reactive power when P=0 using only Pf. "
-                f"Using Pf=1.0."
+                f"PQ Generator in VeraGrid cannot encode reactive power when P=0 using only Pf. Using pf=1.0",
+                device=name,
+                device_class="ElmAsm",
+                value=q_mvar
             )
 
     # If P and Q signs differ, VeraGrid Pf-only representation cannot match that sign combination
     if p_mw * q_mvar < 0.0:
+
         logger.add_warning(
-            f"ElmAsm '{name}' has P and Q with opposite sign (P={p_mw}, Q={q_mvar}). "
-            f"VeraGrid PQ Generator stores reactive via Pf magnitude only. "
-            f"Computed Pf from |P| and |Q| (Pf={pf})."
+            f"P and Q with opposite sign cannot be handled",
+            device=name,
+            device_class="ElmAsm",
+            value=q_mvar
         )
 
     # Resolve Snom from TypAsmo if available
@@ -2037,7 +2036,11 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Loads (LV)
     if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:
-        logger.add_warning("ElmLodlv/ElmLodlvp found but not converted: no P/Q fields available in DGS schema.")
+
+        logger.add_warning(
+            f"ElmLodlv/ElmLodlvp found but no P/Q fields available in DGS schema",
+            device_class="ElmLodlv/ElmLodlvp",
+        )
 
     # Line types
     typlne_dict: Dict[str, dev.SequenceLineType] = dict()
@@ -2238,11 +2241,15 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if len(term_ids) != 2:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmlne.ID), None)
             if bus_ids is None or len(bus_ids) != 2:
+
                 logger.add_warning(
-                    f"ElmLne '{elmlne.loc_name}' (ID={elmlne.ID}) skipped: "
-                    f"not connected to exactly 2 terminals (StaCubic terminals={len(term_ids)}). "
-                    f"typ_id='{elmlne.typ_id}'."
+                    f"not connected to exactly 2 terminals",
+                    device=f"{elmlne.loc_name}' (ID={elmlne.ID}) ",
+                    device_class="ElmLne",
+                    value=len(term_ids),
+                    expected_value="2"
                 )
+
                 continue
 
         line = convert_dgs_to_line(
@@ -2283,12 +2290,23 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             continue
 
         if len(elmtow.pGeo) == 0:
-            logger.add_warning(f"ElmTow '{elmtow.loc_name}': no pGeo specified, skipping tower binding.")
+            logger.add_warning(
+                f"no pGeo specified, skipping tower binding",
+                device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
+                device_class="ElmTow"
+            )
+
             continue
 
         geo_ptr = elmtow.pGeo[0]
         if geo_ptr is None:
-            logger.add_warning(f"ElmTow '{elmtow.loc_name}': pGeo[0] is empty, skipping tower binding.")
+
+            logger.add_warning(
+                f"pGeo[0] is empty, skipping tower binding",
+                device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
+                device_class="ElmTow"
+            )
+
             continue
 
         geo_id = _ref_id(geo_ptr)
@@ -2297,7 +2315,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             ohl_type = overhead_line_type_dict.get(geo_ptr)
 
         if ohl_type is None:
-            logger.add_warning(f"ElmTow '{elmtow.loc_name}': referenced tower type '{geo_ptr}' not found.")
+
+            logger.add_warning(
+                f"referenced tower type not found",
+                device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
+                device_class="ElmTow",
+                value=str(geo_ptr)
+            )
+
             continue
 
         for idx, line_ptr in enumerate(elmtow.plines):
@@ -2310,13 +2335,25 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 api_line = line_by_dgs_id.get(line_ptr)
 
             if api_line is None:
-                logger.add_warning(f"ElmTow '{elmtow.loc_name}': referenced line '{line_ptr}' not found.")
+
+                logger.add_warning(
+                    f"referenced line type not found",
+                    device=f"{elmtow.loc_name}' (ID={elmtow.ID}) ",
+                    device_class="ElmTow",
+                    value=str(line_ptr)
+                )
+
                 continue
 
             # VeraGrid OverheadLineType uses a 1-based circuit index.
-            circuit_idx = int(idx) + 1
-            api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
             api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
+
+            circuit_idx = int(idx) + 1
+
+            try:
+                api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
+            except ValueError as e:
+                logger.add_warning(str(e), device_class="ElmLne", device=api_line.name)
 
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:
@@ -2384,19 +2421,24 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         # Skip invalid 3W transformers: missing template reference or not fully connected
         tr3_typ_id: str | None = _ref_id(elmtr3.typ_id)
         if tr3_typ_id is None or tr3_typ_id == "":
+
             logger.add_warning(
-                f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
-                f"skipped: missing typ_id (no TypTr3 reference in DGS)."
+                f"missing typ_id (no TypTr3 reference in DGS)",
+                device=f"{elmtr3.loc_name}' (ID={elmtr3.ID}) ",
+                device_class="Transformer3W",
             )
+
             continue
 
         term_ids: List[str] = get_terminal_ids(element_id=elmtr3.ID, cubics_by_objid=cubics_by_objid)
         if len(term_ids) != 3:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
             if bus_ids is None or len(bus_ids) != 3:
+
                 logger.add_warning(
-                    f"Transformer3W '{elmtr3.loc_name}' (ID={elmtr3.ID}) "
-                    f"skipped: not connected to exactly 3 terminals."
+                    f"Not connected to exactly 3 terminals",
+                    device=f"{elmtr3.loc_name}' (ID={elmtr3.ID}) ",
+                    device_class="Transformer3W",
                 )
                 continue
 
