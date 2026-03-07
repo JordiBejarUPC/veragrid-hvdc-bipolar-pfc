@@ -69,12 +69,50 @@ def _get_non_empty_name(name: str | None, default_value: str) -> str:
         return default_value
 
 
-def _get_pf_machine_multiplier(count: int) -> float:
-    """Return the multiplicity factor for parallel machine blocks."""
-    if count > 0:
-        return float(count)
+def _get_parallel_device_count(count: int) -> int:
+    """
+    Return the number of explicit VeraGrid devices to create.
+
+    :param count: DGS parallel-unit count
+    :return: Number of explicit devices to instantiate
+    """
+    if count > 1:
+        return int(count)
     else:
-        return 1.0
+        return 1
+
+
+def _get_parallel_device_name(base_name: str, parallel_index: int, parallel_count: int) -> str:
+    """
+    Build the explicit device name for a parallel-unit copy.
+
+    :param base_name: Base DGS device name
+    :param parallel_index: Zero-based copy index
+    :param parallel_count: Total number of parallel copies
+    :return: Explicit device name
+    """
+    if parallel_count <= 1:
+        return base_name
+    else:
+        return f"{base_name} ({parallel_index + 1})"
+
+
+def _get_parallel_device_idtag(base_id: str | None, parallel_index: int, parallel_count: int) -> str | None:
+    """
+    Build the explicit idtag for a parallel-unit copy.
+
+    :param base_id: Base DGS identifier
+    :param parallel_index: Zero-based copy index
+    :param parallel_count: Total number of parallel copies
+    :return: Explicit idtag or ``None``
+    """
+    if base_id is None or base_id == "":
+        return None
+    else:
+        if parallel_count <= 1:
+            return base_id
+        else:
+            return f"{base_id}:{parallel_index + 1}"
 
 
 def _get_transformer_tap_changer_type(typtr2: TypTr2) -> TapChangerTypes:
@@ -93,6 +131,113 @@ def _get_transformer_tap_changer_type(typtr2: TypTr2) -> TapChangerTypes:
             return TapChangerTypes.Asymmetrical
         else:
             return TapChangerTypes.Symmetrical
+
+
+def _get_safe_tap_value(value: float, fallback_value: float) -> float:
+    """
+    Return a strictly positive finite tap value.
+
+    VeraGrid branch tap modules cannot be zero or negative because they are
+    used in denominators during branch admittance assembly.
+
+    :param value: Candidate imported tap value
+    :param fallback_value: Safe fallback value from the discrete tap changer
+    :return: Positive finite tap value
+    """
+    minimum_positive_value: float = 1e-6
+    fallback: float = float(fallback_value)
+    if not math.isfinite(fallback) or fallback <= 0.0:
+        fallback = 1.0
+    else:
+        pass
+
+    candidate: float = float(value)
+    if not math.isfinite(candidate):
+        return fallback
+    else:
+        pass
+
+    if candidate <= 0.0:
+        return fallback
+    else:
+        pass
+
+    if candidate < minimum_positive_value:
+        return minimum_positive_value
+    else:
+        return candidate
+
+
+def _sanitize_tap_window(
+        tap_value: float,
+        tap_min_value: float,
+        tap_max_value: float,
+        fallback_tap_value: float,
+        fallback_tap_min_value: float,
+        fallback_tap_max_value: float,
+) -> Tuple[float, float, float]:
+    """
+    Normalize a tap module and its range into a valid positive interval.
+
+    :param tap_value: Imported current tap module
+    :param tap_min_value: Imported minimum tap module
+    :param tap_max_value: Imported maximum tap module
+    :param fallback_tap_value: Fallback current tap module from the tap changer
+    :param fallback_tap_min_value: Fallback minimum tap module from the tap changer
+    :param fallback_tap_max_value: Fallback maximum tap module from the tap changer
+    :return: Sanitized current, minimum and maximum tap modules
+    """
+    safe_tap_min: float = _get_safe_tap_value(tap_min_value, fallback_tap_min_value)
+    safe_tap_max: float = _get_safe_tap_value(tap_max_value, fallback_tap_max_value)
+
+    if safe_tap_min > safe_tap_max:
+        original_minimum: float = safe_tap_min
+        safe_tap_min = safe_tap_max
+        safe_tap_max = original_minimum
+    else:
+        pass
+
+    safe_tap: float = _get_safe_tap_value(tap_value, fallback_tap_value)
+    if safe_tap < safe_tap_min:
+        safe_tap = safe_tap_min
+    else:
+        pass
+
+    if safe_tap > safe_tap_max:
+        safe_tap = safe_tap_max
+    else:
+        pass
+
+    return safe_tap, safe_tap_min, safe_tap_max
+
+
+def _apply_branch_tap_state(
+        branch: dev.Transformer2W,
+        tap_value: float,
+        tap_phase: float,
+        tap_min_value: float,
+        tap_max_value: float,
+        tap_phase_min: float,
+        tap_phase_max: float,
+) -> None:
+    """
+    Apply a full tap state to a VeraGrid transformer-like branch.
+
+    :param branch: Target transformer or winding
+    :param tap_value: Current tap module
+    :param tap_phase: Current tap phase
+    :param tap_min_value: Minimum tap module
+    :param tap_max_value: Maximum tap module
+    :param tap_phase_min: Minimum tap phase
+    :param tap_phase_max: Maximum tap phase
+    :return: None
+    """
+    branch.tap_module = float(tap_value)
+    branch.tap_phase = float(tap_phase)
+    branch.tap_module_min = float(tap_min_value)
+    branch.tap_module_max = float(tap_max_value)
+    branch.tap_phase_min = float(tap_phase_min)
+    branch.tap_phase_max = float(tap_phase_max)
 
 
 def _get_switch_impedance_in_pu(r_ohm: float, x_ohm: float, vnom_kv: float, sbase_mva: float) -> Tuple[float, float]:
@@ -114,26 +259,65 @@ def _get_switch_impedance_in_pu(r_ohm: float, x_ohm: float, vnom_kv: float, sbas
     return r_pu, x_pu
 
 
-def _apply_parallel_line_scaling(line: dev.Line, parallel_count: int) -> None:
-    """Apply PowerFactory ``nlnum`` semantics for parallel uncoupled lines."""
-    if parallel_count <= 1:
-        pass
-    else:
-        line.R = float(line.R) / float(parallel_count)
-        line.X = float(line.X) / float(parallel_count)
-        line.R0 = float(line.R0) / float(parallel_count)
-        line.X0 = float(line.X0) / float(parallel_count)
-        line.R2 = float(line.R2) / float(parallel_count)
-        line.X2 = float(line.X2) / float(parallel_count)
-        line.B = float(line.B) * float(parallel_count)
-        line.B0 = float(line.B0) * float(parallel_count)
-        line.B2 = float(line.B2) * float(parallel_count)
-        line.rate = float(line.rate) * float(parallel_count)
-
-
 def _line_section_index_sort_key(section: ElmLnesec) -> float:
     """Return the section ordering index as float."""
     return float(section.index)
+
+
+def _get_unique_name_mapping(lines: List[ElmLne], use_characteristic_name: bool) -> Dict[str, str]:
+    """Build a line-name mapping only for names that are unique in the DGS."""
+    counts: Dict[str, int] = dict()
+    values: Dict[str, str] = dict()
+    for line in lines:
+        if use_characteristic_name:
+            name = str(line.chr_name)
+        else:
+            name = str(line.loc_name)
+        if name == "":
+            continue
+        counts[name] = counts.get(name, 0) + 1
+        values[name] = _ref_id(line.ID) or line.ID
+
+    mapping: Dict[str, str] = dict()
+    for name, count in counts.items():
+        if count == 1:
+            mapping[name] = values[name]
+        else:
+            pass
+    return mapping
+
+
+def _resolve_line_section_owner_id(section: ElmLnesec,
+                                   line_ids: Set[str],
+                                   folder_parent: Dict[str, str],
+                                   line_id_by_loc_name: Dict[str, str],
+                                   line_id_by_chr_name: Dict[str, str]) -> str:
+    """Resolve the owning line of a section using folder ancestry and unique-name fallback."""
+    current = _ref_id(section.fold_id) or str(section.fold_id)
+    if current != "":
+        for _ in range(25):
+            if current in line_ids:
+                return current
+            parent_ptr = folder_parent.get(current, "")
+            if parent_ptr == "":
+                break
+            current = _ref_id(parent_ptr) or parent_ptr
+    else:
+        pass
+
+    if section.loc_name != "":
+        owner_line_id = line_id_by_loc_name.get(section.loc_name, "")
+        if owner_line_id != "":
+            return owner_line_id
+        else:
+            pass
+    else:
+        pass
+
+    if section.chr_name != "":
+        return line_id_by_chr_name.get(section.chr_name, "")
+    else:
+        return ""
 
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
@@ -679,32 +863,53 @@ def _apply_tr3_winding_tap_data(
         pass
     winding.tap_changer.tap_position = tap_position
 
+    fallback_tap: float = winding.tap_changer.get_tap_module()
+    fallback_tap_min: float = winding.tap_changer.get_tap_module_min()
+    fallback_tap_max: float = winding.tap_changer.get_tap_module_max()
+
     if tc_type == TapChangerTypes.VoltageRegulation:
         step = float(step_percent) / 100.0
         tap = 1.0 + (int(current_position) - int(neutral_position)) * step
         tap_min = 1.0 + (int(minimum_position) - int(neutral_position)) * step
         tap_max = 1.0 + (int(maximum_position) - int(neutral_position)) * step
 
-        if tap_min > tap_max:
-            old_tap_min = tap_min
-            tap_min = tap_max
-            tap_max = old_tap_min
-        else:
-            pass
+        tap, tap_min, tap_max = _sanitize_tap_window(
+            tap_value=tap,
+            tap_min_value=tap_min,
+            tap_max_value=tap_max,
+            fallback_tap_value=fallback_tap,
+            fallback_tap_min_value=fallback_tap_min,
+            fallback_tap_max_value=fallback_tap_max,
+        )
 
-        winding.tap_module = tap
-        winding.tap_phase = 0.0
-        winding.tap_module_min = tap_min
-        winding.tap_module_max = tap_max
-        winding.tap_phase_min = 0.0
-        winding.tap_phase_max = 0.0
+        _apply_branch_tap_state(
+            branch=winding,
+            tap_value=tap,
+            tap_phase=0.0,
+            tap_min_value=tap_min,
+            tap_max_value=tap_max,
+            tap_phase_min=0.0,
+            tap_phase_max=0.0,
+        )
     else:
-        winding.tap_module = winding.tap_changer.get_tap_module()
-        winding.tap_phase = winding.tap_changer.get_tap_phase()
-        winding.tap_module_min = winding.tap_changer.get_tap_module_min()
-        winding.tap_module_max = winding.tap_changer.get_tap_module_max()
-        winding.tap_phase_min = winding.tap_changer.get_tap_phase_min()
-        winding.tap_phase_max = winding.tap_changer.get_tap_phase_max()
+        tap_value, tap_min_value, tap_max_value = _sanitize_tap_window(
+            tap_value=fallback_tap,
+            tap_min_value=fallback_tap_min,
+            tap_max_value=fallback_tap_max,
+            fallback_tap_value=fallback_tap,
+            fallback_tap_min_value=fallback_tap_min,
+            fallback_tap_max_value=fallback_tap_max,
+        )
+
+        _apply_branch_tap_state(
+            branch=winding,
+            tap_value=tap_value,
+            tap_phase=winding.tap_changer.get_tap_phase(),
+            tap_min_value=tap_min_value,
+            tap_max_value=tap_max_value,
+            tap_phase_min=winding.tap_changer.get_tap_phase_min(),
+            tap_phase_max=winding.tap_changer.get_tap_phase_max(),
+        )
 
 
 def convert_dgs_to_transformer(tr2: ElmTr2,
@@ -716,7 +921,9 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                                baseMVA: float,
                                logger: Logger,
                                cubics_by_objid: Dict[str, List[StaCubic]],
-                               bus_by_term_id: Dict[str, dev.Bus]) -> dev.Transformer2W:
+                               bus_by_term_id: Dict[str, dev.Bus],
+                               parallel_index: int = 0,
+                               parallel_count: int = 1) -> dev.Transformer2W:
     """
     Convert ElmTr2 to Transformer2W
     :param tr2: ElmTr2
@@ -770,10 +977,15 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     else:
         bus_vg_from, bus_vg_to = _order_hv_lv(bus_a=bus_from, bus_b=bus_to, logger=logger, tr_name=tr2.loc_name)
 
-    trafo = dev.Transformer2W(bus_from=bus_vg_from, bus_to=bus_vg_to,
-                              name=tr2.loc_name,
-                              active=not tr2.outserv,
-                              template=template)
+    transformer_name = _get_non_empty_name(tr2.loc_name, f"Transformer_{_ref_id(tr2.ID)}")
+    transformer_name = _get_parallel_device_name(transformer_name, parallel_index, parallel_count)
+    transformer_idtag = _get_parallel_device_idtag(_ref_id(tr2.ID), parallel_index, parallel_count)
+
+    trafo = dev.Transformer2W(bus_from=bus_vg_from,
+                              bus_to=bus_vg_to,
+                              name=transformer_name,
+                              idtag=transformer_idtag,
+                              active=not tr2.outserv)
 
     trafo.apply_template(obj=template, Sbase=baseMVA, logger=logger)
     trafo.vector_group_number = int(round(float(typtr2_raw.nt2ag))) % 12
@@ -798,6 +1010,10 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             pass
 
         trafo.tap_changer.tap_position = tap_position
+
+        fallback_tap: float = trafo.tap_changer.get_tap_module()
+        fallback_tap_min: float = trafo.tap_changer.get_tap_module_min()
+        fallback_tap_max: float = trafo.tap_changer.get_tap_module_max()
 
         tc_type = _get_transformer_tap_changer_type(typtr2=typtr2_raw)
         if tc_type == TapChangerTypes.VoltageRegulation:
@@ -839,19 +1055,43 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             else:
                 pass
 
-            trafo.tap_module = tap
-            trafo.tap_phase = 0.0
-            trafo.tap_module_min = tap_min
-            trafo.tap_module_max = tap_max
-            trafo.tap_phase_min = 0.0
-            trafo.tap_phase_max = 0.0
+            tap, tap_min, tap_max = _sanitize_tap_window(
+                tap_value=tap,
+                tap_min_value=tap_min,
+                tap_max_value=tap_max,
+                fallback_tap_value=fallback_tap,
+                fallback_tap_min_value=fallback_tap_min,
+                fallback_tap_max_value=fallback_tap_max,
+            )
+
+            _apply_branch_tap_state(
+                branch=trafo,
+                tap_value=tap,
+                tap_phase=0.0,
+                tap_min_value=tap_min,
+                tap_max_value=tap_max,
+                tap_phase_min=0.0,
+                tap_phase_max=0.0,
+            )
         else:
-            trafo.tap_module = trafo.tap_changer.get_tap_module()
-            trafo.tap_phase = trafo.tap_changer.get_tap_phase()
-            trafo.tap_module_min = trafo.tap_changer.get_tap_module_min()
-            trafo.tap_module_max = trafo.tap_changer.get_tap_module_max()
-            trafo.tap_phase_min = trafo.tap_changer.get_tap_phase_min()
-            trafo.tap_phase_max = trafo.tap_changer.get_tap_phase_max()
+            tap_value, tap_min_value, tap_max_value = _sanitize_tap_window(
+                tap_value=fallback_tap,
+                tap_min_value=fallback_tap_min,
+                tap_max_value=fallback_tap_max,
+                fallback_tap_value=fallback_tap,
+                fallback_tap_min_value=fallback_tap_min,
+                fallback_tap_max_value=fallback_tap_max,
+            )
+
+            _apply_branch_tap_state(
+                branch=trafo,
+                tap_value=tap_value,
+                tap_phase=trafo.tap_changer.get_tap_phase(),
+                tap_min_value=tap_min_value,
+                tap_max_value=tap_max_value,
+                tap_phase_min=trafo.tap_changer.get_tap_phase_min(),
+                tap_phase_max=trafo.tap_changer.get_tap_phase_max(),
+            )
     else:
         pass
 
@@ -893,13 +1133,17 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
                                  baseMVA: float,
                                  logger: Logger,
                                  cubics_by_objid: Dict[str, List[StaCubic]],
-                                 bus_by_term_id: Dict[str, dev.Bus]) -> dev.Transformer3W:
+                                 bus_by_term_id: Dict[str, dev.Bus],
+                                 parallel_index: int = 0,
+                                 parallel_count: int = 1) -> dev.Transformer3W:
     """
     Convert ElmTr3 to Transformer3W using TypTr3 as template for design values.
     """
-    template = templates_dict.get(tr3.typ_id, None)
+    template = _resolve_pointer_dict_value(key=tr3.typ_id, mapping=templates_dict)
     if template is None:
-        template = templates_dict.get(_ref_id(tr3.typ_id), None)
+        raise ValueError(f"No TypTr3 data for transformer {tr3.ID}")
+    else:
+        pass
 
     # Check connectivity through robust StaCubic.fold_id mapping first (preferred)
     term_ids = get_terminal_ids(element_id=tr3.ID, cubics_by_objid=cubics_by_objid)
@@ -923,7 +1167,12 @@ def convert_dgs_to_transformer3w(tr3: ElmTr3,
     x = (float(bus_hv.x) + float(bus_mv.x) + float(bus_lv.x)) / 3.0
     y = (float(bus_hv.y) + float(bus_mv.y) + float(bus_lv.y)) / 3.0
 
-    trafo3w = dev.Transformer3W(name=tr3.loc_name,
+    transformer_name = _get_non_empty_name(tr3.loc_name, f"Transformer3W_{_ref_id(tr3.ID)}")
+    transformer_name = _get_parallel_device_name(transformer_name, parallel_index, parallel_count)
+    transformer_idtag = _get_parallel_device_idtag(_ref_id(tr3.ID), parallel_index, parallel_count)
+
+    trafo3w = dev.Transformer3W(name=transformer_name,
+                                idtag=transformer_idtag,
                                 bus1=bus_hv,
                                 bus2=bus_mv,
                                 bus3=bus_lv,
@@ -1228,7 +1477,9 @@ def convert_dgs_to_line(
         baseMVA: float,
         logger: Logger,
         cubics_by_objid: Dict[str, List[StaCubic]],
-        bus_by_term_id: Dict[str, dev.Bus]
+        bus_by_term_id: Dict[str, dev.Bus],
+        parallel_index: int = 0,
+        parallel_count: int = 1
 ) -> dev.Line:
     """
     Convert a PowerFactory/DGS ElmLne into a VeraGrid Line.
@@ -1266,10 +1517,15 @@ def convert_dgs_to_line(
         bus_by_term_id=bus_by_term_id
     )
 
+    line_name = _get_non_empty_name(lne.loc_name, f"Line_{_ref_id(lne.ID)}")
+    line_name = _get_parallel_device_name(line_name, parallel_index, parallel_count)
+    line_idtag = _get_parallel_device_idtag(_ref_id(lne.ID), parallel_index, parallel_count)
+
     line = dev.Line(
         bus_from=bus_from,
         bus_to=bus_to,
-        name=lne.loc_name,
+        name=line_name,
+        idtag=line_idtag,
         active=not lne.outserv,
         length=lne.dline
     )
@@ -1364,7 +1620,8 @@ def convert_dgs_to_line(
                     Sbase=baseMVA,
                     freq=freq,
                     length=float(section.dline),
-                    line_Vnom=bus_vnom
+                    line_Vnom=bus_vnom,
+                    decimals_rounding=16  # basically not rounding
                 )
                 section_r += float(values[0])
                 section_x += float(values[1])
@@ -1401,6 +1658,7 @@ def convert_dgs_to_line(
                     value=str(section.typ_id)
                 )
 
+            current_rate = current_rate * float(section.fline)
             if section_rate is None:
                 section_rate = current_rate
             else:
@@ -1435,7 +1693,6 @@ def convert_dgs_to_line(
         pass
 
     if applied_template:
-        _apply_parallel_line_scaling(line=line, parallel_count=int(lne.nlnum))
         line.rate = float(line.rate) * float(lne.fline)
     else:
         pass
@@ -1632,7 +1889,9 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
                               buses: List[dev.Bus],
                               logger: Logger,
                               cubics_by_objid: Dict[str, List[StaCubic]],
-                              bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.StaticGenerator]:
+                              bus_by_term_id: Dict[str, dev.Bus],
+                              parallel_index: int = 0,
+                              parallel_count: int = 1) -> Tuple[dev.Bus, dev.StaticGenerator]:
     """
     Convert ElmGenstat to VeraGrid Load.
     """
@@ -1646,13 +1905,16 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
     if int(elmgenstat.ip_ctrl) == 1:
         bus.is_slack = True
 
-    machine_multiplier = _get_pf_machine_multiplier(count=int(elmgenstat.ngnum))
+    generator_name = _get_non_empty_name(elmgenstat.loc_name, f"StaticGen_{_ref_id(elmgenstat.ID)}")
+    generator_name = _get_parallel_device_name(generator_name, parallel_index, parallel_count)
+    generator_idtag = _get_parallel_device_idtag(_ref_id(elmgenstat.ID), parallel_index, parallel_count)
 
     stagen = dev.StaticGenerator(
-        name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
-        P=float(elmgenstat.pgini) * machine_multiplier,
-        Q=float(elmgenstat.qgini) * machine_multiplier,
-        Snom=float(elmgenstat.sgn) * machine_multiplier,
+        name=generator_name,
+        idtag=generator_idtag,
+        P=float(elmgenstat.pgini),
+        Q=float(elmgenstat.qgini),
+        Snom=float(elmgenstat.sgn),
         active=not bool(elmgenstat.outserv)
     )
 
@@ -1882,9 +2144,18 @@ def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndar
     name: str = elmshnt.loc_name or _ref_id(elmshnt.ID) or "ElmShnt"
     ncapx: int = int(elmshnt.ncapx)
     q_step: float = float(elmshnt.qcapn)
+    if q_step == 0.0:
+        q_step = -abs(float(elmshnt.qrean))
+    else:
+        pass
+
     qtotn: float = float(elmshnt.qtotn)
     if q_step == 0.0 and qtotn != 0.0:
         q_step = qtotn / float(ncapx)
+        if int(elmshnt.shtype) == 1:
+            q_step = -abs(q_step)
+        else:
+            pass
 
         logger.add_warning(
             f"using q_step=qtotn/ncapx.",
@@ -1892,14 +2163,22 @@ def _build_elmshnt_step_model(elmshnt: ElmShnt, logger: Logger) -> Tuple[np.ndar
             device_class="ElmShnt",
             value=q_step
         )
+    else:
+        pass
 
     # Step increments: [0.0, q_step, q_step, ..., q_step] with length ncapx+1
     b_steps: np.ndarray = np.concatenate((np.array([0.0], dtype=float), np.full(ncapx, q_step, dtype=float)))
 
     # Initial step index equals the number of connected steps (ncapa) because b_steps[0] is OFF (0 MVAr).
-    n_on: int = int(elmshnt.ncapa)
-
-    initial_step: int = n_on
+    initial_step: int = int(elmshnt.ncapa)
+    if initial_step < 0:
+        initial_step = 0
+    else:
+        pass
+    if initial_step > ncapx:
+        initial_step = ncapx
+    else:
+        pass
 
     # Bounds (MVAr @ v=1 p.u.) inferred from the step size sign
     total: float = q_step * float(ncapx)
@@ -2091,7 +2370,9 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                              baseMVA: float,
                              logger: Logger,
                              cubics_by_objid: Dict[str, List[StaCubic]],
-                             bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
+                             bus_by_term_id: Dict[str, dev.Bus],
+                             parallel_index: int = 0,
+                             parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
     """
     Convert ElmSym to VeraGrid Generator.
     :param elmsym:
@@ -2104,7 +2385,9 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     :param bus_by_term_id:
     :return:
     """
-    name = elmsym.loc_name or f"Gen_{_ref_id(elmsym.ID)}"
+    name = _get_non_empty_name(elmsym.loc_name, f"Gen_{_ref_id(elmsym.ID)}")
+    name = _get_parallel_device_name(name, parallel_index, parallel_count)
+    generator_idtag = _get_parallel_device_idtag(_ref_id(elmsym.ID), parallel_index, parallel_count)
 
     bus = get_injection_bus(elm_id=elmsym.ID,
                             stacubic_dict=stacubic_dict,
@@ -2121,9 +2404,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     if typsym is None:
         typsym = typsym_dict.get(_ref_id(elmsym.typ_id), None)
 
-    machine_multiplier = _get_pf_machine_multiplier(count=int(elmsym.ngnum))
-    p_mw = float(elmsym.pgini) * machine_multiplier
-    q_mvar = float(elmsym.qgini) * machine_multiplier
+    p_mw = float(elmsym.pgini)
+    q_mvar = float(elmsym.qgini)
 
     # Voltage control
     vset = elmsym.usetp
@@ -2146,7 +2428,7 @@ def convert_dgs_to_generator(elmsym: ElmSym,
     # Nominal power
     snom = 9999.0
     if typsym is not None:
-        snom = float(typsym.sgn) * machine_multiplier
+        snom = float(typsym.sgn)
     else:
         pass
 
@@ -2166,8 +2448,6 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                                logger=logger, name=name, field="q_min")
     qmax = _interpret_pu_limit(value=qmax_raw, baseMVA=baseMVA, reference_abs=abs(q_mvar),
                                logger=logger, name=name, field="q_max")
-    qmin *= machine_multiplier
-    qmax *= machine_multiplier
 
     # Optional P limits if present in schema
     pmin = float(elmsym.Pmin_uc)
@@ -2178,10 +2458,9 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                                logger=logger, name=name, field="Pmin_uc")
     pmax = _interpret_pu_limit(value=pmax, baseMVA=baseMVA, reference_abs=abs(p_mw),
                                logger=logger, name=name, field="Pmax_uc")
-    pmin *= machine_multiplier
-    pmax *= machine_multiplier
 
     gen = dev.Generator(name=name,
+                        idtag=generator_idtag,
                         P=p_mw,
                         power_factor=pf,
                         vset=vset,
@@ -2227,7 +2506,9 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                                  baseMVA: float,
                                  logger: Logger,
                                  cubics_by_objid: Dict[str, List[StaCubic]],
-                                 bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.Generator]:
+                                 bus_by_term_id: Dict[str, dev.Bus],
+                                 parallel_index: int = 0,
+                                 parallel_count: int = 1) -> Tuple[dev.Bus, dev.Generator]:
     """
     Convert ElmAsm (asynchronous machine) to VeraGrid Generator.
 
@@ -2238,9 +2519,9 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
     - If P and Q have opposite sign, VeraGrid cannot reproduce that sign combination using only Pf.
       In that case we log a warning and compute Pf from magnitudes.
     """
-    name: str = elmasm.loc_name
-    if name == "":
-        name = f"ElmAsm_{_ref_id(elmasm.ID)}"
+    name = _get_non_empty_name(elmasm.loc_name, f"ElmAsm_{_ref_id(elmasm.ID)}")
+    name = _get_parallel_device_name(name, parallel_index, parallel_count)
+    generator_idtag = _get_parallel_device_idtag(_ref_id(elmasm.ID), parallel_index, parallel_count)
 
     # Bus resolution must be StaCubic-based (PowerFactory connectivity)
     bus = get_injection_bus(elm_id=elmasm.ID,
@@ -2249,9 +2530,8 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    machine_multiplier = _get_pf_machine_multiplier(count=int(elmasm.ngnum))
-    p_mw: float = float(elmasm.pgini) * machine_multiplier
-    q_mvar: float = float(elmasm.qgini) * machine_multiplier
+    p_mw: float = float(elmasm.pgini)
+    q_mvar: float = float(elmasm.qgini)
 
     # Deduce power factor from P and Q
     # For a PQ generator in VeraGrid: Q ~= P * sqrt(1/Pf^2 - 1)
@@ -2296,11 +2576,11 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
     if typasmo is not None:
         # Prefer nominal apparent power if present
         if typasmo.sgn != 0.0:
-            snom = float(typasmo.sgn) * machine_multiplier
+            snom = float(typasmo.sgn)
         else:
             # Fallback: if cosn is available, estimate S from Pn/cosn
             if typasmo.pgn != 0.0 and typasmo.cosn != 0.0:
-                snom = float(typasmo.pgn / typasmo.cosn) * machine_multiplier
+                snom = float(typasmo.pgn / typasmo.cosn)
     else:
         # Fallback to operating point apparent power if non-zero
         s_op: float = math.sqrt(p_mw * p_mw + q_mvar * q_mvar)
@@ -2309,6 +2589,7 @@ def convert_dgs_to_asm_generator(elmasm: ElmAsm,
 
     # ElmAsm should behave as PQ (no voltage control)
     gen = dev.Generator(name=name,
+                        idtag=generator_idtag,
                         P=p_mw,
                         power_factor=pf,
                         vset=1.0,
@@ -2478,33 +2759,41 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Generators
     for elmsym in dgs_grid.elmsyms:
-        bus, gen = convert_dgs_to_generator(
-            elmsym=elmsym,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            typsym_dict=typsym_dict,
-            baseMVA=baseMVA,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmsym.ngnum))
+        for parallel_index in range(parallel_count):
+            bus, gen = convert_dgs_to_generator(
+                elmsym=elmsym,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                typsym_dict=typsym_dict,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        grid.add_generator(bus=bus, api_obj=gen)
+            grid.add_generator(bus=bus, api_obj=gen)
 
     # Asynchronous machines (ElmAsm) -> model as PQ Generators
     for elmasm in dgs_grid.elmasms:
-        bus, gen = convert_dgs_to_asm_generator(
-            elmasm=elmasm,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            typasmo_dict=typasmo_dict,
-            baseMVA=baseMVA,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmasm.ngnum))
+        for parallel_index in range(parallel_count):
+            bus, gen = convert_dgs_to_asm_generator(
+                elmasm=elmasm,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                typasmo_dict=typasmo_dict,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        grid.add_generator(bus=bus, api_obj=gen)
+            grid.add_generator(bus=bus, api_obj=gen)
 
     # Loads
     for elmlod in dgs_grid.elmlods:
@@ -2521,16 +2810,20 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Loads
     for elmgenstat in dgs_grid.elmgenstats:
-        bus, stagen = convert_dgs_to_static_gen(
-            elmgenstat=elmgenstat,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmgenstat.ngnum))
+        for parallel_index in range(parallel_count):
+            bus, stagen = convert_dgs_to_static_gen(
+                elmgenstat=elmgenstat,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        grid.add_static_generator(bus=bus, api_obj=stagen)
+            grid.add_static_generator(bus=bus, api_obj=stagen)
 
     # external grids
     for eg in dgs_grid.elmxnets:
@@ -2689,85 +2982,51 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         if fid is not None and fid != "":
             folder_parent[fid] = folder.fold_id
 
-    # Name-based helper maps. Some PF exports place ElmLnesec under folders that are not in the
-    # IntFolder chain of the ElmLne, so fold_id climbing cannot reach the line. In that case,
-    # the best available fallback is matching by loc_name / chr_name.
-    line_id_by_loc_name: Dict[str, str] = dict()
-    line_id_by_chr_name: Dict[str, str] = dict()
-    for elmlne in dgs_grid.elmlnes:
-        if elmlne.loc_name != "":
-            line_id_by_loc_name[elmlne.loc_name] = _ref_id(elmlne.ID) or elmlne.ID
-        if elmlne.chr_name != "":
-            line_id_by_chr_name[elmlne.chr_name] = _ref_id(elmlne.ID) or elmlne.ID
+    line_id_by_loc_name: Dict[str, str] = _get_unique_name_mapping(
+        lines=dgs_grid.elmlnes,
+        use_characteristic_name=False
+    )
+    line_id_by_chr_name: Dict[str, str] = _get_unique_name_mapping(
+        lines=dgs_grid.elmlnes,
+        use_characteristic_name=True
+    )
 
     # Resolve each section to its owning line by climbing the folder chain
     for sec in dgs_grid.elmlnesecs:
         if sec.typ_id == "":
             continue
 
-        current = sec.fold_id
-        if current == "":
+        owner_line_id = _resolve_line_section_owner_id(
+            section=sec,
+            line_ids=line_ids,
+            folder_parent=folder_parent,
+            line_id_by_loc_name=line_id_by_loc_name,
+            line_id_by_chr_name=line_id_by_chr_name
+        )
+        if owner_line_id == "":
+            logger.add_warning(
+                "Could not resolve owning line for line section.",
+                device=sec.loc_name,
+                device_class="ElmLnesec",
+                value=str(sec.ID)
+            )
             continue
+        else:
+            pass
 
-        cur = _ref_id(current)
-        if cur is None or cur == "":
-            cur = current
+        typ_id = _ref_id(sec.typ_id) or sec.typ_id
+        line_type_by_line_id[owner_line_id] = typ_id
 
-        owner_line_id: str = ""
-        for _ in range(25):
-            if cur in line_ids:
-                owner_line_id = cur
-                break
+        normalized_owner_id = _ref_id(owner_line_id) or owner_line_id
+        line_type_by_line_id[normalized_owner_id] = typ_id
 
-            parent_ptr = folder_parent.get(cur)
-            if parent_ptr is None or parent_ptr == "":
-                break
-
-            nxt = _ref_id(parent_ptr)
-            if nxt is not None and nxt != "":
-                cur = nxt
-            else:
-                cur = parent_ptr
-
-        if owner_line_id == "":
-            # Fallback: try matching by section names.
-            if sec.loc_name != "" and sec.loc_name in line_id_by_loc_name:
-                owner_line_id = line_id_by_loc_name[sec.loc_name]
-            elif sec.chr_name != "" and sec.chr_name in line_id_by_chr_name:
-                owner_line_id = line_id_by_chr_name[sec.chr_name]
-
-        if owner_line_id == "":
-            # Name-based fallback: try to match the section to a line by loc_name or chr_name.
-            # This is used only if the folder-climb mechanism cannot resolve ownership.
-            if sec.loc_name != "":
-                owner_line_id = line_id_by_loc_name.get(sec.loc_name, "")
-            if owner_line_id == "" and sec.chr_name != "":
-                owner_line_id = line_id_by_chr_name.get(sec.chr_name, "")
-
-        if owner_line_id != "":
-            tid = _ref_id(sec.typ_id)
-            if tid is not None and tid != "":
-                typ_id = tid
-            else:
-                typ_id = sec.typ_id
-            line_type_by_line_id[owner_line_id] = typ_id
-            # Store a normalized key too, because lne.ID might come with or without PF path prefix.
-            oid = _ref_id(owner_line_id)
-            if oid is not None and oid != "":
-                line_type_by_line_id[oid] = typ_id
-
-            normalized_owner_id = _ref_id(owner_line_id)
-            if normalized_owner_id is None or normalized_owner_id == "":
-                normalized_owner_id = owner_line_id
-            else:
-                pass
-            owned_sections = line_sections_by_line_id.get(normalized_owner_id, None)
-            if owned_sections is None:
-                line_sections_by_line_id[normalized_owner_id] = list()
-                owned_sections = line_sections_by_line_id[normalized_owner_id]
-            else:
-                pass
-            owned_sections.append(sec)
+        owned_sections = line_sections_by_line_id.get(normalized_owner_id, None)
+        if owned_sections is None:
+            line_sections_by_line_id[normalized_owner_id] = list()
+            owned_sections = line_sections_by_line_id[normalized_owner_id]
+        else:
+            pass
+        owned_sections.append(sec)
 
     # ------------------------------------------------------------
     # Tower coupling helper: ElmTow may define the line template (TypTow) instead of ElmLne.typ_id.
@@ -2798,7 +3057,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 tower_template_by_line_id[lid] = ohl_type
 
     # lines
-    line_by_dgs_id: Dict[str, dev.Line] = dict()
+    line_by_dgs_id: Dict[str, List[dev.Line]] = dict()
     for elmlne in dgs_grid.elmlnes:
 
         # ------------------------------------------------------------
@@ -2821,37 +3080,41 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
                 continue
 
-        line = convert_dgs_to_line(
-            lne=elmlne,
-            buses=grid.buses,
-            stacubic_dict=stacubic_dict,
-            templates_dict=typlne_dict,
-            overhead_line_type_dict=overhead_line_type_dict,
-            line_type_by_line_id=line_type_by_line_id,
-            line_sections_by_line_id=line_sections_by_line_id,
-            tower_template_by_line_id=tower_template_by_line_id,
-            freq=frequency,
-            baseMVA=baseMVA,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmlne.nlnum))
+        for parallel_index in range(parallel_count):
+            line = convert_dgs_to_line(
+                lne=elmlne,
+                buses=grid.buses,
+                stacubic_dict=stacubic_dict,
+                templates_dict=typlne_dict,
+                overhead_line_type_dict=overhead_line_type_dict,
+                line_type_by_line_id=line_type_by_line_id,
+                line_sections_by_line_id=line_sections_by_line_id,
+                tower_template_by_line_id=tower_template_by_line_id,
+                freq=frequency,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        # Optional grouping metadata...
-        fold_id = _ref_id(elmlne.fold_id)
-        if fold_id is not None and fold_id != "":
-            bg = branch_group_by_id.get(fold_id)
-            if bg is not None:
-                line.group = bg
+            # Optional grouping metadata...
+            fold_id = _ref_id(elmlne.fold_id)
+            if fold_id is not None and fold_id != "":
+                bg = branch_group_by_id.get(fold_id)
+                if bg is not None:
+                    line.group = bg
 
-        grid.add_line(obj=line, logger=logger)
+            grid.add_line(obj=line, logger=logger)
 
-        lid_raw = elmlne.ID
-        lid = _ref_id(lid_raw)
-        if lid is not None:
-            line_by_dgs_id[lid] = line
-        if lid_raw is not None and lid_raw != "":
-            line_by_dgs_id[lid_raw] = line
+            lid_raw = elmlne.ID
+            lid = _ref_id(lid_raw)
+            if lid is not None:
+                line_by_dgs_id.setdefault(lid, list()).append(line)
+            if lid_raw is not None and lid_raw != "":
+                line_by_dgs_id.setdefault(lid_raw, list()).append(line)
 
     # Tower coupling (ElmTow): bind the created Line objects to OverheadLineType templates.
     # IMPORTANT: the Line objects must exist first (created above).
@@ -2900,11 +3163,11 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 continue
 
             line_id = _ref_id(line_ptr)
-            api_line = line_by_dgs_id.get(line_id)
-            if api_line is None:
-                api_line = line_by_dgs_id.get(line_ptr)
+            api_lines = line_by_dgs_id.get(line_id, list())
+            if len(api_lines) == 0:
+                api_lines = line_by_dgs_id.get(line_ptr, list())
 
-            if api_line is None:
+            if len(api_lines) == 0:
 
                 logger.add_warning(
                     f"referenced line type not found",
@@ -2915,15 +3178,14 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
                 continue
 
-            # VeraGrid OverheadLineType uses a 1-based circuit index.
-            api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
-
             circuit_idx = int(idx) + 1
 
-            try:
-                api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
-            except ValueError as e:
-                logger.add_warning(str(e), device_class="ElmLne", device=api_line.name)
+            for api_line in api_lines:
+                try:
+                    api_line.set_circuit_idx(val=circuit_idx, obj=ohl_type)
+                    api_line.apply_template(obj=ohl_type, Sbase=baseMVA, freq=frequency, logger=logger)
+                except ValueError as e:
+                    logger.add_warning(str(e), device_class="ElmLne", device=api_line.name)
 
     # series reactances / impedances
     for elmsind in dgs_grid.elmsinds:
@@ -2965,28 +3227,32 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
         grid.add_switch(obj=sw)
     # Transformers 2W
     for elmtr2 in dgs_grid.elmtr2s:
-        trafo = convert_dgs_to_transformer(
-            tr2=elmtr2,
-            buses=grid.buses,
-            stacubic_dict=stacubic_dict,
-            templates_dict=typtr2_dict,
-            typtr2_dict=typtr2_raw_dict,
-            freq=frequency,
-            baseMVA=baseMVA,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmtr2.ntnum))
+        for parallel_index in range(parallel_count):
+            trafo = convert_dgs_to_transformer(
+                tr2=elmtr2,
+                buses=grid.buses,
+                stacubic_dict=stacubic_dict,
+                templates_dict=typtr2_dict,
+                typtr2_dict=typtr2_raw_dict,
+                freq=frequency,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
-        # IMPORTANT: this does not affect electrical connectivity.
-        fold_id = _ref_id(elmtr2.fold_id)
-        if fold_id is not None and fold_id != "":
-            bg = branch_group_by_id.get(fold_id)
-            if bg is not None:
-                trafo.group = bg
+            # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+            # IMPORTANT: this does not affect electrical connectivity.
+            fold_id = _ref_id(elmtr2.fold_id)
+            if fold_id is not None and fold_id != "":
+                bg = branch_group_by_id.get(fold_id)
+                if bg is not None:
+                    trafo.group = bg
 
-        grid.add_transformer2w(obj=trafo)
+            grid.add_transformer2w(obj=trafo)
 
     # Transformers 3W
     for elmtr3 in dgs_grid.elmtr3s:
@@ -3002,6 +3268,17 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
             continue
 
+        if typtr3_dict.get(tr3_typ_id, None) is None:
+            logger.add_warning(
+                f"referenced TypTr3 not found",
+                device=f"{elmtr3.loc_name}' (ID={elmtr3.ID}) ",
+                device_class="Transformer3W",
+                value=str(elmtr3.typ_id)
+            )
+            continue
+        else:
+            pass
+
         term_ids: List[str] = get_terminal_ids(element_id=elmtr3.ID, cubics_by_objid=cubics_by_objid)
         if len(term_ids) != 3:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmtr3.ID), None)
@@ -3014,29 +3291,33 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 )
                 continue
 
-        trafo3w: dev.Transformer3W = convert_dgs_to_transformer3w(
-            tr3=elmtr3,
-            buses=grid.buses,
-            stacubic_dict=stacubic_dict,
-            templates_dict=typtr3_dict,
-            baseMVA=baseMVA,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
+        parallel_count = _get_parallel_device_count(count=int(elmtr3.nt3nm))
+        for parallel_index in range(parallel_count):
+            trafo3w: dev.Transformer3W = convert_dgs_to_transformer3w(
+                tr3=elmtr3,
+                buses=grid.buses,
+                stacubic_dict=stacubic_dict,
+                templates_dict=typtr3_dict,
+                baseMVA=baseMVA,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                parallel_index=parallel_index,
+                parallel_count=parallel_count
+            )
 
-        grid.add_bus(obj=trafo3w.bus0)
-        # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
-        # IMPORTANT: this does not affect electrical connectivity.
-        fold_id = _ref_id(elmtr3.fold_id)
-        if fold_id is not None and fold_id != "":
-            bg = branch_group_by_id.get(fold_id)
-            if bg is not None:
-                trafo3w.winding1.group = bg
-                trafo3w.winding2.group = bg
-                trafo3w.winding3.group = bg
+            grid.add_bus(obj=trafo3w.bus0)
+            # Optional grouping metadata: assign BranchGroup based on the DGS hierarchical folder reference.
+            # IMPORTANT: this does not affect electrical connectivity.
+            fold_id = _ref_id(elmtr3.fold_id)
+            if fold_id is not None and fold_id != "":
+                bg = branch_group_by_id.get(fold_id)
+                if bg is not None:
+                    trafo3w.winding1.group = bg
+                    trafo3w.winding2.group = bg
+                    trafo3w.winding3.group = bg
 
-        grid.add_transformer3w(obj=trafo3w)
+            grid.add_transformer3w(obj=trafo3w)
 
     return grid
 

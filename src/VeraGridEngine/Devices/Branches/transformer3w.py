@@ -755,6 +755,13 @@ class Transformer3W(PhysicalDevice):
         self._V2 = float(V2)
         self._V3 = float(V3)
 
+        # Keep the inner winding nominal voltages synchronized with the design
+        # values. Otherwise the windings keep the constructor default 10/1 kV
+        # and create artificial virtual taps against the connected buses.
+        self.winding1.set_hv_and_lv(HV=self._V1, LV=1.0)
+        self.winding2.set_hv_and_lv(HV=self._V2, LV=1.0)
+        self.winding3.set_hv_and_lv(HV=self._V3, LV=1.0)
+
         self._Pcu12: float = Pcu12
         self._Pcu23: float = Pcu23
         self._Pcu31: float = Pcu31

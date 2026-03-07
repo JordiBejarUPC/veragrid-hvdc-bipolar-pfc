@@ -549,13 +549,15 @@ class Line(BranchParent):
     def apply_template(self,
                        obj: Union[OverheadLineType, UndergroundLineType, SequenceLineType],
                        Sbase: float, freq: float,
-                       logger=Logger()):
+                       logger=Logger(),
+                       decimals_rounding: int = 6):
         """
         Apply a line template to this object
         :param obj: OverheadLineType, UndergroundLineType, SequenceLineType
         :param Sbase: Nominal power in MVA
         :param freq: Frequency in Hz
         :param logger: Logger
+        :param decimals_rounding: Number of decimals to round to
         """
 
         if isinstance(obj, OverheadLineType):
@@ -601,7 +603,8 @@ class Line(BranchParent):
              self.rate) = obj.get_values(Sbase=Sbase,
                                          freq=freq,
                                          length=self.length,
-                                         line_Vnom=self.get_max_bus_nominal_voltage())
+                                         line_Vnom=self.get_max_bus_nominal_voltage(),
+                                         decimals_rounding=decimals_rounding)
 
             self.ys = obj.get_ys_nabc()
             self.ysh = obj.get_ysh_nabc()
