@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import math
-import re
 import numpy as np
 from typing import Tuple, Set
 from VeraGridEngine.enumerations import WindingType, SwitchGraphicType
@@ -24,7 +23,20 @@ def _ref_id(x: str | None) -> str | None:
     if x is None:
         return None
     s = str(x)
-    return s.split("\\")[-1] if "\\" in s else s
+    if "\\" in s:
+        return s.split("\\")[-1]
+    else:
+        return s
+
+
+def _stacubic_obj_bus_sort_key(cubic: StaCubic) -> int:
+    """Return StaCubic ``obj_bus`` as integer sort key."""
+    return int(cubic.obj_bus)
+
+
+def _bus_vnom_sort_key(bus: dev.Bus) -> float:
+    """Return bus nominal voltage sort key."""
+    return float(bus.Vnom)
 
 
 def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]) -> List[str]:
@@ -32,13 +44,29 @@ def get_terminal_ids(element_id: str, cubics_by_objid: Dict[str, List[StaCubic]]
     Get the connected terminal IDs (ElmTerm.ID) for a given branch/injection element ID
     using the StaCubic.fold_id -> ElmTerm.ID mapping.
     """
-    cbs = [cb for cb in cubics_by_objid.get(_ref_id(element_id), [])
-           if _ref_id(cb.fold_id)]
+    cbs: List[StaCubic] = list()
+    cbs_raw: List[StaCubic] = cubics_by_objid.get(_ref_id(element_id), list())
+    for cubic in cbs_raw:
+        fold_id = _ref_id(cubic.fold_id)
+        if fold_id is not None and fold_id != "":
+            cbs.append(cubic)
+        else:
+            pass
 
     if len(cbs) == 2:
-        cbs = sorted(cbs, key=lambda cb: int(cb.obj_bus))
+        cbs = sorted(cbs, key=_stacubic_obj_bus_sort_key)
+    else:
+        pass
 
-    return [_ref_id(cb.fold_id) for cb in cbs]
+    terminal_ids: List[str] = list()
+    for cubic in cbs:
+        fold_id = _ref_id(cubic.fold_id)
+        if fold_id is not None and fold_id != "":
+            terminal_ids.append(fold_id)
+        else:
+            pass
+
+    return terminal_ids
 
 
 def get_branch_buses(elm_id: str,
@@ -166,9 +194,17 @@ def _bundle_offsets(n_sub: int, spacing_m: float) -> List[Tuple[float, float]]:
     - If ``n_sub <= 1`` or ``spacing_m <= 0``, a single conductor at (0, 0) is returned.
     """
     if n_sub <= 1:
-        return [(0.0, 0.0)]
+        default_offsets: List[Tuple[float, float]] = list()
+        default_offsets.append((0.0, 0.0))
+        return default_offsets
+    else:
+        pass
     if spacing_m <= 0.0:
-        return [(0.0, 0.0)]
+        default_offsets = list()
+        default_offsets.append((0.0, 0.0))
+        return default_offsets
+    else:
+        pass
 
     # Radius of the circumcircle for a regular n-gon with side length = spacing.
     # r = s / (2*sin(pi/n))
@@ -187,7 +223,10 @@ def _bundle_offsets(n_sub: int, spacing_m: float) -> List[Tuple[float, float]]:
 def convert_dgs_to_wire(typcon: TypCon) -> Wire:
     """Convert a PowerFactory TypCon into a VeraGrid Wire."""
     tid = _ref_id(typcon.ID)
-    name = typcon.loc_name if typcon.loc_name is not None and str(typcon.loc_name).strip() != '' else f"Wire_{tid}"
+    if typcon.loc_name is not None and str(typcon.loc_name).strip() != "":
+        name = typcon.loc_name
+    else:
+        name = f"Wire_{tid}"
 
     # PowerFactory: diatub may be 0/empty for non-tubular conductors.
     diatub = float(typcon.diatub)
@@ -234,11 +273,16 @@ def convert_dgs_to_overhead_line_type(
     4..6 for circuit 2, etc (as required by VeraGrid's OverheadLineType).
     """
     tid = _ref_id(typtow.ID)
-    name = typtow.loc_name if typtow.loc_name is not None and str(typtow.loc_name).strip() != '' else f"Tower_{tid}"
+    if typtow.loc_name is not None and str(typtow.loc_name).strip() != "":
+        name = typtow.loc_name
+    else:
+        name = f"Tower_{tid}"
 
     # Frequency / earth parameters
-    freq = float(typtow.frnom) if typtow.frnom is not None and float(typtow.frnom) > 0.0 else float(
-        default_frequency_hz)
+    if typtow.frnom is not None and float(typtow.frnom) > 0.0:
+        freq = float(typtow.frnom)
+    else:
+        freq = float(default_frequency_hz)
     earth_res = _convert_gearth_us_per_cm_to_resistivity_ohm_m(float(typtow.gearth))
 
     # Determine nominal voltage from referenced conductor types.
@@ -258,7 +302,10 @@ def convert_dgs_to_overhead_line_type(
         if tc is not None:
             v_candidates.append(float(tc.uline))
 
-    vnom = max(v_candidates) if len(v_candidates) > 0 else 0.0
+    if len(v_candidates) > 0:
+        vnom = max(v_candidates)
+    else:
+        vnom = 0.0
 
     ohl_type = OverheadLineType(
         name=name,
@@ -396,30 +443,24 @@ def _order_hv_lv(bus_a: dev.Bus, bus_b: dev.Bus, logger: Logger, tr_name: str) -
     if vb > va:
         return bus_b, bus_a
 
-    # Equal-Vnom transformers: HV/LV is ambiguous. Make ordering deterministic so that
-    # RAW and DGS imports end up with the same 'from/to' orientation.
-    m = re.search(r"_(\d+)_(\d+)(?:_|$)", tr_name or "")
-    if m:
-        i = int(m.group(1))
-        j = int(m.group(2))
+    # Equal-Vnom transformers: HV/LV is ambiguous.
+    # Use deterministic lexical ordering by bus name to keep import orientation stable.
+    name_a: str = str(bus_a.name or "").strip()
+    name_b: str = str(bus_b.name or "").strip()
 
-        sa = (str(bus_a.name or "").strip().split() or [""])[0]
-        sb = (str(bus_b.name or "").strip().split() or [""])[0]
-        ida = int(sa) if sa.isdigit() else None
-        idb = int(sb) if sb.isdigit() else None
-
-        if ida == j and idb == i:
-            return bus_b, bus_a
-        if ida == i and idb == j:
+    if name_a != "" and name_b != "":
+        if name_a <= name_b:
+            logger.add_warning(
+                f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Ordered lexically by bus name."
+            )
             return bus_a, bus_b
-
-    logger.add_warning(f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Keeping original order.")
-    return bus_a, bus_b
-
-    if va > vb:
-        return bus_a, bus_b
-    if vb > va:
-        return bus_b, bus_a
+        else:
+            logger.add_warning(
+                f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Ordered lexically by bus name."
+            )
+            return bus_b, bus_a
+    else:
+        pass
 
     logger.add_warning(f"Transformer '{tr_name}': HV/LV ambiguous (equal Vnom={va}). Keeping original order.")
     return bus_a, bus_b
@@ -446,8 +487,11 @@ def _order_hv_mv_lv(bus_a: dev.Bus, bus_b: dev.Bus, bus_c: dev.Bus, logger: Logg
 
         return bus_a, bus_b, bus_c
 
-    buses: List[dev.Bus] = [bus_a, bus_b, bus_c]
-    buses_sorted: List[dev.Bus] = sorted(buses, key=lambda b: float(b.Vnom), reverse=True)
+    buses: List[dev.Bus] = list()
+    buses.append(bus_a)
+    buses.append(bus_b)
+    buses.append(bus_c)
+    buses_sorted: List[dev.Bus] = sorted(buses, key=_bus_vnom_sort_key, reverse=True)
 
     v0 = float(buses_sorted[0].Vnom)
     v1 = float(buses_sorted[1].Vnom)
@@ -554,7 +598,10 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
         hv_bus, lv_bus = bus_vg_from, bus_vg_to
     else:
         hv_bus, lv_bus = bus_vg_to, bus_vg_from
-    tap_on_bus = hv_bus if int(typtr2_raw.tap_side) == 0 else lv_bus
+    if int(typtr2_raw.tap_side) == 0:
+        tap_on_bus = hv_bus
+    else:
+        tap_on_bus = lv_bus
     if tap_on_bus is not bus_vg_from:
         tap = 1.0 / tap
         tap_min_i = 1.0 / tap_min
@@ -1135,7 +1182,7 @@ def convert_dgs_to_load(elmlod: ElmLod,
         name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
         P=p_mw,
         Q=q_mvar,
-        active=False if elmlod.outserv else True
+        active=not bool(elmlod.outserv)
     )
 
     return bus, load
@@ -1164,7 +1211,7 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
         name=elmgenstat.loc_name or f"SatticGen_{_ref_id(elmgenstat.ID)}",
         P=elmgenstat.pgini,
         Q=elmgenstat.qgini,
-        active=False if elmgenstat.outserv else True
+        active=not bool(elmgenstat.outserv)
     )
 
     # Preserve PowerFactory 'ip_ctrl' (1 means this is the reference/slack machine)
@@ -1191,7 +1238,7 @@ def convert_dgs_to_external_grid(elmxnet: ElmXnet,
 
     xgrid = dev.ExternalGrid(
         name=elmxnet.loc_name or f"Load_{_ref_id(elmxnet.ID)}",
-        active=False if elmxnet.outserv else True
+        active=not bool(elmxnet.outserv)
     )
 
     if elmxnet.bustp == b'SL':
@@ -1232,7 +1279,10 @@ def _extract_shunt_gb(elmshnt: ElmShnt, f: float, logger: Logger) -> Tuple[float
     quality_factor: float = elmshnt.grea  # Quality Factor
 
     w = 2 * np.pi * f  # Electrical angular speed [rad/s]
-    d_y = 3.0 if conn == 0 else 1.0  # conn==0 -> 3PH-D, else -> 3PH-Y/YN
+    if conn == 0:
+        d_y = 3.0  # conn==0 -> 3PH-D
+    else:
+        d_y = 1.0  # 3PH-Y/YN
 
     if shtype == 0:  # R-L-C
 
@@ -1854,9 +1904,13 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     zone_by_id: Dict[str, dev.Zone] = dict()
     for elmzone in dgs_grid.elmzones:
         zid = _ref_id(elmzone.ID)
+        if elmzone.loc_name != "":
+            zone_name = elmzone.loc_name
+        else:
+            zone_name = f"Zone_{zid}"
 
         zone = dev.Zone(
-            name=elmzone.loc_name if elmzone.loc_name != "" else f"Zone_{zid}",
+            name=zone_name,
             idtag=zid,
             code="",
             latitude=0.0,
@@ -1875,7 +1929,10 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
     branch_group_by_id: Dict[str, dev.BranchGroup] = dict()
     for elmbranch in dgs_grid.elmbranches:
         bid = _ref_id(elmbranch.ID)
-        name = elmbranch.loc_name if elmbranch.loc_name != "" else f"BranchGroup_{bid}"
+        if elmbranch.loc_name != "":
+            name = elmbranch.loc_name
+        else:
+            name = f"BranchGroup_{bid}"
 
         bg = dev.BranchGroup(
             name=name,
@@ -2174,7 +2231,10 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 break
 
             nxt = _ref_id(parent_ptr)
-            cur = nxt if (nxt is not None and nxt != "") else parent_ptr
+            if nxt is not None and nxt != "":
+                cur = nxt
+            else:
+                cur = parent_ptr
 
         if owner_line_id == "":
             # Fallback: try matching by section names.
@@ -2193,7 +2253,10 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         if owner_line_id != "":
             tid = _ref_id(sec.typ_id)
-            typ_id = tid if (tid is not None and tid != "") else sec.typ_id
+            if tid is not None and tid != "":
+                typ_id = tid
+            else:
+                typ_id = sec.typ_id
             line_type_by_line_id[owner_line_id] = typ_id
             # Store a normalized key too, because lne.ID might come with or without PF path prefix.
             oid = _ref_id(owner_line_id)
