@@ -2158,6 +2158,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
 
             # Check minimum AC voltage threshold for VSC disconnection
+            n_disconnected_vscs = 0
             for i in range(self.nc.nvsc):
 
                 if self.nc.vsc_data.active[i]:
@@ -2167,15 +2168,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                     min_v = self.nc.vsc_data.min_ac_voltage[i]
 
                     if ac_voltage < min_v:
-                        # Disconnect the VSC by setting it inactive
-                        self.nc.vsc_data.active[i] = False
-
-                        # Remove voltage/angle control flags from controlled buses
+                        # Switch controls to Pac=0, Qac=0 to effectively disconnect the VSC
+                        # while keeping it active in the system (avoids size mismatch issues)
                         control1 = self.nc.vsc_data.control1[i]
                         control2 = self.nc.vsc_data.control2[i]
                         ctrl1_bus = self.nc.vsc_data.control1_bus_idx[i]
                         ctrl2_bus = self.nc.vsc_data.control2_bus_idx[i]
 
+                        # Release bus voltage/angle control flags for current controls
                         if control1 in (ConverterControlType.Vm_dc, ConverterControlType.Vm_ac):
                             if ctrl1_bus > -1:
                                 self.nc.bus_data.is_vm_controlled[ctrl1_bus] = False
@@ -2191,7 +2191,21 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                                 self.nc.bus_data.is_va_controlled[ctrl2_bus] = False
 
                         branch_ctrl_change = True
-                        self.logger.add_info("VSC disconnected due to low AC voltage",
+
+                        # Switch to Pac=0, Qac=0
+                        self.nc.vsc_data.control1[i] = ConverterControlType.Pac
+                        self.nc.vsc_data.control1_val[i] = 0.0
+                        self.nc.vsc_data.control1_branch_idx[i] = i
+                        self.nc.vsc_data.control1_bus_idx[i] = -1
+
+                        self.nc.vsc_data.control2[i] = ConverterControlType.Qac
+                        self.nc.vsc_data.control2_val[i] = 0.0
+                        self.nc.vsc_data.control2_branch_idx[i] = i
+                        self.nc.vsc_data.control2_bus_idx[i] = -1
+
+                        n_disconnected_vscs += 1
+
+                        self.logger.add_info("VSC disconnected due to low AC voltage (Pac=0, Qac=0)",
                                              device=self.nc.vsc_data.names[i],
                                              value=ac_voltage)
 
@@ -2203,6 +2217,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 if len(tau_fixed_idx) > 0:
                     self.tau = np.delete(self.tau, tau_fixed_idx)
 
+                # re-apply VSC setpoints after control indices have been rebuilt
+                if n_disconnected_vscs > 0:
+                    self.Pfp_vsc[self.k_vsc_pfp] = self.vsc_pfp_set / self.nc.Sbase
+                    self.Pfn_vsc[self.k_vsc_pfn] = self.vsc_pfn_set / self.nc.Sbase
+                    self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
+                    self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
+
                 self.bus_types = self.nc.bus_data.bus_types.copy()
                 self.is_p_controlled = self.nc.bus_data.is_p_controlled.copy()
                 self.is_q_controlled = self.nc.bus_data.is_q_controlled.copy()
@@ -2211,7 +2232,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 self._set_vsc_control_indices()
                 self._set_branch_control_indices()
                 self._set_bus_control_indices()
-
                 # the composition of x may have changed, so recompute
                 x = self.var2x()
 
