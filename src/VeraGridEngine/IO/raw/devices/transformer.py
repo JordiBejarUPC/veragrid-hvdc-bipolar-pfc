@@ -509,7 +509,7 @@ class RawTransformer(RawObject):
                  self.RMA1, self.RMI1, self.VMA1, self.VMI1, self.NTP1,
                  self.TAB1, self.CR1, self.CX1, self.CNXA1) = data[2]
 
-                (self.WINDV2, self.NOMV2, self.ANG2, self.RATE2_1, self.RATE2_1, self.RATE2_3, self.COD2, self.CONT2,
+                (self.WINDV2, self.NOMV2, self.ANG2, self.RATE2_1, self.RATE2_2, self.RATE2_3, self.COD2, self.CONT2,
                  self.RMA2, self.RMI2, self.VMA2, self.VMI2, self.NTP2,
                  self.TAB2, self.CR2, self.CX2, self.CNXA2) = data[3]
 
@@ -812,7 +812,7 @@ class RawTransformer(RawObject):
                                            "RATE1_3", "COD1", "CONT1", "RMA1", "RMI1", "VMA1",
                                            "VMI1", "NTP1", "TAB1", "CR1", "CX1", "CNXA1"])
 
-                l3 = self.format_raw_line(["WINDV2", "NOMV2", "ANG2", "RATE2_1", "RATE2_1",
+                l3 = self.format_raw_line(["WINDV2", "NOMV2", "ANG2", "RATE2_1", "RATE2_2",
                                            "RATE2_3", "COD2", "CONT2", "RMA2", "RMI2", "VMA2",
                                            "VMI2", "NTP2", "TAB2", "CR2", "CX2", "CNXA2"])
 

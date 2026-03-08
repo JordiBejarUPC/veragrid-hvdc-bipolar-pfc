@@ -165,14 +165,13 @@ def run_raw_to_cgmes(import_path: str | list[str],
 
 def test_raw_to_cgmes_cross_roundtrip():
     """Export the public IEEE 14 RAW case to CGMES and preserve the original voltage solution."""
-    script_path = os.path.abspath(__file__)
-    tests_root = os.path.dirname(os.path.dirname(script_path))
-    test_grid_name = "IEEE_14_v35_3_nudox_1_hvdc_desf_rates_fs_ss"
-    boundary_path = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "BD_IEEE_Grids.zip")
 
-    raw_path = os.path.join(tests_root, "data", "grids", "RAW", f"{test_grid_name}.raw")
+    test_grid_name = "IEEE_14_v35_3_nudox_1_hvdc_desf_rates_fs_ss"
+    boundary_path = os.path.join("data", "grids", "CGMES_2_4_15", "BD_IEEE_Grids.zip")
+
+    raw_path = os.path.join("data", "grids", "RAW", f"{test_grid_name}.raw")
     export_name = os.path.join(
-        tests_root, "data", "output", "raw_to_cgmes_export_results",
+        "data", "output", "raw_to_cgmes_export_results",
         f"{test_grid_name}_from_raw_GC.zip",
     )
 

@@ -23,21 +23,65 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     :param z31: 3 to 1 delta value
     :return: 0->1, 0->2, 0->3 star values
     """
-    zt = z12 + z23 + z31
-    if zt > 0:
-        z1 = (z12 * z31) / zt
-        z2 = (z12 * z23) / zt
-        z3 = (z23 * z31) / zt
-        return z1, z2, z3
-    else:
-        return 1e-20, 1e-20, 1e-20
+
+    """
+    NOTE: Why this formulation is not?
+    because the triangle of the short-circuit measurements for the
+    3W transformer are not forming an actual connected triangle.
+        
+    There are two different problems:
+    1. converting a physical delta network into a star network
+    2. reconstructing a 3-winding transformer star equivalent from pairwise short-circuit test impedances
+    
+    Those are not the same inverse problem.
+    
+    1. What PSSE gives you
+    For a 3-winding transformer, PSSE gives three measured pairwise impedances:
+    •Z12
+    •Z23
+    •Z31
+    
+    These are the driving-point impedances seen between pairs of terminals when the third winding is open in the standard leakage-equivalent model.
+    If the transformer is modeled by a star equivalent with internal node 0, then the branch impedances are Z1, Z2, Z3 and the terminal pair impedances are:
+    • between 1 and 2: Z12 = Z1 + Z2
+    • between 2 and 3: Z23 = Z2 + Z3
+    • between 3 and 1: Z31 = Z3 + Z1
+    
+    This is the defining model.
+    
+    2. Solve that system
+    We have the linear system:
+    Z1 + Z2 = Z12
+    Z2 + Z3 = Z23
+    Z3 + Z1 = Z31
+    Add the first and third equations:
+    2Z1 + Z2 + Z3 = Z12 + Z31
+    But from the second equation:
+    Z2 + Z3 = Z23
+    So:
+    2Z1 + Z23 = Z12 + Z31
+    2Z1 = Z12 + Z31 - Z23
+    
+    Z1 = (Z12 + Z31 - Z23)/2
+    Z2 = (Z12 + Z23 - Z31)/2
+    Z3 = (Z23 + Z31 - Z12)/2
+    """
 
 
-# def delta_to_star2(z12: float, z23: float, z31: float) -> Tuple[float, float, float]:
-#     z1 = (z12 + z31 - z23) / 2
-#     z2 = (z12 + z23 - z31) / 2
-#     z3 = (z31 + z23 - z12) / 2
-#     return z1, z2, z3
+    # zt = z12 + z23 + z31
+    # if zt > 0:
+    #     z1 = (z12 * z31) / zt
+    #     z2 = (z12 * z23) / zt
+    #     z3 = (z23 * z31) / zt
+    #     return z1, z2, z3
+    # else:
+    #     return 1e-20, 1e-20, 1e-20
+
+    z1 = (z12 + z31 - z23) / 2.0
+    z2 = (z12 + z23 - z31) / 2.0
+    z3 = (z31 + z23 - z12) / 2.0
+    return z1, z2, z3
+
 
 
 def star_to_delta(z1: float, z2: float, z3: float) -> Tuple[float, float, float]:

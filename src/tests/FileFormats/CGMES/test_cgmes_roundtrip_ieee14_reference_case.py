@@ -17,10 +17,9 @@ pd.set_option("display.max_colwidth", None)
 
 def test_ieee14_cgmes() -> None:
     """Export IEEE 14 from RAW to CGMES, re-import it, and match the benchmark voltage profile."""
-    script_path = os.path.abspath(__file__)
-    tests_root = os.path.dirname(os.path.dirname(script_path))
+
     file_open_1 = FileOpen(
-        file_name=os.path.join(tests_root, "data", "grids", "RAW", "IEEE 14 bus.raw"),
+        file_name=os.path.join("data", "grids", "RAW", "IEEE 14 bus.raw"),
         options=FileOpenOptions(
             file_type=gce.FileType.PSSE_raw,
             cgmes_map_areas_like_raw=True,
@@ -35,11 +34,11 @@ def test_ieee14_cgmes() -> None:
     gce.detect_substations(grid=grid_1)
 
     boundary_set = os.path.join(
-        tests_root, "data", "grids", "CGMES_2_4_15",
+        "data", "grids", "CGMES_2_4_15",
         "TestConfigurations_packageCASv2.0", "MicroGrid", "BaseCase_BC",
         "CGMES_v2.4.15_MicroGridTestConfiguration_BD_v2.zip",
     )
-    output_cgmes_path = os.path.join(tests_root, "data", "output", "IEEE14_test_ieee_export.zip")
+    output_cgmes_path = os.path.join("data", "output", "IEEE14_test_ieee_export.zip")
 
     gce.save_cgmes_file(grid=grid_1,
                         filename=output_cgmes_path,
@@ -65,14 +64,14 @@ def test_ieee14_cgmes() -> None:
     if not structures_match:
         print("\n\tTUC 17.1 is NOT OK\n")
         structure_logger.print("CGMES roundtrip comparison with the original")
-        output_dir = os.path.join(tests_root, "data", "output")
+        output_dir = os.path.join("data", "output")
         os.makedirs(output_dir, exist_ok=True)
         structure_logger.to_xlsx(os.path.join(output_dir, "tuc_17_1_ieee14.xlsx"))
     else:
         print("TUC 17.1 is OK")
 
     file_open_3 = FileOpen(
-        file_name=[os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"), boundary_set],
+        file_name=[os.path.join("data", "grids", "CGMES_2_4_15", "IEEE 14 bus.zip"), boundary_set],
         options=FileOpenOptions(
             cgmes_map_areas_like_raw=True,
             cgmes_try_to_map_dc_to_hvdc_line=True,
@@ -88,13 +87,13 @@ def test_ieee14_cgmes() -> None:
     cim_converter_match, cim_converter_logger = numerical_circuit_1.compare(numerical_circuit_3)
     if not cim_converter_match:
         cim_converter_logger.print("CGMES cim-converter comparison with the original")
-        output_dir = os.path.join(tests_root, "data", "output")
+        output_dir = os.path.join("data", "output")
         os.makedirs(output_dir, exist_ok=True)
         cim_converter_logger.to_xlsx(os.path.join(output_dir, "tuc_17_1_ieee14_cim_converter.xlsx"))
     else:
         print("TUC Cimconverter 17.1 ok")
 
-    results_folder = os.path.join(tests_root, "data", "results")
+    results_folder = os.path.join("data", "results")
     reference_results = "IEEE 14 bus.sav.xlsx"
     voltage_reference = pd.read_excel(os.path.join(results_folder, reference_results),
                                       sheet_name="Vabs", index_col=0)
@@ -104,7 +103,7 @@ def test_ieee14_cgmes() -> None:
     raw_matches_reference = np.allclose(voltage_gc, voltage_psse, atol=1e-6)
     assert raw_matches_reference
 
-    voltage_reference = pd.read_excel(os.path.join(tests_root, "data", "results", "IEEE 14 bus.sav.xlsx"),
+    voltage_reference = pd.read_excel(os.path.join("data", "results", "IEEE 14 bus.sav.xlsx"),
                                       sheet_name="Vabs", index_col=0)
 
     bus_df_1 = power_flow_results_1.get_bus_df()
