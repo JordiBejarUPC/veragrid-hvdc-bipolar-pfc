@@ -11,10 +11,9 @@ import VeraGridEngine.api as gce
 
 def test_load_and_run_pf() -> None:
     """Load the selected public CGMES packages and verify each can complete a power flow cleanly."""
-    script_path = os.path.abspath(__file__)
-    tests_root = os.path.dirname(os.path.dirname(script_path))
+
     base_folder = os.path.abspath(
-        os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "TestConfigurations_packageCASv2.0")
+        os.path.join("data", "grids", "CGMES_2_4_15", "TestConfigurations_packageCASv2.0")
     )
 
     logger = gce.Logger()

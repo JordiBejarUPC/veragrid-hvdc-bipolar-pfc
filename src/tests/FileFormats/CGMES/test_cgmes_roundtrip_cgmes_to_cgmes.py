@@ -141,14 +141,13 @@ def run_import_export_test(import_path: str | list[str],
 
 def test_cgmes_roundtrip():
     """Roundtrip the public micro-grid CGMES case and keep the re-imported numerical circuit equivalent."""
-    script_path = os.path.abspath(__file__)
-    tests_root = os.path.dirname(os.path.dirname(script_path))
+
     test_grid_name = "micro_grid_NL_T1.zip"
     boundary_set_name = "micro_grid_BD.zip"
 
-    cgmes_path = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", test_grid_name)
-    boundary_path = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", boundary_set_name)
-    export_name = os.path.join(tests_root, "data", "output", "cgmes_export_result", f"{test_grid_name[:-4]}_GC.zip")
+    cgmes_path = os.path.join("data", "grids", "CGMES_2_4_15", test_grid_name)
+    boundary_path = os.path.join("data", "grids", "CGMES_2_4_15", boundary_set_name)
+    export_name = os.path.join("data", "output", "cgmes_export_result", f"{test_grid_name[:-4]}_GC.zip")
 
     if not os.path.exists(os.path.dirname(export_name)):
         os.makedirs(os.path.dirname(export_name))

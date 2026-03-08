@@ -113,11 +113,10 @@ def run_cgmes_to_raw(import_path: str | list[str], export_fname: str) -> None:
 
 def test_cgmes_to_raw_roundtrip():
     """Export the public CGMES micro-grid to RAW and keep non-boundary bus voltages within 1e-3."""
-    script_path = os.path.abspath(__file__)
-    tests_root = os.path.dirname(os.path.dirname(script_path))
-    cgmes_path = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "micro_grid_NL_T1.zip")
-    boundary_path = os.path.join(tests_root, "data", "grids", "CGMES_2_4_15", "micro_grid_BD.zip")
-    export_name = os.path.join(tests_root, "data", "output", "raw_export_result", "micro_grid_NL_T1.raw")
+
+    cgmes_path = os.path.join("data", "grids", "CGMES_2_4_15", "micro_grid_NL_T1.zip")
+    boundary_path = os.path.join("data", "grids", "CGMES_2_4_15", "micro_grid_BD.zip")
+    export_name = os.path.join("data", "output", "raw_export_result", "micro_grid_NL_T1.raw")
 
     if not os.path.exists(os.path.dirname(export_name)):
         os.makedirs(os.path.dirname(export_name))
