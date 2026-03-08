@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+"""Tests for CGMES AC-line conversion into VeraGrid devices."""
 
 from typing import Dict, List, Any
 
@@ -100,6 +101,7 @@ def test_ac_lines(cgmes_model, calc_node_dict, cn_dict, device_to_terminal_dict,
                   expected_r, expected_r0, expected_r2, expected_r_corrected,
                   expected_vf, expected_vt, expected_x, expected_x0, expected_x2,
                   expected_rate, expected_temp_base, expected_temp_oper):
+    """Convert a populated AC line segment and verify its electrical values and metadata."""
 
     logger = DataLogger()
     multi_circuit = MultiCircuit()

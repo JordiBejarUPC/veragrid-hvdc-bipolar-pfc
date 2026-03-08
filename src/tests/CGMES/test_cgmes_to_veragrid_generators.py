@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+"""Tests for CGMES synchronous-generator conversion into VeraGrid devices."""
 from typing import Dict, List, Tuple
 
 import pytest
@@ -81,7 +82,7 @@ def build_generator_case(p: float) -> Tuple[CgmesCircuit, Dict[str, gcdev.Bus], 
 @pytest.mark.parametrize("p,expected_power_factor", [(2.0, 0.55), (0.0, 1.0)])
 def test_get_gcdev_generators(p: float, expected_power_factor: float) -> None:
     """
-    Verify generator conversion and power factor behaviour.
+    Convert a synchronous machine and verify the generator fields and power-factor fallback logic.
     """
     cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=p)
 
@@ -113,7 +114,7 @@ def test_get_gcdev_generators(p: float, expected_power_factor: float) -> None:
 
 def test_get_gcdev_generators_zero_terminals_log_error() -> None:
     """
-    Verify missing terminals are explicitly logged.
+    Log explicit errors when generator conversion cannot find any connected terminal.
     """
     cgmes_model, calc_node_dict, _, _ = build_generator_case(p=2.0)
 
@@ -128,7 +129,7 @@ def test_get_gcdev_generators_zero_terminals_log_error() -> None:
 
 def test_get_gcdev_generators_generating_unit_is_none_log_error() -> None:
     """
-    Verify missing GeneratingUnit is logged as error.
+    Log an error when the synchronous machine lacks its required generating-unit reference.
     """
     cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
     cgmes_model.cgmes_assets.SynchronousMachine_list[0].GeneratingUnit = None
@@ -143,7 +144,7 @@ def test_get_gcdev_generators_generating_unit_is_none_log_error() -> None:
 
 def test_get_gcdev_generators_regulating_controls_none_log_warning() -> None:
     """
-    Verify missing regulating control is logged as warning.
+    Log a warning when the generator has no regulating control linked to it.
     """
     cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
     cgmes_model.cgmes_assets.SynchronousMachine_list[0].RegulatingControl = None
@@ -158,7 +159,7 @@ def test_get_gcdev_generators_regulating_controls_none_log_warning() -> None:
 
 def test_get_gcdev_generators_regulating_control_mode_kind_not_voltage_log_warning() -> None:
     """
-    Verify non-voltage regulating mode is logged as warning.
+    Log a warning when regulating control exists but does not operate in voltage mode.
     """
     cgmes_model, calc_node_dict, device_to_terminal_dict, _ = build_generator_case(p=2.0)
     cgmes_model.cgmes_assets.SynchronousMachine_list[0].RegulatingControl.mode = "aaa"

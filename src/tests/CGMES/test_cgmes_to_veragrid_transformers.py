@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+"""Tests for CGMES transformer conversion into VeraGrid devices."""
 
 from typing import Dict, List
 import VeraGridEngine.Devices as gcdev
@@ -69,6 +70,7 @@ def device_to_terminal_dict_object_3_terminals() -> Dict[str, List[Terminal]]:
 
 
 def test_ac_transformers_one_power_transformer_end_log_error():
+    """Log an error when transformer conversion receives a one-ended transformer."""
     logger = DataLogger()
     multi_circuit = MultiCircuit()
 
@@ -90,6 +92,7 @@ def test_ac_transformers_one_power_transformer_end_log_error():
 
 
 def test_ac_transformers_zero_calc_node_log_error():
+    """Log missing-terminal errors when the transformer cannot be mapped to calculation nodes."""
     logger = DataLogger()
     multi_circuit = MultiCircuit()
     calc_node_dict = dict()
@@ -116,6 +119,7 @@ def test_ac_transformers_zero_calc_node_log_error():
 
 
 def test_ac_transformers2w():
+    """Convert a two-winding transformer and verify the created VeraGrid transformer values."""
     logger = DataLogger()
     multi_circuit = MultiCircuit()
 
@@ -190,6 +194,7 @@ def test_ac_transformers2w():
 
 
 def test_ac_transformers3w_only_two_terminals_log_error():
+    """Log an error when a three-winding transformer is connected to only two terminals."""
     logger = DataLogger()
     multi_circuit = MultiCircuit()
 
@@ -254,6 +259,7 @@ def test_ac_transformers3w_only_two_terminals_log_error():
 
 
 def test_ac_transformers3w():
+    """Convert a three-winding transformer and verify the derived three-winding parameters."""
     logger = DataLogger()
     multi_circuit = MultiCircuit()
 
