@@ -1533,6 +1533,33 @@ class CGMESVersions(Enum):
             return s
 
 
+class CgmesTopologyMode(Enum):
+    """
+    Topology conversion mode for CGMES imports.
+    """
+    Auto = "Auto"
+    ConnectivityNode = "ConnectivityNode"
+    TopologicalNode = "TopologicalNode"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return CgmesTopologyMode[s]
+        except KeyError:
+            return s
+
+
 class SparseSolver(Enum):
     """
     Sparse solvers to use
@@ -1916,6 +1943,20 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
     RmsPlotResults = 'Rms plot results'
 
+    # RmsGeneratorResults = 'Rms Generator results'
+    # RmsLineResults = 'Rms Line results'
+    # RmsLoadResults = 'Rms load results'
+    #
+    #
+    # RmsGeneratorOmegaResults = 'Rms Genqec omega results'
+    # RmsGeneratorDeltaResults = 'Rms Genqec delta results'
+    #
+    # RmsLoadPResults = 'Rms Load P results'
+    # RmsLoadQResults = 'Rms Load Q results'
+    #
+    # RmsLinePResults = 'Rms Simple Line P results'
+    # RmsLineQResults = 'Rms Simple Line Q results'
+
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
     StateMatrix = "State Matrix"
@@ -2058,6 +2099,8 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+
+
 
     def __str__(self):
         return self.value
@@ -2598,6 +2641,11 @@ class VarPowerFlowRefferenceType(Enum):
     v_A = "v_A"  # Bus voltage at phase A.
     v_B = "v_B"  # Bus voltage at phase B.
     v_C = "v_C"  # Bus voltage at phase C.
+    d_v_N = "d_v_N"  # Bus voltage derivative at phase N.
+    d_v_A = "d_v_A"  # Bus voltage derivative at phase A.
+    d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
+    d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
+
     i_N = "i_N"  # Injection current at phase N in p.u.
     i_A = "i_A"  # Injection current at phase A in p.u.
     i_B = "i_B"  # Injection current at phase B in p.u.
@@ -2672,6 +2720,9 @@ class ParamPowerFlowRefferenceType(Enum):
     ParamPowerFlowRefferenceType
     """
     NOTHING = "nothing"
+    #General
+    dt = "dt"  # time step for dynamic simulations
+    
     # Branch / load parameters
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
@@ -2745,6 +2796,8 @@ class ParamPowerFlowRefferenceType(Enum):
     freq = "freq"  # corresponds to Var("frequ")
     vf = "vf"
     tm0 = "tm0"
+
+
 
     def __str__(self):
         return self.value
@@ -2905,5 +2958,31 @@ class BlockType(Enum):
         """
         try:
             return BlockType[s]
+        except KeyError:
+            return s
+
+
+
+class ProceduralGridMethods(Enum):
+    """
+    this class contains the existing types of blocks
+    """
+    SteinerAlone = "Steiner tree"
+    SteinerAndOptimization = "Steiner tree + optimization"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ProceduralGridMethods[s]
         except KeyError:
             return s

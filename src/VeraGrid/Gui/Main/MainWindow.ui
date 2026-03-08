@@ -10078,6 +10078,7 @@ QProgressBar::chunk{
     <addaction name="actionDetect_facilities"/>
     <addaction name="actionFuse_devices"/>
     <addaction name="actionGrid_reduction"/>
+    <addaction name="actionProcedural_grid_expansion"/>
     <addaction name="actionre_index_time"/>
     <addaction name="actionScale"/>
     <addaction name="separator"/>
@@ -11845,6 +11846,15 @@ QProgressBar::chunk{
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionProcedural_grid_expansion">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/schematic.png</normaloff>:/Icons/icons/schematic.png</iconset>
+   </property>
+   <property name="text">
+    <string>Procedural grid expansion</string>
    </property>
   </action>
  </widget>

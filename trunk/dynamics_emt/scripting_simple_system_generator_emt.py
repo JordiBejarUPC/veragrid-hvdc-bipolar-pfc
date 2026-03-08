@@ -56,7 +56,7 @@ def find_name_in_block(name: str, block: Block):
 
 
 
-grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
 
 # Buses
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
@@ -78,7 +78,7 @@ wire = gce.Wire(name="Panther 30/7 ACSR",
                 r=0.1363,
                 max_current=1)
 tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
-tower.add_wire_relationship(wire=wire, xpos=0, ypos=27.5, phase=2)
+tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
 tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
 
@@ -86,13 +86,13 @@ tower.compute()
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # load
-P= 9.999999
+P=1
 Q= 0.999999
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=900)
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase)
 
 grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
@@ -119,7 +119,7 @@ gen_mdl = get_generator_emt_template(grid.var_factory).block
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
+load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory, sbase = grid.Sbase, fbase = grid.fBase).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
@@ -130,10 +130,16 @@ gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
 line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
 line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
+line_mdl.connect([line_mdl.in_vars[6]], [bus0.emt_model.model.out_vars[3]]) # line d_vf_A
+line_mdl.connect([line_mdl.in_vars[7]], [bus0.emt_model.model.out_vars[4]]) # line d_vf_B
+line_mdl.connect([line_mdl.in_vars[8]], [bus0.emt_model.model.out_vars[5]]) # line d_vf_C
 
 line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
 line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
 line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
+line_mdl.connect([line_mdl.in_vars[9]], [bus1.emt_model.model.out_vars[3]]) # line d_vt_A
+line_mdl.connect([line_mdl.in_vars[10]], [bus1.emt_model.model.out_vars[4]]) # line d_vt_B
+line_mdl.connect([line_mdl.in_vars[11]], [bus1.emt_model.model.out_vars[5]]) # line d_vt_C
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
@@ -221,19 +227,41 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
-                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal)
-
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     verbose = 1)
 
 problem = EmtProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 problem.set_newton_trace_collector(NewtonTraceCollector())
 
-vars = problem.get_state_vars() + problem.get_algebraic_vars()
-print(vars)
+sv = problem.get_state_vars()
+dv = problem.get_diff_vars()
+
+assert len(sv) == len(dv)
+
 
 df = problem.get_init_guess_table()
-print(df)
+print(f"init_guess_table{df}")
+
+# print(f"state_vars = {problem.get_state_vars()}")
+# print(f"diff_vars = {problem.get_diff_vars()}")
+
+x0 = problem.get_x0()
+print("x0 =", x0)
+print("len(x0) =", len(x0))
+print("nans =", np.isnan(x0).sum())
+print("infs =", np.isinf(x0).sum())
+print("nonzeros =", np.count_nonzero(x0))
+print("len(init_guess) =", len(problem.init_guess))
+
+dx0 = problem.get_dx0()
+print("dx0 =",dx0)
+print("len(dx0) =", len(dx0))
+print("nans =", np.isnan(dx0).sum())
+print("infs =", np.isinf(dx0).sum())
+print("nonzeros =", np.count_nonzero(dx0))
+print("len(diff_init_guess) =", len(problem.diff_init_guess))
 
 
 solver = JitSymbolicSolver(problem = problem,
@@ -241,30 +269,24 @@ solver = JitSymbolicSolver(problem = problem,
                            t_end = options.simulation_time,
                            h = options.time_step,
                            method=options.integration_method,
+                           pred_method=DynamicIntegrationMethod.OdeEuler,
+                           # pred_method=None,
                            verbose = True)
 
-x0 = problem.get_x0()
-print("len(x0) =", len(x0))
-print("nans =", np.isnan(x0).sum())
-print("infs =", np.isinf(x0).sum())
-print("nonzeros =", np.count_nonzero(x0))
-print("len(init_guess) =", len(problem.init_guess))
-
-# solver = JitAdSolver(problem = problem,
-#                      t0 = 0.0,
-#                      t_end = options.simulation_time,
-#                      h = options.time_step,
-#                      method_str=options.integration_method,
-#                      verbose = True)
-#
 # solver = StructuralVectorizedSolver(problem = problem,
 #                                     t0 = 0.0,
 #                                     t_end = options.simulation_time,
 #                                     h = options.time_step,
-#                                     method_str=options.integration_method,
+#                                     method = options.integration_method,
 #                                     verbose = True)
+# solver = JitAdSolver(problem = problem,
+#                      t0 = 0.0,
+#                      t_end = options.simulation_time,
+#                      h = options.time_step,
+#                      method=options.integration_method,
+#                      verbose = True)
 
-t, y = solver.simulate()
+t, y, dy = solver.simulate()
 
 collector = problem.get_newton_trace_collector()
 if collector:

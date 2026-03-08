@@ -204,12 +204,6 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_eqs
 
-    def get_diff_vars(self):
-        """
-        Returns the list of state variables.
-        """
-        return self._diff_vars
-
     def get_variable_parameters(self):
         """
         Returns the list of variable parameters.
@@ -221,6 +215,14 @@ class EmtProblemTemplate(ABC):
         Returns the list of constant parameters.
         """
         return self._constant_parameters
+
+    def get_diff_vars(self):
+        """
+
+        Returns the list of derivatives.
+
+        """
+        return self._diff_vars
 
     def get_parameters_values(self):
         """
@@ -267,6 +269,7 @@ class EmtProblemTemplate(ABC):
             idx = self._uid2idx_vars.get(uid, None)
             if idx is not None:
                 x[idx] = float(val)
+
         return x
 
     def get_dx0(self) -> Vec:
@@ -292,6 +295,14 @@ class EmtProblemTemplate(ABC):
         """
         self._event_params_values = self._event_params_fn(self._event_params_values, float(t))
 
+    def get_full_param_index(self, uid: int) -> int:
+        n_ev = len(self._variable_parameters)
+        if uid in self._uid2idx_event_params:
+            return self._uid2idx_event_params[uid]
+        if uid in self._uid2idx_params:
+            return n_ev + self._uid2idx_params[uid]
+        raise KeyError(f"Unknown param uid={uid}")
+
     def get_newton_trace_collector(self) -> Any:
         """
         Returns the Newton trace collector instance.
@@ -315,6 +326,12 @@ class EmtProblemTemplate(ABC):
         Returns the index of a specific variable.
         """
         return self._uid2idx_vars[v.uid]
+
+    def get_diff_var_idx(self, dv: Var) -> int:
+        """
+        Returns the index of a specific derivative of a variable.
+        """
+        return self._uid2idx_diff[dv.uid]
 
     def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float):
         if not hasattr(mdl, "external_mapping") or mdl.external_mapping is None:
@@ -347,6 +364,10 @@ class EmtProblemTemplate(ABC):
     @property
     def uid2idx_diff(self):
         return self._uid2idx_diff
+
+    @property
+    def event_params_values(self):
+        return self._event_params_values
 
 
 

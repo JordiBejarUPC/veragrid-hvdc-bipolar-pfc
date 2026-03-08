@@ -3,14 +3,28 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Tuple
+
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
+
 
 
 class RmsOptions(OptionsTemplate):
     """
     Rms simulation options
     """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
+        GCProp(key="initialization_method", tpe=RmsInitializationMethod),
+        GCProp(key="time_step", tpe=float),
+        GCProp(key="simulation_time", tpe=float),
+        GCProp(key="tolerance", tpe=float),
+        GCProp(key="use_init_values", tpe=bool),
+        GCProp(key="max_iter", tpe=int),
+    )
 
     def __init__(self,
                  time_step: float = 0.001,
@@ -41,10 +55,3 @@ class RmsOptions(OptionsTemplate):
         self.max_iter: int = max_iter
         self.verbose = verbose
 
-        self.register(key="integration_method", tpe=DynamicIntegrationMethod)
-        self.register(key="initialization_method", tpe=RmsInitializationMethod)
-        self.register(key="time_step", tpe=float)
-        self.register(key="simulation_time", tpe=float)
-        self.register(key="tolerance", tpe=float)
-        self.register(key="use_init_values", tpe=bool)
-        self.register(key="max_iter", tpe=int)

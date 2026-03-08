@@ -20,6 +20,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
+from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
 # Engine imports
@@ -279,6 +280,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionReliability.triggered.connect(self.reliability_dispatcher)
         self.ui.actionRun_Dynamic_RMS_Simulation.triggered.connect(self.rms_dispatcher)
         self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.small_signal_dispatcher)
+        self.ui.actionProcedural_grid_expansion.triggered.connect(self.procedural_grid_expansion)
 
         self.ui.actionUse_clustering.triggered.connect(self.activate_clustering)
         self.ui.actionNodal_capacity.triggered.connect(self.run_nodal_capacity)
@@ -3274,29 +3276,25 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
 
+                self.remove_simulation(SimulationTypes.RmsDynamic_run)
+
                 _, pf_results = self.session.power_flow
 
                 if pf_results is not None:
 
-                    self.add_simulation(SimulationTypes.RmsDynamic_run)
-
+                    # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                    self.ui.progress_label.setText('Running rms simulation...')
+                    QtGui.QGuiApplication.processEvents()
                     self.LOCK()
 
-                    # Compile the grid
-                    self.ui.progress_label.setText('Compiling the grid...')
-                    QtGui.QGuiApplication.processEvents()
-
-                    # get the rms simulation options from the GUI
-                    options = self.get_selected_rms_simulation_options()
-
-                    self.ui.progress_label.setText('Running rms simulation...')
-
-                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=options, pf_results=pf_results)
+                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=self.get_selected_rms_simulation_options(), pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_rms,
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
+
+
 
 
                 else:
@@ -3321,15 +3319,21 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
 
-            if results.well_initialized:
-                self.show_info_toast("System well initialized:)")
+            if len(results.empty_rms_models) != 0:
+                self.show_info_toast(
+                    f"Missing RMS models in the following grid elements: "
+                    f"{', '.join(results.empty_rms_models)}"
+                )
             else:
-                self.show_warning_toast("System bad initialized :/")
+                if results.well_initialized:
+                    self.show_info_toast("System well initialized:)")
+                else:
+                    self.show_warning_toast("System bad initialized :/")
 
-            if results.converged:
-                self.show_info_toast("Simulation converged :)")
-            else:
-                self.show_warning_toast("Simulation did not converge :/")
+                if results.converged:
+                    self.show_info_toast("Simulation converged :)")
+                else:
+                    self.show_warning_toast("Simulation did not converge :/")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')
@@ -3466,3 +3470,12 @@ class SimulationsMain(TimeEventsMain):
         current_mip_framework = self.opf_mip_framework_dict[self.ui.mip_framework_comboBox.currentText()]
         mip_solvers = get_available_mip_solvers(tpe=current_mip_framework)
         self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
+
+    def procedural_grid_expansion(self):
+        """
+
+        :return:
+        """
+        self.procedural_grid_window = ProceduralGridWindow(app=self)
+        self.procedural_grid_window.exec()
+

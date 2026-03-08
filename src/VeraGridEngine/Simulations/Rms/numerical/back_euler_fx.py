@@ -172,6 +172,7 @@ class BackEulerImplicitIntegration:
                         for i in non_zero_indexes:
                             eq = all_eq[i]
                             print(f"eq {eq} with error {rhs[i]}")
+                        exit()
 
 
                 if not converged:

@@ -1,27 +1,43 @@
 # ==============================================================================
 # GENERALIZED EMT BERGERON LINE MODEL & STANDALONE DEMO
-#
-# This script contains the generalized N-phase implicit Bergeron Line Model
-# intended for integration into `emt_line.py` and `emt_problem_dae.py`.
-# It decouple nodes via local conductances and history current sources.
-#
-# Following the model definition, a standalone demo is provided to validate
-# the wave propagation physics (open circuit and matched load) using
-# the JitAdSolver, directly importing the generalized model.
 # ==============================================================================
 
 import numpy as np
 import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
+from typing import List, Dict, Tuple
 
 # VeraGridEngine Imports
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+
 class GenericEmtProblem(EmtProblemTemplate):
-    pass
+    __slots__ = []
+
+
+class BoundaryUpdateWrapper(ABC):
+    __slots__ = []
+
+    @abstractmethod
+    def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
+        pass
+
+
+class BergeronBoundaryUpdater(BoundaryUpdateWrapper):
+    __slots__ = ['line', 'step_counter']
+
+    def __init__(self, line: 'BergeronLineModel'):
+        self.line = line
+        self.step_counter: int = 0
+
+    def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
+        self.line.update_history(self.step_counter, x, params)
+        self.step_counter += 1
+
 
 # ==============================================================================
 # 1. GENERALIZED BERGERON MODEL (For emt_line.py)
@@ -31,46 +47,58 @@ class BergeronLineModel:
     Generalized N-phase implicit Bergeron Line Model.
     Designed to be instantiated in EmtProblemDae and solved via JitAdSolver.
     """
+    __slots__ = [
+        'name', 'Gc', 'H', 'num_phases', 'n_delay', 'buf_vf', 'buf_vt',
+        'buf_if', 'buf_it', 'Ih_f', 'Ih_t', 'block', 'v_f_vars', 'v_t_vars',
+        'idx_vf', 'idx_vt', 'idx_hf', 'idx_ht'
+    ]
 
     def __init__(self, name: str, Gc: np.ndarray, H: np.ndarray, tau: float, h: float):
-        self.name = name
-        self.Gc = np.asarray(Gc, dtype=np.float64)
-        self.H = np.asarray(H, dtype=np.float64)
-        self.num_phases = self.Gc.shape[0]
-        self.n_delay = max(1, int(round(tau / h)))
+        self.idx_ht = None
+        self.idx_vf = None
+        self.idx_hf = None
+        self.idx_vt = None
+        self.v_t_vars = None
+        self.v_f_vars = None
+        self.name: str = name
+        self.Gc: np.ndarray = np.asarray(Gc, dtype=np.float64)
+        self.H: np.ndarray = np.asarray(H, dtype=np.float64)
+        self.num_phases: int = self.Gc.shape[0]
+        self.n_delay: int = max(1, int(round(tau / h)))
 
         # Circular buffers for history tracking
-        self.buf_vf = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
-        self.buf_vt = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
-        self.buf_if = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
-        self.buf_it = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
+        self.buf_vf: np.ndarray = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
+        self.buf_vt: np.ndarray = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
+        self.buf_if: np.ndarray = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
+        self.buf_it: np.ndarray = np.zeros((self.n_delay + 1, self.num_phases), dtype=np.float64)
 
-        self.Ih_f = [Var(f"Ih_f_{name}_ph{i}") for i in range(self.num_phases)]
-        self.Ih_t = [Var(f"Ih_t_{name}_ph{i}") for i in range(self.num_phases)]
+        self.Ih_f: List[Var] = list()
+        self.Ih_t: List[Var] = list()
+        for i in range(self.num_phases):
+            self.Ih_f.append(Var(f"Ih_f_{name}_ph{i}"))
+            self.Ih_t.append(Var(f"Ih_t_{name}_ph{i}"))
 
         # DAE Block: Map event parameters to initial Const(0.0)
-        event_dict = {}
+        event_dict: Dict[Var, Expr] = dict()
         for var in self.Ih_f + self.Ih_t:
             event_dict[var] = Const(0.0)
 
-        self.block = Block(
+        self.block: Block = Block(
             name=f"Bergeron_{name}",
             event_dict=event_dict
         )
 
-    def get_nodal_injections(self, v_f_vars: list, v_t_vars: list):
+    def get_nodal_injections(self, v_f_vars: List[Var], v_t_vars: List[Var]) -> Tuple[List[Expr], List[Expr]]:
         """
         Returns symbolic KCL current injections for the From and To buses.
         """
         self.v_f_vars = v_f_vars
         self.v_t_vars = v_t_vars
 
-        i_f_exprs = []
-        i_t_exprs = []
+        i_f_exprs: List[Expr] = list()
+        i_t_exprs: List[Expr] = list()
 
         for i in range(self.num_phases):
-            # i_branch = Gc * V_local + I_hist
-            # Note: No instantaneous coupling with the remote node
             i_f = sum(self.Gc[i, j] * self.v_f_vars[j] for j in range(self.num_phases)) + self.Ih_f[i]
             i_t = sum(self.Gc[i, j] * self.v_t_vars[j] for j in range(self.num_phases)) + self.Ih_t[i]
 
@@ -79,28 +107,28 @@ class BergeronLineModel:
 
         return i_f_exprs, i_t_exprs
 
-    def setup_indices(self, problem: GenericEmtProblem, vprms_offset: int = 0):
+    def setup_indices(self, problem: GenericEmtProblem, vprms_offset: int = 0) -> None:
         """Maps symbolic UIDs to numerical array indices for the solver."""
-        self.idx_vf = [problem.uid2idx_vars[v.uid] for v in self.v_f_vars]
-        self.idx_vt = [problem.uid2idx_vars[v.uid] for v in self.v_t_vars]
-        self.idx_hf = [problem.uid2idx_event_params[p.uid] + vprms_offset for p in self.Ih_f]
-        self.idx_ht = [problem.uid2idx_event_params[p.uid] + vprms_offset for p in self.Ih_t]
 
-    def update_history(self, step_counter: int, x_prev: np.ndarray, full_params: np.ndarray):
+        self.idx_vf = np.array([problem.uid2idx_vars[v.uid] for v in self.v_f_vars], dtype=np.int32)
+        self.idx_vt = np.array([problem.uid2idx_vars[v.uid] for v in self.v_t_vars], dtype=np.int32)
+        self.idx_hf = np.array([problem.uid2idx_event_params[p.uid] + vprms_offset for p in self.Ih_f], dtype=np.int32)
+        self.idx_ht = np.array([problem.uid2idx_event_params[p.uid] + vprms_offset for p in self.Ih_t], dtype=np.int32)
+
+    def update_history(self, step_counter: int, x_prev: np.ndarray, full_params: np.ndarray) -> None:
         """Evaluates history equations right before the Newton iteration."""
-        k_curr = step_counter % (self.n_delay + 1)
-        k_delay = (step_counter - self.n_delay) % (self.n_delay + 1)
+        k_curr: int = step_counter % (self.n_delay + 1)
+        k_delay: int = (step_counter - self.n_delay) % (self.n_delay + 1)
 
-        # 1. Read converged voltages from t_{n-1}
+        # 1. Read converged voltages from t_{n-1} using advanced indexing
         v_f_now = x_prev[self.idx_vf]
         v_t_now = x_prev[self.idx_vt]
 
         self.buf_vf[k_curr, :] = v_f_now
         self.buf_vt[k_curr, :] = v_t_now
 
-        # 2. Reconstruct branch currents at t_{n-1} using history applied at that step
-        hf_vals = np.array([full_params[idx] for idx in self.idx_hf])
-        ht_vals = np.array([full_params[idx] for idx in self.idx_ht])
+        hf_vals = full_params[self.idx_hf]
+        ht_vals = full_params[self.idx_ht]
 
         i_f_now = self.Gc @ v_f_now + hf_vals
         i_t_now = self.Gc @ v_t_now + ht_vals
@@ -124,51 +152,40 @@ class BergeronLineModel:
         I_hist_f = 0.5 * ((I_mat + self.H) @ X_f + (I_mat - self.H) @ Y_f)
         I_hist_t = 0.5 * ((I_mat + self.H) @ X_t + (I_mat - self.H) @ Y_t)
 
-        # 5. Inject updated history into full_params array for the upcoming Newton step
-        for i in range(self.num_phases):
-            full_params[self.idx_hf[i]] = I_hist_f[i]
-            full_params[self.idx_ht[i]] = I_hist_t[i]
+        full_params[self.idx_hf] = I_hist_f
+        full_params[self.idx_ht] = I_hist_t
 
 
 # ==============================================================================
 # 2. STANDALONE DEMO (Validation test)
 # ==============================================================================
-def create_test_system(R_load: float):
+def create_test_system(R_load: float) -> Tuple[Block, BergeronLineModel, float, float, Var, Var]:
     """
     Creates a test grid: Ideal Voltage Source (Step) -> Line -> Resistive Load
     """
-    # EMT Physical Parameters
-    Zc = 350.0  # Ohms
-    tau = 0.005  # Seconds (5 ms travel time)
-    h = 1e-4  # Time step
-    V_step = 100.0  # Source voltage step
+    Zc: float = 350.0
+    tau: float = 0.005
+    h: float = 1e-4
+    V_step: float = 100.0
 
-    # Setup generalized model for 1-phase test
-    Gc_mat = np.array([[1.0 / Zc]])
-    H_mat = np.array([[1.0]])  # Lossless ideal line
+    Gc_mat: np.ndarray = np.array([[1.0 / Zc]])
+    H_mat: np.ndarray = np.array([[1.0]])
 
-    # Instantiate the generalized line model
     line = BergeronLineModel("L1", Gc=Gc_mat, H=H_mat, tau=tau, h=h)
 
-    # Nodal Variables
     v_f = Var("v_f")
     v_t = Var("v_t")
 
-    # Get symbolic current injections from the generalized model
     i_f_exprs, i_t_exprs = line.get_nodal_injections([v_f], [v_t])
-    i_f_line = i_f_exprs[0]
     i_t_line = i_t_exprs[0]
 
-    # KCL Node F (Ideal voltage source V = V_step)
     kcl_f = v_f - V_step
 
-    # KCL Node T (Line + Load to ground = 0)
     if R_load > 1e6:
-        kcl_t = i_t_line  # Open circuit
+        kcl_t = i_t_line
     else:
         kcl_t = i_t_line + (v_t / R_load)
 
-    # DAE Root Block
     sys_block = Block(
         name="TestGrid",
         algebraic_vars=[v_f, v_t],
@@ -179,7 +196,7 @@ def create_test_system(R_load: float):
     return sys_block, line, h, tau, v_f, v_t
 
 
-def run_test(case_name: str, R_load: float):
+def run_test(case_name: str, R_load: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     """Executes a single test case using JitAdSolver."""
     print(f"\n--- Running Test: {case_name} (R_load = {R_load} ohm) ---")
 
@@ -188,40 +205,26 @@ def run_test(case_name: str, R_load: float):
     glob_time = Var("t_glob")
 
     problem = GenericEmtProblem(sys_block=sys_block, glob_time=glob_time)
-
-    # Setup index mapping (Offset is 0 for JitAdSolver event params)
     line.setup_indices(problem, vprms_offset=0)
+    line_updater = BergeronBoundaryUpdater(line)
 
-    # Boundary update closure
-    step_counter = [0]
-
-    def boundary_update(t_curr, x_prev, full_params):
-        line.update_history(step_counter[0], x_prev, full_params)
-        step_counter[0] += 1
-
-    # Solver Execution
     solver = JitAdSolver(
         problem=problem,
         t0=0.0,
-        t_end=0.03,  # Simulate 30 ms
+        t_end=0.03,
         h=h,
         method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=False
     )
 
-    x0 = problem.get_x0()
-    dx0 = np.zeros(problem.get_all_vars_number())
-    params0 = problem._event_params_values
+    # x0 = problem.get_x0()
+    # dx0 = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+    # params0 = problem.event_params_values
 
-    t_arr, y_arr = solver.simulate(
-        x0=x0,
-        dx0=dx0,
-        params0=params0,
-        boundary_update_fn=boundary_update
-    )
+    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=line_updater)
 
-    idx_vf = problem.get_var_idx(v_f_var)
-    idx_vt = problem.get_var_idx(v_t_var)
+    idx_vf: int = problem.get_var_idx(v_f_var)
+    idx_vt: int = problem.get_var_idx(v_t_var)
 
     v_f_sol = y_arr[:, idx_vf]
     v_t_sol = y_arr[:, idx_vt]
@@ -229,14 +232,10 @@ def run_test(case_name: str, R_load: float):
     return t_arr, v_f_sol, v_t_sol, tau
 
 
-def main():
-    # Scenario 1: Infinite impedance
+def main() -> None:
     t1, vf1, vt1, tau = run_test("Open Circuit", R_load=1e9)
-
-    # Scenario 2: Matched impedance (Zc)
     t2, vf2, vt2, _ = run_test("Matched Load", R_load=350.0)
 
-    # Plotting
     plt.figure(figsize=(11, 6))
     plt.plot(t1 * 1000, vf1, 'k--', alpha=0.7, label="V_From (Ideal Source: 100V)")
     plt.plot(t1 * 1000, vt1, 'r-', linewidth=2, label="V_To (Open -> Total Reflection 200V)")
