@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-from typing import Dict
+from typing import List
 import scipy.sparse as sp
 import time
 import scipy.sparse as sp
@@ -23,8 +23,7 @@ class BackEulerImplicitIntegration:
                  t0: float,
                  t_end: float,
                  h: float,
-                 max_iter: int,
-                 uid2idx_save: Dict[int, int]=None):
+                 max_iter: int):
         """
 
         :param problem:
@@ -36,8 +35,6 @@ class BackEulerImplicitIntegration:
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
         self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
-        self.y_red: Mat = np.empty((self.steps + 1, len(uid2idx_save.items())))
-        self.index_to_save = [ui]
 
     def _rhs_implicit(self,
                       x: Vec,
@@ -236,8 +233,8 @@ class BackEulerImplicitIntegration:
 
                 self.t[step_idx + 1] = self.t[step_idx] + self.h
 
-                # add results to reduces results matrix
-                self.y_red[step_idx + 1, :] = x_new[selected_indices] # only the indices of the variables that we want to save
+                # add results to reduced results matrix
+                # self.y_red[step_idx + 1, :] = x_new[self.index_to_save] # only the indices of the variables that we want to save
 
                 dx_last = dx.copy()
                 lag_update_end = time.time()

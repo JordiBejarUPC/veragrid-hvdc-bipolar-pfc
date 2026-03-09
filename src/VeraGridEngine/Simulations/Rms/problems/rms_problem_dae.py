@@ -90,7 +90,8 @@ class RmsProblemDae(RmsProblemTemplate):
                  grid: MultiCircuit,
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
-                 progress_signal: DummySignal | None = None):
+                 progress_signal: DummySignal | None = None,
+                 progress_text: DummySignal(str) | None = None):
         """
 
         :param grid:
@@ -101,6 +102,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self.logger = Logger()
         self.progress_signal = progress_signal
+        self.progress_text = progress_text
         self.grid: MultiCircuit = grid
         self.power_flow_results: PowerFlowResults = pf_results
         self.Sf = self.power_flow_results.Sf / self.grid.Sbase

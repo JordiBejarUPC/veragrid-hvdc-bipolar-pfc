@@ -50,6 +50,32 @@ class RmsResults(ResultsTemplate):
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
         )
+
+        # when categorizing results
+        # ResultsTemplate.__init__(
+        #     self,
+        #     name='RMS simulation',
+        #     available_results=
+        #     {
+        #         ResultTypes.RmsGeneratorResults: [
+        #             ResultTypes.RmsGeneratorOmegaResults,
+        #             ResultTypes.RmsGeneratorDeltaResults],
+        #
+        #         ResultTypes.RmsLoadResults: [
+        #             ResultTypes.RmsLoadPResults,
+        #             ResultTypes.RmsLoadQResults],
+        #
+        #         ResultTypes.RmsLineResults: [
+        #             ResultTypes.RmsLinePResults,
+        #             ResultTypes.RmsLineQResults
+        #         ]
+        #
+        #     },
+        #     time_array=time_array,
+        #     clustering_results=None,
+        #     study_results_type=StudyResultsType.RmsSimulation
+        # )
+
         self.empty_rms_models = empty_rms_models
         self.well_initialized = well_initialized
         self.converged = converged

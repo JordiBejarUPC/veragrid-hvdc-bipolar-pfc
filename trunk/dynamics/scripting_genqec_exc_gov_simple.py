@@ -121,16 +121,13 @@ event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098)
 grid.add_rms_event(event)
 
 # choose variables to save values
-vars_to_save = list()
-vars_to_save.extend(grid.var_factory.get_vars_to_save(gen0, ["delta", "omega"]))
-vars_to_save.extend(grid.var_factory.get_vars_to_save(load, ["Pl", "Ql"]))
+# vars_to_save = list()
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(gen0, ["delta", "omega"]))
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(load, ["Pl", "Ql"]))
+#
+#
+# uid_save = [var.uid for var in vars_to_save]
 
-uid2idx_save = dict()
-
-i = 0
-for var in vars_to_save:
-    uid2idx_save[var.uid] = i
-    i+=1
 
 
 
@@ -175,7 +172,6 @@ options = RmsOptions(time_step=0.001,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
-                     vars_to_save=vars_to_save,
                      use_init_values=False,
                      max_iter=1000,
                      verbose=0)
@@ -196,7 +192,6 @@ solver = BackEulerImplicitIntegration(
     t_end=options.simulation_time,
     h=options.time_step,
     max_iter=options.max_iter,
-    uid2idx_save=uid2idx_save,
 )
 
 t, y, well_initialized, converged = solver.simulate()

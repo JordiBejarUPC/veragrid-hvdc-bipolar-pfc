@@ -77,8 +77,7 @@ class RmsSimulationDriver(DriverTemplate):
         :return:
         """
         self.progress_signal.emit(0)
-        # Check that every element in the grid has a valid rms model
-        # empty_rms_models =  self.grid.check_rms_models()
+
         if len(self.grid.check_rms_models()) != 0:
             self.results = RmsResults(
                 empty_rms_models=self.grid.check_rms_models(),
@@ -104,7 +103,8 @@ class RmsSimulationDriver(DriverTemplate):
                 grid=self.grid,
                 options=self.options,
                 pf_results=self.pf_results,
-                progress_signal=self.progress_signal)
+                progress_signal=self.progress_signal,
+                progress_text=self.progress_text)
 
             solver = self.integration_methods_dict[self.options.integration_method](
                 problem=problem,
