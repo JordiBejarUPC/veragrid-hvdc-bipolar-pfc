@@ -718,7 +718,7 @@ class Transformer3W(PhysicalDevice):
         :return:
         """
         z_series12, y_shunt12 = get_impedances(VH_bus=max(self.bus1.Vnom, self.bus2.Vnom),
-                                               VL_bus=max(self.bus1.Vnom, self.bus2.Vnom),
+                                               VL_bus=min(self.bus1.Vnom, self.bus2.Vnom),
                                                Sn=self.rate1,
                                                HV=max(self.V1, self.V2),
                                                LV=min(self.V1, self.V2),
@@ -730,7 +730,7 @@ class Transformer3W(PhysicalDevice):
                                                GR_hv1=0.5)
 
         z_series23, y_shunt23 = get_impedances(VH_bus=max(self.bus2.Vnom, self.bus3.Vnom),
-                                               VL_bus=max(self.bus2.Vnom, self.bus3.Vnom),
+                                               VL_bus=min(self.bus2.Vnom, self.bus3.Vnom),
                                                Sn=self.rate2,
                                                HV=max(self.V2, self.V3),
                                                LV=min(self.V2, self.V3),
@@ -742,7 +742,7 @@ class Transformer3W(PhysicalDevice):
                                                GR_hv1=0.5)
 
         z_series31, y_shunt31 = get_impedances(VH_bus=max(self.bus3.Vnom, self.bus1.Vnom),
-                                               VL_bus=max(self.bus3.Vnom, self.bus1.Vnom),
+                                               VL_bus=min(self.bus3.Vnom, self.bus1.Vnom),
                                                Sn=self.rate3,
                                                HV=max(self.V3, self.V1),
                                                LV=min(self.V3, self.V1),
