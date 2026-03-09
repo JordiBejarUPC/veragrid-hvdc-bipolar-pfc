@@ -38,6 +38,7 @@ class VSC(BranchParent):
         '_control2_val',
         '_control2_val_prof',
         '_bus_dc_n',
+        'min_ac_voltage',
         'x',
         'y'
     )
@@ -76,6 +77,9 @@ class VSC(BranchParent):
                       definition='Controlled device, None to apply to this converter', editable=False),
         GCProp(key='control2_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control2_dev_prof",
                       definition='Controlled device, None to apply to this converter', editable=False),
+        GCProp(key='min_ac_voltage', units='p.u.', tpe=float,
+                      definition='Minimum AC voltage threshold. '
+                                 'If the AC bus voltage drops below this value, the VSC is disconnected.'),
         GCProp(key='x', units='px', tpe=float, definition='x position'),
         GCProp(key='y', units='px', tpe=float, definition='y position'),
     )
@@ -109,6 +113,7 @@ class VSC(BranchParent):
                  control2_val: float = 0.0,
                  control1_dev: Bus | BRANCH_TYPES | None = None,
                  control2_dev: Bus | BRANCH_TYPES | None = None,
+                 min_ac_voltage: float = 0.1,
                  x: float = 0.0,
                  y: float = 0.0):
         """
@@ -246,6 +251,8 @@ class VSC(BranchParent):
 
         self._control2_val = float(control2_val)
         self._control2_val_prof: Profile = Profile(default_value=self._control2_val, data_type=float)
+
+        self.min_ac_voltage = float(min_ac_voltage)
 
         self.x = float(x)
         self.y = float(y)

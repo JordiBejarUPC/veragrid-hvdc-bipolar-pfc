@@ -123,6 +123,61 @@ def greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.nda
 
     return colors, int(max_color + 1)
 
+class Predictor:
+    """
+    Computes an explicit predictor for the Newton initial guess x_iter.
+    """
+    __slots__ = ['n_states']
+
+    def __init__(self,
+                 n_states: int) -> None:
+        self.n_states = n_states
+
+    def predict(self,
+                x_iter: Vec,
+                x_prev: Vec,
+                dx_prev: Vec,
+                h: float,
+                pred_method: Union[DynamicIntegrationMethod|None] = DynamicIntegrationMethod.DaeBackEuler) -> Vec:
+        """
+        Apply predictor in-place and return x_iter.
+        :param x_iter: Array to be written with the predictor guess (in-place).
+        :param x_prev: Previous full variable vector at time n.
+        :param dx_prev: Previous derivative vector (only first n_states are meaningful).
+        :param h: Time step.
+        :param pred_method: Integration method enum/value at the prediction step
+        :return:
+        """
+
+        # Default: no-op predictor
+        x_iter[:] = x_prev
+
+        # Dispatch per method
+        if pred_method == DynamicIntegrationMethod.OdeEuler:
+            return self._predict_euler_state(x_iter, x_prev, dx_prev, h)
+        elif pred_method == DynamicIntegrationMethod.DaeBDF2:
+            raise NotImplementedError(f"predictor method {pred_method} ")
+
+        # Otherwise keep default x_iter = x_prev
+        return x_iter
+
+    # ---------------------------------------------------------------------
+    # Predictor implementations
+    # ---------------------------------------------------------------------
+    def _predict_euler_state(self,
+                             x_iter: Vec,
+                             x_prev: Vec,
+                             dx_prev: Vec,
+                             h: float) -> Vec:
+        """
+        Explicit Euler predictor for the *state* subset:
+            x_{n+1}^0 = x_n + h * dx_n   (states only)
+        Algebraics remain at x_prev by default (already set in caller).
+        """
+        ns = self.n_states
+        x_iter[:ns] = x_prev[:ns] + h * dx_prev[:ns]
+        return x_iter
+
 class SparseADJacobian:
     """
     Sparse Jacobian evaluator with DEBUG TIMING.
@@ -346,8 +401,8 @@ class SparseADJacobian:
 
 class JitAdSolver:
     __slots__ = [
-        'problem', 't0', 't_end', 'h', 'method', 'dense_threshold', 'verbose',
-        'steps', 't', 'y', 'jit_kernels_ad', 'jit_jacobian_ad',
+        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
+        'steps', 't', 'y', 'dy',  'jit_kernels_ad', 'jit_jacobian_ad',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs'
     ]
     def __init__(self,
@@ -356,6 +411,7 @@ class JitAdSolver:
                  t_end: float,
                  h: float,
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
+                 pred_method: DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False)-> None:
         """
@@ -371,6 +427,8 @@ class JitAdSolver:
         :type h: float
         :param method: DynamicIntegrationMethod (DaeTrapezoidal, DaeBackEuler, DaeBDF2).
         :type method: DynamicIntegrationMethod
+        :param pred_method: DynamicIntegrationMethod used in the predictor step if method is explicit.
+        :type pred_method: DynamicIntegrationMethod
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :type dense_threshold: int
         :param verbose: Print compilation and simulation timings.
@@ -380,6 +438,7 @@ class JitAdSolver:
         self.t0 = t0
         self.h = h
         self.method = method
+        self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
         self.t_end = t_end
@@ -387,6 +446,7 @@ class JitAdSolver:
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
         self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
+        self.dy: Mat = np.empty((self.steps + 1, self.problem.get_diff_var_number()))
 
         # Solver specific caches
         self.jit_kernels_ad: Dict[DynamicIntegrationMethod, List[Callable]] = dict()
@@ -485,6 +545,7 @@ class JitAdSolver:
         current_jacobian = self.jit_jacobian_ad[method]
 
         n_eqs = self.problem.get_all_vars_number()
+        n_diff = self.problem.get_diff_var_number()
         n_states = self.problem.get_states_number()
 
         use_dense_solver = (n_eqs <= self.dense_threshold)
@@ -496,16 +557,16 @@ class JitAdSolver:
             x0 = self.problem.get_x0()
         else:
             pass
+        if dx0 is  None:
+            dx0 = self.problem.get_dx0()
+        else:
+            pass
 
         self.y[0, :] = x0.copy()
+        self.dy[0, :] = dx0.copy()
 
         x_prev = x0.copy()
-
-        if dx0 is not None:
-            dx_prev = dx0.copy()
-        else:
-            dx_prev = np.zeros(n_eqs, dtype=np.float64)
-
+        dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
 
@@ -550,6 +611,17 @@ class JitAdSolver:
 
             x_iter[:] = x_prev
 
+            # PREDICTOR
+            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                predictor = Predictor(n_states=n_states)
+                predictor.predict(
+                    x_iter=x_iter,
+                    x_prev=x_prev,
+                    dx_prev=dx_prev,
+                    h=self.h,
+                    pred_method=self.pred_method,
+                )
+
             for k in range(15):
                 ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit_ad",
                                          method=str(method))
@@ -575,6 +647,7 @@ class JitAdSolver:
                 x_iter += delta
 
             self.y[i + 1, :] = x_iter
+            self.dy[i, :] = dx_prev
 
             if method == DynamicIntegrationMethod.DaeTrapezoidal:
                 dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
@@ -595,4 +668,4 @@ class JitAdSolver:
         else:
             pass
 
-        return self.t, self.y
+        return self.t, self.y, self.dy

@@ -518,7 +518,7 @@ class FileOpen:
             )
 
         elif self.file_type == FileType.DGS:
-            self.circuit = dgs_to_circuit(self.file_name)
+            self.circuit = dgs_to_circuit(self.file_name, logger=self.logger)
 
         # --- European Grid Standards & RTE ---
         elif self.file_type == FileType.Iidm:

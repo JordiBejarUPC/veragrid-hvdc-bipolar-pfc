@@ -39,37 +39,13 @@ class RmsResults(ResultsTemplate):
         :param devices:
         :param units:
         """
-
-        # ResultsTemplate.__init__(
-        #     self,
-        #     name='RMS simulation',
-        #     available_results=[
-        #         ResultTypes.RmsSimulationReport,
-        #         # ResultTypes.RmsPlotResults
-        #     ],
-        #     time_array=time_array,
-        #     clustering_results=None,
-        #     study_results_type=StudyResultsType.RmsSimulation
-        # )
         ResultsTemplate.__init__(
             self,
             name='RMS simulation',
-            available_results=
-                {
-                ResultTypes.RmsGeneratorResults:[
-                         ResultTypes.RmsGeneratorOmegaResults,
-                         ResultTypes.RmsGeneratorDeltaResults],
-
-                ResultTypes.RmsLoadResults:[
-                        ResultTypes.RmsLoadPResults,
-                        ResultTypes.RmsLoadQResults],
-
-                ResultTypes.RmsLineResults: [
-                        ResultTypes.RmsLinePResults,
-                        ResultTypes.RmsLineQResults
-                    ]
-
-            },
+            available_results=[
+                ResultTypes.RmsSimulationReport,
+                # ResultTypes.RmsPlotResults
+            ],
             time_array=time_array,
             clustering_results=None,
             study_results_type=StudyResultsType.RmsSimulation
@@ -92,8 +68,7 @@ class RmsResults(ResultsTemplate):
         """
         Export the results as a ResultsTable for plotting.
         """
-
-        if result_type == ResultTypes.RmsGeneratorOmegaResults:
+        if result_type == ResultTypes.RmsSimulationReport:
             return ResultsTable(
                 data=np.array(self.values),
                 index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
@@ -103,58 +78,6 @@ class RmsResults(ResultsTemplate):
                 idx_device_type=DeviceType.TimeDevice,
                 cols_device_type=DeviceType.NoDevice
             )
-        elif result_type == ResultTypes.RmsGeneratorDeltaResults:
-            return ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-
-        elif result_type == ResultTypes.RmsLoadPResults:
-            return ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-        elif result_type == ResultTypes.RmsLoadQResults:
-            return ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-        elif result_type == ResultTypes.RmsLinePResults:
-            return ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-        elif result_type == ResultTypes.RmsLineQResults:
-            return ResultsTable(
-                data=np.array(self.values),
-                index=np.array(pd.to_datetime(self.time_array).astype(str), dtype=np.str_),
-                columns=self.variable_array,
-                title="Rms Simulation Results",
-                units=self.units,
-                idx_device_type=DeviceType.TimeDevice,
-                cols_device_type=DeviceType.NoDevice
-            )
-
 
         else:
             raise Exception(f"Result type not understood: {result_type}")

@@ -217,16 +217,11 @@ def run_test(case_name: str, R_load: float) -> Tuple[np.ndarray, np.ndarray, np.
         verbose=False
     )
 
-    x0 = problem.get_x0()
-    dx0 = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
-    params0 = problem.event_params_values
+    # x0 = problem.get_x0()
+    # dx0 = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+    # params0 = problem.event_params_values
 
-    t_arr, y_arr = solver.simulate(
-        x0=x0,
-        dx0=dx0,
-        params0=params0,
-        boundary_updater=line_updater
-    )
+    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=line_updater)
 
     idx_vf: int = problem.get_var_idx(v_f_var)
     idx_vt: int = problem.get_var_idx(v_t_var)
