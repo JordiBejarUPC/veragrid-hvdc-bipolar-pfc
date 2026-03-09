@@ -63,3 +63,29 @@ def test_transformer_3w():
     power_factory = np.array([1.0, 0.982548, 0.988753])
 
     assert np.allclose(np.abs(res.voltage[:3]), power_factory, atol=1e-5)
+
+
+def test_transformer_3w_dgs():
+    '''
+    This test executes a power flow simulation into a three-bus system, where the buses are interconnected
+    through a three-winding power transformer. In this case, the grid is not built in VeraGrid, but it is
+    directly imported from the DGS.
+
+    The results are compared against the PowerFactory system solution.
+    '''
+
+    # -----------------------------------------------------------------------------------------------------------------
+    #   Grid Import
+    # -----------------------------------------------------------------------------------------------------------------
+    grid = vge.open_file('data/grids/three_winding_transformer.dgs')
+    grid.buses[0].is_slack = True
+
+    # -----------------------------------------------------------------------------------------------------------------
+    # Run Power Flow
+    # -----------------------------------------------------------------------------------------------------------------
+    res = vge.power_flow(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                 retry_with_other_methods=False))
+
+    power_factory = np.array([1.0, 0.950238, 0.917207])
+
+    assert np.allclose(np.abs(res.voltage[:3]), power_factory, atol=1e-5)
