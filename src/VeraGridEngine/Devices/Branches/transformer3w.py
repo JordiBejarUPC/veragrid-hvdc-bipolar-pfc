@@ -41,8 +41,10 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     •Z23
     •Z31
     
-    These are the driving-point impedances seen between pairs of terminals when the third winding is open in the standard leakage-equivalent model.
-    If the transformer is modeled by a star equivalent with internal node 0, then the branch impedances are Z1, Z2, Z3 and the terminal pair impedances are:
+    These are the driving-point impedances seen between pairs of terminals when the third winding is open in 
+    the standard leakage-equivalent model.
+    If the transformer is modeled by a star equivalent with internal node 0, then the branch 
+    impedances are Z1, Z2, Z3 and the terminal pair impedances are:
     • between 1 and 2: Z12 = Z1 + Z2
     • between 2 and 3: Z23 = Z2 + Z3
     • between 3 and 1: Z31 = Z3 + Z1
@@ -82,7 +84,6 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     z2 = (z12 + z23 - z31) / 2.0
     z3 = (z31 + z23 - z12) / 2.0
     return z1, z2, z3
-
 
 
 def star_to_delta(z1: float, z2: float, z3: float) -> Tuple[float, float, float]:
@@ -143,7 +144,7 @@ class Transformer3W(PhysicalDevice):
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='bus0', units='', tpe=DeviceType.BusDevice, definition='Middle point connection bus.',
-                      editable=False),
+               editable=False),
         GCProp(key='bus1', units='', tpe=DeviceType.BusDevice, definition='Bus 1.', editable=False),
         GCProp(key='bus2', units='', tpe=DeviceType.BusDevice, definition='Bus 2.', editable=False),
         GCProp(key='bus3', units='', tpe=DeviceType.BusDevice, definition='Bus 3.', editable=False),
@@ -276,15 +277,6 @@ class Transformer3W(PhysicalDevice):
 
         self.x = float(x)
         self.y = float(y)
-
-
-
-
-
-
-
-
-
 
     @property
     def winding1(self) -> Winding:
