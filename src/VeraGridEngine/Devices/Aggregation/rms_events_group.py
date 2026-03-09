@@ -12,7 +12,7 @@ class RmsEventsGroup(EditableDevice):
     Investments group
     """
     __slots__ = (
-        'category',
+
     )
 
     def __init__(self,

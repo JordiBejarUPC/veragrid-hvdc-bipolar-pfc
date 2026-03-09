@@ -103,8 +103,7 @@ class RmsSimulationDriver(DriverTemplate):
                 grid=self.grid,
                 options=self.options,
                 pf_results=self.pf_results,
-                progress_signal=self.progress_signal,
-                progress_text=self.progress_text)
+                progress_signal=self.progress_signal)
 
             solver = self.integration_methods_dict[self.options.integration_method](
                 problem=problem,
