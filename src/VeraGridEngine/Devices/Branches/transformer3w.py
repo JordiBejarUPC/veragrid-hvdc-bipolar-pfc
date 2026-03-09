@@ -65,8 +65,9 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     Z1 = (Z12 + Z31 - Z23)/2
     Z2 = (Z12 + Z23 - Z31)/2
     Z3 = (Z23 + Z31 - Z12)/2
+    
+    Validated against PowerFactory.
     """
-
 
     # zt = z12 + z23 + z31
     # if zt > 0:
