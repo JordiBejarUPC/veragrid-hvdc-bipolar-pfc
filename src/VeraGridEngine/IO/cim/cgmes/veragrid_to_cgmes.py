@@ -826,12 +826,19 @@ def get_cgmes_loads(multicircuit_model: MultiCircuit,
                                                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
                                                target_vnom=mc_elm.bus.Vnom)
 
-        if mc_elm.Ii != 0.0:
+        has_zip_components: bool = (
+            mc_elm.Ir != 0.0 or
+            mc_elm.Ii != 0.0 or
+            mc_elm.G != 0.0 or
+            mc_elm.B != 0.0
+        )
+
+        if has_zip_components:
             load.LoadResponse = create_cgmes_load_response_char(load=mc_elm,
                                                                 cgmes_model=cgmes_model,
                                                                 ver=ver)
-            load.p = mc_elm.P / load.LoadResponse.pConstantPower
-            load.q = mc_elm.Q / load.LoadResponse.qConstantPower
+            load.p = mc_elm.P + mc_elm.Ir + mc_elm.G
+            load.q = mc_elm.Q + mc_elm.Ii + mc_elm.B
         else:
             load.p = mc_elm.P
             load.q = mc_elm.Q
@@ -1799,15 +1806,38 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
         else:
             non_lin_sc.controlEnabled = False
 
-        if mc_elm.active:
-            non_lin_sc.sections = mc_elm.step + 1
-        else:
-            non_lin_sc.sections = 0
-
         non_lin_sc.nomU = mc_elm.bus.Vnom
-        b_points_mva, g_points_mva = mc_elm.get_block_points()
-        b_points = [b / (non_lin_sc.nomU ** 2) for b in b_points_mva]
-        g_points = [g / (non_lin_sc.nomU ** 2) for g in g_points_mva]
+        cumulative_b_mva = mc_elm.get_cumulative_b().astype(float)
+        cumulative_g_mva = mc_elm.get_cumulative_g().astype(float)
+
+        active_sections: int = 0
+        if mc_elm.active:
+            if np.isclose(mc_elm.B, 0.0, atol=1e-9, rtol=0.0) and np.isclose(mc_elm.G, 0.0, atol=1e-9, rtol=0.0):
+                active_sections = 0
+            else:
+                for section_index in range(len(cumulative_b_mva)):
+                    if (np.isclose(cumulative_b_mva[section_index], mc_elm.B, atol=1e-9, rtol=0.0)
+                            and np.isclose(cumulative_g_mva[section_index], mc_elm.G, atol=1e-9, rtol=0.0)):
+                        active_sections = section_index + 1
+                        break
+
+                if active_sections == 0:
+                    logger.add_warning(
+                        msg="Controllable shunt operating point does not match the explicit stepped characteristic",
+                        device=mc_elm.idtag,
+                        device_class=mc_elm.device_type.value,
+                        device_property="B/G",
+                        value=f"B={mc_elm.B}, G={mc_elm.G}",
+                        expected_value="cumulative stepped values"
+                    )
+                    cumulative_b_mva = np.array([float(mc_elm.B)], dtype=float)
+                    cumulative_g_mva = np.array([float(mc_elm.G)], dtype=float)
+                    active_sections = 1
+
+        non_lin_sc.sections = active_sections
+        b_points = [b / (non_lin_sc.nomU ** 2) for b in cumulative_b_mva]
+        g_points = [g / (non_lin_sc.nomU ** 2) for g in cumulative_g_mva]
+
         for i in range(len(b_points)):
             create_cgmes_nonlinear_sc_point(
                 section_num=i + 1,

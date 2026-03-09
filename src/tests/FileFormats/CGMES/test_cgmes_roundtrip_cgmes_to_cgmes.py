@@ -130,11 +130,11 @@ def run_import_export_test(import_path: str | list[str],
         print("S_diff")
         print(injections_2 - injections_1)
         print("Y1")
-        print(admittance_1.Ybus.A)
+        print(admittance_1.Ybus.toarray())
         print("Y2")
-        print(admittance_2.Ybus.A)
+        print(admittance_2.Ybus.toarray())
         print("Y_diff")
-        print(admittance_2.Ybus.A - admittance_1.Ybus.A)
+        print(admittance_2.Ybus.toarray() - admittance_1.Ybus.toarray())
 
     assert numerical_match
 

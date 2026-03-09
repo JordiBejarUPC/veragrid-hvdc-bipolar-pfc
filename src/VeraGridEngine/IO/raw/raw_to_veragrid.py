@@ -258,8 +258,8 @@ def get_veragrid_shunt_switched(
         if psse_elm.SWREG != psse_elm.I:
             elm.control_bus = psse_bus_dict[psse_elm.SWREG]
 
-    n_list = []
-    b_list = []
+    n_list: list[int] = list()
+    b_list: list[float] = list()
 
     for i in range(1, 9):
         s = getattr(psse_elm, f"S{i}")
