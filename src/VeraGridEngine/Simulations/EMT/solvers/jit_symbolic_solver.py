@@ -318,10 +318,10 @@ class JitSymbolicSolver:
 
         for i, rhs in enumerate(self.state_eqs):
             d_term = self.diff_vars[i]  # real associated diff_var
-            sv = self.state_vars[i]
 
             equations.append(d_term - rhs)
 
+            sv = self.state_vars[i]
             residual_debug_info.append({
                 "kind": "STATE",
                 "label": f"d_{sv.name} - rhs_{sv.name}",
@@ -329,16 +329,19 @@ class JitSymbolicSolver:
                 "state_idx": var_uid_to_global_idx[sv.uid],
             })
 
+
         if len(self.algebraic_eqs) != len(self.algebraic_vars):
             print("[WARNING] len(algebraic_eqs) != len(algebraic_vars)")
             print(f"          algebraic_eqs  = {len(self.algebraic_eqs)}")
             print(f"          algebraic_vars = {len(self.algebraic_vars)}")
-        # equations.extend(self.algebraic_eqs)
+
+        equations.extend(self.algebraic_eqs)
+
         for j, eq in enumerate(self.algebraic_eqs):
             av = self.algebraic_vars[j] if j < len(self.algebraic_vars) else None
 
-            equations.append(eq)
-
+            # equations.append(eq)
+            #
             if av is not None:
                 residual_debug_info.append({
                     "kind": "ALG",
@@ -630,7 +633,8 @@ class JitSymbolicSolver:
                         print("            residual table labels may be wrong.\n")
 
                     abs_res = np.abs(res)
-                    top_indices = np.argsort(abs_res)[-20:][::-1]
+                    # top_indices = np.argsort(abs_res)[-20:][::-1]
+                    top_indices = np.argsort(abs_res)[:][::-1]
 
                     W_IDX = 4
                     W_KIND = 6
