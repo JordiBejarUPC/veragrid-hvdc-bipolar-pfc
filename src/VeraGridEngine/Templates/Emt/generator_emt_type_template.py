@@ -5,31 +5,28 @@
 
 
 import numpy as np
+from VeraGridEngine import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 
-def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_template") -> EmtModelTemplate:
+def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "emt_type_generator_template") -> EmtModelTemplate:
     """
-    EMT generator template (seconds + per-unit electrical variables).
-
-    Time base: seconds
-    Electrical variables: pu
-    Speed omega: pu (1.0 = synchronous)
-    omega_base: rad/s = 2*pi*f_base
-
-    Consistent pu-second model key scalings:
-      - d(psi)/dt includes omega_base factor because psi_base = V_base/omega_base
-      - swing equation includes omega_base/(2H)
-      - d(theta)/dt = omega_base*omega  (theta in rad)
-      - integrator state et uses d(et)/dt = (omega_ref - omega)  (NO omega_base)
+    EMT type machine model
+    :param grid: MultiCircuit
+    :param gen: Generator object to apply the template
+    :param name: string to identify the generator and model
+    :return: EmtModelTemplate
     """
 
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+
+    vf: VarFactory = grid.var_factory
 
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
@@ -39,7 +36,6 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
         vf.add_var("v_B_" + name),
         vf.add_var("v_C_" + name),
     ]
-
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
@@ -61,7 +57,7 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     d_et    = vf.add_diff_var(name = f"d_et_{name}", base_var=et)
 
     # --------------------------------------------------------------------------------------
-    # Terminal currents (abc) leaving the bus (your branch convention for generator should be set in stamping)
+    # Algebraic eqs
     # --------------------------------------------------------------------------------------
     i_A = vf.add_var("i_A_" + name)
     i_B = vf.add_var("i_B_" + name)
@@ -89,12 +85,11 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     Pm = vf.add_var("Pm_" + name)
 
     # --------------------------------------------------------------------------------------
-    # Parameters (use const via event_dict)
+    # Parameters
     # --------------------------------------------------------------------------------------
-    freq       = vf.add_var("Freq")
-    omega_base = vf.add_var("omega_base")  # rad/s
-    H          = vf.add_var("H")
-    D          = vf.add_var("D")
+    omega_base = vf.add_var("omega_base")
+    H = vf.add_var("H")
+    D = vf.add_var("D")
 
     Ra  = vf.add_var("Ra")
     La  = vf.add_var("La")
@@ -111,29 +106,17 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
 
     v_f0 = vf.add_var("v_f0")  # temporary fixed exciter output
 
-    # --------------------------------------------------------------------------------------
-    # STATE EQUATIONS (seconds + pu)
-    # --------------------------------------------------------------------------------------
     templ.block = Block(
+        # --------------------------------------------------------------------------------------
+        # STATE EQUATIONS (seconds + pu)
+        # --------------------------------------------------------------------------------------
         state_eqs=[
-            # v_d - Ra * i_d + omega * psi_q,
-            # v_q - Ra * i_q - omega * psi_d,
-            # v_0 - R0 * i_0,
-            # v_f - Rf * i_f,
-
-            # d_psi_d: -v_d - Ra * i_d + omega * psi_q
             -v_d - Ra * i_d + omega * psi_q,
-            # d_psi_q: -v_q - Ra * i_q - omega * psi_d
             -v_q - Ra * i_q - omega * psi_d,
-            # d_psi_0: -v_0 - R0 * i_0
             -v_0 - R0 * i_0,
-            # d_psi_f: v_f - Rf * i_f
             v_f - Rf * i_f,
-            # d_theta: omega
             omega,
-            # d_omega: Swing Equation (Pm es motor, Te es freno eléctrico)
             (Tm - Te - D * (omega - omega_ref)) / (2 * H),
-            # d_et: Error del gobernador
             (omega_ref - omega),
         ],
         state_vars=[psi_d, psi_q, psi_0, psi_f, theta, omega, et],
@@ -142,76 +125,30 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
-            # Flux-current relations (pu inductances)
-            # psi_d - ((Lmd + La) * i_d + Lmd * i_f),
-            # psi_q - ((Lmq + La) * i_q),
-            # psi_0 - (L0 * i_0),
-            # psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),
             psi_d - (Lmd * i_f - (Lmd + La) * i_d),
             psi_q - (-(Lmq + La) * i_q),
             psi_0 - (-L0 * i_0),
             psi_f - ((Lmd + Lf) * i_f - Lmd * i_d),
-
-            # # dq0 voltage from abc voltages using theta
-            # v_d - (2 / 3) * (inputs[0] * sym.cos(theta) +
-            #                  inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
-            #                  inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
-            # v_q - (2 / 3) * (inputs[0] * sym.sin(theta) +
-            #                  inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
-            #                  inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
-            # v_0 - (2 / 3) * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
-            #
-            # # abc currents from dq0 currents
-            # i_A - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),
-            # i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
-            # i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
-
-            # # dq0 voltage from abc voltages (Eje Q retrasado: usar -sin para v_q)
-            # v_d - (2 / 3) * (inputs[0] * sym.cos(theta) +
-            #                  inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
-            #                  inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
-            # v_q - (2 / 3) * (-inputs[0] * sym.sin(theta) -  # <--- NOTA EL MENOS
-            #                  inputs[1] * sym.sin(theta - 2 * np.pi / 3) -
-            #                  inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
-            # v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),  # El factor suele ser 1/3 para v0
-
-            # dq0 voltage from abc voltages (Eje Q alineado con Fase A a theta=0)
             v_d - (2 / 3) * (
                     inputs[0] * sym.sin(theta) +
                     inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
                     inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
-
             v_q - (2 / 3) * (
                     inputs[0] * sym.cos(theta) +
                     inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
                     inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
-
             v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
-
-
-            # abc currents from dq0 currents (Se mantienen igual, ya están bien)
             i_A - (i_d * sym.cos(theta) - i_q * sym.sin(theta) + i_0),
             i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) - i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
             i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) - i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
-
-            # Electrical torque (sign consistent with your dq convention)
             Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),
-
-            # Instantaneous three-phase power (EMT instantaneous p, q proxy)
             Pe - (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),
             Qe - (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C +
                                      (inputs[1] - inputs[2]) * i_A +
                                      (inputs[2] - inputs[0]) * i_B),
-
-            # Governor/torque control algebraic closure
             Tm - (Te + Kp * (omega_ref - omega) + Ki * et),
-
-            # Fixed exciter (temporary)
             v_f - v_f0,
-
-            # Mechanical power proxy
             Pm - Tm * omega,
-            # Pm - Pe,
         ],
         algebraic_vars=[
             i_d, i_q, i_0, i_f,
@@ -225,6 +162,10 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     )
 
     templ.block.diff_vars = [d_psi_d, d_psi_q, d_psi_0, d_psi_f, d_theta, d_omega, d_et]
+
+    # --------------------------------------------------------------------------------------
+    # external mapping
+    # --------------------------------------------------------------------------------------
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: Pe,
@@ -247,15 +188,19 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # --------------------------------------------------------------------------------------
     # Event dict (constants)
     # --------------------------------------------------------------------------------------
-    w = 2 * np.pi * 50.0
+    w = 2 * np.pi * grid.fBase
+    # Ra = 0.001
+    Ld = gen.X1
+    La_num = 0.15
+    Lmd_num = Ld - La_num
+
     templ.block.event_dict = {
-        freq:       vf.add_const(50.0),
         omega_base: vf.add_const(w),
         H:          vf.add_const(5.0),
         D:          vf.add_const(2.0),
-        Ra:         vf.add_const(0.001),
-        La:         vf.add_const(0.15),
-        Lmd:        vf.add_const(1.55),
+        Ra:         vf.add_const(gen.R1),
+        La:         vf.add_const(La_num),
+        Lmd:        vf.add_const(Lmd_num),
         Lmq:        vf.add_const(1.55),
         Lf:         vf.add_const(0.10),
         Rf:         vf.add_const(0.017),
@@ -264,145 +209,33 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
         omega_ref:  vf.add_const(1.0),
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
-        # v_f0:       vf.add_const(-0.004548),-0.000001
         v_f0:       vf.add_const(-0.015522),
     }
 
     # --------------------------------------------------------------------------------------
-    # INIT EQS (consistent steady state in seconds+pu)
-    # We assume synchronous steady state: d(psi)/dt = 0, d(omega)/dt = 0, omega = omega_ref = 1.
-    # From electrical equations (setting bracket = 0):
-    #   0 = v_d - Ra*i_d + omega*psi_q   -> psi_q = (Ra*i_d - v_d)/omega
-    #   0 = v_q - Ra*i_q - omega*psi_d   -> psi_d = (v_q - Ra*i_q)/omega
-    #   0 = v_0 - R0*i_0                 -> (already handled by psi_0 = L0*i_0)
-    #   0 = v_f - Rf*i_f                 -> v_f = Rf*i_f
-    #
-    # Note: these are "electrical steady-state" assumptions, not a full machine equilibrium.
+    # INIT EQUATIONS
     # --------------------------------------------------------------------------------------
-    # templ.block.init_eqs = {
-    #     # omega: omega_ref,
-    #     omega: vf.add_const(1.0),
-    #     et:    vf.add_const(0.0),
-    #
-    #     # 1. Get DQ voltages from PF
-    #     v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
-    #                   sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
-    #                   sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
-    #     v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
-    #                   sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
-    #                   sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
-    #     v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
-    #
-    #     # 2. Get DQ currents from PF
-    #     i_d: 2 / 3 * (sym.cos(theta) * i_A +
-    #                   sym.cos(theta - 2 * np.pi / 3) * i_B +
-    #                   sym.cos(theta + 2 * np.pi / 3) * i_C),
-    #     i_q: 2 / 3 * (sym.sin(theta) * i_A +
-    #                   sym.sin(theta - 2 * np.pi / 3) * i_B +
-    #                   sym.sin(theta + 2 * np.pi / 3) * i_C),
-    #     i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
-    #
-    #     # 3. Calculate internal fluxes considering the voltage drop across Ra
-    #     # v = -Ra*i - dpsi/dt + omega*psi --> at steady state: psi_q = (v_d + Ra*i_d)/omega
-    #     psi_q: (v_d + Ra * i_d),
-    #     psi_d: -(v_q + Ra * i_q),  # Note the sign for the q-axis lead convention
-    #     psi_0: L0 * i_0,
-    #
-    #
-    #     # 4. Calculate Field Current (i_f) correctly to get positive v_f
-    #     # From psi_d = Lmd*if - Ld*id --> if = (psi_d + Ld*id)/Lmd
-    #     i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
-    #     v_f: i_f * Rf,
-    #     psi_f: -Lmd * i_d + (Lmd + Lf) * i_f,
-    #
-    #     # 5. Torque matches at t=0
-    #     Te: (3 / 2) * (psi_q * i_d - psi_d * i_q),
-    #     Tm: Te,
-    #     Pm: Tm * omega,
-    #
-    #     # omega: vf.add_const(1.0),
-    #     # et: vf.add_const(0.0),
-    #     #
-    #     # # dq0 from abc voltages
-    #     # v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
-    #     #               sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
-    #     #               sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
-    #     # v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
-    #     #               sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
-    #     #               sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
-    #     # v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
-    #     #
-    #     # # dq0 from abc currents (inverse-consistent with your algebraic abc reconstruction)
-    #     # i_d: 2 / 3 * (sym.cos(theta) * i_A +
-    #     #               sym.cos(theta - 2 * np.pi / 3) * i_B +
-    #     #               sym.cos(theta + 2 * np.pi / 3) * i_C),
-    #     # i_q: 2 / 3 * (sym.sin(theta) * i_A +
-    #     #               sym.sin(theta - 2 * np.pi / 3) * i_B +
-    #     #               sym.sin(theta + 2 * np.pi / 3) * i_C),
-    #     # i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
-    #     #
-    #     # # electrical steady-state fluxes (corrected signs!)
-    #     # psi_d: (v_q - Ra * i_q) / omega,
-    #     # psi_q: (Ra * i_d - v_d) / omega,
-    #     # # psi_d: ((Lmd + La) * i_d + Lmd * i_f),
-    #     # # psi_q: ((Lmq + La) * i_q),
-    #     #
-    #     # # choose i_f from psi_d relation (kept from your original approach)
-    #     # i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
-    #     #
-    #     # # field voltage steady-state
-    #     # v_f: i_f * Rf,
-    #     #
-    #     # # remaining flux algebraic closures
-    #     # psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
-    #     # psi_0: L0 * i_0,
-    #     #
-    #     # Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
-    #     #
-    #     # # close mechanical with Te at init
-    #     # # Pe: i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2],
-    #     # Tm: Te,
-    #     # Pm: Tm * omega,
-    #     # # Pm: Pe,
-    # }
+
     templ.block.init_eqs = {
         omega: vf.add_const(1.0),
         et: vf.add_const(0.0),
-
-        # 1. Park Transform (D alineado con A, pero V cae en Q)
-        # Usamos senos para v_q para que el 1.41 de la red caiga aquí
         v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +
                       sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
                       sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
         v_q: 2 / 3 * (sym.cos(theta) * inputs[0] +
                       sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
                       sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
-
-        # 2. Corrientes (Misma lógica de proyección)
         i_d: 2 / 3 * (sym.sin(theta) * i_A +
                       sym.sin(theta - 2 * np.pi / 3) * i_B +
                       sym.sin(theta + 2 * np.pi / 3) * i_C),
         i_q: 2 / 3 * (sym.cos(theta) * i_A +
                       sym.cos(theta - 2 * np.pi / 3) * i_B +
                       sym.cos(theta + 2 * np.pi / 3) * i_C),
-
-        # 3. Flujos (Física: v_q es generado por psi_d)
-        # Ecuaciones de estado estacionario:
-        # v_d = -Ra*i_d + omega*psi_q
-        # v_q = -Ra*i_q - omega*psi_d (depende del convenio de signos de tu DAE)
         psi_q: (v_d + Ra * i_d),
         psi_d: -(v_q + Ra * i_q),
-
-        # 4. Excitación en Eje D
-        # i_f debe compensar el flujo psi_d y la reacción de armadura i_d
         i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
         v_f: i_f * Rf,
         psi_f: (Lmd + Lf) * i_f - Lmd * i_d,
-
-        # 5. Potencia y Torque
-        # En p.u., con esta convención de Park, el factor es 1.0 (o 3/2 si no es invariante en potencia)
-        # Si tu modelo dinámico usa Pe = vd*id + vq*iq, usa 1.0.
-        # Si usa la potencia total trifásica, usa 3/2.
         Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
         Pm: Tm * omega,
@@ -410,10 +243,6 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
 
     # --------------------------------------------------------------------------------------
     # DIFF INIT EQS
-    # Must be consistent with the chosen model:
-    #   d_theta = omega
-    #   d_et    = omega_ref - omega
-    # and at equilibrium: d_omega = 0, d_psi_* = 0, d_et = 0
     # --------------------------------------------------------------------------------------
     c0 = vf.add_const(0.0)
     templ.block.diff_init_eqs = {
